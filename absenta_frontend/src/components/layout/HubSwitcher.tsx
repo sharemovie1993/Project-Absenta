@@ -67,7 +67,7 @@ export function HubSwitcher({ isSidebarOpen, menuTree = [] }: HubSwitcherProps) 
       'KOPERASI': '/cooperative/dashboard',
       'ABSENSI': '/attendance/dashboard',
       'PERSURATAN': '/correspondence/dashboard',
-      'RAPOR': '/rapor/dashboard',
+      'RAPOR': '/rapor/input-nilai',
       'CBT': '/cbt/dashboard'
     };
     if (paths[hubId]) {

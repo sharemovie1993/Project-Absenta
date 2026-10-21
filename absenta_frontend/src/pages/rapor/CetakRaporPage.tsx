@@ -569,7 +569,7 @@ export default React.memo(function CetakRaporPage() {
   });
 
   const breadcrumbs = useMemo(
-    () => [{ label: 'Rapor', href: '/rapor/dashboard' }, { label: 'Cetak Rapor & Leger' }],
+    () => [{ label: 'Rapor', href: '/rapor/input-nilai' }, { label: 'Cetak Rapor & Leger' }],
     []
   );
 

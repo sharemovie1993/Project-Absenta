@@ -625,7 +625,7 @@ export default React.memo(function InputNilaiPage() {
   });
 
   const breadcrumbs = useMemo(() => [
-    { label: 'Rapor', path: '/rapor/dashboard' },
+    { label: 'Rapor', path: '/rapor/input-nilai' },
     { label: 'Input Nilai' }
   ], []);
 

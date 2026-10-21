@@ -247,7 +247,7 @@ export const RELATED_NAV_GROUPS: NavPillGroup[] = [
   // 10. Grup E-Rapor
   {
     id: 'rapor',
-    matches: (p) => p.startsWith('/rapor') && p !== '/rapor/dashboard',
+    matches: (p) => p.startsWith('/rapor'),
     items: [
       { label: 'Input Nilai', shortLabel: 'Input Nilai', path: '/rapor/nilai', icon: Award },
       { label: 'Cetak Lembar Rapor', shortLabel: 'Cetak', path: '/rapor/cetak', icon: Printer },

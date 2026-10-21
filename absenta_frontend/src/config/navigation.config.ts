@@ -183,7 +183,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/sarpras/dashboard',
       '/hubin/dashboard',
       '/bpbk/dashboard',
-      '/rapor/dashboard',
+      '/rapor/input-nilai',
       '/attendance/rekap',
       '/management/platform-compliance',
       '/users',
@@ -250,7 +250,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     crossModulePaths: [
       '/bpbk/cases',
       '/kesiswaan/pelanggaran',
-      '/rapor/dashboard',
+      '/rapor/input-nilai',
       '/rapor/cetak',
       '/rapor/nilai',
       '/rapor/p5'
@@ -409,7 +409,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     bg: 'bg-sky-50',
     solidBg: 'bg-sky-600',
     desc: 'E-Rapor & Input Nilai',
-    defaultPath: '/rapor/dashboard',
+    defaultPath: '/rapor/input-nilai',
     targetGroupKeywords: ['RAPOR', 'NILAI']
   },
   // ─── TATA USAHA GRANULAR WORKSPACES ────────────────────────────────

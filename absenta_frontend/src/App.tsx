@@ -163,7 +163,6 @@ const CoopAssets = lazy(() => import('./pages/cooperative/Assets'));
 const CoopRatMeeting = lazy(() => import('./pages/cooperative/RatMeetingPage'));
 const KurikulumDashboard = lazy(() => import('./pages/kurikulum/Dashboard'));
 const CorrespondenceDashboard = lazy(() => import('./pages/correspondence/Dashboard'));
-const RaporDashboard = lazy(() => import('./pages/rapor/Dashboard'));
 const EvaluasiKinerjaGuruPage = lazy(() => import('./pages/kurikulum/EvaluasiKinerjaGuruPage').then(m => ({ default: m.EvaluasiKinerjaGuruPage })));
 const PerangkatAjarPage = lazy(() => import('./pages/kurikulum/PerangkatAjarPage'));
 const AtpBuilderPage = lazy(() => import('./pages/kurikulum/AtpBuilderPage').then(m => ({ default: m.AtpBuilderPage })));
@@ -987,11 +986,8 @@ function App() {
                     } />
                     
                     {/* Rapor & CBT Routes */}
-                    <Route path="/rapor/dashboard" element={
-                      <ProtectedRoute requiredCapability="academic.students.view.list">
-                        <RaporDashboard />
-                      </ProtectedRoute>
-                    } />
+                    <Route path="/rapor/dashboard" element={<Navigate to="/rapor/input-nilai" replace />} />
+                    <Route path="/rapor" element={<Navigate to="/rapor/input-nilai" replace />} />
                     <Route path="/rapor/cetak" element={
                       <ProtectedRoute requiredCapability={['academic.homeroom.manage', 'academic.teaching.view', 'academic.manage.academic']}>
                         <CetakRaporPage />

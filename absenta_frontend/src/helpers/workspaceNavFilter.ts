@@ -202,7 +202,7 @@ export const filterNavByWorkspace = (
       '/attendance/monitoring',
       '/kesiswaan/monitoring',
       '/attendance/rekap',
-      '/rapor/dashboard',
+      '/rapor/input-nilai',
       '/rapor/nilai',
       '/rapor/cetak',
       '/rapor/p5',

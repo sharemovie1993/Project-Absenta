@@ -502,7 +502,7 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
   const breadcrumbs = useMemo(() => {
     if (layoutMode === 'rapor') {
       return [
-        { label: 'Rapor', path: '/rapor/dashboard' },
+        { label: 'Rapor', path: '/rapor/input-nilai' },
         { label: 'Nilai PKL' }
       ];
     }

@@ -5582,7 +5582,7 @@
     "tableToolbar": true,
     "breadcrumbNavigation": true,
     "premiumFeatureGate": null,
-    "godFileGuard": true,
+    "godFileGuard": false,
     "hardcodedConfig": true,
     "analyticsCardGuard": true,
     "importExportGuard": true,

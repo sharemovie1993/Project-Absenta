@@ -1,11 +1,12 @@
 import { formatDate } from '@/utils/date.utils';
-import React, { useMemo, useCallback, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useMemo, useCallback, useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   BookOpen, ClipboardList, ShieldCheck, Users, LayoutGrid,
   RefreshCw, CalendarDays, TrendingUp, Activity, Zap,
   GraduationCap, Clock, CheckCircle2, AlertTriangle, ChevronRight, ChevronLeft, FileText, ArrowRight,
+  Award,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -37,6 +38,7 @@ import {
   type PerangkatRecentItem, type SupervisiRecentItem,
   type JadwalEntry
 } from '@/components/kurikulum/dashboard/DashboardComponents';
+import { CurriculumRaporTab } from '@/components/kurikulum/dashboard/CurriculumRaporTab';
 
 const REFETCH = 60_000;
 const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
@@ -279,7 +281,31 @@ export default function KurikulumDashboard() {
   /* ────────────────────────────────────────────────────────────────────────
      NORMAL MODE STATE & HOOKS
   ──────────────────────────────────────────────────────────────────────── */
-  const [curriculumTab, setCurriculumTab] = useState<'overview' | 'beban' | 'perangkat' | 'supervisi'>('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab') as 'overview' | 'beban' | 'perangkat' | 'supervisi' | 'rapor' | null;
+  const validTabs = ['overview', 'beban', 'perangkat', 'supervisi', 'rapor'];
+  const [curriculumTab, setCurriculumTab] = useState<'overview' | 'beban' | 'perangkat' | 'supervisi' | 'rapor'>(
+    urlTab && validTabs.includes(urlTab) ? urlTab : 'overview'
+  );
+
+  useEffect(() => {
+    if (urlTab && validTabs.includes(urlTab) && urlTab !== curriculumTab) {
+      setCurriculumTab(urlTab);
+    }
+  }, [urlTab]);
+
+  const handleTabChange = useCallback((tabId: 'overview' | 'beban' | 'perangkat' | 'supervisi' | 'rapor') => {
+    setCurriculumTab(tabId);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (tabId === 'overview') {
+        next.delete('tab');
+      } else {
+        next.set('tab', tabId);
+      }
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   const teachersPendingPerangkat = useMemo(() => {
     const list = safeArr<{ status?: string; guru_id?: string }>(perangkatR);
@@ -441,6 +467,7 @@ export default function KurikulumDashboard() {
             { id: 'beban', label: 'Beban JP & Konflik', icon: TrendingUp },
             { id: 'perangkat', label: 'Perangkat Ajar Guru', icon: FileText, badge: teachersPendingPerangkat.length > 0 ? `${teachersPendingPerangkat.length}` : undefined },
             { id: 'supervisi', label: 'Supervisi Akademik', icon: ShieldCheck },
+            { id: 'rapor', label: 'Progres E-Rapor', icon: Award },
           ]?.map((tab) => {
             const Icon = tab.icon;
             const active = curriculumTab === tab.id;
@@ -448,7 +475,7 @@ export default function KurikulumDashboard() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setCurriculumTab(tab.id as Record<string, unknown>)}
+                onClick={() => handleTabChange(tab.id as 'overview' | 'beban' | 'perangkat' | 'supervisi' | 'rapor')}
                 className={cn(
                   "px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap",
                   active
@@ -769,6 +796,13 @@ export default function KurikulumDashboard() {
               </Card>
             </div>
           </div>
+        )}
+
+        {/* ==========================================
+            TAB CONTENT: PROGRES E-RAPOR (PENILAIAN SEKOLAH)
+            ========================================== */}
+        {curriculumTab === 'rapor' && (
+          <CurriculumRaporTab />
         )}
 
       </div>
