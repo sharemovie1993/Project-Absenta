@@ -240,10 +240,10 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
 
   const defaultStatusSiswaOptions: SearchableSelectOption[] = useMemo(() => [
     { value: '', label: 'Semua' },
-    { value: 'AKTIF', label: 'Siswa Aktif' },
-    { value: 'LULUS', label: 'Lulus (Alumni)' },
-    { value: 'MUTASI', label: 'Mutasi / Pindah' },
-    { value: 'KELUAR', label: 'Keluar / Drop Out' },
+    { value: 'AKTIF', label: 'Aktif' },
+    { value: 'LULUS', label: 'Lulus' },
+    { value: 'MUTASI', label: 'Mutasi' },
+    { value: 'KELUAR', label: 'Keluar' },
   ], []);
 
   const genderOptions = customGenderOptions || defaultGenderOptions;

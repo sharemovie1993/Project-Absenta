@@ -130,10 +130,10 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
 
   const resolvedStatusSiswaOptions = statusSiswaOptions.length > 0 ? statusSiswaOptions : [
     { value: '', label: 'Semua' },
-    { value: 'AKTIF', label: 'Siswa Aktif' },
-    { value: 'LULUS', label: 'Lulus (Alumni)' },
-    { value: 'MUTASI', label: 'Mutasi / Pindah' },
-    { value: 'KELUAR', label: 'Keluar / Drop Out' },
+    { value: 'AKTIF', label: 'Aktif' },
+    { value: 'LULUS', label: 'Lulus' },
+    { value: 'MUTASI', label: 'Mutasi' },
+    { value: 'KELUAR', label: 'Keluar' },
   ];
 
   return (

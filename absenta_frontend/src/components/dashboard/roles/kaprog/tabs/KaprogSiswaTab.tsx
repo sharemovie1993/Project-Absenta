@@ -262,8 +262,8 @@ export const KaprogSiswaTab: React.FC<KaprogSiswaTabProps> = React.memo(({
           { value: 'P', label: 'Perempuan (P)' },
         ]}
         statusSiswaOptions={[
-          { value: 'AKTIF', label: 'Siswa Aktif' },
-          { value: 'LULUS', label: 'Lulus (Alumni)' },
+          { value: 'AKTIF', label: 'Aktif' },
+          { value: 'LULUS', label: 'Lulus' },
           { value: 'ALL', label: 'Semua' },
         ]}
         isLoadingKelas={isKelasLoading}
