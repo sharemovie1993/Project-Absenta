@@ -19,6 +19,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { cn } from '@/lib/utils';
+import type { KaprogTabId } from '../types';
 
 interface KaprogBerandaTabProps {
   penilaianStatus: {
@@ -40,6 +41,7 @@ interface KaprogBerandaTabProps {
   recentActivities?: Array<{ id: string | number; title: string; desc: string; time: string }>;
   agendaHariIni?: Array<{ jam: string; agenda: string }>;
   onOpenPenempatan?: () => void;
+  onSelectTab?: (tabId: KaprogTabId) => void;
 }
 
 export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
@@ -49,6 +51,7 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
   recentActivities = [],
   agendaHariIni = [],
   onOpenPenempatan,
+  onSelectTab,
 }) => {
   const navigate = useNavigate();
 
@@ -115,8 +118,14 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate('/hubin/nilai-pkl?tab=deskripsi')}
-            className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 font-semibold gap-1"
+            onClick={() => {
+              if (onSelectTab) {
+                onSelectTab('pkl');
+              } else {
+                navigate('/hubin/nilai-pkl?tab=deskripsi');
+              }
+            }}
+            className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 font-semibold gap-1 cursor-pointer"
           >
             <span>Formulasi TP</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -128,6 +137,7 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
             {
               title: 'Formulasi TP PKL',
               desc: 'Rumuskan capaian per mitra',
+              tabId: 'pkl' as KaprogTabId,
               path: '/hubin/nilai-pkl?tab=deskripsi',
               icon: FileText,
             },
@@ -146,24 +156,28 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
             {
               title: 'Penempatan Siswa',
               desc: 'Plotting mitra industri',
+              action: onOpenPenempatan,
               path: '/hubin/penempatan',
               icon: Briefcase,
             },
             {
               title: 'Guru Produktif',
               desc: 'Jadwal & supervisi KBM',
+              tabId: 'guru' as KaprogTabId,
               path: '/academic/guru',
               icon: Users,
             },
             {
               title: 'Struktur Kelas',
               desc: 'Daftar rombel kejuruan',
+              tabId: 'siswa' as KaprogTabId,
               path: '/academic/kelas',
               icon: Layers,
             },
             {
               title: 'Sarana & Lab',
               desc: 'Inventaris bengkel',
+              tabId: 'sarana' as KaprogTabId,
               path: '/sarpras/inventaris',
               icon: Wrench,
             },
@@ -180,13 +194,15 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
                 key={idx}
                 type="button"
                 onClick={() => {
-                  if (item.title === 'Penempatan Siswa' && onOpenPenempatan) {
-                    onOpenPenempatan();
-                  } else {
+                  if (item.action) {
+                    item.action();
+                  } else if (item.tabId && onSelectTab) {
+                    onSelectTab(item.tabId);
+                  } else if (item.path) {
                     navigate(item.path);
                   }
                 }}
-                className="flex flex-col text-left p-3.5 rounded-xl border border-slate-200/70 dark:border-slate-800/80 hover:border-indigo-300 dark:hover:border-indigo-800 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-all group"
+                className="flex flex-col text-left p-3.5 rounded-xl border border-slate-200/70 dark:border-slate-800/80 hover:border-indigo-300 dark:hover:border-indigo-800 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-all group cursor-pointer"
               >
                 <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-colors mb-2.5">
                   <Icon className="w-4 h-4" />

@@ -555,6 +555,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                     recentActivities={recentActivities}
                     agendaHariIni={agendaHariIni}
                     onOpenPenempatan={() => setIsPlottingPklModalOpen(true)}
+                    onSelectTab={handleTabSelect}
                   />
                 )}
                 {activeTab === 'siswa' && (
