@@ -403,8 +403,6 @@ async function main() {
     // --- RAPOR ---
     {
       label: 'RAPOR', icon: 'BookOpen', path: null, required_features: ['CORE'], order: 38, children: [
-        { label: 'Dashboard', icon: 'LayoutDashboard', path: '/rapor/dashboard', required_capability: 'academic.homeroom.manage, dashboard.view.walikelas, academic.manage.academic' },
-        { label: 'divider', icon: null, path: null },
         { label: 'Input Nilai', icon: 'Award', path: '/rapor/nilai', required_capability: 'academic.teaching.view, academic.homeroom.manage' },
         { label: 'Cetak Rapor', icon: 'Printer', path: '/rapor/cetak', required_capability: 'dashboard.view.walikelas, academic.homeroom.manage' },
         { label: 'Projek P5', icon: 'Layers', path: '/rapor/p5', required_capability: 'academic.teaching.view, academic.manage.academic' },
