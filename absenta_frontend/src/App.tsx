@@ -863,6 +863,7 @@ function App() {
                     {/* HUBIN Backward Compatibility Aliases */}
                     <Route path="/hubin/nilai" element={<Navigate to="/hubin/nilai-pkl" replace />} />
                     <Route path="/hubin/pengaturan" element={<Navigate to="/hubin/settings" replace />} />
+                    <Route path="/hubin/deskripsi-tp" element={<Navigate to="/hubin/settings?tab=deskripsi" replace />} />
 
                     {/* Kurikulum Module */}
 
