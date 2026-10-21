@@ -494,8 +494,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
   * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
-  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 959 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [InputNilaiPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/rapor/InputNilaiPage.tsx) (959 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
-  * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 939 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [InputNilaiPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/rapor/InputNilaiPage.tsx) (939 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
 
 ---
 

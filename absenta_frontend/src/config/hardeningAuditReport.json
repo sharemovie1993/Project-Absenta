@@ -7187,7 +7187,7 @@
     "analyticsCardGuard": true,
     "importExportGuard": true,
     "standardPdfPrint": true,
-    "zodValidationGuard": false,
+    "zodValidationGuard": true,
     "standardTabSwitcher": true,
     "layoutFlowConsistency": true,
     "dateFormatTimezoneGuard": true,

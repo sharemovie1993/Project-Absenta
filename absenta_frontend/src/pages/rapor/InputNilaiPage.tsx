@@ -161,7 +161,7 @@ export default React.memo(function InputNilaiPage() {
     enableSemester: true,
     enableCohort: isSupervisiMode,
     enableKelas: isSupervisiMode,
-    enableMapel: isSupervisiMode,
+    enableMapel: isSupervisiMode || (activeRoleTab === 'wali_kelas' && isWaliKelas),
     initialTpId: initialContext.tpId,
     initialSemesterId: initialContext.semId,
     initialKelasId: initialContext.kelasId,
@@ -686,131 +686,111 @@ export default React.memo(function InputNilaiPage() {
       <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
         <div className="space-y-4">
 
-          {/* Unified Control Toolbar Container (1 Frame Box Rapi & Hemat Ruang Vertikal) */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-xs space-y-3.5">
-            {/* Hardening Guard Alert: Banner Mode Arsip Akademik */}
-            {isArchivedAcademic && (
-              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-start sm:items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200 animate-in fade-in duration-200">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
-                    <Lock size={16} />
-                  </div>
-                  <div>
-                    <div className="font-bold flex items-center gap-2">
-                      <span>Mode Arsip Akademik (Tutup Buku)</span>
-                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-amber-200/80 dark:bg-amber-900 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
-                        Hanya Baca
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 mt-0.5">
-                      {activeYear?.nama || 'Tahun Pelajaran Terpilih'} berstatus Non-Aktif. Pengisian, pengeditan, dan penyimpanan nilai dikunci secara otomatis untuk melindungi keaslian arsip riwayat nilai siswa.
-                    </p>
-                  </div>
+          {/* Hardening Guard Alert: Banner Mode Arsip Akademik */}
+          {isArchivedAcademic && (
+            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-start sm:items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200 animate-in fade-in duration-200">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+                  <Lock size={16} />
                 </div>
-              </div>
-            )}
-
-            {/* Baris 1: Konteks Akademik (TP & Semester) di kiri, Tab Switcher Role di kanan */}
-            <div className={`flex flex-col md:flex-row md:items-center justify-between gap-3 ${activeRoleTab !== 'my_tasks' ? 'pb-3 border-b border-slate-100 dark:border-slate-800' : ''}`}>
-              <div className="w-full md:w-auto">
-                <AcademicFilterToolbar
-                  {...academicFilter.toolbarProps}
-                  variant="compact"
-                  mapelOptions={isSupervisiMode ? smartMapelOptions : undefined}
-                  isLoadingMapel={isLoadingClassSubjects}
-                  values={{
-                    ...academicFilter.toolbarProps.values,
-                    kelasId: selectedKelas,
-                    mapelId: selectedMapel,
-                  }}
-                />
-              </div>
-
-              <div className="flex items-center justify-between sm:justify-end gap-2 w-full md:w-auto flex-wrap">
-                {tabOptions.length > 1 && (
-                  <TabSwitcher
-                    options={tabOptions}
-                    activeTab={activeRoleTab}
-                    onChange={handleRoleTabChange}
-                  />
-                )}
-
-                {/* Tombol Monitoring Pengisian Mapel Seluruh Rombel */}
-                <button
-                  type="button"
-                  onClick={() => setShowMonitoringModal(true)}
-                  className="flex items-center gap-1.5 px-2.5 sm:px-3 h-[38px] rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 font-bold text-xs shadow-2xs transition-all cursor-pointer shrink-0"
-                  title="Buka Status Monitoring Pengisian Mapel Seluruh Rombel"
-                >
-                  <BarChart3 className="w-4 h-4 text-indigo-500 shrink-0" />
-                  <span>Monitoring</span>
-                </button>
-              </div>
-            </div>
-
-            {activeRoleTab === 'wali_kelas' && isWaliKelas && (
-              <div className="space-y-3">
-                <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3">
-                  <div className="flex-1 max-w-xl">
-                    <label htmlFor="walikelas-select-mapel" className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                      Mata Pelajaran di Kelas {waliKelasNama}:
-                    </label>
-                    <SearchableSelect
-                      id="walikelas-select-mapel"
-                      aria-label="Pilih mata pelajaran kelas binaan"
-                      options={smartMapelOptions}
-                      value={selectedMapel}
-                      onValueChange={(val) => {
-                        if (waliKelasId) setSelectedKelas(waliKelasId);
-                        setSelectedMapel(val);
-                        setScores([]);
-                      }}
-                      placeholder={
-                        isLoadingClassSubjects
-                          ? 'Memuat mata pelajaran...'
-                          : smartMapelOptions.length === 0
-                          ? 'Tidak ada mapel terjadwal di kelas ini'
-                          : '-- Pilih Mata Pelajaran --'
-                      }
-                      disabled={!waliKelasId || isLoadingClassSubjects}
-                      isLoading={isLoadingClassSubjects}
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0 self-end lg:self-auto flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        navigate(
-                          `/rapor/cetak?kelas_id=${waliKelasId || ''}&tab=wali_kelas&tahun_pelajaran_id=${activeYear?.id || ''}&semester_id=${activeSemester?.id || ''}`
-                        )
-                      }
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
-                      title="Buka Lembar Pengisian Catatan Rapor Siswa"
-                    >
-                      <UserCheck className="w-3.5 h-3.5" />
-                      <span>Isi Catatan</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Info kelengkapan rapor kelas binaan */}
-                <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2 text-indigo-950 dark:text-indigo-200">
-                    <Info size={14} className="text-indigo-600 shrink-0" />
-                    <span className="text-[11px]">
-                      {tampilkanKokurikuler
-                        ? 'Wali kelas bertugas mengisi Nilai Mapel, Presensi, Catatan, & Evaluasi Kokurikuler.'
-                        : 'Wali kelas bertugas mengisi Nilai Mapel, Presensi, & Catatan Wali Kelas.'}
+                <div>
+                  <div className="font-bold flex items-center gap-2">
+                    <span>Mode Arsip Akademik (Tutup Buku)</span>
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-amber-200/80 dark:bg-amber-900 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                      Hanya Baca
                     </span>
                   </div>
-                  <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 shrink-0">
-                    {tampilkanKokurikuler ? 'Kokurikuler: Aktif' : 'Kokurikuler: Nonaktif'}
-                  </span>
+                  <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 mt-0.5">
+                    {activeYear?.nama || 'Tahun Pelajaran Terpilih'} berstatus Non-Aktif. Pengisian, pengeditan, dan penyimpanan nilai dikunci secara otomatis untuk melindungi keaslian arsip riwayat nilai siswa.
+                  </p>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* Toolbar Terstandar Sesuai Layout Modal Rekapitulasi Kolektif */}
+          <AcademicFilterToolbar
+            {...academicFilter.toolbarProps}
+            enableKelas={isSupervisiMode}
+            enableMapel={isSupervisiMode || (activeRoleTab === 'wali_kelas' && isWaliKelas)}
+            mapelOptions={smartMapelOptions}
+            isLoadingMapel={isLoadingClassSubjects}
+            values={{
+              ...academicFilter.toolbarProps.values,
+              kelasId: targetClassForSubjects,
+              mapelId: selectedMapel,
+            }}
+            actionsLeft={
+              <div className="flex items-center justify-between w-full flex-wrap gap-2">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    Tampilan
+                  </span>
+                  {tabOptions.length > 1 && (
+                    <TabSwitcher
+                      options={tabOptions}
+                      activeTab={activeRoleTab}
+                      onChange={handleRoleTabChange}
+                    />
+                  )}
+                  {activeRoleTab === 'wali_kelas' && waliKelasNama && (
+                    <Badge variant="outline" className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/40">
+                      Kelas: {waliKelasNama}
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {/* Tombol Monitoring Pengisian Mapel Seluruh Rombel */}
+                  <button
+                    type="button"
+                    onClick={() => setShowMonitoringModal(true)}
+                    className="flex items-center gap-1.5 px-2.5 sm:px-3 h-[32px] rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 font-bold text-xs shadow-2xs transition-all cursor-pointer shrink-0"
+                    title="Buka Status Monitoring Pengisian Mapel Seluruh Rombel"
+                  >
+                    <BarChart3 className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                    <span>Monitoring</span>
+                  </button>
+                </div>
+              </div>
+            }
+            actionsRight={
+              activeRoleTab === 'wali_kelas' && (
+                <div className="self-end pb-0.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(
+                        `/rapor/cetak?kelas_id=${waliKelasId || ''}&tab=wali_kelas&tahun_pelajaran_id=${activeYear?.id || ''}&semester_id=${activeSemester?.id || ''}`
+                      )
+                    }
+                    className="flex items-center gap-1.5 px-3 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer whitespace-nowrap"
+                    title="Buka Lembar Pengisian Catatan Rapor Siswa"
+                  >
+                    <UserCheck className="w-3.5 h-3.5" />
+                    <span>Isi Catatan</span>
+                  </button>
+                </div>
+              )
+            }
+          />
+
+          {/* Info kelengkapan rapor kelas binaan */}
+          {activeRoleTab === 'wali_kelas' && isWaliKelas && (
+            <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 text-indigo-950 dark:text-indigo-200">
+                <Info size={14} className="text-indigo-600 shrink-0" />
+                <span className="text-[11px]">
+                  {tampilkanKokurikuler
+                    ? 'Wali kelas bertugas mengisi Nilai Mapel, Presensi, Catatan, & Evaluasi Kokurikuler.'
+                    : 'Wali kelas bertugas mengisi Nilai Mapel, Presensi, & Catatan Wali Kelas.'}
+                </span>
+              </div>
+              <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 shrink-0">
+                {tampilkanKokurikuler ? 'Kokurikuler: Aktif' : 'Kokurikuler: Nonaktif'}
+              </span>
+            </div>
+          )}
 
           {/* VIEW TAB 1: Daftar Rombel Guru (Khusus Mode Tugas Mengajar) */}
           {activeRoleTab === 'my_tasks' && (
