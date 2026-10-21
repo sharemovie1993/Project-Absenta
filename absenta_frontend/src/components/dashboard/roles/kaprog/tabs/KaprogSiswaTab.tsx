@@ -250,21 +250,21 @@ export const KaprogSiswaTab: React.FC<KaprogSiswaTabProps> = React.memo(({
           { value: '13', label: 'Kelas XIII (4 Thn)' },
         ]}
         kelasOptions={[
-          { value: '', label: 'Semua Rombel Jurusan' },
+          { value: '', label: 'Semua' },
           ...availableKelasList.map((k) => ({
             value: k.id,
             label: k.namaKelas,
           })),
         ]}
         genderOptions={[
-          { value: '', label: 'Semua Gender' },
+          { value: '', label: 'Semua' },
           { value: 'L', label: 'Laki-laki (L)' },
           { value: 'P', label: 'Perempuan (P)' },
         ]}
         statusSiswaOptions={[
-          { value: 'AKTIF', label: 'Status: Aktif' },
-          { value: 'LULUS', label: 'Status: Lulus (Alumni)' },
-          { value: 'ALL', label: 'Status: Semua Status' },
+          { value: 'AKTIF', label: 'Siswa Aktif' },
+          { value: 'LULUS', label: 'Lulus (Alumni)' },
+          { value: 'ALL', label: 'Semua' },
         ]}
         isLoadingKelas={isKelasLoading}
         onReset={

@@ -123,13 +123,13 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
   const hasStandardActions = Boolean(onAdd || onImport || onExportExcel || onExportPdf || actionsRight);
 
   const resolvedGenderOptions = genderOptions.length > 0 ? genderOptions : [
-    { value: '', label: 'Semua Gender' },
+    { value: '', label: 'Semua' },
     { value: 'L', label: 'Laki-laki (L)' },
     { value: 'P', label: 'Perempuan (P)' },
   ];
 
   const resolvedStatusSiswaOptions = statusSiswaOptions.length > 0 ? statusSiswaOptions : [
-    { value: '', label: 'Semua Status' },
+    { value: '', label: 'Semua' },
     { value: 'AKTIF', label: 'Siswa Aktif' },
     { value: 'LULUS', label: 'Lulus (Alumni)' },
     { value: 'MUTASI', label: 'Mutasi / Pindah' },
@@ -222,10 +222,10 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
                   value={values.tingkat ? String(values.tingkat) : ''}
                   onValueChange={(v) => setTingkat?.(v ? parseInt(v, 10) : '')}
                   options={[
-                    { value: '', label: 'Semua Tingkat' },
+                    { value: '', label: 'Semua' },
                     ...tingkatOptions,
                   ]}
-                  placeholder="Semua Tingkat"
+                  placeholder="Semua"
                   triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
                 />
               </Suspense>
@@ -313,7 +313,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
                   onValueChange={(v) => setMitraId?.(v)}
                   options={mitraOptions}
                   isLoading={isLoadingMitra}
-                  placeholder="-- Semua Mitra --"
+                  placeholder="Semua"
                   triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
                 />
               </Suspense>
@@ -368,7 +368,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
                   onValueChange={(v) => setGuruId?.(v)}
                   options={guruOptions}
                   isLoading={isLoadingGuru}
-                  placeholder="Semua Guru..."
+                  placeholder="Semua"
                   clearable
                   triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
                 />
@@ -393,7 +393,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
                   onValueChange={(v) => setSiswaId?.(v)}
                   options={siswaOptions}
                   isLoading={isLoadingSiswa}
-                  placeholder="Semua Siswa..."
+                  placeholder="Semua"
                   clearable
                   triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
                 />
@@ -418,7 +418,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
                   onValueChange={(val) => setGender?.(val)}
                   options={resolvedGenderOptions}
                   isLoading={isLoadingGender}
-                  placeholder="Semua Gender"
+                  placeholder="Semua"
                   triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
                 />
               </Suspense>
@@ -442,7 +442,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
                   onValueChange={(val) => setStatusSiswa?.(val)}
                   options={resolvedStatusSiswaOptions}
                   isLoading={isLoadingStatusSiswa}
-                  placeholder="Semua Status"
+                  placeholder="Semua"
                   triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
                 />
               </Suspense>

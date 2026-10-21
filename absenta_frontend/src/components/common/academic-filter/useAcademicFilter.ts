@@ -150,7 +150,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
       tingkat: k.tingkat,
     }));
     if (allowAllKelas) {
-      return [{ value: '', label: 'Semua Kelas' }, ...mapped];
+      return [{ value: '', label: 'Semua' }, ...mapped];
     }
     return mapped;
   }, [rawKelasList, tingkat, jurusanId, allowAllKelas]);
@@ -174,7 +174,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     const baseList = customMitraOptions || fetchedMitraOptions || [];
     if (allowAllMitra) {
       if (!baseList.some((m) => m.value === '')) {
-        return [{ value: '', label: 'Semua Mitra Industri' }, ...baseList];
+        return [{ value: '', label: 'Semua' }, ...baseList];
       }
     }
     return baseList;
@@ -233,13 +233,13 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
 
   // ── Gender & Status Siswa Options & Handlers ───────────────────────────────
   const defaultGenderOptions: SearchableSelectOption[] = useMemo(() => [
-    { value: '', label: 'Semua Gender' },
+    { value: '', label: 'Semua' },
     { value: 'L', label: 'Laki-laki (L)' },
     { value: 'P', label: 'Perempuan (P)' },
   ], []);
 
   const defaultStatusSiswaOptions: SearchableSelectOption[] = useMemo(() => [
-    { value: '', label: 'Semua Status' },
+    { value: '', label: 'Semua' },
     { value: 'AKTIF', label: 'Siswa Aktif' },
     { value: 'LULUS', label: 'Lulus (Alumni)' },
     { value: 'MUTASI', label: 'Mutasi / Pindah' },
