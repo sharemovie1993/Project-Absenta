@@ -689,33 +689,48 @@ export default React.memo(function InputNilaiPage() {
               mapelId: selectedMapel,
             }}
             actionsLeft={
-              <div className="flex items-center justify-between w-full flex-wrap gap-2">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    Tampilan
-                  </span>
-                  {tabOptions.length > 1 && (
+              tabOptions.length > 1 ? (
+                <div className="flex items-center justify-between w-full flex-wrap gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                      Tampilan
+                    </span>
                     <TabSwitcher
                       options={tabOptions}
                       activeTab={activeRoleTab}
                       onChange={handleRoleTabChange}
                     />
-                  )}
-                </div>
+                  </div>
 
-                <div className="flex items-center gap-2">
-                  {/* Tombol Monitoring Pengisian Mapel Seluruh Rombel */}
+                  <div className="flex items-center gap-2">
+                    {/* Tombol Monitoring Pengisian Mapel Seluruh Rombel */}
+                    <button
+                      type="button"
+                      onClick={() => setShowMonitoringModal(true)}
+                      className="flex items-center gap-1.5 px-2.5 sm:px-3 h-[32px] rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 font-bold text-xs shadow-2xs transition-all cursor-pointer shrink-0"
+                      title="Buka Status Monitoring Pengisian Mapel Seluruh Rombel"
+                    >
+                      <BarChart3 className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                      <span>Monitoring</span>
+                    </button>
+                  </div>
+                </div>
+              ) : undefined
+            }
+            actionsRight={
+              tabOptions.length <= 1 ? (
+                <div className="self-end pb-0.5">
                   <button
                     type="button"
                     onClick={() => setShowMonitoringModal(true)}
-                    className="flex items-center gap-1.5 px-2.5 sm:px-3 h-[32px] rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 font-bold text-xs shadow-2xs transition-all cursor-pointer shrink-0"
+                    className="flex items-center gap-1.5 px-3 h-10 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-xs shadow-2xs transition-all cursor-pointer whitespace-nowrap"
                     title="Buka Status Monitoring Pengisian Mapel Seluruh Rombel"
                   >
                     <BarChart3 className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
                     <span>Monitoring</span>
                   </button>
                 </div>
-              </div>
+              ) : undefined
             }
           />
 
