@@ -42,6 +42,7 @@ interface KaprogPklTabProps {
   }>;
   onSelectEditingSlot: (slot: EditingMitraSlot) => void;
   onOpenPlottingModal?: () => void;
+  onOpenRekapNilai?: () => void;
   jurusanNama?: string;
 }
 
@@ -53,6 +54,7 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
   filteredMitraList = [],
   onSelectEditingSlot,
   onOpenPlottingModal,
+  onOpenRekapNilai,
   jurusanNama = 'Kejuruan',
 }) => {
   const navigate = useNavigate();
@@ -141,7 +143,7 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate('/hubin/nilai-pkl?tab=dudi')}
+              onClick={onOpenRekapNilai || (() => navigate('/hubin/nilai-pkl?tab=dudi'))}
               className="text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 gap-1.5 cursor-pointer"
             >
               <span>Rekap Nilai</span>

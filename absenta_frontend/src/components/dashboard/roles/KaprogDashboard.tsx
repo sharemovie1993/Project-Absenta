@@ -12,7 +12,8 @@ import {
   CheckCircle2, 
   ChevronRight,
   ClipboardList,
-  Layers
+  Layers,
+  Award
 } from 'lucide-react';
 import { Button, Badge, Loader } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
@@ -24,6 +25,7 @@ import { PklDeskripsiTpModal, EditingMitraSlot } from '@/components/hubin/nilai-
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { PenempatanPklView } from '@/components/hubin/penempatan/PenempatanPklView';
 import { KelasView } from '@/components/academic/kelas/KelasView';
+import { NilaiPklView } from '@/components/hubin/nilai-pkl/NilaiPklView';
 import toast from 'react-hot-toast';
 
 // Subkomponen Modular Ter-Hardening (Pilar 21B - God File Guard)
@@ -92,6 +94,16 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
     setIsStrukturKelasModalOpen(false);
     queryClient.invalidateQueries({ queryKey: ['kaprog-stats'] });
     queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+  }, [queryClient]);
+
+  // Floating Modal state for Scoped Rekap & Nilai PKL View
+  const [isRekapNilaiModalOpen, setIsRekapNilaiModalOpen] = useState(false);
+
+  const handleCloseRekapNilaiModal = useCallback(() => {
+    setIsRekapNilaiModalOpen(false);
+    queryClient.invalidateQueries({ queryKey: ['kaprog-pkl-summary'] });
+    queryClient.invalidateQueries({ queryKey: ['kaprog-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
   }, [queryClient]);
 
   // Konteks Akademik Standard Platform (useAcademicFilter SSOT)
@@ -567,6 +579,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                     agendaHariIni={agendaHariIni}
                     onOpenPenempatan={() => setIsPlottingPklModalOpen(true)}
                     onOpenStrukturKelas={() => setIsStrukturKelasModalOpen(true)}
+                    onOpenRekapNilai={() => setIsRekapNilaiModalOpen(true)}
                     onSelectTab={handleTabSelect}
                   />
                 )}
@@ -588,6 +601,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                     filteredMitraList={filteredMitraList}
                     onSelectEditingSlot={handleSelectEditingSlot}
                     onOpenPlottingModal={() => setIsPlottingPklModalOpen(true)}
+                    onOpenRekapNilai={() => setIsRekapNilaiModalOpen(true)}
                     jurusanNama={resolvedJurusan?.nama}
                   />
                 )}
@@ -718,6 +732,47 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
               jurusanId={resolvedJurusan?.id}
               jurusanNama={resolvedJurusan?.nama}
               onClose={handleCloseStrukturKelasModal}
+            />
+          </div>
+        </Modal>
+      )}
+
+      {/* 9. Modal Reusable View: Rekap & Entri Nilai PKL Scoped Jurusan */}
+      {isRekapNilaiModalOpen && (
+        <Modal
+          isOpen={isRekapNilaiModalOpen}
+          onClose={handleCloseRekapNilaiModal}
+          size="full"
+          className="w-[98vw] max-w-[98vw] 2xl:max-w-[1720px]"
+          title={
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                <Award className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                    Rekapitulasi & Nilai Siswa PKL
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40">
+                    {resolvedJurusan?.nama || 'Kejuruan'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Rekap nilai industri, nilai sidang, presensi DUDI, dan sertifikasi khusus program keahlian Anda.
+                </p>
+              </div>
+            </div>
+          }
+        >
+          <div className="p-4 sm:p-5 max-h-[85vh] overflow-y-auto">
+            <NilaiPklView
+              isModal={true}
+              jurusanId={resolvedJurusan?.id}
+              jurusanNama={resolvedJurusan?.nama}
+              tahunPelajaranId={academic.selectedTahunPelajaran}
+              semesterId={academic.selectedSemester}
+              onClose={handleCloseRekapNilaiModal}
             />
           </div>
         </Modal>

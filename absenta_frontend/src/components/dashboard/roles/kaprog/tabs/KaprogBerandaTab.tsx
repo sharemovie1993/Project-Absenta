@@ -42,6 +42,7 @@ interface KaprogBerandaTabProps {
   agendaHariIni?: Array<{ jam: string; agenda: string }>;
   onOpenPenempatan?: () => void;
   onOpenStrukturKelas?: () => void;
+  onOpenRekapNilai?: () => void;
   onSelectTab?: (tabId: KaprogTabId) => void;
 }
 
@@ -53,6 +54,7 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
   agendaHariIni = [],
   onOpenPenempatan,
   onOpenStrukturKelas,
+  onOpenRekapNilai,
   onSelectTab,
 }) => {
   const navigate = useNavigate();
@@ -146,6 +148,7 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
             {
               title: 'Rekap Nilai PKL',
               desc: 'Nilai industri & sidang',
+              action: onOpenRekapNilai,
               path: '/hubin/nilai-pkl?tab=dudi',
               icon: Award,
             },
