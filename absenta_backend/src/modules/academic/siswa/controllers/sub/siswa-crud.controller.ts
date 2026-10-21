@@ -57,6 +57,7 @@ async getAllSiswa(request: any, reply: any) {
       const context = request.query.context as string | undefined;
       const tingkat = request.query.tingkat as string | undefined;
       const gender = request.query.gender as string | undefined;
+      const jurusan_id = request.query.jurusan_id as string | undefined;
       
       const search_fields_param = request.query.search_fields as string | undefined;
       const searchFields = search_fields_param ? search_fields_param.split(',').map(f => f.trim()) : undefined;
@@ -72,6 +73,7 @@ async getAllSiswa(request: any, reply: any) {
         context,
         tingkat,
         gender,
+        jurusan_id,
       });
 
       return reply.status(200).send({

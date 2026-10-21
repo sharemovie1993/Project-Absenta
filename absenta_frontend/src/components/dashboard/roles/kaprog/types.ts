@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type KaprogTabId = 'beranda' | 'pkl' | 'kehadiran' | 'guru' | 'sarana';
+export type KaprogTabId = 'beranda' | 'siswa' | 'pkl' | 'kehadiran' | 'guru' | 'sarana';
 
 export interface NavTabItem {
   id: KaprogTabId;

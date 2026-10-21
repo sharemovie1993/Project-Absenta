@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard,
+  GraduationCap,
   Briefcase, 
   CalendarCheck, 
   Users, 
@@ -22,6 +23,7 @@ import toast from 'react-hot-toast';
 
 // Subkomponen Modular Ter-Hardening (Pilar 21B - God File Guard)
 import { KaprogBerandaTab } from './kaprog/tabs/KaprogBerandaTab';
+import { KaprogSiswaTab } from './kaprog/tabs/KaprogSiswaTab';
 import { KaprogPklTab } from './kaprog/tabs/KaprogPklTab';
 import { KaprogKehadiranTab } from './kaprog/tabs/KaprogKehadiranTab';
 import { KaprogGuruTab } from './kaprog/tabs/KaprogGuruTab';
@@ -277,6 +279,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
   const navTabs: NavTabItem[] = useMemo(
     () => [
       { id: 'beranda', label: 'Ringkasan', icon: LayoutDashboard },
+      { id: 'siswa', label: 'Data Siswa', icon: GraduationCap },
       {
         id: 'pkl',
         label: 'PKL & Industri',
@@ -539,6 +542,15 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                     kaprogStatsData={kaprogStatsData}
                     recentActivities={recentActivities}
                     agendaHariIni={agendaHariIni}
+                  />
+                )}
+                {activeTab === 'siswa' && (
+                  <KaprogSiswaTab
+                    jurusanId={resolvedJurusan?.id}
+                    jurusanNama={resolvedJurusan?.nama || 'Kejuruan'}
+                    kelasList={kelasKehadiranList}
+                    tahunPelajaranId={academic.selectedTahunPelajaran}
+                    semesterId={academic.selectedSemester}
                   />
                 )}
                 {activeTab === 'pkl' && (

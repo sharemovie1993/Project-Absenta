@@ -11,6 +11,7 @@ export interface PaginationParams {
   context?: string;
   tingkat?: string | number;
   gender?: string;
+  jurusan_id?: string;
 }
 
 export interface SiswaResponse {

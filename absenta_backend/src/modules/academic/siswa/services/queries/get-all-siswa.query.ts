@@ -87,6 +87,14 @@ export async function getAllSiswaQuery(
     whereClause.Kelas.tingkat = safeTingkat;
   }
 
+  const safeJurusanId = typeof params?.jurusan_id === 'string' && params.jurusan_id.trim() !== '' ? params.jurusan_id.trim() : undefined;
+  if (safeJurusanId) {
+    if (!whereClause.Kelas) {
+      whereClause.Kelas = {};
+    }
+    whereClause.Kelas.jurusan_id = safeJurusanId;
+  }
+
   // Apply Isolate/Scope filter from Organization Engine
   const isElevatedContext = params?.context === 'elevated' && org?.is_elevated_context === true;
 
