@@ -47,7 +47,6 @@ import {
   QrCode,
   MapPin,
   Flag,
-  AlertCircle,
   Zap
 } from 'lucide-react';
 
@@ -415,14 +414,6 @@ export const UnifiedStaffDashboard: React.FC = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: kaprogPklSummaryRes } = useQuery({
-    queryKey: ['kaprog-pkl-summary', kaprogJurusan?.id],
-    queryFn: () => hubinApi.getKaprogSummary({ jurusan_id: kaprogJurusan?.id }).catch(() => ({ success: true, data: null })),
-    enabled: !!isKaprog,
-    staleTime: 60 * 1000,
-  });
-
-  const pendingTpCount = kaprogPklSummaryRes?.data?.tpStatus?.pendingMitra || 0;
 
   const { data: toolmanStatsRes, isLoading: toolmanStatsLoading } = useQuery({
     queryKey: ['dashboard', 'toolman', 'stats'],
@@ -797,11 +788,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   // Navigation Tabs Definition STRICTLY based on SK/Position Codes (Jabatan Nyata)
   const tabs = useMemo(() => {
-    const list: Array<{ id: string; label: string; icon: any; badge?: string }> = [];
+    const list: Array<{ id: string; label: string; icon: any }> = [];
 
     // 0. Tab khusus Admin
     if (isAdminRole && !isKepsek) {
-      list.push({ id: 'admin', label: 'Dashboard Admin', icon: ShieldCheck, badge: 'ADMIN' });
+      list.push({ id: 'admin', label: 'Dashboard Admin', icon: ShieldCheck });
     }
 
     // 1. Beranda Guru / Scan Gerbang / Overview Eksekutif Kepsek
@@ -810,7 +801,6 @@ export const UnifiedStaffDashboard: React.FC = () => {
         id: 'ringkasan', 
         label: 'Overview Eksekutif', 
         icon: Award,
-        badge: 'KEPSEK'
       });
     } else if ((isEffectivePendidik || isPureGerbangStaff) && !isAdminRole) {
       list.push({ 
@@ -825,7 +815,6 @@ export const UnifiedStaffDashboard: React.FC = () => {
       id: 'portal',
       label: 'Portal',
       icon: LayoutGrid,
-      badge: 'APPS'
     });
 
     // 1.1 Input Manual (Khusus Petugas Gerbang / Piket)
@@ -834,41 +823,38 @@ export const UnifiedStaffDashboard: React.FC = () => {
         id: 'manual_presensi',
         label: 'Input Manual',
         icon: ClipboardCheck,
-        badge: 'SISWA'
       });
     }
 
     // 2. KBM & Absen (hanya untuk Guru Pengajar Aktif atau Staf TU Pengganti Mengajar)
     if (!isPureGerbangStaff && !isKepsek && (!isTuStaff || isKurikulum || hasTeachingDuty) && (!isAdminRole || isEffectivePendidik)) {
-      list.push({ id: 'jadwal', label: 'KBM & Absen', icon: BookOpen, badge: 'AKTIF' });
+      list.push({ id: 'jadwal', label: 'KBM & Absen', icon: BookOpen });
     }
 
     // 3. Wali Kelas (Dihapus dari tab tabular atas sesuai arahan pengguna; diakses langsung via Portal)
 
     // 4. Bimbingan PKL (Khusus Guru Pembimbing PKL yang bukan Waka Hubin)
     if (isPembimbingPkl && !isKepsek) {
-      list.push({ id: 'pembimbing_pkl', label: 'Bimbingan PKL', icon: Briefcase, badge: 'PKL' });
+      list.push({ id: 'pembimbing_pkl', label: 'Bimbingan PKL', icon: Briefcase });
     }
 
     // 4.1 Kaprog (Khusus Ketua Program Keahlian / Jurusan)
     if (isKaprog && !isKepsek) {
       list.push({ 
         id: 'kaprog', 
-        label: 'Kaprog Jurusan', 
+        label: 'Dashboard Jurusan', 
         icon: Award, 
-        badge: pendingTpCount > 0 ? `${pendingTpCount} TP Belum Diisi` : (kaprogJurusan?.singkatan || 'KAPROG'),
-        badgeColor: pendingTpCount > 0 ? 'bg-amber-500 text-white animate-pulse' : 'bg-blue-500 text-white'
       });
     }
 
     // 5. Fasilitator P5 (Khusus Guru Fasilitator Projek P5)
     if (isFasilitatorP5Actual && !isKepsek) {
-      list.push({ id: 'p5_projek', label: 'Projek P5', icon: Sparkles, badge: 'P5' });
+      list.push({ id: 'p5_projek', label: 'Projek P5', icon: Sparkles });
     }
 
     // 10. Tab Tata Usaha Sesuai Spesialisasi Fungsional
     if ((isTUKepegawaian || isTU || (isAdminRole && !isKepsek)) && !isKepsek) {
-      list.push({ id: 'kepegawaian', label: tuTabMeta.label, icon: Users, badge: tuTabMeta.badge });
+      list.push({ id: 'kepegawaian', label: tuTabMeta.label, icon: Users });
     }
 
     // 11. Piket & Gerbang (Tugas piket harian, gerbang, kesiswaan, kurikulum, dan seluruh guru pendidik)
@@ -878,7 +864,6 @@ export const UnifiedStaffDashboard: React.FC = () => {
         id: 'kelola', 
         label: isPureGerbangStaff ? 'Pos Keamanan' : hasGerbangDuty ? 'Piket & Gerbang' : 'Piket Harian', 
         icon: isPureGerbangStaff ? ShieldCheck : ClipboardList,
-        badge: isPureGerbangStaff ? 'IZIN' : hasGerbangDuty ? 'SCAN' : undefined 
       });
     }
 
@@ -907,7 +892,6 @@ export const UnifiedStaffDashboard: React.FC = () => {
     can,
     isPembimbingPkl,
     isKaprog,
-    kaprogJurusan,
     isFasilitatorP5Actual,
     isTUKepegawaian,
     isTU,
@@ -1128,56 +1112,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
               >
                 <TabIcon size={15} className={isTabActive ? "text-emerald-400" : "text-slate-400"} />
                 <span>{tab.label}</span>
-                {tab.badge && (
-                  <span className={cn(
-                    "px-2 py-0.5 rounded-full text-[9px] font-black flex items-center justify-center shadow-xs uppercase",
-                    (tab as any).badgeColor || "bg-blue-500 text-white"
-                  )}>
-                    {tab.badge}
-                  </span>
-                )}
               </button>
             );
           })}
         </div>
       </div>
-
-      {/* ────────────────────────────────────────────────────────────────── */}
-      {/* ACTIONABLE TO-DO ALERT BANNER: KAPROG PENDING TP NOTIFICATION       */}
-      {/* ────────────────────────────────────────────────────────────────── */}
-      {isKaprog && pendingTpCount > 0 && activeTab !== 'kaprog' && (
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs shrink-0">
-              <AlertCircle className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-amber-950 dark:text-amber-200">
-                Tugas Mendesak Kaprog: Terdapat {pendingTpCount} industri mitra {kaprogJurusan?.nama ? `Jurusan ${kaprogJurusan.nama}` : ''} belum memiliki Tujuan Pembelajaran (TP) PKL
-              </p>
-              <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
-                Segera lengkapi rumusan TP agar nilai rapor PKL siswa dapat diinput oleh pembimbing dan DUDI.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end flex-wrap sm:flex-nowrap">
-            <button
-              type="button"
-              onClick={() => handleTabChange('kaprog')}
-              className="flex-1 sm:flex-none text-center text-xs font-bold px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-700 text-amber-800 dark:text-amber-300 hover:bg-amber-100/50 cursor-pointer"
-            >
-              Lihat di Tab Kaprog
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/hubin/nilai-pkl?tab=deskripsi')}
-              className="flex-1 sm:flex-none text-center text-xs font-bold px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white shadow-xs cursor-pointer"
-            >
-              Lengkapi TP Sekarang ➔
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ────────────────────────────────────────────────────────────────── */}
       {/* TAB CONTENT AREA                                                   */}
