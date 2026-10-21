@@ -128,6 +128,23 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
       }
     });
 
+    // Sertakan juga mitra yang sudah tersimpan di database agar tetap dapat dikelola
+    deskripsiListData.forEach((d) => {
+      const mId = d.mitra_id || (d as any).Mitra?.id || d.id;
+      if (!map.has(mId)) {
+        if (targetJurusanId && d.jurusan_id && d.jurusan_id !== targetJurusanId) {
+          return;
+        }
+        map.set(mId, {
+          mitra_id: mId,
+          mitra_nama: d.Mitra?.nama || 'Mitra Industri',
+          mitra_alamat: (d as any).Mitra?.alamat || '',
+          siswa_count: 0,
+          rombel_set: new Set<string>(),
+        });
+      }
+    });
+
     // Gabungkan dengan data deskripsi yang sudah tersimpan di database
     return Array.from(map.values()).map((slot) => {
       const saved = deskripsiListData.find((d) => {

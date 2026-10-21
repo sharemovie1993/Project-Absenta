@@ -21,7 +21,10 @@ import { hubinApi } from '../../api/hubin.api';
 import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
 import { useDudiOptions } from '../../hooks/useDudiOptions';
 import { useJurusanOptions } from '../../hooks/useJurusanOptions';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { PklDeskripsiTpTab } from '../../components/hubin/nilai-pkl/PklDeskripsiTpTab';
+import { ScoreRow } from '../../components/hubin/nilai-pkl/types';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { InfraErrorBoundary } from '../../components/superadmin/infra/InfraErrorBoundary';
@@ -131,6 +134,7 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
   const [formWeightSidang, setFormWeightSidang] = useState<number>(15);
 
   // Form State: Tab 3 - Master Deskripsi TP
+  const { isKaprog, kaprogJurusan, isHubin } = useCapabilities();
   const { options: mitraOptions } = useDudiOptions();
   const { options: rawJurusanOptions } = useJurusanOptions();
   const jurusanOptions = useMemo(() => [
@@ -140,6 +144,33 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
   const [selectedMitra, setSelectedMitra] = useState('');
   const [selectedJurusan, setSelectedJurusan] = useState('');
   const [deskripsiTpText, setDeskripsiTpText] = useState('');
+
+  // Query rekapitulasi penempatan siswa PKL untuk agregasi slot DUDI aktif
+  const { data: rawPklRekap } = useQuery({
+    queryKey: ['pkl-rekap-settings', selectedTp],
+    queryFn: () => hubinApi.getPklRekap({
+      tahun_pelajaran_id: selectedTp || undefined,
+    }),
+    enabled: activeTab === 'deskripsi',
+  });
+
+  const scores = useMemo((): ScoreRow[] => {
+    const rawResponse = rawPklRekap as any;
+    const list = rawResponse?.data?.list || rawResponse?.data || rawResponse || [];
+    if (!Array.isArray(list)) return [];
+    return list.map((item: any) => ({
+      siswa_pkl_id: item.id || item.siswa_pkl_id || '',
+      nama_siswa: item.Siswa?.nama_siswa || item.siswa_nama || '',
+      nis: item.Siswa?.nis || item.nis || '',
+      foto: item.Siswa?.foto || null,
+      kelas_id: item.Siswa?.Kelas?.id || item.Siswa?.kelas_id || item.kelas_id || '',
+      nama_kelas: item.Siswa?.Kelas?.nama_kelas || item.nama_kelas || '',
+      jurusan_id: item.Siswa?.jurusan_id || (item.Siswa?.Kelas as any)?.jurusan_id || item.jurusan_id || '',
+      mitra_nama: item.Mitra?.nama || item.mitra_nama || '',
+      alamat_dudi: item.Mitra?.alamat || item.alamat_dudi || '',
+      deskripsi_tp: item.deskripsi_tp || '',
+    }));
+  }, [rawPklRekap]);
 
   const { data: rawDeskripsiList, isLoading: isLoadingDeskripsi } = useQuery({
     queryKey: ['deskripsi-tp-list', selectedMitra, selectedJurusan],
@@ -267,44 +298,13 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
     mutationFn: (id: string) => hubinApi.deleteSettingDeskripsiPkl(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deskripsi-tp-list'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-rekap-settings'] });
       toast.success('Master deskripsi Capaian TP berhasil dihapus!');
     },
     onError: (err: { message?: string }) => {
       toast.error(err?.message || 'Gagal menghapus deskripsi TP');
     },
   });
-
-  const handleSaveDeskripsiTp = useCallback(() => {
-    const parseResult = deskripsiTpSchema.safeParse({
-      mitra_id: selectedMitra,
-      deskripsi_tp: deskripsiTpText.trim(),
-    });
-
-    if (!parseResult.success) {
-      toast.error(parseResult.error.errors[0]?.message || 'Data deskripsi tidak valid');
-      return;
-    }
-
-    saveDeskripsiTpMutation.mutate({
-      mitra_id: selectedMitra,
-      deskripsi_tp: deskripsiTpText.trim(),
-      jurusan_id: selectedJurusan || undefined,
-    });
-  }, [selectedMitra, selectedJurusan, deskripsiTpText, saveDeskripsiTpMutation]);
-
-  const handleEditDeskripsi = useCallback((item: DeskripsiTpItem) => {
-    if (item.mitra_id || item.Mitra?.id) {
-      setSelectedMitra(item.mitra_id || item.Mitra?.id || '');
-    }
-    setSelectedJurusan(item.jurusan_id || '');
-    setDeskripsiTpText(item.deskripsi_tp || '');
-  }, []);
-
-  const handleDeleteDeskripsi = useCallback((id: string) => {
-    if (window.confirm('Yakin ingin menghapus rumusan deskripsi TP ini?')) {
-      deleteDeskripsiTpMutation.mutate(id);
-    }
-  }, [deleteDeskripsiTpMutation]);
 
   // Handler Tab 4: Simpan Storage
   const handleSaveStorage = useCallback(() => {
@@ -731,151 +731,24 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
               </div>
             )}
 
-            {/* TAB 3: MASTER DESKRIPSI TP */}
+            {/* TAB 3: MASTER DESKRIPSI TP (KARTU GRID INTERAKTIF DUDI & CAPAIAN TP) */}
             {activeTab === 'deskripsi' && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                <Card className="p-3.5 sm:p-5 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
-                  <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                    <FileText size={18} className="text-emerald-500 shrink-0" />
-                    <h3 className="font-bold text-xs sm:text-sm">Entri Deskripsi Capaian / TP DUDI</h3>
-                  </div>
-
-                  <div>
-                    <label htmlFor="select-mitra-tp" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Pilih Mitra Industri (DUDI) <span className="text-rose-500">*</span>
-                    </label>
-                    <SearchableSelect
-                      id="select-mitra-tp"
-                      aria-label="Pilih mitra industri untuk deskripsi TP"
-                      value={selectedMitra}
-                      onValueChange={setSelectedMitra}
-                      options={mitraOptions}
-                      placeholder="Pilih Mitra Industri"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="select-jurusan-tp" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Jurusan / Konsentrasi Keahlian (Opsional)
-                    </label>
-                    <SearchableSelect
-                      id="select-jurusan-tp"
-                      aria-label="Pilih jurusan untuk deskripsi TP"
-                      value={selectedJurusan}
-                      onValueChange={setSelectedJurusan}
-                      options={jurusanOptions}
-                      placeholder="Semua Jurusan (General)"
-                    />
-                    <p className="text-[10px] text-slate-400 mt-0.5">
-                      Pilih jurusan jika rumusan kompetensi di mitra ini spesifik untuk program keahlian tertentu.
-                    </p>
-                  </div>
-
-                  <div>
-                    <label htmlFor="textarea-deskripsi-tp" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Narasi Capaian Pembelajaran / TP PKL <span className="text-rose-500">*</span>
-                    </label>
-                    <textarea
-                      id="textarea-deskripsi-tp"
-                      aria-label="Narasi capaian pembelajaran atau TP PKL"
-                      rows={5}
-                      value={deskripsiTpText}
-                      onChange={(e) => setDeskripsiTpText(e.target.value)}
-                      placeholder="Peserta didik mampu memahami dan menerapkan SOP teknis pemeliharaan mesin, kepatuhan K3LH industri, serta alur bisnis..."
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                    />
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      Deskripsi ini akan dicetak otomatis di bagian transkrip nilai belakang sertifikat dan rapor PKL siswa yang ditempatkan di DUDI ini.
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="primary"
-                      onClick={handleSaveDeskripsiTp}
-                      disabled={saveDeskripsiTpMutation.isPending}
-                      className="font-bold rounded-xl py-2 px-4 flex items-center justify-center gap-2 shadow-sm"
-                    >
-                      <Save size={15} />
-                      {saveDeskripsiTpMutation.isPending ? 'Menyimpan...' : 'Simpan Master Deskripsi TP'}
-                    </Button>
-                    {deskripsiTpText && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setDeskripsiTpText('');
-                          setSelectedMitra('');
-                          setSelectedJurusan('');
-                        }}
-                        className="text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                      >
-                        Reset Form
-                      </Button>
-                    )}
-                  </div>
-                </Card>
-
-                <Card className="p-3.5 sm:p-5 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                    <h3 className="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200">
-                      Daftar Capaian Pembelajaran Tersimpan ({deskripsiList.length})
-                    </h3>
-                  </div>
-
-                  {isLoadingDeskripsi ? (
-                    <div className="text-center py-10 text-slate-400 text-xs">Memuat daftar deskripsi...</div>
-                  ) : deskripsiList.length === 0 ? (
-                    <div className="text-center py-12 text-slate-400 text-xs italic">
-                      Belum ada deskripsi capaian pembelajaran yang disimpan.
-                    </div>
-                  ) : (
-                    <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1">
-                      {(deskripsiList || [])?.map((item) => (
-                        <div key={item.id} className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800 space-y-2 group hover:border-indigo-200 dark:hover:border-indigo-900 transition-colors">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <div className="font-bold text-xs text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5 flex-wrap">
-                                <Building2 size={13} className="shrink-0" />
-                                <span className="truncate">{item.Mitra?.nama || 'Mitra Industri'}</span>
-                                {item.Jurusan && (
-                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200/80 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                                    {item.Jurusan.singkatan || item.Jurusan.nama}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => handleEditDeskripsi(item)}
-                                className="p-1 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-white dark:hover:bg-slate-700 transition-colors cursor-pointer"
-                                title="Edit deskripsi"
-                              >
-                                <Edit2 size={13} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteDeskripsi(item.id)}
-                                disabled={deleteDeskripsiTpMutation.isPending}
-                                className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-white dark:hover:bg-slate-700 transition-colors cursor-pointer"
-                                title="Hapus deskripsi"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </div>
-                          </div>
-                          <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                            "{item.deskripsi_tp}"
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </Card>
-              </div>
+              <PklDeskripsiTpTab
+                mitraOptions={mitraOptions}
+                onSave={(payload) => saveDeskripsiTpMutation.mutate(payload)}
+                isSaving={saveDeskripsiTpMutation.isPending}
+                onDelete={(id) => deleteDeskripsiTpMutation.mutate(id)}
+                isDeleting={deleteDeskripsiTpMutation.isPending}
+                deskripsiListData={deskripsiList}
+                isLoadingDeskripsi={isLoadingDeskripsi}
+                scores={scores}
+                isKaprog={isKaprog}
+                isHubin={isHubin}
+                kaprogJurusan={kaprogJurusan}
+                jurusanOptions={jurusanOptions}
+                selectedJurusanFilter={selectedJurusan}
+                setSelectedJurusanFilter={setSelectedJurusan}
+              />
             )}
 
             {/* TAB 4: CLOUD STORAGE */}
