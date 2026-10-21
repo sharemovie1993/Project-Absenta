@@ -12,12 +12,15 @@ import {
   Calendar, 
   CheckCircle2, 
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  Trash2,
+  Edit2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { hubinApi } from '../../api/hubin.api';
 import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
 import { useDudiOptions } from '../../hooks/useDudiOptions';
+import { useJurusanOptions } from '../../hooks/useJurusanOptions';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
@@ -43,7 +46,10 @@ const deskripsiTpSchema = z.object({
 
 interface DeskripsiTpItem {
   id: string;
+  mitra_id?: string;
   Mitra?: { id: string; nama: string };
+  jurusan_id?: string | null;
+  Jurusan?: { id: string; nama: string; singkatan?: string } | null;
   deskripsi_tp: string;
 }
 
@@ -126,12 +132,21 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
 
   // Form State: Tab 3 - Master Deskripsi TP
   const { options: mitraOptions } = useDudiOptions();
+  const { options: rawJurusanOptions } = useJurusanOptions();
+  const jurusanOptions = useMemo(() => [
+    { value: '', label: 'Semua Jurusan (General)' },
+    ...(rawJurusanOptions || [])
+  ], [rawJurusanOptions]);
   const [selectedMitra, setSelectedMitra] = useState('');
+  const [selectedJurusan, setSelectedJurusan] = useState('');
   const [deskripsiTpText, setDeskripsiTpText] = useState('');
 
   const { data: rawDeskripsiList, isLoading: isLoadingDeskripsi } = useQuery({
-    queryKey: ['deskripsi-tp-list', selectedMitra],
-    queryFn: () => hubinApi.getSettingDeskripsiPklList({ mitra_id: selectedMitra || undefined }),
+    queryKey: ['deskripsi-tp-list', selectedMitra, selectedJurusan],
+    queryFn: () => hubinApi.getSettingDeskripsiPklList({ 
+      mitra_id: selectedMitra || undefined,
+      jurusan_id: selectedJurusan || undefined,
+    }),
   });
 
   const deskripsiList = useMemo<DeskripsiTpItem[]>(() => {
@@ -236,7 +251,7 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
 
   // Handler Tab 3: Simpan Deskripsi TP
   const saveDeskripsiTpMutation = useMutation({
-    mutationFn: (data: { mitra_id: string; deskripsi_tp: string }) =>
+    mutationFn: (data: { mitra_id: string; deskripsi_tp: string; jurusan_id?: string }) =>
       hubinApi.upsertSettingDeskripsiPkl(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deskripsi-tp-list'] });
@@ -245,6 +260,17 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
     },
     onError: (err: { message?: string }) => {
       toast.error(err?.message || 'Gagal menyimpan deskripsi TP');
+    },
+  });
+
+  const deleteDeskripsiTpMutation = useMutation({
+    mutationFn: (id: string) => hubinApi.deleteSettingDeskripsiPkl(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deskripsi-tp-list'] });
+      toast.success('Master deskripsi Capaian TP berhasil dihapus!');
+    },
+    onError: (err: { message?: string }) => {
+      toast.error(err?.message || 'Gagal menghapus deskripsi TP');
     },
   });
 
@@ -262,8 +288,23 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
     saveDeskripsiTpMutation.mutate({
       mitra_id: selectedMitra,
       deskripsi_tp: deskripsiTpText.trim(),
+      jurusan_id: selectedJurusan || undefined,
     });
-  }, [selectedMitra, deskripsiTpText, saveDeskripsiTpMutation]);
+  }, [selectedMitra, selectedJurusan, deskripsiTpText, saveDeskripsiTpMutation]);
+
+  const handleEditDeskripsi = useCallback((item: DeskripsiTpItem) => {
+    if (item.mitra_id || item.Mitra?.id) {
+      setSelectedMitra(item.mitra_id || item.Mitra?.id || '');
+    }
+    setSelectedJurusan(item.jurusan_id || '');
+    setDeskripsiTpText(item.deskripsi_tp || '');
+  }, []);
+
+  const handleDeleteDeskripsi = useCallback((id: string) => {
+    if (window.confirm('Yakin ingin menghapus rumusan deskripsi TP ini?')) {
+      deleteDeskripsiTpMutation.mutate(id);
+    }
+  }, [deleteDeskripsiTpMutation]);
 
   // Handler Tab 4: Simpan Storage
   const handleSaveStorage = useCallback(() => {
@@ -714,8 +755,25 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
                   </div>
 
                   <div>
+                    <label htmlFor="select-jurusan-tp" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Jurusan / Konsentrasi Keahlian (Opsional)
+                    </label>
+                    <SearchableSelect
+                      id="select-jurusan-tp"
+                      aria-label="Pilih jurusan untuk deskripsi TP"
+                      value={selectedJurusan}
+                      onValueChange={setSelectedJurusan}
+                      options={jurusanOptions}
+                      placeholder="Semua Jurusan (General)"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Pilih jurusan jika rumusan kompetensi di mitra ini spesifik untuk program keahlian tertentu.
+                    </p>
+                  </div>
+
+                  <div>
                     <label htmlFor="textarea-deskripsi-tp" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Narasi Capaian Pembelajaran / TP PKL
+                      Narasi Capaian Pembelajaran / TP PKL <span className="text-rose-500">*</span>
                     </label>
                     <textarea
                       id="textarea-deskripsi-tp"
@@ -731,16 +789,33 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
                     </p>
                   </div>
 
-                  <Button
-                    type="button"
-                    variant="primary"
-                    onClick={handleSaveDeskripsiTp}
-                    disabled={saveDeskripsiTpMutation.isPending}
-                    className="w-full sm:w-auto font-bold rounded-xl py-2.5 sm:py-2 flex items-center justify-center gap-2 shadow-sm"
-                  >
-                    <Save size={16} />
-                    {saveDeskripsiTpMutation.isPending ? 'Menyimpan...' : 'Simpan Master Deskripsi TP'}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="primary"
+                      onClick={handleSaveDeskripsiTp}
+                      disabled={saveDeskripsiTpMutation.isPending}
+                      className="font-bold rounded-xl py-2 px-4 flex items-center justify-center gap-2 shadow-sm"
+                    >
+                      <Save size={15} />
+                      {saveDeskripsiTpMutation.isPending ? 'Menyimpan...' : 'Simpan Master Deskripsi TP'}
+                    </Button>
+                    {deskripsiTpText && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setDeskripsiTpText('');
+                          setSelectedMitra('');
+                          setSelectedJurusan('');
+                        }}
+                        className="text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                      >
+                        Reset Form
+                      </Button>
+                    )}
+                  </div>
                 </Card>
 
                 <Card className="p-3.5 sm:p-5 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
@@ -757,15 +832,43 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
                       Belum ada deskripsi capaian pembelajaran yang disimpan.
                     </div>
                   ) : (
-                    <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                    <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1">
                       {(deskripsiList || [])?.map((item) => (
-                        <div key={item.id} className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1">
-                          <div className="font-bold text-xs text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-                            <Building2 size={13} />
-                            <span>{item.Mitra?.nama}</span>
+                        <div key={item.id} className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800 space-y-2 group hover:border-indigo-200 dark:hover:border-indigo-900 transition-colors">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="font-bold text-xs text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5 flex-wrap">
+                                <Building2 size={13} className="shrink-0" />
+                                <span className="truncate">{item.Mitra?.nama || 'Mitra Industri'}</span>
+                                {item.Jurusan && (
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200/80 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                                    {item.Jurusan.singkatan || item.Jurusan.nama}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleEditDeskripsi(item)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-white dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                                title="Edit deskripsi"
+                              >
+                                <Edit2 size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteDeskripsi(item.id)}
+                                disabled={deleteDeskripsiTpMutation.isPending}
+                                className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-white dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                                title="Hapus deskripsi"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
                           </div>
                           <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                            {item.deskripsi_tp}
+                            "{item.deskripsi_tp}"
                           </p>
                         </div>
                       ))}

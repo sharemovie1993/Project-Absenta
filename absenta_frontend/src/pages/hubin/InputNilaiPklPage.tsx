@@ -28,7 +28,6 @@ import { PklUnifiedToolbar } from '../../components/hubin/nilai-pkl/PklUnifiedTo
 import { PklSpreadsheetSkeleton } from '../../components/hubin/nilai-pkl/PklSpreadsheetSkeleton';
 const PklNilaiIndustriTab = lazy(() => import('../../components/hubin/nilai-pkl/PklNilaiIndustriTab'));
 const PklNilaiSidangTab = lazy(() => import('../../components/hubin/nilai-pkl/PklNilaiSidangTab'));
-const PklDeskripsiTpTab = lazy(() => import('../../components/hubin/nilai-pkl/PklDeskripsiTpTab'));
 const PklSkemaSettingsModal = lazy(() => import('../../components/hubin/nilai-pkl/PklSkemaSettingsModal'));
 
 export interface InputNilaiPklPageProps {
@@ -45,15 +44,15 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
 
   // Navigasi tab didelegasikan ke PklUnifiedToolbar yang mengintegrasikan standar TabSwitcher
   const initialTab = searchParams.get('tab') || 'dudi';
-  const [activeTab, setActiveTab] = useState<string>(initialTab === 'nilai' ? 'dudi' : initialTab);
+  const [activeTab, setActiveTab] = useState<string>(initialTab === 'sidang' ? 'sidang' : 'dudi');
   const [selectedKelas, setSelectedKelas] = useState('');
   const [selectedMitra, setSelectedMitra] = useState('');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    if (tabParam && ['dudi', 'sidang', 'deskripsi', 'nilai'].includes(tabParam)) {
-      setActiveTab(tabParam === 'nilai' ? 'dudi' : tabParam);
+    if (tabParam === 'sidang' || tabParam === 'dudi') {
+      setActiveTab(tabParam);
     }
   }, [searchParams]);
 
@@ -62,9 +61,6 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
   const [formWeightDudi, setFormWeightDudi] = useState<number>(70);
   const [formWeightLaporan, setFormWeightLaporan] = useState<number>(15);
   const [formWeightSidang, setFormWeightSidang] = useState<number>(15);
-
-  // Deskripsi TP Form State
-  const [deskripsiTpText, setDeskripsiTpText] = useState('');
 
   // Role Scoping & Multi-Tenant Isolation
   const { user } = useAuthStore();
@@ -177,14 +173,6 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
   });
 
   const effectiveJurusanId = isKaprog ? kaprogJurusan?.id : selectedJurusanFilter || undefined;
-
-  const { data: deskripsiList, isLoading: isLoadingDeskripsi } = useQuery({
-    queryKey: ['deskripsi-tp-list', tenantId, selectedMitra, effectiveJurusanId],
-    queryFn: () => hubinApi.getSettingDeskripsiPklList({
-      mitra_id: selectedMitra || undefined,
-      jurusan_id: effectiveJurusanId,
-    }),
-  });
 
   const [scores, setScores] = useState<ScoreRow[]>([]);
 
@@ -370,37 +358,6 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
     }
   });
 
-  const saveDeskripsiTpMutation = useMutation({
-    mutationFn: hubinApi.upsertSettingDeskripsiPkl,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['deskripsi-tp-list'] });
-      queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
-      queryClient.invalidateQueries({ queryKey: ['rapor'] });
-      queryClient.invalidateQueries({ queryKey: ['kaprog-pkl-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      toast.success('Deskripsi Tujuan Pembelajaran PKL berhasil disimpan!');
-      setDeskripsiTpText('');
-    },
-    onError: () => {
-      toast.error('Gagal menyimpan deskripsi TP PKL');
-    }
-  });
-
-  const deleteDeskripsiTpMutation = useMutation({
-    mutationFn: hubinApi.deleteSettingDeskripsiPkl,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['deskripsi-tp-list'] });
-      queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
-      queryClient.invalidateQueries({ queryKey: ['rapor'] });
-      queryClient.invalidateQueries({ queryKey: ['kaprog-pkl-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      toast.success('Deskripsi Tujuan Pembelajaran PKL berhasil dihapus!');
-    },
-    onError: (err: any) => {
-      toast.error(err instanceof Error ? err.message : 'Gagal menghapus deskripsi TP PKL');
-    }
-  });
-
   const handleScoreChange = useCallback((siswaPklId: string, field: keyof ScoreRow, val: string | number | null) => {
     setScores(prev => {
       const clone = [...(prev || [])];
@@ -512,15 +469,9 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
     ];
   }, [layoutMode]);
 
-  const deskripsiListData = useMemo(() => {
-    const raw = (deskripsiList as { data?: DeskripsiTpItem[] })?.data;
-    return Array.isArray(raw) ? raw : [];
-  }, [deskripsiList]);
-
   const tabs = useMemo(() => [
     { id: 'dudi', label: `🏢 DUDI (${displayedScores.length})` },
     ...(isCompositeMode ? [{ id: 'sidang', label: `🎓 Sidang (${displayedScores.length})` }] : []),
-    { id: 'deskripsi', label: '📝 Deskripsi TP' }
   ], [displayedScores.length, isCompositeMode]);
 
   const pageContent = (
@@ -543,16 +494,27 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
         >
           <SectionCard fullWidth className="flex flex-col w-full min-w-0 space-y-4 border-none shadow-none bg-transparent p-0 -mt-2 sm:-mt-3">
             {isKaprog && (
-                <div className="flex items-center gap-2.5 p-3 bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 rounded-2xl text-xs text-indigo-900 dark:text-indigo-200">
-                  <ShieldCheck size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
-                  <div>
-                    <span className="font-bold">Mode Ketua Program Keahlian (Kaprog):</span>{' '}
-                    <span>
-                      Rekap nilai PKL dibatasi otomatis untuk Jurusan{' '}
-                      <strong>{kaprogJurusan?.nama || 'Binaan Anda'}</strong>
-                      {kaprogJurusan?.singkatan ? ` (${kaprogJurusan.singkatan})` : ''}.
-                    </span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 rounded-2xl text-xs text-indigo-900 dark:text-indigo-200">
+                  <div className="flex items-center gap-2.5">
+                    <ShieldCheck size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                    <div>
+                      <span className="font-bold">Mode Ketua Program Keahlian (Kaprog):</span>{' '}
+                      <span>
+                        Rekap nilai PKL dibatasi otomatis untuk Jurusan{' '}
+                        <strong>{kaprogJurusan?.nama || 'Binaan Anda'}</strong>
+                        {kaprogJurusan?.singkatan ? ` (${kaprogJurusan.singkatan})` : ''}.
+                      </span>
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/hubin/settings?tab=deskripsi')}
+                    className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 shadow-2xs hover:bg-indigo-50 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                    title="Buka Pengaturan Master Deskripsi TP PKL"
+                  >
+                    <FileText size={13} />
+                    <span>Master Deskripsi TP →</span>
+                  </button>
                 </div>
               )}
 
@@ -711,30 +673,6 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
                     setCurrentPage={setCurrentPage}
                     handleScoreChange={handleScoreChange}
                     onNavigateCetakRapor={handleNavigateCetakRapor}
-                  />
-                )}
-
-                {activeTab === 'deskripsi' && (
-                  <PklDeskripsiTpTab
-                    mitraOptions={mitraOptions}
-                    selectedMitra={selectedMitra}
-                    setSelectedMitra={setSelectedMitra}
-                    deskripsiTpText={deskripsiTpText}
-                    setDeskripsiTpText={setDeskripsiTpText}
-                    onSave={(payload) => saveDeskripsiTpMutation.mutate(payload)}
-                    isSaving={saveDeskripsiTpMutation.isPending}
-                    onDelete={(id) => deleteDeskripsiTpMutation.mutate(id)}
-                    isDeleting={deleteDeskripsiTpMutation.isPending}
-                    deskripsiListData={deskripsiListData}
-                    isLoadingDeskripsi={isLoadingDeskripsi}
-                    scores={displayedScores}
-                    isKaprog={isKaprog}
-                    isHubin={isHubin}
-                    kaprogJurusan={kaprogJurusan}
-                    selectedKelas={selectedKelas}
-                    jurusanOptions={jurusanOptions}
-                    selectedJurusanFilter={selectedJurusanFilter}
-                    setSelectedJurusanFilter={setSelectedJurusanFilter}
                   />
                 )}
               </Suspense>
