@@ -133,6 +133,7 @@ export default React.memo(function InputNilaiPage() {
   const waliKelasNama = walikelasKelas?.nama_kelas || (walikelasKelas as unknown as { nama?: string })?.nama || 'Kelas Binaan';
 
   const [activeRoleTab, setActiveRoleTab] = useState<'my_tasks' | 'supervisi' | 'wali_kelas'>(initialContext.tab);
+  const isSupervisiMode = activeRoleTab === 'supervisi' && canSupervise;
   const [selectedKelas, setSelectedKelas] = useState<string>(initialContext.kelasId);
   const [selectedMapel, setSelectedMapel] = useState<string>(initialContext.mapelId);
   const selectedJenisNilai = '';
@@ -158,8 +159,13 @@ export default React.memo(function InputNilaiPage() {
   const academicFilter = useAcademicFilter({
     enableTp: true,
     enableSemester: true,
+    enableCohort: isSupervisiMode,
+    enableKelas: isSupervisiMode,
+    enableMapel: isSupervisiMode,
     initialTpId: initialContext.tpId,
     initialSemesterId: initialContext.semId,
+    initialKelasId: initialContext.kelasId,
+    initialMapelId: initialContext.mapelId,
     onTpChange: useCallback((newTpId: string) => {
       // Isolasi Akademik: Reset pilihan kelas dan mapel saat berganti tahun pelajaran
       setSelectedKelas('');
@@ -171,6 +177,15 @@ export default React.memo(function InputNilaiPage() {
         tahunPelajaranId: newTpId,
       });
     }, [activeRoleTab]),
+    onKelasChange: useCallback((newKelasId: string) => {
+      setSelectedKelas(newKelasId);
+      setSelectedMapel('');
+      setScores([]);
+    }, []),
+    onMapelChange: useCallback((newMapelId: string) => {
+      setSelectedMapel(newMapelId);
+      setScores([]);
+    }, []),
   });
 
   const {
@@ -701,6 +716,13 @@ export default React.memo(function InputNilaiPage() {
                 <AcademicFilterToolbar
                   {...academicFilter.toolbarProps}
                   variant="compact"
+                  mapelOptions={isSupervisiMode ? smartMapelOptions : undefined}
+                  isLoadingMapel={isLoadingClassSubjects}
+                  values={{
+                    ...academicFilter.toolbarProps.values,
+                    kelasId: selectedKelas,
+                    mapelId: selectedMapel,
+                  }}
                 />
               </div>
 
@@ -725,59 +747,6 @@ export default React.memo(function InputNilaiPage() {
                 </button>
               </div>
             </div>
-
-            {/* Baris 2: Seleksi Rombel / Mapel & Tombol Aksi */}
-            {activeRoleTab === 'supervisi' && canSupervise && (
-              <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 flex-1">
-                  <div>
-                    <label htmlFor="supervisi-select-kelas" className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                      Kelas Rombel:
-                    </label>
-                    <SearchableSelect
-                      id="supervisi-select-kelas"
-                      aria-label="Pilih kelas rombel supervisi"
-                      options={kelasOptions}
-                      value={selectedKelas}
-                      onValueChange={(val) => {
-                        setSelectedKelas(val);
-                        setSelectedMapel('');
-                        setScores([]);
-                      }}
-                      placeholder="-- Pilih Kelas --"
-                      isLoading={isLoadingClasses}
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="supervisi-select-mapel" className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                      Mata Pelajaran:
-                    </label>
-                    <SearchableSelect
-                      id="supervisi-select-mapel"
-                      aria-label="Pilih mata pelajaran supervisi"
-                      options={smartMapelOptions}
-                      value={selectedMapel}
-                      onValueChange={(val) => {
-                        setSelectedMapel(val);
-                        setScores([]);
-                      }}
-                      placeholder={
-                        !selectedKelas
-                          ? '⚠️ Pilih Kelas dahulu'
-                          : isLoadingClassSubjects
-                          ? 'Memuat mapel...'
-                          : smartMapelOptions.length === 0
-                          ? 'Tidak ada mapel terjadwal'
-                          : '-- Pilih Mata Pelajaran --'
-                      }
-                      disabled={!selectedKelas || isLoadingClassSubjects}
-                      isLoading={isLoadingClassSubjects}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
 
             {activeRoleTab === 'wali_kelas' && isWaliKelas && (
               <div className="space-y-3">

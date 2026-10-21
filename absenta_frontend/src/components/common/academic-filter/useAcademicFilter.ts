@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { useTahunPelajaranOptions } from '@/hooks/useTahunPelajaranOptions';
 import { useSemesterOptions } from '@/hooks/useSemesterOptions';
 import { useKelasOptions } from '@/hooks/useKelasOptions';
+import { useMapelOptions } from '@/hooks/useMapelOptions';
 import { useGuruOptions } from '@/hooks/useGuruOptions';
 import { useSiswaOptions } from '@/hooks/useSiswaOptions';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -43,6 +44,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     enableTingkat = false,
     enableKelas = false,
     enableCohort = true,
+    enableMapel = false,
     enableBulan = false,
     enableTanggal = false,
     enableGuru = false,
@@ -53,6 +55,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     initialSemesterId = '',
     initialTingkat = '',
     initialKelasId = '',
+    initialMapelId = '',
     initialBulan = '',
     initialTanggal = '',
     initialGuruId = '',
@@ -65,6 +68,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     onFilterChange,
     onTpChange,
     onKelasChange,
+    onMapelChange,
   } = options;
 
   // ── 1. Controlled Filter State ──────────────────────────────────────────────
@@ -72,6 +76,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
   const [semesterId, setSemesterId] = useState<string>(initialSemesterId);
   const [tingkat, setTingkat] = useState<number | ''>(initialTingkat);
   const [kelasId, setKelasId] = useState<string>(initialKelasId);
+  const [mapelId, setMapelId] = useState<string>(initialMapelId);
   const [bulan, setBulan] = useState<string>(initialBulan || (enableBulan ? toLocalMonth() : ''));
   const [tanggal, setTanggal] = useState<string>(initialTanggal || (enableTanggal ? toLocalDate() : ''));
   const [guruId, setGuruId] = useState<string>(initialGuruId);
@@ -132,6 +137,31 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
       setKelasId(kelasOptions[0].value);
     }
   }, [enableKelas, kelasOptions, kelasId]);
+
+  const {
+    options: mapelOptions,
+    isLoading: isLoadingMapel,
+  } = useMapelOptions({
+    kelasId: kelasId || undefined,
+    tingkat: typeof tingkat === 'number' ? tingkat : undefined,
+  });
+
+  const handleKelasChange = useCallback(
+    (newKelasId: string) => {
+      setKelasId(newKelasId);
+      setMapelId('');
+      onKelasChange?.(newKelasId);
+    },
+    [onKelasChange]
+  );
+
+  const handleMapelChange = useCallback(
+    (newMapelId: string) => {
+      setMapelId(newMapelId);
+      onMapelChange?.(newMapelId);
+    },
+    [onMapelChange]
+  );
 
   const {
     options: guruOptions,
@@ -283,6 +313,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     if (kelasOptions[0]?.value) setKelasId(kelasOptions[0].value);
     if (enableBulan) setBulan(toLocalMonth());
     if (enableTanggal) setTanggal(toLocalDate());
+    setMapelId('');
     setGuruId('');
     setSiswaId('');
     setSearchQuery('');
@@ -295,6 +326,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
       semesterId,
       tingkat,
       kelasId,
+      mapelId,
       bulan,
       tanggal,
       guruId,
@@ -306,6 +338,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
       semesterId,
       tingkat,
       kelasId,
+      mapelId,
       bulan,
       tanggal,
       guruId,
@@ -327,6 +360,10 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     return kelasOptions.find((k) => k.value === kelasId)?.label || '';
   }, [kelasOptions, kelasId]);
 
+  const selectedMapelLabel = useMemo(() => {
+    return mapelOptions.find((m) => m.value === mapelId)?.label || '';
+  }, [mapelOptions, mapelId]);
+
   // ── 6. Assemble Toolbar Props ──────────────────────────────────────────────
   const toolbarProps: AcademicFilterToolbarProps = {
     enableTp,
@@ -334,6 +371,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     enableTingkat,
     enableKelas,
     enableCohort,
+    enableMapel,
     enableBulan,
     enableTanggal,
     enableGuru,
@@ -348,7 +386,8 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     setTahunPelajaranId: handleTpChange,
     setSemesterId,
     setTingkat,
-    setKelasId,
+    setKelasId: handleKelasChange,
+    setMapelId: handleMapelChange,
     setBulan,
     setTanggal,
     setGuruId,
@@ -359,12 +398,14 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     semesterOptions,
     tingkatOptions,
     kelasOptions,
+    mapelOptions,
     guruOptions,
     siswaOptions,
 
     isLoadingTp,
     isLoadingSem,
     isLoadingKelas,
+    isLoadingMapel,
     isLoadingGuru,
     isLoadingSiswa,
     isLoadingCohort,
@@ -381,7 +422,8 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     setTahunPelajaranId: handleTpChange,
     setSemesterId,
     setTingkat,
-    setKelasId,
+    setKelasId: handleKelasChange,
+    setMapelId: handleMapelChange,
     setBulan,
     setTanggal,
     setGuruId,
@@ -390,24 +432,30 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     resetFilters,
 
     handleTpChange,
+    handleKelasChange,
+    handleMapelChange,
     handleJumpCohortStage,
 
     tpOptions,
     semesterOptions,
     tingkatOptions,
     kelasOptions,
+    mapelOptions,
     guruOptions,
     siswaOptions,
 
     isLoadingTp,
     isLoadingSem,
     isLoadingKelas,
+    isLoadingMapel,
     isLoadingGuru,
     isLoadingSiswa,
     isLoadingCohort,
 
     activeTpYear: activeTp ? { id: activeTp.id, tahun: activeTp.tahun } : null,
+    activeSemester: semesterOptions.find((s) => s.value === semesterId) ? { id: semesterId, nama_semester: semesterOptions.find((s) => s.value === semesterId)?.label || '', is_active: true } : null,
     selectedKelasLabel,
+    selectedMapelLabel,
     cohortStages,
     suggestedStage,
     jenjang,

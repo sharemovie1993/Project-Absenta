@@ -83,10 +83,18 @@ export const NilaiEskulPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const { can, isWaliKelas, isKurikulum, isAdmin } = useCapabilities();
 
+  // Filter Selection State
+  const [selectedEskul, setSelectedEskul] = useState<string>('');
+  const [selectedKelasFilter, setSelectedKelasFilter] = useState<string>('');
+  const [memberSearchQuery, setMemberSearchQuery] = useState<string>('');
+
   // 1. Konteks Akademik Terpusat
   const academicFilter = useAcademicFilter({
     enableTp: true,
     enableSemester: true,
+    enableKelas: true,
+    initialKelasId: selectedKelasFilter,
+    onKelasChange: (kId) => setSelectedKelasFilter(kId),
   });
 
   const isArchivedAcademic = !academicFilter.activeTpYear?.is_active;
@@ -112,11 +120,6 @@ export const NilaiEskulPage: React.FC = React.memo(() => {
   // Role Tab Options
   type RoleTabType = 'my_eskul' | 'supervisi' | 'wali_kelas';
   const [activeRoleTab, setActiveRoleTab] = useState<RoleTabType>('my_eskul');
-
-  // Filter Selection State
-  const [selectedEskul, setSelectedEskul] = useState<string>('');
-  const [selectedKelasFilter, setSelectedKelasFilter] = useState<string>('');
-  const [memberSearchQuery, setMemberSearchQuery] = useState<string>('');
 
   // 3. Fetch Opsi Ekstrakurikuler
   const { data: eskulOptionsData, isLoading: isLoadingOptions } = useQuery({
@@ -421,6 +424,11 @@ export const NilaiEskulPage: React.FC = React.memo(() => {
                   <AcademicFilterToolbar
                     {...academicFilter.toolbarProps}
                     variant="compact"
+                    kelasOptions={smartKelasFilterOptions}
+                    values={{
+                      ...academicFilter.toolbarProps.values,
+                      kelasId: selectedKelasFilter,
+                    }}
                   />
                 </div>
 
@@ -433,37 +441,20 @@ export const NilaiEskulPage: React.FC = React.memo(() => {
                 </div>
               </div>
 
-              {/* Baris 2: Seleksi Ekstrakurikuler & Filter Rombel Asal */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div className="space-y-1">
-                  <label htmlFor="eskul-filter-master" className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1.5">
-                    <Award size={12} className="text-indigo-500" />
-                    1. Kegiatan Ekstrakurikuler {activeRoleTab === 'my_eskul' && '(Binaan Saya)'}
-                  </label>
-                  <SearchableSelect
-                    id="eskul-filter-master"
-                    value={selectedEskul}
-                    onValueChange={setSelectedEskul}
-                    options={smartEskulOptions}
-                    placeholder="Pilih Ekstrakurikuler"
-                    isLoading={isLoadingOptions}
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label htmlFor="eskul-filter-kelas" className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1.5">
-                    <Bookmark size={12} className="text-indigo-500" />
-                    2. Filter Rombongan Belajar (Asal Kelas)
-                  </label>
-                  <SearchableSelect
-                    id="eskul-filter-kelas"
-                    value={selectedKelasFilter}
-                    onValueChange={setSelectedKelasFilter}
-                    options={smartKelasFilterOptions}
-                    placeholder="Semua Anggota (Lintas Kelas)"
-                    disabled={activeRoleTab === 'wali_kelas'}
-                  />
-                </div>
+              {/* Baris 2: Seleksi Ekstrakurikuler */}
+              <div className="space-y-1">
+                <label htmlFor="eskul-filter-master" className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                  <Award size={12} className="text-indigo-500" />
+                  Kegiatan Ekstrakurikuler {activeRoleTab === 'my_eskul' && '(Binaan Saya)'}
+                </label>
+                <SearchableSelect
+                  id="eskul-filter-master"
+                  value={selectedEskul}
+                  onValueChange={setSelectedEskul}
+                  options={smartEskulOptions}
+                  placeholder="Pilih Ekstrakurikuler"
+                  isLoading={isLoadingOptions}
+                />
               </div>
 
               {/* Baris 3: Banner Ringkasan Metadata Eskul Terpilih */}

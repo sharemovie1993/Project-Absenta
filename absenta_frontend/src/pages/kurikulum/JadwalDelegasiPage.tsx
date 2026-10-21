@@ -34,11 +34,15 @@ export default function JadwalDelegasiPage() {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
 
-  // Academic Context (Tahun Pelajaran & Semester)
+  // Academic Context (Tahun Pelajaran, Semester, Kelas & Search)
   const academicFilter = useAcademicFilter({
     enableTp: true,
     enableSemester: true,
+    enableKelas: true,
+    enableSearch: true,
     onTpChange: () => setCurrentPage(1),
+    onKelasChange: () => setCurrentPage(1),
+    onSearchChange: () => setCurrentPage(1),
   });
 
   const academic = useMemo(() => ({
@@ -56,8 +60,8 @@ export default function JadwalDelegasiPage() {
   }), [academicFilter]);
 
   // Filters State
-  const [selectedKelasId, setSelectedKelasId] = useState<string>('');
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const selectedKelasId = academicFilter.values.kelasId;
+  const searchQuery = academicFilter.values.searchQuery;
   const [onlyDelegated, setOnlyDelegated] = useState<boolean>(false);
   const [selectedHari, setSelectedHari] = useState<string>('');
 
@@ -532,110 +536,75 @@ export default function JadwalDelegasiPage() {
     );
   }, [handleOpenAssignModal, handleRemoveDelegasi]);
 
-  // Unified Filter & Action Toolbar (Identik dengan SiswaList Table toolbarLeft)
+  // Unified Filter & Action Toolbar
   const renderTableToolbar = useMemo(() => (
-    <div className="flex flex-col w-full gap-4 p-4">
-      {/* Row 0: Academic Context Bar (Tahun Pelajaran & Semester) */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-gray-800">
-        <div className="flex items-center gap-2">
-          <AcademicFilterToolbar
-            {...academicFilter.toolbarProps}
-            variant="compact"
-          />
-        </div>
-        {academic.isAcademicActive && (
-          <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-300/70 text-[10px] font-bold py-1 px-2.5 whitespace-nowrap self-start sm:self-auto">
-            ● Semester Aktif
-          </Badge>
-        )}
-      </div>
+    <div className="flex flex-col w-full gap-3 p-4">
+      {/* Centralized AcademicFilterToolbar with Search, TP, Semester, Kelas, and Custom Filters */}
+      <AcademicFilterToolbar
+        {...academicFilter.toolbarProps}
+        searchPlaceholder="Cari guru, mapel, atau kelas..."
+        actionsRight={
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="w-40">
+              <SearchableSelect
+                value={selectedHari}
+                onValueChange={(val) => handleFilterChange(setSelectedHari, val)}
+                options={HARI_FILTER_OPTIONS}
+                placeholder="Semua Hari"
+                searchPlaceholder="Cari Hari..."
+                aria-label="Pilih Hari"
+                className="w-full"
+                triggerClassName="h-9 rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-xs"
+              />
+            </div>
 
-      {/* Row 1: Search & Dropdown Filters */}
-      <div className="flex flex-col md:flex-row gap-4 items-center">
-        <div className="flex-1 w-full">
-          <Input
-            type="text"
-            placeholder="Cari guru, mapel, atau kelas..."
-            aria-label="Cari jadwal"
-            value={searchQuery}
-            onChange={(e) => handleFilterChange(setSearchQuery, e.target.value)}
-            leftIcon={<Search className="h-4 w-4 text-gray-400" />}
-            className="h-10 rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
-          />
-        </div>
-
-        <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-          <div className="w-full md:w-48">
-            <SearchableSelect
-              value={selectedKelasId}
-              onValueChange={(val) => handleFilterChange(setSelectedKelasId, val)}
-              options={[{ value: '', label: 'Semua Kelas' }, ...kelasOptions]}
-              placeholder="Semua Kelas"
-              searchPlaceholder="Cari Kelas..."
-              aria-label="Pilih Kelas"
-              className="w-full"
-              triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-            />
-          </div>
-
-          <div className="w-full md:w-44">
-            <SearchableSelect
-              value={selectedHari}
-              onValueChange={(val) => handleFilterChange(setSelectedHari, val)}
-              options={HARI_FILTER_OPTIONS}
-              placeholder="Semua Hari"
-              searchPlaceholder="Cari Hari..."
-              aria-label="Pilih Hari"
-              className="w-full"
-              triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-            />
-          </div>
-
-          <div className="w-full md:w-auto">
             <Button
               type="button"
               variant={onlyDelegated ? 'toolbarPrimary' : 'toolbarOutline'}
               size="toolbar"
               onClick={() => handleFilterChange(setOnlyDelegated, !onlyDelegated)}
-              className="h-10 rounded-xl text-xs font-bold flex items-center justify-center gap-2 whitespace-nowrap px-4"
+              className="h-9 rounded-xl text-xs font-bold flex items-center justify-center gap-2 whitespace-nowrap px-3"
             >
               <Filter className="w-3.5 h-3.5" />
               <span>{onlyDelegated ? 'Semua Jadwal' : 'Hanya Didelegasikan'}</span>
             </Button>
+
+            <Button
+              variant="toolbarOutline"
+              size="toolbar"
+              onClick={() => refetchJadwal()}
+              aria-label="Refresh Data"
+              className="rounded-xl h-9 text-xs font-bold flex items-center gap-1.5"
+              disabled={loadingJadwal}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingJadwal ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Segarkan</span>
+            </Button>
           </div>
-        </div>
-      </div>
+        }
+      />
 
-      {/* Row 2: Secondary Quick Actions & Refresh */}
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-gray-100 dark:border-gray-800">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="toolbarOutline"
-            size="toolbar"
-            onClick={() => refetchJadwal()}
-            aria-label="Refresh Data"
-            className="rounded-xl h-9 text-xs font-bold flex items-center gap-1.5"
-            disabled={loadingJadwal}
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loadingJadwal ? 'animate-spin' : ''}`} />
-            <span>Segarkan</span>
-          </Button>
-
-          <span className="text-xs text-slate-400 font-medium hidden sm:inline">
-            Menampilkan {paginatedJadwalList.length} dari {totalItems} jadwal tersaring
-          </span>
-        </div>
+      {/* Row Summary / Status */}
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+        <span className="text-xs text-slate-400 font-medium">
+          Menampilkan {paginatedJadwalList.length} dari {totalItems} jadwal tersaring
+        </span>
 
         <div className="flex items-center gap-2">
+          {academic.isAcademicActive && (
+            <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-300/70 text-[10px] font-bold py-0.5 px-2">
+              ● Semester Aktif
+            </Badge>
+          )}
           {onlyDelegated && (
-            <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800 text-[11px] font-bold py-1 px-2.5">
+            <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800 text-[11px] font-bold py-0.5 px-2">
               Filter: Hanya Delegasi Aktif
             </Badge>
           )}
         </div>
       </div>
     </div>
-  ), [academic, searchQuery, selectedKelasId, kelasOptions, selectedHari, onlyDelegated, loadingJadwal, paginatedJadwalList.length, totalItems, handleFilterChange, refetchJadwal]);
+  ), [academicFilter.toolbarProps, selectedHari, onlyDelegated, loadingJadwal, paginatedJadwalList.length, totalItems, academic.isAcademicActive, handleFilterChange, refetchJadwal]);
 
   return (
     <AcademicPageLayout
@@ -672,31 +641,11 @@ export default function JadwalDelegasiPage() {
                   <AcademicFilterToolbar
                     {...academicFilter.toolbarProps}
                     variant="compact"
-                  />
-                </div>
-
-                <div className="relative w-full">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <Input
-                    type="text"
-                    placeholder="Cari guru, mapel, kelas..."
-                    aria-label="Cari jadwal mobile"
-                    value={searchQuery}
-                    onChange={(e) => handleFilterChange(setSearchQuery, e.target.value)}
-                    className="pl-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-xs"
+                    searchPlaceholder="Cari guru, mapel, kelas..."
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <SearchableSelect
-                    value={selectedKelasId}
-                    onValueChange={(val) => handleFilterChange(setSelectedKelasId, val)}
-                    options={[{ value: '', label: 'Semua Kelas' }, ...kelasOptions]}
-                    placeholder="Semua Kelas"
-                    aria-label="Pilih Kelas Mobile"
-                    triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-                  />
-
                   <SearchableSelect
                     value={selectedHari}
                     onValueChange={(val) => handleFilterChange(setSelectedHari, val)}
@@ -705,9 +654,7 @@ export default function JadwalDelegasiPage() {
                     aria-label="Pilih Hari Mobile"
                     triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                   />
-                </div>
 
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                   <Button
                     type="button"
                     variant={onlyDelegated ? 'toolbarPrimary' : 'toolbarOutline'}
@@ -716,7 +663,7 @@ export default function JadwalDelegasiPage() {
                     className="w-full h-9 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5"
                   >
                     <Filter className="w-3.5 h-3.5" />
-                    <span>{onlyDelegated ? 'Tampilkan Semua Jadwal' : 'Hanya Yang Didelegasikan'}</span>
+                    <span>{onlyDelegated ? 'Tampilkan Semua Jadwal' : 'Hanya Didelegasikan'}</span>
                   </Button>
                 </div>
               </div>

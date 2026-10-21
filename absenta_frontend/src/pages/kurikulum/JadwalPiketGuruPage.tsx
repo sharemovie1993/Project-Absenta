@@ -57,18 +57,17 @@ export const JadwalPiketGuruPage: React.FC = React.memo(() => {
 
   const [activeHari, setActiveHari] = useState<Hari>('SENIN');
   const [piketFilterMode, setPiketFilterMode] = useState<'ALL' | 'MY_PIKET'>('ALL');
-  const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'GRID' | 'TABLE'>('GRID');
 
-  // ── Konteks Akademik (TP + Semester) ──
-  // Academic Context Terpusat
+  // ── Konteks Akademik Terpusat ──
   const academicFilter = useAcademicFilter({
     enableTp: true,
     enableSemester: true,
+    enableSearch: true,
   });
 
   const {
-    values: { tahunPelajaranId: selectedTpId, semesterId: selectedSemId },
+    values: { tahunPelajaranId: selectedTpId, semesterId: selectedSemId, searchQuery: searchTerm },
     handleTpChange: setSelectedTpId,
     setSemesterId: setSelectedSemId,
     tpOptions,
@@ -204,49 +203,36 @@ export const JadwalPiketGuruPage: React.FC = React.memo(() => {
       >
         <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
           <div className="space-y-6">
-            {/* Filter Bar */}
-            <Card className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm">
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                <AcademicFilterToolbar
-                  {...academicFilter.toolbarProps}
-                  variant="compact"
-                />
-
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-800">
-                    <button
-                      type="button"
-                      onClick={() => setViewMode('GRID')}
-                      className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition ${
-                        viewMode === 'GRID' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-400'
-                      }`}
-                    >
-                      <LayoutGrid size={13} />
-                      <span className="hidden sm:inline">Kartu</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode('TABLE')}
-                      className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition ${
-                        viewMode === 'TABLE' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-400'
-                      }`}
-                    >
-                      <TableIcon size={13} />
-                      <span className="hidden sm:inline">Tabel</span>
-                    </button>
-                  </div>
-
-                  <Input
-                    id="piket-search-guru"
-                    aria-label="Cari guru piket"
-                    placeholder="Cari guru piket..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-44 text-xs rounded-xl"
-                  />
+            {/* Filter Bar Terpadu */}
+            <AcademicFilterToolbar
+              {...academicFilter.toolbarProps}
+              searchPlaceholder="Cari guru piket..."
+              variant="card"
+              actionsRight={
+                <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('GRID')}
+                    className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition ${
+                      viewMode === 'GRID' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-400'
+                    }`}
+                  >
+                    <LayoutGrid size={13} />
+                    <span className="hidden sm:inline">Kartu</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('TABLE')}
+                    className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition ${
+                      viewMode === 'TABLE' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-400'
+                    }`}
+                  >
+                    <TableIcon size={13} />
+                    <span className="hidden sm:inline">Tabel</span>
+                  </button>
                 </div>
-              </div>
-            </Card>
+              }
+            />
 
             {/* Day Switcher */}
             <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-1">

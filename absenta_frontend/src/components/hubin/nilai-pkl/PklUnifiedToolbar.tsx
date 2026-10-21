@@ -155,16 +155,17 @@ export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
       {/* Baris 2: Context TP, Semester, Kelas, Scoping, dan Status Filter */}
       {!isCollapsed && (
         <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-col xl:flex-row xl:items-center justify-between gap-2.5">
-          {/* Kiri: Konteks Akademik & Filter Kelas */}
+          {/* Kiri: Konteks Akademik & Filter Kelas Terpusat */}
           <div className="flex items-center gap-2 flex-wrap">
             <AcademicFilterToolbar
               enableTp={true}
               enableSemester={true}
+              enableKelas={isNilaiTab}
               values={{
                 tahunPelajaranId: selectedTp || '',
                 semesterId: selectedSemester || '',
                 tingkat: '',
-                kelasId: '',
+                kelasId: selectedKelas || '',
                 bulan: '',
                 tanggal: '',
                 guruId: '',
@@ -174,7 +175,8 @@ export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
               setTahunPelajaranId={setSelectedTp}
               setSemesterId={setSelectedSemester}
               setTingkat={() => {}}
-              setKelasId={() => {}}
+              setKelasId={setSelectedKelas}
+              onKelasChange={setSelectedKelas}
               setBulan={() => {}}
               setTanggal={() => {}}
               setGuruId={() => {}}
@@ -183,29 +185,14 @@ export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
               tpOptions={tpOptions || []}
               semesterOptions={semesterOptions || []}
               tingkatOptions={[]}
-              kelasOptions={[]}
+              kelasOptions={classSelectOptions}
               guruOptions={[]}
               siswaOptions={[]}
               isLoadingTp={isLoadingTp}
               isLoadingSem={isLoadingSem}
+              isLoadingKelas={isLoadingRekap}
               variant="compact"
             />
-
-            {/* Filter Kelas Sejajar Langsung */}
-            {isNilaiTab && (
-              <div className="w-44 sm:w-52">
-                <SearchableSelect
-                  id="unified-filter-kelas-pkl"
-                  aria-label="Pilih kelas siswa PKL"
-                  value={selectedKelas}
-                  onValueChange={setSelectedKelas}
-                  options={classSelectOptions}
-                  placeholder="Pilih Kelas"
-                  isLoading={isLoadingRekap}
-                  className="text-xs"
-                />
-              </div>
-            )}
           </div>
 
           {/* Kanan: Scoping & Status Filter (Hanya pada Tab Nilai) */}

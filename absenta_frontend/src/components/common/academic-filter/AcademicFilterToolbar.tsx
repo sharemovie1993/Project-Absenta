@@ -31,6 +31,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
   enableTingkat = false,
   enableKelas = false,
   enableCohort = true,
+  enableMapel = false,
   enableBulan = false,
   enableTanggal = false,
   enableGuru = false,
@@ -42,6 +43,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
   setSemesterId,
   setTingkat,
   setKelasId,
+  setMapelId,
   setBulan,
   setTanggal,
   setGuruId,
@@ -52,12 +54,14 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
   semesterOptions = [],
   tingkatOptions = [],
   kelasOptions = [],
+  mapelOptions = [],
   guruOptions = [],
   siswaOptions = [],
 
   isLoadingTp = false,
   isLoadingSem = false,
   isLoadingKelas = false,
+  isLoadingMapel = false,
   isLoadingGuru = false,
   isLoadingSiswa = false,
 
@@ -251,6 +255,37 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* 4B. Mata Pelajaran */}
+          {enableMapel && (
+            <div className="space-y-1.5 flex-1 min-w-[160px] max-w-full sm:max-w-[240px]">
+              <label
+                htmlFor="filter-mapel-select"
+                className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block"
+              >
+                Mata Pelajaran
+              </label>
+              <Suspense fallback={<SuspenseFallback />}>
+                <SearchableSelect
+                  id="filter-mapel-select"
+                  aria-label="Pilih Mata Pelajaran"
+                  value={values.mapelId}
+                  onValueChange={setMapelId}
+                  options={mapelOptions}
+                  isLoading={isLoadingMapel}
+                  placeholder={
+                    enableKelas && !values.kelasId
+                      ? 'Pilih kelas dahulu...'
+                      : mapelOptions.length === 0
+                      ? 'Tidak ada mapel'
+                      : 'Pilih Mapel...'
+                  }
+                  disabled={enableKelas && !values.kelasId}
+                  triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
+                />
+              </Suspense>
             </div>
           )}
 

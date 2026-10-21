@@ -7,6 +7,7 @@ export interface AcademicFilterValues {
   semesterId: string;
   tingkat: number | '';
   kelasId: string;
+  mapelId: string;
   bulan: string;
   tanggal: string;
   guruId: string;
@@ -21,6 +22,7 @@ export interface UseAcademicFilterOptions {
   enableTingkat?: boolean;
   enableKelas?: boolean;
   enableCohort?: boolean;
+  enableMapel?: boolean;
   enableBulan?: boolean;
   enableTanggal?: boolean;
   enableGuru?: boolean;
@@ -32,6 +34,7 @@ export interface UseAcademicFilterOptions {
   initialSemesterId?: string;
   initialTingkat?: number | '';
   initialKelasId?: string;
+  initialMapelId?: string;
   initialBulan?: string;
   initialTanggal?: string;
   initialGuruId?: string;
@@ -46,6 +49,7 @@ export interface UseAcademicFilterOptions {
   onFilterChange?: (values: AcademicFilterValues) => void;
   onTpChange?: (newTpId: string) => void;
   onKelasChange?: (newKelasId: string) => void;
+  onMapelChange?: (newMapelId: string) => void;
 }
 
 export interface UseAcademicFilterReturn {
@@ -58,6 +62,7 @@ export interface UseAcademicFilterReturn {
   setSemesterId: (id: string) => void;
   setTingkat: (tingkat: number | '') => void;
   setKelasId: (id: string) => void;
+  setMapelId: (id: string) => void;
   setBulan: (bulan: string) => void;
   setTanggal: (tanggal: string) => void;
   setGuruId: (id: string) => void;
@@ -67,6 +72,8 @@ export interface UseAcademicFilterReturn {
 
   // Handlers
   handleTpChange: (newTpId: string) => void;
+  handleKelasChange: (newKelasId: string) => void;
+  handleMapelChange: (newMapelId: string) => void;
   handleJumpCohortStage: (stage: CohortLineageStage) => void;
 
   // Options for Dropdowns
@@ -74,6 +81,7 @@ export interface UseAcademicFilterReturn {
   semesterOptions: SearchableSelectOption[];
   tingkatOptions: SearchableSelectOption[];
   kelasOptions: SearchableSelectOption[];
+  mapelOptions: SearchableSelectOption[];
   guruOptions: SearchableSelectOption[];
   siswaOptions: SearchableSelectOption[];
 
@@ -81,13 +89,16 @@ export interface UseAcademicFilterReturn {
   isLoadingTp: boolean;
   isLoadingSem: boolean;
   isLoadingKelas: boolean;
+  isLoadingMapel: boolean;
   isLoadingGuru: boolean;
   isLoadingSiswa: boolean;
   isLoadingCohort: boolean;
 
   // Derived objects & Cohort Lineage
   activeTpYear: { id: string; tahun: string } | null;
+  activeSemester: { id: string; nama_semester: string; is_active: boolean } | null;
   selectedKelasLabel: string;
+  selectedMapelLabel: string;
   cohortStages: CohortLineageStage[];
   suggestedStage: CohortLineageStage | null;
   jenjang?: string;
@@ -104,6 +115,7 @@ export interface AcademicFilterToolbarProps {
   enableTingkat?: boolean;
   enableKelas?: boolean;
   enableCohort?: boolean;
+  enableMapel?: boolean;
   enableBulan?: boolean;
   enableTanggal?: boolean;
   enableGuru?: boolean;
@@ -118,6 +130,7 @@ export interface AcademicFilterToolbarProps {
   setSemesterId: (id: string) => void;
   setTingkat: (tingkat: number | '') => void;
   setKelasId: (id: string) => void;
+  setMapelId: (id: string) => void;
   setBulan: (bulan: string) => void;
   setTanggal: (tanggal: string) => void;
   setGuruId: (id: string) => void;
@@ -129,6 +142,7 @@ export interface AcademicFilterToolbarProps {
   semesterOptions: SearchableSelectOption[];
   tingkatOptions: SearchableSelectOption[];
   kelasOptions: SearchableSelectOption[];
+  mapelOptions: SearchableSelectOption[];
   guruOptions: SearchableSelectOption[];
   siswaOptions: SearchableSelectOption[];
 
@@ -136,6 +150,7 @@ export interface AcademicFilterToolbarProps {
   isLoadingTp?: boolean;
   isLoadingSem?: boolean;
   isLoadingKelas?: boolean;
+  isLoadingMapel?: boolean;
   isLoadingGuru?: boolean;
   isLoadingSiswa?: boolean;
   isLoadingCohort?: boolean;
