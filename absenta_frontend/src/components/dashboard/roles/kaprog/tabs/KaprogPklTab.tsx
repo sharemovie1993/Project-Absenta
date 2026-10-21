@@ -8,7 +8,8 @@ import {
   Search, 
   ChevronRight, 
   ArrowUpRight,
-  Users
+  Users,
+  CalendarCheck
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui';
@@ -43,6 +44,7 @@ interface KaprogPklTabProps {
   onSelectEditingSlot: (slot: EditingMitraSlot) => void;
   onOpenPlottingModal?: () => void;
   onOpenRekapNilai?: () => void;
+  onOpenMonitoringPkl?: () => void;
   jurusanNama?: string;
 }
 
@@ -55,6 +57,7 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
   onSelectEditingSlot,
   onOpenPlottingModal,
   onOpenRekapNilai,
+  onOpenMonitoringPkl,
   jurusanNama = 'Kejuruan',
 }) => {
   const navigate = useNavigate();
@@ -138,6 +141,17 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
               >
                 <Users className="w-3.5 h-3.5" />
                 <span>Plotting Siswa PKL</span>
+              </Button>
+            )}
+            {onOpenMonitoringPkl && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onOpenMonitoringPkl}
+                className="text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 gap-1.5 cursor-pointer text-indigo-600 dark:text-indigo-400"
+              >
+                <CalendarCheck className="w-3.5 h-3.5" />
+                <span>Monitoring Presensi</span>
               </Button>
             )}
             <Button

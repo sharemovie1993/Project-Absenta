@@ -4319,12 +4319,12 @@
     "filename": "ServerErrorPage.tsx",
     "relativePath": "src\\pages\\error\\ServerErrorPage.tsx"
   },
-  "hubin_absensi_pkl": {
-    "usesLayout": true,
-    "usesAcademicLayout": true,
+  "absensipklpage": {
+    "usesLayout": false,
+    "usesAcademicLayout": false,
     "usesPageLayout": false,
-    "usesUiComponents": true,
-    "usesMemo": true,
+    "usesUiComponents": false,
+    "usesMemo": false,
     "noAnyType": true,
     "safeMapping": true,
     "strictColors": true,
@@ -4341,7 +4341,7 @@
     "advancedSelect": true,
     "tableToolbar": true,
     "breadcrumbNavigation": true,
-    "premiumFeatureGate": true,
+    "premiumFeatureGate": false,
     "godFileGuard": true,
     "hardcodedConfig": true,
     "analyticsCardGuard": true,

@@ -43,6 +43,7 @@ interface KaprogBerandaTabProps {
   onOpenPenempatan?: () => void;
   onOpenStrukturKelas?: () => void;
   onOpenRekapNilai?: () => void;
+  onOpenMonitoringPkl?: () => void;
   onSelectTab?: (tabId: KaprogTabId) => void;
 }
 
@@ -55,6 +56,7 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
   onOpenPenempatan,
   onOpenStrukturKelas,
   onOpenRekapNilai,
+  onOpenMonitoringPkl,
   onSelectTab,
 }) => {
   const navigate = useNavigate();
@@ -155,6 +157,7 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
             {
               title: 'Monitoring PKL',
               desc: 'Presensi & logbook siswa',
+              action: onOpenMonitoringPkl,
               path: '/hubin/absensi',
               icon: CalendarCheck,
             },

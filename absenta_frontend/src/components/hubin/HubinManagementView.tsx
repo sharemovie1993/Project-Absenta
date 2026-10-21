@@ -71,6 +71,7 @@ interface HubinManagementViewProps {
   selectedTp?: string;
   onTpChange?: (tpId: string) => void;
   tpOptions?: Array<{ value: string; label: string }>;
+  hideScopeBanner?: boolean;
 }
 
 export const HubinManagementView: React.FC<HubinManagementViewProps> = React.memo(({
@@ -91,7 +92,8 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
   activeGuruId,
   selectedTp,
   onTpChange,
-  tpOptions
+  tpOptions,
+  hideScopeBanner = false
 }) => {
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState('');
@@ -266,7 +268,7 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
   return (
     <div className="space-y-6 w-full max-w-full min-w-0">
       {/* Banner Khusus Kaprog: Unit Terkunci */}
-      {isKaprog && (
+      {!hideScopeBanner && isKaprog && (
         <div className="flex items-center gap-2.5 p-3 bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 rounded-2xl text-xs text-indigo-900 dark:text-indigo-200 w-full max-w-full min-w-0">
           <ShieldCheck size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
           <div>
@@ -281,7 +283,7 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
       )}
 
       {/* Banner Khusus Wali Kelas: Kelas Terkunci */}
-      {isWaliKelas && !isKaprog && !isGlobalHubin && (
+      {!hideScopeBanner && isWaliKelas && !isKaprog && !isGlobalHubin && (
         <div className="flex items-center gap-2.5 p-3 bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-900/50 rounded-2xl text-xs text-emerald-900 dark:text-emerald-200 w-full max-w-full min-w-0">
           <ShieldCheck size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
           <div>

@@ -26,6 +26,7 @@ import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/ac
 import { PenempatanPklView } from '@/components/hubin/penempatan/PenempatanPklView';
 import { KelasView } from '@/components/academic/kelas/KelasView';
 import { NilaiPklView } from '@/components/hubin/nilai-pkl/NilaiPklView';
+import { AbsensiPklView } from '@/components/hubin/absensi/AbsensiPklView';
 import toast from 'react-hot-toast';
 
 // Subkomponen Modular Ter-Hardening (Pilar 21B - God File Guard)
@@ -104,6 +105,16 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
     queryClient.invalidateQueries({ queryKey: ['kaprog-pkl-summary'] });
     queryClient.invalidateQueries({ queryKey: ['kaprog-stats'] });
     queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
+  }, [queryClient]);
+
+  // Floating Modal state for Scoped Monitoring & Presensi PKL View
+  const [isMonitoringPklModalOpen, setIsMonitoringPklModalOpen] = useState(false);
+
+  const handleCloseMonitoringPklModal = useCallback(() => {
+    setIsMonitoringPklModalOpen(false);
+    queryClient.invalidateQueries({ queryKey: ['kaprog-pkl-summary'] });
+    queryClient.invalidateQueries({ queryKey: ['kaprog-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['absensi-pkl-history'] });
   }, [queryClient]);
 
   // Konteks Akademik Standard Platform (useAcademicFilter SSOT)
@@ -580,6 +591,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                     onOpenPenempatan={() => setIsPlottingPklModalOpen(true)}
                     onOpenStrukturKelas={() => setIsStrukturKelasModalOpen(true)}
                     onOpenRekapNilai={() => setIsRekapNilaiModalOpen(true)}
+                    onOpenMonitoringPkl={() => setIsMonitoringPklModalOpen(true)}
                     onSelectTab={handleTabSelect}
                   />
                 )}
@@ -602,6 +614,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                     onSelectEditingSlot={handleSelectEditingSlot}
                     onOpenPlottingModal={() => setIsPlottingPklModalOpen(true)}
                     onOpenRekapNilai={() => setIsRekapNilaiModalOpen(true)}
+                    onOpenMonitoringPkl={() => setIsMonitoringPklModalOpen(true)}
                     jurusanNama={resolvedJurusan?.nama}
                   />
                 )}
@@ -773,6 +786,46 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
               tahunPelajaranId={academic.selectedTahunPelajaran}
               semesterId={academic.selectedSemester}
               onClose={handleCloseRekapNilaiModal}
+            />
+          </div>
+        </Modal>
+      )}
+
+      {/* 10. Modal Reusable View: Monitoring & Presensi PKL Scoped Jurusan */}
+      {isMonitoringPklModalOpen && (
+        <Modal
+          isOpen={isMonitoringPklModalOpen}
+          onClose={handleCloseMonitoringPklModal}
+          size="full"
+          className="w-[98vw] max-w-[98vw] 2xl:max-w-[1720px]"
+          title={
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                <CalendarCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                    Monitoring & Presensi Siswa PKL
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40">
+                    {resolvedJurusan?.nama || 'Kejuruan'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Monitoring kehadiran harian, jurnal kegiatan siswa, dan status verifikasi bimbingan PKL kejuruan.
+                </p>
+              </div>
+            </div>
+          }
+        >
+          <div className="p-4 sm:p-5 max-h-[85vh] overflow-y-auto">
+            <AbsensiPklView
+              isModal={true}
+              jurusanId={resolvedJurusan?.id}
+              jurusanNama={resolvedJurusan?.nama}
+              initialTpId={academic.selectedTahunPelajaran}
+              onClose={handleCloseMonitoringPklModal}
             />
           </div>
         </Modal>
