@@ -429,9 +429,29 @@ export const KaprogSiswaTab: React.FC<KaprogSiswaTabProps> = React.memo(({
         {/* 4. Pagination Bar */}
         {totalItems > 0 && (
           <div className="p-3.5 bg-slate-50/60 dark:bg-slate-800/40 border-t border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-            <span className="text-slate-500 dark:text-slate-400 font-medium">
-              Menampilkan {Math.min((page - 1) * pageSize + 1, totalItems)} - {Math.min(page * pageSize, totalItems)} dari {totalItems} siswa
-            </span>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-slate-500 dark:text-slate-400 font-medium">
+                Menampilkan {Math.min((page - 1) * pageSize + 1, totalItems)} - {Math.min(page * pageSize, totalItems)} dari {totalItems} siswa
+              </span>
+
+              <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                <span className="text-[11px]">Tampilkan:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="h-7 px-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span className="text-[11px]">baris</span>
+              </div>
+            </div>
 
             <div className="flex items-center gap-2">
               <Button
@@ -440,7 +460,7 @@ export const KaprogSiswaTab: React.FC<KaprogSiswaTabProps> = React.memo(({
                 variant="outline"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="rounded-xl h-7 px-2"
+                className="rounded-xl h-7 px-2 cursor-pointer"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
                 <span>Prev</span>
@@ -456,7 +476,7 @@ export const KaprogSiswaTab: React.FC<KaprogSiswaTabProps> = React.memo(({
                 variant="outline"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="rounded-xl h-7 px-2"
+                className="rounded-xl h-7 px-2 cursor-pointer"
               >
                 <span>Next</span>
                 <ChevronRight className="w-3.5 h-3.5" />
