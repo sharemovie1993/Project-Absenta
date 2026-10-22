@@ -38,6 +38,7 @@ import {
   type UkkBeritaAcaraPrintData,
 } from '@/utils/print/modules/pdfUkkBeritaAcara';
 import { UkkBeritaAcaraPrintModal } from './UkkBeritaAcaraPrintModal';
+import { useUkkStrukturSigners } from './useUkkStrukturSigners';
 import { cn } from '@/lib/utils';
 
 export interface UkkBeritaAcaraTabProps {
@@ -61,6 +62,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const { confirm } = useConfirm();
+  const autoSigners = useUkkStrukturSigners(jurusanId, jurusanNama);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -182,7 +184,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
       penguji_internal: sesi.asesor_internal || '',
       penguji_eksternal: sesi.asesor_eksternal || '',
       mitra_nama: sesi.mitra_nama || '',
-      panitia: 'Ketua Panitia UKK',
+      panitia: autoSigners.kaprog.nama || 'Ketua Panitia UKK',
       status: 'SELESAI',
       foto_dokumentasi: [],
     });
@@ -260,7 +262,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
       penguji_internal: firstSession?.asesor_internal || '',
       penguji_eksternal: firstSession?.asesor_eksternal || '',
       mitra_nama: firstSession?.mitra_nama || '',
-      panitia: 'Ketua Panitia UKK',
+      panitia: autoSigners.kaprog.nama || 'Ketua Panitia UKK',
       status: 'SELESAI',
       foto_dokumentasi: [],
     });

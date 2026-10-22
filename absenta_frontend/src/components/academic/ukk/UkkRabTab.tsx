@@ -17,6 +17,7 @@ import {
   Layers,
   Search,
   Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -35,6 +36,8 @@ import {
   type UkkRabData,
   type UkkRabPrintData,
 } from '@/utils/print/modules/pdfUkkRab';
+import { UkkRabPrintModal } from './UkkRabPrintModal';
+import { useUkkStrukturSigners } from './useUkkStrukturSigners';
 import { cn } from '@/lib/utils';
 
 export interface UkkRabTabProps {
@@ -56,10 +59,12 @@ export const UkkRabTab: React.FC<UkkRabTabProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const { confirm } = useConfirm();
+  const autoSigners = useUkkStrukturSigners(jurusanId, jurusanNama);
 
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<'ALL' | 'BAHAN' | 'ALAT'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [printModalOpen, setPrintModalOpen] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
   // Form State Item Kebutuhan
@@ -432,13 +437,45 @@ export const UkkRabTab: React.FC<UkkRabTabProps> = ({
           <Button
             variant="outline"
             size="sm"
-            onClick={handlePrintPdf}
+            onClick={() => setPrintModalOpen(true)}
             disabled={(rabData.items || []).length === 0}
             className="h-9 px-3 rounded-xl border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold gap-1.5 cursor-pointer shadow-2xs"
           >
             <Printer className="w-3.5 h-3.5 text-indigo-600" />
             Cetak RAB (PDF)
           </Button>
+        </div>
+      </div>
+
+      {/* Banner Sinkronisasi Posisi Jabatan Struktur Organisasi */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs text-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <ShieldCheck className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+              <span>Penandatangan Terhubung Struktur Organisasi</span>
+              {autoSigners.kaprog.isAssigned && autoSigners.wakasekSarpras.isAssigned && (
+                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                  Sinkron Otomatis
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-slate-600 dark:text-slate-400 text-[11px] mt-0.5">
+              <span>
+                <strong>Kaprog {jurusanNama}:</strong>{' '}
+                <span className="text-slate-900 dark:text-white font-medium">{autoSigners.kaprog.nama}</span>
+                {autoSigners.kaprog.nip !== '-' && ` (NIP. ${autoSigners.kaprog.nip})`}
+              </span>
+              <span>•</span>
+              <span>
+                <strong>Wakasek Sarpras:</strong>{' '}
+                <span className="text-slate-900 dark:text-white font-medium">{autoSigners.wakasekSarpras.nama}</span>
+                {autoSigners.wakasekSarpras.nip !== '-' && ` (NIP. ${autoSigners.wakasekSarpras.nip})`}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -831,6 +868,19 @@ export const UkkRabTab: React.FC<UkkRabTabProps> = ({
           </div>
         </div>
       </Modal>
+
+      {/* Modal Universal Document Cetak Dokumen RAB UKK */}
+      <UkkRabPrintModal
+        isOpen={printModalOpen}
+        onClose={() => setPrintModalOpen(false)}
+        rabData={rabData}
+        jurusanNama={jurusanNama}
+        tahunPelajaran={tahunAjaran}
+        kaprogNama={autoSigners.kaprog.nama}
+        kaprogNip={autoSigners.kaprog.nip}
+        wakasekSarprasNama={autoSigners.wakasekSarpras.nama}
+        wakasekSarprasNip={autoSigners.wakasekSarpras.nip}
+      />
     </div>
   );
 };
