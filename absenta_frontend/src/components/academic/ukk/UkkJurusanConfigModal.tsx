@@ -178,12 +178,19 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
             </label>
             <select
               value={tahunAjaran}
-              onChange={(e) => setTahunAjaran(e.target.value)}
+              onChange={(e) => {
+                const newYear = e.target.value;
+                setTahunAjaran(newYear);
+                if (newYear === '2023/2024') setEdisiPedoman('2023_2024');
+                else if (newYear === '2024/2025') setEdisiPedoman('2025');
+                else setEdisiPedoman('2026');
+              }}
               className="w-full px-2.5 py-1.5 text-xs bg-background border rounded-lg font-medium cursor-pointer focus:ring-2 focus:ring-primary/20 outline-none"
             >
               <option value="2025/2026">2025/2026 (Aktif Berjalan)</option>
-              <option value="2026/2027">2026/2027 (Mendatang)</option>
               <option value="2024/2025">2024/2025 (Arsip Historis)</option>
+              <option value="2023/2024">2023/2024 (Arsip Historis)</option>
+              <option value="2026/2027">2026/2027 (Mendatang)</option>
             </select>
             <p className="text-[10px] text-muted-foreground mt-1">
               Pengaturan disimpan per tahun ajaran agar data arsip tidak tertimpa.

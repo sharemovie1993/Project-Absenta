@@ -68,6 +68,7 @@ export interface UniversalUkkSertifikatViewProps {
 
 export const CERTIFICATE_TEMPLATES: DocumentTemplateOption[] = [
   { id: 'kemdikbud_2026', label: 'Pedoman Kemendikdasmen 2026 (Resmi)' },
+  { id: 'kemdikbud_2024', label: 'Pedoman Kemendikbudristek TA 2023/2024 (Arsip)' },
   { id: 'modern', label: 'Modern DU/DI Industri' },
   { id: 'classic', label: 'Piagam Ornamen Emas (Klasik)' },
   { id: 'suket_lampiran_2', label: 'Surat Keterangan Mengikuti UKK (Lampiran 2 Juknis)' },
@@ -608,27 +609,31 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
                 </div>
               </div>
 
-              {/* Main Official Title Bilingual Sesuai Juknis 2026 */}
+              {/* Main Official Title Bilingual Sesuai Juknis */}
               <div className="text-center space-y-1 mb-5">
                 <h1
                   className={cn(
                     'text-base sm:text-lg font-extrabold uppercase tracking-wider',
                     selectedTemplate === 'classic' && 'text-amber-900',
                     selectedTemplate === 'modern' && 'text-indigo-900',
-                    selectedTemplate === 'kemdikbud_2026' && 'text-sky-800'
+                    (selectedTemplate === 'kemdikbud_2026' || selectedTemplate === 'kemdikbud_2024') && 'text-sky-800'
                   )}
                 >
-                  SERTIFIKAT KOMPETENSI
+                  {selectedTemplate === 'kemdikbud_2024'
+                    ? 'SERTIFIKAT UJI KOMPETENSI KEAHLIAN'
+                    : 'SERTIFIKAT KOMPETENSI'}
                 </h1>
                 <p
                   className={cn(
                     'text-[11px] font-serif italic tracking-wide',
                     selectedTemplate === 'classic' && 'text-amber-800',
                     selectedTemplate === 'modern' && 'text-indigo-700',
-                    selectedTemplate === 'kemdikbud_2026' && 'text-sky-700'
+                    (selectedTemplate === 'kemdikbud_2026' || selectedTemplate === 'kemdikbud_2024') && 'text-sky-700'
                   )}
                 >
-                  COMPETENCY CERTIFICATE
+                  {selectedTemplate === 'kemdikbud_2024'
+                    ? 'VOCATIONAL COMPETENCY CERTIFICATE'
+                    : 'COMPETENCY CERTIFICATE'}
                 </p>
                 <p className="text-[11px] font-mono text-slate-600 tracking-wide mt-1">
                   Nomor : {certData.nomor_sertifikat}
@@ -710,14 +715,23 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
               </div>
 
               <div className="grid grid-cols-2 gap-8 text-center text-[11px]">
-                {/* Kolom Kiri: Kepala Sekolah (Atas nama SMK...) */}
+                {/* Kolom Kiri: Kepala Sekolah */}
                 <div>
-                  <p className="font-semibold text-slate-800">
-                    Atas nama {certData.sekolah?.nama || 'SMK'}
-                  </p>
-                  <p className="text-[10px] text-slate-500 italic">
-                    On behalf of {certData.sekolah?.nama || 'SMK'}
-                  </p>
+                  {selectedTemplate === 'kemdikbud_2024' ? (
+                    <>
+                      <p className="font-semibold text-slate-800">Mengetahui,</p>
+                      <p className="font-normal text-slate-700">Kepala Sekolah,</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-semibold text-slate-800">
+                        Atas nama {certData.sekolah?.nama || 'SMK'}
+                      </p>
+                      <p className="text-[10px] text-slate-500 italic">
+                        On behalf of {certData.sekolah?.nama || 'SMK'}
+                      </p>
+                    </>
+                  )}
                   <div className="h-14 flex items-center justify-center my-1">
                     {certData.ukk.ttd_kepala_sekolah ? (
                       <img
@@ -734,6 +748,11 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
                   </p>
                   <p className="text-[10.5px] font-medium text-slate-700">Kepala Sekolah</p>
                   <p className="text-[9.5px] text-slate-500 italic">School Principal</p>
+                  {certData.sekolah?.nip_kepala && certData.sekolah.nip_kepala !== '-' && (
+                    <p className="text-[10px] text-slate-600 font-sans">
+                      NIP. {certData.sekolah.nip_kepala}
+                    </p>
+                  )}
                 </div>
 
                 {/* Kolom Kanan: Penguji Eksternal (Perwakilan Dunia Kerja CV/PT) */}

@@ -162,6 +162,68 @@ export const UKK_REGULATORY_EDITIONS: Record<string, UkkRegulatoryEdition> = {
       },
     },
   },
+  '2023_2024': {
+    id: '2023_2024',
+    label: 'Pedoman Kemendikbudristek TA 2023/2024 (Kurikulum Merdeka Awal)',
+    tahunAjaranDefault: '2023/2024',
+    dasarHukum: [
+      'Permendikbudristek No. 21 Tahun 2022 tentang Standar Penilaian Pendidikan',
+      'Kepmendikbudristek No. 262/M/2022 tentang Pedoman Penerapan Kurikulum',
+      'Panduan Pembelajaran dan Asesmen SMK (Edisi Revisi 2023)',
+      'Pedoman Penyelenggaraan Uji Kompetensi Keahlian SMK Tahun Ajaran 2023/2024',
+    ],
+    masaBerlakuTahun: 3,
+    klausulMasaBerlakuId: 'Sertifikat ini berlaku untuk : 3 (tiga) Tahun',
+    klausulMasaBerlakuEn: 'This certificate is valid for : 3 (three) Years',
+    labelTtdKepalaSekolah: 'Kepala Sekolah,',
+    labelTtdKepalaSekolahEn: 'School Principal,',
+    thresholdMandiri: {
+      sangatKompeten: {
+        min: 90,
+        max: 100,
+        labelId: 'Sangat Kompeten',
+        labelEn: 'Very Competent',
+        badgeClass: 'border-emerald-600 bg-emerald-50 text-emerald-800',
+      },
+      kompeten: {
+        min: 75,
+        max: 89,
+        labelId: 'Kompeten',
+        labelEn: 'Competent',
+        badgeClass: 'border-blue-600 bg-blue-50 text-blue-800',
+      },
+      cukupKompeten: {
+        min: 70,
+        max: 74,
+        labelId: 'Cukup Kompeten',
+        labelEn: 'Fairly Competent',
+        badgeClass: 'border-amber-600 bg-amber-50 text-amber-800',
+      },
+      belumKompeten: {
+        min: 0,
+        max: 69,
+        labelId: 'Belum Kompeten',
+        labelEn: 'Not Yet Competent',
+        badgeClass: 'border-rose-600 bg-rose-50 text-rose-800',
+      },
+    },
+    thresholdLsp: {
+      kompeten: {
+        min: 75,
+        max: 100,
+        labelId: 'Kompeten',
+        labelEn: 'Competent',
+        badgeClass: 'border-emerald-600 bg-emerald-50 text-emerald-800',
+      },
+      belumKompeten: {
+        min: 0,
+        max: 74,
+        labelId: 'Belum Kompeten',
+        labelEn: 'Not Yet Competent',
+        badgeClass: 'border-rose-600 bg-rose-50 text-rose-800',
+      },
+    },
+  },
 };
 
 /**
@@ -170,8 +232,11 @@ export const UKK_REGULATORY_EDITIONS: Record<string, UkkRegulatoryEdition> = {
 export const getUkkRegulatoryEdition = (editionIdOrYear?: string): UkkRegulatoryEdition => {
   if (!editionIdOrYear) return UKK_REGULATORY_EDITIONS['2026'];
 
-  const clean = String(editionIdOrYear).toLowerCase();
-  if (clean.includes('2024') || clean.includes('2025')) {
+  const clean = String(editionIdOrYear).toLowerCase().replace(/[^a-z0-9]/g, '_');
+  if (clean.includes('2023') || clean.includes('23_24')) {
+    return UKK_REGULATORY_EDITIONS['2023_2024'];
+  }
+  if (clean.includes('2024') || clean.includes('2025') || clean.includes('24_25')) {
     return UKK_REGULATORY_EDITIONS['2025'];
   }
   return UKK_REGULATORY_EDITIONS['2026'];
