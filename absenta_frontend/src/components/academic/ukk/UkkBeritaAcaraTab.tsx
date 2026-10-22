@@ -104,8 +104,8 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
 
   // 2. Fetch Jadwal Sesi to allow quick pre-fill
   const { data: jadwalRes } = useQuery({
-    queryKey: ['ukk-jadwal', jurusanId],
-    queryFn: () => (jurusanId ? raporApi.getUkkJadwal(jurusanId) : Promise.resolve({ data: [] })),
+    queryKey: ['ukk-jadwal', jurusanId, tahunAjaran],
+    queryFn: () => (jurusanId ? raporApi.getUkkJadwal(jurusanId, tahunAjaran) : Promise.resolve({ data: [] })),
     enabled: !!jurusanId,
     staleTime: 60 * 1000,
   });
@@ -343,7 +343,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
     try {
       const [sekolahRes, settingsRes] = await Promise.all([
         sekolahApi.getProfile().catch(() => null),
-        raporApi.getUkkSettings(jurusanId).catch(() => null),
+        raporApi.getUkkSettings(jurusanId, tahunAjaran).catch(() => null),
       ]);
 
       const sekolahData = (sekolahRes as any)?.data || sekolahRes || {};
@@ -351,7 +351,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
 
       const printPayload: UkkBeritaAcaraPrintData = {
         jurusanNama: jurusanNama || 'Kejuruan',
-        tahunPelajaran: `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
+        tahunPelajaran: tahunAjaran || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
         judulPenugasan: settingsData?.judul_penugasan_id || 'Ujian Praktik Kejuruan Mandiri',
         sekolah: {
           nama: sekolahData?.nama || 'SEKOLAH MENENGAH KEJURUAN',
@@ -931,6 +931,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
         onClose={() => setPrintModalItem(null)}
         beritaAcara={printModalItem}
         jurusanNama={jurusanNama}
+        tahunPelajaran={tahunAjaran}
       />
     </div>
   );

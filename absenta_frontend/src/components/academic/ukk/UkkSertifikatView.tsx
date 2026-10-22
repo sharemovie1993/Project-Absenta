@@ -163,7 +163,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
       setIsLoadingUkk(true);
       try {
         const [ukkRes, settingsRes] = await Promise.allSettled([
-          raporApi.getUkk({ siswa_id: activeSiswaId }).catch(() => null),
+          raporApi.getUkk({ siswa_id: activeSiswaId, tahun_ajaran: activeTahunAjaran }).catch(() => null),
           raporApi.getUkkSettings(jurusanId, activeTahunAjaran).catch(() => null),
         ]);
 

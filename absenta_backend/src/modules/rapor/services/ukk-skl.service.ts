@@ -108,10 +108,38 @@ export class UkkSklService {
 
     const siswaWhere: any = siswaConditions.length > 0 ? { AND: siswaConditions } : {};
 
+    // Filter tanggal_terbit sertifikat agar terisolasi per tahun ajaran
+    let targetYearString = filter.tahun_ajaran;
+    if (!targetYearString && filter.tahun_pelajaran_id) {
+      const tp = await prisma.tahunPelajaran.findUnique({
+        where: { id: filter.tahun_pelajaran_id },
+        select: { tahun: true },
+      });
+      targetYearString = tp?.tahun;
+    }
+
+    let dateFilter: any = {};
+    if (targetYearString && targetYearString.includes('/')) {
+      const [y1Str, y2Str] = targetYearString.split('/');
+      const y1 = parseInt(y1Str, 10);
+      const y2 = parseInt(y2Str, 10);
+      if (!isNaN(y1) && !isNaN(y2)) {
+        const start = new Date(`${y1}-07-01T00:00:00.000Z`);
+        const end = new Date(`${y2}-06-30T23:59:59.999Z`);
+        dateFilter = {
+          tanggal_terbit: {
+            gte: start,
+            lte: end,
+          },
+        };
+      }
+    }
+
     return prisma.sertifikatUkk.findMany({
       where: {
         tenant_id: tenantId,
         ...(filter.siswa_id ? { siswa_id: filter.siswa_id } : {}),
+        ...dateFilter,
         ...(Object.keys(siswaWhere).length > 0 ? { Siswa: siswaWhere } : {}),
         ...(filter.query
           ? {

@@ -152,13 +152,27 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
     staleTime: 5 * 60 * 1000,
   });
 
+  // Helper isolasi sertifikat agar tidak bocor lintas tahun ajaran
+  const isCertInActiveYear = (certDateStr?: string) => {
+    if (!certDateStr || !effectiveTahunAjaran) return true;
+    const parts = effectiveTahunAjaran.split('/');
+    if (parts.length < 2) return true;
+    const y1 = parseInt(parts[0], 10);
+    const y2 = parseInt(parts[1], 10);
+    if (isNaN(y1) || isNaN(y2)) return true;
+    const d = new Date(certDateStr);
+    const start = new Date(`${y1}-07-01T00:00:00.000Z`);
+    const end = new Date(`${y2}-06-30T23:59:59.999Z`);
+    return d >= start && d <= end;
+  };
+
   // Gabungkan daftar siswa XII dengan data sertifikat UKK
   const combinedList: UkkRecordItem[] = useMemo(() => {
     const certList = (ukkResponse as any)?.data || ukkResponse || [];
     const certMap = new Map<string, any>();
     if (Array.isArray(certList)) {
       certList.forEach((c: any) => {
-        if (c.siswa_id) {
+        if (c.siswa_id && isCertInActiveYear(c.tanggal_terbit)) {
           certMap.set(c.siswa_id, c);
         }
       });
@@ -195,9 +209,13 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
       });
     }
 
-    // Fallback: tampilkan siswa yang ada di certList
-    if (Array.isArray(certList) && certList.length > 0) {
-      return certList.map((c: any) => ({
+    // Fallback: hanya tampilkan rekaman sertifikat yang tanggal terbitnya cocok dengan tahun ajaran aktif
+    const filteredCertList = Array.isArray(certList)
+      ? certList.filter((c: any) => isCertInActiveYear(c.tanggal_terbit))
+      : [];
+
+    if (filteredCertList.length > 0) {
+      return filteredCertList.map((c: any) => ({
         id: c.id,
         siswa_id: c.siswa_id,
         nama_siswa: c.Siswa?.nama_siswa || 'Siswa',

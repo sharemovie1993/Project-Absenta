@@ -132,8 +132,8 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
 
   // Query Berita Acara untuk sinkronisasi status per sesi
   const { data: baRes } = useQuery({
-    queryKey: ['ukk-berita-acara', jurusanId],
-    queryFn: () => (jurusanId ? raporApi.getUkkBeritaAcara(jurusanId) : Promise.resolve({ data: [] })),
+    queryKey: ['ukk-berita-acara', jurusanId, tahunAjaran],
+    queryFn: () => (jurusanId ? raporApi.getUkkBeritaAcara(jurusanId, tahunAjaran) : Promise.resolve({ data: [] })),
     enabled: !!jurusanId,
     staleTime: 60 * 1000,
   });
@@ -301,7 +301,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
     try {
       const [sekolahRes, settingsRes] = await Promise.all([
         sekolahApi.getProfile().catch(() => null),
-        raporApi.getUkkSettings(jurusanId).catch(() => null),
+        raporApi.getUkkSettings(jurusanId, tahunAjaran).catch(() => null),
       ]);
 
       const sekolahData = (sekolahRes as any)?.data || sekolahRes || {};
@@ -309,7 +309,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
 
       const printPayload: UkkJadwalPrintData = {
         jurusanNama: jurusanNama || 'Kejuruan',
-        tahunPelajaran: `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
+        tahunPelajaran: tahunAjaran || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
         skemaSertifikasi: settingsData?.skema_sertifikasi || 'Skema Sertifikasi KKNI Level II',
         judulPenugasan: settingsData?.judul_penugasan_id || 'Ujian Praktik Kejuruan Mandiri',
         sekolah: {
