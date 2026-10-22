@@ -196,17 +196,35 @@ export const renderSertifikatUkkFront = (
   doc.setFillColor(244, 63, 94);
   doc.lines([[42, -32], [-16, 92], [-26, 43], [0, -103]], 0, 194, [1, 1], 'F', true);
 
-  // 2. LOGO TUT WURI HANDAYANI (Centered at top)
-  const logoW = 28;
-  const logoH = 28;
-  const logoX = (pageWidth - logoW) / 2 + 6;
+  // 2. LOGO RENDERING (TUT WURI, DAERAH, SEKOLAH)
+  const logoW = 24;
+  const logoH = 24;
+  const logoCenter = (pageWidth - logoW) / 2 + 6;
   const logoY = 11;
 
+  // Center: Tut Wuri Handayani / Lambang Pendidikan Nasional
   try {
-    const logoToRender = options?.logoSekolahBase64 || TUT_WURI_LOGO_SVG;
-    doc.addImage(logoToRender, 'PNG', logoX, logoY, logoW, logoH);
+    doc.addImage(TUT_WURI_LOGO_SVG, 'PNG', logoCenter, logoY, logoW, logoH);
   } catch (err) {
     console.warn('Fallback rendering for Tut Wuri Handayani logo:', err);
+  }
+
+  // Left: Logo Daerah (Pemda) if enabled and provided
+  if (options?.logoDaerahBase64) {
+    try {
+      doc.addImage(options.logoDaerahBase64, 'PNG', 45, logoY + 1, 22, 22);
+    } catch (err) {
+      console.warn('Fallback rendering for logo daerah:', err);
+    }
+  }
+
+  // Right: Logo Sekolah if enabled and provided
+  if (options?.logoSekolahBase64) {
+    try {
+      doc.addImage(options.logoSekolahBase64, 'PNG', 145, logoY + 1, 22, 22);
+    } catch (err) {
+      console.warn('Fallback rendering for logo sekolah:', err);
+    }
   }
 
   // 3. MAIN TITLE & NOMOR (Bilingual, Official Blue Typography)

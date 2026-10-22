@@ -1,6 +1,19 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Printer, Download, RefreshCw, FileText } from 'lucide-react';
+import {
+  Printer,
+  Download,
+  RefreshCw,
+  FileText,
+  SlidersHorizontal,
+  Smartphone,
+  Maximize2,
+  ChevronLeft,
+  ChevronRight,
+  Users,
+  RotateCw,
+  Loader2,
+} from 'lucide-react';
 import { getMyTenant, type Tenant } from '@/api/tenants.api';
 import { sekolahApi, type Sekolah } from '@/api/academic/sekolah.api';
 import { useAuthStore } from '@/store/authStore';
@@ -10,7 +23,7 @@ import { Button } from './Button';
 import { cn } from '@/lib/utils';
 
 // ============================================================================
-// TYPES & INTERFACES
+// 1. TYPES & INTERFACES
 // ============================================================================
 
 export interface PrintHeaderLine {
@@ -19,7 +32,7 @@ export interface PrintHeaderLine {
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
-  fontFamily?: string; // Arial, Times New Roman, Book Antiqua, etc.
+  fontFamily?: string;
 }
 
 export interface PrintHeaderTenantInfo {
@@ -40,14 +53,14 @@ export interface PrintHeaderTenantInfo {
 export interface PrintHeaderProps {
   variant?: 'portrait' | 'landscape' | 'compact';
   tenantInfo?: PrintHeaderTenantInfo;
-  roleTitle?: string;            // e.g. "KAPROG KEJURUAN", "WALI KELAS", "KURIKULUM", "KEPALA SEKOLAH"
-  departmentTitle?: string;      // e.g. "PROGRAM KEAHLIAN TEKNIK KOMPUTER DAN JARINGAN"
-  documentTitle?: string;        // e.g. "BERITA ACARA PELAKSANAAN"
-  documentNumber?: string;       // e.g. "Nomor: 421.5/028/SMK-PLR/2026"
-  academicYear?: string;         // e.g. "Tahun Pelajaran 2026/2027"
-  showDivider?: boolean;         // default: true
-  showLogoDaerah?: boolean;      // default: true
-  showLogoSekolah?: boolean;     // default: true
+  roleTitle?: string;
+  departmentTitle?: string;
+  documentTitle?: string;
+  documentNumber?: string;
+  academicYear?: string;
+  showDivider?: boolean;
+  showLogoDaerah?: boolean;
+  showLogoSekolah?: boolean;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -64,7 +77,7 @@ export interface UsePrintHeaderDataResult {
 }
 
 // ============================================================================
-// UNIVERSAL HOOK: usePrintHeaderData (DRY Resolution for any Role)
+// 2. UNIVERSAL HOOK: usePrintHeaderData (DRY Resolution for any Role)
 // ============================================================================
 
 export function usePrintHeaderData(
@@ -256,7 +269,7 @@ export function usePrintHeaderData(
 }
 
 // ============================================================================
-// PURE PRESENTATIONAL PRINT HEADER (SSR & renderToString Safe)
+// 3. PURE PRESENTATIONAL PRINT HEADER (SSR & renderToString Safe)
 // ============================================================================
 
 export const PrintHeaderPure: React.FC<PrintHeaderProps> = ({
@@ -374,7 +387,7 @@ export const PrintHeaderPure: React.FC<PrintHeaderProps> = ({
     : Math.min(95, Math.max(60, 70 + (totalLines - 4) * 9));
 
   const imgHeight = `${calculatedHeightNum}px`;
-  const colWidthNum = Math.max(85, Math.round(calculatedHeightNum * 0.95));
+  const colWidthNum = Math.max(70, Math.round(calculatedHeightNum * 0.95));
   const colWidth = `${colWidthNum}px`;
   const maxLogoWidth = `${Math.round(calculatedHeightNum * 0.88)}px`;
 
@@ -485,7 +498,8 @@ export const PrintHeaderPure: React.FC<PrintHeaderProps> = ({
                     lineHeight: '1.25',
                     fontFamily: "'Book Antiqua', 'Bookman Old Style', serif",
                     whiteSpace: 'normal',
-                    wordBreak: 'break-word',
+                    wordBreak: 'normal',
+                    hyphens: 'none',
                   }}
                 >
                   {alamatLengkap} {telepon ? ` | Telp: ${telepon}` : ''}
@@ -501,7 +515,8 @@ export const PrintHeaderPure: React.FC<PrintHeaderProps> = ({
                     textAlign: 'center',
                     fontFamily: 'monospace',
                     whiteSpace: 'normal',
-                    wordBreak: 'break-word',
+                    wordBreak: 'normal',
+                    hyphens: 'none',
                   }}
                 >
                   {website ? `Website: ${website}` : ''} {email ? ` | Email: ${email}` : ''}
@@ -584,7 +599,7 @@ export const PrintHeaderPure: React.FC<PrintHeaderProps> = ({
 };
 
 // ============================================================================
-// CONNECTED PRINT HEADER (Auto-resolves Tenant & School Data via Hooks)
+// 4. CONNECTED PRINT HEADER (Auto-resolves Tenant & School Data via Hooks)
 // ============================================================================
 
 const PrintHeaderConnected: React.FC<PrintHeaderProps> = (props) => {
@@ -606,228 +621,534 @@ export const PrintHeader: React.FC<PrintHeaderProps> = (props) => {
 };
 
 // ============================================================================
-// UNIVERSAL COMPONENT: PrintDocumentCanvas (A4 Paper Sheet View)
+// 5. UNIVERSAL PAPER SHEET: PrintDocumentSheet (A4 / F4 Physical Sheet)
 // ============================================================================
 
-export interface PrintDocumentCanvasProps {
-  variant?: 'portrait' | 'landscape';
-  tenantInfo?: PrintHeaderTenantInfo;
-  roleTitle?: string;
-  departmentTitle?: string;
-  documentTitle?: string;
-  documentNumber?: string;
-  academicYear?: string;
-  showDivider?: boolean;
-  children?: React.ReactNode;
+export interface PrintDocumentSheetProps {
+  orientation?: 'portrait' | 'landscape';
+  pageNumber?: number;
+  totalPages?: number;
+  pageLabel?: string;
+  footerText?: string;
+  children: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
   id?: string;
-  contentRef?: React.RefObject<HTMLDivElement | null>;
 }
 
-export const PrintDocumentCanvas: React.FC<PrintDocumentCanvasProps> = ({
-  variant = 'portrait',
-  tenantInfo,
-  roleTitle,
-  departmentTitle,
-  documentTitle,
-  documentNumber,
-  academicYear,
-  showDivider = true,
+export const PrintDocumentSheet: React.FC<PrintDocumentSheetProps> = ({
+  orientation = 'portrait',
+  pageNumber,
+  totalPages,
+  pageLabel,
+  footerText,
   children,
   className,
   style,
   id,
-  contentRef,
 }) => {
-  const isLandscape = variant === 'landscape';
+  const isLandscape = orientation === 'landscape';
+
+  // Physical Dimensions:
+  // Portrait: 794px × 1123px (210mm × 297mm at 96 DPI)
+  // Landscape: 1123px × 794px (297mm × 210mm at 96 DPI)
+  const widthPx = isLandscape ? 1123 : 794;
+  const minHeightPx = isLandscape ? 794 : 1123;
 
   return (
     <div
-      ref={contentRef}
       id={id}
+      style={{
+        width: `${widthPx}px`,
+        minWidth: `${widthPx}px`,
+        maxWidth: `${widthPx}px`,
+        minHeight: `${minHeightPx}px`,
+        ...style,
+      }}
       className={cn(
-        'w-full bg-white text-slate-900 shadow-2xl rounded-sm font-serif text-[12px] leading-relaxed select-text border border-slate-300 dark:border-slate-800 transition-all',
-        isLandscape
-          ? 'max-w-[297mm] p-6 sm:p-10 min-h-[210mm]'
-          : 'max-w-[210mm] p-8 sm:p-12 min-h-[297mm]',
+        'print-sheet bg-white text-slate-900 shadow-2xl rounded-sm font-serif text-[12px] leading-relaxed select-text border border-slate-300 dark:border-slate-800 flex flex-col justify-between transition-shadow',
+        isLandscape ? 'p-8 sm:p-12' : 'p-8 sm:p-12',
         className
       )}
-      style={style}
     >
-      <PrintHeader
-        variant={variant}
-        tenantInfo={tenantInfo}
-        roleTitle={roleTitle}
-        departmentTitle={departmentTitle}
-        documentTitle={documentTitle}
-        documentNumber={documentNumber}
-        academicYear={academicYear}
-        showDivider={showDivider}
-      />
-      <div className="mt-4">{children}</div>
+      <div className="flex-1">{children}</div>
+
+      {/* Standard Document Sheet Footer */}
+      {(footerText || pageNumber) && (
+        <div className="pt-4 mt-6 border-t border-slate-200 text-[10px] text-slate-400 flex justify-between font-sans shrink-0">
+          <span>{footerText || ''}</span>
+          <span>
+            {pageLabel || (pageNumber ? `Halaman ${pageNumber}${totalPages ? ` dari ${totalPages}` : ''}` : '')}
+          </span>
+        </div>
+      )}
     </div>
   );
 };
 
 // ============================================================================
-// UNIVERSAL COMPONENT: UniversalPrintModal (Modal for Any Role Dashboard)
+// 6. UNIVERSAL DESK CANVAS: PrintDeskCanvas (Adaptive Mobile Zoom & Desk)
 // ============================================================================
 
-export interface UniversalPrintModalProps {
+export interface PrintDeskCanvasProps {
+  orientation?: 'portrait' | 'landscape';
+  zoomMode?: 'fit' | 'original';
+  onZoomModeChange?: (mode: 'fit' | 'original') => void;
+  children: React.ReactNode;
+  className?: string;
+  deskRef?: React.RefObject<HTMLDivElement | null>;
+  canvasRef?: React.RefObject<HTMLDivElement | null>;
+}
+
+export const PrintDeskCanvas: React.FC<PrintDeskCanvasProps> = ({
+  orientation = 'portrait',
+  zoomMode = 'fit',
+  children,
+  className,
+  deskRef: externalDeskRef,
+  canvasRef: externalCanvasRef,
+}) => {
+  const internalDeskRef = useRef<HTMLDivElement | null>(null);
+  const internalCanvasRef = useRef<HTMLDivElement | null>(null);
+  const deskRef = externalDeskRef || internalDeskRef;
+  const canvasRef = externalCanvasRef || internalCanvasRef;
+
+  const isLandscape = orientation === 'landscape';
+  const baseWidth = isLandscape ? 1123 : 794;
+
+  const [autoScale, setAutoScale] = useState<number>(1);
+
+  useEffect(() => {
+    const calcScale = () => {
+      if (!deskRef.current) return;
+      const containerWidth = deskRef.current.clientWidth;
+      if (zoomMode === 'original') {
+        setAutoScale(1);
+      } else if (containerWidth < baseWidth + 24) {
+        const calculated = Math.max(0.32, Math.min(1, (containerWidth - 24) / baseWidth));
+        setAutoScale(calculated);
+      } else {
+        setAutoScale(1);
+      }
+    };
+
+    calcScale();
+    const timer = setTimeout(calcScale, 150);
+    window.addEventListener('resize', calcScale);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', calcScale);
+    };
+  }, [zoomMode, orientation, baseWidth, deskRef]);
+
+  return (
+    <div
+      ref={deskRef}
+      className={cn(
+        'overflow-y-auto overflow-x-auto max-h-[76vh] p-3 sm:p-8 bg-slate-200/70 dark:bg-slate-950/80 rounded-xl border border-slate-300 dark:border-slate-800 flex flex-col items-center gap-8 select-text',
+        className
+      )}
+    >
+      <div
+        ref={canvasRef}
+        id="print-desk-canvas-area"
+        style={{
+          zoom: autoScale < 1 ? autoScale : undefined,
+          width: `${baseWidth}px`,
+          maxWidth: zoomMode === 'original' ? `${baseWidth}px` : undefined,
+        }}
+        className="flex flex-col items-center gap-8 transition-all duration-150 origin-top"
+      >
+        {children}
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// 7. UNIVERSAL DOCUMENT MODAL: UniversalDocumentModal (PIONEER MODEL)
+//    - Support Ceklis Logo Kanan & Kiri
+//    - Support Orientasi (Portrait / Landscape)
+//    - Support Cetak Massal (Batch Navigation & Batch Download)
+// ============================================================================
+
+export interface UniversalDocumentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  title?: string;
-  variant?: 'portrait' | 'landscape';
-  tenantInfo?: PrintHeaderTenantInfo;
-  roleTitle?: string;
-  departmentTitle?: string;
-  documentTitle?: string;
-  documentNumber?: string;
-  academicYear?: string;
+  title?: React.ReactNode;
+  subtitle?: React.ReactNode;
+
+  // 1. Orientasi Support
+  orientation?: 'portrait' | 'landscape';
+  allowOrientationToggle?: boolean;
+  onOrientationChange?: (orient: 'portrait' | 'landscape') => void;
+
+  // 2. Logo Toggles Support
+  showLogoDaerah?: boolean;
+  showLogoSekolah?: boolean;
+  onToggleLogoDaerah?: (show: boolean) => void;
+  onToggleLogoSekolah?: (show: boolean) => void;
+  allowLogoToggles?: boolean; // default: true
+
+  // 3. Batch Printing Support (Cetak Massal)
+  batchTotal?: number;
+  batchCurrentIndex?: number;
+  onPrevBatch?: () => void;
+  onNextBatch?: () => void;
+  batchSelector?: React.ReactNode;
+  onDownloadBatchPdf?: () => void;
+  isBatchDownloading?: boolean;
+  batchDownloadButtonText?: string;
+
+  // Actions
   onPrint?: () => void;
   onDownloadPdf?: () => void;
   downloadPdfText?: string;
   printButtonText?: string;
   extraActions?: React.ReactNode;
-  children?: React.ReactNode;
+
+  // Content
+  children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | '7xl' | 'full';
   documentId?: string;
-  contentRef?: React.RefObject<HTMLDivElement | null>;
 }
 
-export const UniversalPrintModal: React.FC<UniversalPrintModalProps> = ({
+export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
   isOpen,
   onClose,
-  title = 'Pratinjau Dokumen Cetak Resmi',
-  variant = 'portrait',
-  tenantInfo,
-  roleTitle,
-  departmentTitle,
-  documentTitle,
-  documentNumber,
-  academicYear,
+  title = 'Pratinjau Dokumen Resmi',
+  subtitle,
+  orientation: initialOrientation = 'portrait',
+  allowOrientationToggle = false,
+  onOrientationChange,
+  showLogoDaerah: externalShowLogoDaerah,
+  showLogoSekolah: externalShowLogoSekolah,
+  onToggleLogoDaerah,
+  onToggleLogoSekolah,
+  allowLogoToggles = true,
+  batchTotal = 0,
+  batchCurrentIndex = 0,
+  onPrevBatch,
+  onNextBatch,
+  batchSelector,
+  onDownloadBatchPdf,
+  isBatchDownloading = false,
+  batchDownloadButtonText,
   onPrint,
   onDownloadPdf,
   downloadPdfText = 'Unduh PDF',
-  printButtonText = 'Cetak Dokumen',
+  printButtonText = 'Cetak',
   extraActions,
   children,
   size = '5xl',
-  documentId = 'print-document-area',
-  contentRef,
 }) => {
-  const handlePrint = () => {
-    if (onPrint) {
-      onPrint();
+  const [internalOrientation, setInternalOrientation] = useState<'portrait' | 'landscape'>(initialOrientation);
+  const activeOrientation = onOrientationChange ? initialOrientation : internalOrientation;
+
+  const [internalLogoDaerah, setInternalLogoDaerah] = useState<boolean>(true);
+  const [internalLogoSekolah, setInternalLogoSekolah] = useState<boolean>(true);
+
+  const activeLogoDaerah = externalShowLogoDaerah !== undefined ? externalShowLogoDaerah : internalLogoDaerah;
+  const activeLogoSekolah = externalShowLogoSekolah !== undefined ? externalShowLogoSekolah : internalLogoSekolah;
+
+  const [zoomMode, setZoomMode] = useState<'fit' | 'original'>('fit');
+  const deskRef = useRef<HTMLDivElement | null>(null);
+
+  const handleToggleOrientation = () => {
+    const next = activeOrientation === 'portrait' ? 'landscape' : 'portrait';
+    if (onOrientationChange) {
+      onOrientationChange(next);
     } else {
-      window.print();
+      setInternalOrientation(next);
     }
+  };
+
+  const handleToggleDaerah = (checked: boolean) => {
+    if (onToggleLogoDaerah) onToggleLogoDaerah(checked);
+    else setInternalLogoDaerah(checked);
+  };
+
+  const handleToggleSekolah = (checked: boolean) => {
+    if (onToggleLogoSekolah) onToggleLogoSekolah(checked);
+    else setInternalLogoSekolah(checked);
+  };
+
+  const handlePrint = () => {
+    if (onPrint) onPrint();
+    else window.print();
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size={size}>
-      <div className="space-y-4">
-        {/* Action Toolbar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b">
-          <div className="flex flex-wrap items-center gap-2">
-            {roleTitle && (
-              <span className="text-xs font-bold text-foreground bg-primary/10 text-primary px-2.5 py-1 rounded-md">
-                {roleTitle}
-              </span>
+      <div className="space-y-3">
+        {/* ========================================================================= */}
+        {/* ROW 1: PRIMARY ACTION TOOLBAR & BATCH NAVIGATOR                           */}
+        {/* ========================================================================= */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-200 dark:border-slate-800">
+          {/* Left: Subtitle & Batch Switcher */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {batchTotal > 1 && (
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onPrevBatch}
+                  disabled={batchCurrentIndex === 0}
+                  className="h-7 w-7 p-0 rounded cursor-pointer disabled:opacity-30"
+                  title="Data Sebelumnya"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 px-2 min-w-[55px] text-center">
+                  {batchCurrentIndex + 1} / {batchTotal}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onNextBatch}
+                  disabled={batchCurrentIndex === batchTotal - 1}
+                  className="h-7 w-7 p-0 rounded cursor-pointer disabled:opacity-30"
+                  title="Data Berikutnya"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
             )}
-            {departmentTitle && (
-              <span className="text-xs font-semibold text-muted-foreground">
-                {departmentTitle}
-              </span>
+
+            {batchSelector}
+
+            {subtitle && (
+              <div className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+                {subtitle}
+              </div>
             )}
-            <span className="text-[11px] text-muted-foreground hidden sm:inline">
-              • Standar A4 {variant === 'landscape' ? 'Landscape (297 × 210 mm)' : 'Portrait (210 × 297 mm)'}
+
+            <span className="text-[11px] text-muted-foreground hidden lg:inline">
+              • A4 {activeOrientation === 'landscape' ? 'Landscape (297 × 210 mm)' : 'Portrait (210 × 297 mm)'}
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Right: Zoom Controller, Batch Download & Single Actions */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Mobile / Responsive Zoom Controller */}
+            <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
+              <button
+                type="button"
+                onClick={() => setZoomMode('fit')}
+                className={cn(
+                  'px-2 py-1 rounded text-[11px] font-medium transition-all flex items-center gap-1 cursor-pointer',
+                  zoomMode === 'fit'
+                    ? 'bg-white dark:bg-slate-900 text-primary shadow-sm font-semibold'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+                title="Sesuaikan dokumen dengan lebar layar HP"
+              >
+                <Smartphone className="w-3 h-3" />
+                <span>Pas Layar</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setZoomMode('original')}
+                className={cn(
+                  'px-2 py-1 rounded text-[11px] font-medium transition-all flex items-center gap-1 cursor-pointer',
+                  zoomMode === 'original'
+                    ? 'bg-white dark:bg-slate-900 text-primary shadow-sm font-semibold'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+                title="Lihat ukuran 100% standar A4 (dapat digeser)"
+              >
+                <Maximize2 className="w-3 h-3" />
+                <span>100% Asli</span>
+              </button>
+            </div>
+
+            {/* Orientation Toggle Button */}
+            {allowOrientationToggle && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleToggleOrientation}
+                className="text-xs gap-1.5 h-8 px-2.5"
+                title={`Ubah orientasi ke ${activeOrientation === 'portrait' ? 'Landscape' : 'Portrait'}`}
+              >
+                <RotateCw className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline capitalize">{activeOrientation}</span>
+              </Button>
+            )}
+
             {extraActions}
+
+            {/* Batch PDF Download Button (Cetak Massal) */}
+            {onDownloadBatchPdf && batchTotal > 1 && (
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={onDownloadBatchPdf}
+                disabled={isBatchDownloading}
+                className="text-xs gap-1.5 h-8 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold cursor-pointer"
+                title="Unduh seluruh data dalam 1 berkas PDF gabungan"
+              >
+                {isBatchDownloading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Mengunduh...</span>
+                  </>
+                ) : (
+                  <>
+                    <Users className="w-3.5 h-3.5" />
+                    <span>{batchDownloadButtonText || `Unduh Massal (${batchTotal})`}</span>
+                  </>
+                )}
+              </Button>
+            )}
+
+            {/* Single Download PDF Button */}
             {onDownloadPdf && (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={onDownloadPdf}
-                className="text-xs gap-1.5"
+                className="text-xs gap-1.5 h-8 px-2.5"
               >
                 <Download className="w-3.5 h-3.5" />
-                {downloadPdfText}
+                <span>{downloadPdfText}</span>
               </Button>
             )}
+
+            {/* Direct Print Button */}
             <Button
               type="button"
               size="sm"
               onClick={handlePrint}
-              className="text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+              className="text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white h-8 px-2.5"
             >
               <Printer className="w-3.5 h-3.5" />
-              {printButtonText}
+              <span>{printButtonText}</span>
             </Button>
           </div>
         </div>
 
-        {/* Paper Sheet Preview Area */}
-        <div className="overflow-y-auto max-h-[78vh] p-3 sm:p-6 bg-slate-200/60 dark:bg-slate-950/70 rounded-xl border flex justify-center">
-          <PrintDocumentCanvas
-            id={documentId}
-            contentRef={contentRef}
-            variant={variant}
-            tenantInfo={tenantInfo}
-            roleTitle={roleTitle}
-            departmentTitle={departmentTitle}
-            documentTitle={documentTitle}
-            documentNumber={documentNumber}
-            academicYear={academicYear}
-          >
-            {children}
-          </PrintDocumentCanvas>
-        </div>
+        {/* ========================================================================= */}
+        {/* ROW 2: KONTROL CEKLIS LOGO KANAN & KIRI KOP SURAT                         */}
+        {/* ========================================================================= */}
+        {allowLogoToggles && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs shrink-0">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+              <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-[11.5px]">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
+                Opsi Kop:
+              </span>
+
+              {/* Checkbox Logo Kiri Pemda */}
+              <label className="flex items-center gap-1.5 cursor-pointer select-none group">
+                <input
+                  type="checkbox"
+                  checked={activeLogoDaerah}
+                  onChange={(e) => handleToggleDaerah(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 cursor-pointer"
+                />
+                <span className="text-slate-700 dark:text-slate-300 group-hover:text-foreground font-medium text-[11.5px]">
+                  Logo Kiri (Pemda)
+                </span>
+              </label>
+
+              {/* Checkbox Logo Kanan Sekolah */}
+              <label className="flex items-center gap-1.5 cursor-pointer select-none group">
+                <input
+                  type="checkbox"
+                  checked={activeLogoSekolah}
+                  onChange={(e) => handleToggleSekolah(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 cursor-pointer"
+                />
+                <span className="text-slate-700 dark:text-slate-300 group-hover:text-foreground font-medium text-[11.5px]">
+                  Logo Kanan (Sekolah)
+                </span>
+              </label>
+            </div>
+
+            <div className="text-[11px] text-muted-foreground flex items-center gap-2">
+              <span className={`inline-block w-2 h-2 rounded-full ${activeLogoSekolah ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+              <span>
+                Logo Kanan: <strong className={activeLogoSekolah ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}>{activeLogoSekolah ? 'Aktif' : 'Nonaktif'}</strong>
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* ROW 3: DESK CANVAS AREA                                                  */}
+        {/* ========================================================================= */}
+        <PrintDeskCanvas
+          deskRef={deskRef}
+          orientation={activeOrientation}
+          zoomMode={zoomMode}
+          onZoomModeChange={setZoomMode}
+        >
+          {children}
+        </PrintDeskCanvas>
       </div>
     </Modal>
   );
 };
 
 // ============================================================================
-// UNIVERSAL COMPONENT: UniversalPrintTab (Tab View for Any Role Dashboard)
+// 8. UNIVERSAL DOCUMENT TAB: UniversalDocumentTab (PIONEER MODEL)
 // ============================================================================
 
-export interface UniversalPrintTabProps {
-  title?: string;
-  description?: string;
-  variant?: 'portrait' | 'landscape';
-  tenantInfo?: PrintHeaderTenantInfo;
-  roleTitle?: string;
-  departmentTitle?: string;
-  documentTitle?: string;
-  documentNumber?: string;
-  academicYear?: string;
+export interface UniversalDocumentTabProps {
+  title?: React.ReactNode;
+  subtitle?: React.ReactNode;
+  orientation?: 'portrait' | 'landscape';
+  allowOrientationToggle?: boolean;
+  onOrientationChange?: (orient: 'portrait' | 'landscape') => void;
+
+  showLogoDaerah?: boolean;
+  showLogoSekolah?: boolean;
+  onToggleLogoDaerah?: (show: boolean) => void;
+  onToggleLogoSekolah?: (show: boolean) => void;
+  allowLogoToggles?: boolean;
+
+  batchTotal?: number;
+  batchCurrentIndex?: number;
+  onPrevBatch?: () => void;
+  onNextBatch?: () => void;
+  batchSelector?: React.ReactNode;
+  onDownloadBatchPdf?: () => void;
+  isBatchDownloading?: boolean;
+  batchDownloadButtonText?: string;
+
   onPrint?: () => void;
   onDownloadPdf?: () => void;
   onRefresh?: () => void;
   downloadPdfText?: string;
   printButtonText?: string;
   extraActions?: React.ReactNode;
-  children?: React.ReactNode;
-  documentId?: string;
-  contentRef?: React.RefObject<HTMLDivElement | null>;
+
+  children: React.ReactNode;
 }
 
-export const UniversalPrintTab: React.FC<UniversalPrintTabProps> = ({
+export const UniversalDocumentTab: React.FC<UniversalDocumentTabProps> = ({
   title = 'Pratinjau & Cetak Dokumen Resmi',
-  description = 'Format kop surat resmi terpusat, siap cetak atau ekspor ke PDF.',
-  variant = 'portrait',
-  tenantInfo,
-  roleTitle,
-  departmentTitle,
-  documentTitle,
-  documentNumber,
-  academicYear,
+  subtitle = 'Format dokumen standar dinas terpusat, siap cetak atau ekspor ke PDF.',
+  orientation: initialOrientation = 'portrait',
+  allowOrientationToggle = false,
+  onOrientationChange,
+  showLogoDaerah: externalShowLogoDaerah,
+  showLogoSekolah: externalShowLogoSekolah,
+  onToggleLogoDaerah,
+  onToggleLogoSekolah,
+  allowLogoToggles = true,
+  batchTotal = 0,
+  batchCurrentIndex = 0,
+  onPrevBatch,
+  onNextBatch,
+  batchSelector,
+  onDownloadBatchPdf,
+  isBatchDownloading = false,
+  batchDownloadButtonText,
   onPrint,
   onDownloadPdf,
   onRefresh,
@@ -835,27 +1156,50 @@ export const UniversalPrintTab: React.FC<UniversalPrintTabProps> = ({
   printButtonText = 'Cetak Dokumen',
   extraActions,
   children,
-  documentId = 'print-tab-document-area',
-  contentRef,
 }) => {
+  const [internalOrientation, setInternalOrientation] = useState<'portrait' | 'landscape'>(initialOrientation);
+  const activeOrientation = onOrientationChange ? initialOrientation : internalOrientation;
+
+  const [internalLogoDaerah, setInternalLogoDaerah] = useState<boolean>(true);
+  const [internalLogoSekolah, setInternalLogoSekolah] = useState<boolean>(true);
+
+  const activeLogoDaerah = externalShowLogoDaerah !== undefined ? externalShowLogoDaerah : internalLogoDaerah;
+  const activeLogoSekolah = externalShowLogoSekolah !== undefined ? externalShowLogoSekolah : internalLogoSekolah;
+
+  const [zoomMode, setZoomMode] = useState<'fit' | 'original'>('fit');
+  const deskRef = useRef<HTMLDivElement | null>(null);
+
+  const handleToggleOrientation = () => {
+    const next = activeOrientation === 'portrait' ? 'landscape' : 'portrait';
+    if (onOrientationChange) onOrientationChange(next);
+    else setInternalOrientation(next);
+  };
+
+  const handleToggleDaerah = (checked: boolean) => {
+    if (onToggleLogoDaerah) onToggleLogoDaerah(checked);
+    else setInternalLogoDaerah(checked);
+  };
+
+  const handleToggleSekolah = (checked: boolean) => {
+    if (onToggleLogoSekolah) onToggleLogoSekolah(checked);
+    else setInternalLogoSekolah(checked);
+  };
+
   const handlePrint = () => {
-    if (onPrint) {
-      onPrint();
-    } else {
-      window.print();
-    }
+    if (onPrint) onPrint();
+    else window.print();
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Top Header Card */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card border rounded-xl p-4 shadow-sm">
+      <div className="bg-card border rounded-xl p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
             <FileText className="w-4 h-4 text-primary" />
             {title}
           </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+          {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -865,56 +1209,198 @@ export const UniversalPrintTab: React.FC<UniversalPrintTabProps> = ({
               variant="outline"
               size="sm"
               onClick={onRefresh}
-              className="text-xs gap-1.5"
+              className="text-xs gap-1.5 h-8 px-2.5"
               title="Perbarui Data Dokumen"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               Refresh
             </Button>
           )}
+
+          {/* Batch Selector */}
+          {batchSelector}
+
+          {/* Batch Paginator */}
+          {batchTotal > 1 && (
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onPrevBatch}
+                disabled={batchCurrentIndex === 0}
+                className="h-7 w-7 p-0 rounded cursor-pointer disabled:opacity-30"
+                title="Sebelumnya"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 px-2 min-w-[50px] text-center">
+                {batchCurrentIndex + 1} / {batchTotal}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onNextBatch}
+                disabled={batchCurrentIndex === batchTotal - 1}
+                className="h-7 w-7 p-0 rounded cursor-pointer disabled:opacity-30"
+                title="Berikutnya"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+
+          {/* Zoom Controller */}
+          <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
+            <button
+              type="button"
+              onClick={() => setZoomMode('fit')}
+              className={cn(
+                'px-2 py-1 rounded text-[11px] font-medium transition-all flex items-center gap-1 cursor-pointer',
+                zoomMode === 'fit'
+                  ? 'bg-white dark:bg-slate-900 text-primary shadow-sm font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Smartphone className="w-3 h-3" />
+              <span>Pas Layar</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setZoomMode('original')}
+              className={cn(
+                'px-2 py-1 rounded text-[11px] font-medium transition-all flex items-center gap-1 cursor-pointer',
+                zoomMode === 'original'
+                  ? 'bg-white dark:bg-slate-900 text-primary shadow-sm font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Maximize2 className="w-3 h-3" />
+              <span>100% Asli</span>
+            </button>
+          </div>
+
+          {allowOrientationToggle && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleToggleOrientation}
+              className="text-xs gap-1.5 h-8 px-2.5"
+            >
+              <RotateCw className="w-3.5 h-3.5" />
+              <span className="capitalize">{activeOrientation}</span>
+            </Button>
+          )}
+
           {extraActions}
+
+          {onDownloadBatchPdf && batchTotal > 1 && (
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              onClick={onDownloadBatchPdf}
+              disabled={isBatchDownloading}
+              className="text-xs gap-1.5 h-8 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold cursor-pointer"
+            >
+              {isBatchDownloading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Mengunduh...</span>
+                </>
+              ) : (
+                <>
+                  <Users className="w-3.5 h-3.5" />
+                  <span>{batchDownloadButtonText || `Unduh Sekelas (${batchTotal})`}</span>
+                </>
+              )}
+            </Button>
+          )}
+
           {onDownloadPdf && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={onDownloadPdf}
-              className="text-xs gap-1.5"
+              className="text-xs gap-1.5 h-8 px-2.5"
             >
               <Download className="w-3.5 h-3.5" />
-              {downloadPdfText}
+              <span>{downloadPdfText}</span>
             </Button>
           )}
+
           <Button
             type="button"
             size="sm"
             onClick={handlePrint}
-            className="text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+            className="text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white h-8 px-2.5"
           >
             <Printer className="w-3.5 h-3.5" />
-            {printButtonText}
+            <span>{printButtonText}</span>
           </Button>
         </div>
       </div>
 
-      {/* Paper Preview Desk */}
-      <div className="overflow-y-auto max-h-[82vh] p-4 sm:p-8 bg-slate-200/60 dark:bg-slate-950/70 rounded-xl border flex justify-center">
-        <PrintDocumentCanvas
-          id={documentId}
-          contentRef={contentRef}
-          variant={variant}
-          tenantInfo={tenantInfo}
-          roleTitle={roleTitle}
-          departmentTitle={departmentTitle}
-          documentTitle={documentTitle}
-          documentNumber={documentNumber}
-          academicYear={academicYear}
-        >
-          {children}
-        </PrintDocumentCanvas>
-      </div>
+      {/* Row 2: Logo Toggles */}
+      {allowLogoToggles && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3.5 py-2 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs shrink-0">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+            <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-[11.5px]">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
+              Opsi Kop:
+            </span>
+
+            <label className="flex items-center gap-1.5 cursor-pointer select-none group">
+              <input
+                type="checkbox"
+                checked={activeLogoDaerah}
+                onChange={(e) => handleToggleDaerah(e.target.checked)}
+                className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 cursor-pointer"
+              />
+              <span className="text-slate-700 dark:text-slate-300 group-hover:text-foreground font-medium text-[11.5px]">
+                Logo Kiri (Pemda)
+              </span>
+            </label>
+
+            <label className="flex items-center gap-1.5 cursor-pointer select-none group">
+              <input
+                type="checkbox"
+                checked={activeLogoSekolah}
+                onChange={(e) => handleToggleSekolah(e.target.checked)}
+                className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 cursor-pointer"
+              />
+              <span className="text-slate-700 dark:text-slate-300 group-hover:text-foreground font-medium text-[11.5px]">
+                Logo Kanan (Sekolah)
+              </span>
+            </label>
+          </div>
+
+          <div className="text-[11px] text-muted-foreground flex items-center gap-2">
+            <span className={`inline-block w-2 h-2 rounded-full ${activeLogoSekolah ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+            <span>
+              Logo Kanan: <strong className={activeLogoSekolah ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}>{activeLogoSekolah ? 'Aktif' : 'Nonaktif'}</strong>
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Desk Canvas Area */}
+      <PrintDeskCanvas
+        deskRef={deskRef}
+        orientation={activeOrientation}
+        zoomMode={zoomMode}
+        onZoomModeChange={setZoomMode}
+      >
+        {children}
+      </PrintDeskCanvas>
     </div>
   );
 };
+
+// Backward-compatible alias
+export const PrintDocumentCanvas = PrintDocumentSheet;
+export const UniversalPrintModal = UniversalDocumentModal;
+export const UniversalPrintTab = UniversalDocumentTab;
 
 export default PrintHeader;

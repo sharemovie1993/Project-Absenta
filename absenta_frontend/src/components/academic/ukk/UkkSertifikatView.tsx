@@ -1,30 +1,29 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Award,
-  Download,
-  ExternalLink,
-  Printer,
   ChevronLeft,
   ChevronRight,
   Loader2,
-  RefreshCw,
   FileCheck2,
-  Users,
   AlertCircle,
 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import { cn } from '@/lib/utils';
-import { sekolahApi } from '@/api/academic/sekolah.api';
+import {
+  UniversalDocumentModal,
+  UniversalDocumentTab,
+  PrintDocumentSheet,
+  usePrintHeaderData,
+} from '@/components/ui';
 import { raporApi } from '@/api/rapor.api';
-import { useAuthStore } from '@/store/authStore';
-import { resolveCoverImageBase64 } from '@/utils/print/rapor/raporShared';
 import {
   generateSertifikatUkkSinglePdf,
   generateSertifikatUkkBatchPdf,
   formatTanggalIndonesia,
+  getDefaultUnitKompetensi,
+  TUT_WURI_LOGO_SVG,
   type SertifikatUkkPrintData,
+  type UkkUnitKompetensi,
 } from '@/utils/print/modules/pdfSertifikatUkk';
+import toast from 'react-hot-toast';
 
 export interface UkkStudentItem {
   id: string;
@@ -44,6 +43,8 @@ export interface UkkStudentItem {
 }
 
 export interface UniversalUkkSertifikatViewProps {
+  isOpen?: boolean;
+  onClose?: () => void;
   siswaId?: string;
   namaSiswa?: string;
   nomorSertifikat?: string;
@@ -54,22 +55,21 @@ export interface UniversalUkkSertifikatViewProps {
   studentsList?: UkkStudentItem[];
   isModal?: boolean;
   hideLayout?: boolean;
-  onClose?: () => void;
   className?: string;
 }
 
 export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
+  isOpen = true,
+  onClose = () => {},
   siswaId,
   namaSiswa,
   nomorSertifikat,
-  kelasId,
+  kelasId: _kelasId,
   kelasNama,
   jurusanId,
-  jurusanNama,
+  jurusanNama = 'Teknik Komputer dan Jaringan',
   studentsList = [],
   isModal = false,
-  hideLayout = false,
-  onClose,
   className = '',
 }) => {
   // Normalize students list
@@ -99,12 +99,18 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
   }, [siswaId, allStudents]);
 
   const [currentIndex, setCurrentIndex] = useState<number>(initialIndex);
-  const [isLoadingPdf, setIsLoadingPdf] = useState<boolean>(true);
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [reloadKey, setReloadKey] = useState<number>(0);
+  const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
+  const [showLogoDaerah, setShowLogoDaerah] = useState<boolean>(true);
+  const [showLogoSekolah, setShowLogoSekolah] = useState<boolean>(true);
+
+  const [isLoadingUkk, setIsLoadingUkk] = useState<boolean>(false);
+  const [ukkRecord, setUkkRecord] = useState<any>(null);
+  const [jurusanSettings, setJurusanSettings] = useState<any>(null);
   const [isBatchDownloading, setIsBatchDownloading] = useState<boolean>(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Print Header Data hook: tenant info, school details, base64 logos
+  const { tenantInfo, logoDaerahBase64, logoSekolahBase64, rawSekolah } = usePrintHeaderData();
+  const sekolahData = rawSekolah as any;
 
   const currentStudent = allStudents[currentIndex] || {
     id: siswaId || '',
@@ -115,555 +121,675 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
 
   const activeSiswaId = currentStudent.id;
 
-  // Render Sertifikat UKK via jsPDF (Instant, reliable, kebal dari timeout puppeteer)
+  // Fetch UKK student record and jurusan settings
   useEffect(() => {
-    if (!activeSiswaId) {
-      setBlobUrl(null);
-      setIsLoadingPdf(false);
-      return;
-    }
-
     let isCancelled = false;
-    setIsLoadingPdf(true);
-    setFetchError(null);
+    if (!activeSiswaId) return;
 
-    const buildPdf = async () => {
+    const loadData = async () => {
+      setIsLoadingUkk(true);
       try {
-        // 1. Fetch School & Tenant Details & UKK Settings (concurrent)
-        const [sekolahRes, ukkRes, settingsRes] = await Promise.allSettled([
-          sekolahApi.getProfile(),
-          // If current student doesn't have score/asesor, fetch from UKK backend
-          !currentStudent.nilai_praktik || !currentStudent.asesor_eksternal
-            ? raporApi.getUkk({ siswa_id: activeSiswaId }).catch(() => null)
-            : Promise.resolve(null),
+        const [ukkRes, settingsRes] = await Promise.allSettled([
+          raporApi.getUkk({ siswa_id: activeSiswaId }).catch(() => null),
           raporApi.getUkkSettings(jurusanId).catch(() => null),
         ]);
 
         if (isCancelled) return;
 
-        const sekolahData: any =
-          sekolahRes.status === 'fulfilled'
-            ? (sekolahRes.value as any)?.data || sekolahRes.value
-            : null;
-        const tenantInfo: any = useAuthStore.getState().user?.tenant;
-
         const ukkRaw = ukkRes.status === 'fulfilled' ? (ukkRes.value as any) : null;
-        const ukkRecord =
+        const record =
           Array.isArray(ukkRaw?.data) && ukkRaw.data.length > 0
             ? ukkRaw.data.find((u: any) => u.siswa_id === activeSiswaId) || ukkRaw.data[0]
             : ukkRaw?.data || null;
 
         const settingsRaw = settingsRes.status === 'fulfilled' ? (settingsRes.value as any) : null;
-        const jurusanSettings = settingsRaw?.data || settingsRaw || null;
-
-        // 2. Resolve Logos Base64
-        const logoDaerahUrl = sekolahData?.logo_daerah || null;
-        const logoSekolahUrl = sekolahData?.logo_url || null;
-
-        const [logoDaerahBase64, logoSekolahBase64] = await Promise.all([
-          resolveCoverImageBase64(logoDaerahUrl),
-          resolveCoverImageBase64(logoSekolahUrl),
-        ]);
-
-        if (isCancelled) return;
-
-        // 3. Assemble Print Data
-        const certData: SertifikatUkkPrintData = {
-          nomor_sertifikat:
-            currentStudent.nomor_sertifikat ||
-            ukkRecord?.nomor_sertifikat ||
-            `UKK/${new Date().getFullYear()}/${currentStudent.nis || '0001'}`,
-          tanggal_terbit: ukkRecord?.tanggal_terbit
-            ? `${sekolahData?.kota || 'Purwakarta'}, ${formatTanggalIndonesia(ukkRecord.tanggal_terbit)}`
-            : `${sekolahData?.kota || 'Purwakarta'}, ${formatTanggalIndonesia(new Date())}`,
-          sekolah: {
-            nama: sekolahData?.nama || tenantInfo?.name || 'SEKOLAH MENENGAH KEJURUAN',
-            alamat: sekolahData?.alamat || '',
-            kota: sekolahData?.kota || 'Purwakarta',
-            telepon: sekolahData?.telepon || '',
-            email: sekolahData?.email || '',
-            website: sekolahData?.website || '',
-            kepala_sekolah: sekolahData?.kepala_sekolah || 'Kepala Sekolah',
-            nip_kepala: sekolahData?.nip_kepala || '-',
-            nama_dinas_atas: sekolahData?.nama_dinas_atas,
-            nama_dinas_bawah: sekolahData?.nama_dinas_bawah,
-            nama_cabang_dinas: sekolahData?.nama_cabang_dinas,
-            print_header_lines: sekolahData?.print_header_lines,
-          },
-          siswa: {
-            nama_siswa: currentStudent.nama_siswa,
-            nis: currentStudent.nis || ukkRecord?.Siswa?.nis,
-            nisn: currentStudent.nisn || ukkRecord?.Siswa?.nisn,
-            nama_kelas: currentStudent.kelas || ukkRecord?.Siswa?.Kelas?.nama_kelas || kelasNama,
-            program_keahlian:
-              jurusanNama ||
-              ukkRecord?.Siswa?.Kelas?.Jurusan?.nama_jurusan ||
-              'Teknik Komputer dan Jaringan',
-            konsentrasi_keahlian:
-              jurusanNama ||
-              ukkRecord?.Siswa?.Kelas?.Jurusan?.nama_jurusan ||
-              'Teknik Komputer dan Jaringan',
-          },
-          ukk: {
-            skema_sertifikasi:
-              jurusanSettings?.skema_sertifikasi || undefined,
-            judul_penugasan:
-              jurusanSettings?.judul_penugasan_id || undefined,
-            judul_penugasan_en:
-              jurusanSettings?.judul_penugasan_en || undefined,
-            predikat: currentStudent.predikat || ukkRecord?.predikat || 'KOMPETEN',
-            nilai_praktik: currentStudent.nilai_praktik ?? ukkRecord?.nilai_praktik ?? 85,
-            nilai_teori: currentStudent.nilai_teori ?? ukkRecord?.nilai_teori ?? 86,
-            nilai_akhir: currentStudent.nilai_akhir ?? ukkRecord?.nilai_akhir,
-            asesor_internal:
-              currentStudent.asesor_internal ||
-              ukkRecord?.asesor_internal ||
-              'Tim Asesor Sekolah',
-            asesor_eksternal:
-              currentStudent.asesor_eksternal ||
-              ukkRecord?.asesor_eksternal ||
-              'Penguji Asosiasi Industri',
-            mitra_nama:
-              currentStudent.mitra_nama ||
-              ukkRecord?.MitraIndustri?.nama ||
-              'Mitra Industri / DU-DI',
-            ttd_asesor_internal:
-              jurusanSettings?.ttd_asesor_internal || undefined,
-            ttd_asesor_eksternal:
-              jurusanSettings?.ttd_asesor_eksternal || undefined,
-            ttd_kepala_sekolah:
-              jurusanSettings?.ttd_kepala_sekolah || undefined,
-            unit_kompetensi:
-              Array.isArray(jurusanSettings?.unit_kompetensi) && jurusanSettings.unit_kompetensi.length > 0
-                ? jurusanSettings.unit_kompetensi
-                : undefined,
-          },
-        };
-
-        // 4. Generate with jsPDF
-        const { blobUrl: generatedUrl } = await generateSertifikatUkkSinglePdf(certData, {
-          logoDaerahBase64,
-          logoSekolahBase64,
-        });
-
-        if (isCancelled) return;
-
-        setBlobUrl((prev) => {
-          if (prev) URL.revokeObjectURL(prev);
-          return generatedUrl;
-        });
-        setIsLoadingPdf(false);
-      } catch (err: any) {
-        if (isCancelled) return;
-        console.error('Failed to generate jsPDF UKK certificate:', err);
-        setFetchError(err.message || 'Gagal merender sertifikat UKK');
-        setIsLoadingPdf(false);
+        setUkkRecord(record);
+        setJurusanSettings(settingsRaw?.data || settingsRaw || null);
+      } catch (err) {
+        console.warn('Error loading UKK details:', err);
+      } finally {
+        if (!isCancelled) setIsLoadingUkk(false);
       }
     };
 
-    buildPdf();
-
+    loadData();
     return () => {
       isCancelled = true;
     };
-  }, [activeSiswaId, reloadKey]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (blobUrl) {
-        URL.revokeObjectURL(blobUrl);
-      }
-    };
-  }, []);
+  }, [activeSiswaId, jurusanId]);
 
   const handlePrev = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex((prev) => prev - 1);
-    }
+    if (currentIndex > 0) setCurrentIndex((prev) => prev - 1);
   };
 
   const handleNext = () => {
-    if (currentIndex < allStudents.length - 1) {
-      setCurrentIndex((prev) => prev + 1);
-    }
+    if (currentIndex < allStudents.length - 1) setCurrentIndex((prev) => prev + 1);
   };
 
   const handleSelectStudent = (newId: string) => {
     const idx = allStudents.findIndex((s) => s.id === newId);
-    if (idx !== -1 && idx !== currentIndex) {
-      setCurrentIndex(idx);
-    }
+    if (idx !== -1 && idx !== currentIndex) setCurrentIndex(idx);
   };
 
+  // Assembled active certificate data
+  const certData: SertifikatUkkPrintData = useMemo(() => {
+    const nomor =
+      currentStudent.nomor_sertifikat ||
+      ukkRecord?.nomor_sertifikat ||
+      `UKK/${new Date().getFullYear()}/${currentStudent.nis || '0001'}`;
+
+    const tanggalTerbit = ukkRecord?.tanggal_terbit
+      ? `${sekolahData?.kota || 'Purwakarta'}, ${formatTanggalIndonesia(ukkRecord.tanggal_terbit)}`
+      : `${sekolahData?.kota || 'Purwakarta'}, ${formatTanggalIndonesia(new Date())}`;
+
+    const unitKompetensiList: UkkUnitKompetensi[] =
+      Array.isArray(jurusanSettings?.unit_kompetensi) && jurusanSettings.unit_kompetensi.length > 0
+        ? jurusanSettings.unit_kompetensi
+        : getDefaultUnitKompetensi(jurusanNama);
+
+    return {
+      nomor_sertifikat: nomor,
+      tanggal_terbit: tanggalTerbit,
+      sekolah: {
+        nama: sekolahData?.nama || tenantInfo?.name || 'SEKOLAH MENENGAH KEJURUAN',
+        alamat: sekolahData?.alamat || tenantInfo?.address || '',
+        kota: sekolahData?.kota || 'Purwakarta',
+        telepon: sekolahData?.telepon || tenantInfo?.phone || '',
+        email: sekolahData?.email || tenantInfo?.email || '',
+        website: sekolahData?.website || tenantInfo?.website || '',
+        kepala_sekolah: sekolahData?.kepala_sekolah || 'Kepala Sekolah',
+        nip_kepala: sekolahData?.nip_kepala || '-',
+        nama_dinas_atas: sekolahData?.nama_dinas_atas || tenantInfo?.nama_dinas_atas,
+        nama_dinas_bawah: sekolahData?.nama_dinas_bawah || tenantInfo?.nama_dinas_bawah,
+        nama_cabang_dinas: sekolahData?.nama_cabang_dinas || tenantInfo?.nama_cabang_dinas,
+        print_header_lines: sekolahData?.print_header_lines || tenantInfo?.print_header_lines,
+      },
+      siswa: {
+        nama_siswa: currentStudent.nama_siswa,
+        nis: currentStudent.nis || ukkRecord?.Siswa?.nis || '-',
+        nisn: currentStudent.nisn || ukkRecord?.Siswa?.nisn || '-',
+        nama_kelas: currentStudent.kelas || ukkRecord?.Siswa?.Kelas?.nama_kelas || kelasNama || 'Kelas XII',
+        program_keahlian: jurusanNama,
+        konsentrasi_keahlian: jurusanNama,
+      },
+      ukk: {
+        skema_sertifikasi: jurusanSettings?.skema_sertifikasi || 'Sertifikasi Kompetensi Keahlian (UKK Mandiri)',
+        judul_penugasan:
+          jurusanSettings?.judul_penugasan_id ||
+          'Implementasi Jaringan LAN dan Troubleshooting Perangkat Komputer',
+        judul_penugasan_en:
+          jurusanSettings?.judul_penugasan_en ||
+          'Local Area Network Implementation and Hardware Troubleshooting',
+        predikat: currentStudent.predikat || ukkRecord?.predikat || 'KOMPETEN',
+        nilai_praktik: currentStudent.nilai_praktik ?? ukkRecord?.nilai_praktik ?? 85,
+        nilai_teori: currentStudent.nilai_teori ?? ukkRecord?.nilai_teori ?? 86,
+        nilai_akhir: currentStudent.nilai_akhir ?? ukkRecord?.nilai_akhir,
+        asesor_internal:
+          currentStudent.asesor_internal ||
+          ukkRecord?.asesor_internal ||
+          'Tim Asesor Sekolah',
+        asesor_eksternal:
+          currentStudent.asesor_eksternal ||
+          ukkRecord?.asesor_eksternal ||
+          'Penguji Asosiasi Industri',
+        mitra_nama:
+          currentStudent.mitra_nama ||
+          ukkRecord?.MitraIndustri?.nama ||
+          'Mitra Industri / DU-DI',
+        ttd_asesor_internal: jurusanSettings?.ttd_asesor_internal,
+        ttd_asesor_eksternal: jurusanSettings?.ttd_asesor_eksternal,
+        ttd_kepala_sekolah: jurusanSettings?.ttd_kepala_sekolah,
+        unit_kompetensi: unitKompetensiList,
+      },
+    };
+  }, [currentStudent, ukkRecord, jurusanSettings, sekolahData, tenantInfo, jurusanNama, kelasNama]);
+
+  // Browser Print
   const handlePrint = () => {
-    if (iframeRef.current && iframeRef.current.contentWindow) {
-      try {
-        iframeRef.current.contentWindow.focus();
-        iframeRef.current.contentWindow.print();
-        return;
-      } catch (err) {
-        console.warn('Iframe print blocked, falling back to window.open', err);
-      }
-    }
-    if (blobUrl) {
-      window.open(blobUrl, '_blank');
+    window.print();
+  };
+
+  // Single PDF Download via jsPDF
+  const handleDownloadSinglePdf = async () => {
+    try {
+      const { blobUrl, filename } = await generateSertifikatUkkSinglePdf(certData, {
+        logoDaerahBase64: showLogoDaerah ? logoDaerahBase64 : null,
+        logoSekolahBase64: showLogoSekolah ? logoSekolahBase64 : null,
+      });
+
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 3000);
+      toast.success('Sertifikat UKK berhasil diunduh');
+    } catch (err) {
+      console.error(err);
+      toast.error('Gagal mengunduh sertifikat PDF');
     }
   };
 
-  const handleDownloadSingle = () => {
-    if (!blobUrl) return;
-    const a = document.createElement('a');
-    a.href = blobUrl;
-    a.download = `Sertifikat_UKK_${(currentStudent.nama_siswa || 'Siswa').replace(/\s+/g, '_')}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
-
-  // Batch download sekelas via jsPDF (Instant compile)
+  // Batch PDF Download via jsPDF
   const handleBatchDownload = async () => {
     if (allStudents.length === 0 || isBatchDownloading) return;
     setIsBatchDownloading(true);
 
     try {
-      const [sekolahRes, settingsRes] = await Promise.all([
-        sekolahApi.getProfile().catch(() => null),
-        raporApi.getUkkSettings(jurusanId).catch(() => null),
-      ]);
-      const sekolahData: any = (sekolahRes as any)?.data || sekolahRes;
-      const settingsData: any = (settingsRes as any)?.data || settingsRes;
-      const tenantInfo: any = useAuthStore.getState().user?.tenant;
-
-      const [logoDaerahBase64, logoSekolahBase64] = await Promise.all([
-        resolveCoverImageBase64(sekolahData?.logo_daerah),
-        resolveCoverImageBase64(sekolahData?.logo_url),
-      ]);
-
       const certList: SertifikatUkkPrintData[] = allStudents.map((s) => ({
         nomor_sertifikat:
           s.nomor_sertifikat || `UKK/${new Date().getFullYear()}/${s.nis || '0001'}`,
         tanggal_terbit: `${sekolahData?.kota || 'Purwakarta'}, ${formatTanggalIndonesia(new Date())}`,
-        sekolah: {
-          nama: sekolahData?.nama || tenantInfo?.name || 'SEKOLAH MENENGAH KEJURUAN',
-          alamat: sekolahData?.alamat || '',
-          kota: sekolahData?.kota || 'Purwakarta',
-          telepon: sekolahData?.telepon || '',
-          email: sekolahData?.email || '',
-          website: sekolahData?.website || '',
-          kepala_sekolah: sekolahData?.kepala_sekolah || 'Kepala Sekolah',
-          nip_kepala: sekolahData?.nip_kepala || '-',
-          nama_dinas_atas: sekolahData?.nama_dinas_atas,
-          nama_dinas_bawah: sekolahData?.nama_dinas_bawah,
-          nama_cabang_dinas: sekolahData?.nama_cabang_dinas,
-          print_header_lines: sekolahData?.print_header_lines,
-        },
+        sekolah: certData.sekolah,
         siswa: {
           nama_siswa: s.nama_siswa,
-          nis: s.nis,
-          nisn: s.nisn,
-          nama_kelas: s.kelas || kelasNama,
-          program_keahlian: jurusanNama || 'Teknik Komputer dan Jaringan',
-          konsentrasi_keahlian: jurusanNama || 'Teknik Komputer dan Jaringan',
+          nis: s.nis || '-',
+          nisn: s.nisn || '-',
+          nama_kelas: s.kelas || kelasNama || 'Kelas XII',
+          program_keahlian: jurusanNama,
+          konsentrasi_keahlian: jurusanNama,
         },
         ukk: {
-          skema_sertifikasi: settingsData?.skema_sertifikasi || undefined,
-          judul_penugasan: settingsData?.judul_penugasan_id || undefined,
-          judul_penugasan_en: settingsData?.judul_penugasan_en || undefined,
+          ...certData.ukk,
           predikat: s.predikat || 'KOMPETEN',
           nilai_praktik: s.nilai_praktik ?? 85,
           nilai_teori: s.nilai_teori ?? 86,
           nilai_akhir: s.nilai_akhir,
-          asesor_internal: s.asesor_internal || 'Tim Asesor Sekolah',
-          asesor_eksternal: s.asesor_eksternal || 'Penguji Asosiasi Industri',
-          mitra_nama: s.mitra_nama || 'Mitra Industri / DU-DI',
-          ttd_asesor_internal: settingsData?.ttd_asesor_internal || undefined,
-          ttd_asesor_eksternal: settingsData?.ttd_asesor_eksternal || undefined,
-          ttd_kepala_sekolah: settingsData?.ttd_kepala_sekolah || undefined,
-          unit_kompetensi:
-            Array.isArray(settingsData?.unit_kompetensi) && settingsData.unit_kompetensi.length > 0
-              ? settingsData.unit_kompetensi
-              : undefined,
         },
       }));
 
-      const { blobUrl: batchUrl, filename: batchFilename } = await generateSertifikatUkkBatchPdf(
+      const { blobUrl, filename } = await generateSertifikatUkkBatchPdf(
         certList,
         kelasNama || 'Sekelas',
         undefined,
-        { logoDaerahBase64, logoSekolahBase64 }
+        {
+          logoDaerahBase64: showLogoDaerah ? logoDaerahBase64 : null,
+          logoSekolahBase64: showLogoSekolah ? logoSekolahBase64 : null,
+        }
       );
 
       const a = document.createElement('a');
-      a.href = batchUrl;
-      a.download = batchFilename;
+      a.href = blobUrl;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(batchUrl), 5000);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+      toast.success(`Berhasil mengunduh sertifikat ${allStudents.length} siswa`);
     } catch (e) {
-      console.error('Failed batch download via jsPDF:', e);
+      console.error('Batch download failed:', e);
+      toast.error('Gagal mengunduh sertifikat massal');
     } finally {
       setIsBatchDownloading(false);
     }
   };
 
-  const getPredikatBadge = (predikat?: string) => {
-    if (!predikat) return null;
-    const upper = predikat.toUpperCase();
-    if (upper.includes('SANGAT BAIK') || upper.includes('SANGAT KOMPETEN')) {
-      return (
-        <Badge
-          variant="outline"
-          className="bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold"
-        >
-          {predikat}
-        </Badge>
-      );
-    }
-    if (upper.includes('BAIK') || upper.includes('KOMPETEN')) {
-      return (
-        <Badge
-          variant="outline"
-          className="bg-blue-50 dark:bg-blue-950/60 border-blue-300 text-blue-700 dark:text-blue-300 text-[11px] font-bold"
-        >
-          {predikat}
-        </Badge>
-      );
-    }
-    if (upper.includes('CUKUP')) {
-      return (
-        <Badge
-          variant="outline"
-          className="bg-amber-50 dark:bg-amber-950/60 border-amber-300 text-amber-700 dark:text-amber-300 text-[11px] font-bold"
-        >
-          {predikat}
-        </Badge>
-      );
-    }
-    return (
-      <Badge variant="outline" className="text-[11px] font-bold">
-        {predikat}
-      </Badge>
-    );
-  };
-
-  return (
-    <div className={cn('flex flex-col w-full h-full space-y-3', className)}>
-      {/* Universal Top Toolbar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {/* Left: Student Switcher & Info */}
-        <div className="flex items-center gap-2 flex-wrap min-w-0">
-          {allStudents.length > 1 && (
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl shrink-0">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrev}
-                disabled={currentIndex === 0 || isLoadingPdf}
-                className="h-7 w-7 p-0 rounded-lg cursor-pointer disabled:opacity-30"
-                title="Siswa Sebelumnya"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 px-2 min-w-[50px] text-center">
-                {currentIndex + 1} / {allStudents.length}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNext}
-                disabled={currentIndex === allStudents.length - 1 || isLoadingPdf}
-                className="h-7 w-7 p-0 rounded-lg cursor-pointer disabled:opacity-30"
-                title="Siswa Berikutnya"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
-          )}
-
-          {/* Student Selector Dropdown if multi-student */}
-          {allStudents.length > 1 ? (
-            <select
-              value={currentStudent.id}
-              onChange={(e) => handleSelectStudent(e.target.value)}
-              disabled={isLoadingPdf}
-              className="text-xs font-semibold py-1.5 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 max-w-[220px] sm:max-w-[280px] truncate cursor-pointer focus:ring-2 focus:ring-indigo-500"
-            >
-              {allStudents.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nama_siswa} {s.nis ? `(${s.nis})` : ''}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
-                <Award className="w-4 h-4" />
-              </div>
-              <span className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
-                {currentStudent.nama_siswa}
-              </span>
-            </div>
-          )}
-
-          {/* Student Badges */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {currentStudent.kelas && (
-              <Badge
-                variant="outline"
-                className="text-[10px] font-bold border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400"
-              >
-                {currentStudent.kelas}
-              </Badge>
-            )}
-            {getPredikatBadge(currentStudent.predikat)}
-            {currentStudent.nomor_sertifikat && (
-              <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                No: {currentStudent.nomor_sertifikat}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Right: Print & Download Actions */}
-        <div className="flex items-center gap-2 flex-wrap shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setReloadKey((k) => k + 1)}
-            disabled={isLoadingPdf}
-            className="h-8 px-2.5 text-xs font-semibold rounded-xl cursor-pointer"
-            title="Muat ulang dokumen"
-          >
-            <RefreshCw
-              className={cn('w-3.5 h-3.5 text-slate-500', isLoadingPdf && 'animate-spin')}
-            />
-            <span className="hidden sm:inline ml-1">Reload</span>
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (blobUrl) window.open(blobUrl, '_blank');
-            }}
-            disabled={!blobUrl || isLoadingPdf}
-            className="h-8 px-3 text-xs font-semibold rounded-xl cursor-pointer disabled:opacity-40"
-            title="Buka sertifikat di tab baru browser"
-          >
-            <ExternalLink className="w-3.5 h-3.5 text-indigo-500 mr-1.5" />
-            <span className="hidden sm:inline">Tab Baru</span>
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handlePrint}
-            disabled={!blobUrl || isLoadingPdf}
-            className="h-8 px-3 text-xs font-semibold rounded-xl bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 cursor-pointer disabled:opacity-40"
-            title="Cetak sertifikat"
-          >
-            <Printer className="w-3.5 h-3.5 text-slate-700 dark:text-slate-200 mr-1.5" />
-            <span>Cetak</span>
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDownloadSingle}
-            disabled={!blobUrl || isLoadingPdf}
-            className="h-8 px-3 text-xs font-semibold rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 cursor-pointer disabled:opacity-40"
-            title="Unduh file PDF"
-          >
-            <Download className="w-3.5 h-3.5 mr-1.5" />
-            <span>Unduh</span>
-          </Button>
-
-          {allStudents.length > 1 && (
-            <Button
-              variant="default"
-              size="sm"
-              onClick={handleBatchDownload}
-              disabled={isBatchDownloading}
-              className="h-8 px-3 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-xs disabled:opacity-50"
-              title="Unduh seluruh sertifikat siswa di kelas ini dalam satu berkas PDF"
-            >
-              {isBatchDownloading ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                  <span>Mengunduh...</span>
-                </>
-              ) : (
-                <>
-                  <Users className="w-3.5 h-3.5 mr-1.5" />
-                  <span>Unduh Sekelas ({allStudents.length})</span>
-                </>
-              )}
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Main PDF Display Canvas */}
-      <div
-        className={cn(
-          'relative w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 overflow-hidden shadow-inner',
-          isModal ? 'h-[calc(92vh-150px)]' : 'h-[calc(100vh-220px)] min-h-[580px]'
-        )}
+  // Student Selector Node for Universal Toolbar
+  const studentSelectorNode = allStudents.length > 1 ? (
+    <div className="flex items-center gap-2">
+      <select
+        value={currentStudent.id}
+        onChange={(e) => handleSelectStudent(e.target.value)}
+        className="text-xs font-semibold py-1 px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 max-w-[200px] sm:max-w-[240px] truncate cursor-pointer focus:ring-2 focus:ring-primary shadow-xs"
       >
-        {isLoadingPdf && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/90 dark:bg-slate-900/90 z-20 backdrop-blur-xs">
-            <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-            <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-              Merender Dokumen Sertifikat UKK Resmi (jsPDF Engine)...
-            </p>
-            <p className="text-[11px] text-slate-400">
-              {currentStudent.nama_siswa} {currentStudent.nis ? `• NIS: ${currentStudent.nis}` : ''}
-            </p>
-          </div>
-        )}
+        {allStudents.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.nama_siswa} {s.nis ? `(${s.nis})` : ''}
+          </option>
+        ))}
+      </select>
+    </div>
+  ) : null;
 
-        {fetchError ? (
-          <div className="h-full flex flex-col items-center justify-center p-8 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-3">
-              <AlertCircle className="w-6 h-6" />
-            </div>
-            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">
-              Gagal Memuat Dokumen Sertifikat
-            </h4>
-            <p className="text-xs text-rose-600 dark:text-rose-400 max-w-md mt-1">
-              {fetchError}
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setReloadKey((k) => k + 1)}
-              className="mt-4 text-xs font-semibold rounded-xl cursor-pointer"
-            >
-              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-              Coba Muat Ulang
-            </Button>
-          </div>
-        ) : blobUrl ? (
-          <iframe
-            ref={iframeRef}
-            src={blobUrl}
-            title={`Sertifikat UKK ${currentStudent.nama_siswa}`}
-            className="w-full h-full rounded-2xl bg-white dark:bg-slate-900 border-none"
-          />
-        ) : !isLoadingPdf ? (
-          <div className="h-full flex flex-col items-center justify-center p-8 text-center text-slate-400">
-            <FileCheck2 className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-3" />
-            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">
-              Tidak Ada Siswa Terpilih
-            </h4>
-            <p className="text-xs text-slate-400 mt-1 max-w-sm">
-              Silakan pilih siswa pada tabel UKK atau daftar rombel untuk meninjau dan mencetak sertifikat.
-            </p>
-          </div>
-        ) : null}
+  // Title & Subtitle for Universal Toolbar
+  const titleNode = (
+    <div className="flex items-center gap-2.5">
+      <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
+        <Award className="w-4 h-4" />
       </div>
+      <span className="font-bold text-sm sm:text-base text-foreground">
+        Sertifikat Uji Kompetensi Keahlian (UKK)
+      </span>
+    </div>
+  );
+
+  const subtitleNode = (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-xs font-bold text-foreground bg-primary/10 text-primary px-2 py-0.5 rounded-md">
+        {currentStudent.nama_siswa}
+      </span>
+      {kelasNama && (
+        <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+          • {kelasNama}
+        </span>
+      )}
+      {jurusanNama && (
+        <span className="text-[11px] font-semibold text-primary/80 hidden sm:inline">
+          • {jurusanNama}
+        </span>
+      )}
+    </div>
+  );
+
+  // Common inner content for both Modal and Tab representations
+  const renderSheetsContent = () => (
+    <>
+      {isLoadingUkk && (
+        <div className="flex items-center justify-center p-4 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl text-amber-800 dark:text-amber-300 text-xs gap-2">
+          <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
+          <span>Memuat data penilaian dan pengaturan UKK...</span>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* LEMBAR 1: MUKA DEPAN SERTIFIKAT RESMI UKK                                  */}
+      {/* ========================================================================= */}
+      <PrintDocumentSheet
+        orientation={orientation}
+        pageNumber={1}
+        totalPages={2}
+        footerText={`Sertifikat Uji Kompetensi Keahlian — ${certData.sekolah?.nama}`}
+        className="relative overflow-hidden"
+      >
+        {/* Certificate Ornate Frame */}
+        <div className="border-[4px] border-double border-slate-700 dark:border-slate-400 p-6 sm:p-9 h-full flex flex-col justify-between relative bg-white">
+          <div>
+            {/* Top Logos Row */}
+            <div className="flex items-center justify-between mb-4">
+              {/* Logo Kiri (Pemda) */}
+              <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center">
+                {showLogoDaerah && logoDaerahBase64 ? (
+                  <img
+                    src={logoDaerahBase64}
+                    alt="Logo Pemda"
+                    className="max-w-full max-h-full object-contain"
+                  />
+                ) : (
+                  <div className="w-16 h-1" />
+                )}
+              </div>
+
+              {/* Logo Tengah (Tut Wuri Handayani) */}
+              <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center">
+                <img
+                  src={TUT_WURI_LOGO_SVG}
+                  alt="Tut Wuri Handayani"
+                  className="max-w-full max-h-full object-contain"
+                />
+              </div>
+
+              {/* Logo Kanan (Sekolah) */}
+              <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center">
+                {showLogoSekolah && logoSekolahBase64 ? (
+                  <img
+                    src={logoSekolahBase64}
+                    alt="Logo Sekolah"
+                    className="max-w-full max-h-full object-contain"
+                  />
+                ) : (
+                  <div className="w-16 h-1" />
+                )}
+              </div>
+            </div>
+
+            {/* Main Official Title */}
+            <div className="text-center space-y-1 mb-5">
+              <h2 className="text-[11px] font-bold tracking-widest text-slate-800 uppercase">
+                REPUBLIK INDONESIA
+              </h2>
+              <h1 className="text-base sm:text-lg font-extrabold uppercase tracking-wider text-sky-800">
+                SERTIFIKAT UJI KOMPETENSI KEAHLIAN
+              </h1>
+              <p className="text-[11px] font-serif italic text-sky-700">
+                CERTIFICATE OF COMPETENCY ASSESSMENT
+              </p>
+              <p className="text-[11px] font-mono text-slate-600 tracking-wide mt-1">
+                Nomor : {certData.nomor_sertifikat}
+              </p>
+            </div>
+
+            {/* Certification Statement */}
+            <div className="text-center my-4 space-y-0.5">
+              <p className="text-[11.5px] text-slate-700">Dengan ini menyatakan bahwa,</p>
+              <p className="text-[10px] text-slate-500 italic">This is to certify that</p>
+            </div>
+
+            {/* Student Name & Identifiers */}
+            <div className="text-center my-4">
+              <h2 className="text-lg sm:text-xl font-bold uppercase tracking-wider text-slate-900 border-b-2 border-slate-300 pb-1 inline-block min-w-[280px]">
+                {certData.siswa.nama_siswa}
+              </h2>
+              <p className="text-[11px] font-mono text-slate-600 mt-1.5">
+                NISN : {certData.siswa.nisn || '-'} • NIS : {certData.siswa.nis || '-'}
+              </p>
+              <p className="text-[11px] font-semibold text-slate-700 mt-0.5">
+                Sekolah Asal : {certData.sekolah?.nama}
+              </p>
+            </div>
+
+            {/* Qualification Assessment Text */}
+            <div className="text-center my-4 space-y-2">
+              <div className="text-[11px] text-slate-700">
+                <p>Telah mengikuti Uji Kompetensi Keahlian pada Kompetensi Keahlian:</p>
+                <p className="text-[10px] text-slate-500 italic">has taken the competency test in Competency of</p>
+              </div>
+
+              <div className="text-sm font-bold uppercase text-slate-900 tracking-wide">
+                {certData.siswa.program_keahlian}
+              </div>
+
+              <div className="text-[11px] text-slate-700 pt-1">
+                <p>pada Judul Penugasan / on Assignment:</p>
+                <p className="font-semibold text-slate-900 italic mt-0.5">
+                  "{certData.ukk.judul_penugasan}"
+                </p>
+                {certData.ukk.judul_penugasan_en && (
+                  <p className="text-[10px] text-slate-500 italic">
+                    "{certData.ukk.judul_penugasan_en}"
+                  </p>
+                )}
+              </div>
+
+              {/* Predikat / Achievement Level */}
+              <div className="pt-2">
+                <p className="text-[11px] text-slate-700">dengan predikat / with achievement level:</p>
+                <div className="inline-block mt-1 px-4 py-1 rounded-full border border-emerald-600 bg-emerald-50 text-emerald-800 font-extrabold text-xs uppercase tracking-wider shadow-xs">
+                  {certData.ukk.predikat}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Official Signatures */}
+          <div className="pt-6 mt-4 border-t border-slate-200">
+            <div className="text-right text-[11px] text-slate-700 mb-3 font-sans">
+              {certData.tanggal_terbit}
+            </div>
+
+            <div className="grid grid-cols-2 gap-8 text-center text-[11px]">
+              {/* Left Sign: Mitra Industri DU/DI */}
+              <div>
+                <p className="font-normal text-slate-700">Mitra Industri / DU-DI,</p>
+                <p className="text-[10px] text-slate-500 italic">Industry Partner</p>
+                <div className="h-14 flex items-center justify-center my-1">
+                  {certData.ukk.ttd_asesor_eksternal ? (
+                    <img
+                      src={certData.ukk.ttd_asesor_eksternal}
+                      alt="TTD Mitra Industri"
+                      className="max-h-12 max-w-full object-contain"
+                    />
+                  ) : (
+                    <div className="h-12" />
+                  )}
+                </div>
+                <p className="font-bold underline text-slate-900">
+                  {certData.ukk.asesor_eksternal || 'Pimpinan / Asesor Industri'}
+                </p>
+                <p className="text-[10px] text-slate-600 font-sans">{certData.ukk.mitra_nama}</p>
+              </div>
+
+              {/* Right Sign: Kepala Sekolah */}
+              <div>
+                <p className="font-normal text-slate-700">Kepala Sekolah,</p>
+                <p className="text-[10px] text-slate-500 italic">Principal</p>
+                <div className="h-14 flex items-center justify-center my-1">
+                  {certData.ukk.ttd_kepala_sekolah ? (
+                    <img
+                      src={certData.ukk.ttd_kepala_sekolah}
+                      alt="TTD Kepala Sekolah"
+                      className="max-h-12 max-w-full object-contain"
+                    />
+                  ) : (
+                    <div className="h-12" />
+                  )}
+                </div>
+                <p className="font-bold underline text-slate-900">
+                  {certData.sekolah?.kepala_sekolah || 'Kepala Sekolah'}
+                </p>
+                <p className="text-[10px] text-slate-600 font-sans">
+                  NIP. {certData.sekolah?.nip_kepala || '-'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </PrintDocumentSheet>
+
+      {/* Visual Sheet Divider */}
+      <div className="print:hidden flex items-center gap-3 my-2 text-xs text-slate-500 font-sans">
+        <div className="h-px bg-slate-300 dark:bg-slate-700 w-24" />
+        <span className="bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-3.5 py-1 rounded-full text-[11px] font-semibold tracking-wide shadow-xs border border-slate-300 dark:border-slate-700">
+          Halaman 2: Transkrip Unit Kompetensi
+        </span>
+        <div className="h-px bg-slate-300 dark:bg-slate-700 w-24" />
+      </div>
+
+      {/* ========================================================================= */}
+      {/* LEMBAR 2: LEMBAR BELAKANG (TRANSKRIP DAFTAR UNIT KOMPETENSI)              */}
+      {/* ========================================================================= */}
+      <PrintDocumentSheet
+        orientation={orientation}
+        pageNumber={2}
+        totalPages={2}
+        footerText={`Transkrip Nilai UKK — ${certData.siswa.nama_siswa} (${certData.siswa.nisn || certData.siswa.nis})`}
+      >
+        <div className="flex flex-col justify-between h-full">
+          <div>
+            {/* Header Lembar Belakang */}
+            <div className="text-center pb-3 mb-4 border-b border-slate-300">
+              <h3 className="text-sm sm:text-base font-bold uppercase tracking-wider text-slate-900">
+                DAFTAR UNIT KOMPETENSI
+              </h3>
+              <p className="text-[11px] font-serif italic text-slate-600">
+                List of Competency Units
+              </p>
+            </div>
+
+            {/* Student Recap Info */}
+            <div className="flex flex-col sm:flex-row justify-between text-[11px] mb-4 gap-2 bg-slate-50 p-2.5 rounded border border-slate-200 font-sans">
+              <div>
+                <span>Nama Siswa: </span>
+                <strong className="text-slate-900">{certData.siswa.nama_siswa}</strong>
+              </div>
+              <div>
+                <span>NISN / NIS: </span>
+                <strong className="text-slate-900 font-mono">{certData.siswa.nisn} / {certData.siswa.nis}</strong>
+              </div>
+              <div>
+                <span>Program Keahlian: </span>
+                <strong className="text-slate-900">{certData.siswa.program_keahlian}</strong>
+              </div>
+            </div>
+
+            {/* Table of Competencies */}
+            <div className="border border-slate-400 overflow-hidden rounded-xs my-3 font-sans">
+              <table className="w-full text-[11px] border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 border-b border-slate-400 text-slate-800">
+                    <th className="w-10 py-1.5 px-2 text-center border-r border-slate-400 font-bold">No</th>
+                    <th className="w-36 py-1.5 px-2 text-center border-r border-slate-400 font-bold">
+                      Kode Unit <br /><span className="text-[9px] font-normal italic">Unit Code</span>
+                    </th>
+                    <th className="py-1.5 px-3 text-left border-r border-slate-400 font-bold">
+                      Judul Unit Kompetensi <br /><span className="text-[9px] font-normal italic">Unit Title</span>
+                    </th>
+                    <th className="w-28 py-1.5 px-2 text-center font-bold">
+                      Capaian <br /><span className="text-[9px] font-normal italic">Achievement</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {certData.ukk.unit_kompetensi?.map((unit, uIdx) => (
+                    <tr
+                      key={uIdx}
+                      className={uIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}
+                    >
+                      <td className="py-1.5 px-2 text-center border-t border-r border-slate-300 font-mono text-[10.5px]">
+                        {uIdx + 1}
+                      </td>
+                      <td className="py-1.5 px-2 text-center border-t border-r border-slate-300 font-mono text-[10.5px]">
+                        {unit.kode_unit}
+                      </td>
+                      <td className="py-1.5 px-3 text-left border-t border-r border-slate-300 font-medium">
+                        {unit.judul_unit}
+                      </td>
+                      <td className="py-1.5 px-2 text-center border-t border-slate-300 font-semibold text-emerald-700">
+                        Kompeten
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Summary Score Table */}
+            <div className="my-4 p-3 bg-slate-50 border border-slate-200 rounded-sm font-sans">
+              <div className="text-[11px] font-bold text-slate-800 mb-1.5">
+                Ringkasan Penilaian Uji Kompetensi Keahlian:
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center text-[11px]">
+                <div className="p-2 bg-white rounded border border-slate-200">
+                  <div className="text-slate-500 text-[10px]">Nilai Praktik</div>
+                  <div className="text-base font-bold text-slate-800">{certData.ukk.nilai_praktik ?? '-'}</div>
+                </div>
+                <div className="p-2 bg-white rounded border border-slate-200">
+                  <div className="text-slate-500 text-[10px]">Nilai Teori</div>
+                  <div className="text-base font-bold text-slate-800">{certData.ukk.nilai_teori ?? '-'}</div>
+                </div>
+                <div className="p-2 bg-white rounded border border-slate-200">
+                  <div className="text-slate-500 text-[10px]">Nilai Akhir</div>
+                  <div className="text-base font-bold text-primary">
+                    {certData.ukk.nilai_akhir ??
+                      Math.round(
+                        (Number(certData.ukk.nilai_praktik || 85) * 0.7) +
+                        (Number(certData.ukk.nilai_teori || 86) * 0.3)
+                      )}
+                  </div>
+                </div>
+                <div className="p-2 bg-white rounded border border-slate-200">
+                  <div className="text-slate-500 text-[10px]">Predikat</div>
+                  <div className="text-base font-extrabold text-emerald-700 uppercase">
+                    {certData.ukk.predikat}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Assessor Signatures on Page 2 */}
+          <div className="pt-4 border-t border-slate-300 mt-6">
+            <div className="grid grid-cols-2 gap-8 text-center text-[11px]">
+              <div>
+                <p className="font-normal text-slate-700">Penguji Internal,</p>
+                <p className="text-[10px] text-slate-500 italic">Internal Assessor</p>
+                <div className="h-14 flex items-center justify-center my-1">
+                  {certData.ukk.ttd_asesor_internal ? (
+                    <img
+                      src={certData.ukk.ttd_asesor_internal}
+                      alt="TTD Asesor Internal"
+                      className="max-h-12 max-w-full object-contain"
+                    />
+                  ) : (
+                    <div className="h-12" />
+                  )}
+                </div>
+                <p className="font-bold underline text-slate-900">
+                  {certData.ukk.asesor_internal}
+                </p>
+                <p className="text-[10px] text-slate-600 font-sans">{certData.sekolah?.nama}</p>
+              </div>
+
+              <div>
+                <p className="font-normal text-slate-700">Penguji Eksternal,</p>
+                <p className="text-[10px] text-slate-500 italic">External Assessor</p>
+                <div className="h-14 flex items-center justify-center my-1">
+                  {certData.ukk.ttd_asesor_eksternal ? (
+                    <img
+                      src={certData.ukk.ttd_asesor_eksternal}
+                      alt="TTD Asesor Eksternal"
+                      className="max-h-12 max-w-full object-contain"
+                    />
+                  ) : (
+                    <div className="h-12" />
+                  )}
+                </div>
+                <p className="font-bold underline text-slate-900">
+                  {certData.ukk.asesor_eksternal}
+                </p>
+                <p className="text-[10px] text-slate-600 font-sans">{certData.ukk.mitra_nama}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </PrintDocumentSheet>
+    </>
+  );
+
+  // If invoked as a modal dialog
+  if (isModal) {
+    return (
+      <UniversalDocumentModal
+        isOpen={isOpen}
+        onClose={onClose}
+        title={titleNode}
+        subtitle={subtitleNode}
+        orientation={orientation}
+        allowOrientationToggle={true}
+        onOrientationChange={setOrientation}
+        showLogoDaerah={showLogoDaerah}
+        showLogoSekolah={showLogoSekolah}
+        onToggleLogoDaerah={setShowLogoDaerah}
+        onToggleLogoSekolah={setShowLogoSekolah}
+        allowLogoToggles={true}
+        batchTotal={allStudents.length}
+        batchCurrentIndex={currentIndex}
+        onPrevBatch={handlePrev}
+        onNextBatch={handleNext}
+        batchSelector={studentSelectorNode}
+        onDownloadBatchPdf={handleBatchDownload}
+        isBatchDownloading={isBatchDownloading}
+        batchDownloadButtonText={allStudents.length > 1 ? `Unduh Sekelas (${allStudents.length})` : undefined}
+        onPrint={handlePrint}
+        onDownloadPdf={handleDownloadSinglePdf}
+        downloadPdfText="PDF"
+        printButtonText="Cetak"
+        size="6xl"
+      >
+        {renderSheetsContent()}
+      </UniversalDocumentModal>
+    );
+  }
+
+  // If invoked as a full-page tab inside a dashboard view
+  return (
+    <div className={className}>
+      <UniversalDocumentTab
+        title={titleNode}
+        subtitle={subtitleNode}
+        orientation={orientation}
+        allowOrientationToggle={true}
+        onOrientationChange={setOrientation}
+        showLogoDaerah={showLogoDaerah}
+        showLogoSekolah={showLogoSekolah}
+        onToggleLogoDaerah={setShowLogoDaerah}
+        onToggleLogoSekolah={setShowLogoSekolah}
+        allowLogoToggles={true}
+        batchTotal={allStudents.length}
+        batchCurrentIndex={currentIndex}
+        onPrevBatch={handlePrev}
+        onNextBatch={handleNext}
+        batchSelector={studentSelectorNode}
+        onDownloadBatchPdf={handleBatchDownload}
+        isBatchDownloading={isBatchDownloading}
+        batchDownloadButtonText={allStudents.length > 1 ? `Unduh Sekelas (${allStudents.length})` : undefined}
+        onPrint={handlePrint}
+        onDownloadPdf={handleDownloadSinglePdf}
+        downloadPdfText="PDF"
+        printButtonText="Cetak"
+      >
+        {renderSheetsContent()}
+      </UniversalDocumentTab>
     </div>
   );
 };
