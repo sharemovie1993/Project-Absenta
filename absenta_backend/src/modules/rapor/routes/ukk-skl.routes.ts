@@ -67,6 +67,23 @@ export default async function ukkSklRoutes(fastify: any) {
     UkkSklController.getUkkSettings
   );
 
+  // Rekap semua tahun ajaran untuk satu jurusan
+  fastify.get(
+    '/ukk/settings/all',
+    {
+      preHandler: [
+        requireCapability([
+          'academic.subjects.view.list',
+          'academic.students.view.list',
+          'hubin.pkl.manage',
+          'academic.manage.academic',
+        ]),
+        determineDataScope(),
+      ],
+    },
+    UkkSklController.getAllUkkSettingsSummary
+  );
+
   fastify.post(
     '/ukk/settings',
     {

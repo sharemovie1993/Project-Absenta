@@ -193,6 +193,13 @@ export const raporApi = {
     const response = await api.get('/rapor/ukk/settings', { params });
     return response.data;
   },
+  /** Rekap semua tahun ajaran yang pernah disimpan untuk satu jurusan */
+  getAllUkkSettingsSummary: async (jurusanId: string) => {
+    const response = await api.get('/rapor/ukk/settings/all', {
+      params: { jurusan_id: jurusanId },
+    });
+    return response.data;
+  },
   saveUkkSettings: async (jurusanId: string, data: any, tahunAjaran?: string) => {
     const response = await api.post('/rapor/ukk/settings', {
       jurusan_id: jurusanId,

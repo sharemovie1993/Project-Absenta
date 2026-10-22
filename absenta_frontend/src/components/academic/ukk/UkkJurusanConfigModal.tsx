@@ -13,6 +13,7 @@ import {
   PenTool,
   Calendar,
   ShieldCheck,
+  TableIcon,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -22,6 +23,7 @@ import { DigitalSignatureField } from '@/components/ui/DigitalSignatureField';
 import { raporApi } from '@/api/rapor.api';
 import { getDefaultUnitKompetensi, type UkkUnitKompetensi } from '@/utils/print/modules/pdfSertifikatUkk';
 import { getAvailableRegulatoryEditions } from '@/config/ukkRegulatoryRegistry';
+import { UkkSettingsRekapTable } from './UkkSettingsRekapTable';
 import { cn } from '@/lib/utils';
 
 export interface UkkJurusanConfigModalProps {
@@ -41,6 +43,7 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
 }) => {
   const queryClient = useQueryClient();
 
+  const [activeView, setActiveView] = useState<'form' | 'rekap'>('rekap');
   const [tahunAjaran, setTahunAjaran] = useState<string>(initialTahunAjaran || '2025/2026');
   const [edisiPedoman, setEdisiPedoman] = useState<string>('2026');
   const [skemaSertifikasi, setSkemaSertifikasi] = useState('');
@@ -148,9 +151,10 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ukk-settings', jurusanId] });
+      queryClient.invalidateQueries({ queryKey: ['ukk-settings-rekap', jurusanId] });
       queryClient.invalidateQueries({ queryKey: ['kaprog-ukk-list'] });
       toast.success(`Pengaturan UKK Jurusan ${jurusanNama} (TA ${tahunAjaran}) berhasil disimpan!`);
-      onClose();
+      setActiveView('rekap');
     },
     onError: (err: any) => {
       toast.error(err.message || 'Gagal menyimpan pengaturan UKK');
@@ -176,6 +180,68 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
             Lembar Belakang (Daftar Unit Kompetensi SKKNI/KKNI) pada setiap sertifikat siswa.
           </div>
         </div>
+
+        {/* Tab Switcher: Rekap | Edit */}
+        <div className="flex items-center gap-1 bg-muted/40 rounded-xl p-1 text-xs font-medium">
+          <button
+            type="button"
+            onClick={() => setActiveView('rekap')}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all',
+              activeView === 'rekap'
+                ? 'bg-background shadow text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <TableIcon className="w-3.5 h-3.5" />
+            Rekap Semua Tahun
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView('form')}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all',
+              activeView === 'form'
+                ? 'bg-background shadow text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Settings2 className="w-3.5 h-3.5" />
+            Edit Konfigurasi
+            {tahunAjaran && (
+              <span className="ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px]">
+                {tahunAjaran}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* ===== VIEW: REKAP TABEL ===== */}
+        {activeView === 'rekap' && (
+          <>
+            <UkkSettingsRekapTable
+              jurusanId={jurusanId}
+              jurusanNama={jurusanNama}
+              activeTahunAjaran={initialTahunAjaran}
+              onEditYear={(tahun) => {
+                setTahunAjaran(tahun);
+                // Auto-set edisi pedoman sesuai tahun
+                if (tahun === '2023/2024') setEdisiPedoman('2023_2024');
+                else if (tahun === '2024/2025') setEdisiPedoman('2025');
+                else setEdisiPedoman('2026');
+                setActiveView('form');
+              }}
+            />
+            <div className="flex items-center justify-end pt-2">
+              <Button variant="outline" onClick={onClose}>
+                Tutup
+              </Button>
+            </div>
+          </>
+        )}
+
+        {/* ===== VIEW: FORM EDIT ===== */}
+        {activeView === 'form' && (<>
 
         {/* Kontrol Fleksibilitas Versi Historis: Tahun Ajaran & Edisi Juknis Regulasi */}
         <div className="bg-slate-50 dark:bg-slate-900/60 border rounded-xl p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
@@ -403,6 +469,8 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
             {saveMutation.isPending ? 'Menyimpan...' : 'Simpan Pengaturan UKK'}
           </Button>
         </div>
+        </>
+      )}
       </div>
     </Modal>
   );

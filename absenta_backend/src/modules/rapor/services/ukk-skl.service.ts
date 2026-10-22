@@ -231,6 +231,36 @@ export class UkkSklService {
     }
   }
 
+  /**
+   * Mengambil semua pengaturan UKK historis per jurusan (semua tahun ajaran yang pernah disimpan).
+   * Hasilnya berupa array ringkasan: { tahun_ajaran, edisi_pedoman, skema_sertifikasi, judul_penugasan_id, unit_kompetensi_count }
+   */
+  static async getAllUkkSettingsSummary(tenantId: string, jurusanId: string) {
+    const prefix = `ukk_settings_${jurusanId}_`;
+    const allConfigs = await prisma.config.findMany({
+      where: {
+        tenant_id: tenantId,
+        key: { startsWith: prefix },
+      },
+      orderBy: { key: 'asc' },
+    });
+
+    return allConfigs.map((cfg) => {
+      const sanitizedYear = cfg.key.slice(prefix.length); // e.g. "2023_2024"
+      const tahunAjaran = sanitizedYear.replace(/_/g, '/').replace('//', '_'); // "2023/2024"
+      let parsed: any = {};
+      try { parsed = JSON.parse(cfg.value || '{}'); } catch {}
+      return {
+        tahun_ajaran: tahunAjaran,
+        edisi_pedoman: parsed.edisi_pedoman || null,
+        skema_sertifikasi: parsed.skema_sertifikasi || null,
+        judul_penugasan_id: parsed.judul_penugasan_id || null,
+        unit_kompetensi_count: Array.isArray(parsed.unit_kompetensi) ? parsed.unit_kompetensi.length : 0,
+        updated_at: cfg.updated_at,
+      };
+    });
+  }
+
   static async saveUkkSettings(tenantId: string, jurusanId: string, data: any, tahunAjaran?: string) {
     const value = JSON.stringify(data);
     const targetYear = tahunAjaran || data?.tahun_ajaran;

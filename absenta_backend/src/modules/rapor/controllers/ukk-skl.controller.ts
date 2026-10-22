@@ -139,6 +139,23 @@ export class UkkSklController {
     }
   }
 
+  static async getAllUkkSettingsSummary(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { jurusan_id } = req.query;
+
+      if (!jurusan_id) {
+        return reply.status(400).send({ success: false, message: 'jurusan_id wajib disertakan' });
+      }
+
+      const result = await UkkSklService.getAllUkkSettingsSummary(tenant_id, jurusan_id);
+      return sendResponse(reply, 200, true, 'Rekap pengaturan UKK semua tahun berhasil dimuat', result);
+    } catch (error) {
+      appLogger.error({ err: error }, 'getAllUkkSettingsSummary error');
+      return sendError(reply, 500, 'Gagal memuat rekap pengaturan UKK', error);
+    }
+  }
+
   static async saveUkkSettings(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
