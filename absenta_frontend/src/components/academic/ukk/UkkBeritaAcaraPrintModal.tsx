@@ -1,11 +1,8 @@
 import React, { useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Printer, Download, X, Calendar, MapPin, CheckCircle2 } from 'lucide-react';
+import { Printer, Download, Calendar, MapPin, CheckCircle2 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
-import { PrintHeader } from '@/components/ui/PrintHeader';
-import { sekolahApi } from '@/api/academic/sekolah.api';
-import { useAuthStore } from '@/store/authStore';
+import { PrintHeader, usePrintHeaderData } from '@/components/ui/PrintHeader';
 import {
   generatePdfUkkBeritaAcara,
   type UkkBeritaAcaraItem,
@@ -32,29 +29,8 @@ export const UkkBeritaAcaraPrintModal: React.FC<UkkBeritaAcaraPrintModalProps> =
 }) => {
   const printRef = useRef<HTMLDivElement | null>(null);
 
-  const { data: sekolahRes } = useQuery({
-    queryKey: ['sekolah-profile-header'],
-    queryFn: () => sekolahApi.getProfile().catch(() => null),
-    enabled: isOpen,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const sekolahData = (sekolahRes as any)?.data || sekolahRes || {};
-  const tenantUser = useAuthStore.getState().user?.tenant;
-
-  const tenantInfoForHeader = {
-    name: sekolahData?.nama || tenantUser?.name || 'SEKOLAH MENENGAH KEJURUAN',
-    logo_url: sekolahData?.logo_url || null,
-    logo_daerah_url: sekolahData?.logo_daerah || null,
-    address: sekolahData?.alamat || '',
-    phone: sekolahData?.telepon || '',
-    email: sekolahData?.email || '',
-    website: sekolahData?.website || '',
-    nama_dinas_atas: sekolahData?.nama_dinas_atas,
-    nama_dinas_bawah: sekolahData?.nama_dinas_bawah,
-    nama_cabang_dinas: sekolahData?.nama_cabang_dinas,
-    print_header_lines: sekolahData?.print_header_lines,
-  };
+  // Universal Hook: Resolves active Tenant & Sekolah data, plus pre-converts logos to Base64
+  const { tenantInfo, logoDaerahBase64, logoSekolahBase64, rawSekolah } = usePrintHeaderData();
 
   if (!beritaAcara) return null;
 
@@ -69,18 +45,22 @@ export const UkkBeritaAcaraPrintModal: React.FC<UkkBeritaAcaraPrintModalProps> =
         tahunPelajaran: tahunPelajaran || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
         judulPenugasan,
         sekolah: {
-          nama: sekolahData?.nama || 'SEKOLAH MENENGAH KEJURUAN',
-          alamat: sekolahData?.alamat || '',
-          kota: sekolahData?.kota || 'Purwakarta',
-          telepon: sekolahData?.telepon,
-          email: sekolahData?.email,
-          website: sekolahData?.website,
-          kepala_sekolah: sekolahData?.kepala_sekolah || 'Kepala Sekolah',
-          nip_kepala: sekolahData?.nip_kepala || '-',
-          nama_dinas_atas: sekolahData?.nama_dinas_atas,
-          nama_dinas_bawah: sekolahData?.nama_dinas_bawah,
-          nama_cabang_dinas: sekolahData?.nama_cabang_dinas,
-          print_header_lines: sekolahData?.print_header_lines,
+          nama: tenantInfo.name || 'SEKOLAH MENENGAH KEJURUAN',
+          alamat: tenantInfo.address || '',
+          kota: (rawSekolah as any)?.kota || 'Purwakarta',
+          telepon: tenantInfo.phone,
+          email: tenantInfo.email,
+          website: tenantInfo.website,
+          kepala_sekolah: (rawSekolah as any)?.kepala_sekolah || 'Kepala Sekolah',
+          nip_kepala: (rawSekolah as any)?.nip_kepala || '-',
+          nama_dinas_atas: tenantInfo.nama_dinas_atas,
+          nama_dinas_bawah: tenantInfo.nama_dinas_bawah,
+          nama_cabang_dinas: tenantInfo.nama_cabang_dinas,
+          print_header_lines: tenantInfo.print_header_lines,
+        },
+        options: {
+          logoDaerahBase64,
+          logoSekolahBase64,
         },
         beritaAcara,
       };
@@ -149,7 +129,7 @@ export const UkkBeritaAcaraPrintModal: React.FC<UkkBeritaAcaraPrintModalProps> =
             style={{ minHeight: '297mm' }}
           >
             {/* === KOP SURAT RESMI MENGGUNAKAN KOMPONEN PrintHeader.tsx === */}
-            <PrintHeader variant="portrait" tenantInfo={tenantInfoForHeader} />
+            <PrintHeader variant="portrait" tenantInfo={tenantInfo} />
 
             {/* Title */}
             <div className="text-center my-4 space-y-0.5">
@@ -167,7 +147,7 @@ export const UkkBeritaAcaraPrintModal: React.FC<UkkBeritaAcaraPrintModalProps> =
             {/* Narration */}
             <p className="text-justify indent-8 my-4 text-[11.5px] leading-normal">
               Pada hari ini, tanggal <strong>{beritaAcara.tanggal}</strong>, bertempat di Ruang/Laboratorium{' '}
-              <strong>{beritaAcara.ruang}</strong> {sekolahData?.nama || 'SMK'}, telah diselenggarakan
+              <strong>{beritaAcara.ruang}</strong> {tenantInfo.name || 'SMK'}, telah diselenggarakan
               Ujian Kompetensi Keahlian (UKK) untuk Program Keahlian <strong>{jurusanNama}</strong> dengan rincian pelaksanaan sebagai berikut:
             </p>
 
