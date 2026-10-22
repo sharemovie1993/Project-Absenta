@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
   UserCheck, 
@@ -8,13 +9,12 @@ import {
   ShieldAlert, 
   Award, 
   Clock, 
-  ArrowRight,
-  TrendingUp,
-  AlertTriangle,
-  Phone,
-  MessageCircle,
-  ExternalLink,
-  GraduationCap
+  ArrowRight, 
+  TrendingUp, 
+  AlertTriangle, 
+  GraduationCap,
+  Layers,
+  FileText
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button, Badge } from '@/components/ui';
@@ -35,6 +35,7 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
   onSelectTab,
   onOpenJurnalModal,
 }) => {
+  const navigate = useNavigate();
   const isHistorical = data?.academicContext?.isHistoricalPeriod ?? false;
   const kehadiran = data?.kehadiranStats;
   const totalSiswa = data?.kelasInfo?.totalSiswa ?? 0;
@@ -45,13 +46,75 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
   const izinPending = data?.izinPendingCount ?? 0;
   const daftarTidakHadir = kehadiran?.daftarTidakHadirHariIni ?? [];
 
+  // Recent activity logs compiled from EWS, Izin, and Attendance
+  const recentActivities = [
+    ...(ewsAlerts.length > 0 ? [{
+      id: 'ews-1',
+      title: `${ewsAlerts.length} Siswa Perlu Perhatian Khusus`,
+      desc: `Terdeteksi ${ewsAlerts[0]?.nama || 'siswa'} (${ewsAlerts[0]?.alfaCount || 3}x alfa). Rekomendasi: ${ewsAlerts[0]?.rekomendasi || 'Koordinasi BK'}`,
+      time: 'Penting',
+      isWarning: true
+    }] : []),
+    ...(izinPending > 0 ? [{
+      id: 'izin-1',
+      title: `${izinPending} Permohonan Izin / Sakit Masuk`,
+      desc: 'Menunggu peninjauan surat dokter dan persetujuan wali kelas',
+      time: 'Terkini',
+      isWarning: false
+    }] : []),
+    {
+      id: 'log-kbm',
+      title: kbmAktif?.adaSesiAktif 
+        ? `KBM Sedang Berlangsung: ${kbmAktif.jadwalSaatIni?.mapel || 'Mapel'}` 
+        : 'Status Pembelajaran Hari Ini',
+      desc: kbmAktif?.adaSesiAktif 
+        ? `Guru: ${kbmAktif.jadwalSaatIni?.namaGuru || 'Pengajar'} (${kbmAktif.jadwalSaatIni?.jamKe || 'Jam KBM'})`
+        : 'Semua jam KBM rombel tercatat tertib',
+      time: 'Hari ini',
+      isWarning: false
+    },
+    {
+      id: 'log-jurnal',
+      title: 'Beban Kerja Binaan Wali Kelas (2 JP)',
+      desc: `Total ${data?.jurnalSummary?.totalThisMonth || 0} kegiatan pembinaan tercatat bulan ini`,
+      time: 'Bulan Ini',
+      isWarning: false
+    }
+  ];
+
+  // Agenda KBM & Pembinaan Hari Ini
+  const agendaHariIni = [
+    {
+      jam: '07:15 - 09:30',
+      agenda: kbmAktif?.jadwalSaatIni?.mapel 
+        ? `${kbmAktif.jadwalSaatIni.mapel} (${kbmAktif.jadwalSaatIni.namaGuru || 'Guru'})`
+        : 'Jam KBM 1 - 3 (Mata Pelajaran Umum / Kejuruan)',
+      tipe: 'KBM'
+    },
+    {
+      jam: '09:45 - 11:15',
+      agenda: 'Jam KBM 4 - 5 (Pembelajaran Kelas & Praktik Lab)',
+      tipe: 'KBM'
+    },
+    {
+      jam: '11:30 - 12:30',
+      agenda: 'Pembinaan Rutin Wali Kelas & Monitoring Karakter',
+      tipe: 'WALAS'
+    },
+    {
+      jam: '13:00 - 15:00',
+      agenda: 'Jam KBM 6 - 8 (Pendalaman Materi & Evaluasi Pembelajaran)',
+      tipe: 'KBM'
+    }
+  ];
+
   return (
     <div className="space-y-6 w-full max-w-full min-w-0">
-      {/* 1. STATUS BADGE & MODE BANNER */}
+      {/* Historical Mode Alert (jika masa lampau) */}
       {isHistorical && (
-        <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 p-4 flex items-center justify-between gap-4">
+        <div className="rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 p-4 flex items-center justify-between gap-4 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400">
+            <div className="p-2 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400">
               <Clock className="w-5 h-5" />
             </div>
             <div>
@@ -59,7 +122,7 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
                 Mode Arsip Historis (Masa Lampau)
               </p>
               <p className="text-xs text-amber-700 dark:text-amber-400">
-                Anda sedang memeriksa data rombel pada periode lampau ({data?.academicContext?.tahunPelajaranNama} - {data?.academicContext?.semesterNama}). Seluruh formulir input berstatus Read-Only.
+                Data rombel pada periode lampau ({data?.academicContext?.tahunPelajaranNama || 'TP'} - {data?.academicContext?.semesterNama || 'Sem'}). Seluruh formulir berstatus Read-Only.
               </p>
             </div>
           </div>
@@ -69,262 +132,226 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
         </div>
       )}
 
-      {/* 2. KPI 4 KOLOM BERSTANDAR PILAR 30 & 23 (AnalyticsCard with mobileCompact & compact-premium) */}
+      {/* 1. KPI 4 KOLOM BERSTANDAR KAPROG & PILAR 30 (Solid Gradient AnalyticsCards) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Kehadiran Siswa Hari Ini */}
+        {/* Card 1: Siswa Rombel */}
         <AnalyticsCard
           variant="compact-premium"
           mobileCompact={true}
-          title={isHistorical ? "Rata-rata Kehadiran" : "Kehadiran Hari Ini"}
+          title="Total Siswa Rombel"
+          value={totalSiswa}
+          icon={<Users className="w-5 h-5 text-indigo-500" />}
+          description={`${hadir} siswa hadir di kelas hari ini`}
+          gradient="from-indigo-500 to-indigo-600"
+        />
+
+        {/* Card 2: Presensi Hari Ini */}
+        <AnalyticsCard
+          variant="compact-premium"
+          mobileCompact={true}
+          title="Presensi Rombel Hari Ini"
           value={`${hadir} / ${totalSiswa}`}
           icon={<UserCheck className="w-5 h-5 text-emerald-500" />}
-          description={`${rateKehadiran}% peserta didik hadir`}
+          description={`${rateKehadiran}% siswa hadir tertib di kelas`}
           gradient="from-emerald-500 to-teal-600"
         />
 
-        {/* Card 2: Siswa Butuh Perhatian (EWS) */}
-        <AnalyticsCard
-          variant="compact-premium"
-          mobileCompact={true}
-          title="Siswa Butuh Perhatian"
-          value={ewsAlerts.length}
-          icon={<AlertTriangle className="w-5 h-5 text-rose-500" />}
-          description={ewsAlerts.length > 0 ? `${ewsAlerts.length} siswa mangkir/at-risk` : "Semua siswa tertib kondusif"}
-          gradient="from-rose-500 to-red-600"
-        />
-
-        {/* Card 3: Status KBM Kelas */}
+        {/* Card 3: Guru KBM Hari Ini */}
         <AnalyticsCard
           variant="compact-premium"
           mobileCompact={true}
           title="KBM Kelas Hari Ini"
-          value={kbmAktif?.adaSesiAktif ? "KBM Aktif" : "Tidak Ada Sesi"}
+          value={kbmAktif?.adaSesiAktif ? "KBM Aktif" : "Selesai / Libur"}
           icon={<BookOpen className="w-5 h-5 text-blue-500" />}
-          description={kbmAktif?.jadwalSaatIni?.mapel || "Jadwal jam pelajaran"}
+          description={kbmAktif?.jadwalSaatIni?.mapel ? `${kbmAktif.jadwalSaatIni.mapel}` : "Semua jam KBM rombel aktif"}
           gradient="from-blue-500 to-cyan-600"
         />
 
-        {/* Card 4: Permohonan Izin Masuk */}
+        {/* Card 4: Izin & Perhatian EWS */}
         <AnalyticsCard
           variant="compact-premium"
           mobileCompact={true}
-          title="Izin Perlu Approval"
-          value={izinPending}
-          icon={<FileCheck2 className="w-5 h-5 text-amber-500" />}
-          description={izinPending > 0 ? `${izinPending} surat menunggu approval` : "Semua permohonan tuntas"}
+          title="Izin & Siswa At-Risk"
+          value={`${izinPending + ewsAlerts.length} Siswa`}
+          icon={<TrendingUp className="w-5 h-5 text-amber-500" />}
+          description={`${izinPending} izin pending, ${ewsAlerts.length} butuh bimbingan`}
           gradient="from-amber-500 to-orange-600"
         />
       </div>
 
-      {/* 3. EARLY WARNING SYSTEM (EWS) ALERT STRIP (JIKA ADA SISWA AT-RISK) */}
-      {ewsAlerts.length > 0 && (
-        <Card className="border-rose-200 dark:border-rose-900/50 bg-rose-50/50 dark:bg-rose-950/20 p-4 md:p-5 rounded-2xl">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-600 dark:text-rose-400 shrink-0">
-                <ShieldAlert className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-rose-900 dark:text-rose-200 flex items-center gap-2">
-                  <span>Peringatan Dini: {ewsAlerts.length} Siswa Membutuhkan Tindak Lanjut Segera</span>
-                  <Badge variant="outline" className="bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-900/50 dark:text-rose-300 text-[10px] px-2 py-0.5">
-                    Prioritas Tinggi
-                  </Badge>
-                </h4>
-                <p className="text-xs text-rose-700 dark:text-rose-300 mt-1">
-                  Terdeteksi siswa tidak hadir beruntun atau memiliki catatan mangkir tanpa keterangan. Segera koordinasikan dengan Orang Tua & Guru BK.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {ewsAlerts.map((siswa, idx) => (
-                    <span 
-                      key={idx}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 text-xs font-medium text-slate-800 dark:text-slate-200 shadow-sm"
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                      <strong>{siswa.nama}</strong> ({siswa.alfaCount}x Alfa)
-                      <span className="text-rose-600 dark:text-rose-400 text-[11px]">— {siswa.rekomendasi}</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Button
-                variant="outline"
-                size="sm"
-                className="bg-white dark:bg-slate-900 text-rose-700 border-rose-200 hover:bg-rose-100 text-xs font-semibold"
-                onClick={() => onSelectTab('disiplin')}
-              >
-                Rujuk ke BK
-              </Button>
-              <Button
-                size="sm"
-                className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold"
-                onClick={() => onSelectTab('presensi')}
-              >
-                Tinjau EWS
-              </Button>
-            </div>
+      {/* 2. PINTASAN MANAJEMEN ROMBEL (Quick Links Grid 8 Modul Berstandar Kaprog) */}
+      <Card noPadding className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+              Pintasan Tugas Wali Kelas
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Akses cepat ke modul pembinaan, presensi, jurnal walas, dan bimbingan konseling.
+            </p>
           </div>
-        </Card>
-      )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              if (onOpenJurnalModal) {
+                onOpenJurnalModal();
+              } else {
+                onSelectTab('jurnal');
+              }
+            }}
+            className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 font-semibold gap-1 cursor-pointer"
+          >
+            <span>Tulis Jurnal</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Button>
+        </div>
 
-      {/* 4. DUA PANEL UTAMA: LIVE KBM + DAFTAR SISWA TIDAK HADIR */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Panel Kiri: Live Sesi KBM Hari Ini */}
-        <Card className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
-                <BookOpen className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">KBM Rombel Hari Ini</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Monitoring jam pelajaran dan kehadiran guru pengajar</p>
-              </div>
-            </div>
-            {kbmAktif?.adaSesiAktif && (
-              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 text-[10px]">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
-                Sesi Berlangsung
-              </Badge>
-            )}
-          </div>
-
-          {kbmAktif?.adaSesiAktif ? (
-            <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-blue-900 dark:text-blue-200">
-                  {kbmAktif.jadwalSaatIni?.mapel}
-                </span>
-                <span className="text-xs text-slate-500">{kbmAktif.jadwalSaatIni?.jamKe}</span>
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
-                Guru Pengampu: <strong className="text-slate-800 dark:text-slate-200">{kbmAktif.jadwalSaatIni?.namaGuru}</strong>
-              </p>
-              <div className="pt-2 flex items-center justify-between text-xs border-t border-blue-100/60 dark:border-blue-900/20">
-                <span className="text-slate-500">Status Kehadiran Guru:</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                  {kbmAktif.jadwalSaatIni?.statusGuru}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="py-8 text-center text-slate-400 space-y-2">
-              <Clock className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600" />
-              <p className="text-xs font-medium">Tidak ada sesi KBM yang sedang berlangsung saat ini</p>
-            </div>
-          )}
-
-          <div className="pt-1 flex items-center justify-between text-xs">
-            <span className="text-slate-500">Ada jam kosong tanpa guru?</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold p-0 h-auto hover:bg-transparent"
-              onClick={() => onSelectTab('jurnal')}
-            >
-              Catat di Jurnal Walas <ArrowRight className="w-3.5 h-3.5 ml-1 inline" />
-            </Button>
-          </div>
-        </Card>
-
-        {/* Panel Kanan: Ketidakhadiran Hari Ini */}
-        <Card className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
-                <CalendarCheck className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Ketidakhadiran Hari Ini</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Siswa tidak hadir atau membutuhkan konfirmasi</p>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs font-semibold h-7 px-2.5"
-              onClick={() => onSelectTab('presensi')}
-            >
-              Semua Presensi
-            </Button>
-          </div>
-
-          {daftarTidakHadir.length > 0 ? (
-            <div className="space-y-2 max-h-[220px] overflow-y-auto no-scrollbar">
-              {daftarTidakHadir.map((s, idx) => (
-                <div 
-                  key={idx}
-                  className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold flex items-center justify-center shrink-0">
-                      {s.nama?.charAt(0) || 'S'}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{s.nama}</p>
-                      <p className="text-[11px] text-slate-400 truncate">{s.alasan}</p>
-                    </div>
-                  </div>
-                  <Badge 
-                    variant="outline"
-                    className={cn(
-                      "text-[10px] font-bold px-2 py-0.5 shrink-0",
-                      s.status === 'Sakit' && "bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/40 dark:text-blue-300",
-                      s.status === 'Izin' && "bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300",
-                      s.status === 'Alfa' && "bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/40 dark:text-rose-300"
-                    )}
-                  >
-                    {s.status}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="py-8 text-center text-slate-400 space-y-2">
-              <UserCheck className="w-8 h-8 mx-auto text-emerald-500" />
-              <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                100% Peserta Didik Hadir Tertib Hari Ini
-              </p>
-            </div>
-          )}
-        </Card>
-      </div>
-
-      {/* 5. QUICK ACTIONS GRID (Sesuai Blueprint Bagian VI) */}
-      <div className="space-y-3">
-        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-          Pintasan Aksi Cepat Wali Kelas
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { id: 'siswa' as WaliKelasTabId, label: 'Data Siswa', icon: Users, color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/50' },
-            { id: 'presensi' as WaliKelasTabId, label: 'Absensi Harian', icon: CalendarCheck, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50' },
-            { id: 'jurnal' as WaliKelasTabId, label: 'Tulis Jurnal', icon: BookOpen, color: 'text-blue-600 bg-blue-50 dark:bg-blue-950/50' },
-            { id: 'izin' as WaliKelasTabId, label: 'Cek Izin Ortu', icon: FileCheck2, color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/50' },
-            { id: 'disiplin' as WaliKelasTabId, label: 'Rujukan BK', icon: ShieldAlert, color: 'text-rose-600 bg-rose-50 dark:bg-rose-950/50' },
-            { id: 'prestasi' as WaliKelasTabId, label: 'Prestasi Siswa', icon: Award, color: 'text-purple-600 bg-purple-50 dark:bg-purple-950/50' },
-            { id: 'rekap' as WaliKelasTabId, label: 'Cetak Rekap', icon: TrendingUp, color: 'text-teal-600 bg-teal-50 dark:bg-teal-950/50' },
-            { id: 'rekap' as WaliKelasTabId, label: 'Catatan Rapor', icon: GraduationCap, color: 'text-cyan-600 bg-cyan-50 dark:bg-cyan-950/50' },
-          ].map((act, i) => {
-            const Icon = act.icon;
+            {
+              title: 'Roster & Siswa',
+              desc: 'Daftar & biodata rombel',
+              tabId: 'siswa' as WaliKelasTabId,
+              icon: Users,
+            },
+            {
+              title: 'Presensi Bulanan',
+              desc: 'Matriks kehadiran kelas',
+              tabId: 'presensi' as WaliKelasTabId,
+              icon: CalendarCheck,
+            },
+            {
+              title: 'Jurnal Walas',
+              desc: 'Catatan beban kerja 2 JP',
+              tabId: 'jurnal' as WaliKelasTabId,
+              action: onOpenJurnalModal,
+              icon: BookOpen,
+            },
+            {
+              title: 'Persetujuan Izin',
+              desc: 'Validasi surat sakit dokter',
+              tabId: 'izin' as WaliKelasTabId,
+              icon: FileCheck2,
+            },
+            {
+              title: 'Rujukan Kasus BK',
+              desc: 'Alih tangan masalah siswa',
+              tabId: 'disiplin' as WaliKelasTabId,
+              icon: ShieldAlert,
+            },
+            {
+              title: 'Pelanggaran Siswa',
+              desc: 'Catatan tata tertib & poin',
+              tabId: 'disiplin' as WaliKelasTabId,
+              icon: AlertTriangle,
+            },
+            {
+              title: 'Prestasi Rombel',
+              desc: 'Portofolio lomba & reward',
+              tabId: 'prestasi' as WaliKelasTabId,
+              icon: Award,
+            },
+            {
+              title: 'Cetak Rekap & Ledger',
+              desc: 'Format F-BK-01 & ledger',
+              tabId: 'rekap' as WaliKelasTabId,
+              icon: FileText,
+            },
+          ].map((item, idx) => {
+            const Icon = item.icon;
             return (
               <button
-                key={i}
-                onClick={() => onSelectTab(act.id)}
-                className="flex flex-col items-center justify-center p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-400 dark:hover:border-indigo-600 hover:shadow-md transition-all group text-center"
+                key={idx}
+                type="button"
+                onClick={() => {
+                  if (item.action) {
+                    item.action();
+                  } else if (item.tabId && onSelectTab) {
+                    onSelectTab(item.tabId);
+                  }
+                }}
+                className="flex flex-col text-left p-3.5 rounded-xl border border-slate-200/70 dark:border-slate-800/80 hover:border-indigo-300 dark:hover:border-indigo-800 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-all group cursor-pointer"
               >
-                <div className={cn("p-2.5 rounded-xl mb-2 transition-transform group-hover:scale-110", act.color)}>
-                  <Icon className="w-5 h-5" />
+                <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-colors mb-2.5">
+                  <Icon className="w-4 h-4" />
                 </div>
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-tight">
-                  {act.label}
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                  {item.title}
+                </span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
+                  {item.desc}
                 </span>
               </button>
             );
           })}
         </div>
+      </Card>
+
+      {/* 3. DUA KOLOM BAWAH: AKTIVITAS & LOG TERBARU + AGENDA & KBM HARI INI */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Kolom 1: Recent Activity Mini List */}
+        <Card noPadding className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-3">
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-slate-400" />
+              <span>Aktivitas & Log Terbaru Rombel</span>
+            </h3>
+            <span className="text-[11px] text-slate-400 font-medium">Realtime update</span>
+          </div>
+
+          <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+            {recentActivities.map((act) => (
+              <div key={act.id} className="py-2.5 first:pt-1 last:pb-1 flex items-start justify-between gap-3">
+                <div className="space-y-0.5 min-w-0">
+                  <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                    {act.title}
+                  </div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
+                    {act.desc}
+                  </div>
+                </div>
+                <span className={cn(
+                  "text-[10px] shrink-0 font-medium px-1.5 py-0.5 rounded mt-0.5",
+                  act.isWarning 
+                    ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400 font-bold" 
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                )}>
+                  {act.time}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Kolom 2: Agenda & KBM Hari Ini */}
+        <Card noPadding className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-3">
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <CalendarCheck className="w-4 h-4 text-indigo-500" />
+              <span>Agenda & KBM Hari Ini</span>
+            </h3>
+            <span className="w-2 h-2 rounded-full bg-emerald-500" title="Jadwal Aktif" />
+          </div>
+
+          <div className="space-y-2.5">
+            {agendaHariIni.map((ag, i) => (
+              <div key={i} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs space-y-0.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 font-bold">
+                    {ag.jam}
+                  </span>
+                  <span className="text-[9px] text-slate-500 dark:text-slate-400 font-medium bg-slate-200/60 dark:bg-slate-700/60 px-1.5 py-0.2 rounded">
+                    {ag.tipe}
+                  </span>
+                </div>
+                <div className="font-medium text-slate-800 dark:text-slate-200">
+                  {ag.agenda}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
     </div>
   );
