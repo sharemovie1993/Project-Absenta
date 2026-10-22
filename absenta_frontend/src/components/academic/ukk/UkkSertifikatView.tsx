@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Award,
   ChevronLeft,
@@ -126,6 +126,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
   const [ukkRecord, setUkkRecord] = useState<any>(null);
   const [jurusanSettings, setJurusanSettings] = useState<any>(null);
   const [isBatchDownloading, setIsBatchDownloading] = useState<boolean>(false);
+  const printSheetsRef = useRef<HTMLDivElement | null>(null);
 
   // Print Header Data hook: tenant info, school details, base64 logos
   const { tenantInfo, logoDaerahBase64, logoSekolahBase64, rawSekolah } = usePrintHeaderData();
@@ -294,11 +295,60 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
     window.print();
   };
 
-  // Single PDF Download via jsPDF
+  // Single PDF Download via True WYSIWYG DOM Capture & jsPDF Fallback
   const handleDownloadSinglePdf = async () => {
+    const isSuket = selectedTemplate === 'suket_lampiran_2';
+    const cleanName = (certData.siswa.nama_siswa || 'Siswa').replace(/\s+/g, '_');
+    const prefix = isSuket ? 'SURAT_KETERANGAN_UKK' : 'SERTIFIKAT_UKK';
+    const filename = `${prefix}_${cleanName}.pdf`;
+
+    // 1. Primary Engine: True WYSIWYG Canvas Capture (Memotret Lembar Persis 1:1 Layar)
     try {
-      const isSuket = selectedTemplate === 'suket_lampiran_2';
-      const { blobUrl, filename } = await generateSertifikatUkkSinglePdf(certData, {
+      const sheets = printSheetsRef.current?.querySelectorAll('.print-sheet');
+      if (sheets && sheets.length > 0) {
+        toast.loading('Menyiapkan dokumen sertifikat presisi...', { id: 'pdf-cert-export' });
+        const html2canvas = (await import('html2canvas-pro')).default;
+        const { jsPDF } = await import('jspdf');
+
+        const pdf = new jsPDF({
+          orientation: orientation,
+          unit: 'mm',
+          format: 'a4',
+        });
+
+        for (let i = 0; i < sheets.length; i++) {
+          const sheet = sheets[i] as HTMLElement;
+          const canvas = await html2canvas(sheet, {
+            scale: 2.5,
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff',
+            logging: false,
+          });
+
+          const imgData = canvas.toDataURL('image/png');
+          if (i > 0) {
+            pdf.addPage('a4', orientation);
+          }
+          pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+        }
+
+        pdf.save(filename);
+        toast.success(
+          isSuket
+            ? 'Surat Keterangan PDF berhasil diunduh (Presisi 100% Layar)'
+            : 'Sertifikat UKK berhasil diunduh (Presisi 100% Layar)',
+          { id: 'pdf-cert-export' }
+        );
+        return;
+      }
+    } catch (err) {
+      console.warn('Canvas export fallback to jsPDF programmatic:', err);
+    }
+
+    // 2. Fallback Engine: Programmatic Vector Generator
+    try {
+      const { blobUrl, filename: fallbackFilename } = await generateSertifikatUkkSinglePdf(certData, {
         logoDaerahBase64: showLogoDaerah ? logoDaerahBase64 : null,
         logoSekolahBase64: showLogoSekolah ? logoSekolahBase64 : null,
         editionId: activeEdition.id,
@@ -307,7 +357,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
 
       const a = document.createElement('a');
       a.href = blobUrl;
-      a.download = filename;
+      a.download = fallbackFilename || filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -617,210 +667,177 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
           pageNumber={1}
           totalPages={2}
           footerText={`Sertifikat Kompetensi — ${certData.sekolah?.nama}`}
-          className="relative overflow-hidden"
+          className="relative overflow-hidden bg-white"
         >
+          {/* Sisi Kiri: Poligon Geometris Resmi (Hanya pada template regulasi resmi) */}
+          {(selectedTemplate === 'kemdikbud_2026' || selectedTemplate === 'kemdikbud_2024' || !['classic', 'modern'].includes(selectedTemplate)) && (
+            <svg
+              viewBox="0 0 210 297"
+              className="absolute inset-0 w-full h-full pointer-events-none z-0"
+              preserveAspectRatio="none"
+            >
+              <polygon points="0,0 14,0 38,76 0,106" fill="#38bdf8" />
+              <polygon points="38,76 24,106 0,106" fill="#0ea5e9" />
+              <polygon points="0,106 22,74 36,126 0,194" fill="#fb923c" opacity="0.9" />
+              <polygon points="36,126 24,174 0,106" fill="#ea580c" opacity="0.95" />
+              <polygon points="0,194 42,162 26,254 0,297" fill="#f43f5e" />
+            </svg>
+          )}
+
           {/* Certificate Frame with Dynamic Template Styling */}
           <div
             className={cn(
-              'p-6 sm:p-9 h-full flex flex-col justify-between relative transition-all duration-200',
+              'h-full flex flex-col justify-between relative z-10 transition-all duration-200',
+              (selectedTemplate === 'kemdikbud_2026' || selectedTemplate === 'kemdikbud_2024' || !['classic', 'modern'].includes(selectedTemplate))
+                ? 'pl-[18%] sm:pl-[22%] pr-[5%] sm:pr-[7%] py-6 sm:py-8'
+                : 'p-6 sm:p-9',
               selectedTemplate === 'classic' && 'border-[6px] border-double border-amber-600/90 bg-[#fffdf9]',
-              selectedTemplate === 'modern' && 'border-2 border-indigo-600/80 bg-white shadow-xs rounded-xl',
-              selectedTemplate === 'kemdikbud_2026' && 'border-[4px] border-double border-slate-700 dark:border-slate-400 bg-white'
+              selectedTemplate === 'modern' && 'border-2 border-indigo-600/80 bg-white shadow-xs rounded-xl'
             )}
           >
             <div>
-              {/* Top Logos Row */}
-              <div className="flex items-center justify-between mb-4">
-                {/* Logo Kiri (Pemda) */}
-                <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center">
-                  {showLogoDaerah && logoDaerahBase64 ? (
-                    <img
-                      src={logoDaerahBase64}
-                      alt="Logo Pemda"
-                      className="max-w-full max-h-full object-contain"
-                    />
-                  ) : (
-                    <div className="w-16 h-1" />
-                  )}
-                </div>
-
-                {/* Logo Tengah (Tut Wuri Handayani Resmi Kemendikdasmen) */}
-                <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center">
-                  <img
-                    src={TUT_WURI_LOGO_SVG}
-                    alt="Tut Wuri Handayani"
-                    className="max-w-full max-h-full object-contain"
-                  />
-                </div>
-
-                {/* Logo Kanan (Sekolah) */}
-                <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center">
-                  {showLogoSekolah && logoSekolahBase64 ? (
-                    <img
-                      src={logoSekolahBase64}
-                      alt="Logo Sekolah"
-                      className="max-w-full max-h-full object-contain"
-                    />
-                  ) : (
-                    <div className="w-16 h-1" />
-                  )}
-                </div>
+              {/* Top Logo: TUT WURI HANDAYANI TUNGGAL DI TENGAH ATAS */}
+              <div className="flex items-center justify-center mb-3">
+                <img
+                  src={TUT_WURI_LOGO_SVG}
+                  alt="Tut Wuri Handayani"
+                  className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
+                />
               </div>
 
               {/* Main Official Title Bilingual Sesuai Juknis */}
-              <div className="text-center space-y-1 mb-5">
-                <h1
-                  className={cn(
-                    'text-base sm:text-lg font-extrabold uppercase tracking-wider',
-                    selectedTemplate === 'classic' && 'text-amber-900',
-                    selectedTemplate === 'modern' && 'text-indigo-900',
-                    (selectedTemplate === 'kemdikbud_2026' || selectedTemplate === 'kemdikbud_2024') && 'text-sky-800'
-                  )}
-                >
-                  {activeEdition.titleId}
+              <div className="text-center space-y-0.5 mb-3">
+                <h1 className="text-sm sm:text-base font-bold uppercase tracking-wider text-slate-900">
+                  {activeEdition.titleId || 'SERTIFIKAT KOMPETENSI'}
                 </h1>
-                <p
-                  className={cn(
-                    'text-[11px] font-serif italic tracking-wide',
-                    selectedTemplate === 'classic' && 'text-amber-800',
-                    selectedTemplate === 'modern' && 'text-indigo-700',
-                    (selectedTemplate === 'kemdikbud_2026' || selectedTemplate === 'kemdikbud_2024') && 'text-sky-700'
-                  )}
-                >
-                  {activeEdition.titleEn}
+                <p className="text-base sm:text-lg font-bold italic tracking-wide text-[#0066FF]">
+                  {activeEdition.titleEn || 'COMPETENCY CERTIFICATE'}
                 </p>
-                <p className="text-[11px] font-mono text-slate-600 tracking-wide mt-1">
+                <p className="text-[10.5px] font-mono text-slate-700 tracking-wide mt-1">
                   Nomor : {certData.nomor_sertifikat}
                 </p>
               </div>
 
               {/* Certification Statement Bilingual */}
-              <div className="text-center my-4 space-y-0.5">
-                <p className="text-[11.5px] text-slate-700">{activeEdition.statementId}</p>
-                <p className="text-[10px] text-slate-500 italic">{activeEdition.statementEn}</p>
+              <div className="text-center my-3 space-y-0.5">
+                <p className="text-[11px] text-slate-800">{activeEdition.statementId}</p>
+                <p className="text-[9.5px] text-slate-500 italic">{activeEdition.statementEn}</p>
               </div>
 
-              {/* Student Name & Identifiers */}
-              <div className="text-center my-4">
-                <h2 className="text-lg sm:text-xl font-bold uppercase tracking-wider text-slate-900 border-b-2 border-slate-300 pb-1 inline-block min-w-[280px]">
+              {/* Student Name & NISN */}
+              <div className="text-center my-3">
+                <h2 className="text-base sm:text-lg font-bold uppercase tracking-wider text-slate-900">
                   {certData.siswa.nama_siswa}
                 </h2>
-                <p className="text-[11px] font-mono text-slate-600 mt-1.5">
-                  NISN: {certData.siswa.nisn || '-'}
+                <p className="text-[10.5px] font-sans text-slate-700 mt-0.5">
+                  NISN: {certData.siswa.nisn || certData.siswa.nis || '-'}
                 </p>
               </div>
 
               {/* Qualification Assessment Text Bilingual */}
-              <div className="text-center my-3 space-y-2">
-                <div className="text-[11px] text-slate-700">
+              <div className="text-center my-2 space-y-1.5">
+                <div className="text-[10.5px] text-slate-800">
                   <p>{activeEdition.hasTakenId}</p>
-                  <p className="text-[10px] text-slate-500 italic">{activeEdition.hasTakenEn}</p>
+                  <p className="text-[9.5px] text-slate-500 italic">{activeEdition.hasTakenEn}</p>
                 </div>
 
-                <div className="text-[11px] text-slate-700">
+                <div className="text-[10.5px] text-slate-800">
                   <p>{activeEdition.competencyPrefixId}</p>
-                  <p className="text-[10px] text-slate-500 italic">{activeEdition.competencyPrefixEn}</p>
-                  <div className="text-sm font-bold uppercase text-slate-900 tracking-wide mt-0.5">
-                    {certData.siswa.program_keahlian}
+                  <p className="text-[9.5px] text-slate-500 italic">{activeEdition.competencyPrefixEn}</p>
+                  <div className="text-xs sm:text-sm font-bold text-slate-900 mt-0.5">
+                    {certData.siswa.konsentrasi_keahlian || certData.siswa.program_keahlian}
                   </div>
                 </div>
 
-                <div className="text-[11px] text-slate-700 pt-1">
+                <div className="text-[10.5px] text-slate-800">
                   <p>pada Judul Penugasan</p>
-                  <p className="text-[10px] text-slate-500 italic">on Assignment</p>
-                  <p className="font-semibold text-slate-900 italic mt-0.5">
+                  <p className="text-[9.5px] text-slate-500 italic">on Assignment</p>
+                  <p className="text-xs sm:text-sm font-bold text-slate-900 mt-0.5 max-w-[460px] mx-auto">
                     {certData.ukk.judul_penugasan}
                   </p>
-                </div>
-
-                {/* Predikat / Achievement Level */}
-                <div className="pt-2">
-                  <p className="text-[11px] text-slate-700">dengan predikat</p>
-                  <p className="text-[10px] text-slate-500 italic">with achievement level</p>
-                  <div
-                    className={cn(
-                      'inline-block mt-1 px-4 py-1 rounded-full font-extrabold text-xs uppercase tracking-wider shadow-xs',
-                      selectedTemplate === 'classic' && 'border border-amber-600 bg-amber-50 text-amber-900',
-                      selectedTemplate === 'modern' && 'border border-indigo-600 bg-indigo-50 text-indigo-900',
-                      (selectedTemplate === 'kemdikbud_2026' || selectedTemplate === 'kemdikbud_2024') && 'border border-emerald-600 bg-emerald-50 text-emerald-800'
-                    )}
-                  >
-                    {certData.ukk.predikat}
-                  </div>
-                  {certData.ukk.predikat_en && (
-                    <p className="text-[10px] text-slate-500 italic mt-0.5">
-                      {certData.ukk.predikat_en}
+                  {certData.ukk.judul_penugasan_en && (
+                    <p className="text-[10px] text-slate-500 italic mt-0.5 max-w-[460px] mx-auto">
+                      {certData.ukk.judul_penugasan_en}
                     </p>
                   )}
                 </div>
 
+                {/* Predikat / Achievement Level */}
+                <div className="pt-1">
+                  <p className="text-[10.5px] text-slate-800">dengan predikat</p>
+                  <p className="text-[9.5px] text-slate-500 italic">with achievement level</p>
+                  <div className="text-sm sm:text-base font-bold text-slate-900 mt-0.5">
+                    {certData.ukk.predikat}
+                  </div>
+                  {certData.ukk.predikat_en && (
+                    <div className="text-xs sm:text-sm font-bold text-slate-900">
+                      {certData.ukk.predikat_en}
+                    </div>
+                  )}
+                </div>
+
                 {/* Masa Berlaku Wajib 3 Tahun Sesuai Juknis */}
-                <div className="pt-2 text-center text-[10px] text-slate-600 font-sans">
-                  <p className="font-semibold">{activeEdition.klausulMasaBerlakuId}</p>
+                <div className="pt-1 text-center text-[9.5px] text-slate-700 font-sans">
+                  <p>{activeEdition.klausulMasaBerlakuId}</p>
                   <p className="italic text-slate-500">{activeEdition.klausulMasaBerlakuEn}</p>
                 </div>
               </div>
             </div>
 
             {/* Bottom Official Signatures */}
-            <div className="pt-5 mt-3 border-t border-slate-200">
-              <div className="text-right text-[11px] text-slate-700 mb-2 font-sans">
+            <div className="pt-3 mt-1">
+              <div className="text-center text-[10.5px] text-slate-700 mb-2 font-sans">
                 {certData.tanggal_terbit}
               </div>
 
-              <div className="grid grid-cols-2 gap-8 text-center text-[11px]">
+              <div className="grid grid-cols-2 gap-6 text-center text-[10.5px]">
                 {/* Kolom Kiri: Kepala Sekolah */}
                 <div>
-                  <p className="font-semibold text-slate-800">
+                  <p className="font-semibold text-slate-900">
                     {activeEdition.labelTtdKepalaSekolah} {certData.sekolah?.nama || 'SMK'}
                   </p>
-                  <p className="text-[10px] text-slate-500 italic">
+                  <p className="text-[9.5px] text-slate-500 italic">
                     {activeEdition.labelTtdKepalaSekolahEn} {certData.sekolah?.nama || 'SMK'}
                   </p>
-                  <div className="h-14 flex items-center justify-center my-1">
+                  <div className="h-12 flex items-center justify-center my-1">
                     {certData.ukk.ttd_kepala_sekolah ? (
                       <img
                         src={certData.ukk.ttd_kepala_sekolah}
                         alt="TTD Kepala Sekolah"
-                        className="max-h-12 max-w-full object-contain"
+                        className="max-h-11 max-w-full object-contain"
                       />
                     ) : (
-                      <div className="h-12" />
+                      <div className="h-11" />
                     )}
                   </div>
-                  <p className="font-bold underline text-slate-900">
+                  <p className="font-bold text-slate-900">
                     {certData.sekolah?.kepala_sekolah || 'Kepala Sekolah'}
                   </p>
-                  <p className="text-[10.5px] font-medium text-slate-700">Kepala Sekolah</p>
-                  <p className="text-[9.5px] text-slate-500 italic">School Principal</p>
-                  {certData.sekolah?.nip_kepala && certData.sekolah.nip_kepala !== '-' && (
-                    <p className="text-[10px] text-slate-600 font-sans">
-                      NIP. {certData.sekolah.nip_kepala}
-                    </p>
-                  )}
+                  <p className="text-[10px] font-medium text-slate-700">Kepala Sekolah</p>
+                  <p className="text-[9px] text-slate-500 italic">School Principal</p>
                 </div>
 
-                {/* Kolom Kanan: Penguji Eksternal (Perwakilan Dunia Kerja CV/PT) */}
+                {/* Kolom Kanan: Penguji Eksternal (DU/DI) */}
                 <div>
                   <p className="font-bold text-slate-900 uppercase">
                     {certData.ukk.mitra_nama || 'MITRA INDUSTRI'}
                   </p>
-                  <div className="h-14 flex items-center justify-center my-1">
+                  <div className="h-12 flex items-center justify-center my-1">
                     {certData.ukk.ttd_asesor_eksternal ? (
                       <img
                         src={certData.ukk.ttd_asesor_eksternal}
                         alt="TTD Penguji Eksternal"
-                        className="max-h-12 max-w-full object-contain"
+                        className="max-h-11 max-w-full object-contain"
                       />
                     ) : (
-                      <div className="h-12" />
+                      <div className="h-11" />
                     )}
                   </div>
-                  <p className="font-bold underline text-slate-900">
+                  <p className="font-bold text-slate-900">
                     {certData.ukk.asesor_eksternal || 'Penguji Eksternal'}
                   </p>
-                  <p className="text-[10.5px] font-medium text-slate-700">Penguji Eksternal</p>
-                  <p className="text-[9.5px] text-slate-500 italic">External Assessor</p>
+                  <p className="text-[10px] font-medium text-slate-700">Penguji Eksternal</p>
+                  <p className="text-[9px] text-slate-500 italic">External Assessor</p>
                 </div>
               </div>
             </div>
@@ -918,29 +935,53 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
               </div>
             </div>
 
-            {/* Assessor Signatures on Page 2 Sesuai Format Resmi Hal 22 */}
-            <div className="pt-6 border-t border-slate-300 mt-6 font-serif">
-              <div className="space-y-4 text-xs">
-                {/* Row 1: Penguji Internal */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                  <div>
-                    <span className="font-semibold text-slate-800">Penguji Internal</span>
-                    <span className="block text-[10px] text-slate-500 italic">Internal Assessor</span>
+            {/* Assessor Signatures on Page 2 (Simetris 2 Kolom Resmi) */}
+            <div className="pt-5 border-t border-slate-300 mt-4">
+              <div className="grid grid-cols-2 gap-8 text-center text-[10.5px]">
+                {/* Kolom Kiri: Penguji Internal */}
+                <div>
+                  <p className="font-semibold text-slate-800">Penguji Internal</p>
+                  <p className="text-[9.5px] text-slate-500 italic">Internal Assessor</p>
+                  <div className="h-12 flex items-center justify-center my-1">
+                    {certData.ukk.ttd_asesor_internal ? (
+                      <img
+                        src={certData.ukk.ttd_asesor_internal}
+                        alt="TTD Penguji Internal"
+                        className="max-h-11 max-w-full object-contain"
+                      />
+                    ) : (
+                      <div className="h-11" />
+                    )}
                   </div>
-                  <div className="font-bold text-slate-900 text-right">
-                    {certData.ukk.asesor_internal} <span className="font-normal text-slate-600">({certData.sekolah?.nama})</span>
-                  </div>
+                  <p className="font-bold text-slate-900">
+                    {certData.ukk.asesor_internal || 'Penguji Internal'}
+                  </p>
+                  <p className="text-[10px] text-slate-600 font-sans">
+                    ({certData.sekolah?.nama || 'SMK'})
+                  </p>
                 </div>
 
-                {/* Row 2: Penguji Eksternal */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                  <div>
-                    <span className="font-semibold text-slate-800">Penguji Eksternal</span>
-                    <span className="block text-[10px] text-slate-500 italic">External Assessor</span>
+                {/* Kolom Kanan: Penguji Eksternal */}
+                <div>
+                  <p className="font-semibold text-slate-800">Penguji Eksternal</p>
+                  <p className="text-[9.5px] text-slate-500 italic">External Assessor</p>
+                  <div className="h-12 flex items-center justify-center my-1">
+                    {certData.ukk.ttd_asesor_eksternal ? (
+                      <img
+                        src={certData.ukk.ttd_asesor_eksternal}
+                        alt="TTD Penguji Eksternal"
+                        className="max-h-11 max-w-full object-contain"
+                      />
+                    ) : (
+                      <div className="h-11" />
+                    )}
                   </div>
-                  <div className="font-bold text-slate-900 text-right">
-                    {certData.ukk.asesor_eksternal} <span className="font-normal text-slate-600">({certData.ukk.mitra_nama})</span>
-                  </div>
+                  <p className="font-bold text-slate-900">
+                    {certData.ukk.asesor_eksternal || 'Penguji Eksternal'}
+                  </p>
+                  <p className="text-[10px] text-slate-600 font-sans">
+                    ({certData.ukk.mitra_nama || 'Mitra Industri'})
+                  </p>
                 </div>
               </div>
             </div>
@@ -984,7 +1025,9 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
         printButtonText="Cetak"
         size="6xl"
       >
-        {renderSheetsContent()}
+        <div ref={printSheetsRef} className="w-full flex flex-col items-center">
+          {renderSheetsContent()}
+        </div>
       </UniversalDocumentModal>
     );
   }
@@ -1020,7 +1063,9 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
         downloadPdfText="PDF"
         printButtonText="Cetak"
       >
-        {renderSheetsContent()}
+        <div ref={printSheetsRef} className="w-full flex flex-col items-center">
+          {renderSheetsContent()}
+        </div>
       </UniversalDocumentTab>
     </div>
   );

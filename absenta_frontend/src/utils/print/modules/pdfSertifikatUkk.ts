@@ -161,6 +161,42 @@ export const TUT_WURI_LOGO_SVG = `data:image/svg+xml;utf8,${encodeURIComponent(`
 </svg>
 `)}`;
 
+/**
+ * Helper to rasterize SVG into a PNG data URL for rock-solid jsPDF compatibility
+ */
+let cachedTutWuriPng: string | null = null;
+export const getTutWuriPngDataUrl = async (): Promise<string | null> => {
+  if (cachedTutWuriPng) return cachedTutWuriPng;
+  if (typeof window === 'undefined') return null;
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = 300;
+          canvas.height = 300;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, 300, 300);
+            cachedTutWuriPng = canvas.toDataURL('image/png');
+            resolve(cachedTutWuriPng);
+            return;
+          }
+        } catch (e) {
+          console.warn('Canvas rasterization error for Tut Wuri logo:', e);
+        }
+        resolve(null);
+      };
+      img.onerror = () => resolve(null);
+      img.src = TUT_WURI_LOGO_SVG;
+    } catch {
+      resolve(null);
+    }
+  });
+};
+
 export interface SertifikatUkkRenderOptions {
   logoDaerahBase64?: string | null;
   logoSekolahBase64?: string | null;
@@ -170,16 +206,18 @@ export interface SertifikatUkkRenderOptions {
 
 /**
  * =========================================================================
- * HALAMAN 1 (FRONT): SERTIFIKAT UJI KOMPETENSI KEMENDIKBUDRISTEK
+ * HALAMAN 1 (FRONT): SERTIFIKAT UJI KOMPETENSI KEMENDIKBUDRISTEK / KEMENDIKDASMEN
+ * Standar Resmi: Tut Wuri Handayani Tunggal di Tengah Atas, Poligon Kiri Bersih,
+ * dan Area Teks Bebas Tabrakan (100% Sesuai Gambar Referensi Resmi 2026).
  * =========================================================================
  */
 export const renderSertifikatUkkFront = (
   doc: jsPDF,
   data: SertifikatUkkPrintData,
-  options?: SertifikatUkkRenderOptions
+  options?: SertifikatUkkRenderOptions,
+  tutWuriPng?: string | null
 ) => {
   const edition = getUkkRegulatoryEdition(options?.editionId);
-  const pageWidth = 210;
 
   const namaSekolah = (data.sekolah?.nama || 'SMK NEGERI ABSENTA').toUpperCase();
   const kotaSekolah = data.sekolah?.kota || 'Purwakarta';
@@ -189,251 +227,269 @@ export const renderSertifikatUkkFront = (
 
   const { siswa, ukk } = data;
 
-  // 1. LEFT MODERN GEOMETRIC FACET (Exact match with official certificate)
-  doc.setFillColor(56, 189, 248);
+  // 1. LEFT MODERN GEOMETRIC FACET (Exact match with official certificate blueprint)
+  doc.setFillColor(56, 189, 248); // #38bdf8
   doc.lines([[14, 0], [24, 76], [-38, 30], [0, -106]], 0, 0, [1, 1], 'F', true);
 
-  doc.setFillColor(14, 165, 233);
+  doc.setFillColor(14, 165, 233); // #0ea5e9
   doc.lines([[38, 76], [-14, 30], [-24, 0]], 0, 0, [1, 1], 'F', true);
 
-  doc.setFillColor(251, 146, 60);
+  doc.setFillColor(251, 146, 60); // #fb923c
   doc.lines([[22, -32], [14, 52], [-36, 68], [0, -88]], 0, 106, [1, 1], 'F', true);
 
-  doc.setFillColor(234, 88, 12);
+  doc.setFillColor(234, 88, 12); // #ea580c
   doc.lines([[36, 20], [-12, 48], [-24, -68]], 0, 106, [1, 1], 'F', true);
 
-  doc.setFillColor(244, 63, 94);
+  doc.setFillColor(244, 63, 94); // #f43f5e
   doc.lines([[42, -32], [-16, 92], [-26, 43], [0, -103]], 0, 194, [1, 1], 'F', true);
 
-  // 2. LOGO RENDERING (TUT WURI, DAERAH, SEKOLAH)
-  const logoW = 24;
-  const logoH = 24;
-  const logoCenter = (pageWidth - logoW) / 2 + 6;
-  const logoY = 11;
+  // 2. CENTER CONTENT BOUNDING BOX (Safe from Left Geometric Shapes: 44mm to 196mm)
+  const contentCenterX = 120;
+  const maxContentWidth = 140;
 
-  // Center: Tut Wuri Handayani / Lambang Pendidikan Nasional
-  try {
-    doc.addImage(TUT_WURI_LOGO_SVG, 'PNG', logoCenter, logoY, logoW, logoH);
-  } catch (err) {
-    console.warn('Fallback rendering for Tut Wuri Handayani logo:', err);
-  }
+  // 3. LOGO: TUT WURI HANDAYANI TUNGGAL DI TENGAH ATAS (Sesuai Referensi Resmi)
+  const logoW = 20;
+  const logoH = 20;
+  const logoX = contentCenterX - (logoW / 2);
+  const logoY = 12;
 
-  // Left: Logo Daerah (Pemda) if enabled and provided
-  if (options?.logoDaerahBase64) {
+  if (tutWuriPng) {
     try {
-      doc.addImage(options.logoDaerahBase64, 'PNG', 45, logoY + 1, 22, 22);
+      doc.addImage(tutWuriPng, 'PNG', logoX, logoY, logoW, logoH);
     } catch (err) {
-      console.warn('Fallback rendering for logo daerah:', err);
+      console.warn('Fallback rendering for Tut Wuri Handayani logo:', err);
     }
+  } else {
+    // Symmetrical vector emblem fallback if PNG not yet ready
+    doc.setFillColor(2, 132, 199);
+    doc.circle(contentCenterX, logoY + logoH / 2, logoW / 2, 'F');
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(4.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text('TUT WURI HANDAYANI', contentCenterX, logoY + logoH / 2 + 1.2, { align: 'center' });
   }
 
-  // Right: Logo Sekolah if enabled and provided
-  if (options?.logoSekolahBase64) {
-    try {
-      doc.addImage(options.logoSekolahBase64, 'PNG', 145, logoY + 1, 22, 22);
-    } catch (err) {
-      console.warn('Fallback rendering for logo sekolah:', err);
-    }
-  }
-
-  // 3. MAIN TITLE & NOMOR (Bilingual, Official Blue Typography Sesuai Juknis)
-  const contentCenterX = 118;
-  let curY = logoY + logoH + 7;
+  // 4. MAIN TITLE & NOMOR
+  let curY = logoY + logoH + 6;
 
   doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(14.5);
-  doc.setTextColor(2, 132, 199);
-  doc.text(edition.titleId, contentCenterX, curY, { align: 'center' });
+  doc.setFontSize(13);
+  doc.setTextColor(15, 23, 42); // Black
+  doc.text(edition.titleId || 'SERTIFIKAT KOMPETENSI', contentCenterX, curY, { align: 'center' });
 
-  curY += 4.8;
-  doc.setFont('Helvetica', 'italic');
-  doc.setFontSize(10);
-  doc.setTextColor(2, 132, 199);
-  doc.text(edition.titleEn, contentCenterX, curY, { align: 'center' });
+  curY += 5.5;
+  doc.setFont('Helvetica', 'bolditalic');
+  doc.setFontSize(15.5);
+  doc.setTextColor(0, 102, 255); // #0066FF Electric / Royal Blue
+  doc.text(edition.titleEn || 'COMPETENCY CERTIFICATE', contentCenterX, curY, { align: 'center' });
 
-  curY += 5;
+  curY += 6;
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(30, 41, 59);
   doc.text(`Nomor : ${nomorSertifikat}`, contentCenterX, curY, { align: 'center' });
 
-  // 4. CERTIFICATION STATEMENT (Bilingual)
-  curY += 9;
+  // 5. CERTIFICATION STATEMENT (Bilingual)
+  curY += 8.5;
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(51, 65, 85);
   doc.text(edition.statementId, contentCenterX, curY, { align: 'center' });
-  curY += 3.6;
+  curY += 3.8;
+  doc.setFont('Helvetica', 'italic');
+  doc.setFontSize(8);
   doc.text(edition.statementEn, contentCenterX, curY, { align: 'center' });
 
-  // 5. NAMA SISWA & NISN (Prominent Bold Centerpiece)
+  // 6. NAMA SISWA & NISN (Prominent Bold Centerpiece)
   curY += 7.5;
   doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(16);
+  doc.setFontSize(15);
   doc.setTextColor(15, 23, 42);
   doc.text(siswa.nama_siswa.toUpperCase(), contentCenterX, curY, { align: 'center' });
 
-  curY += 4.8;
+  curY += 4.5;
   doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(30, 41, 59);
+  doc.setFontSize(8.5);
+  doc.setTextColor(51, 65, 85);
   const nisnDisplay = siswa.nisn || siswa.nis || '-';
-  doc.text(`NISN : ${nisnDisplay}`, contentCenterX, curY, { align: 'center' });
+  doc.text(`NISN: ${nisnDisplay}`, contentCenterX, curY, { align: 'center' });
 
-  // 6. KETERANGAN UJI KOMPETENSI & PROGRAM KEAHLIAN
+  // 7. KETERANGAN UJI KOMPETENSI & PROGRAM KEAHLIAN
   curY += 6.5;
-  doc.setFontSize(8.2);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8.5);
   doc.setTextColor(51, 65, 85);
   doc.text(edition.hasTakenId, contentCenterX, curY, { align: 'center' });
-  curY += 3.5;
+  curY += 3.8;
+  doc.setFont('Helvetica', 'italic');
+  doc.setFontSize(8);
   doc.text(edition.hasTakenEn, contentCenterX, curY, { align: 'center' });
 
   curY += 5.5;
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8.5);
   doc.text(edition.competencyPrefixId, contentCenterX, curY, { align: 'center' });
-  curY += 3.5;
+  curY += 3.8;
+  doc.setFont('Helvetica', 'italic');
+  doc.setFontSize(8);
   doc.text(edition.competencyPrefixEn, contentCenterX, curY, { align: 'center' });
 
-  curY += 6;
+  curY += 5.5;
   doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(12);
+  doc.setFontSize(11);
   doc.setTextColor(15, 23, 42);
   const kompetensiNama =
     siswa.konsentrasi_keahlian ||
     siswa.program_keahlian ||
-    'Teknik Komputer dan Jaringan';
+    'Agribisnis Ikan Hias';
   doc.text(kompetensiNama, contentCenterX, curY, { align: 'center' });
 
-  // 7. JUDUL PENUGASAN (Assignment Title)
-  curY += 6;
+  // 8. JUDUL PENUGASAN (Assignment Title with Auto-Wrapping)
+  curY += 5.5;
   doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(8.2);
-  doc.setTextColor(51, 65, 85);
-  doc.text('pada Judul', contentCenterX, curY, { align: 'center' });
-  curY += 3.5;
-  doc.text('Penugasan on', contentCenterX, curY, { align: 'center' });
-  curY += 3.5;
-  doc.text('Assignment', contentCenterX, curY, { align: 'center' });
-
-  curY += 6;
-  doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(15, 23, 42);
-  const judulId =
-    ukk.judul_penugasan ||
-    'Implementasi Jaringan LAN dan Troubleshooting Perangkat Komputer';
-  doc.text(judulId, contentCenterX, curY, { align: 'center' });
-
-  curY += 4.5;
-  doc.setFont('Helvetica', 'italic');
   doc.setFontSize(8.5);
-  doc.setTextColor(71, 85, 105);
-  const judulEn =
-    ukk.judul_penugasan_en ||
-    'Local Area Network Implementation and Hardware Troubleshooting';
-  doc.text(judulEn, contentCenterX, curY, { align: 'center' });
+  doc.setTextColor(51, 65, 85);
+  doc.text('pada Judul Penugasan', contentCenterX, curY, { align: 'center' });
+  curY += 3.8;
+  doc.setFont('Helvetica', 'italic');
+  doc.setFontSize(8);
+  doc.text('on Assignment', contentCenterX, curY, { align: 'center' });
 
-  // 8. PREDIKAT KELULUSAN (Achievement Level)
-  curY += 6;
+  curY += 5.5;
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.setTextColor(15, 23, 42);
+  const judulId = ukk.judul_penugasan || 'Pembenihan Ikan Hias';
+  const splitJudulId = doc.splitTextToSize(judulId, maxContentWidth);
+  doc.text(splitJudulId, contentCenterX, curY, { align: 'center' });
+  curY += (splitJudulId.length - 1) * 4.5;
+
+  if (ukk.judul_penugasan_en) {
+    curY += 4;
+    doc.setFont('Helvetica', 'italic');
+    doc.setFontSize(8);
+    doc.setTextColor(71, 85, 105);
+    const splitJudulEn = doc.splitTextToSize(ukk.judul_penugasan_en, maxContentWidth);
+    doc.text(splitJudulEn, contentCenterX, curY, { align: 'center' });
+    curY += (splitJudulEn.length - 1) * 4;
+  }
+
+  // 9. PREDIKAT KELULUSAN (Achievement Level)
+  curY += 5.5;
   doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(8.2);
+  doc.setFontSize(8.5);
   doc.setTextColor(51, 65, 85);
   doc.text('dengan predikat', contentCenterX, curY, { align: 'center' });
-  curY += 3.5;
-  doc.text('with achievement', contentCenterX, curY, { align: 'center' });
-  curY += 3.5;
-  doc.text('level', contentCenterX, curY, { align: 'center' });
+  curY += 3.8;
+  doc.setFont('Helvetica', 'italic');
+  doc.setFontSize(8);
+  doc.text('with achievement level', contentCenterX, curY, { align: 'center' });
 
-  curY += 6;
+  curY += 5.5;
   doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(12.5);
+  doc.setFontSize(12);
   doc.setTextColor(15, 23, 42);
 
-  // Dynamic Predikat calculation according to the selected regulatory edition thresholds
   const evaluatedPredikat = calculateUkkPredikat(ukk.nilai_akhir ?? 85, edition.id);
   const rawPredikat = (ukk.predikat || evaluatedPredikat.predikatId).trim();
   const predikatCapitalized =
     rawPredikat.charAt(0).toUpperCase() + rawPredikat.slice(1).toLowerCase();
   doc.text(predikatCapitalized, contentCenterX, curY, { align: 'center' });
 
-  curY += 4.2;
-  doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(71, 85, 105);
+  curY += 4.5;
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
   const predikatEn = ukk.predikat_en || evaluatedPredikat.predikatEn;
   doc.text(predikatEn, contentCenterX, curY, { align: 'center' });
 
-  // 9. VALIDITAS SERTIFIKAT (3 Tahun)
-  curY += 6.5;
+  // 10. VALIDITAS SERTIFIKAT (3 Tahun)
+  curY += 6;
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(51, 65, 85);
   doc.text(edition.klausulMasaBerlakuId, contentCenterX, curY, { align: 'center' });
-  curY += 3.4;
+  curY += 3.5;
+  doc.setFont('Helvetica', 'italic');
+  doc.setFontSize(7.5);
   doc.text(edition.klausulMasaBerlakuEn, contentCenterX, curY, { align: 'center' });
 
-  // 10. TANDA TANGAN (Bipartit: Kepala Sekolah & Penguji Eksternal)
-  curY += 8.5;
+  // 11. TANDA TANGAN (Simetris 2 Kolom Sesuai Referensi)
+  curY += 7.5;
+  doc.setFont('Helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(30, 41, 59);
   doc.text(tanggalTerbit, contentCenterX, curY, { align: 'center' });
 
-  const signY = curY + 6.5;
-  const colLeftX = 68;
-  const colRightX = 168;
+  const signY = curY + 6;
+  const colLeftX = 82;
+  const colRightX = 162;
 
   // Left: Kepala Sekolah (Atas nama Sekolah)
   doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(7.5);
+  doc.setFontSize(8);
   doc.setTextColor(30, 41, 59);
   doc.text(`${edition.labelTtdKepalaSekolah} ${namaSekolah}`, colLeftX, signY, { align: 'center' });
-  doc.text(`${edition.labelTtdKepalaSekolahEn} ${namaSekolah}`, colLeftX, signY + 3.2, { align: 'center' });
+  doc.setFont('Helvetica', 'italic');
+  doc.setFontSize(7.5);
+  doc.text(`${edition.labelTtdKepalaSekolahEn} ${namaSekolah}`, colLeftX, signY + 3.5, { align: 'center' });
 
-  // TTD Digital Kepala Sekolah
+  // Right: Mitra Industri DU-DI
+  const mitraText = (ukk.mitra_nama || 'MITRA INDUSTRI').toUpperCase();
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text(mitraText, colRightX, signY, { align: 'center' });
+
+  const sigNameY = signY + 22;
+
+  // Digital Signatures
   const ttdKepala = data.sekolah?.ttd_kepala || ukk.ttd_kepala_sekolah;
   if (ttdKepala) {
     try {
-      doc.addImage(ttdKepala, 'PNG', colLeftX - 16, signY + 12.5, 32, 17);
+      doc.addImage(ttdKepala, 'PNG', colLeftX - 16, signY + 5, 32, 14);
     } catch {}
   }
-
-  doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.text(kepalaSekolahNama, colLeftX, signY + 31, { align: 'center' });
-  doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.text('Kepala Sekolah', colLeftX, signY + 34.5, { align: 'center' });
-  doc.text('School Principal', colLeftX, signY + 37.5, { align: 'center' });
-
-  // Right: Penguji Eksternal (Mitra Industri / DU-DI Sesuai Hal 21)
-  const mitraText = (ukk.mitra_nama || 'MITRA INDUSTRI').toUpperCase();
-  doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(15, 23, 42);
-  doc.text(mitraText, colRightX, signY + 1, { align: 'center' });
-
-  // TTD Digital Penguji Eksternal (DU/DI)
   if (ukk.ttd_asesor_eksternal) {
     try {
-      doc.addImage(ukk.ttd_asesor_eksternal, 'PNG', colRightX - 16, signY + 12.5, 32, 17);
+      doc.addImage(ukk.ttd_asesor_eksternal, 'PNG', colRightX - 16, signY + 5, 32, 14);
     } catch {}
   }
 
+  // Left Signer Name
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text(kepalaSekolahNama, colLeftX, sigNameY, { align: 'center' });
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(51, 65, 85);
+  doc.text('Kepala Sekolah', colLeftX, sigNameY + 3.5, { align: 'center' });
+  doc.setFont('Helvetica', 'italic');
+  doc.setFontSize(7.5);
+  doc.text('School Principal', colLeftX, sigNameY + 6.8, { align: 'center' });
+
+  // Right Signer Name
   const asesorEksName =
     ukk.asesor_eksternal ||
     (ukk.mitra_nama ? `Asesor ${ukk.mitra_nama}` : 'Penguji Asosiasi Industri');
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(8.5);
-  doc.text(asesorEksName, colRightX, signY + 31, { align: 'center' });
+  doc.setTextColor(15, 23, 42);
+  doc.text(asesorEksName, colRightX, sigNameY, { align: 'center' });
   doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(51, 65, 85);
+  doc.text('Penguji Eksternal', colRightX, sigNameY + 3.5, { align: 'center' });
+  doc.setFont('Helvetica', 'italic');
   doc.setFontSize(7.5);
-  doc.text('Penguji Eksternal', colRightX, signY + 34.5, { align: 'center' });
-  doc.text('External Assessor', colRightX, signY + 37.5, { align: 'center' });
+  doc.text('External Assessor', colRightX, sigNameY + 6.8, { align: 'center' });
 };
 
 /**
  * =========================================================================
  * HALAMAN 2 (BACK): DAFTAR UNIT KOMPETENSI (List of Competency Unit)
- * Sesuai 100% dengan lembar belakang resmi yang diberikan pengguna.
+ * Sesuai 100% dengan lembar belakang resmi (Tabel Bersih & 2 Kolom Asesor Simetris).
  * =========================================================================
  */
 export const renderSertifikatUkkBack = (
@@ -472,21 +528,21 @@ export const renderSertifikatUkkBack = (
     body: tableBody,
     theme: 'plain',
     headStyles: {
-      fillColor: [229, 231, 235], // #e5e7eb light gray
+      fillColor: [241, 245, 249], // #f1f5f9 light slate gray
       textColor: [15, 23, 42],
       fontStyle: 'bold',
-      fontSize: 9,
+      fontSize: 8.5,
       halign: 'center',
       valign: 'middle',
       lineColor: [0, 0, 0],
-      lineWidth: 0.35,
+      lineWidth: 0.3,
       cellPadding: 2.8,
     },
     bodyStyles: {
-      fontSize: 8.5,
+      fontSize: 8,
       textColor: [15, 23, 42],
       lineColor: [0, 0, 0],
-      lineWidth: 0.35,
+      lineWidth: 0.3,
       cellPadding: 2.2,
       valign: 'middle',
     },
@@ -495,62 +551,71 @@ export const renderSertifikatUkkBack = (
       1: { cellWidth: 'auto', halign: 'left' },
     },
     didDrawCell: (dataCell) => {
-      // Ensure clean outer and inner solid black borders matching sample
       doc.setDrawColor(0, 0, 0);
-      doc.setLineWidth(0.35);
+      doc.setLineWidth(0.3);
       doc.rect(dataCell.cell.x, dataCell.cell.y, dataCell.cell.width, dataCell.cell.height);
     },
   });
 
   const finalY = (doc as any).lastAutoTable?.finalY || (curY + 120);
 
-  // 3. Dual Signatures (Penguji Internal & Penguji Eksternal)
-  const signStartY = Math.max(finalY + 16, 235);
-  const colLeftLabelX = 20;
-  const colRightNameX = 105;
+  // 3. Symmetrical Dual Signatures (Penguji Internal & Penguji Eksternal)
+  const signStartY = Math.max(finalY + 12, 230);
+  const colLeftX = 60;
+  const colRightX = 150;
 
-  // Row 1: Penguji Internal
+  // Column 1: Penguji Internal
   doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   doc.setTextColor(30, 41, 59);
-  doc.text('Penguji Internal', colLeftLabelX, signStartY);
+  doc.text('Penguji Internal', colLeftX, signStartY, { align: 'center' });
   doc.setFont('Helvetica', 'italic');
   doc.setFontSize(8);
-  doc.text('Internal Assessor', colLeftLabelX, signStartY + 4);
+  doc.text('Internal Assessor', colLeftX, signStartY + 3.5, { align: 'center' });
 
+  // Column 2: Penguji Eksternal
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.text('Penguji Eksternal', colRightX, signStartY, { align: 'center' });
+  doc.setFont('Helvetica', 'italic');
+  doc.setFontSize(8);
+  doc.text('External Assessor', colRightX, signStartY + 3.5, { align: 'center' });
+
+  const nameY = signStartY + 22;
+
+  // Digital Signatures
   if (ukk.ttd_asesor_internal) {
     try {
-      doc.addImage(ukk.ttd_asesor_internal, 'PNG', colRightNameX - 25, signStartY - 6, 22, 11);
+      doc.addImage(ukk.ttd_asesor_internal, 'PNG', colLeftX - 16, signStartY + 5, 32, 14);
     } catch {}
   }
-
-  const asesorIntText = `${ukk.asesor_internal || 'Penguji Sekolah'} (${data.sekolah?.nama || 'SMK ASSALAM'})`;
-  doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(15, 23, 42);
-  doc.text(asesorIntText, colRightNameX, signStartY + 2);
-
-  // Row 2: Penguji Eksternal (with gap)
-  const row2Y = signStartY + 14;
-  doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(30, 41, 59);
-  doc.text('Penguji Eksternal', colLeftLabelX, row2Y);
-  doc.setFont('Helvetica', 'italic');
-  doc.setFontSize(8);
-  doc.text('External Assessor', colLeftLabelX, row2Y + 4);
-
   if (ukk.ttd_asesor_eksternal) {
     try {
-      doc.addImage(ukk.ttd_asesor_eksternal, 'PNG', colRightNameX - 25, row2Y - 6, 22, 11);
+      doc.addImage(ukk.ttd_asesor_eksternal, 'PNG', colRightX - 16, signStartY + 5, 32, 14);
     } catch {}
   }
 
-  const asesorEksText = `${ukk.asesor_eksternal || 'Penguji DU/DI'} (${ukk.mitra_nama || 'Mitra Industri'})`;
+  // Column 1 Signer
+  const asesorIntText = ukk.asesor_internal || 'Penguji Sekolah';
   doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
-  doc.text(asesorEksText, colRightNameX, row2Y + 2);
+  doc.text(asesorIntText, colLeftX, nameY, { align: 'center' });
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`(${data.sekolah?.nama || 'SMK ASSALAM'})`, colLeftX, nameY + 3.8, { align: 'center' });
+
+  // Column 2 Signer
+  const asesorEksText = ukk.asesor_eksternal || 'Penguji DU/DI';
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text(asesorEksText, colRightX, nameY, { align: 'center' });
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`(${ukk.mitra_nama || 'Mitra Industri'})`, colRightX, nameY + 3.8, { align: 'center' });
 };
 
 /**
@@ -755,13 +820,15 @@ export const generateSertifikatUkkDoc = async (
     format: 'a4',
   });
 
+  const tutWuriPng = await getTutWuriPngDataUrl();
+
   if (options?.templateType === 'suket_lampiran_2') {
     // 1 Halaman: Surat Keterangan Telah Mengikuti UKK (Lampiran 2 Hal 23)
     renderSuratKeteranganUkk(doc, data, options);
   } else {
     // 2 Halaman: Sertifikat Kompetensi Resmi
     // Halaman 1: Muka Sertifikat Resmi
-    renderSertifikatUkkFront(doc, data, options);
+    renderSertifikatUkkFront(doc, data, options, tutWuriPng);
 
     // Halaman 2: Daftar Unit Kompetensi (Lembar Belakang)
     doc.addPage('a4', 'portrait');
@@ -801,6 +868,8 @@ export const generateSertifikatUkkBatchPdf = async (
     format: 'a4',
   });
 
+  const tutWuriPng = await getTutWuriPngDataUrl();
+
   for (let i = 0; i < list.length; i++) {
     const item = list[i];
     if (i > 0) {
@@ -812,7 +881,7 @@ export const generateSertifikatUkkBatchPdf = async (
       renderSuratKeteranganUkk(doc, item, options);
     } else {
       // Page 1: Muka Depan
-      renderSertifikatUkkFront(doc, item, options);
+      renderSertifikatUkkFront(doc, item, options, tutWuriPng);
 
       // Page 2: Lembar Belakang
       doc.addPage('a4', 'portrait');
