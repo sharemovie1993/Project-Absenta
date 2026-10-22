@@ -143,7 +143,8 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
   const academic = useMemo(() => ({
     selectedTahunPelajaran: academicFilter.values.tahunPelajaranId,
     selectedSemester: academicFilter.values.semesterId,
-    activeYear: academicFilter.activeTpYear,
+    activeYear: academicFilter.activeTpYear?.tahun || academicFilter.activeTpYear?.nama || '',
+    activeYearObj: academicFilter.activeTpYear,
     activeSemester: academicFilter.activeSemester,
     tpOptions: academicFilter.tpOptions,
     semesterOptions: academicFilter.semesterOptions,

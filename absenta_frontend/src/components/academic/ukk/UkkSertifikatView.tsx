@@ -139,7 +139,13 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
   };
 
   const activeSiswaId = currentStudent.id;
-  const activeTahunAjaran = currentStudent.tahun_ajaran || tahunAjaran || '2025/2026';
+  const rawActiveYear =
+    typeof currentStudent.tahun_ajaran === 'string'
+      ? currentStudent.tahun_ajaran
+      : (currentStudent.tahun_ajaran as any)?.tahun ||
+        (typeof tahunAjaran === 'string' ? tahunAjaran : (tahunAjaran as any)?.tahun) ||
+        '2025/2026';
+  const activeTahunAjaran = String(rawActiveYear || '2025/2026');
 
   // Active Regulatory Edition based on active template or student academic year
   const activeEdition = useMemo(() => {

@@ -85,7 +85,14 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
 
   const effectiveTpId = tahunPelajaranId || internalAcademic.values.tahunPelajaranId;
   const effectiveSemesterId = semesterId || internalAcademic.values.semesterId;
-  const effectiveTahunAjaran = tahunAjaran || internalAcademic.activeTpYear || '2025/2026';
+  const rawTahunAjaran =
+    typeof tahunAjaran === 'string' && tahunAjaran
+      ? tahunAjaran
+      : (tahunAjaran as any)?.tahun ||
+        internalAcademic.activeTpYear?.tahun ||
+        internalAcademic.activeTpYear?.nama ||
+        '2025/2026';
+  const effectiveTahunAjaran = String(rawTahunAjaran || '2025/2026');
 
   const [activeTab, setActiveTab] = useState<'penilaian' | 'ploting' | 'berita_acara'>('penilaian');
   const [configModalOpen, setConfigModalOpen] = useState(false);
