@@ -18,6 +18,7 @@ import {
   HelpCircle,
   FileSpreadsheet,
   FileText,
+  Award,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -54,6 +55,7 @@ export interface UkkJadwalPlotingTabProps {
   }>;
   readOnly?: boolean;
   onManageBeritaAcara?: (sesi: UkkJadwalSesi) => void;
+  onJumpToPenilaian?: (sesi: UkkJadwalSesi) => void;
 }
 
 export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
@@ -64,6 +66,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
   siswaList = [],
   readOnly = false,
   onManageBeritaAcara,
+  onJumpToPenilaian,
 }) => {
   const queryClient = useQueryClient();
   const { confirm } = useConfirm();
@@ -638,7 +641,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {!readOnly && (
                       <Button
                         variant="outline"
@@ -665,6 +668,19 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                       >
                         <FileText className="w-3.5 h-3.5" />
                         {sessionBa ? 'Buka Berita Acara' : 'Buat Berita Acara'}
+                      </Button>
+                    )}
+
+                    {onJumpToPenilaian && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onJumpToPenilaian(sesi)}
+                        className="text-xs font-semibold gap-1.5 w-full cursor-pointer h-8 rounded-xl border-amber-200/80 dark:border-amber-800/80 text-amber-700 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                        title="Buka penilaian khusus peserta di sesi ini"
+                      >
+                        <Award className="w-3.5 h-3.5 text-amber-500" />
+                        Penilaian Sesi
                       </Button>
                     )}
                   </div>

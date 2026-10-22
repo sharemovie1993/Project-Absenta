@@ -53,6 +53,11 @@ export interface UkkRecordItem {
   nomor_sertifikat?: string;
   tanggal_terbit?: string;
   isCompleted: boolean;
+  // Integrasi Sesi Pra-UKK
+  sesi_id?: string;
+  sesi_nama?: string;
+  sesi_tanggal?: string;
+  sesi_ruang?: string;
 }
 
 export interface UniversalUkkViewProps {
@@ -95,13 +100,14 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
         '2025/2026';
   const effectiveTahunAjaran = String(rawTahunAjaran || '2025/2026');
 
-  const [activeTab, setActiveTab] = useState<'penilaian' | 'ploting' | 'berita_acara'>('penilaian');
+  const [activeTab, setActiveTab] = useState<'ploting' | 'berita_acara' | 'penilaian'>('ploting');
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [selectedJadwalForBa, setSelectedJadwalForBa] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'DONE' | 'PENDING'>('ALL');
   const [predikatFilter, setPredikatFilter] = useState<string>('ALL');
   const [selectedKelas, setSelectedKelas] = useState<string>('ALL');
+  const [selectedSesi, setSelectedSesi] = useState<string>('ALL');
 
   // Modal States
   const [formModalData, setFormModalData] = useState<{
@@ -153,6 +159,54 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
     staleTime: 5 * 60 * 1000,
   });
 
+  // 3. Query Jadwal Sesi Pra-UKK untuk integrasi otomatis nama penguji, DU/DI & Sesi
+  const { data: jadwalResponse } = useQuery({
+    queryKey: ['ukk-jadwal', jurusanId, effectiveTahunAjaran],
+    queryFn: () =>
+      jurusanId
+        ? raporApi.getUkkJadwal(jurusanId, effectiveTahunAjaran)
+        : Promise.resolve({ data: [] }),
+    enabled: !!jurusanId,
+    staleTime: 60 * 1000,
+  });
+
+  const rawSessionsList = useMemo(() => {
+    const d = (jadwalResponse as any)?.data || jadwalResponse || [];
+    return Array.isArray(d) ? d : [];
+  }, [jadwalResponse]);
+
+  // Mapping lookup: siswa_id -> Informasi Sesi Ujian (Tanggal, Ruang, Asesor Internal & Eksternal)
+  const studentSessionMap = useMemo(() => {
+    const map = new Map<string, {
+      sesi_id: string;
+      sesi_nama: string;
+      sesi_tanggal: string;
+      sesi_ruang: string;
+      asesor_internal?: string | null;
+      asesor_eksternal?: string;
+      mitra_nama?: string;
+    }>();
+
+    rawSessionsList.forEach((sesi: any) => {
+      const studentIds: string[] = sesi.siswa_ids || (sesi.siswa_list || []).map((s: any) => s.id);
+      studentIds.forEach((id) => {
+        if (id) {
+          map.set(id, {
+            sesi_id: sesi.id,
+            sesi_nama: sesi.nama_sesi,
+            sesi_tanggal: sesi.tanggal,
+            sesi_ruang: sesi.ruang,
+            asesor_internal: sesi.asesor_internal || null,
+            asesor_eksternal: sesi.asesor_eksternal || '',
+            mitra_nama: sesi.mitra_nama || '',
+          });
+        }
+      });
+    });
+
+    return map;
+  }, [rawSessionsList]);
+
   // Helper isolasi sertifikat agar tidak bocor lintas tahun ajaran
   const isCertInActiveYear = (certDateStr?: string) => {
     if (!certDateStr || !effectiveTahunAjaran) return true;
@@ -167,7 +221,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
     return d >= start && d <= end;
   };
 
-  // Gabungkan daftar siswa XII dengan data sertifikat UKK
+  // Gabungkan daftar siswa XII dengan data sertifikat UKK dan Session Ploting
   const combinedList: UkkRecordItem[] = useMemo(() => {
     const certList = (ukkResponse as any)?.data || ukkResponse || [];
     const certMap = new Map<string, any>();
@@ -187,6 +241,8 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
       return siswaArray.map((s: any) => {
         const cert = certMap.get(s.id);
         const isDone = !!cert;
+        const sessionInfo = studentSessionMap.get(s.id);
+
         return {
           id: cert?.id,
           siswa_id: s.id,
@@ -196,16 +252,22 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
           kelas: s.Kelas?.nama_kelas || s.nama_kelas || '-',
           tingkat: s.Kelas?.tingkat || 12,
           tahun_ajaran: s.TahunPelajaran?.tahun || s.tahun_ajaran || effectiveTahunAjaran,
-          asesor_internal: cert?.asesor_internal || null,
-          asesor_eksternal: cert?.asesor_eksternal || '',
+          // Mewarisi penguji & DU/DI otomatis dari sesi ujian Pra-UKK bila belum ada nilai tersimpan
+          asesor_internal: cert?.asesor_internal || sessionInfo?.asesor_internal || null,
+          asesor_eksternal: cert?.asesor_eksternal || sessionInfo?.asesor_eksternal || '',
           mitra_industri_id: cert?.mitra_industri_id || null,
-          mitra_nama: cert?.MitraIndustri?.nama_mitra || cert?.MitraIndustri?.nama || '',
+          mitra_nama: cert?.MitraIndustri?.nama_mitra || cert?.MitraIndustri?.nama || sessionInfo?.mitra_nama || '',
           nilai_praktik: cert?.nilai_praktik,
           nilai_teori: cert?.nilai_teori,
           predikat: cert?.predikat || '',
           nomor_sertifikat: cert?.nomor_sertifikat || '',
           tanggal_terbit: cert?.tanggal_terbit,
           isCompleted: isDone,
+          // Metadata integrasi sesi Pra-UKK
+          sesi_id: sessionInfo?.sesi_id,
+          sesi_nama: sessionInfo?.sesi_nama,
+          sesi_tanggal: sessionInfo?.sesi_tanggal,
+          sesi_ruang: sessionInfo?.sesi_ruang,
         };
       });
     }
@@ -216,30 +278,37 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
       : [];
 
     if (filteredCertList.length > 0) {
-      return filteredCertList.map((c: any) => ({
-        id: c.id,
-        siswa_id: c.siswa_id,
-        nama_siswa: c.Siswa?.nama_siswa || 'Siswa',
-        nis: c.Siswa?.nis || '-',
-        nisn: c.Siswa?.nisn || '-',
-        kelas: c.Siswa?.Kelas?.nama_kelas || '-',
-        tingkat: c.Siswa?.Kelas?.tingkat || 12,
-        tahun_ajaran: c.Siswa?.TahunPelajaran?.tahun || effectiveTahunAjaran,
-        asesor_internal: c.asesor_internal || null,
-        asesor_eksternal: c.asesor_eksternal || '',
-        mitra_industri_id: c.mitra_industri_id || null,
-        mitra_nama: c.MitraIndustri?.nama_mitra || c.MitraIndustri?.nama || '',
-        nilai_praktik: c.nilai_praktik,
-        nilai_teori: c.nilai_teori,
-        predikat: c.predikat || '',
-        nomor_sertifikat: c.nomor_sertifikat || '',
-        tanggal_terbit: c.tanggal_terbit,
-        isCompleted: true,
-      }));
+      return filteredCertList.map((c: any) => {
+        const sessionInfo = studentSessionMap.get(c.siswa_id);
+        return {
+          id: c.id,
+          siswa_id: c.siswa_id,
+          nama_siswa: c.Siswa?.nama_siswa || 'Siswa',
+          nis: c.Siswa?.nis || '-',
+          nisn: c.Siswa?.nisn || '-',
+          kelas: c.Siswa?.Kelas?.nama_kelas || '-',
+          tingkat: c.Siswa?.Kelas?.tingkat || 12,
+          tahun_ajaran: c.Siswa?.TahunPelajaran?.tahun || effectiveTahunAjaran,
+          asesor_internal: c.asesor_internal || sessionInfo?.asesor_internal || null,
+          asesor_eksternal: c.asesor_eksternal || sessionInfo?.asesor_eksternal || '',
+          mitra_industri_id: c.mitra_industri_id || null,
+          mitra_nama: c.MitraIndustri?.nama_mitra || c.MitraIndustri?.nama || sessionInfo?.mitra_nama || '',
+          nilai_praktik: c.nilai_praktik,
+          nilai_teori: c.nilai_teori,
+          predikat: c.predikat || '',
+          nomor_sertifikat: c.nomor_sertifikat || '',
+          tanggal_terbit: c.tanggal_terbit,
+          isCompleted: true,
+          sesi_id: sessionInfo?.sesi_id,
+          sesi_nama: sessionInfo?.sesi_nama,
+          sesi_tanggal: sessionInfo?.sesi_tanggal,
+          sesi_ruang: sessionInfo?.sesi_ruang,
+        };
+      });
     }
 
     return [];
-  }, [ukkResponse, siswaResponse, effectiveTahunAjaran]);
+  }, [ukkResponse, siswaResponse, effectiveTahunAjaran, studentSessionMap]);
 
   // Ekstrak daftar kelas unik untuk filter
   const kelasOptions = useMemo(() => {
@@ -252,7 +321,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
     return Array.from(set).sort();
   }, [combinedList]);
 
-  // Filter gabungan
+  // Filter gabungan (termasuk filter Sesi Ujian)
   const filteredList = useMemo(() => {
     return combinedList.filter((item) => {
       const q = searchTerm.toLowerCase();
@@ -262,7 +331,8 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
         item.nis?.toLowerCase().includes(q) ||
         item.kelas?.toLowerCase().includes(q) ||
         item.nomor_sertifikat?.toLowerCase().includes(q) ||
-        item.asesor_eksternal?.toLowerCase().includes(q);
+        item.asesor_eksternal?.toLowerCase().includes(q) ||
+        item.sesi_nama?.toLowerCase().includes(q);
 
       const matchStatus =
         statusFilter === 'ALL' ||
@@ -276,9 +346,13 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
       const matchKelas =
         selectedKelas === 'ALL' || item.kelas === selectedKelas;
 
-      return matchSearch && matchStatus && matchPredikat && matchKelas;
+      const matchSesi =
+        selectedSesi === 'ALL' ||
+        (selectedSesi === 'UNPLOTTED' ? !item.sesi_id : item.sesi_id === selectedSesi);
+
+      return matchSearch && matchStatus && matchPredikat && matchKelas && matchSesi;
     });
-  }, [combinedList, searchTerm, statusFilter, predikatFilter, selectedKelas]);
+  }, [combinedList, searchTerm, statusFilter, predikatFilter, selectedKelas, selectedSesi]);
 
   // Statistik Ringkas
   const stats = useMemo(() => {
@@ -356,19 +430,6 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
         <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-xl border border-slate-200/60 dark:border-slate-700 overflow-x-auto no-scrollbar max-w-full shadow-2xs">
           <button
             type="button"
-            onClick={() => setActiveTab('penilaian')}
-            className={cn(
-              'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer',
-              activeTab === 'penilaian'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-bold border border-slate-200/60 dark:border-slate-600'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            )}
-          >
-            <Award className="w-4 h-4 text-amber-500" />
-            Penilaian & Sertifikat
-          </button>
-          <button
-            type="button"
             onClick={() => setActiveTab('ploting')}
             className={cn(
               'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer',
@@ -378,7 +439,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
             )}
           >
             <Calendar className="w-4 h-4 text-blue-500" />
-            Pra-UKK (Jadwal & Ploting)
+            1. Pra-UKK (Jadwal & Ploting)
           </button>
           <button
             type="button"
@@ -391,7 +452,20 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
             )}
           >
             <FileText className="w-4 h-4 text-emerald-500" />
-            Berita Acara & Dokumentasi
+            2. Berita Acara & Pelaksanaan
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('penilaian')}
+            className={cn(
+              'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer',
+              activeTab === 'penilaian'
+                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-bold border border-slate-200/60 dark:border-slate-600'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+            )}
+          >
+            <Award className="w-4 h-4 text-amber-500" />
+            3. Penilaian & Sertifikat
           </button>
         </div>
 
@@ -424,6 +498,10 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
           onManageBeritaAcara={(sesi) => {
             setSelectedJadwalForBa(sesi.id);
             setActiveTab('berita_acara');
+          }}
+          onJumpToPenilaian={(sesi) => {
+            setSelectedSesi(sesi.id);
+            setActiveTab('penilaian');
           }}
         />
       )}
@@ -567,7 +645,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
             {/* Filters Bar (Search & Filter Pills Identik Gambar 1) */}
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2.5">
               {/* Search Box */}
-              <div className="relative sm:col-span-2 lg:col-span-5">
+              <div className="relative sm:col-span-2 lg:col-span-3">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
@@ -579,7 +657,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
               </div>
 
               {/* Status Filter Pills */}
-              <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-xl border border-slate-200/60 dark:border-slate-700 overflow-x-auto no-scrollbar sm:col-span-1 lg:col-span-3">
+              <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-xl border border-slate-200/60 dark:border-slate-700 overflow-x-auto no-scrollbar sm:col-span-2 lg:col-span-3">
                 {[
                   { id: 'ALL', label: 'Semua Status' },
                   { id: 'DONE', label: 'Sudah Diuji' },
@@ -599,6 +677,23 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
                     {st.label}
                   </button>
                 ))}
+              </div>
+
+              {/* Filter Sesi Pra-UKK (Integrasi Alur Jadwal) */}
+              <div className="sm:col-span-1 lg:col-span-2">
+                <select
+                  value={selectedSesi}
+                  onChange={(e) => setSelectedSesi(e.target.value)}
+                  className="w-full h-10 px-3 text-xs font-semibold rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                >
+                  <option value="ALL">Semua Sesi ({combinedList.length})</option>
+                  <option value="UNPLOTTED">Belum Diploting ({combinedList.filter((c) => !c.sesi_id).length})</option>
+                  {rawSessionsList.map((s: any) => (
+                    <option key={s.id} value={s.id}>
+                      {s.nama_sesi} ({s.siswa_ids?.length || (s.siswa_list || []).length || 0})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Filter Kelas Rombel */}
@@ -642,6 +737,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
                   <tr>
                     <th className="py-3 px-4">Siswa</th>
                     <th className="py-3 px-4 whitespace-nowrap">Kelas</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Sesi Pra-UKK</th>
                     <th className="py-3 px-4 text-center whitespace-nowrap">Nilai Praktik</th>
                     <th className="py-3 px-4 text-center whitespace-nowrap">Nilai Teori</th>
                     <th className="py-3 px-4 text-center whitespace-nowrap">Predikat</th>
@@ -652,7 +748,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                   {isLoadingTotal ? (
                     <tr>
-                      <td colSpan={7} className="py-16 text-center">
+                      <td colSpan={8} className="py-16 text-center">
                         <div className="flex flex-col items-center justify-center gap-2">
                           <Loader className="w-6 h-6 text-indigo-600 animate-spin" />
                           <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -663,7 +759,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
                     </tr>
                   ) : filteredList.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-16 text-center text-slate-400 text-xs">
+                      <td colSpan={8} className="py-16 text-center text-slate-400 text-xs">
                         <div className="flex flex-col items-center justify-center gap-2 text-slate-400 dark:text-slate-500">
                           <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
                             <Award className="w-6 h-6" />
@@ -697,6 +793,21 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
                           {/* Kelas */}
                           <td className="py-3.5 px-4 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">
                             {item.kelas}
+                          </td>
+
+                          {/* Sesi Pra-UKK (Integrasi Alur Sesi) */}
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            {item.sesi_nama ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/60 shadow-2xs">
+                                <Calendar className="w-3 h-3 text-indigo-500" />
+                                {item.sesi_nama}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/80 dark:border-amber-800/60">
+                                <Clock className="w-3 h-3 text-amber-500" />
+                                Belum Diploting
+                              </span>
+                            )}
                           </td>
 
                           {/* Nilai Praktik */}
@@ -758,6 +869,15 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
                                 </div>
                                 <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
                                   Asesor: {item.asesor_eksternal || item.asesor_internal || '-'}
+                                </div>
+                              </div>
+                            ) : item.sesi_nama ? (
+                              <div>
+                                <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
+                                  {item.asesor_eksternal || item.asesor_internal || 'Asesor Terjadwal'}
+                                </div>
+                                <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium truncate mt-0.5">
+                                  Tersambung ke {item.sesi_nama}
                                 </div>
                               </div>
                             ) : (

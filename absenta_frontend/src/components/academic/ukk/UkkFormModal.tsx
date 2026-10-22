@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
-import { Award, User, GraduationCap, Building2 } from 'lucide-react';
+import { Award, User, GraduationCap, Building2, Calendar, AlertCircle, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { Modal } from '@/components/ui/Modal';
@@ -40,11 +40,17 @@ export interface UkkFormModalProps {
     asesor_internal?: string | null;
     asesor_eksternal?: string;
     mitra_industri_id?: string | null;
+    mitra_nama?: string;
     nilai_praktik?: number;
     nilai_teori?: number | null;
     predikat?: string;
     nomor_sertifikat?: string;
     tanggal_terbit?: string;
+    // Data integrasi dari Sesi Jadwal Pra-UKK
+    sesi_id?: string;
+    sesi_nama?: string;
+    sesi_tanggal?: string;
+    sesi_ruang?: string;
   } | null;
   onSuccess?: () => void;
 }
@@ -127,7 +133,17 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
     if (initialData) {
       setAsesorInternal(initialData.asesor_internal || '');
       setAsesorEksternal(initialData.asesor_eksternal || '');
-      setMitraIndustriId(initialData.mitra_industri_id || '');
+      
+      let matchedMitraId = initialData.mitra_industri_id || '';
+      if (!matchedMitraId && initialData.mitra_nama && Array.isArray(mitraOptions) && mitraOptions.length > 0) {
+        const found = mitraOptions.find(
+          (m: any) =>
+            (m.nama_mitra && m.nama_mitra.toLowerCase() === initialData.mitra_nama?.toLowerCase()) ||
+            (m.nama && m.nama.toLowerCase() === initialData.mitra_nama?.toLowerCase())
+        );
+        if (found) matchedMitraId = found.id;
+      }
+      setMitraIndustriId(matchedMitraId);
       setNilaiPraktik(
         initialData.nilai_praktik !== undefined && initialData.nilai_praktik !== null
           ? String(initialData.nilai_praktik)
@@ -168,7 +184,7 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
       );
       setFormErrors({});
     }
-  }, [initialData, isOpen, tahunAjaran]);
+  }, [initialData, isOpen, tahunAjaran, mitraOptions]);
 
   // Handler perubahan nilai praktik untuk auto predikat
   const handlePraktikChange = (val: string) => {
@@ -268,23 +284,60 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
       >
         <div className="p-4 sm:p-5 space-y-4 overflow-y-auto max-h-[calc(92vh-125px)] no-scrollbar">
           {/* Profil Singkat Siswa */}
-          <div className="flex items-center gap-3 p-2.5 rounded-xl bg-muted/40 border border-border">
-            <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shrink-0">
+          <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
+            <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-2xs font-bold text-xs">
               <User className="w-4 h-4" />
             </div>
             <div className="min-w-0 flex-1">
-              <h4 className="text-xs font-bold text-foreground truncate">
+              <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
                 {initialData.nama_siswa}
               </h4>
-              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+              <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
                 <span>NIS: {initialData.nis || '-'}</span>
                 <span>•</span>
-                <span className="font-semibold text-foreground">
+                <span className="font-semibold text-slate-700 dark:text-slate-300">
                   {initialData.kelas || '-'}
                 </span>
               </div>
             </div>
           </div>
+
+          {/* Status Integrasi Sesi Pra-UKK (Inherit Asesor & DU/DI) */}
+          {initialData.sesi_nama ? (
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 text-xs">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center shrink-0">
+                  <Calendar className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-slate-900 dark:text-white truncate">
+                      {initialData.sesi_nama}
+                    </span>
+                    <span className="text-[10px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                      Asesor Tersambung Otomatis
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    {initialData.sesi_tanggal} • Ruang: {initialData.sesi_ruang || '-'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 text-xs">
+              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <div className="min-w-0">
+                <span className="font-bold text-amber-800 dark:text-amber-300">
+                  Peserta Belum Diploting ke Sesi Pra-UKK
+                </span>
+                <p className="text-[10px] text-amber-700/80 dark:text-amber-400/80 mt-0.5">
+                  Anda tetap dapat mengisi nilai langsung, atau atur ploting terlebih dahulu agar asesor terisi otomatis.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Nilai Praktik & Teori (2 Kolom di Desktop & HP) */}
           <div className="grid grid-cols-2 gap-3">
