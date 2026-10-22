@@ -21,7 +21,7 @@ import {
   PrintHeader, 
   usePrintHeaderData 
 } from '@/components/ui/PrintHeader';
-import { getRekapKelasBulanan } from '@/api/attendance/rekap';
+import { getRekapKelasBulanan } from '@/api/attendance/rekap.api';
 import { getJurnalWaliKelasList } from '@/api/kurikulum/waliKelas.api';
 import { format } from 'date-fns';
 import { id as localeID } from 'date-fns/locale';
