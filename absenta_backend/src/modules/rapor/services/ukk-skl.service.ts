@@ -101,6 +101,119 @@ export class UkkSklService {
     });
   }
 
+  // === UKK Jurusan Settings (Judul Penugasan, Unit Kompetensi, Skema) ===
+  static async getUkkSettings(tenantId: string, jurusanId?: string) {
+    const key = jurusanId ? `ukk_settings_${jurusanId}` : 'ukk_settings_default';
+    const config = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key },
+    });
+    if (!config || !config.value) return null;
+    try {
+      return JSON.parse(config.value);
+    } catch {
+      return null;
+    }
+  }
+
+  static async saveUkkSettings(tenantId: string, jurusanId: string, data: any) {
+    const key = jurusanId ? `ukk_settings_${jurusanId}` : 'ukk_settings_default';
+    const value = JSON.stringify(data);
+    const existing = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key },
+    });
+    if (existing) {
+      return prisma.config.update({
+        where: { id: existing.id },
+        data: { value, description: `Konfigurasi UKK Jurusan ${jurusanId || 'Default'}` },
+      });
+    } else {
+      return prisma.config.create({
+        data: {
+          tenant_id: tenantId,
+          key,
+          value,
+          description: `Konfigurasi UKK Jurusan ${jurusanId || 'Default'}`,
+        },
+      });
+    }
+  }
+
+  // === UKK Pra-UKK Jadwal & Ploting Penguji ===
+  static async getUkkJadwal(tenantId: string, jurusanId?: string) {
+    const key = jurusanId ? `ukk_jadwal_${jurusanId}` : 'ukk_jadwal_default';
+    const config = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key },
+    });
+    if (!config || !config.value) return [];
+    try {
+      const parsed = JSON.parse(config.value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  static async saveUkkJadwal(tenantId: string, jurusanId: string, sessions: any[]) {
+    const key = jurusanId ? `ukk_jadwal_${jurusanId}` : 'ukk_jadwal_default';
+    const value = JSON.stringify(sessions);
+    const existing = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key },
+    });
+    if (existing) {
+      return prisma.config.update({
+        where: { id: existing.id },
+        data: { value, description: `Jadwal & Ploting UKK Jurusan ${jurusanId || 'Default'}` },
+      });
+    } else {
+      return prisma.config.create({
+        data: {
+          tenant_id: tenantId,
+          key,
+          value,
+          description: `Jadwal & Ploting UKK Jurusan ${jurusanId || 'Default'}`,
+        },
+      });
+    }
+  }
+
+  // === UKK Berita Acara & Dokumentasi Sesi ===
+  static async getUkkBeritaAcara(tenantId: string, jurusanId?: string) {
+    const key = jurusanId ? `ukk_berita_acara_${jurusanId}` : 'ukk_berita_acara_default';
+    const config = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key },
+    });
+    if (!config || !config.value) return [];
+    try {
+      const parsed = JSON.parse(config.value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  static async saveUkkBeritaAcara(tenantId: string, jurusanId: string, records: any[]) {
+    const key = jurusanId ? `ukk_berita_acara_${jurusanId}` : 'ukk_berita_acara_default';
+    const value = JSON.stringify(records);
+    const existing = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key },
+    });
+    if (existing) {
+      return prisma.config.update({
+        where: { id: existing.id },
+        data: { value, description: `Berita Acara UKK Jurusan ${jurusanId || 'Default'}` },
+      });
+    } else {
+      return prisma.config.create({
+        data: {
+          tenant_id: tenantId,
+          key,
+          value,
+          description: `Berita Acara UKK Jurusan ${jurusanId || 'Default'}`,
+        },
+      });
+    }
+  }
+
   // === SKL (Surat Keterangan Lulus) ===
   static async upsertSkl(
     tenantId: string,

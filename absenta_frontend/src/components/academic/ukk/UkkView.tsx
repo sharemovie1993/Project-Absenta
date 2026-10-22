@@ -13,7 +13,10 @@ import {
   FileText,
   Plus,
   RefreshCw,
-  Users
+  Users,
+  Calendar,
+  Settings2,
+  BookOpen,
 } from 'lucide-react';
 
 import { Card } from '@/components/ui/Card';
@@ -24,6 +27,9 @@ import { raporApi } from '@/api/rapor.api';
 import { siswaApi } from '@/api/academic.api';
 import { UkkFormModal } from './UkkFormModal';
 import { UkkSertifikatModal, type UkkStudentItem } from './UkkSertifikatModal';
+import { UkkJurusanConfigModal } from './UkkJurusanConfigModal';
+import { UkkJadwalPlotingTab } from './UkkJadwalPlotingTab';
+import { UkkBeritaAcaraTab } from './UkkBeritaAcaraTab';
 import { cn } from '@/lib/utils';
 
 export interface UkkRecordItem {
@@ -66,6 +72,8 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
   hideLayout = false,
   readOnly = false,
 }) => {
+  const [activeTab, setActiveTab] = useState<'penilaian' | 'ploting' | 'berita_acara'>('penilaian');
+  const [configModalOpen, setConfigModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'DONE' | 'PENDING'>('ALL');
   const [predikatFilter, setPredikatFilter] = useState<string>('ALL');
@@ -264,12 +272,101 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
       }));
   }, [filteredList]);
 
+  // Daftar siswa untuk ploting jadwal
+  const siswaListForPloting = useMemo(() => {
+    const rawSiswaList = (siswaResponse as any)?.data || siswaResponse || [];
+    if (!Array.isArray(rawSiswaList)) return [];
+    return rawSiswaList.map((s: any) => ({
+      id: s.id,
+      nis: s.nis,
+      nama_siswa: s.nama_siswa,
+      kelas: s.Kelas?.nama_kelas || s.kelas?.nama_kelas || s.kelas,
+    }));
+  }, [siswaResponse]);
+
   const isLoadingTotal = isLoadingUkk && isLoadingSiswa;
 
   return (
     <div className="space-y-6">
-      {/* Header Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+      {/* Sub-Tab Navigation Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+        <div className="flex items-center gap-1.5 p-1 bg-muted/60 rounded-xl overflow-x-auto no-scrollbar max-w-full">
+          <button
+            type="button"
+            onClick={() => setActiveTab('penilaian')}
+            className={cn(
+              'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer',
+              activeTab === 'penilaian'
+                ? 'bg-background text-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Award className="w-4 h-4 text-amber-500" />
+            Penilaian & Sertifikat
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('ploting')}
+            className={cn(
+              'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer',
+              activeTab === 'ploting'
+                ? 'bg-background text-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Calendar className="w-4 h-4 text-blue-500" />
+            Pra-UKK (Jadwal & Ploting)
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('berita_acara')}
+            className={cn(
+              'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer',
+              activeTab === 'berita_acara'
+                ? 'bg-background text-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <FileText className="w-4 h-4 text-emerald-500" />
+            Berita Acara & Dokumentasi
+          </button>
+        </div>
+
+        {!readOnly && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setConfigModalOpen(true)}
+            className="text-xs font-semibold gap-1.5 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 shrink-0 self-start sm:self-auto cursor-pointer"
+            title="Konfigurasi Judul Penugasan & Daftar Unit Kompetensi SKKNI untuk Lembar Depan & Belakang Sertifikat"
+          >
+            <Settings2 className="w-3.5 h-3.5 text-primary" />
+            <span>Pengaturan Sertifikat & Unit SKKNI</span>
+          </Button>
+        )}
+      </div>
+
+      {activeTab === 'ploting' && (
+        <UkkJadwalPlotingTab
+          jurusanId={jurusanId}
+          jurusanNama={jurusanNama}
+          siswaList={siswaListForPloting}
+          readOnly={readOnly}
+        />
+      )}
+
+      {activeTab === 'berita_acara' && (
+        <UkkBeritaAcaraTab
+          jurusanId={jurusanId}
+          jurusanNama={jurusanNama}
+          readOnly={readOnly}
+        />
+      )}
+
+      {activeTab === 'penilaian' && (
+        <>
+          {/* Header Stat Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         <Card
           noPadding
           className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900"
@@ -692,6 +789,8 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
           </table>
         </div>
       </Card>
+      </>
+      )}
 
       {/* Modal Input & Edit Nilai UKK */}
       <UkkFormModal
@@ -711,6 +810,14 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
         kelasNama={selectedKelas !== 'ALL' ? selectedKelas : undefined}
         jurusanNama={jurusanNama}
         studentsList={previewModalData.studentsList || certifiedStudentsList}
+      />
+
+      {/* Modal Pengaturan Sertifikat Dinamis & Unit Kompetensi SKKNI */}
+      <UkkJurusanConfigModal
+        isOpen={configModalOpen}
+        onClose={() => setConfigModalOpen(false)}
+        jurusanId={jurusanId}
+        jurusanNama={jurusanNama}
       />
     </div>
   );

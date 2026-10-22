@@ -178,6 +178,46 @@ export const raporApi = {
     const response = await api.delete(`/rapor/ukk/${id}`);
     return response.data;
   },
+  // === UKK Settings, Jadwal & Ploting, Berita Acara ===
+  getUkkSettings: async (jurusanId?: string) => {
+    const response = await api.get('/rapor/ukk/settings', {
+      params: jurusanId ? { jurusan_id: jurusanId } : {},
+    });
+    return response.data;
+  },
+  saveUkkSettings: async (jurusanId: string, data: any) => {
+    const response = await api.post('/rapor/ukk/settings', {
+      jurusan_id: jurusanId,
+      data,
+    });
+    return response.data;
+  },
+  getUkkJadwal: async (jurusanId?: string) => {
+    const response = await api.get('/rapor/ukk/jadwal', {
+      params: jurusanId ? { jurusan_id: jurusanId } : {},
+    });
+    return response.data;
+  },
+  saveUkkJadwal: async (jurusanId: string, sessions: any[]) => {
+    const response = await api.post('/rapor/ukk/jadwal', {
+      jurusan_id: jurusanId,
+      sessions,
+    });
+    return response.data;
+  },
+  getUkkBeritaAcara: async (jurusanId?: string) => {
+    const response = await api.get('/rapor/ukk/berita-acara', {
+      params: jurusanId ? { jurusan_id: jurusanId } : {},
+    });
+    return response.data;
+  },
+  saveUkkBeritaAcara: async (jurusanId: string, records: any[]) => {
+    const response = await api.post('/rapor/ukk/berita-acara', {
+      jurusan_id: jurusanId,
+      records,
+    });
+    return response.data;
+  },
   getSkl: async (params?: { siswa_id?: string; query?: string }) => {
     const response = await api.get('/rapor/skl', { params });
     return response.data;

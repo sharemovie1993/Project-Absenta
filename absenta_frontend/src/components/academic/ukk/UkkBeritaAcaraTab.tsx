@@ -1,0 +1,662 @@
+import React, { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  FileText,
+  Calendar,
+  Clock,
+  MapPin,
+  CheckCircle2,
+  AlertTriangle,
+  Upload,
+  Image as ImageIcon,
+  Trash2,
+  Edit2,
+  Printer,
+  Plus,
+  Users,
+  Camera,
+  Save,
+  Check,
+} from 'lucide-react';
+import toast from 'react-hot-toast';
+
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { Modal } from '@/components/ui/Modal';
+import { Loader } from '@/components/ui/Loader';
+import { raporApi } from '@/api/rapor.api';
+import { sekolahApi } from '@/api/academic.api';
+import {
+  generatePdfUkkBeritaAcara,
+  type UkkBeritaAcaraItem,
+  type UkkBeritaAcaraPrintData,
+} from '@/utils/print/modules/pdfUkkBeritaAcara';
+import { cn } from '@/lib/utils';
+
+export interface UkkBeritaAcaraTabProps {
+  jurusanId?: string;
+  jurusanNama?: string;
+  readOnly?: boolean;
+}
+
+export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
+  jurusanId,
+  jurusanNama = 'Kejuruan',
+  readOnly = false,
+}) => {
+  const queryClient = useQueryClient();
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Form State
+  const [formData, setFormData] = useState<UkkBeritaAcaraItem>({
+    id: '',
+    nama_sesi: 'Sesi 1',
+    tanggal: new Date().toISOString().split('T')[0],
+    jam_mulai: '07:30',
+    jam_selesai: '11:30',
+    ruang: 'Lab Komputer 1',
+    jumlah_peserta: 20,
+    jumlah_hadir: 20,
+    jumlah_tidak_hadir: 0,
+    catatan_pelaksanaan:
+      'Pelaksanaan Ujian UKK berjalan dengan aman, tertib, dan lancar sesuai dengan SOP.',
+    kendala: '',
+    penguji_internal: '',
+    penguji_eksternal: '',
+    mitra_nama: '',
+    panitia: 'Ketua Panitia UKK',
+    status: 'SELESAI',
+    foto_dokumentasi: [],
+  });
+
+  // 1. Fetch Existing Berita Acara Records
+  const { data: baRes, isLoading } = useQuery({
+    queryKey: ['ukk-berita-acara', jurusanId],
+    queryFn: () => (jurusanId ? raporApi.getUkkBeritaAcara(jurusanId) : Promise.resolve({ data: [] })),
+    enabled: !!jurusanId,
+    staleTime: 60 * 1000,
+  });
+
+  const rawRecords: any[] = useMemo(() => {
+    const d = baRes?.data || baRes;
+    return Array.isArray(d) ? d : [];
+  }, [baRes]);
+
+  const records: UkkBeritaAcaraItem[] = rawRecords;
+
+  // 2. Fetch Jadwal Sesi to allow quick pre-fill
+  const { data: jadwalRes } = useQuery({
+    queryKey: ['ukk-jadwal', jurusanId],
+    queryFn: () => (jurusanId ? raporApi.getUkkJadwal(jurusanId) : Promise.resolve({ data: [] })),
+    enabled: !!jurusanId,
+    staleTime: 60 * 1000,
+  });
+
+  const sessionsFromJadwal: any[] = useMemo(() => {
+    const d = jadwalRes?.data || jadwalRes;
+    return Array.isArray(d) ? d : [];
+  }, [jadwalRes]);
+
+  // Mutation Save
+  const saveMutation = useMutation({
+    mutationFn: async (updatedList: UkkBeritaAcaraItem[]) => {
+      if (!jurusanId) throw new Error('Jurusan ID tidak ditemukan');
+      return raporApi.saveUkkBeritaAcara(jurusanId, updatedList);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ukk-berita-acara', jurusanId] });
+      toast.success('Berita Acara UKK berhasil disimpan!');
+      setModalOpen(false);
+      setEditingId(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Gagal menyimpan berita acara');
+    },
+  });
+
+  const handleOpenCreate = () => {
+    setEditingId(null);
+    // Prefill from first session if available
+    const firstSession = sessionsFromJadwal[0];
+    setFormData({
+      id: `ba_${Date.now()}`,
+      nama_sesi: firstSession?.nama_sesi || `Sesi ${records.length + 1}`,
+      tanggal: firstSession?.tanggal || new Date().toISOString().split('T')[0],
+      jam_mulai: firstSession?.jam_mulai || '07:30',
+      jam_selesai: firstSession?.jam_selesai || '11:30',
+      ruang: firstSession?.ruang || 'Lab Komputer 1',
+      jumlah_peserta: firstSession?.siswa_ids?.length || 20,
+      jumlah_hadir: firstSession?.siswa_ids?.length || 20,
+      jumlah_tidak_hadir: 0,
+      catatan_pelaksanaan:
+        'Pelaksanaan Ujian UKK berjalan dengan aman, tertib, dan lancar sesuai dengan SOP teknis.',
+      kendala: '',
+      penguji_internal: firstSession?.asesor_internal || '',
+      penguji_eksternal: firstSession?.asesor_eksternal || '',
+      mitra_nama: firstSession?.mitra_nama || '',
+      panitia: 'Ketua Panitia UKK',
+      status: 'SELESAI',
+      foto_dokumentasi: [],
+    });
+    setModalOpen(true);
+  };
+
+  const handleOpenEdit = (item: UkkBeritaAcaraItem) => {
+    setEditingId(item.id);
+    setFormData({ ...item });
+    setModalOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (!window.confirm('Hapus Berita Acara ini?')) return;
+    const updated = records.filter((r) => r.id !== id);
+    saveMutation.mutate(updated);
+  };
+
+  const handleSubmit = () => {
+    if (!formData.nama_sesi || !formData.tanggal) {
+      toast.error('Nama sesi dan tanggal wajib diisi');
+      return;
+    }
+
+    let updatedList = [...records];
+    if (editingId) {
+      updatedList = updatedList.map((r) => (r.id === editingId ? formData : r));
+    } else {
+      updatedList.push({
+        ...formData,
+        id: formData.id || `ba_${Date.now()}`,
+      });
+    }
+
+    saveMutation.mutate(updatedList);
+  };
+
+  // Handle Photo Upload
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach((file) => {
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error(`Ukuran file ${file.name} melebihi 2MB`);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        const base64 = uploadEvent.target?.result as string;
+        setFormData((prev) => ({
+          ...prev,
+          foto_dokumentasi: [...(prev.foto_dokumentasi || []), base64],
+        }));
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleRemovePhoto = (idx: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      foto_dokumentasi: (prev.foto_dokumentasi || []).filter((_, i) => i !== idx),
+    }));
+  };
+
+  // Print Berita Acara PDF
+  const handlePrintPdf = async (item: UkkBeritaAcaraItem) => {
+    try {
+      const [sekolahRes, settingsRes] = await Promise.all([
+        sekolahApi.getProfile().catch(() => null),
+        raporApi.getUkkSettings(jurusanId).catch(() => null),
+      ]);
+
+      const sekolahData = (sekolahRes as any)?.data || sekolahRes || {};
+      const settingsData = (settingsRes as any)?.data || settingsRes || {};
+
+      const printPayload: UkkBeritaAcaraPrintData = {
+        jurusanNama: jurusanNama || 'Kejuruan',
+        tahunPelajaran: `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
+        judulPenugasan: settingsData?.judul_penugasan_id || 'Ujian Praktik Kejuruan Mandiri',
+        sekolah: {
+          nama: sekolahData?.nama || 'SEKOLAH MENENGAH KEJURUAN',
+          alamat: sekolahData?.alamat || '',
+          kota: sekolahData?.kota || 'Purwakarta',
+          kepala_sekolah: sekolahData?.kepala_sekolah || 'Kepala Sekolah',
+          nip_kepala: sekolahData?.nip_kepala || '-',
+        },
+        beritaAcara: item,
+      };
+
+      const { blobUrl } = generatePdfUkkBeritaAcara(printPayload);
+      window.open(blobUrl, '_blank');
+    } catch {
+      toast.error('Gagal membuat dokumen PDF Berita Acara');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Action Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card border rounded-xl p-4 shadow-sm">
+        <div>
+          <h3 className="text-base font-semibold text-foreground">
+            Laporan Pelaksanaan & Berita Acara Tiap Sesi UKK
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Dokumentasikan jalannya ujian tiap sesi, rekapitulasi kehadiran, catatan kendala, dan
+            foto dokumentasi visual untuk akreditasi & DU/DI.
+          </p>
+        </div>
+
+        {!readOnly && (
+          <Button size="sm" onClick={handleOpenCreate} className="text-xs gap-1.5 shrink-0">
+            <Plus className="w-3.5 h-3.5" />
+            Buat Berita Acara Sesi
+          </Button>
+        )}
+      </div>
+
+      {/* List of Berita Acara Cards */}
+      {isLoading ? (
+        <div className="py-16 flex flex-col items-center justify-center gap-3">
+          <Loader className="w-8 h-8 text-primary animate-spin" />
+          <p className="text-xs text-muted-foreground">Memuat laporan berita acara UKK...</p>
+        </div>
+      ) : records.length === 0 ? (
+        <div className="bg-card border rounded-xl p-12 text-center space-y-3">
+          <FileText className="w-12 h-12 text-muted-foreground/40 mx-auto" />
+          <h4 className="text-base font-semibold text-foreground">Belum Ada Berita Acara</h4>
+          <p className="text-xs text-muted-foreground max-w-md mx-auto">
+            Setelah sesi ujian selesai dilaksanakan, buat Berita Acara resmi per sesi lengkap dengan
+            jumlah kehadiran, catatan evaluasi, serta unggahan foto dokumentasi pelaksanaan.
+          </p>
+          {!readOnly && (
+            <Button size="sm" onClick={handleOpenCreate} className="mt-2 text-xs gap-1.5">
+              <Plus className="w-3.5 h-3.5" />
+              Buat Berita Acara Pertama
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {records.map((item, idx) => (
+            <Card key={item.id || idx} className="border shadow-sm overflow-hidden flex flex-col">
+              {/* Header */}
+              <div className="bg-muted/40 p-4 border-b flex items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant={item.status === 'SELESAI' ? 'default' : 'secondary'}
+                      className="text-[10px] uppercase font-bold"
+                    >
+                      {item.status}
+                    </Badge>
+                    <h4 className="text-sm font-bold text-foreground">{item.nama_sesi}</h4>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5 text-primary" />
+                      {item.tanggal}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-amber-500" />
+                      {item.jam_mulai} - {item.jam_selesai} WIB
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-rose-500" />
+                      {item.ruang}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePrintPdf(item)}
+                    className="h-8 px-2 text-xs gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950"
+                    title="Cetak Berita Acara Resmi (PDF)"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    Cetak PDF
+                  </Button>
+                  {!readOnly && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEdit(item)}
+                        className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
+                        title="Edit Berita Acara"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item.id)}
+                        className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded transition-colors"
+                        title="Hapus"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Attendance Stats */}
+              <div className="grid grid-cols-3 divide-x border-b bg-muted/10 py-2.5 text-center text-xs">
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Peserta Terdaftar</p>
+                  <p className="text-base font-bold text-foreground">{item.jumlah_peserta}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400">Hadir</p>
+                  <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
+                    {item.jumlah_hadir}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-rose-500">Tidak Hadir</p>
+                  <p className="text-base font-bold text-rose-500">{item.jumlah_tidak_hadir}</p>
+                </div>
+              </div>
+
+              {/* Body Content */}
+              <div className="p-4 flex-1 space-y-3 text-xs">
+                <div>
+                  <span className="font-semibold text-foreground">Penguji & Asesor:</span>
+                  <div className="mt-1 text-muted-foreground space-y-0.5">
+                    <p>Internal: {item.penguji_internal || '-'}</p>
+                    <p>
+                      Eksternal: {item.penguji_eksternal || '-'}{' '}
+                      {item.mitra_nama ? `(${item.mitra_nama})` : ''}
+                    </p>
+                  </div>
+                </div>
+
+                {item.catatan_pelaksanaan && (
+                  <div>
+                    <span className="font-semibold text-foreground">Catatan Pelaksanaan:</span>
+                    <p className="mt-0.5 text-muted-foreground line-clamp-2">
+                      {item.catatan_pelaksanaan}
+                    </p>
+                  </div>
+                )}
+
+                {item.kendala && (
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5 text-amber-700 dark:text-amber-300">
+                    <div className="flex items-center gap-1.5 font-semibold text-[11px]">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                      Kendala & Catatan:
+                    </div>
+                    <p className="mt-0.5 text-xs line-clamp-2">{item.kendala}</p>
+                  </div>
+                )}
+
+                {/* Photo Thumbnails */}
+                {item.foto_dokumentasi && item.foto_dokumentasi.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1.5 font-semibold text-foreground mb-1.5">
+                      <Camera className="w-3.5 h-3.5 text-primary" />
+                      Dokumentasi Foto ({item.foto_dokumentasi.length})
+                    </div>
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                      {item.foto_dokumentasi.map((foto, fIdx) => (
+                        <img
+                          key={fIdx}
+                          src={foto}
+                          alt={`Dokumentasi ${fIdx + 1}`}
+                          className="w-16 h-12 object-cover rounded border shrink-0 bg-muted"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Modal Form Tambah / Edit Berita Acara */}
+      <Modal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editingId ? 'Edit Berita Acara UKK' : 'Buat Berita Acara Sesi UKK'}
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-foreground">
+                Nama Sesi <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.nama_sesi}
+                onChange={(e) => setFormData({ ...formData, nama_sesi: e.target.value })}
+                placeholder="Contoh: Sesi 1 (Praktik Jaringan)"
+                className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-foreground">
+                Tanggal Pelaksanaan <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="date"
+                value={formData.tanggal}
+                onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
+                className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-foreground">Jam Mulai</label>
+              <input
+                type="text"
+                value={formData.jam_mulai}
+                onChange={(e) => setFormData({ ...formData, jam_mulai: e.target.value })}
+                placeholder="07:30"
+                className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-foreground">Jam Selesai</label>
+              <input
+                type="text"
+                value={formData.jam_selesai}
+                onChange={(e) => setFormData({ ...formData, jam_selesai: e.target.value })}
+                placeholder="11:30"
+                className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-foreground">Ruang / Lab</label>
+              <input
+                type="text"
+                value={formData.ruang}
+                onChange={(e) => setFormData({ ...formData, ruang: e.target.value })}
+                placeholder="Lab Komputer 1"
+                className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Rekap Kehadiran */}
+          <div className="p-3 bg-muted/40 rounded-xl border space-y-2">
+            <span className="text-xs font-semibold text-foreground block">
+              Rekapitulasi Kehadiran Peserta
+            </span>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-[11px] text-muted-foreground">Total Terdaftar</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.jumlah_peserta}
+                  onChange={(e) => {
+                    const total = parseInt(e.target.value) || 0;
+                    setFormData({
+                      ...formData,
+                      jumlah_peserta: total,
+                      jumlah_tidak_hadir: Math.max(0, total - formData.jumlah_hadir),
+                    });
+                  }}
+                  className="mt-1 w-full px-3 py-1.5 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-emerald-600 font-medium">Jumlah Hadir</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.jumlah_hadir}
+                  onChange={(e) => {
+                    const hadir = parseInt(e.target.value) || 0;
+                    setFormData({
+                      ...formData,
+                      jumlah_hadir: hadir,
+                      jumlah_tidak_hadir: Math.max(0, formData.jumlah_peserta - hadir),
+                    });
+                  }}
+                  className="mt-1 w-full px-3 py-1.5 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-rose-500 font-medium">Tidak Hadir</label>
+                <input
+                  type="number"
+                  readOnly
+                  value={formData.jumlah_tidak_hadir}
+                  className="mt-1 w-full px-3 py-1.5 text-xs bg-muted border rounded-lg font-bold text-rose-500 outline-none cursor-not-allowed"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-foreground">Penguji Internal</label>
+              <input
+                type="text"
+                value={formData.penguji_internal}
+                onChange={(e) => setFormData({ ...formData, penguji_internal: e.target.value })}
+                placeholder="Nama Penguji Internal"
+                className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-foreground">
+                Penguji Eksternal (DU/DI)
+              </label>
+              <input
+                type="text"
+                value={formData.penguji_eksternal}
+                onChange={(e) => setFormData({ ...formData, penguji_eksternal: e.target.value })}
+                placeholder="Nama Penguji Eksternal"
+                className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-foreground">
+              Catatan Pelaksanaan Ujian
+            </label>
+            <textarea
+              rows={2}
+              value={formData.catatan_pelaksanaan}
+              onChange={(e) => setFormData({ ...formData, catatan_pelaksanaan: e.target.value })}
+              placeholder="Catatan umum mengenai ketertiban, kedisiplinan dan kelancaran ujian..."
+              className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none resize-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-foreground">
+              Kendala & Pemecahan Masalah (Opsional)
+            </label>
+            <textarea
+              rows={2}
+              value={formData.kendala}
+              onChange={(e) => setFormData({ ...formData, kendala: e.target.value })}
+              placeholder="Contoh: Gangguan koneksi selama 10 menit, namun berhasil diatasi..."
+              className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none resize-none"
+            />
+          </div>
+
+          {/* Upload Foto Dokumentasi */}
+          <div className="pt-2 border-t space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <Camera className="w-4 h-4 text-primary" />
+                Foto Dokumentasi Pelaksanaan UKK
+              </label>
+              <label className="text-xs text-primary hover:underline cursor-pointer flex items-center gap-1">
+                <Upload className="w-3.5 h-3.5" />
+                Unggah Foto
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              {(formData.foto_dokumentasi || []).map((foto, idx) => (
+                <div key={idx} className="relative group rounded-lg overflow-hidden border">
+                  <img
+                    src={foto}
+                    alt={`Preview ${idx}`}
+                    className="w-full h-20 object-cover bg-muted"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemovePhoto(idx)}
+                    className="absolute top-1 right-1 p-1 bg-rose-600 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Hapus foto"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              {(formData.foto_dokumentasi?.length || 0) === 0 && (
+                <div className="col-span-full py-4 text-center border-2 border-dashed rounded-lg text-xs text-muted-foreground">
+                  Belum ada foto dokumentasi diunggah. Klik "Unggah Foto" di atas.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setModalOpen(false)}
+              disabled={saveMutation.isPending}
+            >
+              Batal
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSubmit}
+              disabled={saveMutation.isPending}
+              className="gap-1.5 text-xs"
+            >
+              <Save className="w-3.5 h-3.5" />
+              {saveMutation.isPending ? 'Menyimpan...' : 'Simpan Berita Acara'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+};

@@ -122,4 +122,106 @@ export class UkkSklController {
       return sendError(reply, 500, 'Gagal menghapus SKL', error);
     }
   }
+
+  // === UKK Settings (Judul Penugasan & Unit Kompetensi per Jurusan) ===
+  static async getUkkSettings(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { jurusan_id } = req.query;
+
+      const result = await UkkSklService.getUkkSettings(tenant_id, jurusan_id);
+      return sendResponse(reply, 200, true, 'Pengaturan UKK berhasil dimuat', result);
+    } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
+      return sendError(reply, 500, 'Gagal memuat pengaturan UKK', error);
+    }
+  }
+
+  static async saveUkkSettings(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { jurusan_id, data } = req.body;
+
+      if (!jurusan_id) {
+        return reply.status(400).send({
+          success: false,
+          message: 'jurusan_id wajib disertakan',
+        });
+      }
+
+      const result = await UkkSklService.saveUkkSettings(tenant_id, jurusan_id, data);
+      return sendResponse(reply, 200, true, 'Pengaturan UKK berhasil disimpan', result);
+    } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
+      return sendError(reply, 500, 'Gagal menyimpan pengaturan UKK', error);
+    }
+  }
+
+  // === UKK Pra-UKK Jadwal & Ploting Penguji ===
+  static async getUkkJadwal(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { jurusan_id } = req.query;
+
+      const result = await UkkSklService.getUkkJadwal(tenant_id, jurusan_id);
+      return sendResponse(reply, 200, true, 'Jadwal & Ploting UKK berhasil dimuat', result);
+    } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
+      return sendError(reply, 500, 'Gagal memuat jadwal & ploting UKK', error);
+    }
+  }
+
+  static async saveUkkJadwal(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { jurusan_id, sessions } = req.body;
+
+      if (!jurusan_id || !Array.isArray(sessions)) {
+        return reply.status(400).send({
+          success: false,
+          message: 'jurusan_id dan sessions (array) wajib disertakan',
+        });
+      }
+
+      const result = await UkkSklService.saveUkkJadwal(tenant_id, jurusan_id, sessions);
+      return sendResponse(reply, 200, true, 'Jadwal & Ploting UKK berhasil disimpan', result);
+    } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
+      return sendError(reply, 500, 'Gagal menyimpan jadwal & ploting UKK', error);
+    }
+  }
+
+  // === UKK Berita Acara & Dokumentasi Sesi ===
+  static async getUkkBeritaAcara(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { jurusan_id } = req.query;
+
+      const result = await UkkSklService.getUkkBeritaAcara(tenant_id, jurusan_id);
+      return sendResponse(reply, 200, true, 'Berita Acara UKK berhasil dimuat', result);
+    } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
+      return sendError(reply, 500, 'Gagal memuat berita acara UKK', error);
+    }
+  }
+
+  static async saveUkkBeritaAcara(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { jurusan_id, records } = req.body;
+
+      if (!jurusan_id || !Array.isArray(records)) {
+        return reply.status(400).send({
+          success: false,
+          message: 'jurusan_id dan records (array) wajib disertakan',
+        });
+      }
+
+      const result = await UkkSklService.saveUkkBeritaAcara(tenant_id, jurusan_id, records);
+      return sendResponse(reply, 200, true, 'Berita Acara UKK berhasil disimpan', result);
+    } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
+      return sendError(reply, 500, 'Gagal menyimpan berita acara UKK', error);
+    }
+  }
 }

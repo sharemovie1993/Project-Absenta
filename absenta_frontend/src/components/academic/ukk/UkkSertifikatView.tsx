@@ -129,13 +129,14 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
 
     const buildPdf = async () => {
       try {
-        // 1. Fetch School & Tenant Details (concurrent)
-        const [sekolahRes, ukkRes] = await Promise.allSettled([
+        // 1. Fetch School & Tenant Details & UKK Settings (concurrent)
+        const [sekolahRes, ukkRes, settingsRes] = await Promise.allSettled([
           sekolahApi.getProfile(),
           // If current student doesn't have score/asesor, fetch from UKK backend
           !currentStudent.nilai_praktik || !currentStudent.asesor_eksternal
             ? raporApi.getUkk({ siswa_id: activeSiswaId }).catch(() => null)
             : Promise.resolve(null),
+          raporApi.getUkkSettings(jurusanId).catch(() => null),
         ]);
 
         if (isCancelled) return;
@@ -151,6 +152,9 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
           Array.isArray(ukkRaw?.data) && ukkRaw.data.length > 0
             ? ukkRaw.data.find((u: any) => u.siswa_id === activeSiswaId) || ukkRaw.data[0]
             : ukkRaw?.data || null;
+
+        const settingsRaw = settingsRes.status === 'fulfilled' ? (settingsRes.value as any) : null;
+        const jurusanSettings = settingsRaw?.data || settingsRaw || null;
 
         // 2. Resolve Logos Base64
         const logoDaerahUrl = sekolahData?.logo_daerah || null;
@@ -201,6 +205,12 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
               'Teknik Komputer dan Jaringan',
           },
           ukk: {
+            skema_sertifikasi:
+              jurusanSettings?.skema_sertifikasi || undefined,
+            judul_penugasan:
+              jurusanSettings?.judul_penugasan_id || undefined,
+            judul_penugasan_en:
+              jurusanSettings?.judul_penugasan_en || undefined,
             predikat: currentStudent.predikat || ukkRecord?.predikat || 'KOMPETEN',
             nilai_praktik: currentStudent.nilai_praktik ?? ukkRecord?.nilai_praktik ?? 85,
             nilai_teori: currentStudent.nilai_teori ?? ukkRecord?.nilai_teori ?? 86,
@@ -217,6 +227,10 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
               currentStudent.mitra_nama ||
               ukkRecord?.MitraIndustri?.nama ||
               'Mitra Industri / DU-DI',
+            unit_kompetensi:
+              Array.isArray(jurusanSettings?.unit_kompetensi) && jurusanSettings.unit_kompetensi.length > 0
+                ? jurusanSettings.unit_kompetensi
+                : undefined,
           },
         };
 
@@ -307,8 +321,12 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
     setIsBatchDownloading(true);
 
     try {
-      const sekolahRes = await sekolahApi.getProfile().catch(() => null);
+      const [sekolahRes, settingsRes] = await Promise.all([
+        sekolahApi.getProfile().catch(() => null),
+        raporApi.getUkkSettings(jurusanId).catch(() => null),
+      ]);
       const sekolahData: any = (sekolahRes as any)?.data || sekolahRes;
+      const settingsData: any = (settingsRes as any)?.data || settingsRes;
       const tenantInfo: any = useAuthStore.getState().user?.tenant;
 
       const [logoDaerahBase64, logoSekolahBase64] = await Promise.all([
@@ -343,6 +361,9 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
           konsentrasi_keahlian: jurusanNama || 'Teknik Komputer dan Jaringan',
         },
         ukk: {
+          skema_sertifikasi: settingsData?.skema_sertifikasi || undefined,
+          judul_penugasan: settingsData?.judul_penugasan_id || undefined,
+          judul_penugasan_en: settingsData?.judul_penugasan_en || undefined,
           predikat: s.predikat || 'KOMPETEN',
           nilai_praktik: s.nilai_praktik ?? 85,
           nilai_teori: s.nilai_teori ?? 86,
@@ -350,6 +371,10 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
           asesor_internal: s.asesor_internal || 'Tim Asesor Sekolah',
           asesor_eksternal: s.asesor_eksternal || 'Penguji Asosiasi Industri',
           mitra_nama: s.mitra_nama || 'Mitra Industri / DU-DI',
+          unit_kompetensi:
+            Array.isArray(settingsData?.unit_kompetensi) && settingsData.unit_kompetensi.length > 0
+              ? settingsData.unit_kompetensi
+              : undefined,
         },
       }));
 

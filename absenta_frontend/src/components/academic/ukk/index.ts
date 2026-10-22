@@ -3,3 +3,6 @@ export * from './UkkFormModal';
 export * from './UkkSertifikatView';
 export * from './UkkSertifikatModal';
 export * from './UkkSertifikatPreviewModal';
+export * from './UkkJurusanConfigModal';
+export * from './UkkJadwalPlotingTab';
+export * from './UkkBeritaAcaraTab';
