@@ -1,6 +1,11 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+export interface UkkBeritaAcaraPhotoItem {
+  url: string;
+  caption?: string;
+}
+
 export interface UkkBeritaAcaraItem {
   id: string;
   jadwal_id?: string;
@@ -22,7 +27,7 @@ export interface UkkBeritaAcaraItem {
   ttd_penguji_eksternal?: string | null;
   ttd_panitia?: string | null;
   status: 'DRAFT' | 'SELESAI';
-  foto_dokumentasi?: string[]; // Base64 or URLs
+  foto_dokumentasi?: (string | UkkBeritaAcaraPhotoItem)[]; // Base64 strings or objects with caption
 }
 
 export interface UkkBeritaAcaraPrintData {
@@ -322,15 +327,21 @@ export const generatePdfUkkBeritaAcara = (
     const photoHeight = 52;
     const gap = 8;
 
-    ba.foto_dokumentasi.slice(0, 6).forEach((photo, idx) => {
+    ba.foto_dokumentasi.slice(0, 6).forEach((photoItem, idx) => {
       const col = idx % 2;
       const row = Math.floor(idx / 2);
       const x = margin + col * (photoWidth + gap);
-      const y = photoY + row * (photoHeight + gap + 8);
+      const y = photoY + row * (photoHeight + gap + 10);
+
+      const photoUrl = typeof photoItem === 'string' ? photoItem : photoItem?.url || '';
+      const photoCaption =
+        typeof photoItem === 'object' && photoItem?.caption && photoItem.caption.trim()
+          ? photoItem.caption.trim()
+          : `Foto ${idx + 1}: Dokumentasi Pelaksanaan ${ba.nama_sesi}`;
 
       try {
-        if (photo.startsWith('data:image')) {
-          doc.addImage(photo, 'JPEG', x, y, photoWidth, photoHeight);
+        if (photoUrl.startsWith('data:image')) {
+          doc.addImage(photoUrl, 'JPEG', x, y, photoWidth, photoHeight);
         } else {
           // Placeholder box if not valid base64
           doc.setFillColor(243, 244, 246);
@@ -346,8 +357,10 @@ export const generatePdfUkkBeritaAcara = (
       }
 
       doc.setFont('times', 'italic');
-      doc.setFontSize(8);
-      doc.text(`Dokumentasi Pelaksanaan Sesi ${idx + 1}`, x + 2, y + photoHeight + 4);
+      doc.setFontSize(8.5);
+      doc.setTextColor(30, 41, 59);
+      const splitCaption = doc.splitTextToSize(photoCaption, photoWidth);
+      doc.text(splitCaption, x + 2, y + photoHeight + 4);
     });
   }
 

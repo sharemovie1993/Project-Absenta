@@ -303,10 +303,23 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
         const base64 = uploadEvent.target?.result as string;
         setFormData((prev) => ({
           ...prev,
-          foto_dokumentasi: [...(prev.foto_dokumentasi || []), base64],
+          foto_dokumentasi: [
+            ...(prev.foto_dokumentasi || []),
+            { url: base64, caption: '' },
+          ],
         }));
       };
       reader.readAsDataURL(file);
+    });
+  };
+
+  const handleCaptionChange = (idx: number, newCaption: string) => {
+    setFormData((prev) => {
+      const updated = [...(prev.foto_dokumentasi || [])];
+      const item = updated[idx];
+      const url = typeof item === 'string' ? item : (item as any)?.url;
+      updated[idx] = { url, caption: newCaption };
+      return { ...prev, foto_dokumentasi: updated };
     });
   };
 
@@ -541,14 +554,17 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
                       Dokumentasi Foto ({item.foto_dokumentasi.length})
                     </div>
                     <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                      {item.foto_dokumentasi.map((foto, fIdx) => (
-                        <img
-                          key={fIdx}
-                          src={foto}
-                          alt={`Dokumentasi ${fIdx + 1}`}
-                          className="w-16 h-12 object-cover rounded border shrink-0 bg-muted"
-                        />
-                      ))}
+                      {item.foto_dokumentasi.map((fotoItem, fIdx) => {
+                        const photoUrl = typeof fotoItem === 'string' ? fotoItem : (fotoItem as any)?.url;
+                        return (
+                          <img
+                            key={fIdx}
+                            src={photoUrl}
+                            alt={`Dokumentasi ${fIdx + 1}`}
+                            className="w-16 h-12 object-cover rounded border shrink-0 bg-muted"
+                          />
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -834,24 +850,43 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
               </label>
             </div>
 
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-              {(formData.foto_dokumentasi || []).map((foto, idx) => (
-                <div key={idx} className="relative group rounded-lg overflow-hidden border">
-                  <img
-                    src={foto}
-                    alt={`Preview ${idx}`}
-                    className="w-full h-20 object-cover bg-muted"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleRemovePhoto(idx)}
-                    className="absolute top-1 right-1 p-1 bg-rose-600 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Hapus foto"
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {(formData.foto_dokumentasi || []).map((fotoItem, idx) => {
+                const photoUrl = typeof fotoItem === 'string' ? fotoItem : (fotoItem as any)?.url;
+                const photoCaption = typeof fotoItem === 'object' ? (fotoItem as any)?.caption || '' : '';
+
+                return (
+                  <div
+                    key={idx}
+                    className="relative group rounded-lg overflow-hidden border p-2 bg-muted/20 flex flex-col gap-2"
                   >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
+                    <div className="relative h-28 rounded overflow-hidden">
+                      <img
+                        src={photoUrl}
+                        alt={`Preview ${idx + 1}`}
+                        className="w-full h-full object-cover bg-muted"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePhoto(idx)}
+                        className="absolute top-1 right-1 p-1 bg-rose-600 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Hapus foto"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        value={photoCaption}
+                        onChange={(e) => handleCaptionChange(idx, e.target.value)}
+                        placeholder={`Caption foto ${idx + 1} (cth: Pengujian Praktik Siswa)`}
+                        className="w-full text-xs px-2.5 py-1.5 rounded border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
               {(formData.foto_dokumentasi?.length || 0) === 0 && (
                 <div className="col-span-full py-4 text-center border-2 border-dashed rounded-lg text-xs text-muted-foreground">
                   Belum ada foto dokumentasi diunggah. Klik "Unggah Foto" di atas.

@@ -313,21 +313,29 @@ export const UkkBeritaAcaraPrintModal: React.FC<UkkBeritaAcaraPrintModalProps> =
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  {beritaAcara.foto_dokumentasi.map((foto, fIdx) => (
-                    <div
-                      key={fIdx}
-                      className="border border-slate-200 rounded-lg p-2 bg-slate-50 flex flex-col items-center"
-                    >
-                      <img
-                        src={foto}
-                        alt={`Dokumentasi ${fIdx + 1}`}
-                        className="w-full h-44 object-cover rounded bg-white"
-                      />
-                      <p className="text-[10px] text-slate-600 italic mt-1.5 text-center">
-                        Dokumentasi Pelaksanaan #{fIdx + 1}
-                      </p>
-                    </div>
-                  ))}
+                  {beritaAcara.foto_dokumentasi.map((fotoItem, fIdx) => {
+                    const photoUrl = typeof fotoItem === 'string' ? fotoItem : (fotoItem as any)?.url || '';
+                    const photoCaption =
+                      typeof fotoItem === 'object' && (fotoItem as any)?.caption && (fotoItem as any).caption.trim()
+                        ? (fotoItem as any).caption.trim()
+                        : `Foto ${fIdx + 1}: Dokumentasi Pelaksanaan ${beritaAcara.nama_sesi}`;
+
+                    return (
+                      <div
+                        key={fIdx}
+                        className="border border-slate-200 rounded-lg p-2.5 bg-slate-50 flex flex-col items-center"
+                      >
+                        <img
+                          src={photoUrl}
+                          alt={photoCaption}
+                          className="w-full h-44 object-cover rounded bg-white shadow-sm"
+                        />
+                        <p className="text-[10.5px] text-slate-700 italic mt-2 text-center font-medium">
+                          {photoCaption}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
