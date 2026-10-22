@@ -73,8 +73,8 @@ export const WalasSiswaTab: React.FC<WalasSiswaTabProps> = React.memo(({
         </div>
       </div>
 
-      {/* 2. KONTEN SUB-VIEW */}
-      {subView === 'roster' ? (
+      {/* 2. KONTEN SUB-VIEW (Keep-Alive Sub-View Toggle) */}
+      <div className={subView === 'roster' ? 'block' : 'hidden'}>
         <div className="space-y-4">
           {/* Universal Role-Ready Siswa View Scoped to Kelas - Code-split Chunk */}
           <Suspense fallback={<div className="p-12 flex justify-center"><Loader size="lg" /></div>}>
@@ -87,8 +87,10 @@ export const WalasSiswaTab: React.FC<WalasSiswaTabProps> = React.memo(({
             />
           </Suspense>
         </div>
-      ) : (
-        /* Struktur Organisasi & Regu Piket Kelas */
+      </div>
+
+      <div className={subView === 'struktur' ? 'block' : 'hidden'}>
+        {/* Struktur Organisasi & Regu Piket Kelas */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Struktur Organisasi Kelas */}
           <Card className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-4">
@@ -155,7 +157,7 @@ export const WalasSiswaTab: React.FC<WalasSiswaTabProps> = React.memo(({
             </div>
           </Card>
         </div>
-      )}
+      </div>
 
       {/* 3. WIDGET KHUSUS SISWA PKL SMK (Fase F Kelas XI / XII) */}
       {isSmkUpper && (
