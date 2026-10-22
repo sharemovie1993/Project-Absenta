@@ -28,6 +28,7 @@ export interface RaporPrintMenuProps {
   btnSize?: 'sm' | 'md';
   onPrintRaporPkl?: () => void;
   onPrintSertifikatPkl?: () => void;
+  onPrintSertifikatUkk?: () => void;
   onOpenTranskrip?: () => void;
 }
 
@@ -47,6 +48,7 @@ export const RaporPrintMenu: React.FC<RaporPrintMenuProps> = ({
   btnSize = 'sm',
   onPrintRaporPkl,
   onPrintSertifikatPkl,
+  onPrintSertifikatUkk,
   onOpenTranskrip,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -204,7 +206,10 @@ export const RaporPrintMenu: React.FC<RaporPrintMenuProps> = ({
             {/* 7. Sertifikat UKK */}
             <button
               type="button"
-              onClick={() => handleAction(() => printUkk(studentId))}
+              onClick={() => handleAction(() => {
+                if (onPrintSertifikatUkk) onPrintSertifikatUkk();
+                else printUkk(studentId);
+              })}
               className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-orange-50 dark:hover:bg-orange-900/30 hover:text-orange-700 dark:hover:text-orange-300 transition-colors cursor-pointer"
             >
               <Award className="w-4 h-4 text-orange-600 dark:text-orange-400 shrink-0" />

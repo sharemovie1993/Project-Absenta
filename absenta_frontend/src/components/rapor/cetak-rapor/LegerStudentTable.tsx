@@ -26,6 +26,7 @@ import {
   getStoredSertifikatSettings, 
   saveStoredSertifikatSettings 
 } from '../../hubin/PengaturanCetakSertifikatModal';
+import { UkkSertifikatModal, type UkkStudentItem } from '../../academic/ukk/UkkSertifikatModal';
 
 interface LegerStudentTableProps {
   students: LegerStudent[];
@@ -99,9 +100,21 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
   const [isBatchMenuOpen, setIsBatchMenuOpen] = useState(false);
   const [isCetakSekaligusMenuOpen, setIsCetakSekaligusMenuOpen] = useState(false);
   const [isSertifikatSettingsModalOpen, setIsSertifikatSettingsModalOpen] = useState(false);
+  const [isUkkModalOpen, setIsUkkModalOpen] = useState(false);
+  const [selectedUkkStudent, setSelectedUkkStudent] = useState<LegerStudent | null>(null);
   const [sertifikatSettings, setSertifikatSettings] = useState<SertifikatPklPrintSettings>(() => getStoredSertifikatSettings());
   const batchMenuRef = useRef<HTMLDivElement>(null);
   const cetakSekaligusMenuRef = useRef<HTMLDivElement>(null);
+
+  const ukkStudentsList: UkkStudentItem[] = React.useMemo(() => {
+    return (students || []).map((s) => ({
+      id: s.id,
+      nama_siswa: s.nama_siswa,
+      nis: s.nis,
+      kelas: s.kelas_nama,
+      isCompleted: true,
+    }));
+  }, [students]);
 
   // Close menus on outside click
   useEffect(() => {
@@ -537,6 +550,32 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
                       </button>
                     </div>
                   )}
+
+                  {isJenjangSmk && (
+                    <div className="p-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsBatchMenuOpen(false);
+                          setSelectedUkkStudent(students[0] || null);
+                          setIsUkkModalOpen(true);
+                        }}
+                        className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-orange-50 dark:hover:bg-orange-950/40 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer group"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                          <Award size={14} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-slate-800 dark:text-slate-100 group-hover:text-orange-700 dark:group-hover:text-orange-300">
+                            Sertifikat UKK Sekelas
+                          </div>
+                          <div className="text-[10px] text-slate-400 truncate">
+                            Pratinjau &amp; Cetak Massal
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -638,6 +677,10 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
                         showSumatifArchive={modeCetakRapor === 'SUMATIF_AND_CP' || modeCetakRapor === 'SUMATIF_ONLY'}
                         onPrintRaporPkl={() => onPrintRaporPkl?.(student)}
                         onPrintSertifikatPkl={() => onPrintSertifikatPkl?.(student)}
+                        onPrintSertifikatUkk={() => {
+                          setSelectedUkkStudent(student);
+                          setIsUkkModalOpen(true);
+                        }}
                         onOpenTranskrip={() => onOpenTranskripModal(student)}
                       />
                     </div>
@@ -662,6 +705,21 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
               toggleShowLogoKananSertifikat();
             }
           }}
+        />
+      )}
+
+      {/* Modal Universal Sertifikat UKK */}
+      {isJenjangSmk && (
+        <UkkSertifikatModal
+          isOpen={isUkkModalOpen}
+          onClose={() => {
+            setIsUkkModalOpen(false);
+            setSelectedUkkStudent(null);
+          }}
+          siswaId={selectedUkkStudent?.id || students[0]?.id}
+          namaSiswa={selectedUkkStudent?.nama_siswa || students[0]?.nama_siswa}
+          kelasNama={students[0]?.kelas_nama}
+          studentsList={ukkStudentsList}
         />
       )}
     </Card>

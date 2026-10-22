@@ -23,7 +23,7 @@ import { Loader } from '@/components/ui/Loader';
 import { raporApi } from '@/api/rapor.api';
 import { siswaApi } from '@/api/academic.api';
 import { UkkFormModal } from './UkkFormModal';
-import { UkkSertifikatPreviewModal } from './UkkSertifikatPreviewModal';
+import { UkkSertifikatModal, type UkkStudentItem } from './UkkSertifikatModal';
 import { cn } from '@/lib/utils';
 
 export interface UkkRecordItem {
@@ -82,6 +82,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
     siswaId?: string;
     namaSiswa?: string;
     nomorSertifikat?: string;
+    studentsList?: UkkStudentItem[];
   }>({ isOpen: false });
 
   // 1. Query Data Sertifikat UKK dari backend
@@ -243,6 +244,22 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
     return { total, completed, pending, pct, avgScore };
   }, [combinedList]);
 
+  // Daftar siswa yang sudah selesai diuji dan bersertifikat (untuk navigasi & cetak massal)
+  const certifiedStudentsList: UkkStudentItem[] = useMemo(() => {
+    return filteredList
+      .filter((s) => s.isCompleted)
+      .map((s) => ({
+        id: s.siswa_id,
+        nama_siswa: s.nama_siswa,
+        nis: s.nis,
+        kelas: s.kelas,
+        nomor_sertifikat: s.nomor_sertifikat,
+        predikat: s.predikat,
+        asesor_eksternal: s.asesor_eksternal,
+        isCompleted: s.isCompleted,
+      }));
+  }, [filteredList]);
+
   const isLoadingTotal = isLoadingUkk && isLoadingSiswa;
 
   return (
@@ -364,7 +381,28 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {certifiedStudentsList.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setPreviewModalData({
+                    isOpen: true,
+                    siswaId: certifiedStudentsList[0]?.id,
+                    namaSiswa: certifiedStudentsList[0]?.nama_siswa,
+                    nomorSertifikat: certifiedStudentsList[0]?.nomor_sertifikat,
+                    studentsList: certifiedStudentsList,
+                  })
+                }
+                className="text-xs font-semibold rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800 hover:bg-amber-100 cursor-pointer"
+                title="Cetak atau pratinjau sertifikat siswa yang sudah dinilai"
+              >
+                <Printer className="w-3.5 h-3.5 mr-1.5" />
+                <span>Cetak Sertifikat ({certifiedStudentsList.length})</span>
+              </Button>
+            )}
+
             <Button
               variant="outline"
               size="sm"
@@ -598,6 +636,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
                                   siswaId: item.siswa_id,
                                   namaSiswa: item.nama_siswa,
                                   nomorSertifikat: item.nomor_sertifikat,
+                                  studentsList: certifiedStudentsList,
                                 })
                               }
                               className="h-7 px-2.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg inline-flex items-center gap-1 cursor-pointer"
@@ -658,13 +697,16 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
         onSuccess={() => refetchUkk()}
       />
 
-      {/* Modal Pratinjau Sertifikat PDF */}
-      <UkkSertifikatPreviewModal
+      {/* Modal Pratinjau & Cetak Sertifikat UKK */}
+      <UkkSertifikatModal
         isOpen={previewModalData.isOpen}
         onClose={() => setPreviewModalData({ isOpen: false })}
         siswaId={previewModalData.siswaId}
         namaSiswa={previewModalData.namaSiswa}
         nomorSertifikat={previewModalData.nomorSertifikat}
+        kelasNama={selectedKelas !== 'ALL' ? selectedKelas : undefined}
+        jurusanNama={jurusanNama}
+        studentsList={previewModalData.studentsList || certifiedStudentsList}
       />
     </div>
   );
