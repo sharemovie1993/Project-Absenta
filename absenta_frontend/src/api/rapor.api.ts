@@ -166,7 +166,7 @@ export const raporApi = {
   },
 
   // === UKK & SKL ===
-  getUkk: async (params?: { siswa_id?: string; query?: string }) => {
+  getUkk: async (params?: { siswa_id?: string; query?: string; jurusan_id?: string; kelas_id?: string }) => {
     const response = await api.get('/rapor/ukk', { params });
     return response.data;
   },

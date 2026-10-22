@@ -38,6 +38,7 @@ import { KaprogKehadiranTab } from './kaprog/tabs/KaprogKehadiranTab';
 import { KaprogPelanggaranTab } from './kaprog/tabs/KaprogPelanggaranTab';
 import { KaprogGuruTab } from './kaprog/tabs/KaprogGuruTab';
 import { KaprogSaranaTab } from './kaprog/tabs/KaprogSaranaTab';
+import { KaprogUkkTab } from './kaprog/tabs/KaprogUkkTab';
 import { KaprogGuruDetailModal } from './kaprog/KaprogGuruDetailModal';
 import { 
   KaprogTabId, 
@@ -72,16 +73,16 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
   const [searchParams, setSearchParams] = useSearchParams();
   const subtabParam = searchParams.get('subtab') as KaprogTabId | null;
 
-  // Active Tab State (beranda | siswa | pkl | kehadiran | pelanggaran | guru | sarana)
+  // Active Tab State (beranda | siswa | pkl | kehadiran | pelanggaran | guru | sarana | ukk)
   const [activeTab, setActiveTab] = useState<KaprogTabId>(() => {
-    if (subtabParam && ['beranda', 'siswa', 'pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana'].includes(subtabParam)) {
+    if (subtabParam && ['beranda', 'siswa', 'pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana', 'ukk'].includes(subtabParam)) {
       return subtabParam;
     }
     return 'beranda';
   });
 
   useEffect(() => {
-    if (subtabParam && ['beranda', 'siswa', 'pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana'].includes(subtabParam)) {
+    if (subtabParam && ['beranda', 'siswa', 'pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana', 'ukk'].includes(subtabParam)) {
       setActiveTab(subtabParam);
     }
   }, [subtabParam]);
@@ -366,6 +367,11 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
         label: 'Sarana & Lab',
         icon: Wrench,
         badge: saranaCounts.rusak > 0 ? saranaCounts.rusak : undefined,
+      },
+      {
+        id: 'ukk',
+        label: 'UKK & Sertifikasi',
+        icon: Award,
       },
     ],
     [tpStatus.pendingMitra, atRiskStudents.length, (pelanggaranList || []).length, saranaCounts.rusak]
@@ -680,6 +686,14 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                   <KaprogSaranaTab
                     saranaCounts={saranaCounts}
                     saranaList={saranaList}
+                  />
+                )}
+                {activeTab === 'ukk' && (
+                  <KaprogUkkTab
+                    jurusanId={resolvedJurusan?.id}
+                    jurusanNama={resolvedJurusan?.nama || 'Kejuruan'}
+                    tahunPelajaranId={academic.selectedTahunPelajaran}
+                    semesterId={academic.selectedSemester}
                   />
                 )}
               </motion.div>

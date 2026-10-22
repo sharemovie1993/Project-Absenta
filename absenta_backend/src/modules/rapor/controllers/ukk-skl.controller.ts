@@ -29,11 +29,13 @@ export class UkkSklController {
   static async getUkk(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
-      const { siswa_id, query } = req.query;
+      const { siswa_id, query, jurusan_id, kelas_id } = req.query;
 
       const result = await UkkSklService.getUkk(tenant_id, {
         siswa_id,
         query,
+        jurusan_id,
+        kelas_id,
       });
 
       return sendResponse(reply, 200, true, 'Daftar sertifikat UKK berhasil dimuat', result);

@@ -44,16 +44,28 @@ export class UkkSklService {
     });
   }
 
-  static async getUkk(tenantId: string, filter: { siswa_id?: string; query?: string }) {
+  static async getUkk(tenantId: string, filter: { siswa_id?: string; query?: string; jurusan_id?: string; kelas_id?: string }) {
     return prisma.sertifikatUkk.findMany({
       where: {
         tenant_id: tenantId,
         ...(filter.siswa_id ? { siswa_id: filter.siswa_id } : {}),
+        ...(filter.jurusan_id
+          ? {
+              Siswa: {
+                OR: [
+                  { jurusan_id: filter.jurusan_id },
+                  { Kelas: { jurusan_id: filter.jurusan_id } },
+                ],
+              },
+            }
+          : {}),
+        ...(filter.kelas_id ? { Siswa: { kelas_id: filter.kelas_id } } : {}),
         ...(filter.query
           ? {
               OR: [
                 { nomor_sertifikat: { contains: filter.query, mode: 'insensitive' } },
                 { asesor_internal: { contains: filter.query, mode: 'insensitive' } },
+                { asesor_eksternal: { contains: filter.query, mode: 'insensitive' } },
                 { Siswa: { nama_siswa: { contains: filter.query, mode: 'insensitive' } } },
               ],
             }
@@ -65,9 +77,14 @@ export class UkkSklService {
             id: true,
             nis: true,
             nama_siswa: true,
+            jurusan_id: true,
+            kelas_id: true,
             Kelas: {
               select: {
+                id: true,
                 nama_kelas: true,
+                tingkat: true,
+                jurusan_id: true,
               },
             },
           },

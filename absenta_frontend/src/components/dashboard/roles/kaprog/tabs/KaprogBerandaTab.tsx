@@ -199,6 +199,13 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
               icon: Wrench,
             },
             {
+              title: 'UKK & Sertifikasi',
+              desc: 'Uji kompetensi & sertifikat',
+              tabId: 'ukk' as KaprogTabId,
+              path: '/rapor',
+              icon: Award,
+            },
+            {
               title: 'Tracer Study',
               desc: 'Keterserapan alumni',
               path: '/hubin/tracer',
