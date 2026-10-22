@@ -14,7 +14,8 @@ import {
   Clock, 
   ArrowRight,
   TrendingUp,
-  ShieldAlert
+  ShieldAlert,
+  Trophy
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui';
@@ -190,6 +191,13 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
               tabId: 'pelanggaran' as KaprogTabId,
               path: '/kesiswaan/pelanggaran',
               icon: ShieldAlert,
+            },
+            {
+              title: 'Prestasi Siswa',
+              desc: 'LKS & kejuaraan jurusan',
+              tabId: 'prestasi' as KaprogTabId,
+              path: '/kesiswaan/prestasi',
+              icon: Trophy,
             },
             {
               title: 'Sarana & Lab',

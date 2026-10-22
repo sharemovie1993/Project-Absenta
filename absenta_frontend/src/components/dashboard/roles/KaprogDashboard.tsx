@@ -14,7 +14,8 @@ import {
   ClipboardList,
   Layers,
   Award,
-  ShieldAlert
+  ShieldAlert,
+  Trophy
 } from 'lucide-react';
 import { Button, Badge, Loader } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
@@ -36,6 +37,7 @@ import { KaprogSiswaTab } from './kaprog/tabs/KaprogSiswaTab';
 import { KaprogPklTab } from './kaprog/tabs/KaprogPklTab';
 import { KaprogKehadiranTab } from './kaprog/tabs/KaprogKehadiranTab';
 import { KaprogPelanggaranTab } from './kaprog/tabs/KaprogPelanggaranTab';
+import { KaprogPrestasiTab } from './kaprog/tabs/KaprogPrestasiTab';
 import { KaprogGuruTab } from './kaprog/tabs/KaprogGuruTab';
 import { KaprogSaranaTab } from './kaprog/tabs/KaprogSaranaTab';
 import { KaprogUkkTab } from './kaprog/tabs/KaprogUkkTab';
@@ -73,16 +75,16 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
   const [searchParams, setSearchParams] = useSearchParams();
   const subtabParam = searchParams.get('subtab') as KaprogTabId | null;
 
-  // Active Tab State (beranda | siswa | pkl | kehadiran | pelanggaran | guru | sarana | ukk)
+  // Active Tab State (beranda | siswa | pkl | kehadiran | pelanggaran | prestasi | guru | sarana | ukk)
   const [activeTab, setActiveTab] = useState<KaprogTabId>(() => {
-    if (subtabParam && ['beranda', 'siswa', 'pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana', 'ukk'].includes(subtabParam)) {
+    if (subtabParam && ['beranda', 'siswa', 'prestasi', 'pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana', 'ukk'].includes(subtabParam)) {
       return subtabParam;
     }
     return 'beranda';
   });
 
   useEffect(() => {
-    if (subtabParam && ['beranda', 'siswa', 'pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana', 'ukk'].includes(subtabParam)) {
+    if (subtabParam && ['beranda', 'siswa', 'prestasi', 'pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana', 'ukk'].includes(subtabParam)) {
       setActiveTab(subtabParam);
     }
   }, [subtabParam]);
@@ -361,6 +363,11 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
         label: 'Pelanggaran Siswa',
         icon: ShieldAlert,
         badge: (pelanggaranList || []).length > 0 ? (pelanggaranList || []).length : undefined,
+      },
+      {
+        id: 'prestasi',
+        label: 'Prestasi Siswa',
+        icon: Trophy,
       },
       { id: 'guru', label: 'Guru Produktif', icon: Users },
       {
@@ -673,6 +680,15 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                     jurusanNama={resolvedJurusan?.nama || 'Kejuruan'}
                     kelasList={kelasKehadiranList}
                     tahunPelajaranId={academic.selectedTahunPelajaran}
+                    semesterId={academic.selectedSemester}
+                  />
+                )}
+                {activeTab === 'prestasi' && (
+                  <KaprogPrestasiTab
+                    jurusanId={resolvedJurusan?.id}
+                    jurusanNama={resolvedJurusan?.nama || 'Kejuruan'}
+                    tahunPelajaranId={academic.selectedTahunPelajaran}
+                    tahunAjaran={academic.activeYear}
                     semesterId={academic.selectedSemester}
                   />
                 )}
