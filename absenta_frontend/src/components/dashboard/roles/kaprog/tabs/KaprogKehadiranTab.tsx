@@ -6,6 +6,7 @@ import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { KelasKehadiranItem, SiswaAtRiskItem } from '../types';
 import { KaprogRekapKolektifModal } from '../modals/KaprogRekapKolektifModal';
+import { TrackingSiswaModal } from '@/components/attendance/tracking/TrackingSiswaModal';
 
 interface KaprogKehadiranTabProps {
   kelasKehadiranList: KelasKehadiranItem[];
@@ -76,6 +77,11 @@ export const KaprogKehadiranTab: React.FC<KaprogKehadiranTabProps> = React.memo(
 }) => {
   const navigate = useNavigate();
   const [isRekapModalOpen, setIsRekapModalOpen] = useState(false);
+  const [trackingTarget, setTrackingTarget] = useState<{
+    isOpen: boolean;
+    siswaId?: string;
+    siswaNama?: string;
+  } | null>(null);
 
   return (
     <div className="space-y-6">
@@ -218,7 +224,13 @@ export const KaprogKehadiranTab: React.FC<KaprogKehadiranTabProps> = React.memo(
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${siswa.id}`)}
+                          onClick={() =>
+                            setTrackingTarget({
+                              isOpen: true,
+                              siswaId: siswa.id,
+                              siswaNama: siswa.nama,
+                            })
+                          }
                           className="h-7 px-3 text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50/80 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 border border-indigo-200/60 dark:border-indigo-800/60 rounded-lg inline-flex items-center gap-1.5 transition-all duration-150 shadow-2xs hover:shadow-xs group cursor-pointer"
                           title={`Lihat linimasa tracking presensi ${siswa.nama}`}
                         >
@@ -243,6 +255,18 @@ export const KaprogKehadiranTab: React.FC<KaprogKehadiranTabProps> = React.memo(
         jurusanId={jurusanId}
         jurusanNama={jurusanNama}
         kelasKehadiranList={kelasKehadiranList}
+        tahunPelajaranId={tahunPelajaranId}
+        semesterId={semesterId}
+      />
+
+      {/* Modal Tracking Linimasa Siswa Terfilter Jurusan */}
+      <TrackingSiswaModal
+        isOpen={!!trackingTarget?.isOpen}
+        onClose={() => setTrackingTarget(null)}
+        siswaId={trackingTarget?.siswaId}
+        siswaNama={trackingTarget?.siswaNama}
+        jurusanId={jurusanId}
+        jurusanNama={jurusanNama}
         tahunPelajaranId={tahunPelajaranId}
         semesterId={semesterId}
       />
