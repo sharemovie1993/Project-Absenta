@@ -1,12 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Activity, ArrowUpRight } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui';
+import { Button, Loader } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { KelasKehadiranItem, SiswaAtRiskItem } from '../types';
-import { KaprogRekapKolektifModal } from '../modals/KaprogRekapKolektifModal';
-import { TrackingSiswaModal } from '@/components/attendance/tracking/TrackingSiswaModal';
+
+// Code-splitting heavy modals to optimize initial tab bundle (Pilar 21B & TBT Optimization)
+const KaprogRekapKolektifModal = lazy(() =>
+  import('../modals/KaprogRekapKolektifModal').then((m) => ({ default: m.KaprogRekapKolektifModal }))
+);
+const TrackingSiswaModal = lazy(() =>
+  import('@/components/attendance/tracking/TrackingSiswaModal').then((m) => ({ default: m.TrackingSiswaModal }))
+);
 
 interface KaprogKehadiranTabProps {
   kelasKehadiranList: KelasKehadiranItem[];
@@ -248,28 +254,36 @@ export const KaprogKehadiranTab: React.FC<KaprogKehadiranTabProps> = React.memo(
         </div>
       </Card>
 
-      {/* Modal Hasil Rekapitulasi Kolektif Terfilter Jurusan */}
-      <KaprogRekapKolektifModal
-        isOpen={isRekapModalOpen}
-        onClose={() => setIsRekapModalOpen(false)}
-        jurusanId={jurusanId}
-        jurusanNama={jurusanNama}
-        kelasKehadiranList={kelasKehadiranList}
-        tahunPelajaranId={tahunPelajaranId}
-        semesterId={semesterId}
-      />
+      {/* Modal Hasil Rekapitulasi Kolektif Terfilter Jurusan - Lazy Mounted */}
+      {isRekapModalOpen && (
+        <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>
+          <KaprogRekapKolektifModal
+            isOpen={isRekapModalOpen}
+            onClose={() => setIsRekapModalOpen(false)}
+            jurusanId={jurusanId}
+            jurusanNama={jurusanNama}
+            kelasKehadiranList={kelasKehadiranList}
+            tahunPelajaranId={tahunPelajaranId}
+            semesterId={semesterId}
+          />
+        </Suspense>
+      )}
 
-      {/* Modal Tracking Linimasa Siswa Terfilter Jurusan */}
-      <TrackingSiswaModal
-        isOpen={!!trackingTarget?.isOpen}
-        onClose={() => setTrackingTarget(null)}
-        siswaId={trackingTarget?.siswaId}
-        siswaNama={trackingTarget?.siswaNama}
-        jurusanId={jurusanId}
-        jurusanNama={jurusanNama}
-        tahunPelajaranId={tahunPelajaranId}
-        semesterId={semesterId}
-      />
+      {/* Modal Tracking Linimasa Siswa Terfilter Jurusan - Lazy Mounted */}
+      {Boolean(trackingTarget?.isOpen) && (
+        <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>
+          <TrackingSiswaModal
+            isOpen={true}
+            onClose={() => setTrackingTarget(null)}
+            siswaId={trackingTarget?.siswaId}
+            siswaNama={trackingTarget?.siswaNama}
+            jurusanId={jurusanId}
+            jurusanNama={jurusanNama}
+            tahunPelajaranId={tahunPelajaranId}
+            semesterId={semesterId}
+          />
+        </Suspense>
+      )}
     </div>
   );
 });

@@ -1,6 +1,11 @@
-import React from 'react';
-import { SiswaView } from '@/components/academic/siswa/SiswaView';
+import React, { Suspense, lazy } from 'react';
+import { Loader } from '@/components/ui';
 import type { KelasKehadiranItem } from '../types';
+
+// Code-splitting heavy universal view to reduce initial tab bundle (Pilar 21B & TBT Optimization)
+const SiswaView = lazy(() =>
+  import('@/components/academic/siswa/SiswaView').then((m) => ({ default: m.SiswaView }))
+);
 
 export interface KaprogSiswaTabProps {
   jurusanId?: string;
@@ -19,13 +24,15 @@ export const KaprogSiswaTab: React.FC<KaprogSiswaTabProps> = React.memo(({
 }) => {
   return (
     <div className="space-y-4 w-full max-w-full min-w-0">
-      <SiswaView
-        hideLayout
-        jurusanId={jurusanId}
-        jurusanNama={jurusanNama}
-        tahunPelajaranId={tahunPelajaranId}
-        semesterId={semesterId}
-      />
+      <Suspense fallback={<div className="p-12 flex justify-center"><Loader size="lg" /></div>}>
+        <SiswaView
+          hideLayout
+          jurusanId={jurusanId}
+          jurusanNama={jurusanNama}
+          tahunPelajaranId={tahunPelajaranId}
+          semesterId={semesterId}
+        />
+      </Suspense>
     </div>
   );
 });

@@ -45,7 +45,6 @@ import { KaprogPrestasiTab } from './kaprog/tabs/KaprogPrestasiTab';
 import { KaprogGuruTab } from './kaprog/tabs/KaprogGuruTab';
 import { KaprogSaranaTab } from './kaprog/tabs/KaprogSaranaTab';
 import { KaprogUkkTab } from './kaprog/tabs/KaprogUkkTab';
-import { KaprogGuruDetailModal } from './kaprog/KaprogGuruDetailModal';
 import { 
   KaprogTabId, 
   NavTabItem, 

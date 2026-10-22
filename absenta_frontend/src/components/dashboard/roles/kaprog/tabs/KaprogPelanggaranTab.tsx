@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, Suspense, lazy } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -15,11 +15,15 @@ import {
   FileText
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui';
+import { Button, Loader } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { kesiswaanApi } from '@/api/kesiswaan.api';
 import { PelanggaranSiswaItem, KelasKehadiranItem } from '../types';
-import { KaprogPelanggaranModal } from '../modals/KaprogPelanggaranModal';
+
+// Code-splitting modal view to optimize initial tab bundle (Pilar 21B & TBT Optimization)
+const KaprogPelanggaranModal = lazy(() =>
+  import('../modals/KaprogPelanggaranModal').then((m) => ({ default: m.KaprogPelanggaranModal }))
+);
 
 interface KaprogPelanggaranTabProps {
   pelanggaranList?: PelanggaranSiswaItem[];
@@ -460,16 +464,20 @@ export const KaprogPelanggaranTab: React.FC<KaprogPelanggaranTabProps> = React.m
         </div>
       </Card>
 
-      {/* Modal Detail Pelanggaran Siswa Scoped Jurusan */}
-      <KaprogPelanggaranModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        jurusanId={jurusanId}
-        jurusanNama={jurusanNama}
-        initialPelanggaranList={displayList}
-        tahunPelajaranId={tahunPelajaranId}
-        semesterId={semesterId}
-      />
+      {/* Modal Detail Pelanggaran Siswa Scoped Jurusan - Lazy Mounted */}
+      {isModalOpen && (
+        <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>
+          <KaprogPelanggaranModal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            jurusanId={jurusanId}
+            jurusanNama={jurusanNama}
+            initialPelanggaranList={displayList}
+            tahunPelajaranId={tahunPelajaranId}
+            semesterId={semesterId}
+          />
+        </Suspense>
+      )}
     </div>
   );
 });
