@@ -1,5 +1,9 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import {
+  getUkkRegulatoryEdition,
+  calculateUkkPredikat,
+} from '../../../config/ukkRegulatoryRegistry';
 
 export interface UkkUnitKompetensi {
   kode_unit: string;
@@ -157,6 +161,13 @@ export const TUT_WURI_LOGO_SVG = `data:image/svg+xml;utf8,${encodeURIComponent(`
 </svg>
 `)}`;
 
+export interface SertifikatUkkRenderOptions {
+  logoDaerahBase64?: string | null;
+  logoSekolahBase64?: string | null;
+  editionId?: string;
+  templateType?: 'sertifikat' | 'suket_lampiran_2';
+}
+
 /**
  * =========================================================================
  * HALAMAN 1 (FRONT): SERTIFIKAT UJI KOMPETENSI KEMENDIKBUDRISTEK
@@ -165,11 +176,9 @@ export const TUT_WURI_LOGO_SVG = `data:image/svg+xml;utf8,${encodeURIComponent(`
 export const renderSertifikatUkkFront = (
   doc: jsPDF,
   data: SertifikatUkkPrintData,
-  options?: {
-    logoDaerahBase64?: string | null;
-    logoSekolahBase64?: string | null;
-  }
+  options?: SertifikatUkkRenderOptions
 ) => {
+  const edition = getUkkRegulatoryEdition(options?.editionId);
   const pageWidth = 210;
 
   const namaSekolah = (data.sekolah?.nama || 'SMK NEGERI ABSENTA').toUpperCase();
@@ -227,20 +236,20 @@ export const renderSertifikatUkkFront = (
     }
   }
 
-  // 3. MAIN TITLE & NOMOR (Bilingual, Official Blue Typography Sesuai Juknis 2026)
+  // 3. MAIN TITLE & NOMOR (Bilingual, Official Blue Typography Sesuai Juknis)
   const contentCenterX = 118;
   let curY = logoY + logoH + 7;
 
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(14.5);
   doc.setTextColor(2, 132, 199);
-  doc.text('SERTIFIKAT KOMPETENSI', contentCenterX, curY, { align: 'center' });
+  doc.text(edition.titleId, contentCenterX, curY, { align: 'center' });
 
   curY += 4.8;
   doc.setFont('Helvetica', 'italic');
   doc.setFontSize(10);
   doc.setTextColor(2, 132, 199);
-  doc.text('CERTIFICATE OF COMPETENCY ASSESSMENT', contentCenterX, curY, { align: 'center' });
+  doc.text(edition.titleEn, contentCenterX, curY, { align: 'center' });
 
   curY += 5;
   doc.setFont('Helvetica', 'normal');
@@ -253,11 +262,9 @@ export const renderSertifikatUkkFront = (
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(51, 65, 85);
-  doc.text('Dengan ini menyatakan', contentCenterX, curY, { align: 'center' });
+  doc.text(edition.statementId, contentCenterX, curY, { align: 'center' });
   curY += 3.6;
-  doc.text('bahwa, This is to certify', contentCenterX, curY, { align: 'center' });
-  curY += 3.6;
-  doc.text('that', contentCenterX, curY, { align: 'center' });
+  doc.text(edition.statementEn, contentCenterX, curY, { align: 'center' });
 
   // 5. NAMA SISWA & NISN (Prominent Bold Centerpiece)
   curY += 7.5;
@@ -277,18 +284,14 @@ export const renderSertifikatUkkFront = (
   curY += 6.5;
   doc.setFontSize(8.2);
   doc.setTextColor(51, 65, 85);
-  doc.text('Telah mengikuti Uji Kompetensi', contentCenterX, curY, { align: 'center' });
+  doc.text(edition.hasTakenId, contentCenterX, curY, { align: 'center' });
   curY += 3.5;
-  doc.text('Keahlian has taken the', contentCenterX, curY, { align: 'center' });
-  curY += 3.5;
-  doc.text('competency test', contentCenterX, curY, { align: 'center' });
+  doc.text(edition.hasTakenEn, contentCenterX, curY, { align: 'center' });
 
   curY += 5.5;
-  doc.text('pada Kompetensi', contentCenterX, curY, { align: 'center' });
+  doc.text(edition.competencyPrefixId, contentCenterX, curY, { align: 'center' });
   curY += 3.5;
-  doc.text('Keahlian in', contentCenterX, curY, { align: 'center' });
-  curY += 3.5;
-  doc.text('Competency of', contentCenterX, curY, { align: 'center' });
+  doc.text(edition.competencyPrefixEn, contentCenterX, curY, { align: 'center' });
 
   curY += 6;
   doc.setFont('Helvetica', 'bold');
@@ -344,7 +347,10 @@ export const renderSertifikatUkkFront = (
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(12.5);
   doc.setTextColor(15, 23, 42);
-  const rawPredikat = (ukk.predikat || 'Kompeten').trim();
+
+  // Dynamic Predikat calculation according to the selected regulatory edition thresholds
+  const evaluatedPredikat = calculateUkkPredikat(ukk.nilai_akhir ?? 85, edition.id);
+  const rawPredikat = (ukk.predikat || evaluatedPredikat.predikatId).trim();
   const predikatCapitalized =
     rawPredikat.charAt(0).toUpperCase() + rawPredikat.slice(1).toLowerCase();
   doc.text(predikatCapitalized, contentCenterX, curY, { align: 'center' });
@@ -353,13 +359,7 @@ export const renderSertifikatUkkFront = (
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(71, 85, 105);
-  const predikatEn =
-    ukk.predikat_en ||
-    (rawPredikat.toLowerCase().includes('sangat')
-      ? 'Very Competent'
-      : rawPredikat.toLowerCase().includes('cukup')
-      ? 'Adequately Competent'
-      : 'Competent');
+  const predikatEn = ukk.predikat_en || evaluatedPredikat.predikatEn;
   doc.text(predikatEn, contentCenterX, curY, { align: 'center' });
 
   // 9. VALIDITAS SERTIFIKAT (3 Tahun)
@@ -367,11 +367,9 @@ export const renderSertifikatUkkFront = (
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(51, 65, 85);
-  doc.text('Sertifikat ini berlaku untuk : 3 (tiga)', contentCenterX, curY, { align: 'center' });
+  doc.text(edition.klausulMasaBerlakuId, contentCenterX, curY, { align: 'center' });
   curY += 3.4;
-  doc.text('Tahun This certificate is valid for : 3', contentCenterX, curY, { align: 'center' });
-  curY += 3.4;
-  doc.text('(three) Years', contentCenterX, curY, { align: 'center' });
+  doc.text(edition.klausulMasaBerlakuEn, contentCenterX, curY, { align: 'center' });
 
   // 10. TANDA TANGAN (Bipartit: Kepala Sekolah & Penguji Eksternal)
   curY += 8.5;
@@ -387,8 +385,8 @@ export const renderSertifikatUkkFront = (
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(30, 41, 59);
-  doc.text(`Atas nama ${namaSekolah}`, colLeftX, signY, { align: 'center' });
-  doc.text(`On behalf of ${namaSekolah}`, colLeftX, signY + 3.2, { align: 'center' });
+  doc.text(`${edition.labelTtdKepalaSekolah} ${namaSekolah}`, colLeftX, signY, { align: 'center' });
+  doc.text(`${edition.labelTtdKepalaSekolahEn} ${namaSekolah}`, colLeftX, signY + 3.2, { align: 'center' });
 
   // TTD Digital Kepala Sekolah
   const ttdKepala = data.sekolah?.ttd_kepala || ukk.ttd_kepala_sekolah;
@@ -557,15 +555,199 @@ export const renderSertifikatUkkBack = (
 
 /**
  * =========================================================================
- * GENERATE COMPLETE 2-PAGE DOCUMENT (FRONT + BACK)
+ * LAMPIRAN 2 (JUKNIS 2026 HAL 23): SURAT KETERANGAN TELAH MENGIKUTI UKK
+ * Diberikan kepada peserta uji yang belum mencapai ambang batas kompeten (skor < 75)
+ * =========================================================================
+ */
+export const renderSuratKeteranganUkk = (
+  doc: jsPDF,
+  data: SertifikatUkkPrintData,
+  options?: SertifikatUkkRenderOptions
+) => {
+  const pageWidth = 210;
+  const namaSekolah = data.sekolah?.nama || 'SMK NEGERI ABSENTA';
+  const kotaSekolah = data.sekolah?.kota || 'Purwakarta';
+  const kepalaSekolahNama = data.sekolah?.kepala_sekolah || 'Kepala Sekolah';
+  const nipKepala = data.sekolah?.nip_kepala || '-';
+  const nomorSurat = `${data.nomor_sertifikat || '800/056/413.31/UKK/2026'}/SK-UKK/${new Date().getFullYear()}`;
+  const tanggalTerbit = data.tanggal_terbit || `${kotaSekolah}, ${formatTanggalIndonesia(new Date())}`;
+  const { siswa, ukk } = data;
+
+  let curY = 16;
+
+  // 1. Kop Surat Resmi
+  if (options?.logoDaerahBase64) {
+    try {
+      doc.addImage(options.logoDaerahBase64, 'PNG', 18, curY, 20, 20);
+    } catch {}
+  }
+  if (options?.logoSekolahBase64) {
+    try {
+      doc.addImage(options.logoSekolahBase64, 'PNG', pageWidth - 38, curY, 20, 20);
+    } catch {}
+  }
+
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text('PEMERINTAH DAERAH PROVINSI', pageWidth / 2, curY + 2, { align: 'center' });
+  doc.setFontSize(10);
+  doc.text('DINAS PENDIDIKAN', pageWidth / 2, curY + 6.5, { align: 'center' });
+  doc.setFontSize(12);
+  doc.text(namaSekolah.toUpperCase(), pageWidth / 2, curY + 11.5, { align: 'center' });
+
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105);
+  const alamat = data.sekolah?.alamat || 'Jl. Pendidikan No. 1';
+  const telp = data.sekolah?.telepon ? `Telp: ${data.sekolah.telepon}` : '';
+  const email = data.sekolah?.email ? `Email: ${data.sekolah.email}` : '';
+  doc.text(`${alamat} ${telp ? '• ' + telp : ''} ${email ? '• ' + email : ''}`, pageWidth / 2, curY + 16, { align: 'center' });
+
+  curY += 21;
+  doc.setDrawColor(30, 41, 59);
+  doc.setLineWidth(0.6);
+  doc.line(18, curY, pageWidth - 18, curY);
+  doc.setLineWidth(0.2);
+  doc.line(18, curY + 1, pageWidth - 18, curY + 1);
+
+  // 2. Judul Surat Keterangan
+  curY += 10;
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(15, 23, 42);
+  doc.text('SURAT KETERANGAN', pageWidth / 2, curY, { align: 'center' });
+  curY += 5;
+  doc.setFontSize(11);
+  doc.text('TELAH MENGIKUTI UJI KOMPETENSI KEAHLIAN', pageWidth / 2, curY, { align: 'center' });
+  curY += 4.5;
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text(`Nomor : ${nomorSurat}`, pageWidth / 2, curY, { align: 'center' });
+
+  // 3. Narasi Pembuka
+  curY += 9;
+  doc.setFontSize(9.5);
+  doc.text(`Kepala ${namaSekolah} menerangkan bahwa :`, 20, curY);
+
+  curY += 4;
+  const siswaData = [
+    ['Nama', `:  ${siswa.nama_siswa}`],
+    ['NISN', `:  ${siswa.nisn || siswa.nis || '-'}`],
+    ['Program Keahlian', `:  ${siswa.program_keahlian || '-'}`],
+  ];
+
+  autoTable(doc, {
+    startY: curY,
+    margin: { left: 22, right: 22 },
+    body: siswaData,
+    theme: 'plain',
+    styles: { fontSize: 9.5, cellPadding: 1.2, textColor: [15, 23, 42] },
+    columnStyles: {
+      0: { cellWidth: 38, fontStyle: 'bold' },
+      1: { cellWidth: 'auto' },
+    },
+  });
+
+  const studentFinalY = (doc as any).lastAutoTable?.finalY || (curY + 18);
+  curY = studentFinalY + 4;
+
+  const judulPaket = ukk.judul_penugasan || 'Implementasi Jaringan Komputer';
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(9.5);
+  const narrativeLines = doc.splitTextToSize(
+    `Telah mengikuti uji kompetensi keahlian pada paket ${judulPaket} dengan keterangan pada unit di bawah ini :`,
+    pageWidth - 40
+  );
+  doc.text(narrativeLines, 20, curY);
+  curY += narrativeLines.length * 4.5 + 2;
+
+  // 4. Tabel 3 Kolom Lampiran 2
+  const unitList =
+    ukk.unit_kompetensi && ukk.unit_kompetensi.length > 0
+      ? ukk.unit_kompetensi
+      : getDefaultUnitKompetensi(siswa.program_keahlian, siswa.konsentrasi_keahlian);
+
+  const nilaiAkhirNum = Number(ukk.nilai_akhir ?? 70);
+  const tableBody = unitList.map((u, idx) => {
+    const isKompeten = nilaiAkhirNum >= 75 || idx < 8;
+    return [u.kode_unit, u.judul_unit, isKompeten ? 'Kompeten' : 'Belum Kompeten'];
+  });
+
+  autoTable(doc, {
+    startY: curY,
+    margin: { left: 20, right: 20 },
+    head: [['Kode Unit\nUnit Code', 'Judul Unit\nUnit Title', 'Keterangan\nInformation']],
+    body: tableBody,
+    theme: 'plain',
+    headStyles: {
+      fillColor: [241, 245, 249],
+      textColor: [15, 23, 42],
+      fontStyle: 'bold',
+      fontSize: 8.5,
+      halign: 'center',
+      valign: 'middle',
+      lineColor: [100, 116, 139],
+      lineWidth: 0.3,
+      cellPadding: 2.2,
+    },
+    bodyStyles: {
+      fontSize: 8,
+      textColor: [15, 23, 42],
+      lineColor: [100, 116, 139],
+      lineWidth: 0.3,
+      cellPadding: 2,
+      valign: 'middle',
+    },
+    columnStyles: {
+      0: { cellWidth: 36, halign: 'center', fontStyle: 'normal' },
+      1: { cellWidth: 'auto', halign: 'left' },
+      2: { cellWidth: 34, halign: 'center', fontStyle: 'bold' },
+    },
+    didDrawCell: (dataCell) => {
+      doc.setDrawColor(148, 163, 184);
+      doc.setLineWidth(0.25);
+      doc.rect(dataCell.cell.x, dataCell.cell.y, dataCell.cell.width, dataCell.cell.height);
+    },
+  });
+
+  const tableFinalY = (doc as any).lastAutoTable?.finalY || (curY + 60);
+  curY = tableFinalY + 6;
+
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text('Demikian surat keterangan ini kami sampaikan untuk di pergunakan sebagaimana mestinya.', 20, curY);
+
+  // 5. Tanda Tangan Tunggal Kepala Sekolah (Kanan Bawah)
+  const signBlockY = Math.max(curY + 12, 235);
+  const signCenterX = 155;
+
+  doc.text(tanggalTerbit, signCenterX, signBlockY, { align: 'center' });
+  doc.text('Kepala SMK,', signCenterX, signBlockY + 4.5, { align: 'center' });
+
+  const ttdKepala = data.sekolah?.ttd_kepala || ukk.ttd_kepala_sekolah;
+  if (ttdKepala) {
+    try {
+      doc.addImage(ttdKepala, 'PNG', signCenterX - 16, signBlockY + 7, 32, 16);
+    } catch {}
+  }
+
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.text(kepalaSekolahNama, signCenterX, signBlockY + 28, { align: 'center' });
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.text(`NIP. ${nipKepala}`, signCenterX, signBlockY + 32, { align: 'center' });
+};
+
+/**
+ * =========================================================================
+ * GENERATE COMPLETE DOCUMENT (1 or 2 Pages based on templateType)
  * =========================================================================
  */
 export const generateSertifikatUkkDoc = async (
   data: SertifikatUkkPrintData,
-  options?: {
-    logoDaerahBase64?: string | null;
-    logoSekolahBase64?: string | null;
-  }
+  options?: SertifikatUkkRenderOptions
 ): Promise<jsPDF> => {
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -573,12 +755,18 @@ export const generateSertifikatUkkDoc = async (
     format: 'a4',
   });
 
-  // Halaman 1: Muka Sertifikat Resmi
-  renderSertifikatUkkFront(doc, data, options);
+  if (options?.templateType === 'suket_lampiran_2') {
+    // 1 Halaman: Surat Keterangan Telah Mengikuti UKK (Lampiran 2 Hal 23)
+    renderSuratKeteranganUkk(doc, data, options);
+  } else {
+    // 2 Halaman: Sertifikat Kompetensi Resmi
+    // Halaman 1: Muka Sertifikat Resmi
+    renderSertifikatUkkFront(doc, data, options);
 
-  // Halaman 2: Daftar Unit Kompetensi (Lembar Belakang)
-  doc.addPage('a4', 'portrait');
-  renderSertifikatUkkBack(doc, data);
+    // Halaman 2: Daftar Unit Kompetensi (Lembar Belakang)
+    doc.addPage('a4', 'portrait');
+    renderSertifikatUkkBack(doc, data);
+  }
 
   return doc;
 };
@@ -588,29 +776,24 @@ export const generateSertifikatUkkDoc = async (
  */
 export const generateSertifikatUkkSinglePdf = async (
   data: SertifikatUkkPrintData,
-  options?: {
-    logoDaerahBase64?: string | null;
-    logoSekolahBase64?: string | null;
-  }
+  options?: SertifikatUkkRenderOptions
 ): Promise<{ blobUrl: string; filename: string; doc: jsPDF }> => {
   const doc = await generateSertifikatUkkDoc(data, options);
   const cleanName = (data.siswa.nama_siswa || 'Siswa').replace(/\s+/g, '_');
-  const filename = `SERTIFIKAT_UKK_${cleanName}.pdf`;
+  const prefix = options?.templateType === 'suket_lampiran_2' ? 'SURAT_KETERANGAN_UKK' : 'SERTIFIKAT_UKK';
+  const filename = `${prefix}_${cleanName}.pdf`;
   const blobUrl = URL.createObjectURL(doc.output('blob'));
   return { blobUrl, filename, doc };
 };
 
 /**
- * Generate Batch UKK Certificates PDF (Sekelas, 2 Halaman per Siswa)
+ * Generate Batch UKK Certificates PDF (Sekelas, Sesuai Format Pilihan)
  */
 export const generateSertifikatUkkBatchPdf = async (
   list: SertifikatUkkPrintData[],
   namaKelas = 'Kelas',
   onProgress?: (current: number, total: number, studentName: string) => void,
-  options?: {
-    logoDaerahBase64?: string | null;
-    logoSekolahBase64?: string | null;
-  }
+  options?: SertifikatUkkRenderOptions
 ): Promise<{ blobUrl: string; filename: string; doc: jsPDF }> => {
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -625,16 +808,21 @@ export const generateSertifikatUkkBatchPdf = async (
     }
     onProgress?.(i + 1, list.length, item.siswa.nama_siswa);
 
-    // Page 1: Muka Depan
-    renderSertifikatUkkFront(doc, item, options);
+    if (options?.templateType === 'suket_lampiran_2') {
+      renderSuratKeteranganUkk(doc, item, options);
+    } else {
+      // Page 1: Muka Depan
+      renderSertifikatUkkFront(doc, item, options);
 
-    // Page 2: Lembar Belakang
-    doc.addPage('a4', 'portrait');
-    renderSertifikatUkkBack(doc, item);
+      // Page 2: Lembar Belakang
+      doc.addPage('a4', 'portrait');
+      renderSertifikatUkkBack(doc, item);
+    }
   }
 
   const cleanKelas = namaKelas.replace(/\s+/g, '_');
-  const filename = `SERTIFIKAT_UKK_SEKELAS_${cleanKelas}.pdf`;
+  const prefix = options?.templateType === 'suket_lampiran_2' ? 'SURAT_KETERANGAN_UKK_SEKELAS' : 'SERTIFIKAT_UKK_SEKELAS';
+  const filename = `${prefix}_${cleanKelas}.pdf`;
   const blobUrl = URL.createObjectURL(doc.output('blob'));
   return { blobUrl, filename, doc };
 };

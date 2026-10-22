@@ -139,6 +139,13 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
   const activeSiswaId = currentStudent.id;
   const activeTahunAjaran = currentStudent.tahun_ajaran || '2025/2026';
 
+  // Active Regulatory Edition based on active template or student academic year
+  const activeEdition = useMemo(() => {
+    if (selectedTemplate === 'kemdikbud_2024') return getUkkRegulatoryEdition('2023_2024');
+    if (selectedTemplate === 'kemdikbud_2026') return getUkkRegulatoryEdition('2026');
+    return getUkkRegulatoryEdition(activeTahunAjaran);
+  }, [selectedTemplate, activeTahunAjaran]);
+
   // Fetch UKK student record and jurusan settings
   useEffect(() => {
     let isCancelled = false;
@@ -213,7 +220,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
       ukkRecord?.nilai_akhir ??
       Math.round((Number(rawNilaiPraktik) * 0.7) + (Number(rawNilaiTeori) * 0.3));
 
-    const editionId = jurusanSettings?.edisi_pedoman || '2026';
+    const editionId = jurusanSettings?.edisi_pedoman || activeEdition.id;
     const computedPredikat = calculateUkkPredikat(rawNilaiAkhir, editionId);
 
     return {
@@ -272,7 +279,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
         unit_kompetensi: unitKompetensiList,
       },
     };
-  }, [currentStudent, ukkRecord, jurusanSettings, sekolahData, tenantInfo, jurusanNama, kelasNama]);
+  }, [currentStudent, ukkRecord, jurusanSettings, sekolahData, tenantInfo, jurusanNama, kelasNama, activeEdition]);
 
   // Browser Print
   const handlePrint = () => {
@@ -282,9 +289,12 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
   // Single PDF Download via jsPDF
   const handleDownloadSinglePdf = async () => {
     try {
+      const isSuket = selectedTemplate === 'suket_lampiran_2';
       const { blobUrl, filename } = await generateSertifikatUkkSinglePdf(certData, {
         logoDaerahBase64: showLogoDaerah ? logoDaerahBase64 : null,
         logoSekolahBase64: showLogoSekolah ? logoSekolahBase64 : null,
+        editionId: activeEdition.id,
+        templateType: isSuket ? 'suket_lampiran_2' : 'sertifikat',
       });
 
       const a = document.createElement('a');
@@ -294,10 +304,10 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
       a.click();
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(blobUrl), 3000);
-      toast.success('Sertifikat UKK berhasil diunduh');
+      toast.success(isSuket ? 'Surat Keterangan UKK berhasil diunduh' : 'Sertifikat UKK berhasil diunduh');
     } catch (err) {
       console.error(err);
-      toast.error('Gagal mengunduh sertifikat PDF');
+      toast.error('Gagal mengunduh dokumen PDF');
     }
   };
 
@@ -307,27 +317,38 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
     setIsBatchDownloading(true);
 
     try {
-      const certList: SertifikatUkkPrintData[] = allStudents.map((s) => ({
-        nomor_sertifikat:
-          s.nomor_sertifikat || `UKK/${new Date().getFullYear()}/${s.nis || '0001'}`,
-        tanggal_terbit: `${sekolahData?.kota || 'Purwakarta'}, ${formatTanggalIndonesia(new Date())}`,
-        sekolah: certData.sekolah,
-        siswa: {
-          nama_siswa: s.nama_siswa,
-          nis: s.nis || '-',
-          nisn: s.nisn || '-',
-          nama_kelas: s.kelas || kelasNama || 'Kelas XII',
-          program_keahlian: jurusanNama,
-          konsentrasi_keahlian: jurusanNama,
-        },
-        ukk: {
-          ...certData.ukk,
-          predikat: s.predikat || certData.ukk.predikat,
-          nilai_praktik: s.nilai_praktik ?? certData.ukk.nilai_praktik,
-          nilai_teori: s.nilai_teori ?? certData.ukk.nilai_teori,
-          nilai_akhir: s.nilai_akhir ?? certData.ukk.nilai_akhir,
-        },
-      }));
+      const isSuket = selectedTemplate === 'suket_lampiran_2';
+      const certList: SertifikatUkkPrintData[] = allStudents.map((s) => {
+        const sNilaiPraktik = s.nilai_praktik ?? certData.ukk.nilai_praktik ?? 85;
+        const sNilaiTeori = s.nilai_teori ?? certData.ukk.nilai_teori ?? 86;
+        const sNilaiAkhir =
+          s.nilai_akhir ??
+          Math.round(Number(sNilaiPraktik) * 0.7 + Number(sNilaiTeori) * 0.3);
+        const sPredikat = calculateUkkPredikat(sNilaiAkhir, activeEdition.id);
+
+        return {
+          nomor_sertifikat:
+            s.nomor_sertifikat || `UKK/${new Date().getFullYear()}/${s.nis || '0001'}`,
+          tanggal_terbit: `${sekolahData?.kota || 'Purwakarta'}, ${formatTanggalIndonesia(new Date())}`,
+          sekolah: certData.sekolah,
+          siswa: {
+            nama_siswa: s.nama_siswa,
+            nis: s.nis || '-',
+            nisn: s.nisn || '-',
+            nama_kelas: s.kelas || kelasNama || 'Kelas XII',
+            program_keahlian: jurusanNama,
+            konsentrasi_keahlian: jurusanNama,
+          },
+          ukk: {
+            ...certData.ukk,
+            predikat: s.predikat || sPredikat.predikatId,
+            predikat_en: sPredikat.predikatEn,
+            nilai_praktik: sNilaiPraktik,
+            nilai_teori: sNilaiTeori,
+            nilai_akhir: sNilaiAkhir,
+          },
+        };
+      });
 
       const { blobUrl, filename } = await generateSertifikatUkkBatchPdf(
         certList,
@@ -336,6 +357,8 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
         {
           logoDaerahBase64: showLogoDaerah ? logoDaerahBase64 : null,
           logoSekolahBase64: showLogoSekolah ? logoSekolahBase64 : null,
+          editionId: activeEdition.id,
+          templateType: isSuket ? 'suket_lampiran_2' : 'sertifikat',
         }
       );
 
@@ -346,10 +369,14 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
       a.click();
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-      toast.success(`Berhasil mengunduh sertifikat ${allStudents.length} siswa`);
+      toast.success(
+        isSuket
+          ? `Berhasil mengunduh Surat Keterangan ${allStudents.length} siswa`
+          : `Berhasil mengunduh Sertifikat ${allStudents.length} siswa`
+      );
     } catch (e) {
       console.error('Batch download failed:', e);
-      toast.error('Gagal mengunduh sertifikat massal');
+      toast.error('Gagal mengunduh dokumen massal');
     } finally {
       setIsBatchDownloading(false);
     }
@@ -397,7 +424,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
         </span>
       )}
       <span className="text-[11px] font-semibold text-primary/80 hidden sm:inline">
-        • Pedoman Kemendikdasmen 2026 (TA {activeTahunAjaran})
+        • {activeEdition.label} (TA {activeTahunAjaran})
       </span>
     </div>
   );
@@ -551,6 +578,29 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
           </div>
         )}
 
+        {/* Regulatory Advisory for Under-Threshold Students */}
+        {Number(certData.ukk.nilai_akhir || 0) < activeEdition.thresholdMandiri.kompeten.min && (
+          <div className="print:hidden mb-4 p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 rounded-xl text-xs text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-start gap-2.5">
+              <span className="text-base">⚠️</span>
+              <div>
+                <p className="font-bold">
+                  Siswa Belum Mencapai Batas Kelulusan Minimal ({activeEdition.thresholdMandiri.kompeten.min})
+                </p>
+                <p className="text-[11px] text-amber-800 dark:text-amber-300 mt-0.5">
+                  Siswa ini memperoleh nilai <strong>{certData.ukk.nilai_akhir}</strong> ({certData.ukk.predikat}). Sesuai regulasi {activeEdition.label}, siswa berhak diterbitkan <strong>Surat Keterangan Mengikuti UKK (Lampiran 2)</strong>, bukan Sertifikat Kompetensi.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setSelectedTemplate('suket_lampiran_2')}
+              className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs transition-colors shadow-xs"
+            >
+              Beralih ke Lampiran 2
+            </button>
+          </div>
+        )}
+
         {/* ========================================================================= */}
         {/* LEMBAR 1: MUKA DEPAN SERTIFIKAT RESMI UKK (LAMPIRAN 1 HAL 21)             */}
         {/* ========================================================================= */}
@@ -619,9 +669,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
                     (selectedTemplate === 'kemdikbud_2026' || selectedTemplate === 'kemdikbud_2024') && 'text-sky-800'
                   )}
                 >
-                  {selectedTemplate === 'kemdikbud_2024'
-                    ? 'SERTIFIKAT UJI KOMPETENSI KEAHLIAN'
-                    : 'SERTIFIKAT KOMPETENSI'}
+                  {activeEdition.titleId}
                 </h1>
                 <p
                   className={cn(
@@ -631,9 +679,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
                     (selectedTemplate === 'kemdikbud_2026' || selectedTemplate === 'kemdikbud_2024') && 'text-sky-700'
                   )}
                 >
-                  {selectedTemplate === 'kemdikbud_2024'
-                    ? 'VOCATIONAL COMPETENCY CERTIFICATE'
-                    : 'COMPETENCY CERTIFICATE'}
+                  {activeEdition.titleEn}
                 </p>
                 <p className="text-[11px] font-mono text-slate-600 tracking-wide mt-1">
                   Nomor : {certData.nomor_sertifikat}
@@ -642,8 +688,8 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
 
               {/* Certification Statement Bilingual */}
               <div className="text-center my-4 space-y-0.5">
-                <p className="text-[11.5px] text-slate-700">Dengan ini menyatakan bahwa,</p>
-                <p className="text-[10px] text-slate-500 italic">Hereby declare that</p>
+                <p className="text-[11.5px] text-slate-700">{activeEdition.statementId}</p>
+                <p className="text-[10px] text-slate-500 italic">{activeEdition.statementEn}</p>
               </div>
 
               {/* Student Name & Identifiers */}
@@ -659,13 +705,13 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
               {/* Qualification Assessment Text Bilingual */}
               <div className="text-center my-3 space-y-2">
                 <div className="text-[11px] text-slate-700">
-                  <p>Telah mengikuti Uji Kompetensi Keahlian</p>
-                  <p className="text-[10px] text-slate-500 italic">Has taken the skills competency test</p>
+                  <p>{activeEdition.hasTakenId}</p>
+                  <p className="text-[10px] text-slate-500 italic">{activeEdition.hasTakenEn}</p>
                 </div>
 
                 <div className="text-[11px] text-slate-700">
-                  <p>pada Kompetensi /Konsentrasi Keahlian</p>
-                  <p className="text-[10px] text-slate-500 italic">on Competency of</p>
+                  <p>{activeEdition.competencyPrefixId}</p>
+                  <p className="text-[10px] text-slate-500 italic">{activeEdition.competencyPrefixEn}</p>
                   <div className="text-sm font-bold uppercase text-slate-900 tracking-wide mt-0.5">
                     {certData.siswa.program_keahlian}
                   </div>
@@ -688,7 +734,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
                       'inline-block mt-1 px-4 py-1 rounded-full font-extrabold text-xs uppercase tracking-wider shadow-xs',
                       selectedTemplate === 'classic' && 'border border-amber-600 bg-amber-50 text-amber-900',
                       selectedTemplate === 'modern' && 'border border-indigo-600 bg-indigo-50 text-indigo-900',
-                      selectedTemplate === 'kemdikbud_2026' && 'border border-emerald-600 bg-emerald-50 text-emerald-800'
+                      (selectedTemplate === 'kemdikbud_2026' || selectedTemplate === 'kemdikbud_2024') && 'border border-emerald-600 bg-emerald-50 text-emerald-800'
                     )}
                   >
                     {certData.ukk.predikat}
@@ -700,15 +746,15 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
                   )}
                 </div>
 
-                {/* Masa Berlaku Wajib 3 Tahun Sesuai Lampiran 1 Hal 21 */}
+                {/* Masa Berlaku Wajib 3 Tahun Sesuai Juknis */}
                 <div className="pt-2 text-center text-[10px] text-slate-600 font-sans">
-                  <p className="font-semibold">Sertifikat ini berlaku untuk : 3 (tiga) Tahun</p>
-                  <p className="italic text-slate-500">This certificate is valid for : 3 (three) Years</p>
+                  <p className="font-semibold">{activeEdition.klausulMasaBerlakuId}</p>
+                  <p className="italic text-slate-500">{activeEdition.klausulMasaBerlakuEn}</p>
                 </div>
               </div>
             </div>
 
-            {/* Bottom Official Signatures Sesuai Lampiran 1 Hal 21 */}
+            {/* Bottom Official Signatures */}
             <div className="pt-5 mt-3 border-t border-slate-200">
               <div className="text-right text-[11px] text-slate-700 mb-2 font-sans">
                 {certData.tanggal_terbit}
@@ -717,21 +763,12 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
               <div className="grid grid-cols-2 gap-8 text-center text-[11px]">
                 {/* Kolom Kiri: Kepala Sekolah */}
                 <div>
-                  {selectedTemplate === 'kemdikbud_2024' ? (
-                    <>
-                      <p className="font-semibold text-slate-800">Mengetahui,</p>
-                      <p className="font-normal text-slate-700">Kepala Sekolah,</p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="font-semibold text-slate-800">
-                        Atas nama {certData.sekolah?.nama || 'SMK'}
-                      </p>
-                      <p className="text-[10px] text-slate-500 italic">
-                        On behalf of {certData.sekolah?.nama || 'SMK'}
-                      </p>
-                    </>
-                  )}
+                  <p className="font-semibold text-slate-800">
+                    {activeEdition.labelTtdKepalaSekolah} {certData.sekolah?.nama || 'SMK'}
+                  </p>
+                  <p className="text-[10px] text-slate-500 italic">
+                    {activeEdition.labelTtdKepalaSekolahEn} {certData.sekolah?.nama || 'SMK'}
+                  </p>
                   <div className="h-14 flex items-center justify-center my-1">
                     {certData.ukk.ttd_kepala_sekolah ? (
                       <img

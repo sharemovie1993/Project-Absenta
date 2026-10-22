@@ -4,7 +4,7 @@
  * Dirancang untuk mendukung fleksibilitas regulasi pemerintah yang berubah per tahun ajaran.
  * Sesuai:
  * - Pedoman UKK 2026 (Direktorat SMK Kemendikdasmen RI, 5 Januari 2026)
- * - Pedoman UKK 2025 / 2024 (Arsip Historis Kemendikbudristek)
+ * - Pedoman UKK 2022/2023 & 2023/2024 (Direktorat SMK Kemendikbudristek RI, e-Rapor SMK v6)
  */
 
 export interface UkkThresholdItem {
@@ -16,15 +16,29 @@ export interface UkkThresholdItem {
 }
 
 export interface UkkRegulatoryEdition {
-  id: string; // e.g. '2026', '2025', '2024'
+  id: string; // e.g. '2026', '2023_2024', '2025'
   label: string;
   tahunAjaranDefault: string;
   dasarHukum: string[];
   masaBerlakuTahun: number;
   klausulMasaBerlakuId: string;
   klausulMasaBerlakuEn: string;
+
+  // Bilingual Phrases
+  titleId: string;
+  titleEn: string;
+  statementId: string;
+  statementEn: string;
+  hasTakenId: string;
+  hasTakenEn: string;
+  competencyPrefixId: string;
+  competencyPrefixEn: string;
+
+  // Signatures
   labelTtdKepalaSekolah: string;
   labelTtdKepalaSekolahEn: string;
+
+  // Thresholds
   thresholdMandiri: {
     sangatKompeten: UkkThresholdItem;
     kompeten: UkkThresholdItem;
@@ -32,12 +46,16 @@ export interface UkkRegulatoryEdition {
     belumKompeten: UkkThresholdItem;
   };
   thresholdLsp: {
+    sangatKompeten?: UkkThresholdItem;
     kompeten: UkkThresholdItem;
     belumKompeten: UkkThresholdItem;
   };
 }
 
 export const UKK_REGULATORY_EDITIONS: Record<string, UkkRegulatoryEdition> = {
+  // =========================================================================
+  // 1. EDISI 2026: PEDOMAN KEMENDIKDASMEN TERBARU (5 JANUARI 2026)
+  // =========================================================================
   '2026': {
     id: '2026',
     label: 'Pedoman Kemendikdasmen 2026 (Resmi Terbaru)',
@@ -53,8 +71,20 @@ export const UKK_REGULATORY_EDITIONS: Record<string, UkkRegulatoryEdition> = {
     masaBerlakuTahun: 3,
     klausulMasaBerlakuId: 'Sertifikat ini berlaku untuk : 3 (tiga) Tahun',
     klausulMasaBerlakuEn: 'This certificate is valid for : 3 (three) Years',
+
+    titleId: 'SERTIFIKAT KOMPETENSI',
+    titleEn: 'COMPETENCY CERTIFICATE',
+    statementId: 'Dengan ini menyatakan bahwa,',
+    statementEn: 'Hereby declare that',
+    hasTakenId: 'Telah mengikuti Uji Kompetensi Keahlian',
+    hasTakenEn: 'Has taken the skills competency test',
+    competencyPrefixId: 'pada Kompetensi /Konsentrasi Keahlian',
+    competencyPrefixEn: 'on Competency of',
+
     labelTtdKepalaSekolah: 'Atas nama',
     labelTtdKepalaSekolahEn: 'On behalf of',
+
+    // Ambang Nilai Sesuai Pedoman 2026 Hal. 15
     thresholdMandiri: {
       sangatKompeten: {
         min: 91,
@@ -102,99 +132,57 @@ export const UKK_REGULATORY_EDITIONS: Record<string, UkkRegulatoryEdition> = {
       },
     },
   },
-  '2025': {
-    id: '2025',
-    label: 'Pedoman Kemendikbudristek 2024/2025 (Arsip Historis)',
-    tahunAjaranDefault: '2024/2025',
-    dasarHukum: [
-      'Permendikbudristek No. 21 Tahun 2022 tentang Standar Penilaian Pendidikan',
-      'Panduan Pembelajaran dan Asesmen SMK Kurikulum Merdeka 2024',
-    ],
-    masaBerlakuTahun: 3,
-    klausulMasaBerlakuId: 'Sertifikat ini berlaku untuk : 3 (tiga) Tahun',
-    klausulMasaBerlakuEn: 'This certificate is valid for : 3 (three) Years',
-    labelTtdKepalaSekolah: 'Mengetahui,',
-    labelTtdKepalaSekolahEn: 'Acknowledged by,',
-    thresholdMandiri: {
-      sangatKompeten: {
-        min: 90,
-        max: 100,
-        labelId: 'Sangat Baik',
-        labelEn: 'Very Good',
-        badgeClass: 'border-emerald-600 bg-emerald-50 text-emerald-800',
-      },
-      kompeten: {
-        min: 75,
-        max: 89,
-        labelId: 'Baik / Kompeten',
-        labelEn: 'Good / Competent',
-        badgeClass: 'border-blue-600 bg-blue-50 text-blue-800',
-      },
-      cukupKompeten: {
-        min: 65,
-        max: 74,
-        labelId: 'Cukup',
-        labelEn: 'Fair',
-        badgeClass: 'border-amber-600 bg-amber-50 text-amber-800',
-      },
-      belumKompeten: {
-        min: 0,
-        max: 64,
-        labelId: 'Kurang / Belum Kompeten',
-        labelEn: 'Not Competent',
-        badgeClass: 'border-rose-600 bg-rose-50 text-rose-800',
-      },
-    },
-    thresholdLsp: {
-      kompeten: {
-        min: 75,
-        max: 100,
-        labelId: 'Kompeten',
-        labelEn: 'Competent',
-        badgeClass: 'border-emerald-600 bg-emerald-50 text-emerald-800',
-      },
-      belumKompeten: {
-        min: 0,
-        max: 74,
-        labelId: 'Belum Kompeten',
-        labelEn: 'Not Yet Competent',
-        badgeClass: 'border-rose-600 bg-rose-50 text-rose-800',
-      },
-    },
-  },
+
+  // =========================================================================
+  // 2. EDISI 2023 - 2024: PEDOMAN KEMENDIKBUDRISTEK RESMI (e-Rapor SMK v6)
+  //    Sesuai Dokumen Resmi Januari 2023 (Hal 16-17 & Contoh Sertifikat Hal 20)
+  // =========================================================================
   '2023_2024': {
     id: '2023_2024',
-    label: 'Pedoman Kemendikbudristek TA 2023/2024 (Kurikulum Merdeka Awal)',
+    label: 'Pedoman Kemendikbudristek TA 2023/2024 (e-Rapor SMK v6)',
     tahunAjaranDefault: '2023/2024',
     dasarHukum: [
+      'Peraturan Pemerintah No. 4 Tahun 2022 tentang Standar Nasional Pendidikan',
       'Permendikbudristek No. 21 Tahun 2022 tentang Standar Penilaian Pendidikan',
       'Kepmendikbudristek No. 262/M/2022 tentang Pedoman Penerapan Kurikulum',
-      'Panduan Pembelajaran dan Asesmen SMK (Edisi Revisi 2023)',
-      'Pedoman Penyelenggaraan Uji Kompetensi Keahlian SMK Tahun Ajaran 2023/2024',
+      'Pedoman Penyelenggaraan Uji Kompetensi Keahlian SMK Tahun 2023',
     ],
     masaBerlakuTahun: 3,
     klausulMasaBerlakuId: 'Sertifikat ini berlaku untuk : 3 (tiga) Tahun',
     klausulMasaBerlakuEn: 'This certificate is valid for : 3 (three) Years',
-    labelTtdKepalaSekolah: 'Kepala Sekolah,',
-    labelTtdKepalaSekolahEn: 'School Principal,',
+
+    // Frasa Resmi Bilingual Sesuai Hal 20 Dokumen 2023
+    titleId: 'SERTIFIKAT KOMPETENSI',
+    titleEn: 'CERTIFICATE OF COMPETENCY',
+    statementId: 'Dengan ini menyatakan bahwa,',
+    statementEn: 'This is to certify that',
+    hasTakenId: 'Telah mengikuti Uji Kompetensi Keahlian',
+    hasTakenEn: 'has taken the competency test',
+    competencyPrefixId: 'pada Kompetensi Keahlian',
+    competencyPrefixEn: 'in Competency of',
+
+    labelTtdKepalaSekolah: 'Atas nama',
+    labelTtdKepalaSekolahEn: 'On behalf of',
+
+    // Ambang Nilai Sesuai Pedoman 2023 Hal. 17 (91-100 Sangat, 80-90 Kompeten, 70-79 Cukup)
     thresholdMandiri: {
       sangatKompeten: {
-        min: 90,
+        min: 91,
         max: 100,
         labelId: 'Sangat Kompeten',
         labelEn: 'Very Competent',
         badgeClass: 'border-emerald-600 bg-emerald-50 text-emerald-800',
       },
       kompeten: {
-        min: 75,
-        max: 89,
+        min: 80,
+        max: 90,
         labelId: 'Kompeten',
         labelEn: 'Competent',
         badgeClass: 'border-blue-600 bg-blue-50 text-blue-800',
       },
       cukupKompeten: {
         min: 70,
-        max: 74,
+        max: 79,
         labelId: 'Cukup Kompeten',
         labelEn: 'Fairly Competent',
         badgeClass: 'border-amber-600 bg-amber-50 text-amber-800',
@@ -202,6 +190,89 @@ export const UKK_REGULATORY_EDITIONS: Record<string, UkkRegulatoryEdition> = {
       belumKompeten: {
         min: 0,
         max: 69,
+        labelId: 'Belum Kompeten',
+        labelEn: 'Not Yet Competent',
+        badgeClass: 'border-rose-600 bg-rose-50 text-rose-800',
+      },
+    },
+    // Ambang Nilai LSP Sesuai Hal. 16
+    thresholdLsp: {
+      sangatKompeten: {
+        min: 91,
+        max: 100,
+        labelId: 'Sangat Kompeten',
+        labelEn: 'Very Competent',
+        badgeClass: 'border-emerald-600 bg-emerald-50 text-emerald-800',
+      },
+      kompeten: {
+        min: 80,
+        max: 90,
+        labelId: 'Kompeten',
+        labelEn: 'Competent',
+        badgeClass: 'border-blue-600 bg-blue-50 text-blue-800',
+      },
+      belumKompeten: {
+        min: 0,
+        max: 79,
+        labelId: 'Belum Kompeten',
+        labelEn: 'Not Yet Competent',
+        badgeClass: 'border-rose-600 bg-rose-50 text-rose-800',
+      },
+    },
+  },
+
+  // =========================================================================
+  // 3. EDISI 2024/2025: TRANSISI SPEKTRUM KEAHLIAN 244/M
+  // =========================================================================
+  '2025': {
+    id: '2025',
+    label: 'Pedoman Kemendikbudristek TA 2024/2025 (Transisi Spektrum)',
+    tahunAjaranDefault: '2024/2025',
+    dasarHukum: [
+      'Permendikbudristek No. 12 Tahun 2024 tentang Kurikulum Merdeka Nasional',
+      'Kepmendikbudristek No. 244/M/2024 tentang Spektrum Keahlian SMK',
+    ],
+    masaBerlakuTahun: 3,
+    klausulMasaBerlakuId: 'Sertifikat ini berlaku untuk : 3 (tiga) Tahun',
+    klausulMasaBerlakuEn: 'This certificate is valid for : 3 (three) Years',
+
+    titleId: 'SERTIFIKAT KOMPETENSI',
+    titleEn: 'COMPETENCY CERTIFICATE',
+    statementId: 'Dengan ini menyatakan bahwa,',
+    statementEn: 'This is to certify that',
+    hasTakenId: 'Telah mengikuti Uji Kompetensi Keahlian',
+    hasTakenEn: 'has taken the skills competency test',
+    competencyPrefixId: 'pada Konsentrasi Keahlian',
+    competencyPrefixEn: 'in Concentration of',
+
+    labelTtdKepalaSekolah: 'Atas nama',
+    labelTtdKepalaSekolahEn: 'On behalf of',
+
+    thresholdMandiri: {
+      sangatKompeten: {
+        min: 91,
+        max: 100,
+        labelId: 'Sangat Kompeten',
+        labelEn: 'Very Competent',
+        badgeClass: 'border-emerald-600 bg-emerald-50 text-emerald-800',
+      },
+      kompeten: {
+        min: 75,
+        max: 90,
+        labelId: 'Kompeten',
+        labelEn: 'Competent',
+        badgeClass: 'border-blue-600 bg-blue-50 text-blue-800',
+      },
+      cukupKompeten: {
+        min: 65,
+        max: 74,
+        labelId: 'Cukup Kompeten',
+        labelEn: 'Fairly Competent',
+        badgeClass: 'border-amber-600 bg-amber-50 text-amber-800',
+      },
+      belumKompeten: {
+        min: 0,
+        max: 64,
         labelId: 'Belum Kompeten',
         labelEn: 'Not Yet Competent',
         badgeClass: 'border-rose-600 bg-rose-50 text-rose-800',
@@ -227,13 +298,13 @@ export const UKK_REGULATORY_EDITIONS: Record<string, UkkRegulatoryEdition> = {
 };
 
 /**
- * Resolve Regulatory Edition based on editionId, year, or defaults to latest 2026
+ * Resolve Regulatory Edition based on editionId, year string, or defaults to latest 2026
  */
 export const getUkkRegulatoryEdition = (editionIdOrYear?: string): UkkRegulatoryEdition => {
   if (!editionIdOrYear) return UKK_REGULATORY_EDITIONS['2026'];
 
   const clean = String(editionIdOrYear).toLowerCase().replace(/[^a-z0-9]/g, '_');
-  if (clean.includes('2023') || clean.includes('23_24')) {
+  if (clean.includes('2022') || clean.includes('2023') || clean.includes('22_23') || clean.includes('23_24')) {
     return UKK_REGULATORY_EDITIONS['2023_2024'];
   }
   if (clean.includes('2024') || clean.includes('2025') || clean.includes('24_25')) {
@@ -269,6 +340,14 @@ export const calculateUkkPredikat = (
   const edition = getUkkRegulatoryEdition(editionId);
 
   if (isLsp) {
+    if (edition.thresholdLsp.sangatKompeten && numericScore >= edition.thresholdLsp.sangatKompeten.min) {
+      return {
+        predikatId: edition.thresholdLsp.sangatKompeten.labelId,
+        predikatEn: edition.thresholdLsp.sangatKompeten.labelEn,
+        isKompeten: true,
+        badgeClass: edition.thresholdLsp.sangatKompeten.badgeClass,
+      };
+    }
     if (numericScore >= edition.thresholdLsp.kompeten.min) {
       return {
         predikatId: edition.thresholdLsp.kompeten.labelId,
