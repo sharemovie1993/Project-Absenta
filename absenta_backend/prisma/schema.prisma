@@ -1133,6 +1133,9 @@ model Siswa {
   @@unique([tenant_id, nis])
   @@index([tenant_id])
   @@index([kelas_id])
+  @@index([tenant_id, kelas_id])
+  @@index([tenant_id, jurusan_id])
+  @@index([tenant_id, status])
   @@index([tenant_id, no_rfid])
 }
 
@@ -4402,6 +4405,9 @@ model PrestasiSiswa {
 
   @@index([tenant_id])
   @@index([siswa_id])
+  @@index([tenant_id, kelas_id])
+  @@index([tenant_id, siswa_id])
+  @@index([tenant_id, tanggal])
 }
 
 // Catatan Sesi Konseling (Individu / Kelompok)
