@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
-import { Award, User, Building2, CheckCircle2, AlertCircle, FileText, Calendar } from 'lucide-react';
+import { Award, User, GraduationCap, Building2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { Modal } from '@/components/ui/Modal';
@@ -14,9 +14,9 @@ import { cn } from '@/lib/utils';
 const ukkFormSchema = z.object({
   siswa_id: z.string().min(1, 'Siswa wajib dipilih'),
   asesor_internal: z.string().max(255).optional().nullable(),
-  asesor_eksternal: z.string().min(1, 'Nama Asesor Eksternal wajib diisi').max(255),
+  asesor_eksternal: z.string().min(1, 'Asesor eksternal wajib diisi').max(255),
   mitra_industri_id: z.string().optional().nullable(),
-  nilai_praktik: z.number().min(0, 'Nilai minimal 0').max(100, 'Nilai maksimal 100'),
+  nilai_praktik: z.number().min(0, 'Min 0').max(100, 'Maks 100'),
   nilai_teori: z.number().min(0).max(100).optional().nullable(),
   predikat: z.string().min(1, 'Predikat wajib diisi'),
   nomor_sertifikat: z.string().min(1, 'Nomor sertifikat wajib diisi'),
@@ -80,9 +80,10 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
 
   // Hitung predikat otomatis berdasarkan nilai praktik & teori
   const calculatePredikat = (praktik: number, teori?: number | null): string => {
-    const finalScore = teori !== undefined && teori !== null && !isNaN(teori)
-      ? praktik * 0.7 + teori * 0.3
-      : praktik;
+    const finalScore =
+      teori !== undefined && teori !== null && !isNaN(teori)
+        ? praktik * 0.7 + teori * 0.3
+        : praktik;
 
     if (finalScore >= 90) return 'Sangat Kompeten';
     if (finalScore >= 75) return 'Kompeten';
@@ -147,7 +148,7 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
       return raporApi.upsertUkk(payload);
     },
     onSuccess: () => {
-      toast.success('Nilai & Sertifikat UKK berhasil disimpan');
+      toast.success('Nilai UKK berhasil disimpan');
       queryClient.invalidateQueries({ queryKey: ['kaprog-ukk-list'] });
       queryClient.invalidateQueries({ queryKey: ['kaprog-stats'] });
       if (onSuccess) onSuccess();
@@ -196,155 +197,168 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       size="lg"
+      className="w-full max-w-[94vw] sm:max-w-lg max-h-[92vh] flex flex-col overflow-hidden"
       title={
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
-            <Award className="w-5 h-5" />
+          <div className="p-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
+            <Award className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-              Input & Verifikasi Nilai UKK
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100">
+              Input Nilai UKK
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Uji Kompetensi Keahlian & Penerbitan Sertifikat Resmi
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              Uji Kompetensi & Sertifikat Keahlian
             </p>
           </div>
         </div>
       }
     >
-      <form onSubmit={handleSubmit} className="p-6 space-y-5">
-        {/* Profil Siswa yang Dinilai */}
-        <div className="flex items-center gap-3.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-800">
-          <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shrink-0 shadow-xs">
-            <User className="w-5 h-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
-              {initialData.nama_siswa}
-            </h4>
-            <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-              <span>NIS: {initialData.nis || '-'}</span>
-              <span>•</span>
-              <span className="font-semibold text-slate-700 dark:text-slate-300">
-                Kelas: {initialData.kelas || '-'}
-              </span>
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col flex-1 overflow-hidden"
+      >
+        <div className="p-4 sm:p-5 space-y-4 overflow-y-auto max-h-[calc(92vh-125px)] no-scrollbar">
+          {/* Profil Singkat Siswa */}
+          <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0">
+              <User className="w-4 h-4" />
             </div>
-          </div>
-        </div>
-
-        {/* Form Inputs Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Nilai Praktik (Utama) */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Nilai Praktik / Unjuk Kerja <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              max="100"
-              value={nilaiPraktik}
-              onChange={(e) => handlePraktikChange(e.target.value)}
-              placeholder="0 - 100"
-              className={cn(
-                'w-full px-3 py-2 text-sm font-mono font-bold rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500',
-                formErrors.nilai_praktik ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'
-              )}
-            />
-            {formErrors.nilai_praktik && (
-              <p className="text-[10px] text-rose-500">{formErrors.nilai_praktik}</p>
-            )}
-          </div>
-
-          {/* Nilai Teori (Opsional) */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Nilai Teori Kejuruan <span className="text-slate-400 font-normal">(Opsional)</span>
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              max="100"
-              value={nilaiTeori}
-              onChange={(e) => handleTeoriChange(e.target.value)}
-              placeholder="0 - 100"
-              className="w-full px-3 py-2 text-sm font-mono font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-
-          {/* Predikat Kelulusan */}
-          <div className="space-y-1.5 sm:col-span-2">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Predikat Hasil Uji Kompetensi <span className="text-rose-500">*</span>
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {['Sangat Kompeten', 'Kompeten', 'Cukup Kompeten', 'Belum Kompeten'].map((pred) => (
-                <button
-                  key={pred}
-                  type="button"
-                  onClick={() => setPredikat(pred)}
-                  className={cn(
-                    'py-2 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer',
-                    predikat === pred
-                      ? pred === 'Belum Kompeten'
-                        ? 'bg-rose-500 text-white border-rose-600 shadow-xs'
-                        : 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
-                      : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700 hover:bg-slate-100'
-                  )}
-                >
-                  {pred}
-                </button>
-              ))}
+            <div className="min-w-0 flex-1">
+              <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                {initialData.nama_siswa}
+              </h4>
+              <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400">
+                <span>NIS: {initialData.nis || '-'}</span>
+                <span>•</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-300">
+                  {initialData.kelas || '-'}
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Asesor Internal (Guru) */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Asesor Internal (Guru Penguji)
-            </label>
-            <input
-              type="text"
-              value={asesorInternal}
-              onChange={(e) => setAsesorInternal(e.target.value)}
-              placeholder="Contoh: Budi Santoso, S.Kom"
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-
-          {/* Asesor Eksternal (Industri) */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Asesor Eksternal (Industri / LSP) <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={asesorEksternal}
-              onChange={(e) => setAsesorEksternal(e.target.value)}
-              placeholder="Contoh: Ir. Hendra (PT Telekomunikasi)"
-              className={cn(
-                'w-full px-3 py-2 text-xs rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500',
-                formErrors.asesor_eksternal ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'
+          {/* Nilai Praktik & Teori (2 Kolom di Desktop & HP) */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                Nilai Praktik <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={nilaiPraktik}
+                onChange={(e) => handlePraktikChange(e.target.value)}
+                placeholder="0 - 100"
+                className={cn(
+                  'w-full px-3 py-2 text-sm font-mono font-bold rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500',
+                  formErrors.nilai_praktik ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'
+                )}
+              />
+              {formErrors.nilai_praktik && (
+                <p className="text-[10px] text-rose-500">{formErrors.nilai_praktik}</p>
               )}
-            />
-            {formErrors.asesor_eksternal && (
-              <p className="text-[10px] text-rose-500">{formErrors.asesor_eksternal}</p>
-            )}
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                Nilai Teori <span className="text-slate-400 font-normal">(Opsional)</span>
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={nilaiTeori}
+                onChange={(e) => handleTeoriChange(e.target.value)}
+                placeholder="Opsional"
+                className="w-full px-3 py-2 text-sm font-mono font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
           </div>
 
-          {/* Mitra Industri Asosiasi */}
-          <div className="space-y-1.5 sm:col-span-2">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Mitra Industri Penguji / Asosiasi DUDI
+          {/* Predikat (Segmented Bar Ramping) */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+              Predikat Kelulusan <span className="text-rose-500">*</span>
+            </label>
+            <div className="grid grid-cols-4 gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
+              {[
+                { id: 'Sangat Kompeten', label: 'Sangat' },
+                { id: 'Kompeten', label: 'Kompeten' },
+                { id: 'Cukup Kompeten', label: 'Cukup' },
+                { id: 'Belum Kompeten', label: 'Belum' },
+              ].map((p) => {
+                const isActive = predikat === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setPredikat(p.id)}
+                    className={cn(
+                      'py-1.5 px-1 rounded-lg text-[10px] sm:text-xs font-bold transition-all text-center cursor-pointer truncate',
+                      isActive
+                        ? p.id === 'Belum Kompeten'
+                          ? 'bg-rose-500 text-white shadow-xs'
+                          : 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    )}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Asesor Internal & Eksternal (Responsif) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                Asesor Guru (Internal)
+              </label>
+              <input
+                type="text"
+                value={asesorInternal}
+                onChange={(e) => setAsesorInternal(e.target.value)}
+                placeholder="Nama guru penguji"
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                Asesor DUDI (Eksternal) <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={asesorEksternal}
+                onChange={(e) => setAsesorEksternal(e.target.value)}
+                placeholder="Nama asesor industri / LSP"
+                className={cn(
+                  'w-full px-3 py-2 text-xs rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500',
+                  formErrors.asesor_eksternal ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'
+                )}
+              />
+              {formErrors.asesor_eksternal && (
+                <p className="text-[10px] text-rose-500">{formErrors.asesor_eksternal}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Mitra Industri DUDI */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+              Mitra Industri (DUDI)
             </label>
             <select
               value={mitraIndustriId}
               onChange={(e) => setMitraIndustriId(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
             >
-              <option value="">-- Pilih Mitra DUDI Penguji (Opsional) --</option>
+              <option value="">-- Pilih Mitra DUDI (Opsional) --</option>
               {mitraOptions.map((m: any) => (
                 <option key={m.id} value={m.id}>
                   {m.nama_mitra || m.nama} {m.bidang_usaha ? `(${m.bidang_usaha})` : ''}
@@ -353,45 +367,47 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
             </select>
           </div>
 
-          {/* Nomor Sertifikat */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Nomor Registrasi Sertifikat <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={nomorSertifikat}
-              onChange={(e) => setNomorSertifikat(e.target.value)}
-              placeholder="Contoh: UKK/2026/001/TKJ"
-              className={cn(
-                'w-full px-3 py-2 text-xs font-mono rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500',
-                formErrors.nomor_sertifikat ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'
+          {/* No Sertifikat & Tanggal Terbit */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                No. Sertifikat <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={nomorSertifikat}
+                onChange={(e) => setNomorSertifikat(e.target.value)}
+                placeholder="UKK/2026/001"
+                className={cn(
+                  'w-full px-3 py-2 text-xs font-mono rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500',
+                  formErrors.nomor_sertifikat ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'
+                )}
+              />
+              {formErrors.nomor_sertifikat && (
+                <p className="text-[10px] text-rose-500">{formErrors.nomor_sertifikat}</p>
               )}
-            />
-            {formErrors.nomor_sertifikat && (
-              <p className="text-[10px] text-rose-500">{formErrors.nomor_sertifikat}</p>
-            )}
-          </div>
+            </div>
 
-          {/* Tanggal Terbit Sertifikat */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Tanggal Penerbitan <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="date"
-              value={tanggalTerbit}
-              onChange={(e) => setTanggalTerbit(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-            />
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                Tanggal Terbit <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="date"
+                value={tanggalTerbit}
+                onChange={(e) => setTanggalTerbit(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              />
+            </div>
           </div>
         </div>
 
         {/* Modal Footer Actions */}
-        <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-end gap-2 p-3 sm:p-4 bg-slate-50 dark:bg-slate-900/60 border-t border-slate-100 dark:border-slate-800 shrink-0">
           <Button
             type="button"
             variant="outline"
+            size="sm"
             onClick={onClose}
             disabled={mutation.isPending}
             className="text-xs font-semibold rounded-xl cursor-pointer"
@@ -400,10 +416,11 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
           </Button>
           <Button
             type="submit"
+            size="sm"
             disabled={mutation.isPending}
-            className="text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
+            className="text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-xs"
           >
-            {mutation.isPending ? 'Menyimpan...' : 'Simpan Nilai & Sertifikat'}
+            {mutation.isPending ? 'Menyimpan...' : 'Simpan Nilai'}
           </Button>
         </div>
       </form>
