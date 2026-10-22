@@ -58,6 +58,20 @@ interface SiswaListProps {
   refreshTrigger?: number;
   onRefresh?: () => void;
   onHistory?: (siswa: Siswa) => void;
+
+  // Universal Role Scoping Props
+  jurusanId?: string;
+  jurusanNama?: string;
+  initialKelasId?: string;
+  isKelasDisabled?: boolean;
+  initialStatus?: string;
+  initialTingkat?: string | number;
+  tahunPelajaranId?: string;
+  semesterId?: string;
+  readOnly?: boolean;
+  hideAdd?: boolean;
+  hideImport?: boolean;
+  hideExport?: boolean;
 }
 
 const SiswaList: React.FC<SiswaListProps> = React.memo(({ 
@@ -70,7 +84,19 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   isExporting = false,
   refreshTrigger = 0,
   onRefresh,
-  onHistory
+  onHistory,
+  jurusanId,
+  jurusanNama,
+  initialKelasId,
+  isKelasDisabled = false,
+  initialStatus,
+  initialTingkat,
+  tahunPelajaranId,
+  semesterId,
+  readOnly = false,
+  hideAdd = false,
+  hideImport = false,
+  hideExport = false
 }) => {
   const isMobile = useIsMobile();
   const confirm = useConfirm();
@@ -257,11 +283,29 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   };
   
   // Filter states
-  const [filterTingkat, setFilterTingkat] = useState('');
-  const [filterKelas, setFilterKelas] = useState('');
-  const [filterStatus, setFilterStatus] = useState('AKTIF');
+  const [filterTingkat, setFilterTingkat] = useState(initialTingkat ? String(initialTingkat) : '');
+  const [filterKelas, setFilterKelas] = useState(initialKelasId || '');
+  const [filterStatus, setFilterStatus] = useState(initialStatus || 'AKTIF');
   const [filterGender, setFilterGender] = useState('');
   const [kelasList, setKelasList] = useState<Kelas[]>([]);
+
+  useEffect(() => {
+    if (initialKelasId !== undefined) {
+      setFilterKelas(initialKelasId);
+    }
+  }, [initialKelasId]);
+
+  useEffect(() => {
+    if (initialStatus !== undefined) {
+      setFilterStatus(initialStatus);
+    }
+  }, [initialStatus]);
+
+  useEffect(() => {
+    if (initialTingkat !== undefined) {
+      setFilterTingkat(String(initialTingkat));
+    }
+  }, [initialTingkat]);
 
   // Filtered class list options based on selected tingkat
   const filteredKelasOptions = useMemo(() => {
@@ -301,8 +345,9 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
 
   // Check if user can perform CRUD operations
   const canManage = useMemo(() => {
-    return can('academic.students.update');
-  }, [can]);
+    if (readOnly) return false;
+    return can('academic.students.update') || isAdmin || isKurikulum || isKesiswaan;
+  }, [readOnly, can, isAdmin, isKurikulum, isKesiswaan]);
 
   // Check if user can view
   const canView = useMemo(() => {
@@ -310,14 +355,13 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   }, [can]);
 
   // Check if user can send parent access
-  const canSendAccess = can('academic.students.send.access.token');
-
+  const canSendAccess = !readOnly && can('academic.students.send.access.token');
 
   // Fetch kelas list for filter
   useEffect(() => {
     const fetchKelas = async () => {
       try {
-        const res = await getKelasList(1, 100);
+        const res = await getKelasList(1, 100, '', '', jurusanId || '');
         if (res.success) {
           setKelasList(res.data);
         }
@@ -326,7 +370,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       }
     };
     fetchKelas();
-  }, []);
+  }, [jurusanId]);
 
   const queryClient = useQueryClient();
   const invalidateSiswaCache = useCallback(() => {
@@ -385,9 +429,24 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       kelas_id: filterKelas, 
       status: filterStatus, 
       gender: filterGender, 
-      tingkat: filterTingkat 
+      tingkat: filterTingkat,
+      jurusan_id: jurusanId || '',
+      tahun_pelajaran_id: tahunPelajaranId || '',
+      semester_id: semesterId || ''
     }),
-    queryFn: () => getSiswaList(currentPage, itemsPerPage, debouncedSearchTerm, filterKelas, filterStatus, filterGender, '', filterTingkat),
+    queryFn: () => getSiswaList(
+      currentPage, 
+      itemsPerPage, 
+      debouncedSearchTerm, 
+      filterKelas, 
+      filterStatus, 
+      filterGender, 
+      '', 
+      filterTingkat,
+      jurusanId || '',
+      tahunPelajaranId || '',
+      semesterId || ''
+    ),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -1107,6 +1166,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                   options={filteredKelasOptions}
                   placeholder="Kelas"
                   searchPlaceholder="Cari Kelas..."
+                  disabled={isKelasDisabled}
                   triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                 />
 
@@ -1142,7 +1202,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
 
               {/* Action Buttons on Mobile */}
               <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                {canManage && onAdd && (
+                {canManage && onAdd && !hideAdd && (
                   <Button 
                     onClick={onAdd}
                     variant="toolbarPrimary"
@@ -1153,7 +1213,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                     Tambah
                   </Button>
                 )}
-                {canManage && onImport && (
+                {canManage && onImport && !hideImport && (
                   <Button
                     variant="toolbarOutline"
                     size="toolbar"
@@ -1164,15 +1224,18 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                     Import
                   </Button>
                 )}
-                <Button
-                  variant="toolbarOutline"
-                  size="toolbar"
-                  onClick={onExport}
-                  disabled={isExporting}
-                  className="rounded-xl flex-1"
-                >
-                  <Download className="w-3.5 h-3.5 mr-1" />
-                  Export
+                {onExport && !hideExport && (
+                  <Button
+                    variant="toolbarOutline"
+                    size="toolbar"
+                    onClick={onExport}
+                    disabled={isExporting}
+                    className="rounded-xl flex-1"
+                  >
+                    <Download className="w-3.5 h-3.5 mr-1" />
+                    Export
+                  </Button>
+                )}
                 </Button>
                 <Button
                   variant="toolbarOutline"
@@ -1300,6 +1363,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                           options={filteredKelasOptions}
                           placeholder="Semua Kelas"
                           searchPlaceholder="Cari Kelas..."
+                          disabled={isKelasDisabled}
                           className="w-full"
                           triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                         />
@@ -1344,7 +1408,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
 
                   {/* Row 2: Secondary Actions */}
                   <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-gray-100 dark:border-gray-800">
-                    {canManage && onAdd && (
+                    {canManage && onAdd && !hideAdd && (
                         <Button 
                           onClick={onAdd}
                           variant="toolbarPrimary"
@@ -1355,7 +1419,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                         </Button>
                     )}
         
-                    {canManage && onImport && (
+                    {canManage && onImport && !hideImport && (
                         <Button
                           variant="toolbarOutline"
                           size="toolbar"
@@ -1366,13 +1430,14 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                         </Button>
                     )}
 
-                    <Button
-                        variant="toolbarOutline"
-                        size="toolbar"
-                        onClick={onExport}
-                        disabled={isExporting}
-                        className="rounded-xl"
-                      >
+                    {!hideExport && (
+                      <Button
+                          variant="toolbarOutline"
+                          size="toolbar"
+                          onClick={onExport}
+                          disabled={isExporting}
+                          className="rounded-xl"
+                        >
                         {isExporting ? (
                           <>
                             <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
