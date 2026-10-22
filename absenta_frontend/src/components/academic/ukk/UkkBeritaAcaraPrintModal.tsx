@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { Printer, Download, Calendar, MapPin, CheckCircle2 } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Printer, Download, Calendar, MapPin, CheckCircle2, SlidersHorizontal } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { PrintHeader, usePrintHeaderData } from '@/components/ui/PrintHeader';
@@ -28,6 +28,10 @@ export const UkkBeritaAcaraPrintModal: React.FC<UkkBeritaAcaraPrintModalProps> =
   judulPenugasan = 'Ujian Praktik Kejuruan Mandiri',
 }) => {
   const printRef = useRef<HTMLDivElement | null>(null);
+
+  // Toggle Logos state
+  const [showLogoSekolah, setShowLogoSekolah] = useState<boolean>(true);
+  const [showLogoDaerah, setShowLogoDaerah] = useState<boolean>(true);
 
   // Universal Hook: Resolves active Tenant & Sekolah data, plus pre-converts logos to Base64
   const { tenantInfo, logoDaerahBase64, logoSekolahBase64, rawSekolah } = usePrintHeaderData();
@@ -60,8 +64,8 @@ export const UkkBeritaAcaraPrintModal: React.FC<UkkBeritaAcaraPrintModalProps> =
           print_header_lines: tenantInfo.print_header_lines,
         },
         options: {
-          logoDaerahBase64,
-          logoSekolahBase64,
+          logoDaerahBase64: showLogoDaerah ? logoDaerahBase64 : null,
+          logoSekolahBase64: showLogoSekolah ? logoSekolahBase64 : null,
         },
         beritaAcara,
       };
@@ -121,6 +125,49 @@ export const UkkBeritaAcaraPrintModal: React.FC<UkkBeritaAcaraPrintModalProps> =
           </div>
         </div>
 
+        {/* Kontrol Toggle Logo Kop Surat */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs shrink-0">
+          <div className="flex flex-wrap items-center gap-4">
+            <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
+              Tampilkan Logo:
+            </span>
+
+            {/* Checkbox Logo Kiri Pemda */}
+            <label className="flex items-center gap-2 cursor-pointer select-none group">
+              <input
+                type="checkbox"
+                id="toggle-logo-kiri"
+                checked={showLogoDaerah}
+                onChange={(e) => setShowLogoDaerah(e.target.checked)}
+                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 cursor-pointer"
+              />
+              <span className="text-slate-700 dark:text-slate-300 group-hover:text-foreground font-medium">
+                Logo Kiri (Pemda)
+              </span>
+            </label>
+
+            {/* Checkbox Logo Kanan Sekolah */}
+            <label className="flex items-center gap-2 cursor-pointer select-none group">
+              <input
+                type="checkbox"
+                id="toggle-logo-kanan"
+                checked={showLogoSekolah}
+                onChange={(e) => setShowLogoSekolah(e.target.checked)}
+                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 cursor-pointer"
+              />
+              <span className="text-slate-700 dark:text-slate-300 group-hover:text-foreground font-medium">
+                Logo Kanan (Sekolah)
+              </span>
+            </label>
+          </div>
+
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+            <span className={`inline-block w-2 h-2 rounded-full ${showLogoSekolah ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+            <span>Logo Kanan: <strong className={showLogoSekolah ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}>{showLogoSekolah ? 'Aktif' : 'Dinonaktifkan'}</strong></span>
+          </div>
+        </div>
+
         {/* Printable Paper Preview (A4 Portrait Container) */}
         <div className="overflow-y-auto max-h-[78vh] p-3 sm:p-6 bg-slate-200/60 dark:bg-slate-950/70 rounded-xl border flex justify-center">
           <div
@@ -130,7 +177,12 @@ export const UkkBeritaAcaraPrintModal: React.FC<UkkBeritaAcaraPrintModalProps> =
             style={{ minHeight: '297mm' }}
           >
             {/* === KOP SURAT RESMI MENGGUNAKAN KOMPONEN PrintHeader.tsx === */}
-            <PrintHeader variant="portrait" tenantInfo={tenantInfo} />
+            <PrintHeader
+              variant="portrait"
+              tenantInfo={tenantInfo}
+              showLogoDaerah={showLogoDaerah}
+              showLogoSekolah={showLogoSekolah}
+            />
 
             {/* Title */}
             <div className="text-center my-4 space-y-0.5">
