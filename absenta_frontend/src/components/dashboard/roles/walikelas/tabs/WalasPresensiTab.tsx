@@ -48,12 +48,14 @@ export const WalasPresensiTab: React.FC<WalasPresensiTabProps> = React.memo(({
     siswaNama: '',
   });
 
-  // Query EWS Siswa At-Risk Rombel
+  // Query EWS Siswa At-Risk Rombel (High-Performance Cache)
   const { data: ewsData } = useQuery({
     queryKey: ['walas-ews-presensi', kelasId],
     queryFn: () => getEwsPerKelasList(kelasId),
     enabled: Boolean(kelasId),
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const atRiskStudents = useMemo(() => {

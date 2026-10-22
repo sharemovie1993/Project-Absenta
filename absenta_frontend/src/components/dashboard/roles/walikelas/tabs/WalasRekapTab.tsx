@@ -54,20 +54,24 @@ export const WalasRekapTab: React.FC<WalasRekapTabProps> = React.memo(({
 
   const { tenantInfo, logoSekolahBase64, logoDaerahBase64 } = usePrintHeaderData();
 
-  // Query Data Presensi Bulanan
+  // Query Data Presensi Bulanan (High-Performance Cache)
   const { data: rekapPresensiRes, isLoading: isLoadingPresensi } = useQuery({
     queryKey: ['walas-rekap-presensi', kelasId, selectedYear, selectedMonth],
     queryFn: () => getRekapKelasBulanan(kelasId || '', selectedYear, selectedMonth),
     enabled: Boolean(kelasId) && activeDocType === 'PRESENSI_BULANAN',
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
-  // Query Jurnal Walas
+  // Query Jurnal Walas (High-Performance Cache)
   const { data: jurnalRes, isLoading: isLoadingJurnal } = useQuery({
     queryKey: ['walas-rekap-jurnal', kelasId],
     queryFn: () => getJurnalWaliKelasList(1, 100, '', kelasId),
     enabled: Boolean(kelasId) && activeDocType === 'JURNAL_PEMBINAAN',
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   // Parse Presensi List

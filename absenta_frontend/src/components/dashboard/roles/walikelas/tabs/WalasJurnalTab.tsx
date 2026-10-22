@@ -54,12 +54,14 @@ export const WalasJurnalTab: React.FC<WalasJurnalTabProps> = React.memo(({
 
   const isHistorical = data?.academicContext?.isHistoricalPeriod ?? false;
 
-  // 1. Fetch Jurnal
+  // 1. Fetch Jurnal (High-Performance Cache)
   const { data: jurnalRes, isLoading } = useQuery({
     queryKey: ['walas-jurnal-list', kelasId, search],
     queryFn: () => getJurnalWaliKelasList(1, 50, search, kelasId),
     enabled: Boolean(kelasId),
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const rawJurnalList = Array.isArray(jurnalRes?.data?.data) 

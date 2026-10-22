@@ -45,12 +45,14 @@ export const WalasIzinTab: React.FC<WalasIzinTabProps> = React.memo(({
 
   const isHistorical = data?.academicContext?.isHistoricalPeriod ?? false;
 
-  // 1. Fetch Permohonan Izin
+  // 1. Fetch Permohonan Izin (High-Performance Cache)
   const { data: izinRes, isLoading } = useQuery({
     queryKey: ['walas-izin-list', kelasId, statusFilter],
     queryFn: () => getPermohonanIzinList(statusFilter || undefined, kelasId),
     enabled: Boolean(kelasId),
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const rawIzinList = Array.isArray(izinRes?.data) ? izinRes.data : (Array.isArray(izinRes) ? izinRes : []);

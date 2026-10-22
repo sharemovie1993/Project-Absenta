@@ -90,7 +90,9 @@ export const WalasDisiplinTab: React.FC<WalasDisiplinTabProps> = React.memo(({
         elevated_context: 'true',
       }).catch(() => null),
     enabled: Boolean(kelasId),
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   // 2. Fetch Kasus BK Rombel untuk Penggabungan Sumber
@@ -98,7 +100,9 @@ export const WalasDisiplinTab: React.FC<WalasDisiplinTabProps> = React.memo(({
     queryKey: ['walas-bpbk-cases', kelasId],
     queryFn: () => bpbkApi.getCases({ kelas_id: kelasId, limit: 50 }).catch(() => null),
     enabled: Boolean(kelasId),
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   // Gabungkan data dari Tatib dan BK
