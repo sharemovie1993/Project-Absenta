@@ -68,7 +68,8 @@ import { useNavStore } from '../../../store/navStore';
 // Staff Dashboard Modular Tabs
 import { StaffBerandaTab } from '../staff/tabs/StaffBerandaTab';
 import { StaffKbmAbsenTab } from '../staff/tabs/StaffKbmAbsenTab';
-import { StaffWaliKelasTab } from '../staff/tabs/StaffWaliKelasTab';
+// Wali Kelas Dashboard — clean modular design (replaces legacy StaffWaliKelasTab)
+const WaliKelasDashboard = React.lazy(() => import('./WaliKelasDashboard').then(m => ({ default: m.WaliKelasDashboard })));
 import { StaffPiketOperasionalTab } from '../staff/tabs/StaffPiketOperasionalTab';
 import { StaffProfilGuruTab } from '../staff/tabs/StaffProfilGuruTab';
 import { StaffManualInputTab } from '../staff/tabs/StaffManualInputTab';
@@ -94,7 +95,6 @@ import { StaffImpactWidget } from '../widgets/StaffImpactWidget';
 import { StaffAttendanceLogWidget } from '../widgets/StaffAttendanceLogWidget';
 
 // Sidebar Panels
-import { WaliKelasSidebarPanel } from '../panels/WaliKelasSidebarPanel';
 import { KurikulumSidebarPanel } from '../panels/KurikulumSidebarPanel';
 import { KesiswaanSidebarPanel } from '../panels/KesiswaanSidebarPanel';
 import {
@@ -1175,12 +1175,20 @@ export const UnifiedStaffDashboard: React.FC = () => {
           />
         )}
 
-        {/* 👥 TAB 3: WALI KELAS */}
+        {/* 👥 TAB 3: WALI KELAS — Role Dashboard Architecture */}
         {activeTab === 'binaan' && (
-          <StaffWaliKelasTab
-            waliKelasNama={waliKelasNama}
-            kelasId={waliKelasId}
-          />
+          <Suspense fallback={
+            <div className="w-full space-y-6 py-4">
+              <div className="h-20 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+              <div className="h-96 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+            </div>
+          }>
+            <WaliKelasDashboard
+              waliKelasNama={waliKelasNama}
+              kelasId={waliKelasId}
+              user={user}
+            />
+          </Suspense>
         )}
 
 

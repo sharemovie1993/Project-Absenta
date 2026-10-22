@@ -123,6 +123,20 @@ export async function getKaprogStats(params?: KaprogStatsParams): Promise<any> {
   });
 }
 
+// Walas Stats - GET /dashboard/walas/stats
+export interface WalasStatsParams {
+  kelas_id?: string;
+  tahun_pelajaran_id?: string;
+  semester_id?: string;
+}
+
+export async function getWalasStats(params?: WalasStatsParams): Promise<any> {
+  return requestWithFallback<any>('get', '/dashboard/walas/stats', {
+    params,
+    headers: { 'X-Skip-403-Redirect': 'true' }
+  });
+}
+
 // Kepegawaian Stats - GET /dashboard/kepegawaian/stats
 export interface KepegawaianStatsParams {
   tahun_pelajaran_id?: string;

@@ -35,6 +35,7 @@ export class DashboardService {
   async getGerbangStats(...args: any[]) { return (this.role as any).getGerbangStats(...args); }
   async getPetugasStats(...args: any[]) { return (this.role as any).getPetugasStats(...args); }
   async getKaprogStats(...args: any[]) { return (this.role as any).getKaprogStats(...args); }
+  async getWalasStats(...args: any[]) { return (this.role as any).getWalasStats(...args); }
   async getKepegawaianStats(...args: any[]) { return (this.role as any).getKepegawaianStats(...args); }
   async getToolmanStats(...args: any[]) { return (this.role as any).getToolmanStats(...args); }
   async getKabengStats(...args: any[]) { return (this.role as any).getKabengStats(...args); }

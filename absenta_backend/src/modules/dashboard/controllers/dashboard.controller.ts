@@ -617,6 +617,27 @@ export class DashboardController {
   }
 
   /**
+   * 🆕 Get Walas (Wali Kelas) Stats
+   * GET /dashboard/walas/stats
+   */
+  async getWalasStats(request: AuthenticatedRequest, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      const userId = (request.user as any).id || (request.user as any).userId;
+      if (!tenantId) throw new Error('Tenant ID required');
+      const { kelas_id, tahun_pelajaran_id, semester_id } = (request.query as any) || {};
+      const data = await this.dashboardService.getWalasStats(tenantId, userId, {
+        targetKelasId: kelas_id,
+        tahunPelajaranId: tahun_pelajaran_id,
+        semesterId: semester_id
+      });
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  /**
    * 🆕 Get Kepegawaian (TU Kepegawaian & Dapodik) Stats
    * GET /dashboard/kepegawaian/stats
    */

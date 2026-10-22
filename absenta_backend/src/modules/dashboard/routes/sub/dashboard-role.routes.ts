@@ -331,6 +331,40 @@ export async function dashboardRoleRoutes(fastify: any) {
     }
   }, dashboardController.getKaprogStats.bind(dashboardController));
 
+  // Walas Stats
+  fastify.get('/walas/stats', {
+    preHandler: [
+      requireCapability([
+        'dashboard.view.walikelas',
+        'academic.homeroom.manage',
+        'academic.students.view.list',
+        'attendance.recap.view.daily'
+      ]),
+      determineDataScope()
+    ],
+    schema: {
+      description: 'Get Walas/Wali Kelas statistics and academic history',
+      tags: ['Dashboard'],
+      querystring: {
+        type: 'object',
+        properties: {
+          kelas_id: { type: 'string' },
+          tahun_pelajaran_id: { type: 'string' },
+          semester_id: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: { type: 'object', additionalProperties: true }
+          }
+        }
+      }
+    }
+  }, dashboardController.getWalasStats.bind(dashboardController));
+
   // Kepegawaian Stats
   fastify.get('/kepegawaian/stats', {
     preHandler: [

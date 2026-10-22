@@ -7,11 +7,13 @@ import { DashboardCommonHelper } from './dashboard-common.helper';
 import { STRUKTUR_CODES } from '@/config/organization-structure';
 import { DashboardKaprogStatsService } from './dashboard-kaprog-stats.service';
 import { DashboardKepegawaianStatsService } from './dashboard-kepegawaian-stats.service';
+import { DashboardWalasStatsService } from './dashboard-walas-stats.service';
 
 export class DashboardRoleStatsService {
   private helper = new DashboardCommonHelper();
   private kaprogStats = new DashboardKaprogStatsService();
   private kepegawaianStats = new DashboardKepegawaianStatsService();
+  private walasStats = new DashboardWalasStatsService();
   private resolveDayRange(...args: any[]) { return this.helper.resolveDayRange(...args); }
 
   async getHubinStats(tenantId: string, userId?: string) {
@@ -633,6 +635,14 @@ export class DashboardRoleStatsService {
    */
   async getKaprogStats(tenantId: string, userId: string, options?: any) {
     return this.kaprogStats.getKaprogStats(tenantId, userId, options);
+  }
+
+  /**
+   * 🆕 Get Walas (Wali Kelas) Stats
+   * Didelegasikan ke DashboardWalasStatsService (Scoped Kelas & Periode Akademik SSOT)
+   */
+  async getWalasStats(tenantId: string, userId: string, options?: any) {
+    return this.walasStats.getWalasStats(tenantId, userId, options);
   }
 
   /**

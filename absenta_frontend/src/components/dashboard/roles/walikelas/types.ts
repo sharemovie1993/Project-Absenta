@@ -105,7 +105,7 @@ export interface AchievementRecord {
 export interface StudentBadge {
   id: string;
   badgeName: string;
-  icon: string; // lucide icon name or emoji
+  icon: string;
   category: string;
   awardedBy: string;
   awardedAt: string;
@@ -125,12 +125,12 @@ export interface JournalEntry {
 }
 
 export interface ClassHealthMetric {
-  overallScore: number; // 0-100
+  overallScore: number;
   attendancePercentage: number;
   activeRequestsCount: number;
   atRiskCount: number;
   totalViolationPoints: number;
-  parentResponseRate: number; // %
+  parentResponseRate: number;
   zeroSevereViolations: boolean;
 }
 
@@ -146,3 +146,77 @@ export interface ClassInfo {
   roomNumber: string;
   major: string;
 }
+
+export interface HistoricalClassItem {
+  kelasId: string;
+  namaKelas: string;
+  tingkat: number;
+  jurusanNama: string;
+  tahunPelajaranNama: string;
+  semesterNama: string;
+  tahunPelajaranId: string;
+  semesterId: string;
+  isCurrentActive: boolean;
+  totalSiswa: number;
+}
+
+export interface WalasAcademicContext {
+  selectedTahunPelajaranId: string;
+  selectedSemesterId: string;
+  tahunPelajaranNama: string;
+  semesterNama: string;
+  isHistoricalPeriod: boolean;
+  modeLabel: 'LIVE_OPERASIONAL' | 'HISTORIS_ARSIP';
+}
+
+export interface WalasDashboardOptions {
+  targetKelasId?: string;
+  tahunPelajaranId?: string;
+  semesterId?: string;
+}
+
+export interface WalasDashboardData {
+  academicContext: WalasAcademicContext;
+  daftarKelasBinaan: HistoricalClassItem[];
+  kelasInfo: {
+    id: string;
+    nama_kelas: string;
+    tingkat: number;
+    jurusan: { nama: string; singkatan: string };
+    totalSiswa: number;
+    totalLaki: number;
+    totalPerempuan: number;
+    ruang: string;
+    waliKelas: { id: string; nama: string; nip?: string };
+  };
+  kehadiranStats: {
+    isLiveToday: boolean;
+    tanggalData?: string;
+    hadir: number;
+    sakit: number;
+    izin: number;
+    alfa: number;
+    terlambat: number;
+    persentase: number;
+    daftarTidakHadirHariIni?: Array<{ siswaId: string; nama: string; status: string; alasan?: string }>;
+    rekapBulananSemester?: Array<{ bulan: string; persentaseRataRata: number }>;
+  };
+  kbmAktifHariIni?: {
+    adaSesiAktif: boolean;
+    jadwalSaatIni?: { mapel: string; namaGuru: string; jamKe: string; statusGuru: string };
+  };
+  earlyWarningAlerts: Array<{
+    siswaId: string;
+    nama: string;
+    alfaCount: number;
+    kategoriRisk: string;
+    rekomendasi: string;
+    statusIntervensi: 'PENDING' | 'TERTANGANI' | 'ARSIP';
+  }>;
+  izinPendingCount: number;
+  totalPelanggaranPeriodeIni: number;
+  totalPrestasiPeriodeIni: number;
+  totalJurnalWalasTercatat: number;
+}
+
+export type WaliKelasTabId = 'ringkasan' | 'siswa' | 'presensi' | 'jurnal' | 'izin' | 'disiplin' | 'prestasi' | 'rekap';
