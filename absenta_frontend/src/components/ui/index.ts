@@ -87,5 +87,6 @@ export {
   type UniversalPrintTabProps,
   type UniversalDocumentModalProps,
   type UniversalDocumentTabProps,
+  type DocumentTemplateOption,
   type UsePrintHeaderDataResult,
 } from './PrintHeader';

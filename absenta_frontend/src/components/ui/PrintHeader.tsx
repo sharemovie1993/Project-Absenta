@@ -13,6 +13,7 @@ import {
   Users,
   RotateCw,
   Loader2,
+  LayoutTemplate,
 } from 'lucide-react';
 import { getMyTenant, type Tenant } from '@/api/tenants.api';
 import { sekolahApi, type Sekolah } from '@/api/academic/sekolah.api';
@@ -770,7 +771,15 @@ export const PrintDeskCanvas: React.FC<PrintDeskCanvasProps> = ({
 //    - Support Ceklis Logo Kanan & Kiri
 //    - Support Orientasi (Portrait / Landscape)
 //    - Support Cetak Massal (Batch Navigation & Batch Download)
+//    - Support Pilihan Template Dokumen (Template Selection)
 // ============================================================================
+
+export interface DocumentTemplateOption {
+  id: string;
+  label: string;
+  description?: string;
+  badge?: string;
+}
 
 export interface UniversalDocumentModalProps {
   isOpen: boolean;
@@ -799,6 +808,12 @@ export interface UniversalDocumentModalProps {
   onDownloadBatchPdf?: () => void;
   isBatchDownloading?: boolean;
   batchDownloadButtonText?: string;
+
+  // 4. Template Selection Support
+  templateOptions?: DocumentTemplateOption[];
+  selectedTemplate?: string;
+  onTemplateChange?: (templateId: string) => void;
+  templateLabel?: string;
 
   // Actions
   onPrint?: () => void;
@@ -834,6 +849,10 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
   onDownloadBatchPdf,
   isBatchDownloading = false,
   batchDownloadButtonText,
+  templateOptions,
+  selectedTemplate,
+  onTemplateChange,
+  templateLabel = 'Template:',
   onPrint,
   onDownloadPdf,
   downloadPdfText = 'Unduh PDF',
@@ -1032,48 +1051,81 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
         </div>
 
         {/* ========================================================================= */}
-        {/* ROW 2: KONTROL CEKLIS LOGO KANAN & KIRI KOP SURAT                         */}
+        {/* ROW 2: OPSI KOP & PILIHAN TEMPLATE DOKUMEN                                */}
         {/* ========================================================================= */}
-        {allowLogoToggles && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs shrink-0">
+        {(allowLogoToggles || (templateOptions && templateOptions.length > 0)) && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs shrink-0">
             <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-              <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-[11.5px]">
-                <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
-                Opsi Kop:
-              </span>
+              {/* Template Selector Dropdown */}
+              {templateOptions && templateOptions.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-[11.5px]">
+                    <LayoutTemplate className="w-3.5 h-3.5 text-primary" />
+                    {templateLabel}
+                  </span>
+                  <select
+                    value={selectedTemplate}
+                    onChange={(e) => onTemplateChange?.(e.target.value)}
+                    className="text-xs font-semibold py-1 px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 cursor-pointer focus:ring-2 focus:ring-primary shadow-xs"
+                  >
+                    {templateOptions.map((opt) => (
+                      <option key={opt.id} value={opt.id}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-              {/* Checkbox Logo Kiri Pemda */}
-              <label className="flex items-center gap-1.5 cursor-pointer select-none group">
-                <input
-                  type="checkbox"
-                  checked={activeLogoDaerah}
-                  onChange={(e) => handleToggleDaerah(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 cursor-pointer"
-                />
-                <span className="text-slate-700 dark:text-slate-300 group-hover:text-foreground font-medium text-[11.5px]">
-                  Logo Kiri (Pemda)
-                </span>
-              </label>
+              {/* Logo Toggles */}
+              {allowLogoToggles && (
+                <div className={cn(
+                  "flex flex-wrap items-center gap-3 sm:gap-4",
+                  templateOptions && templateOptions.length > 0 && "pl-0 sm:pl-3 sm:border-l sm:border-slate-300 dark:sm:border-slate-700"
+                )}>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-[11.5px]">
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
+                    Opsi Kop:
+                  </span>
 
-              {/* Checkbox Logo Kanan Sekolah */}
-              <label className="flex items-center gap-1.5 cursor-pointer select-none group">
-                <input
-                  type="checkbox"
-                  checked={activeLogoSekolah}
-                  onChange={(e) => handleToggleSekolah(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 cursor-pointer"
-                />
-                <span className="text-slate-700 dark:text-slate-300 group-hover:text-foreground font-medium text-[11.5px]">
-                  Logo Kanan (Sekolah)
-                </span>
-              </label>
+                  {/* Checkbox Logo Kiri Pemda */}
+                  <label className="flex items-center gap-1.5 cursor-pointer select-none group">
+                    <input
+                      type="checkbox"
+                      checked={activeLogoDaerah}
+                      onChange={(e) => handleToggleDaerah(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 cursor-pointer"
+                    />
+                    <span className="text-slate-700 dark:text-slate-300 group-hover:text-foreground font-medium text-[11.5px]">
+                      Logo Kiri (Pemda)
+                    </span>
+                  </label>
+
+                  {/* Checkbox Logo Kanan Sekolah */}
+                  <label className="flex items-center gap-1.5 cursor-pointer select-none group">
+                    <input
+                      type="checkbox"
+                      checked={activeLogoSekolah}
+                      onChange={(e) => handleToggleSekolah(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 cursor-pointer"
+                    />
+                    <span className="text-slate-700 dark:text-slate-300 group-hover:text-foreground font-medium text-[11.5px]">
+                      Logo Kanan (Sekolah)
+                    </span>
+                  </label>
+                </div>
+              )}
             </div>
 
             <div className="text-[11px] text-muted-foreground flex items-center gap-2">
-              <span className={`inline-block w-2 h-2 rounded-full ${activeLogoSekolah ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-              <span>
-                Logo Kanan: <strong className={activeLogoSekolah ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}>{activeLogoSekolah ? 'Aktif' : 'Nonaktif'}</strong>
-              </span>
+              {allowLogoToggles && (
+                <>
+                  <span className={`inline-block w-2 h-2 rounded-full ${activeLogoSekolah ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                  <span>
+                    Logo Kanan: <strong className={activeLogoSekolah ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}>{activeLogoSekolah ? 'Aktif' : 'Nonaktif'}</strong>
+                  </span>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -1120,6 +1172,12 @@ export interface UniversalDocumentTabProps {
   isBatchDownloading?: boolean;
   batchDownloadButtonText?: string;
 
+  // 4. Template Selection Support
+  templateOptions?: DocumentTemplateOption[];
+  selectedTemplate?: string;
+  onTemplateChange?: (templateId: string) => void;
+  templateLabel?: string;
+
   onPrint?: () => void;
   onDownloadPdf?: () => void;
   onRefresh?: () => void;
@@ -1149,6 +1207,10 @@ export const UniversalDocumentTab: React.FC<UniversalDocumentTabProps> = ({
   onDownloadBatchPdf,
   isBatchDownloading = false,
   batchDownloadButtonText,
+  templateOptions,
+  selectedTemplate,
+  onTemplateChange,
+  templateLabel = 'Template:',
   onPrint,
   onDownloadPdf,
   onRefresh,
@@ -1342,45 +1404,78 @@ export const UniversalDocumentTab: React.FC<UniversalDocumentTabProps> = ({
         </div>
       </div>
 
-      {/* Row 2: Logo Toggles */}
-      {allowLogoToggles && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3.5 py-2 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs shrink-0">
+      {/* Row 2: Opsi Kop & Pilihan Template Dokumen */}
+      {(allowLogoToggles || (templateOptions && templateOptions.length > 0)) && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-3.5 py-2 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs shrink-0">
           <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-            <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-[11.5px]">
-              <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
-              Opsi Kop:
-            </span>
+            {/* Template Selector Dropdown */}
+            {templateOptions && templateOptions.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-[11.5px]">
+                  <LayoutTemplate className="w-3.5 h-3.5 text-primary" />
+                  {templateLabel}
+                </span>
+                <select
+                  value={selectedTemplate}
+                  onChange={(e) => onTemplateChange?.(e.target.value)}
+                  className="text-xs font-semibold py-1 px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 cursor-pointer focus:ring-2 focus:ring-primary shadow-xs"
+                >
+                  {templateOptions.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
-            <label className="flex items-center gap-1.5 cursor-pointer select-none group">
-              <input
-                type="checkbox"
-                checked={activeLogoDaerah}
-                onChange={(e) => handleToggleDaerah(e.target.checked)}
-                className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 cursor-pointer"
-              />
-              <span className="text-slate-700 dark:text-slate-300 group-hover:text-foreground font-medium text-[11.5px]">
-                Logo Kiri (Pemda)
-              </span>
-            </label>
+            {/* Logo Toggles */}
+            {allowLogoToggles && (
+              <div className={cn(
+                "flex flex-wrap items-center gap-3 sm:gap-4",
+                templateOptions && templateOptions.length > 0 && "pl-0 sm:pl-3 sm:border-l sm:border-slate-300 dark:sm:border-slate-700"
+              )}>
+                <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-[11.5px]">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
+                  Opsi Kop:
+                </span>
 
-            <label className="flex items-center gap-1.5 cursor-pointer select-none group">
-              <input
-                type="checkbox"
-                checked={activeLogoSekolah}
-                onChange={(e) => handleToggleSekolah(e.target.checked)}
-                className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 cursor-pointer"
-              />
-              <span className="text-slate-700 dark:text-slate-300 group-hover:text-foreground font-medium text-[11.5px]">
-                Logo Kanan (Sekolah)
-              </span>
-            </label>
+                <label className="flex items-center gap-1.5 cursor-pointer select-none group">
+                  <input
+                    type="checkbox"
+                    checked={activeLogoDaerah}
+                    onChange={(e) => handleToggleDaerah(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 cursor-pointer"
+                  />
+                  <span className="text-slate-700 dark:text-slate-300 group-hover:text-foreground font-medium text-[11.5px]">
+                    Logo Kiri (Pemda)
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-1.5 cursor-pointer select-none group">
+                  <input
+                    type="checkbox"
+                    checked={activeLogoSekolah}
+                    onChange={(e) => handleToggleSekolah(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 cursor-pointer"
+                  />
+                  <span className="text-slate-700 dark:text-slate-300 group-hover:text-foreground font-medium text-[11.5px]">
+                    Logo Kanan (Sekolah)
+                  </span>
+                </label>
+              </div>
+            )}
           </div>
 
           <div className="text-[11px] text-muted-foreground flex items-center gap-2">
-            <span className={`inline-block w-2 h-2 rounded-full ${activeLogoSekolah ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-            <span>
-              Logo Kanan: <strong className={activeLogoSekolah ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}>{activeLogoSekolah ? 'Aktif' : 'Nonaktif'}</strong>
-            </span>
+            {allowLogoToggles && (
+              <>
+                <span className={`inline-block w-2 h-2 rounded-full ${activeLogoSekolah ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                <span>
+                  Logo Kanan: <strong className={activeLogoSekolah ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}>{activeLogoSekolah ? 'Aktif' : 'Nonaktif'}</strong>
+                </span>
+              </>
+            )}
           </div>
         </div>
       )}

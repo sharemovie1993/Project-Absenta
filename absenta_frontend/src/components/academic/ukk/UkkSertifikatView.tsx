@@ -12,6 +12,7 @@ import {
   UniversalDocumentTab,
   PrintDocumentSheet,
   usePrintHeaderData,
+  type DocumentTemplateOption,
 } from '@/components/ui';
 import { raporApi } from '@/api/rapor.api';
 import {
@@ -58,6 +59,12 @@ export interface UniversalUkkSertifikatViewProps {
   className?: string;
 }
 
+export const CERTIFICATE_TEMPLATES: DocumentTemplateOption[] = [
+  { id: 'kemdikbud', label: 'Standar Kemdikbudristek (Resmi)' },
+  { id: 'modern', label: 'Modern DU/DI Industri' },
+  { id: 'classic', label: 'Piagam Ornamen Emas (Klasik)' },
+];
+
 export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
   isOpen = true,
   onClose = () => {},
@@ -102,6 +109,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
   const [showLogoDaerah, setShowLogoDaerah] = useState<boolean>(true);
   const [showLogoSekolah, setShowLogoSekolah] = useState<boolean>(true);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('kemdikbud');
 
   const [isLoadingUkk, setIsLoadingUkk] = useState<boolean>(false);
   const [ukkRecord, setUkkRecord] = useState<any>(null);
@@ -392,8 +400,15 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
         footerText={`Sertifikat Uji Kompetensi Keahlian — ${certData.sekolah?.nama}`}
         className="relative overflow-hidden"
       >
-        {/* Certificate Ornate Frame */}
-        <div className="border-[4px] border-double border-slate-700 dark:border-slate-400 p-6 sm:p-9 h-full flex flex-col justify-between relative bg-white">
+        {/* Certificate Ornate Frame with Dynamic Template Styling */}
+        <div
+          className={cn(
+            'p-6 sm:p-9 h-full flex flex-col justify-between relative transition-all duration-200',
+            selectedTemplate === 'classic' && 'border-[6px] border-double border-amber-600/90 bg-[#fffdf9]',
+            selectedTemplate === 'modern' && 'border-2 border-indigo-600/80 bg-white shadow-xs rounded-xl',
+            selectedTemplate === 'kemdikbud' && 'border-[4px] border-double border-slate-700 dark:border-slate-400 bg-white'
+          )}
+        >
           <div>
             {/* Top Logos Row */}
             <div className="flex items-center justify-between mb-4">
@@ -438,10 +453,24 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
               <h2 className="text-[11px] font-bold tracking-widest text-slate-800 uppercase">
                 REPUBLIK INDONESIA
               </h2>
-              <h1 className="text-base sm:text-lg font-extrabold uppercase tracking-wider text-sky-800">
+              <h1
+                className={cn(
+                  'text-base sm:text-lg font-extrabold uppercase tracking-wider',
+                  selectedTemplate === 'classic' && 'text-amber-900',
+                  selectedTemplate === 'modern' && 'text-indigo-900',
+                  selectedTemplate === 'kemdikbud' && 'text-sky-800'
+                )}
+              >
                 SERTIFIKAT UJI KOMPETENSI KEAHLIAN
               </h1>
-              <p className="text-[11px] font-serif italic text-sky-700">
+              <p
+                className={cn(
+                  'text-[11px] font-serif italic',
+                  selectedTemplate === 'classic' && 'text-amber-800',
+                  selectedTemplate === 'modern' && 'text-indigo-700',
+                  selectedTemplate === 'kemdikbud' && 'text-sky-700'
+                )}
+              >
                 CERTIFICATE OF COMPETENCY ASSESSMENT
               </p>
               <p className="text-[11px] font-mono text-slate-600 tracking-wide mt-1">
@@ -494,7 +523,14 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
               {/* Predikat / Achievement Level */}
               <div className="pt-2">
                 <p className="text-[11px] text-slate-700">dengan predikat / with achievement level:</p>
-                <div className="inline-block mt-1 px-4 py-1 rounded-full border border-emerald-600 bg-emerald-50 text-emerald-800 font-extrabold text-xs uppercase tracking-wider shadow-xs">
+                <div
+                  className={cn(
+                    'inline-block mt-1 px-4 py-1 rounded-full font-extrabold text-xs uppercase tracking-wider shadow-xs',
+                    selectedTemplate === 'classic' && 'border border-amber-600 bg-amber-50 text-amber-900',
+                    selectedTemplate === 'modern' && 'border border-indigo-600 bg-indigo-50 text-indigo-900',
+                    selectedTemplate === 'kemdikbud' && 'border border-emerald-600 bg-emerald-50 text-emerald-800'
+                  )}
+                >
                   {certData.ukk.predikat}
                 </div>
               </div>
@@ -750,6 +786,10 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
         onDownloadBatchPdf={handleBatchDownload}
         isBatchDownloading={isBatchDownloading}
         batchDownloadButtonText={allStudents.length > 1 ? `Unduh Sekelas (${allStudents.length})` : undefined}
+        templateOptions={CERTIFICATE_TEMPLATES}
+        selectedTemplate={selectedTemplate}
+        onTemplateChange={setSelectedTemplate}
+        templateLabel="Desain Sertifikat:"
         onPrint={handlePrint}
         onDownloadPdf={handleDownloadSinglePdf}
         downloadPdfText="PDF"
@@ -783,6 +823,10 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
         onDownloadBatchPdf={handleBatchDownload}
         isBatchDownloading={isBatchDownloading}
         batchDownloadButtonText={allStudents.length > 1 ? `Unduh Sekelas (${allStudents.length})` : undefined}
+        templateOptions={CERTIFICATE_TEMPLATES}
+        selectedTemplate={selectedTemplate}
+        onTemplateChange={setSelectedTemplate}
+        templateLabel="Desain Sertifikat:"
         onPrint={handlePrint}
         onDownloadPdf={handleDownloadSinglePdf}
         downloadPdfText="PDF"
