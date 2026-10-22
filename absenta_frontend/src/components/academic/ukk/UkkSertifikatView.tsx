@@ -24,6 +24,7 @@ import {
   type SertifikatUkkPrintData,
   type UkkUnitKompetensi,
 } from '@/utils/print/modules/pdfSertifikatUkk';
+import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 export interface UkkStudentItem {
