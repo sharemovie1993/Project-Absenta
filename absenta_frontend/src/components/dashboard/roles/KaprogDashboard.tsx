@@ -693,6 +693,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                     jurusanId={resolvedJurusan?.id}
                     jurusanNama={resolvedJurusan?.nama || 'Kejuruan'}
                     tahunPelajaranId={academic.selectedTahunPelajaran}
+                    tahunAjaran={academic.activeYear}
                     semesterId={academic.selectedSemester}
                   />
                 )}

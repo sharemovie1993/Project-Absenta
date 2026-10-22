@@ -29,6 +29,7 @@ export interface UkkJurusanConfigModalProps {
   onClose: () => void;
   jurusanId?: string;
   jurusanNama?: string;
+  initialTahunAjaran?: string;
 }
 
 export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
@@ -36,13 +37,20 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
   onClose,
   jurusanId,
   jurusanNama = 'Kejuruan',
+  initialTahunAjaran,
 }) => {
   const queryClient = useQueryClient();
 
-  const [tahunAjaran, setTahunAjaran] = useState<string>('2025/2026');
+  const [tahunAjaran, setTahunAjaran] = useState<string>(initialTahunAjaran || '2025/2026');
   const [edisiPedoman, setEdisiPedoman] = useState<string>('2026');
   const [skemaSertifikasi, setSkemaSertifikasi] = useState('');
   const [judulPenugasanId, setJudulPenugasanId] = useState('');
+
+  useEffect(() => {
+    if (isOpen && initialTahunAjaran) {
+      setTahunAjaran(initialTahunAjaran);
+    }
+  }, [isOpen, initialTahunAjaran]);
   const [judulPenugasanEn, setJudulPenugasanEn] = useState('');
   const [units, setUnits] = useState<UkkUnitKompetensi[]>([]);
   const [ttdKepalaSekolah, setTtdKepalaSekolah] = useState<string | null>(null);

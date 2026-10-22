@@ -60,6 +60,7 @@ export interface UniversalUkkSertifikatViewProps {
   kelasNama?: string;
   jurusanId?: string;
   jurusanNama?: string;
+  tahunAjaran?: string;
   studentsList?: UkkStudentItem[];
   isModal?: boolean;
   hideLayout?: boolean;
@@ -84,6 +85,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
   kelasNama,
   jurusanId,
   jurusanNama = 'Teknik Komputer dan Jaringan',
+  tahunAjaran,
   studentsList = [],
   isModal = false,
   className = '',
@@ -137,7 +139,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
   };
 
   const activeSiswaId = currentStudent.id;
-  const activeTahunAjaran = currentStudent.tahun_ajaran || '2025/2026';
+  const activeTahunAjaran = currentStudent.tahun_ajaran || tahunAjaran || '2025/2026';
 
   // Active Regulatory Edition based on active template or student academic year
   const activeEdition = useMemo(() => {

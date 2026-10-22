@@ -30,6 +30,7 @@ import { UkkSertifikatModal, type UkkStudentItem } from './UkkSertifikatModal';
 import { UkkJurusanConfigModal } from './UkkJurusanConfigModal';
 import { UkkJadwalPlotingTab } from './UkkJadwalPlotingTab';
 import { UkkBeritaAcaraTab } from './UkkBeritaAcaraTab';
+import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { cn } from '@/lib/utils';
 
 export interface UkkRecordItem {
@@ -37,8 +38,10 @@ export interface UkkRecordItem {
   siswa_id: string;
   nama_siswa: string;
   nis?: string;
+  nisn?: string;
   kelas?: string;
   tingkat?: number | string;
+  tahun_ajaran?: string;
   asesor_internal?: string | null;
   asesor_eksternal?: string;
   mitra_industri_id?: string | null;
@@ -56,6 +59,7 @@ export interface UniversalUkkViewProps {
   jurusanNama?: string;
   kelasId?: string;
   tahunPelajaranId?: string;
+  tahunAjaran?: string;
   semesterId?: string;
   isModal?: boolean;
   hideLayout?: boolean;
@@ -67,11 +71,22 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
   jurusanNama = 'Kejuruan',
   kelasId,
   tahunPelajaranId,
+  tahunAjaran,
   semesterId,
   isModal = false,
   hideLayout = false,
   readOnly = false,
 }) => {
+  // Fallback to platform-wide academic filter engine if not supplied by parent
+  const internalAcademic = useAcademicFilter({
+    enableTp: true,
+    enableSemester: true,
+  });
+
+  const effectiveTpId = tahunPelajaranId || internalAcademic.values.tahunPelajaranId;
+  const effectiveSemesterId = semesterId || internalAcademic.values.semesterId;
+  const effectiveTahunAjaran = tahunAjaran || internalAcademic.activeTpYear || '2025/2026';
+
   const [activeTab, setActiveTab] = useState<'penilaian' | 'ploting' | 'berita_acara'>('penilaian');
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [selectedJadwalForBa, setSelectedJadwalForBa] = useState<string | null>(null);
@@ -94,34 +109,38 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
     studentsList?: UkkStudentItem[];
   }>({ isOpen: false });
 
-  // 1. Query Data Sertifikat UKK dari backend
+  // 1. Query Data Sertifikat UKK dari backend (Aware Filter Tahun Akademik)
   const {
     data: ukkResponse,
     isLoading: isLoadingUkk,
     isFetching: isFetchingUkk,
     refetch: refetchUkk,
   } = useQuery({
-    queryKey: ['kaprog-ukk-list', jurusanId, kelasId],
+    queryKey: ['kaprog-ukk-list', jurusanId, kelasId, effectiveTpId, effectiveTahunAjaran],
     queryFn: () =>
       raporApi.getUkk({
         jurusan_id: jurusanId,
         kelas_id: kelasId,
+        tahun_pelajaran_id: effectiveTpId || undefined,
+        tahun_ajaran: effectiveTahunAjaran || undefined,
       }).catch(() => ({ data: [] })),
     staleTime: 60 * 1000,
   });
 
-  // 2. Query Siswa Tingkat Akhir (Kelas XII) jurusan ini
+  // 2. Query Siswa Tingkat Akhir (Kelas XII) jurusan ini (Aware Filter Tahun Akademik)
   const {
     data: siswaResponse,
     isLoading: isLoadingSiswa,
   } = useQuery({
-    queryKey: ['kaprog-siswa-tingkat-akhir', jurusanId, kelasId],
+    queryKey: ['kaprog-siswa-tingkat-akhir', jurusanId, kelasId, effectiveTpId, effectiveSemesterId],
     queryFn: () =>
       siswaApi.getAll({
         jurusan_id: jurusanId,
         kelas_id: kelasId,
         tingkat: 12,
         limit: 1000,
+        tahun_pelajaran_id: effectiveTpId || undefined,
+        semester_id: effectiveSemesterId || undefined,
       }).catch(() => ({ data: [] })),
     staleTime: 5 * 60 * 1000,
   });
@@ -151,8 +170,10 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
           siswa_id: s.id,
           nama_siswa: s.nama_siswa || 'Siswa',
           nis: s.nis || '-',
+          nisn: s.nisn || cert?.Siswa?.nisn || '-',
           kelas: s.Kelas?.nama_kelas || s.nama_kelas || '-',
           tingkat: s.Kelas?.tingkat || 12,
+          tahun_ajaran: s.TahunPelajaran?.tahun || s.tahun_ajaran || effectiveTahunAjaran,
           asesor_internal: cert?.asesor_internal || null,
           asesor_eksternal: cert?.asesor_eksternal || '',
           mitra_industri_id: cert?.mitra_industri_id || null,
@@ -174,8 +195,10 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
         siswa_id: c.siswa_id,
         nama_siswa: c.Siswa?.nama_siswa || 'Siswa',
         nis: c.Siswa?.nis || '-',
+        nisn: c.Siswa?.nisn || '-',
         kelas: c.Siswa?.Kelas?.nama_kelas || '-',
         tingkat: c.Siswa?.Kelas?.tingkat || 12,
+        tahun_ajaran: c.Siswa?.TahunPelajaran?.tahun || effectiveTahunAjaran,
         asesor_internal: c.asesor_internal || null,
         asesor_eksternal: c.asesor_eksternal || '',
         mitra_industri_id: c.mitra_industri_id || null,
@@ -190,7 +213,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
     }
 
     return [];
-  }, [ukkResponse, siswaResponse]);
+  }, [ukkResponse, siswaResponse, effectiveTahunAjaran]);
 
   // Ekstrak daftar kelas unik untuk filter
   const kelasOptions = useMemo(() => {
@@ -261,6 +284,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
         id: s.siswa_id,
         nama_siswa: s.nama_siswa,
         nis: s.nis,
+        nisn: s.nisn,
         kelas: s.kelas,
         nomor_sertifikat: s.nomor_sertifikat,
         predikat: s.predikat,
@@ -270,8 +294,9 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
         asesor_eksternal: s.asesor_eksternal,
         mitra_nama: s.mitra_nama,
         isCompleted: s.isCompleted,
+        tahun_ajaran: s.tahun_ajaran || effectiveTahunAjaran,
       }));
-  }, [filteredList]);
+  }, [filteredList, effectiveTahunAjaran]);
 
   // Daftar siswa untuk ploting jadwal
   const siswaListForPloting = useMemo(() => {
@@ -289,6 +314,17 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
 
   return (
     <div className="space-y-6">
+      {/* Standalone Academic Filter Toolbar (rendered when not embedded in dashboard with external toolbar) */}
+      {!hideLayout && !tahunPelajaranId && (
+        <div className="p-3 bg-muted/40 rounded-xl border border-border/60">
+          <AcademicFilterToolbar
+            {...internalAcademic.toolbarProps}
+            variant="compact"
+            className="w-full"
+          />
+        </div>
+      )}
+
       {/* Sub-Tab Navigation Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
         <div className="flex items-center gap-1.5 p-1 bg-muted/60 rounded-xl overflow-x-auto no-scrollbar max-w-full">
@@ -333,24 +369,34 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
           </button>
         </div>
 
-        {!readOnly && (
-          <Button
+        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+          <Badge
             variant="outline"
-            size="sm"
-            onClick={() => setConfigModalOpen(true)}
-            className="text-xs font-semibold gap-1.5 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 shrink-0 self-start sm:self-auto cursor-pointer"
-            title="Konfigurasi Judul Penugasan & Daftar Unit Kompetensi SKKNI untuk Lembar Depan & Belakang Sertifikat"
+            className="text-xs font-mono font-semibold bg-primary/10 text-primary border-primary/20 px-2.5 py-1"
           >
-            <Settings2 className="w-3.5 h-3.5 text-primary" />
-            <span>Pengaturan Sertifikat & Unit SKKNI</span>
-          </Button>
-        )}
+            TA {effectiveTahunAjaran}
+          </Badge>
+          {!readOnly && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConfigModalOpen(true)}
+              className="text-xs font-semibold gap-1.5 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+              title="Konfigurasi Judul Penugasan & Daftar Unit Kompetensi SKKNI untuk Lembar Depan & Belakang Sertifikat"
+            >
+              <Settings2 className="w-3.5 h-3.5 text-primary" />
+              <span>Pengaturan Sertifikat & Unit SKKNI</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       {activeTab === 'ploting' && (
         <UkkJadwalPlotingTab
           jurusanId={jurusanId}
           jurusanNama={jurusanNama}
+          tahunPelajaranId={effectiveTpId}
+          tahunAjaran={effectiveTahunAjaran}
           siswaList={siswaListForPloting}
           readOnly={readOnly}
           onManageBeritaAcara={(sesi) => {
@@ -364,6 +410,8 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
         <UkkBeritaAcaraTab
           jurusanId={jurusanId}
           jurusanNama={jurusanNama}
+          tahunPelajaranId={effectiveTpId}
+          tahunAjaran={effectiveTahunAjaran}
           readOnly={readOnly}
           selectedJadwalId={selectedJadwalForBa}
           onClearSelectedJadwal={() => setSelectedJadwalForBa(null)}
@@ -804,6 +852,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
         isOpen={formModalData.isOpen}
         onClose={() => setFormModalData({ isOpen: false, data: null })}
         initialData={formModalData.data}
+        tahunAjaran={effectiveTahunAjaran}
         onSuccess={() => refetchUkk()}
       />
 
@@ -815,7 +864,9 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
         namaSiswa={previewModalData.namaSiswa}
         nomorSertifikat={previewModalData.nomorSertifikat}
         kelasNama={selectedKelas !== 'ALL' ? selectedKelas : undefined}
+        jurusanId={jurusanId}
         jurusanNama={jurusanNama}
+        tahunAjaran={effectiveTahunAjaran}
         studentsList={previewModalData.studentsList || certifiedStudentsList}
       />
 
@@ -825,6 +876,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
         onClose={() => setConfigModalOpen(false)}
         jurusanId={jurusanId}
         jurusanNama={jurusanNama}
+        initialTahunAjaran={effectiveTahunAjaran}
       />
     </div>
   );

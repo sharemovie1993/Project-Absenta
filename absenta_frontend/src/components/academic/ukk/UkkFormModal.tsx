@@ -10,6 +10,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { useGuruOptions } from '@/hooks/useGuruOptions';
 import { raporApi } from '@/api/rapor.api';
 import { hubinApi } from '@/api/hubin.api';
+import { calculateUkkPredikat } from '@/config/ukkRegulatoryRegistry';
 import { cn } from '@/lib/utils';
 
 // Skema Validasi Zod (Pilar 25 Google Platform Standards)
@@ -28,6 +29,7 @@ const ukkFormSchema = z.object({
 export interface UkkFormModalProps {
   isOpen: boolean;
   onClose: () => void;
+  tahunAjaran?: string;
   initialData?: {
     id?: string;
     siswa_id: string;
@@ -49,6 +51,7 @@ export interface UkkFormModalProps {
 export const UkkFormModal: React.FC<UkkFormModalProps> = ({
   isOpen,
   onClose,
+  tahunAjaran,
   initialData,
   onSuccess,
 }) => {
@@ -107,17 +110,15 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
     return found?.id || asesorInternal;
   }, [asesorInternal, guruList]);
 
-  // Hitung predikat otomatis berdasarkan nilai praktik & teori
+  // Hitung predikat otomatis berdasarkan nilai praktik & teori serta regulasi tahun ajaran
   const calculatePredikat = (praktik: number, teori?: number | null): string => {
     const finalScore =
       teori !== undefined && teori !== null && !isNaN(teori)
         ? praktik * 0.7 + teori * 0.3
         : praktik;
 
-    if (finalScore >= 90) return 'Sangat Kompeten';
-    if (finalScore >= 75) return 'Kompeten';
-    if (finalScore >= 65) return 'Cukup Kompeten';
-    return 'Belum Kompeten';
+    const evalResult = calculateUkkPredikat(finalScore, tahunAjaran);
+    return evalResult.predikatId;
   };
 
   // Populate form saat initialData berubah

@@ -22,6 +22,7 @@ export const UkkSertifikatModal: React.FC<UkkSertifikatModalProps> = ({
   kelasNama,
   jurusanId,
   jurusanNama,
+  tahunAjaran,
   studentsList = [],
 }) => {
   if (!isOpen) return null;
@@ -38,6 +39,7 @@ export const UkkSertifikatModal: React.FC<UkkSertifikatModalProps> = ({
       kelasNama={kelasNama}
       jurusanId={jurusanId}
       jurusanNama={jurusanNama}
+      tahunAjaran={tahunAjaran}
       studentsList={studentsList}
     />
   );

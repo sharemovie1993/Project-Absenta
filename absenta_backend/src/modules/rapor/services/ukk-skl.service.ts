@@ -44,22 +44,55 @@ export class UkkSklService {
     });
   }
 
-  static async getUkk(tenantId: string, filter: { siswa_id?: string; query?: string; jurusan_id?: string; kelas_id?: string }) {
+  static async getUkk(
+    tenantId: string,
+    filter: {
+      siswa_id?: string;
+      query?: string;
+      jurusan_id?: string;
+      kelas_id?: string;
+      tahun_pelajaran_id?: string;
+      tahun_ajaran?: string;
+    }
+  ) {
+    const siswaConditions: any[] = [];
+
+    if (filter.jurusan_id) {
+      siswaConditions.push({
+        OR: [
+          { jurusan_id: filter.jurusan_id },
+          { Kelas: { jurusan_id: filter.jurusan_id } },
+        ],
+      });
+    }
+
+    if (filter.kelas_id) {
+      siswaConditions.push({ kelas_id: filter.kelas_id });
+    }
+
+    if (filter.tahun_pelajaran_id) {
+      siswaConditions.push({
+        OR: [
+          { tahun_pelajaran_id: filter.tahun_pelajaran_id },
+          { SiswaAkademik: { some: { tahun_pelajaran_id: filter.tahun_pelajaran_id } } },
+        ],
+      });
+    } else if (filter.tahun_ajaran) {
+      siswaConditions.push({
+        OR: [
+          { TahunPelajaran: { tahun: filter.tahun_ajaran } },
+          { SiswaAkademik: { some: { tahunPelajaran: { tahun: filter.tahun_ajaran } } } },
+        ],
+      });
+    }
+
+    const siswaWhere: any = siswaConditions.length > 0 ? { AND: siswaConditions } : {};
+
     return prisma.sertifikatUkk.findMany({
       where: {
         tenant_id: tenantId,
         ...(filter.siswa_id ? { siswa_id: filter.siswa_id } : {}),
-        ...(filter.jurusan_id
-          ? {
-              Siswa: {
-                OR: [
-                  { jurusan_id: filter.jurusan_id },
-                  { Kelas: { jurusan_id: filter.jurusan_id } },
-                ],
-              },
-            }
-          : {}),
-        ...(filter.kelas_id ? { Siswa: { kelas_id: filter.kelas_id } } : {}),
+        ...(Object.keys(siswaWhere).length > 0 ? { Siswa: siswaWhere } : {}),
         ...(filter.query
           ? {
               OR: [
@@ -76,9 +109,17 @@ export class UkkSklService {
           select: {
             id: true,
             nis: true,
+            nisn: true,
             nama_siswa: true,
             jurusan_id: true,
             kelas_id: true,
+            tahun_pelajaran_id: true,
+            TahunPelajaran: {
+              select: {
+                id: true,
+                tahun: true,
+              },
+            },
             Kelas: {
               select: {
                 id: true,
@@ -192,11 +233,25 @@ export class UkkSklService {
     }
   }
 
-  // === UKK Pra-UKK Jadwal & Ploting Penguji ===
-  static async getUkkJadwal(tenantId: string, jurusanId?: string) {
-    const key = jurusanId ? `ukk_jadwal_${jurusanId}` : 'ukk_jadwal_default';
+  // === UKK Pra-UKK Jadwal & Ploting Penguji (Aware Tahun Ajaran Historis) ===
+  static async getUkkJadwal(tenantId: string, jurusanId?: string, tahunAjaran?: string) {
+    if (tahunAjaran) {
+      const sanitizedYear = String(tahunAjaran).replace(/[^a-zA-Z0-9]/g, '_');
+      const yearKey = jurusanId ? `ukk_jadwal_${jurusanId}_${sanitizedYear}` : `ukk_jadwal_default_${sanitizedYear}`;
+      const yearConfig = await prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: yearKey },
+      });
+      if (yearConfig && yearConfig.value) {
+        try {
+          const parsed = JSON.parse(yearConfig.value);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {}
+      }
+    }
+
+    const fallbackKey = jurusanId ? `ukk_jadwal_${jurusanId}` : 'ukk_jadwal_default';
     const config = await prisma.config.findFirst({
-      where: { tenant_id: tenantId, key },
+      where: { tenant_id: tenantId, key: fallbackKey },
     });
     if (!config || !config.value) return [];
     try {
@@ -207,9 +262,33 @@ export class UkkSklService {
     }
   }
 
-  static async saveUkkJadwal(tenantId: string, jurusanId: string, sessions: any[]) {
-    const key = jurusanId ? `ukk_jadwal_${jurusanId}` : 'ukk_jadwal_default';
+  static async saveUkkJadwal(tenantId: string, jurusanId: string, sessions: any[], tahunAjaran?: string) {
     const value = JSON.stringify(sessions);
+
+    if (tahunAjaran) {
+      const sanitizedYear = String(tahunAjaran).replace(/[^a-zA-Z0-9]/g, '_');
+      const yearKey = jurusanId ? `ukk_jadwal_${jurusanId}_${sanitizedYear}` : `ukk_jadwal_default_${sanitizedYear}`;
+      const existingYear = await prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: yearKey },
+      });
+      if (existingYear) {
+        await prisma.config.update({
+          where: { id: existingYear.id },
+          data: { value, description: `Jadwal & Ploting UKK Jurusan ${jurusanId || 'Default'} TA ${tahunAjaran}` },
+        });
+      } else {
+        await prisma.config.create({
+          data: {
+            tenant_id: tenantId,
+            key: yearKey,
+            value,
+            description: `Jadwal & Ploting UKK Jurusan ${jurusanId || 'Default'} TA ${tahunAjaran}`,
+          },
+        });
+      }
+    }
+
+    const key = jurusanId ? `ukk_jadwal_${jurusanId}` : 'ukk_jadwal_default';
     const existing = await prisma.config.findFirst({
       where: { tenant_id: tenantId, key },
     });
@@ -230,11 +309,25 @@ export class UkkSklService {
     }
   }
 
-  // === UKK Berita Acara & Dokumentasi Sesi ===
-  static async getUkkBeritaAcara(tenantId: string, jurusanId?: string) {
-    const key = jurusanId ? `ukk_berita_acara_${jurusanId}` : 'ukk_berita_acara_default';
+  // === UKK Berita Acara & Dokumentasi Sesi (Aware Tahun Ajaran Historis) ===
+  static async getUkkBeritaAcara(tenantId: string, jurusanId?: string, tahunAjaran?: string) {
+    if (tahunAjaran) {
+      const sanitizedYear = String(tahunAjaran).replace(/[^a-zA-Z0-9]/g, '_');
+      const yearKey = jurusanId ? `ukk_berita_acara_${jurusanId}_${sanitizedYear}` : `ukk_berita_acara_default_${sanitizedYear}`;
+      const yearConfig = await prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: yearKey },
+      });
+      if (yearConfig && yearConfig.value) {
+        try {
+          const parsed = JSON.parse(yearConfig.value);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {}
+      }
+    }
+
+    const fallbackKey = jurusanId ? `ukk_berita_acara_${jurusanId}` : 'ukk_berita_acara_default';
     const config = await prisma.config.findFirst({
-      where: { tenant_id: tenantId, key },
+      where: { tenant_id: tenantId, key: fallbackKey },
     });
     if (!config || !config.value) return [];
     try {
@@ -245,9 +338,33 @@ export class UkkSklService {
     }
   }
 
-  static async saveUkkBeritaAcara(tenantId: string, jurusanId: string, records: any[]) {
-    const key = jurusanId ? `ukk_berita_acara_${jurusanId}` : 'ukk_berita_acara_default';
+  static async saveUkkBeritaAcara(tenantId: string, jurusanId: string, records: any[], tahunAjaran?: string) {
     const value = JSON.stringify(records);
+
+    if (tahunAjaran) {
+      const sanitizedYear = String(tahunAjaran).replace(/[^a-zA-Z0-9]/g, '_');
+      const yearKey = jurusanId ? `ukk_berita_acara_${jurusanId}_${sanitizedYear}` : `ukk_berita_acara_default_${sanitizedYear}`;
+      const existingYear = await prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: yearKey },
+      });
+      if (existingYear) {
+        await prisma.config.update({
+          where: { id: existingYear.id },
+          data: { value, description: `Berita Acara UKK Jurusan ${jurusanId || 'Default'} TA ${tahunAjaran}` },
+        });
+      } else {
+        await prisma.config.create({
+          data: {
+            tenant_id: tenantId,
+            key: yearKey,
+            value,
+            description: `Berita Acara UKK Jurusan ${jurusanId || 'Default'} TA ${tahunAjaran}`,
+          },
+        });
+      }
+    }
+
+    const key = jurusanId ? `ukk_berita_acara_${jurusanId}` : 'ukk_berita_acara_default';
     const existing = await prisma.config.findFirst({
       where: { tenant_id: tenantId, key },
     });

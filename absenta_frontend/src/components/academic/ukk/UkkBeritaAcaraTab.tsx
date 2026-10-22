@@ -42,6 +42,8 @@ import { cn } from '@/lib/utils';
 export interface UkkBeritaAcaraTabProps {
   jurusanId?: string;
   jurusanNama?: string;
+  tahunPelajaranId?: string;
+  tahunAjaran?: string;
   readOnly?: boolean;
   selectedJadwalId?: string | null;
   onClearSelectedJadwal?: () => void;
@@ -50,6 +52,8 @@ export interface UkkBeritaAcaraTabProps {
 export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
   jurusanId,
   jurusanNama = 'Kejuruan',
+  tahunPelajaranId: _tahunPelajaranId,
+  tahunAjaran,
   readOnly = false,
   selectedJadwalId,
   onClearSelectedJadwal,
@@ -83,10 +87,10 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
     foto_dokumentasi: [],
   });
 
-  // 1. Fetch Existing Berita Acara Records
+  // 1. Fetch Existing Berita Acara Records (Aware Filter Tahun Ajaran)
   const { data: baRes, isLoading } = useQuery({
-    queryKey: ['ukk-berita-acara', jurusanId],
-    queryFn: () => (jurusanId ? raporApi.getUkkBeritaAcara(jurusanId) : Promise.resolve({ data: [] })),
+    queryKey: ['ukk-berita-acara', jurusanId, tahunAjaran],
+    queryFn: () => (jurusanId ? raporApi.getUkkBeritaAcara(jurusanId, tahunAjaran) : Promise.resolve({ data: [] })),
     enabled: !!jurusanId,
     staleTime: 60 * 1000,
   });
@@ -217,11 +221,15 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
   const saveMutation = useMutation({
     mutationFn: async (updatedList: UkkBeritaAcaraItem[]) => {
       if (!jurusanId) throw new Error('Jurusan ID tidak ditemukan');
-      return raporApi.saveUkkBeritaAcara(jurusanId, updatedList);
+      return raporApi.saveUkkBeritaAcara(jurusanId, updatedList, tahunAjaran);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ukk-berita-acara', jurusanId] });
-      toast.success('Berita Acara UKK berhasil disimpan!');
+      toast.success(
+        tahunAjaran
+          ? `Berita Acara UKK TA ${tahunAjaran} berhasil disimpan!`
+          : 'Berita Acara UKK berhasil disimpan!'
+      );
       setModalOpen(false);
       setEditingId(null);
     },

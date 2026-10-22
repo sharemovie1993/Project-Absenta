@@ -5,6 +5,7 @@ interface KaprogUkkTabProps {
   jurusanId?: string;
   jurusanNama?: string;
   tahunPelajaranId?: string;
+  tahunAjaran?: string;
   semesterId?: string;
 }
 
@@ -12,6 +13,7 @@ export const KaprogUkkTab: React.FC<KaprogUkkTabProps> = React.memo(({
   jurusanId,
   jurusanNama = 'Kejuruan',
   tahunPelajaranId,
+  tahunAjaran,
   semesterId,
 }) => {
   return (
@@ -20,6 +22,7 @@ export const KaprogUkkTab: React.FC<KaprogUkkTabProps> = React.memo(({
       jurusanId={jurusanId}
       jurusanNama={jurusanNama}
       tahunPelajaranId={tahunPelajaranId}
+      tahunAjaran={tahunAjaran}
       semesterId={semesterId}
     />
   );

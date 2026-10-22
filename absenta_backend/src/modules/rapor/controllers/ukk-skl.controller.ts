@@ -29,13 +29,15 @@ export class UkkSklController {
   static async getUkk(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
-      const { siswa_id, query, jurusan_id, kelas_id } = req.query;
+      const { siswa_id, query, jurusan_id, kelas_id, tahun_pelajaran_id, tahun_ajaran } = req.query;
 
       const result = await UkkSklService.getUkk(tenant_id, {
         siswa_id,
         query,
         jurusan_id,
         kelas_id,
+        tahun_pelajaran_id,
+        tahun_ajaran,
       });
 
       return sendResponse(reply, 200, true, 'Daftar sertifikat UKK berhasil dimuat', result);
@@ -161,9 +163,9 @@ export class UkkSklController {
   static async getUkkJadwal(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
-      const { jurusan_id } = req.query;
+      const { jurusan_id, tahun_ajaran } = req.query;
 
-      const result = await UkkSklService.getUkkJadwal(tenant_id, jurusan_id);
+      const result = await UkkSklService.getUkkJadwal(tenant_id, jurusan_id, tahun_ajaran);
       return sendResponse(reply, 200, true, 'Jadwal & Ploting UKK berhasil dimuat', result);
     } catch (error) {
       appLogger.error({ err: error }, 'Rapor controller error');
@@ -174,7 +176,7 @@ export class UkkSklController {
   static async saveUkkJadwal(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
-      const { jurusan_id, sessions } = req.body;
+      const { jurusan_id, sessions, tahun_ajaran } = req.body;
 
       if (!jurusan_id || !Array.isArray(sessions)) {
         return reply.status(400).send({
@@ -183,7 +185,7 @@ export class UkkSklController {
         });
       }
 
-      const result = await UkkSklService.saveUkkJadwal(tenant_id, jurusan_id, sessions);
+      const result = await UkkSklService.saveUkkJadwal(tenant_id, jurusan_id, sessions, tahun_ajaran);
       return sendResponse(reply, 200, true, 'Jadwal & Ploting UKK berhasil disimpan', result);
     } catch (error) {
       appLogger.error({ err: error }, 'Rapor controller error');
@@ -195,9 +197,9 @@ export class UkkSklController {
   static async getUkkBeritaAcara(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
-      const { jurusan_id } = req.query;
+      const { jurusan_id, tahun_ajaran } = req.query;
 
-      const result = await UkkSklService.getUkkBeritaAcara(tenant_id, jurusan_id);
+      const result = await UkkSklService.getUkkBeritaAcara(tenant_id, jurusan_id, tahun_ajaran);
       return sendResponse(reply, 200, true, 'Berita Acara UKK berhasil dimuat', result);
     } catch (error) {
       appLogger.error({ err: error }, 'Rapor controller error');
@@ -208,7 +210,7 @@ export class UkkSklController {
   static async saveUkkBeritaAcara(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
-      const { jurusan_id, records } = req.body;
+      const { jurusan_id, records, tahun_ajaran } = req.body;
 
       if (!jurusan_id || !Array.isArray(records)) {
         return reply.status(400).send({
@@ -217,7 +219,7 @@ export class UkkSklController {
         });
       }
 
-      const result = await UkkSklService.saveUkkBeritaAcara(tenant_id, jurusan_id, records);
+      const result = await UkkSklService.saveUkkBeritaAcara(tenant_id, jurusan_id, records, tahun_ajaran);
       return sendResponse(reply, 200, true, 'Berita Acara UKK berhasil disimpan', result);
     } catch (error) {
       appLogger.error({ err: error }, 'Rapor controller error');

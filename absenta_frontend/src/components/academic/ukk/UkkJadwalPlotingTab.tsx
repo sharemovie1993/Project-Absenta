@@ -42,6 +42,8 @@ import { cn } from '@/lib/utils';
 export interface UkkJadwalPlotingTabProps {
   jurusanId?: string;
   jurusanNama?: string;
+  tahunPelajaranId?: string;
+  tahunAjaran?: string;
   siswaList: Array<{
     id: string;
     nis?: string;
@@ -55,6 +57,8 @@ export interface UkkJadwalPlotingTabProps {
 export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
   jurusanId,
   jurusanNama = 'Kejuruan',
+  tahunPelajaranId: _tahunPelajaranId,
+  tahunAjaran,
   siswaList = [],
   readOnly = false,
   onManageBeritaAcara,
@@ -81,13 +85,13 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
 
   const [studentSearchInModal, setStudentSearchInModal] = useState('');
 
-  // 1. Query Jadwal Sesi dari backend
+  // 1. Query Jadwal Sesi dari backend (Aware Filter Tahun Ajaran)
   const {
     data: jadwalRes,
     isLoading: isLoadingJadwal,
   } = useQuery({
-    queryKey: ['ukk-jadwal', jurusanId],
-    queryFn: () => (jurusanId ? raporApi.getUkkJadwal(jurusanId) : Promise.resolve({ data: [] })),
+    queryKey: ['ukk-jadwal', jurusanId, tahunAjaran],
+    queryFn: () => (jurusanId ? raporApi.getUkkJadwal(jurusanId, tahunAjaran) : Promise.resolve({ data: [] })),
     enabled: !!jurusanId,
     staleTime: 60 * 1000,
   });
@@ -170,11 +174,15 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
   const saveMutation = useMutation({
     mutationFn: async (updatedSessions: any[]) => {
       if (!jurusanId) throw new Error('Jurusan ID tidak ditemukan');
-      return raporApi.saveUkkJadwal(jurusanId, updatedSessions);
+      return raporApi.saveUkkJadwal(jurusanId, updatedSessions, tahunAjaran);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ukk-jadwal', jurusanId] });
-      toast.success('Jadwal & Ploting UKK berhasil disimpan!');
+      toast.success(
+        tahunAjaran
+          ? `Jadwal & Ploting UKK TA ${tahunAjaran} berhasil disimpan!`
+          : 'Jadwal & Ploting UKK berhasil disimpan!'
+      );
       setSessionModalOpen(false);
       setEditingSessionId(null);
     },
