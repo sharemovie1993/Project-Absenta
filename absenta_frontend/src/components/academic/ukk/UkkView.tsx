@@ -255,7 +255,11 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
         kelas: s.kelas,
         nomor_sertifikat: s.nomor_sertifikat,
         predikat: s.predikat,
+        nilai_praktik: s.nilai_praktik,
+        nilai_teori: s.nilai_teori,
+        asesor_internal: s.asesor_internal || undefined,
         asesor_eksternal: s.asesor_eksternal,
+        mitra_nama: s.mitra_nama,
         isCompleted: s.isCompleted,
       }));
   }, [filteredList]);

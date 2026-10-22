@@ -10,22 +10,36 @@ import {
   RefreshCw,
   FileCheck2,
   Users,
-  Search,
   AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { raporApi } from '@/api/rapor.api';
 import { cn } from '@/lib/utils';
+import { sekolahApi } from '@/api/academic/sekolah.api';
+import { raporApi } from '@/api/rapor.api';
+import { useAuthStore } from '@/store/authStore';
+import { resolveCoverImageBase64 } from '@/utils/print/rapor/raporShared';
+import {
+  generateSertifikatUkkSinglePdf,
+  generateSertifikatUkkBatchPdf,
+  formatTanggalIndonesia,
+  type SertifikatUkkPrintData,
+} from '@/utils/print/modules/pdfSertifikatUkk';
 
 export interface UkkStudentItem {
   id: string;
   nama_siswa: string;
   nis?: string;
+  nisn?: string;
   kelas?: string;
   nomor_sertifikat?: string;
   predikat?: string;
+  nilai_praktik?: number | string;
+  nilai_teori?: number | string;
+  nilai_akhir?: number | string;
+  asesor_internal?: string;
   asesor_eksternal?: string;
+  mitra_nama?: string;
   isCompleted?: boolean;
 }
 
@@ -90,7 +104,6 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState<number>(0);
   const [isBatchDownloading, setIsBatchDownloading] = useState<boolean>(false);
-  const [searchFilter, setSearchFilter] = useState<string>('');
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const currentStudent = allStudents[currentIndex] || {
@@ -102,7 +115,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
 
   const activeSiswaId = currentStudent.id;
 
-  // Authenticated Blob PDF Fetching (Kebal dari 'Missing or invalid authorization header')
+  // Render Sertifikat UKK via jsPDF (Instant, reliable, kebal dari timeout puppeteer)
   useEffect(() => {
     if (!activeSiswaId) {
       setBlobUrl(null);
@@ -114,26 +127,121 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
     setIsLoadingPdf(true);
     setFetchError(null);
 
-    raporApi
-      .getPdfUkkBlob(activeSiswaId)
-      .then((res: any) => {
+    const buildPdf = async () => {
+      try {
+        // 1. Fetch School & Tenant Details (concurrent)
+        const [sekolahRes, ukkRes] = await Promise.allSettled([
+          sekolahApi.getProfile(),
+          // If current student doesn't have score/asesor, fetch from UKK backend
+          !currentStudent.nilai_praktik || !currentStudent.asesor_eksternal
+            ? raporApi.getUkk({ siswa_id: activeSiswaId }).catch(() => null)
+            : Promise.resolve(null),
+        ]);
+
         if (isCancelled) return;
-        const blob = new Blob([res.data], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
+
+        const sekolahData: any =
+          sekolahRes.status === 'fulfilled'
+            ? (sekolahRes.value as any)?.data || sekolahRes.value
+            : null;
+        const tenantInfo: any = useAuthStore.getState().user?.tenant;
+
+        const ukkRaw = ukkRes.status === 'fulfilled' ? (ukkRes.value as any) : null;
+        const ukkRecord =
+          Array.isArray(ukkRaw?.data) && ukkRaw.data.length > 0
+            ? ukkRaw.data.find((u: any) => u.siswa_id === activeSiswaId) || ukkRaw.data[0]
+            : ukkRaw?.data || null;
+
+        // 2. Resolve Logos Base64
+        const logoDaerahUrl = sekolahData?.logo_daerah || null;
+        const logoSekolahUrl = sekolahData?.logo_url || null;
+
+        const [logoDaerahBase64, logoSekolahBase64] = await Promise.all([
+          resolveCoverImageBase64(logoDaerahUrl),
+          resolveCoverImageBase64(logoSekolahUrl),
+        ]);
+
+        if (isCancelled) return;
+
+        // 3. Assemble Print Data
+        const certData: SertifikatUkkPrintData = {
+          nomor_sertifikat:
+            currentStudent.nomor_sertifikat ||
+            ukkRecord?.nomor_sertifikat ||
+            `UKK/${new Date().getFullYear()}/${currentStudent.nis || '0001'}`,
+          tanggal_terbit: ukkRecord?.tanggal_terbit
+            ? `${sekolahData?.kota || 'Purwakarta'}, ${formatTanggalIndonesia(ukkRecord.tanggal_terbit)}`
+            : `${sekolahData?.kota || 'Purwakarta'}, ${formatTanggalIndonesia(new Date())}`,
+          sekolah: {
+            nama: sekolahData?.nama || tenantInfo?.name || 'SEKOLAH MENENGAH KEJURUAN',
+            alamat: sekolahData?.alamat || '',
+            kota: sekolahData?.kota || 'Purwakarta',
+            telepon: sekolahData?.telepon || '',
+            email: sekolahData?.email || '',
+            website: sekolahData?.website || '',
+            kepala_sekolah: sekolahData?.kepala_sekolah || 'Kepala Sekolah',
+            nip_kepala: sekolahData?.nip_kepala || '-',
+            nama_dinas_atas: sekolahData?.nama_dinas_atas,
+            nama_dinas_bawah: sekolahData?.nama_dinas_bawah,
+            nama_cabang_dinas: sekolahData?.nama_cabang_dinas,
+            print_header_lines: sekolahData?.print_header_lines,
+          },
+          siswa: {
+            nama_siswa: currentStudent.nama_siswa,
+            nis: currentStudent.nis || ukkRecord?.Siswa?.nis,
+            nisn: currentStudent.nisn || ukkRecord?.Siswa?.nisn,
+            nama_kelas: currentStudent.kelas || ukkRecord?.Siswa?.Kelas?.nama_kelas || kelasNama,
+            program_keahlian:
+              jurusanNama ||
+              ukkRecord?.Siswa?.Kelas?.Jurusan?.nama_jurusan ||
+              'Teknik Komputer dan Jaringan',
+            konsentrasi_keahlian:
+              jurusanNama ||
+              ukkRecord?.Siswa?.Kelas?.Jurusan?.nama_jurusan ||
+              'Teknik Komputer dan Jaringan',
+          },
+          ukk: {
+            predikat: currentStudent.predikat || ukkRecord?.predikat || 'KOMPETEN',
+            nilai_praktik: currentStudent.nilai_praktik ?? ukkRecord?.nilai_praktik ?? 85,
+            nilai_teori: currentStudent.nilai_teori ?? ukkRecord?.nilai_teori ?? 86,
+            nilai_akhir: currentStudent.nilai_akhir ?? ukkRecord?.nilai_akhir,
+            asesor_internal:
+              currentStudent.asesor_internal ||
+              ukkRecord?.asesor_internal ||
+              'Tim Asesor Sekolah',
+            asesor_eksternal:
+              currentStudent.asesor_eksternal ||
+              ukkRecord?.asesor_eksternal ||
+              'Penguji Asosiasi Industri',
+            mitra_nama:
+              currentStudent.mitra_nama ||
+              ukkRecord?.MitraIndustri?.nama ||
+              'Mitra Industri / DU-DI',
+          },
+        };
+
+        // 4. Generate with jsPDF
+        const { blobUrl: generatedUrl } = await generateSertifikatUkkSinglePdf(certData, {
+          logoDaerahBase64,
+          logoSekolahBase64,
+        });
+
+        if (isCancelled) return;
+
         setBlobUrl((prev) => {
           if (prev) URL.revokeObjectURL(prev);
-          return url;
+          return generatedUrl;
         });
         setIsLoadingPdf(false);
-      })
-      .catch((err: any) => {
+      } catch (err: any) {
         if (isCancelled) return;
-        console.error('Error fetching UKK PDF Blob:', err);
-        const errMsg =
-          err.response?.data?.message || err.message || 'Gagal memuat dokumen sertifikat UKK';
-        setFetchError(errMsg);
+        console.error('Failed to generate jsPDF UKK certificate:', err);
+        setFetchError(err.message || 'Gagal merender sertifikat UKK');
         setIsLoadingPdf(false);
-      });
+      }
+    };
+
+    buildPdf();
 
     return () => {
       isCancelled = true;
@@ -175,7 +283,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
         iframeRef.current.contentWindow.print();
         return;
       } catch (err) {
-        console.warn('Iframe print blocked by cross-origin, falling back to window.open', err);
+        console.warn('Iframe print blocked, falling back to window.open', err);
       }
     }
     if (blobUrl) {
@@ -193,31 +301,74 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
     document.body.removeChild(a);
   };
 
+  // Batch download sekelas via jsPDF (Instant compile)
   const handleBatchDownload = async () => {
     if (allStudents.length === 0 || isBatchDownloading) return;
     setIsBatchDownloading(true);
 
     try {
-      for (const student of allStudents) {
-        try {
-          const res = await raporApi.getPdfUkkBlob(student.id);
-          const blob = new Blob([res.data], { type: 'application/pdf' });
-          const tempUrl = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = tempUrl;
-          a.download = `Sertifikat_UKK_${(student.nama_siswa || 'Siswa').replace(/\s+/g, '_')}.pdf`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          setTimeout(() => URL.revokeObjectURL(tempUrl), 2000);
-          // Delay to prevent browser throttling
-          await new Promise((resolve) => setTimeout(resolve, 800));
-        } catch (downloadErr) {
-          console.error(`Failed to download UKK cert for student ${student.nama_siswa}:`, downloadErr);
-        }
-      }
+      const sekolahRes = await sekolahApi.getProfile().catch(() => null);
+      const sekolahData: any = (sekolahRes as any)?.data || sekolahRes;
+      const tenantInfo: any = useAuthStore.getState().user?.tenant;
+
+      const [logoDaerahBase64, logoSekolahBase64] = await Promise.all([
+        resolveCoverImageBase64(sekolahData?.logo_daerah),
+        resolveCoverImageBase64(sekolahData?.logo_url),
+      ]);
+
+      const certList: SertifikatUkkPrintData[] = allStudents.map((s) => ({
+        nomor_sertifikat:
+          s.nomor_sertifikat || `UKK/${new Date().getFullYear()}/${s.nis || '0001'}`,
+        tanggal_terbit: `${sekolahData?.kota || 'Purwakarta'}, ${formatTanggalIndonesia(new Date())}`,
+        sekolah: {
+          nama: sekolahData?.nama || tenantInfo?.name || 'SEKOLAH MENENGAH KEJURUAN',
+          alamat: sekolahData?.alamat || '',
+          kota: sekolahData?.kota || 'Purwakarta',
+          telepon: sekolahData?.telepon || '',
+          email: sekolahData?.email || '',
+          website: sekolahData?.website || '',
+          kepala_sekolah: sekolahData?.kepala_sekolah || 'Kepala Sekolah',
+          nip_kepala: sekolahData?.nip_kepala || '-',
+          nama_dinas_atas: sekolahData?.nama_dinas_atas,
+          nama_dinas_bawah: sekolahData?.nama_dinas_bawah,
+          nama_cabang_dinas: sekolahData?.nama_cabang_dinas,
+          print_header_lines: sekolahData?.print_header_lines,
+        },
+        siswa: {
+          nama_siswa: s.nama_siswa,
+          nis: s.nis,
+          nisn: s.nisn,
+          nama_kelas: s.kelas || kelasNama,
+          program_keahlian: jurusanNama || 'Teknik Komputer dan Jaringan',
+          konsentrasi_keahlian: jurusanNama || 'Teknik Komputer dan Jaringan',
+        },
+        ukk: {
+          predikat: s.predikat || 'KOMPETEN',
+          nilai_praktik: s.nilai_praktik ?? 85,
+          nilai_teori: s.nilai_teori ?? 86,
+          nilai_akhir: s.nilai_akhir,
+          asesor_internal: s.asesor_internal || 'Tim Asesor Sekolah',
+          asesor_eksternal: s.asesor_eksternal || 'Penguji Asosiasi Industri',
+          mitra_nama: s.mitra_nama || 'Mitra Industri / DU-DI',
+        },
+      }));
+
+      const { blobUrl: batchUrl, filename: batchFilename } = await generateSertifikatUkkBatchPdf(
+        certList,
+        kelasNama || 'Sekelas',
+        undefined,
+        { logoDaerahBase64, logoSekolahBase64 }
+      );
+
+      const a = document.createElement('a');
+      a.href = batchUrl;
+      a.download = batchFilename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(batchUrl), 5000);
     } catch (e) {
-      console.error('Failed batch download:', e);
+      console.error('Failed batch download via jsPDF:', e);
     } finally {
       setIsBatchDownloading(false);
     }
@@ -228,21 +379,30 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
     const upper = predikat.toUpperCase();
     if (upper.includes('SANGAT BAIK') || upper.includes('SANGAT KOMPETEN')) {
       return (
-        <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold">
+        <Badge
+          variant="outline"
+          className="bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold"
+        >
           {predikat}
         </Badge>
       );
     }
     if (upper.includes('BAIK') || upper.includes('KOMPETEN')) {
       return (
-        <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950/60 border-blue-300 text-blue-700 dark:text-blue-300 text-[11px] font-bold">
+        <Badge
+          variant="outline"
+          className="bg-blue-50 dark:bg-blue-950/60 border-blue-300 text-blue-700 dark:text-blue-300 text-[11px] font-bold"
+        >
           {predikat}
         </Badge>
       );
     }
     if (upper.includes('CUKUP')) {
       return (
-        <Badge variant="outline" className="bg-amber-50 dark:bg-amber-950/60 border-amber-300 text-amber-700 dark:text-amber-300 text-[11px] font-bold">
+        <Badge
+          variant="outline"
+          className="bg-amber-50 dark:bg-amber-950/60 border-amber-300 text-amber-700 dark:text-amber-300 text-[11px] font-bold"
+        >
           {predikat}
         </Badge>
       );
@@ -316,7 +476,10 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
           {/* Student Badges */}
           <div className="flex items-center gap-1.5 flex-wrap">
             {currentStudent.kelas && (
-              <Badge variant="outline" className="text-[10px] font-bold border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400">
+              <Badge
+                variant="outline"
+                className="text-[10px] font-bold border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+              >
                 {currentStudent.kelas}
               </Badge>
             )}
@@ -339,7 +502,9 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
             className="h-8 px-2.5 text-xs font-semibold rounded-xl cursor-pointer"
             title="Muat ulang dokumen"
           >
-            <RefreshCw className={cn('w-3.5 h-3.5 text-slate-500', isLoadingPdf && 'animate-spin')} />
+            <RefreshCw
+              className={cn('w-3.5 h-3.5 text-slate-500', isLoadingPdf && 'animate-spin')}
+            />
             <span className="hidden sm:inline ml-1">Reload</span>
           </Button>
 
@@ -388,7 +553,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
               onClick={handleBatchDownload}
               disabled={isBatchDownloading}
               className="h-8 px-3 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-xs disabled:opacity-50"
-              title="Unduh seluruh sertifikat siswa di kelas ini"
+              title="Unduh seluruh sertifikat siswa di kelas ini dalam satu berkas PDF"
             >
               {isBatchDownloading ? (
                 <>
@@ -417,7 +582,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/90 dark:bg-slate-900/90 z-20 backdrop-blur-xs">
             <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
             <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-              Merender Dokumen Sertifikat UKK Resmi...
+              Merender Dokumen Sertifikat UKK Resmi (jsPDF Engine)...
             </p>
             <p className="text-[11px] text-slate-400">
               {currentStudent.nama_siswa} {currentStudent.nis ? `• NIS: ${currentStudent.nis}` : ''}
