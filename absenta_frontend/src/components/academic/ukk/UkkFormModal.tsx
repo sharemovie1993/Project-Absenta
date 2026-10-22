@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 
 // Skema Validasi Zod (Pilar 25 Google Platform Standards)
 const ukkFormSchema = z.object({
+  id: z.string().optional().nullable(),
   siswa_id: z.string().min(1, 'Siswa wajib dipilih'),
   asesor_internal: z.string().max(255).optional().nullable(),
   asesor_eksternal: z.string().min(1, 'Asesor eksternal wajib diisi').max(255),
@@ -137,21 +138,37 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
           ? String(initialData.nilai_teori)
           : ''
       );
-      setPredikat(initialData.predikat || 'Kompeten');
+      const targetYear =
+        tahunAjaran && tahunAjaran.includes('/')
+          ? tahunAjaran.split('/')[1]
+          : tahunAjaran || String(new Date().getFullYear());
+
+      const computedInitialPredikat =
+        initialData.predikat ||
+        calculatePredikat(
+          initialData.nilai_praktik !== undefined && initialData.nilai_praktik !== null
+            ? Number(initialData.nilai_praktik)
+            : 85,
+          initialData.nilai_teori !== undefined && initialData.nilai_teori !== null
+            ? Number(initialData.nilai_teori)
+            : null
+        );
+
+      setPredikat(computedInitialPredikat);
       setNomorSertifikat(
         initialData.nomor_sertifikat ||
-          `UKK/${new Date().getFullYear()}/${initialData.nis || 'REG'}`
+          `UKK/${targetYear}/${initialData.nis || 'REG'}`
       );
       setTanggalTerbit(
         initialData.tanggal_terbit
           ? typeof initialData.tanggal_terbit === 'string'
             ? initialData.tanggal_terbit.split('T')[0]
             : new Date(initialData.tanggal_terbit).toISOString().split('T')[0]
-          : new Date().toISOString().split('T')[0]
+          : `${targetYear}-05-02`
       );
       setFormErrors({});
     }
-  }, [initialData, isOpen]);
+  }, [initialData, isOpen, tahunAjaran]);
 
   // Handler perubahan nilai praktik untuk auto predikat
   const handlePraktikChange = (val: string) => {
@@ -195,6 +212,7 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
     if (!initialData?.siswa_id) return;
 
     const payload = {
+      id: initialData.id || undefined,
       siswa_id: initialData.siswa_id,
       asesor_internal: asesorInternal.trim() || null,
       asesor_eksternal: asesorEksternal.trim(),

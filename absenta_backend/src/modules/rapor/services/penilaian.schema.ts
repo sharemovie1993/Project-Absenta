@@ -55,6 +55,7 @@ export const raporSiswaUpsertSchema = z.object({
 });
 
 export const sertifikatUkkUpsertSchema = z.object({
+  id: z.string().uuid().optional().nullable(),
   siswa_id: z.string().uuid('ID Siswa wajib diisi'),
   asesor_internal: z.string().max(255).optional().nullable(),
   asesor_eksternal: z.string().min(1, 'Nama Asesor Eksternal wajib diisi').max(255),

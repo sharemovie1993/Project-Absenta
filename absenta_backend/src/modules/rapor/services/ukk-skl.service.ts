@@ -5,6 +5,7 @@ export class UkkSklService {
   static async upsertUkk(
     tenantId: string,
     data: {
+      id?: string | null;
       siswa_id: string;
       asesor_internal?: string | null;
       asesor_eksternal: string;
@@ -16,6 +17,25 @@ export class UkkSklService {
       tanggal_terbit: Date;
     }
   ) {
+    if (data.id) {
+      return prisma.sertifikatUkk.update({
+        where: {
+          id: data.id,
+          tenant_id: tenantId,
+        },
+        data: {
+          asesor_internal: data.asesor_internal,
+          asesor_eksternal: data.asesor_eksternal,
+          mitra_industri_id: data.mitra_industri_id,
+          nilai_praktik: data.nilai_praktik,
+          nilai_teori: data.nilai_teori,
+          predikat: data.predikat,
+          nomor_sertifikat: data.nomor_sertifikat,
+          tanggal_terbit: data.tanggal_terbit,
+        },
+      });
+    }
+
     return prisma.sertifikatUkk.upsert({
       where: {
         nomor_sertifikat: data.nomor_sertifikat,
