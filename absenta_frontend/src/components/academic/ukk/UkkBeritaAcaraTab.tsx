@@ -26,7 +26,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { Loader } from '@/components/ui/Loader';
 import { raporApi } from '@/api/rapor.api';
-import { sekolahApi } from '@/api/academic.api';
+import { sekolahApi } from '@/api/academic/sekolah.api';
 import {
   generatePdfUkkBeritaAcara,
   type UkkBeritaAcaraItem,
