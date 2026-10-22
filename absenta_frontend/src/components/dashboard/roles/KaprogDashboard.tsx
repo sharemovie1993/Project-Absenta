@@ -696,8 +696,8 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
               </p>
             </div>
           ) : (
-          {/* Keep-Alive + Lazy-Mounted Tab Panes for True Instant Switching (<16ms, Zero DOM Destruction) */}
-          <div className="relative w-full min-w-0">
+            <div className="relative w-full min-w-0">
+              {/* Keep-Alive + Lazy-Mounted Tab Panes for True Instant Switching (<16ms, Zero DOM Destruction) */}
             {visitedTabs.has('beranda') && (
               <div
                 key="tab-beranda"
