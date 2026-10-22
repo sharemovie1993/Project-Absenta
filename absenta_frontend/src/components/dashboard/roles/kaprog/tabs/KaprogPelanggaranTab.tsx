@@ -69,7 +69,9 @@ export const KaprogPelanggaranTab: React.FC<KaprogPelanggaranTabProps> = React.m
         semester_id: semesterId || undefined,
         elevated_context: 'true',
       }).catch(() => null),
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   // Gabungkan data dari API atau fallback ke list kaprog stats

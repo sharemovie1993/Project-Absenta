@@ -1,7 +1,6 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, Suspense, lazy } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard,
   GraduationCap,
@@ -24,13 +23,17 @@ import { hubinApi } from '@/api/hubin.api';
 import { getKaprogStats } from '@/api/dashboard.api';
 import { getJurusanList } from '@/api/academic/jurusan.api';
 import { useAuthStore } from '@/store/authStore';
-import { PklDeskripsiTpModal, EditingMitraSlot } from '@/components/hubin/nilai-pkl/PklDeskripsiTpModal';
+import type { EditingMitraSlot } from '@/components/hubin/nilai-pkl/PklDeskripsiTpModal';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
-import { PenempatanPklView } from '@/components/hubin/penempatan/PenempatanPklView';
-import { KelasView } from '@/components/academic/kelas/KelasView';
-import { NilaiPklView } from '@/components/hubin/nilai-pkl/NilaiPklView';
-import { AbsensiPklView } from '@/components/hubin/absensi/AbsensiPklView';
 import toast from 'react-hot-toast';
+
+// Code-splitting modal views to optimize initial dashboard bundle (Pilar 21B & TBT Optimization)
+const PenempatanPklView = lazy(() => import('@/components/hubin/penempatan/PenempatanPklView').then(m => ({ default: m.PenempatanPklView })));
+const KelasView = lazy(() => import('@/components/academic/kelas/KelasView').then(m => ({ default: m.KelasView })));
+const NilaiPklView = lazy(() => import('@/components/hubin/nilai-pkl/NilaiPklView').then(m => ({ default: m.NilaiPklView })));
+const AbsensiPklView = lazy(() => import('@/components/hubin/absensi/AbsensiPklView').then(m => ({ default: m.AbsensiPklView })));
+const PklDeskripsiTpModal = lazy(() => import('@/components/hubin/nilai-pkl/PklDeskripsiTpModal').then(m => ({ default: m.PklDeskripsiTpModal })));
+const KaprogGuruDetailModal = lazy(() => import('./kaprog/KaprogGuruDetailModal').then(m => ({ default: m.KaprogGuruDetailModal })));
 
 // Subkomponen Modular Ter-Hardening (Pilar 21B - God File Guard)
 import { KaprogBerandaTab } from './kaprog/tabs/KaprogBerandaTab';
@@ -84,9 +87,16 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
     return 'beranda';
   });
 
+  // Keep-Alive Cache: Catat tab yang pernah dibuka agar TIDAK DIHANCURKAN saat pindah tab (Instant 0ms Switch)
+  const [visitedTabs, setVisitedTabs] = useState<Set<KaprogTabId>>(() => new Set([activeTab]));
+
   useEffect(() => {
     if (subtabParam && ['beranda', 'siswa', 'prestasi', 'pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana', 'ukk'].includes(subtabParam)) {
-      setActiveTab(subtabParam);
+      setActiveTab((curr) => {
+        if (curr !== subtabParam) return subtabParam;
+        return curr;
+      });
+      setVisitedTabs((prev) => (prev.has(subtabParam) ? prev : new Set(prev).add(subtabParam)));
     }
   }, [subtabParam]);
 
@@ -192,9 +202,9 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
       tahun_pelajaran_id: academic.selectedTahunPelajaran || undefined,
       semester_id: academic.selectedSemester || undefined,
     }).catch(() => null),
-    staleTime: 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   // --------------------------------------------------------------------------
@@ -210,9 +220,9 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
       tahun_pelajaran_id: academic.selectedTahunPelajaran || undefined,
       semester_id: academic.selectedSemester || undefined,
     }).catch(() => null),
-    staleTime: 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const pklSummaryData = pklSummaryRes?.data || null;
@@ -452,19 +462,24 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
     },
   });
 
-  // Handlers dibungkus useCallback (Pilar 3: Optimasi DOM Churn)
+  // Handlers dibungkus useCallback (Pilar 3: Optimasi DOM Churn & Keep-Alive Tab Registration)
   const handleTabSelect = useCallback((tabId: KaprogTabId) => {
     setActiveTab(tabId);
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      if (tabId === 'beranda') {
-        next.delete('subtab');
-      } else {
-        next.set('subtab', tabId);
-      }
-      return next;
-    }, { replace: true });
-  }, [setSearchParams]);
+    setVisitedTabs((prev) => (prev.has(tabId) ? prev : new Set(prev).add(tabId)));
+
+    const currentSubtab = searchParams.get('subtab') || 'beranda';
+    if (currentSubtab !== tabId) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (tabId === 'beranda') {
+          next.delete('subtab');
+        } else {
+          next.set('subtab', tabId);
+        }
+        return next;
+      }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleSelectEditingSlot = useCallback((slot: EditingMitraSlot) => {
     setActiveEditingSlot(slot);
@@ -682,129 +697,179 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
               </p>
             </div>
           ) : (
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.15 }}
+          {/* Keep-Alive + Lazy-Mounted Tab Panes for True Instant Switching (<16ms, Zero DOM Destruction) */}
+          <div className="relative w-full min-w-0">
+            {visitedTabs.has('beranda') && (
+              <div
+                key="tab-beranda"
+                className={cn('w-full', activeTab === 'beranda' ? 'block animate-in fade-in duration-100' : 'hidden')}
               >
-                {activeTab === 'beranda' && (
-                  <KaprogBerandaTab
-                    penilaianStatus={penilaianStatus}
-                    tpStatus={tpStatus}
-                    kaprogStatsData={kaprogStatsData}
-                    recentActivities={recentActivities}
-                    agendaHariIni={agendaHariIni}
-                    onOpenPenempatan={() => setIsPlottingPklModalOpen(true)}
-                    onOpenStrukturKelas={() => setIsStrukturKelasModalOpen(true)}
-                    onOpenRekapNilai={() => setIsRekapNilaiModalOpen(true)}
-                    onOpenMonitoringPkl={() => setIsMonitoringPklModalOpen(true)}
-                    onSelectTab={handleTabSelect}
-                  />
-                )}
-                {activeTab === 'siswa' && (
-                  <KaprogSiswaTab
-                    jurusanId={resolvedJurusan?.id}
-                    jurusanNama={resolvedJurusan?.nama || 'Kejuruan'}
-                    kelasList={kelasKehadiranList}
-                    tahunPelajaranId={academic.selectedTahunPelajaran}
-                    semesterId={academic.selectedSemester}
-                  />
-                )}
-                {activeTab === 'pkl' && (
-                  <KaprogPklTab
-                    penilaianStatus={penilaianStatus}
-                    tpStatus={tpStatus}
-                    mitraFilter={mitraFilter}
-                    setMitraFilter={setMitraFilter}
-                    filteredMitraList={filteredMitraList}
-                    onSelectEditingSlot={handleSelectEditingSlot}
-                    onOpenPlottingModal={() => setIsPlottingPklModalOpen(true)}
-                    onOpenRekapNilai={() => setIsRekapNilaiModalOpen(true)}
-                    onOpenMonitoringPkl={() => setIsMonitoringPklModalOpen(true)}
-                    jurusanNama={resolvedJurusan?.nama}
-                  />
-                )}
-                {activeTab === 'kehadiran' && (
-                  <KaprogKehadiranTab
-                    kelasKehadiranList={kelasKehadiranList}
-                    atRiskStudents={atRiskStudents}
-                    jurusanId={resolvedJurusan?.id}
-                    jurusanNama={resolvedJurusan?.nama || 'Kejuruan'}
-                    tahunPelajaranId={academic.selectedTahunPelajaran}
-                    semesterId={academic.selectedSemester}
-                  />
-                )}
-                {activeTab === 'pelanggaran' && (
-                  <KaprogPelanggaranTab
-                    pelanggaranList={pelanggaranList}
-                    jurusanId={resolvedJurusan?.id}
-                    jurusanNama={resolvedJurusan?.nama || 'Kejuruan'}
-                    kelasList={kelasKehadiranList}
-                    tahunPelajaranId={academic.selectedTahunPelajaran}
-                    semesterId={academic.selectedSemester}
-                  />
-                )}
-                {activeTab === 'prestasi' && (
-                  <KaprogPrestasiTab
-                    jurusanId={resolvedJurusan?.id}
-                    jurusanNama={resolvedJurusan?.nama || 'Kejuruan'}
-                    tahunPelajaranId={academic.selectedTahunPelajaran}
-                    tahunAjaran={academic.activeYear}
-                    semesterId={academic.selectedSemester}
-                  />
-                )}
-                {activeTab === 'guru' && (
-                  <KaprogGuruTab
-                    guruProduktifList={guruProduktifList}
-                    resolvedJurusan={resolvedJurusan}
-                    onSelectGuru={handleSelectGuru}
-                  />
-                )}
-                {activeTab === 'sarana' && (
-                  <KaprogSaranaTab
-                    saranaCounts={saranaCounts}
-                    saranaList={saranaList}
-                  />
-                )}
-                {activeTab === 'ukk' && (
-                  <KaprogUkkTab
-                    jurusanId={resolvedJurusan?.id}
-                    jurusanNama={resolvedJurusan?.nama || 'Kejuruan'}
-                    tahunPelajaranId={academic.selectedTahunPelajaran}
-                    tahunAjaran={academic.activeYear}
-                    semesterId={academic.selectedSemester}
-                  />
-                )}
-              </motion.div>
-            </AnimatePresence>
+                <KaprogBerandaTab
+                  penilaianStatus={penilaianStatus}
+                  tpStatus={tpStatus}
+                  kaprogStatsData={kaprogStatsData}
+                  recentActivities={recentActivities}
+                  agendaHariIni={agendaHariIni}
+                  onOpenPenempatan={() => setIsPlottingPklModalOpen(true)}
+                  onOpenStrukturKelas={() => setIsStrukturKelasModalOpen(true)}
+                  onOpenRekapNilai={() => setIsRekapNilaiModalOpen(true)}
+                  onOpenMonitoringPkl={() => setIsMonitoringPklModalOpen(true)}
+                  onSelectTab={handleTabSelect}
+                />
+              </div>
+            )}
+
+            {visitedTabs.has('siswa') && (
+              <div
+                key="tab-siswa"
+                className={cn('w-full', activeTab === 'siswa' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              >
+                <KaprogSiswaTab
+                  jurusanId={resolvedJurusan?.id}
+                  jurusanNama={resolvedJurusan?.nama || 'Kejuruan'}
+                  kelasList={kelasKehadiranList}
+                  tahunPelajaranId={academic.selectedTahunPelajaran}
+                  semesterId={academic.selectedSemester}
+                />
+              </div>
+            )}
+
+            {visitedTabs.has('pkl') && (
+              <div
+                key="tab-pkl"
+                className={cn('w-full', activeTab === 'pkl' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              >
+                <KaprogPklTab
+                  penilaianStatus={penilaianStatus}
+                  tpStatus={tpStatus}
+                  mitraFilter={mitraFilter}
+                  setMitraFilter={setMitraFilter}
+                  filteredMitraList={filteredMitraList}
+                  onSelectEditingSlot={handleSelectEditingSlot}
+                  onOpenPlottingModal={() => setIsPlottingPklModalOpen(true)}
+                  onOpenRekapNilai={() => setIsRekapNilaiModalOpen(true)}
+                  onOpenMonitoringPkl={() => setIsMonitoringPklModalOpen(true)}
+                  jurusanNama={resolvedJurusan?.nama}
+                />
+              </div>
+            )}
+
+            {visitedTabs.has('kehadiran') && (
+              <div
+                key="tab-kehadiran"
+                className={cn('w-full', activeTab === 'kehadiran' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              >
+                <KaprogKehadiranTab
+                  kelasKehadiranList={kelasKehadiranList}
+                  atRiskStudents={atRiskStudents}
+                  jurusanId={resolvedJurusan?.id}
+                  jurusanNama={resolvedJurusan?.nama || 'Kejuruan'}
+                  tahunPelajaranId={academic.selectedTahunPelajaran}
+                  semesterId={academic.selectedSemester}
+                />
+              </div>
+            )}
+
+            {visitedTabs.has('pelanggaran') && (
+              <div
+                key="tab-pelanggaran"
+                className={cn('w-full', activeTab === 'pelanggaran' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              >
+                <KaprogPelanggaranTab
+                  pelanggaranList={pelanggaranList}
+                  jurusanId={resolvedJurusan?.id}
+                  jurusanNama={resolvedJurusan?.nama || 'Kejuruan'}
+                  kelasList={kelasKehadiranList}
+                  tahunPelajaranId={academic.selectedTahunPelajaran}
+                  semesterId={academic.selectedSemester}
+                />
+              </div>
+            )}
+
+            {visitedTabs.has('prestasi') && (
+              <div
+                key="tab-prestasi"
+                className={cn('w-full', activeTab === 'prestasi' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              >
+                <KaprogPrestasiTab
+                  jurusanId={resolvedJurusan?.id}
+                  jurusanNama={resolvedJurusan?.nama || 'Kejuruan'}
+                  tahunPelajaranId={academic.selectedTahunPelajaran}
+                  tahunAjaran={academic.activeYear}
+                  semesterId={academic.selectedSemester}
+                />
+              </div>
+            )}
+
+            {visitedTabs.has('guru') && (
+              <div
+                key="tab-guru"
+                className={cn('w-full', activeTab === 'guru' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              >
+                <KaprogGuruTab
+                  guruProduktifList={guruProduktifList}
+                  resolvedJurusan={resolvedJurusan}
+                  onSelectGuru={handleSelectGuru}
+                />
+              </div>
+            )}
+
+            {visitedTabs.has('sarana') && (
+              <div
+                key="tab-sarana"
+                className={cn('w-full', activeTab === 'sarana' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              >
+                <KaprogSaranaTab
+                  saranaCounts={saranaCounts}
+                  saranaList={saranaList}
+                />
+              </div>
+            )}
+
+            {visitedTabs.has('ukk') && (
+              <div
+                key="tab-ukk"
+                className={cn('w-full', activeTab === 'ukk' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              >
+                <KaprogUkkTab
+                  jurusanId={resolvedJurusan?.id}
+                  jurusanNama={resolvedJurusan?.nama || 'Kejuruan'}
+                  tahunPelajaranId={academic.selectedTahunPelajaran}
+                  tahunAjaran={academic.activeYear}
+                  semesterId={academic.selectedSemester}
+                />
+              </div>
+            )}
+          </div>
           )}
         </main>
       </div>
 
       {/* 5. Floating Modal Formulasi TP PKL */}
       {activeEditingSlot && (
-        <PklDeskripsiTpModal
-          isOpen={!!activeEditingSlot}
-          onClose={handleCloseEditingSlot}
-          slot={activeEditingSlot}
-          kaprogJurusan={resolvedJurusan}
-          onSave={handleSaveTp}
-          onDelete={handleDeleteTp}
-          isSaving={saveTpMutation.isPending}
-          isDeleting={deleteTpMutation.isPending}
-        />
+        <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>
+          <PklDeskripsiTpModal
+            isOpen={!!activeEditingSlot}
+            onClose={handleCloseEditingSlot}
+            slot={activeEditingSlot}
+            kaprogJurusan={resolvedJurusan}
+            onSave={handleSaveTp}
+            onDelete={handleDeleteTp}
+            isSaving={saveTpMutation.isPending}
+            isDeleting={deleteTpMutation.isPending}
+          />
+        </Suspense>
       )}
 
       {/* 6. Floating Modal Guru Penugasan & Kontak Cepat */}
       {selectedGuruPenugasan && (
-        <KaprogGuruDetailModal
-          guru={selectedGuruPenugasan}
-          onClose={handleCloseGuruModal}
-          onNavigateToSesi={handleNavigateToSesi}
-        />
+        <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>
+          <KaprogGuruDetailModal
+            guru={selectedGuruPenugasan}
+            onClose={handleCloseGuruModal}
+            onNavigateToSesi={handleNavigateToSesi}
+          />
+        </Suspense>
       )}
 
       {/* 7. Modal Reusable View: Plotting & Penempatan Siswa PKL Scoped Jurusan */}
@@ -836,13 +901,15 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
           }
         >
           <div className="p-4 sm:p-5 max-h-[85vh] overflow-y-auto">
-            <PenempatanPklView
-              isModal={true}
-              jurusanId={resolvedJurusan?.id}
-              jurusanNama={resolvedJurusan?.nama}
-              initialTpId={academic.selectedTahunPelajaran}
-              onClose={handleClosePlottingModal}
-            />
+            <Suspense fallback={<div className="p-12 flex justify-center"><Loader size="lg" /></div>}>
+              <PenempatanPklView
+                isModal={true}
+                jurusanId={resolvedJurusan?.id}
+                jurusanNama={resolvedJurusan?.nama}
+                initialTpId={academic.selectedTahunPelajaran}
+                onClose={handleClosePlottingModal}
+              />
+            </Suspense>
           </div>
         </Modal>
       )}
@@ -876,12 +943,14 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
           }
         >
           <div className="p-4 sm:p-5 max-h-[85vh] overflow-y-auto">
-            <KelasView
-              isModal={true}
-              jurusanId={resolvedJurusan?.id}
-              jurusanNama={resolvedJurusan?.nama}
-              onClose={handleCloseStrukturKelasModal}
-            />
+            <Suspense fallback={<div className="p-12 flex justify-center"><Loader size="lg" /></div>}>
+              <KelasView
+                isModal={true}
+                jurusanId={resolvedJurusan?.id}
+                jurusanNama={resolvedJurusan?.nama}
+                onClose={handleCloseStrukturKelasModal}
+              />
+            </Suspense>
           </div>
         </Modal>
       )}
@@ -915,14 +984,16 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
           }
         >
           <div className="p-4 sm:p-5 max-h-[85vh] overflow-y-auto">
-            <NilaiPklView
-              isModal={true}
-              jurusanId={resolvedJurusan?.id}
-              jurusanNama={resolvedJurusan?.nama}
-              tahunPelajaranId={academic.selectedTahunPelajaran}
-              semesterId={academic.selectedSemester}
-              onClose={handleCloseRekapNilaiModal}
-            />
+            <Suspense fallback={<div className="p-12 flex justify-center"><Loader size="lg" /></div>}>
+              <NilaiPklView
+                isModal={true}
+                jurusanId={resolvedJurusan?.id}
+                jurusanNama={resolvedJurusan?.nama}
+                tahunPelajaranId={academic.selectedTahunPelajaran}
+                semesterId={academic.selectedSemester}
+                onClose={handleCloseRekapNilaiModal}
+              />
+            </Suspense>
           </div>
         </Modal>
       )}
@@ -956,13 +1027,15 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
           }
         >
           <div className="p-4 sm:p-5 max-h-[85vh] overflow-y-auto">
-            <AbsensiPklView
-              isModal={true}
-              jurusanId={resolvedJurusan?.id}
-              jurusanNama={resolvedJurusan?.nama}
-              initialTpId={academic.selectedTahunPelajaran}
-              onClose={handleCloseMonitoringPklModal}
-            />
+            <Suspense fallback={<div className="p-12 flex justify-center"><Loader size="lg" /></div>}>
+              <AbsensiPklView
+                isModal={true}
+                jurusanId={resolvedJurusan?.id}
+                jurusanNama={resolvedJurusan?.nama}
+                initialTpId={academic.selectedTahunPelajaran}
+                onClose={handleCloseMonitoringPklModal}
+              />
+            </Suspense>
           </div>
         </Modal>
       )}
