@@ -109,33 +109,68 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
 
   // Tab Definitions with dynamic badges matching Kaprog's nav tabs
   const navTabs = useMemo(() => {
-    const pendingIzin = walasData?.permohonanIzinSummary?.pending ?? 0;
-    const totalAlfa = walasData?.kehadiranStats?.alfa ?? 0;
-    const totalCases = walasData?.pelanggaranSummary?.totalCases ?? 0;
+    // 1. Data Siswa: total siswa di rombel
+    const totalSiswa = walasData?.kelasInfo?.totalSiswa || (walasData?.kelasInfo as any)?.total_siswa || 0;
+
+    // 2. Presensi: Siswa tidak hadir hari ini atau early warning alert at-risk
+    const alfa = walasData?.kehadiranStats?.alfa ?? 0;
+    const sakit = walasData?.kehadiranStats?.sakit ?? 0;
+    const izin = walasData?.kehadiranStats?.izin ?? 0;
+    const terlambat = walasData?.kehadiranStats?.terlambat ?? 0;
+    const tidakHadirToday = alfa + sakit + izin + terlambat;
+    const atRiskCount = walasData?.earlyWarningAlerts?.length ?? 0;
+    const presensiCounter = atRiskCount > 0 ? atRiskCount : tidakHadirToday > 0 ? tidakHadirToday : undefined;
+
+    // 3. Jurnal Walas: total jurnal walas tercatat
+    const totalJurnal = walasData?.totalJurnalWalasTercatat || (walasData as any)?.jurnalCount || 0;
+
+    // 4. Persetujuan Izin: izin pending
+    const pendingIzin = (walasData as any)?.izinPendingCount ?? (walasData as any)?.permohonanIzinSummary?.pending ?? 0;
+
+    // 5. Pelanggaran Siswa: total pelanggaran siswa rombel periode ini
+    const totalPelanggaran = (walasData as any)?.totalPelanggaranPeriodeIni ?? (walasData as any)?.pelanggaranSummary?.totalCases ?? 0;
+
+    // 6. Prestasi Siswa: total prestasi siswa rombel periode ini
+    const totalPrestasi = (walasData as any)?.totalPrestasiPeriodeIni ?? (walasData as any)?.prestasiCount ?? 0;
 
     return [
       { id: 'ringkasan' as WaliKelasTabId, label: 'Ringkasan', icon: LayoutDashboard },
-      { id: 'siswa' as WaliKelasTabId, label: 'Data Siswa', icon: Users },
+      { 
+        id: 'siswa' as WaliKelasTabId, 
+        label: 'Data Siswa', 
+        icon: Users,
+        badge: totalSiswa > 0 ? totalSiswa : undefined,
+      },
       { 
         id: 'presensi' as WaliKelasTabId, 
         label: 'Presensi Rombel', 
         icon: CalendarCheck, 
-        badge: totalAlfa > 0 ? `${totalAlfa}` : undefined 
+        badge: presensiCounter,
       },
-      { id: 'jurnal' as WaliKelasTabId, label: 'Jurnal Walas', icon: BookOpen },
+      { 
+        id: 'jurnal' as WaliKelasTabId, 
+        label: 'Jurnal Walas', 
+        icon: BookOpen,
+        badge: totalJurnal > 0 ? totalJurnal : undefined,
+      },
       { 
         id: 'izin' as WaliKelasTabId, 
         label: 'Persetujuan Izin', 
         icon: FileCheck2, 
-        badge: pendingIzin > 0 ? `${pendingIzin}` : undefined 
+        badge: pendingIzin > 0 ? pendingIzin : undefined,
       },
       { 
         id: 'disiplin' as WaliKelasTabId, 
         label: 'Pelanggaran Siswa', 
         icon: ShieldAlert, 
-        badge: totalCases > 0 ? `${totalCases}` : undefined 
+        badge: totalPelanggaran > 0 ? totalPelanggaran : undefined,
       },
-      { id: 'prestasi' as WaliKelasTabId, label: 'Prestasi Siswa', icon: Award },
+      { 
+        id: 'prestasi' as WaliKelasTabId, 
+        label: 'Prestasi Siswa', 
+        icon: Award,
+        badge: totalPrestasi > 0 ? totalPrestasi : undefined,
+      },
       { id: 'rekap' as WaliKelasTabId, label: 'Cetak & Rekap', icon: FileSpreadsheet },
     ];
   }, [walasData]);
@@ -205,8 +240,8 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
                 {tab.badge !== undefined && (
                   <span
                     className={cn(
-                      'px-1.5 py-0.2 rounded-full text-[10px] font-mono',
-                      isActive ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400'
+                      'px-2 py-0.5 rounded-full text-[10px] font-bold min-w-4 text-center',
+                      isActive ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
                     )}
                   >
                     {tab.badge}
@@ -281,10 +316,10 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
                   {tab.badge !== undefined && (
                     <span
                       className={cn(
-                        'px-1.5 py-0.5 rounded-full text-[10px] font-mono',
+                        'px-2 py-0.5 rounded-full text-[11px] font-bold min-w-5 text-center transition-colors',
                         isActive
                           ? 'bg-white/20 text-white'
-                          : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400 font-bold'
+                          : 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
                       )}
                     >
                       {tab.badge}

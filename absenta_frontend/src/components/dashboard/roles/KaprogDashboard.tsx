@@ -572,8 +572,8 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                 {tab.badge !== undefined && (
                   <span
                     className={cn(
-                      'px-1.5 py-0.2 rounded-full text-[10px] font-mono',
-                      isActive ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400'
+                      'px-2 py-0.5 rounded-full text-[10px] font-bold min-w-4 text-center',
+                      isActive ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
                     )}
                   >
                     {tab.badge}
@@ -657,10 +657,10 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                   {tab.badge !== undefined && (
                     <span
                       className={cn(
-                        'px-1.5 py-0.5 rounded-full text-[10px] font-mono',
+                        'px-2 py-0.5 rounded-full text-[11px] font-bold min-w-5 text-center transition-colors',
                         isActive
                           ? 'bg-white/20 text-white'
-                          : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400 font-bold'
+                          : 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
                       )}
                     >
                       {tab.badge}

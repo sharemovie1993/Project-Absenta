@@ -252,7 +252,10 @@ export class DashboardWalasStatsService {
       targetKelasId ? prisma.pelanggaranSiswa.count({
         where: {
           tenant_id: tenantId,
-          Siswa: { kelas_id: targetKelasId }
+          OR: [
+            { kelas_id: targetKelasId },
+            { Siswa: { kelas_id: targetKelasId } }
+          ]
         }
       }) : Promise.resolve(0),
 
@@ -260,7 +263,10 @@ export class DashboardWalasStatsService {
       targetKelasId ? prisma.prestasiSiswa.count({
         where: {
           tenant_id: tenantId,
-          Siswa: { kelas_id: targetKelasId }
+          OR: [
+            { kelas_id: targetKelasId },
+            { Siswa: { kelas_id: targetKelasId } }
+          ]
         }
       }) : Promise.resolve(0),
 
