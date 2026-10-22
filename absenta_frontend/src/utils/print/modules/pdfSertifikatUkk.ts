@@ -140,26 +140,8 @@ export const getDefaultUnitKompetensi = (
   ];
 };
 
-// Official Tut Wuri Handayani Vector Emblem (High-Resolution Data URI)
-export const TUT_WURI_LOGO_SVG = `data:image/svg+xml;utf8,${encodeURIComponent(`
-<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="100" cy="100" r="94" fill="#0284c7" stroke="#ffffff" stroke-width="4"/>
-  <circle cx="100" cy="100" r="87" fill="#0284c7" stroke="#ffffff" stroke-width="2.5" stroke-dasharray="4,4"/>
-  <!-- Sayap & Nyala Api -->
-  <path d="M100 26 C105 45, 115 62, 138 70 C118 70, 108 58, 100 48 C92 58, 82 70, 62 70 C85 62, 95 45, 100 26 Z" fill="#ffffff"/>
-  <path d="M100 48 L104 68 L118 64 L110 78 L124 82 L112 92 L122 100 L108 104 L114 118 L100 112 L86 118 L92 104 L78 100 L88 92 L76 82 L90 78 L82 64 L96 68 Z" fill="#f8fafc"/>
-  <path d="M100 70 C94 84, 90 98, 76 106 C88 106, 96 98, 100 86 C104 98, 112 106, 124 106 C110 98, 106 84, 100 70 Z" fill="#0284c7"/>
-  <!-- Belanga / Landasan Buku -->
-  <path d="M52 136 C68 126, 132 126, 148 136 C138 152, 62 152, 52 136 Z" fill="#ffffff"/>
-  <!-- Tulisan Melengkung Atas -->
-  <path id="curve" d="M 38,95 A 64,64 0 0,1 162,95" fill="none"/>
-  <text font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" fill="#ffffff" letter-spacing="2">
-    <textPath href="#curve" startOffset="50%" text-anchor="middle">
-      TUT WURI HANDAYANI
-    </textPath>
-  </text>
-</svg>
-`)}`;
+// Official Tut Wuri Handayani Vector Emblem (Standard Base64 Data URI)
+export const TUT_WURI_LOGO_SVG = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+CiAgPGRlZnM+CiAgICA8cGF0aCBpZD0iY3VydmUiIGQ9Ik0gMzIsOTggQSA3MCw3MCAwIDAsMSAxNjgsOTgiIGZpbGw9Im5vbmUiLz4KICA8L2RlZnM+CiAgPCEtLSBCYWNrZ3JvdW5kIFNoaWVsZCAvIFJvdW5kIE91dGVyIENpcmNsZSAtLT4KICA8Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9Ijk1IiBmaWxsPSIjMDI4NGM3IiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNCIvPgogIDxjaXJjbGUgY3g9IjEwMCIgY3k9IjEwMCIgcj0iODgiIGZpbGw9IiMwMjg0YzciIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtZGFzaGFycmF5PSI0LDQiLz4KICAKICA8IS0tIEdhcnVkYSBXaW5ncyAmIENlbnRyYWwgRmxhbWUgKE55YWxhIEFwaSkgLS0+CiAgPHBhdGggZD0iTTEwMCAyNCBDMTA1IDQ0LCAxMTYgNjIsIDE0MCA3MCBDMTIwIDcwLCAxMTAgNTgsIDEwMCA0OCBDOTAgNTgsIDgwIDcwLCA2MCA3MCBDODQgNjIsIDk1IDQ0LCAxMDAgMjQgWiIgZmlsbD0iI2ZmZmZmZiIvPgogIDxwYXRoIGQ9Ik0xMDAgNDggTDEwNSA2OCBMMTE5IDY0IEwxMTEgNzggTDEyNSA4MiBMMTEzIDkyIEwxMjMgMTAwIEwxMDkgMTA0IEwxMTUgMTE4IEwxMDAgMTEyIEw4NSAxMTggTDkxIDEwNCBMNzcgMTAwIEw4NyA5MiBMNzUgODIgTDg5IDc4IEw4MSA2NCBMOTUgNjggWiIgZmlsbD0iI2ZmZmZmZiIvPgogIDxwYXRoIGQ9Ik0xMDAgNzAgQzk0IDg0LCA5MCA5OCwgNzYgMTA2IEM4OCAxMDYsIDk2IDk4LCAxMDAgODYgQzEwNCA5OCwgMTEyIDEwNiwgMTI0IDEwNiBDMTEwIDk4LCAxMDYgODQsIDEwMCA3MCBaIiBmaWxsPSIjMDI4NGM3Ii8+CiAgCiAgPCEtLSBCZWxhbmdhIC8gT3BlbiBCb29rIEJhc2UgLS0+CiAgPHBhdGggZD0iTTQ4IDEzNiBDNjYgMTI0LCAxMzQgMTI0LCAxNTIgMTM2IEMxNDAgMTU0LCA2MCAxNTQsIDQ4IDEzNiBaIiBmaWxsPSIjZmZmZmZmIi8+CiAgPHBvbHlnb24gcG9pbnRzPSIxMDAsMTI4IDg1LDE0NSAxMTUsMTQ1IiBmaWxsPSIjMDI4NGM3Ii8+CiAgCiAgPCEtLSBUZXh0IEN1cnZlZCBvbiBUb3AgLS0+CiAgPHRleHQgZm9udC1mYW1pbHk9IkFyaWFsLCBIZWx2ZXRpY2EsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTEuNSIgZm9udC13ZWlnaHQ9IjkwMCIgZmlsbD0iI2ZmZmZmZiIgbGV0dGVyLXNwYWNpbmc9IjIuNSI+CiAgICA8dGV4dFBhdGggaHJlZj0iI2N1cnZlIiBzdGFydE9mZnNldD0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4KICAgICAgVFVUIFdVUkkgSEFOREFZQU5JCiAgICA8L3RleHRQYXRoPgogIDwvdGV4dD4KPC9zdmc+';
 
 /**
  * Helper to rasterize SVG into a PNG data URL for rock-solid jsPDF compatibility

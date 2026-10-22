@@ -700,6 +700,9 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
               <div className="flex items-center justify-center mb-3">
                 <img
                   src={TUT_WURI_LOGO_SVG}
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = '/assets/tutwuri.svg';
+                  }}
                   alt="Tut Wuri Handayani"
                   className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
                 />
