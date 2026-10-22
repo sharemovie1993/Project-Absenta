@@ -233,19 +233,19 @@ export async function reportingRoutes(fastify: any) {
 
   fastify.get('/pdf/skl/:siswaId', {
     config: { capability: ModuleCapability.CORE },
-    preHandler: [requireCapability('academic.students.view.list'), determineDataScope()],
+    preHandler: [requireCapability(['academic.students.view.list', 'academic.manage.academic', 'academic.homeroom.manage']), determineDataScope()],
     handler: reportingController.printSkl.bind(reportingController),
   });
 
   fastify.get('/pdf/ukk/:siswaId', {
     config: { capability: ModuleCapability.CORE },
-    preHandler: [requireCapability('academic.students.view.list'), determineDataScope()],
+    preHandler: [requireCapability(['academic.students.view.list', 'academic.manage.academic', 'hubin.pkl.manage', 'academic.homeroom.manage']), determineDataScope()],
     handler: reportingController.printUkk.bind(reportingController),
   });
 
   fastify.get('/pdf/pkl/:siswaPklId', {
     config: { capability: ModuleCapability.CORE },
-    preHandler: [requireCapability('academic.students.view.list'), determineDataScope()],
+    preHandler: [requireCapability(['academic.students.view.list', 'academic.manage.academic', 'hubin.pkl.manage', 'academic.homeroom.manage']), determineDataScope()],
     handler: reportingController.printPkl.bind(reportingController),
   });
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Award,
   Download,
@@ -11,9 +11,9 @@ import {
   FileCheck2,
   Users,
   Search,
+  AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { raporApi } from '@/api/rapor.api';
 import { cn } from '@/lib/utils';
@@ -86,6 +86,9 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
 
   const [currentIndex, setCurrentIndex] = useState<number>(initialIndex);
   const [isLoadingPdf, setIsLoadingPdf] = useState<boolean>(true);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState<number>(0);
   const [isBatchDownloading, setIsBatchDownloading] = useState<boolean>(false);
   const [searchFilter, setSearchFilter] = useState<string>('');
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -98,18 +101,62 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
   };
 
   const activeSiswaId = currentStudent.id;
-  const pdfUrl = activeSiswaId ? raporApi.getPdfUkkUrl(activeSiswaId) : '';
+
+  // Authenticated Blob PDF Fetching (Kebal dari 'Missing or invalid authorization header')
+  useEffect(() => {
+    if (!activeSiswaId) {
+      setBlobUrl(null);
+      setIsLoadingPdf(false);
+      return;
+    }
+
+    let isCancelled = false;
+    setIsLoadingPdf(true);
+    setFetchError(null);
+
+    raporApi
+      .getPdfUkkBlob(activeSiswaId)
+      .then((res: any) => {
+        if (isCancelled) return;
+        const blob = new Blob([res.data], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        setBlobUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev);
+          return url;
+        });
+        setIsLoadingPdf(false);
+      })
+      .catch((err: any) => {
+        if (isCancelled) return;
+        console.error('Error fetching UKK PDF Blob:', err);
+        const errMsg =
+          err.response?.data?.message || err.message || 'Gagal memuat dokumen sertifikat UKK';
+        setFetchError(errMsg);
+        setIsLoadingPdf(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [activeSiswaId, reloadKey]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl);
+      }
+    };
+  }, []);
 
   const handlePrev = () => {
     if (currentIndex > 0) {
-      setIsLoadingPdf(true);
       setCurrentIndex((prev) => prev - 1);
     }
   };
 
   const handleNext = () => {
     if (currentIndex < allStudents.length - 1) {
-      setIsLoadingPdf(true);
       setCurrentIndex((prev) => prev + 1);
     }
   };
@@ -117,7 +164,6 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
   const handleSelectStudent = (newId: string) => {
     const idx = allStudents.findIndex((s) => s.id === newId);
     if (idx !== -1 && idx !== currentIndex) {
-      setIsLoadingPdf(true);
       setCurrentIndex(idx);
     }
   };
@@ -132,15 +178,15 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
         console.warn('Iframe print blocked by cross-origin, falling back to window.open', err);
       }
     }
-    if (pdfUrl) {
-      window.open(pdfUrl, '_blank');
+    if (blobUrl) {
+      window.open(blobUrl, '_blank');
     }
   };
 
   const handleDownloadSingle = () => {
-    if (!pdfUrl) return;
+    if (!blobUrl) return;
     const a = document.createElement('a');
-    a.href = pdfUrl;
+    a.href = blobUrl;
     a.download = `Sertifikat_UKK_${(currentStudent.nama_siswa || 'Siswa').replace(/\s+/g, '_')}.pdf`;
     document.body.appendChild(a);
     a.click();
@@ -153,15 +199,22 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
 
     try {
       for (const student of allStudents) {
-        const studentUrl = raporApi.getPdfUkkUrl(student.id);
-        const a = document.createElement('a');
-        a.href = studentUrl;
-        a.download = `Sertifikat_UKK_${(student.nama_siswa || 'Siswa').replace(/\s+/g, '_')}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        // Small delay to prevent browser download throttling
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        try {
+          const res = await raporApi.getPdfUkkBlob(student.id);
+          const blob = new Blob([res.data], { type: 'application/pdf' });
+          const tempUrl = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = tempUrl;
+          a.download = `Sertifikat_UKK_${(student.nama_siswa || 'Siswa').replace(/\s+/g, '_')}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(tempUrl), 2000);
+          // Delay to prevent browser throttling
+          await new Promise((resolve) => setTimeout(resolve, 800));
+        } catch (downloadErr) {
+          console.error(`Failed to download UKK cert for student ${student.nama_siswa}:`, downloadErr);
+        }
       }
     } catch (e) {
       console.error('Failed batch download:', e);
@@ -170,29 +223,17 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
     }
   };
 
-  // Filter students if search query is entered
-  const filteredStudents = useMemo(() => {
-    if (!searchFilter.trim()) return allStudents;
-    const q = searchFilter.toLowerCase();
-    return allStudents.filter(
-      (s) =>
-        s.nama_siswa.toLowerCase().includes(q) ||
-        s.nis?.toLowerCase().includes(q) ||
-        s.nomor_sertifikat?.toLowerCase().includes(q)
-    );
-  }, [allStudents, searchFilter]);
-
   const getPredikatBadge = (predikat?: string) => {
     if (!predikat) return null;
     const upper = predikat.toUpperCase();
-    if (upper.includes('SANGAT BAIK')) {
+    if (upper.includes('SANGAT BAIK') || upper.includes('SANGAT KOMPETEN')) {
       return (
         <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold">
           {predikat}
         </Badge>
       );
     }
-    if (upper.includes('BAIK')) {
+    if (upper.includes('BAIK') || upper.includes('KOMPETEN')) {
       return (
         <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950/60 border-blue-300 text-blue-700 dark:text-blue-300 text-[11px] font-bold">
           {predikat}
@@ -225,7 +266,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={handlePrev}
-                disabled={currentIndex === 0}
+                disabled={currentIndex === 0 || isLoadingPdf}
                 className="h-7 w-7 p-0 rounded-lg cursor-pointer disabled:opacity-30"
                 title="Siswa Sebelumnya"
               >
@@ -238,7 +279,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={handleNext}
-                disabled={currentIndex === allStudents.length - 1}
+                disabled={currentIndex === allStudents.length - 1 || isLoadingPdf}
                 className="h-7 w-7 p-0 rounded-lg cursor-pointer disabled:opacity-30"
                 title="Siswa Berikutnya"
               >
@@ -252,6 +293,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
             <select
               value={currentStudent.id}
               onChange={(e) => handleSelectStudent(e.target.value)}
+              disabled={isLoadingPdf}
               className="text-xs font-semibold py-1.5 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 max-w-[220px] sm:max-w-[280px] truncate cursor-pointer focus:ring-2 focus:ring-indigo-500"
             >
               {allStudents.map((s) => (
@@ -292,24 +334,23 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              setIsLoadingPdf(true);
-              if (iframeRef.current) {
-                iframeRef.current.src = pdfUrl;
-              }
-            }}
+            onClick={() => setReloadKey((k) => k + 1)}
+            disabled={isLoadingPdf}
             className="h-8 px-2.5 text-xs font-semibold rounded-xl cursor-pointer"
             title="Muat ulang dokumen"
           >
-            <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+            <RefreshCw className={cn('w-3.5 h-3.5 text-slate-500', isLoadingPdf && 'animate-spin')} />
             <span className="hidden sm:inline ml-1">Reload</span>
           </Button>
 
           <Button
             variant="outline"
             size="sm"
-            onClick={() => window.open(pdfUrl, '_blank')}
-            className="h-8 px-3 text-xs font-semibold rounded-xl cursor-pointer"
+            onClick={() => {
+              if (blobUrl) window.open(blobUrl, '_blank');
+            }}
+            disabled={!blobUrl || isLoadingPdf}
+            className="h-8 px-3 text-xs font-semibold rounded-xl cursor-pointer disabled:opacity-40"
             title="Buka sertifikat di tab baru browser"
           >
             <ExternalLink className="w-3.5 h-3.5 text-indigo-500 mr-1.5" />
@@ -320,7 +361,8 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
             variant="outline"
             size="sm"
             onClick={handlePrint}
-            className="h-8 px-3 text-xs font-semibold rounded-xl bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 cursor-pointer"
+            disabled={!blobUrl || isLoadingPdf}
+            className="h-8 px-3 text-xs font-semibold rounded-xl bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 cursor-pointer disabled:opacity-40"
             title="Cetak sertifikat"
           >
             <Printer className="w-3.5 h-3.5 text-slate-700 dark:text-slate-200 mr-1.5" />
@@ -331,7 +373,8 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
             variant="outline"
             size="sm"
             onClick={handleDownloadSingle}
-            className="h-8 px-3 text-xs font-semibold rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 cursor-pointer"
+            disabled={!blobUrl || isLoadingPdf}
+            className="h-8 px-3 text-xs font-semibold rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 cursor-pointer disabled:opacity-40"
             title="Unduh file PDF"
           >
             <Download className="w-3.5 h-3.5 mr-1.5" />
@@ -371,9 +414,9 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
         )}
       >
         {isLoadingPdf && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/85 dark:bg-slate-900/85 z-20 backdrop-blur-xs">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/90 dark:bg-slate-900/90 z-20 backdrop-blur-xs">
             <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+            <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
               Merender Dokumen Sertifikat UKK Resmi...
             </p>
             <p className="text-[11px] text-slate-400">
@@ -382,15 +425,35 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
           </div>
         )}
 
-        {pdfUrl ? (
+        {fetchError ? (
+          <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-3">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+              Gagal Memuat Dokumen Sertifikat
+            </h4>
+            <p className="text-xs text-rose-600 dark:text-rose-400 max-w-md mt-1">
+              {fetchError}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setReloadKey((k) => k + 1)}
+              className="mt-4 text-xs font-semibold rounded-xl cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+              Coba Muat Ulang
+            </Button>
+          </div>
+        ) : blobUrl ? (
           <iframe
             ref={iframeRef}
-            src={pdfUrl}
+            src={blobUrl}
             title={`Sertifikat UKK ${currentStudent.nama_siswa}`}
-            onLoad={() => setIsLoadingPdf(false)}
             className="w-full h-full rounded-2xl bg-white dark:bg-slate-900 border-none"
           />
-        ) : (
+        ) : !isLoadingPdf ? (
           <div className="h-full flex flex-col items-center justify-center p-8 text-center text-slate-400">
             <FileCheck2 className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-3" />
             <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">
@@ -400,7 +463,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
               Silakan pilih siswa pada tabel UKK atau daftar rombel untuk meninjau dan mencetak sertifikat.
             </p>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

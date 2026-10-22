@@ -5,16 +5,16 @@ const getAuthToken = () => {
   try {
     const fromStore = useAuthStore.getState().token;
     if (fromStore) return fromStore;
-    const directToken = localStorage.getItem('access_token');
+    const directToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
     if (directToken) return directToken;
-    const rawStorage = localStorage.getItem('auth-storage');
+    const rawStorage = localStorage.getItem('auth-storage') || sessionStorage.getItem('auth-storage');
     if (rawStorage) {
       const parsed = JSON.parse(rawStorage);
       if (parsed?.state?.token) return parsed.state.token;
     }
     return '';
   } catch {
-    return localStorage.getItem('access_token') || '';
+    return localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || '';
   }
 };
 
