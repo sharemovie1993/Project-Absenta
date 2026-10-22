@@ -435,7 +435,8 @@ export const PrintHeaderPure: React.FC<PrintHeaderProps> = ({
                 verticalAlign: 'middle',
                 padding: '0 6px 4px 6px',
                 overflowWrap: 'break-word',
-                wordBreak: 'break-word',
+                wordBreak: 'normal',
+                hyphens: 'none',
               }}
             >
               {parsedLines.map((line, index) => {
@@ -443,7 +444,9 @@ export const PrintHeaderPure: React.FC<PrintHeaderProps> = ({
 
                 const lineStyle: React.CSSProperties = {
                   whiteSpace: 'normal',
-                  wordBreak: 'break-word',
+                  wordBreak: 'normal',
+                  overflowWrap: 'break-word',
+                  hyphens: 'none',
                   textAlign: 'center',
                   display: 'block',
                   width: '100%',
