@@ -11,6 +11,8 @@ import {
   AlertCircle,
   FileCheck2,
   PenTool,
+  Calendar,
+  ShieldCheck,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -19,6 +21,7 @@ import { Button } from '@/components/ui/Button';
 import { DigitalSignatureField } from '@/components/ui/DigitalSignatureField';
 import { raporApi } from '@/api/rapor.api';
 import { getDefaultUnitKompetensi, type UkkUnitKompetensi } from '@/utils/print/modules/pdfSertifikatUkk';
+import { getAvailableRegulatoryEditions } from '@/config/ukkRegulatoryRegistry';
 import { cn } from '@/lib/utils';
 
 export interface UkkJurusanConfigModalProps {
@@ -36,6 +39,8 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
 }) => {
   const queryClient = useQueryClient();
 
+  const [tahunAjaran, setTahunAjaran] = useState<string>('2025/2026');
+  const [edisiPedoman, setEdisiPedoman] = useState<string>('2026');
   const [skemaSertifikasi, setSkemaSertifikasi] = useState('');
   const [judulPenugasanId, setJudulPenugasanId] = useState('');
   const [judulPenugasanEn, setJudulPenugasanEn] = useState('');
@@ -44,10 +49,10 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
   const [ttdAsesorEksternal, setTtdAsesorEksternal] = useState<string | null>(null);
   const [ttdAsesorInternal, setTtdAsesorInternal] = useState<string | null>(null);
 
-  // Query Settings
+  // Query Settings with year scope support
   const { data: settingsRes, isLoading } = useQuery({
-    queryKey: ['ukk-settings', jurusanId],
-    queryFn: () => (jurusanId ? raporApi.getUkkSettings(jurusanId) : Promise.resolve(null)),
+    queryKey: ['ukk-settings', jurusanId, tahunAjaran],
+    queryFn: () => (jurusanId ? raporApi.getUkkSettings(jurusanId, tahunAjaran) : Promise.resolve(null)),
     enabled: isOpen && !!jurusanId,
     staleTime: 5 * 60 * 1000,
   });
@@ -57,6 +62,7 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
     if (settingsRes) {
       const data = settingsRes?.data || settingsRes;
       if (data) {
+        if (data.edisi_pedoman) setEdisiPedoman(data.edisi_pedoman);
         setSkemaSertifikasi(data.skema_sertifikasi || '');
         setJudulPenugasanId(data.judul_penugasan_id || '');
         setJudulPenugasanEn(data.judul_penugasan_en || '');
@@ -116,20 +122,26 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!jurusanId) throw new Error('Jurusan ID tidak ditemukan');
-      return raporApi.saveUkkSettings(jurusanId, {
-        skema_sertifikasi: skemaSertifikasi,
-        judul_penugasan_id: judulPenugasanId,
-        judul_penugasan_en: judulPenugasanEn,
-        unit_kompetensi: units,
-        ttd_kepala_sekolah: ttdKepalaSekolah,
-        ttd_asesor_eksternal: ttdAsesorEksternal,
-        ttd_asesor_internal: ttdAsesorInternal,
-      });
+      return raporApi.saveUkkSettings(
+        jurusanId,
+        {
+          tahun_ajaran: tahunAjaran,
+          edisi_pedoman: edisiPedoman,
+          skema_sertifikasi: skemaSertifikasi,
+          judul_penugasan_id: judulPenugasanId,
+          judul_penugasan_en: judulPenugasanEn,
+          unit_kompetensi: units,
+          ttd_kepala_sekolah: ttdKepalaSekolah,
+          ttd_asesor_eksternal: ttdAsesorEksternal,
+          ttd_asesor_internal: ttdAsesorInternal,
+        },
+        tahunAjaran
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ukk-settings', jurusanId] });
       queryClient.invalidateQueries({ queryKey: ['kaprog-ukk-list'] });
-      toast.success('Pengaturan Sertifikat UKK Jurusan berhasil disimpan!');
+      toast.success(`Pengaturan UKK Jurusan ${jurusanNama} (TA ${tahunAjaran}) berhasil disimpan!`);
       onClose();
     },
     onError: (err: any) => {
@@ -154,6 +166,49 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
             </span>{' '}
             Data pada form ini akan otomatis dicetak pada Lembar Depan (Judul Penugasan & Skema) dan
             Lembar Belakang (Daftar Unit Kompetensi SKKNI/KKNI) pada setiap sertifikat siswa.
+          </div>
+        </div>
+
+        {/* Kontrol Fleksibilitas Versi Historis: Tahun Ajaran & Edisi Juknis Regulasi */}
+        <div className="bg-slate-50 dark:bg-slate-900/60 border rounded-xl p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <div>
+            <label className="font-semibold text-foreground flex items-center gap-1.5 mb-1.5">
+              <Calendar className="w-3.5 h-3.5 text-primary" />
+              Tahun Ajaran Target:
+            </label>
+            <select
+              value={tahunAjaran}
+              onChange={(e) => setTahunAjaran(e.target.value)}
+              className="w-full px-2.5 py-1.5 text-xs bg-background border rounded-lg font-medium cursor-pointer focus:ring-2 focus:ring-primary/20 outline-none"
+            >
+              <option value="2025/2026">2025/2026 (Aktif Berjalan)</option>
+              <option value="2026/2027">2026/2027 (Mendatang)</option>
+              <option value="2024/2025">2024/2025 (Arsip Historis)</option>
+            </select>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Pengaturan disimpan per tahun ajaran agar data arsip tidak tertimpa.
+            </p>
+          </div>
+
+          <div>
+            <label className="font-semibold text-foreground flex items-center gap-1.5 mb-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              Edisi Juknis Regulasi:
+            </label>
+            <select
+              value={edisiPedoman}
+              onChange={(e) => setEdisiPedoman(e.target.value)}
+              className="w-full px-2.5 py-1.5 text-xs bg-background border rounded-lg font-medium cursor-pointer focus:ring-2 focus:ring-primary/20 outline-none"
+            >
+              {getAvailableRegulatoryEditions().map((ed) => (
+                <option key={ed.id} value={ed.id}>
+                  {ed.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Standar ambang kelulusan & klausul masa berlaku menyesuaikan edisi ini.
+            </p>
           </div>
         </div>
 

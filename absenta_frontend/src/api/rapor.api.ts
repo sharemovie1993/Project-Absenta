@@ -179,16 +179,18 @@ export const raporApi = {
     return response.data;
   },
   // === UKK Settings, Jadwal & Ploting, Berita Acara ===
-  getUkkSettings: async (jurusanId?: string) => {
-    const response = await api.get('/rapor/ukk/settings', {
-      params: jurusanId ? { jurusan_id: jurusanId } : {},
-    });
+  getUkkSettings: async (jurusanId?: string, tahunAjaran?: string) => {
+    const params: Record<string, string> = {};
+    if (jurusanId) params.jurusan_id = jurusanId;
+    if (tahunAjaran) params.tahun_ajaran = tahunAjaran;
+    const response = await api.get('/rapor/ukk/settings', { params });
     return response.data;
   },
-  saveUkkSettings: async (jurusanId: string, data: any) => {
+  saveUkkSettings: async (jurusanId: string, data: any, tahunAjaran?: string) => {
     const response = await api.post('/rapor/ukk/settings', {
       jurusan_id: jurusanId,
       data,
+      tahun_ajaran: tahunAjaran || data?.tahun_ajaran,
     });
     return response.data;
   },

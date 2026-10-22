@@ -227,14 +227,14 @@ export const renderSertifikatUkkFront = (
     }
   }
 
-  // 3. MAIN TITLE & NOMOR (Bilingual, Official Blue Typography)
+  // 3. MAIN TITLE & NOMOR (Bilingual, Official Blue Typography Sesuai Juknis 2026)
   const contentCenterX = 118;
   let curY = logoY + logoH + 7;
 
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(14.5);
   doc.setTextColor(2, 132, 199);
-  doc.text('SERTIFIKAT UJI KOMPETENSI', contentCenterX, curY, { align: 'center' });
+  doc.text('SERTIFIKAT KOMPETENSI', contentCenterX, curY, { align: 'center' });
 
   curY += 4.8;
   doc.setFont('Helvetica', 'italic');
@@ -383,14 +383,12 @@ export const renderSertifikatUkkFront = (
   const colLeftX = 68;
   const colRightX = 168;
 
-  // Left: Kepala Sekolah
+  // Left: Kepala Sekolah (Atas nama Sekolah)
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(30, 41, 59);
   doc.text(`Atas nama ${namaSekolah}`, colLeftX, signY, { align: 'center' });
   doc.text(`On behalf of ${namaSekolah}`, colLeftX, signY + 3.2, { align: 'center' });
-  doc.text('Kepala Sekolah', colLeftX, signY + 7.5, { align: 'center' });
-  doc.text('Headmaster', colLeftX, signY + 10.7, { align: 'center' });
 
   // TTD Digital Kepala Sekolah
   const ttdKepala = data.sekolah?.ttd_kepala || ukk.ttd_kepala_sekolah;
@@ -403,17 +401,17 @@ export const renderSertifikatUkkFront = (
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(8.5);
   doc.text(kepalaSekolahNama, colLeftX, signY + 31, { align: 'center' });
-  if (data.sekolah?.nip_kepala && data.sekolah.nip_kepala !== '-') {
-    doc.setFont('Helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.text(`NIP. ${data.sekolah.nip_kepala}`, colLeftX, signY + 34.5, { align: 'center' });
-  }
-
-  // Right: Penguji Eksternal
   doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.text('Kepala Sekolah', colLeftX, signY + 34.5, { align: 'center' });
+  doc.text('School Principal', colLeftX, signY + 37.5, { align: 'center' });
+
+  // Right: Penguji Eksternal (Mitra Industri / DU-DI Sesuai Hal 21)
+  const mitraText = (ukk.mitra_nama || 'MITRA INDUSTRI').toUpperCase();
+  doc.setFont('Helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('Penguji Eksternal', colRightX, signY + 4, { align: 'center' });
-  doc.text('External Assessor', colRightX, signY + 7.5, { align: 'center' });
+  doc.setTextColor(15, 23, 42);
+  doc.text(mitraText, colRightX, signY + 1, { align: 'center' });
 
   // TTD Digital Penguji Eksternal (DU/DI)
   if (ukk.ttd_asesor_eksternal) {
@@ -428,11 +426,10 @@ export const renderSertifikatUkkFront = (
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(8.5);
   doc.text(asesorEksName, colRightX, signY + 31, { align: 'center' });
-  if (ukk.mitra_nama) {
-    doc.setFont('Helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.text(ukk.mitra_nama, colRightX, signY + 34.5, { align: 'center' });
-  }
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.text('Penguji Eksternal', colRightX, signY + 34.5, { align: 'center' });
+  doc.text('External Assessor', colRightX, signY + 37.5, { align: 'center' });
 };
 
 /**

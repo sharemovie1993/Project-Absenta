@@ -123,13 +123,13 @@ export class UkkSklController {
     }
   }
 
-  // === UKK Settings (Judul Penugasan & Unit Kompetensi per Jurusan) ===
+  // === UKK Settings (Judul Penugasan & Unit Kompetensi per Jurusan & Tahun Ajaran) ===
   static async getUkkSettings(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
-      const { jurusan_id } = req.query;
+      const { jurusan_id, tahun_ajaran } = req.query;
 
-      const result = await UkkSklService.getUkkSettings(tenant_id, jurusan_id);
+      const result = await UkkSklService.getUkkSettings(tenant_id, jurusan_id, tahun_ajaran);
       return sendResponse(reply, 200, true, 'Pengaturan UKK berhasil dimuat', result);
     } catch (error) {
       appLogger.error({ err: error }, 'Rapor controller error');
@@ -140,7 +140,7 @@ export class UkkSklController {
   static async saveUkkSettings(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
-      const { jurusan_id, data } = req.body;
+      const { jurusan_id, data, tahun_ajaran } = req.body;
 
       if (!jurusan_id) {
         return reply.status(400).send({
@@ -149,7 +149,7 @@ export class UkkSklController {
         });
       }
 
-      const result = await UkkSklService.saveUkkSettings(tenant_id, jurusan_id, data);
+      const result = await UkkSklService.saveUkkSettings(tenant_id, jurusan_id, data, tahun_ajaran);
       return sendResponse(reply, 200, true, 'Pengaturan UKK berhasil disimpan', result);
     } catch (error) {
       appLogger.error({ err: error }, 'Rapor controller error');

@@ -101,38 +101,92 @@ export class UkkSklService {
     });
   }
 
-  // === UKK Jurusan Settings (Judul Penugasan, Unit Kompetensi, Skema) ===
-  static async getUkkSettings(tenantId: string, jurusanId?: string) {
-    const key = jurusanId ? `ukk_settings_${jurusanId}` : 'ukk_settings_default';
-    const config = await prisma.config.findFirst({
-      where: { tenant_id: tenantId, key },
+  // === UKK Jurusan Settings (Judul Penugasan, Unit Kompetensi, Skema, Edisi Regulasi Historis) ===
+  static async getUkkSettings(tenantId: string, jurusanId?: string, tahunAjaran?: string) {
+    if (!jurusanId) {
+      const config = await prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: 'ukk_settings_default' },
+      });
+      if (!config || !config.value) return null;
+      try {
+        return JSON.parse(config.value);
+      } catch {
+        return null;
+      }
+    }
+
+    // 1. If academic year specified, check year-scoped key first (e.g. ukk_settings_jurId_2025_2026)
+    if (tahunAjaran) {
+      const sanitizedYear = String(tahunAjaran).replace(/[^a-zA-Z0-9]/g, '_');
+      const yearKey = `ukk_settings_${jurusanId}_${sanitizedYear}`;
+      const yearConfig = await prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: yearKey },
+      });
+      if (yearConfig && yearConfig.value) {
+        try {
+          return JSON.parse(yearConfig.value);
+        } catch {}
+      }
+    }
+
+    // 2. Fallback to general jurusan key
+    const fallbackKey = `ukk_settings_${jurusanId}`;
+    const fallbackConfig = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key: fallbackKey },
     });
-    if (!config || !config.value) return null;
+    if (!fallbackConfig || !fallbackConfig.value) return null;
     try {
-      return JSON.parse(config.value);
+      return JSON.parse(fallbackConfig.value);
     } catch {
       return null;
     }
   }
 
-  static async saveUkkSettings(tenantId: string, jurusanId: string, data: any) {
-    const key = jurusanId ? `ukk_settings_${jurusanId}` : 'ukk_settings_default';
+  static async saveUkkSettings(tenantId: string, jurusanId: string, data: any, tahunAjaran?: string) {
     const value = JSON.stringify(data);
+    const targetYear = tahunAjaran || data?.tahun_ajaran;
+
+    // 1. If year is present, save year-specific historical record
+    if (targetYear) {
+      const sanitizedYear = String(targetYear).replace(/[^a-zA-Z0-9]/g, '_');
+      const yearKey = `ukk_settings_${jurusanId}_${sanitizedYear}`;
+      const existingYear = await prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: yearKey },
+      });
+      if (existingYear) {
+        await prisma.config.update({
+          where: { id: existingYear.id },
+          data: { value, description: `Konfigurasi UKK Jurusan ${jurusanId} TA ${targetYear}` },
+        });
+      } else {
+        await prisma.config.create({
+          data: {
+            tenant_id: tenantId,
+            key: yearKey,
+            value,
+            description: `Konfigurasi UKK Jurusan ${jurusanId} TA ${targetYear}`,
+          },
+        });
+      }
+    }
+
+    // 2. Also save to current active default key for backwards compatibility
+    const defaultKey = `ukk_settings_${jurusanId}`;
     const existing = await prisma.config.findFirst({
-      where: { tenant_id: tenantId, key },
+      where: { tenant_id: tenantId, key: defaultKey },
     });
     if (existing) {
       return prisma.config.update({
         where: { id: existing.id },
-        data: { value, description: `Konfigurasi UKK Jurusan ${jurusanId || 'Default'}` },
+        data: { value, description: `Konfigurasi UKK Jurusan ${jurusanId}` },
       });
     } else {
       return prisma.config.create({
         data: {
           tenant_id: tenantId,
-          key,
+          key: defaultKey,
           value,
-          description: `Konfigurasi UKK Jurusan ${jurusanId || 'Default'}`,
+          description: `Konfigurasi UKK Jurusan ${jurusanId}`,
         },
       });
     }
