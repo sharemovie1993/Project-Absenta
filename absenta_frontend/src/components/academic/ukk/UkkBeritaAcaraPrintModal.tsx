@@ -102,14 +102,19 @@ export const UkkBeritaAcaraPrintModal: React.FC<UkkBeritaAcaraPrintModalProps> =
       isOpen={isOpen}
       onClose={onClose}
       title="Pratinjau Cetak Berita Acara UKK"
-      size="xl"
+      size="5xl"
     >
       <div className="space-y-4">
         {/* Action Toolbar */}
-        <div className="flex items-center justify-between pb-3 border-b">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b">
+          <div className="flex items-center gap-2.5">
             <span className="text-xs text-muted-foreground font-medium">Sesi:</span>
-            <span className="text-xs font-bold text-foreground">{beritaAcara.nama_sesi}</span>
+            <span className="text-xs font-bold text-foreground bg-primary/10 text-primary px-2.5 py-1 rounded-md">
+              {beritaAcara.nama_sesi}
+            </span>
+            <span className="text-[11px] text-muted-foreground hidden sm:inline">
+              • Format Standar A4 Portrait (210 × 297 mm)
+            </span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -136,11 +141,11 @@ export const UkkBeritaAcaraPrintModal: React.FC<UkkBeritaAcaraPrintModalProps> =
         </div>
 
         {/* Printable Paper Preview (A4 Portrait Container) */}
-        <div className="overflow-y-auto max-h-[72vh] p-2 sm:p-4 bg-muted/40 rounded-xl border flex justify-center">
+        <div className="overflow-y-auto max-h-[78vh] p-3 sm:p-6 bg-slate-200/60 dark:bg-slate-950/70 rounded-xl border flex justify-center">
           <div
             ref={printRef}
             id="print-area-berita-acara"
-            className="w-full max-w-[210mm] bg-white text-slate-900 p-6 sm:p-10 shadow-lg font-serif text-[12px] leading-relaxed select-text"
+            className="w-full max-w-[210mm] bg-white text-slate-900 p-8 sm:p-12 shadow-2xl rounded-sm font-serif text-[12px] leading-relaxed select-text border border-slate-300 dark:border-slate-800"
             style={{ minHeight: '297mm' }}
           >
             {/* === KOP SURAT RESMI MENGGUNAKAN KOMPONEN PrintHeader.tsx === */}
