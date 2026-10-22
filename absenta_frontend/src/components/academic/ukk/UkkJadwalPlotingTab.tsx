@@ -31,6 +31,7 @@ import { raporApi } from '@/api/rapor.api';
 import { sekolahApi } from '@/api/academic/sekolah.api';
 import { hubinApi } from '@/api/hubin.api';
 import { useGuruOptions } from '@/hooks/useGuruOptions';
+import { useConfirm } from '@/providers/ConfirmProvider';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import {
   generatePdfUkkJadwal,
@@ -65,6 +66,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
   onManageBeritaAcara,
 }) => {
   const queryClient = useQueryClient();
+  const { confirm } = useConfirm();
 
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState('');
@@ -258,15 +260,22 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
     saveMutation.mutate(updatedList);
   };
 
-  // Delete Session
-  const handleDeleteSession = (sessionId: string) => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus jadwal sesi ini?')) return;
+  // Delete Session (Pilar 15 - Dialog Konfirmasi Reusable Terstandar)
+  const handleDeleteSession = async (sessionId: string) => {
+    const ok = await confirm({
+      title: 'Hapus Sesi UKK?',
+      description: 'Apakah Anda yakin ingin menghapus jadwal sesi ini beserta daftar ploting siswa yang ada?',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      style: 'danger',
+    });
+    if (!ok) return;
     const updatedList = rawSessions.filter((s) => s.id !== sessionId);
     saveMutation.mutate(updatedList);
   };
 
   // Quick Auto-Distribute Siswa to Existing Sessions
-  const handleAutoDistributeStudents = () => {
+  const handleAutoDistributeStudents = async () => {
     if (sessions.length === 0) {
       toast.error('Buat minimal 1 sesi terlebih dahulu!');
       return;
@@ -276,12 +285,14 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
       return;
     }
 
-    if (
-      !window.confirm(
-        `Bagi rata ${siswaList.length} siswa secara otomatis ke dalam ${sessions.length} sesi yang ada?`
-      )
-    )
-      return;
+    const ok = await confirm({
+      title: 'Bagi Rata Siswa Otomatis?',
+      description: `Bagi rata ${siswaList.length} siswa secara otomatis ke dalam ${sessions.length} sesi ujian aktif?`,
+      confirmText: 'Ya, Bagi Rata',
+      cancelText: 'Batal',
+      style: 'primary',
+    });
+    if (!ok) return;
 
     const distributedSessions = rawSessions.map((s) => ({ ...s, siswa_ids: [] as string[] }));
     siswaList.forEach((siswa, idx) => {

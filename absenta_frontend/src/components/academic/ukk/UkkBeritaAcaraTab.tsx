@@ -30,6 +30,7 @@ import { DigitalSignatureField } from '@/components/ui/DigitalSignatureField';
 import { raporApi } from '@/api/rapor.api';
 import { sekolahApi } from '@/api/academic/sekolah.api';
 import { useGuruOptions } from '@/hooks/useGuruOptions';
+import { useConfirm } from '@/providers/ConfirmProvider';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import {
   generatePdfUkkBeritaAcara,
@@ -59,6 +60,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
   onClearSelectedJadwal,
 }) => {
   const queryClient = useQueryClient();
+  const { confirm } = useConfirm();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -271,8 +273,16 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
     setModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (!window.confirm('Hapus Berita Acara ini?')) return;
+  // Delete Berita Acara (Pilar 15 - Dialog Konfirmasi Reusable Terstandar)
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: 'Hapus Berita Acara?',
+      description: 'Apakah Anda yakin ingin menghapus data Berita Acara sesi ini beserta dokumentasinya?',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      style: 'danger',
+    });
+    if (!ok) return;
     const updated = records.filter((r) => r.id !== id);
     saveMutation.mutate(updated);
   };
