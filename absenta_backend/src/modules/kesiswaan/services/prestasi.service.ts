@@ -184,7 +184,8 @@ export class PrestasiService {
       andConditions.push({
         OR: [
           { Kelas: { jurusan_id: (query as any).jurusan_id } },
-          { Siswa: { Kelas: { jurusan_id: (query as any).jurusan_id } } }
+          { Siswa: { Kelas: { jurusan_id: (query as any).jurusan_id } } },
+          { Siswa: { jurusan_id: (query as any).jurusan_id } }
         ]
       });
     }

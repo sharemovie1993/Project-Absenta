@@ -104,17 +104,21 @@ export const PrestasiView: React.FC<UniversalPrestasiViewProps> = React.memo(({
   const confirm = useConfirm();
 
   // Internal Academic Filter fallback jika prop tidak dikunci dari parent
+  const safeJurusanId = jurusanId && jurusanId !== 'jurusan-default' ? jurusanId : undefined;
+
   const internalAcademic = useAcademicFilter({
     enableTp: true,
     enableSemester: true,
     enableTingkat: !kelasId,
     enableKelas: !kelasId,
+    allowAllKelas: true,
+    jurusanId: safeJurusanId,
   });
 
   const effectiveTpId = tahunPelajaranId || internalAcademic.values.tahunPelajaranId;
   const effectiveSemesterId = semesterId || internalAcademic.values.semesterId;
-  const effectiveKelasId = kelasId || internalAcademic.values.kelasId;
-  const effectiveJurusanId = jurusanId;
+  const effectiveKelasId = kelasId || (internalAcademic.values.kelasId || undefined);
+  const effectiveJurusanId = safeJurusanId;
 
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 400);

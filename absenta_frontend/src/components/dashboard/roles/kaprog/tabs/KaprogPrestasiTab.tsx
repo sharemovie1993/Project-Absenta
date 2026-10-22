@@ -16,11 +16,13 @@ export const KaprogPrestasiTab: React.FC<KaprogPrestasiTabProps> = React.memo(({
   tahunAjaran,
   semesterId,
 }) => {
+  const safeJurusanId = jurusanId && jurusanId !== 'jurusan-default' ? jurusanId : undefined;
+
   return (
     <div className="w-full max-w-full">
       <PrestasiView
-        jurusanId={jurusanId}
-        jurusanNama={jurusanNama}
+        jurusanId={safeJurusanId}
+        jurusanNama={safeJurusanId ? jurusanNama : undefined}
         tahunPelajaranId={tahunPelajaranId}
         tahunAjaran={tahunAjaran}
         semesterId={semesterId}
