@@ -17,6 +17,7 @@ import {
   Save,
   HelpCircle,
   FileSpreadsheet,
+  FileText,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -35,6 +36,7 @@ import {
   type UkkJadwalSesi,
   type UkkJadwalPrintData,
 } from '@/utils/print/modules/pdfUkkJadwal';
+import type { UkkBeritaAcaraItem } from '@/utils/print/modules/pdfUkkBeritaAcara';
 import { cn } from '@/lib/utils';
 
 export interface UkkJadwalPlotingTabProps {
@@ -47,6 +49,7 @@ export interface UkkJadwalPlotingTabProps {
     kelas?: string;
   }>;
   readOnly?: boolean;
+  onManageBeritaAcara?: (sesi: UkkJadwalSesi) => void;
 }
 
 export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
@@ -54,6 +57,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
   jurusanNama = 'Kejuruan',
   siswaList = [],
   readOnly = false,
+  onManageBeritaAcara,
 }) => {
   const queryClient = useQueryClient();
 
@@ -121,6 +125,19 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
     const list = mitraRes?.data?.list || mitraRes?.list || mitraRes?.data || [];
     return Array.isArray(list) ? list : [];
   }, [mitraRes]);
+
+  // Query Berita Acara untuk sinkronisasi status per sesi
+  const { data: baRes } = useQuery({
+    queryKey: ['ukk-berita-acara', jurusanId],
+    queryFn: () => (jurusanId ? raporApi.getUkkBeritaAcara(jurusanId) : Promise.resolve({ data: [] })),
+    enabled: !!jurusanId,
+    staleTime: 60 * 1000,
+  });
+
+  const beritaAcaraList: UkkBeritaAcaraItem[] = useMemo(() => {
+    const d = baRes?.data || baRes;
+    return Array.isArray(d) ? d : [];
+  }, [baRes]);
 
   // Hook Master Data Guru untuk Penguji Internal UKK
   const { options: guruOptions, rawList: guruList, isLoading: isLoadingGuru } = useGuruOptions({
@@ -463,17 +480,33 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {sessions.map((sesi, index) => (
-            <Card key={sesi.id} className="border shadow-sm overflow-hidden flex flex-col">
-              {/* Card Header */}
-              <div className="bg-muted/40 p-4 border-b flex items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
-                      {index + 1}
-                    </span>
-                    <h4 className="text-sm font-bold text-foreground">{sesi.nama_sesi}</h4>
-                  </div>
+          {sessions.map((sesi, index) => {
+            const sessionBa = beritaAcaraList.find(
+              (b) => b.jadwal_id === sesi.id || b.nama_sesi === sesi.nama_sesi
+            );
+
+            return (
+              <Card key={sesi.id} className="border shadow-sm overflow-hidden flex flex-col">
+                {/* Card Header */}
+                <div className="bg-muted/40 p-4 border-b flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+                        {index + 1}
+                      </span>
+                      <h4 className="text-sm font-bold text-foreground">{sesi.nama_sesi}</h4>
+                      {sessionBa ? (
+                        <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                          BA: {sessionBa.jumlah_hadir} Hadir
+                        </span>
+                      ) : (
+                        <span className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          BA Belum Dibuat
+                        </span>
+                      )}
+                    </div>
                   <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5 text-primary" />
@@ -574,20 +607,57 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                   </div>
                 </div>
 
-                {!readOnly && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleOpenEditModal(sesi)}
-                    className="w-full mt-3 text-xs gap-1.5"
-                  >
-                    <UserCheck className="w-3.5 h-3.5" />
-                    Kelola Ploting Siswa Sesi Ini
-                  </Button>
-                )}
+                <div className="pt-3 mt-3 border-t space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground font-medium">Laporan Berita Acara:</span>
+                    {sessionBa ? (
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Selesai ({sessionBa.jumlah_hadir}/{sessionBa.jumlah_peserta} Siswa)
+                      </span>
+                    ) : (
+                      <span className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" />
+                        Belum Dibuat
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {!readOnly && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenEditModal(sesi)}
+                        className="text-xs gap-1.5 w-full cursor-pointer"
+                      >
+                        <UserCheck className="w-3.5 h-3.5" />
+                        Kelola Ploting
+                      </Button>
+                    )}
+
+                    {onManageBeritaAcara && (
+                      <Button
+                        variant={sessionBa ? 'outline' : 'secondary'}
+                        size="sm"
+                        onClick={() => onManageBeritaAcara(sesi)}
+                        className={cn(
+                          'text-xs gap-1.5 w-full cursor-pointer',
+                          sessionBa
+                            ? 'text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950'
+                            : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100'
+                        )}
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        {sessionBa ? 'Buka Berita Acara' : 'Buat Berita Acara'}
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </div>
             </Card>
-          ))}
+          );
+        })}
         </div>
       )}
 

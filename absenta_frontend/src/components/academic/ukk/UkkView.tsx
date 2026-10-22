@@ -74,6 +74,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
 }) => {
   const [activeTab, setActiveTab] = useState<'penilaian' | 'ploting' | 'berita_acara'>('penilaian');
   const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [selectedJadwalForBa, setSelectedJadwalForBa] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'DONE' | 'PENDING'>('ALL');
   const [predikatFilter, setPredikatFilter] = useState<string>('ALL');
@@ -352,6 +353,10 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
           jurusanNama={jurusanNama}
           siswaList={siswaListForPloting}
           readOnly={readOnly}
+          onManageBeritaAcara={(sesi) => {
+            setSelectedJadwalForBa(sesi.id);
+            setActiveTab('berita_acara');
+          }}
         />
       )}
 
@@ -360,6 +365,8 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
           jurusanId={jurusanId}
           jurusanNama={jurusanNama}
           readOnly={readOnly}
+          selectedJadwalId={selectedJadwalForBa}
+          onClearSelectedJadwal={() => setSelectedJadwalForBa(null)}
         />
       )}
 

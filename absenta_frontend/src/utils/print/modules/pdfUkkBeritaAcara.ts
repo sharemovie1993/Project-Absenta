@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 
 export interface UkkBeritaAcaraItem {
   id: string;
+  jadwal_id?: string;
   nama_sesi: string;
   tanggal: string;
   jam_mulai: string;
