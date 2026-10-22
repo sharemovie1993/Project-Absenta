@@ -166,11 +166,11 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Pengaturan Sertifikat & Unit Kompetensi UKK"
-      size="xl"
+      size="5xl"
     >
-      <div className="space-y-6">
+      <div className="space-y-5">
         {/* Banner Info */}
-        <div className="bg-gradient-to-r from-blue-500/10 via-sky-500/10 to-indigo-500/10 border border-blue-500/20 rounded-xl p-4 flex items-start gap-3">
+        <div className="bg-gradient-to-r from-blue-500/10 via-sky-500/10 to-indigo-500/10 border border-blue-500/20 rounded-xl p-3.5 sm:p-4 flex items-start gap-3">
           <FileCheck2 className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
           <div className="text-xs text-muted-foreground leading-relaxed">
             <span className="font-semibold text-foreground">
@@ -181,35 +181,35 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
           </div>
         </div>
 
-        {/* Tab Switcher: Rekap | Edit */}
-        <div className="flex items-center gap-1 bg-muted/40 rounded-xl p-1 text-xs font-medium">
+        {/* Tab Switcher: Rekap | Edit (Mobile Touch-Friendly) */}
+        <div className="grid grid-cols-2 sm:inline-flex items-center gap-1 bg-muted/50 rounded-xl p-1 text-xs font-medium w-full sm:w-auto">
           <button
             type="button"
             onClick={() => setActiveView('rekap')}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all',
+              'flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg transition-all',
               activeView === 'rekap'
-                ? 'bg-background shadow text-foreground'
+                ? 'bg-background shadow-sm text-foreground font-semibold'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            <TableIcon className="w-3.5 h-3.5" />
+            <TableIcon className="w-3.5 h-3.5 shrink-0" />
             Rekap Semua Tahun
           </button>
           <button
             type="button"
             onClick={() => setActiveView('form')}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all',
+              'flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg transition-all',
               activeView === 'form'
-                ? 'bg-background shadow text-foreground'
+                ? 'bg-background shadow-sm text-foreground font-semibold'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            <Settings2 className="w-3.5 h-3.5" />
+            <Settings2 className="w-3.5 h-3.5 shrink-0" />
             Edit Konfigurasi
             {tahunAjaran && (
-              <span className="ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px]">
+              <span className="ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px] font-mono">
                 {tahunAjaran}
               </span>
             )}
@@ -388,31 +388,43 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
               units.map((unit, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center gap-2 p-2 bg-muted/40 rounded-lg border text-xs group"
+                  className="flex flex-col sm:flex-row sm:items-center gap-2 p-2.5 sm:p-2 bg-muted/40 rounded-lg border text-xs group"
                 >
-                  <span className="w-6 text-center font-bold text-muted-foreground">{idx + 1}</span>
-                  <input
-                    type="text"
-                    value={unit.kode_unit}
-                    onChange={(e) => handleUpdateUnit(idx, 'kode_unit', e.target.value)}
-                    placeholder="Kode Unit (misal: PRK.IH01.009.01)"
-                    className="w-44 px-2 py-1.5 bg-background border rounded font-mono text-xs focus:ring-1 focus:ring-primary outline-none"
-                  />
-                  <input
-                    type="text"
-                    value={unit.judul_unit}
-                    onChange={(e) => handleUpdateUnit(idx, 'judul_unit', e.target.value)}
-                    placeholder="Judul Unit Kompetensi..."
-                    className="flex-1 px-2 py-1.5 bg-background border rounded text-xs focus:ring-1 focus:ring-primary outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveUnit(idx)}
-                    className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded transition-colors"
-                    title="Hapus unit ini"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <span className="w-5 text-center font-bold text-muted-foreground shrink-0">{idx + 1}</span>
+                    <input
+                      type="text"
+                      value={unit.kode_unit}
+                      onChange={(e) => handleUpdateUnit(idx, 'kode_unit', e.target.value)}
+                      placeholder="Kode Unit (misal: PRK.IH01.009.01)"
+                      className="w-full sm:w-48 px-2 py-1.5 bg-background border rounded font-mono text-xs focus:ring-1 focus:ring-primary outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveUnit(idx)}
+                      className="sm:hidden p-1.5 text-rose-500 hover:bg-rose-50 rounded transition-colors shrink-0 ml-auto"
+                      title="Hapus unit ini"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 flex-1 w-full pl-7 sm:pl-0">
+                    <input
+                      type="text"
+                      value={unit.judul_unit}
+                      onChange={(e) => handleUpdateUnit(idx, 'judul_unit', e.target.value)}
+                      placeholder="Judul Unit Kompetensi..."
+                      className="flex-1 px-2 py-1.5 bg-background border rounded text-xs focus:ring-1 focus:ring-primary outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveUnit(idx)}
+                      className="hidden sm:block p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded transition-colors shrink-0"
+                      title="Hapus unit ini"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               ))
             )}
