@@ -64,3 +64,5 @@ export { TabSwitcher, type TabOption } from './TabSwitcher';
 export { UnconnectedBadge, renderApiValue, type UnconnectedBadgeProps } from './UnconnectedBadge';
 export { MobileDataList, type MobileDataListProps } from './MobileDataList';
 export { CleanDeckCard, type CleanDeckCardProps } from './CleanDeckCard';
+export { DigitalSignaturePadModal, type DigitalSignaturePadModalProps } from './DigitalSignaturePadModal';
+export { DigitalSignatureField, type DigitalSignatureFieldProps } from './DigitalSignatureField';
