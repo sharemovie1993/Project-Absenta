@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
@@ -44,6 +44,8 @@ export const UkkRabPrintModal: React.FC<UkkRabPrintModalProps> = ({
 
   // Hook Resolving Active Organizational Structure
   const autoSigners = useUkkStrukturSigners(rabData?.jurusanId, jurusanNama);
+  const printSheetRef = useRef<HTMLDivElement | null>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
   // Editable Signers State (Prefilled from Struktur Organisasi)
   const [kaprogNama, setKaprogNama] = useState<string>('');
@@ -93,7 +95,43 @@ export const UkkRabPrintModal: React.FC<UkkRabPrintModalProps> = ({
     window.print();
   };
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
+    setIsExportingPdf(true);
+    // 1. Prioritas Utama: Export Canvas Presisi 100% Sesuai Tampilan Layar (WYSIWYG)
+    try {
+      const sheetElement = (printSheetRef.current?.querySelector('.print-sheet') as HTMLElement) || printSheetRef.current;
+      if (sheetElement) {
+        toast.loading('Menyiapkan dokumen PDF presisi...', { id: 'pdf-rab-export' });
+        const html2canvas = (await import('html2canvas-pro')).default;
+        const { jsPDF } = await import('jspdf');
+
+        const canvas = await html2canvas(sheetElement, {
+          scale: 2.5,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+        });
+
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4',
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+        const filename = `RAB_UKK_${(rabData.jurusanNama || jurusanNama).replace(/\s+/g, '_')}_TA_${(tahunPelajaran || 'TA').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+        pdf.save(filename);
+        toast.success('Dokumen PDF berhasil diunduh (Presisi 100% Layar)', { id: 'pdf-rab-export' });
+        setIsExportingPdf(false);
+        return;
+      }
+    } catch (err) {
+      console.warn('Canvas export fallback to jsPDF programmatic:', err);
+    }
+
+    // 2. Fallback: Programmatic Vector Generator
     try {
       const payload: UkkRabPrintData = {
         sekolah: {
@@ -132,8 +170,11 @@ export const UkkRabPrintModal: React.FC<UkkRabPrintModalProps> = ({
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      toast.success('Dokumen PDF berhasil diunduh');
     } catch {
       toast.error('Gagal mengunduh dokumen PDF');
+    } finally {
+      setIsExportingPdf(false);
     }
   };
 
@@ -309,12 +350,13 @@ export const UkkRabPrintModal: React.FC<UkkRabPrintModalProps> = ({
       {/* ========================================================================= */}
       {/* LEMBAR NASKAH UTAMA RAB & DAFTAR KEBUTUHAN ALAT/BAHAN (A4 PORTRAIT)        */}
       {/* ========================================================================= */}
-      <PrintDocumentSheet
-        orientation="portrait"
-        pageNumber={1}
-        totalPages={1}
-        footerText={`Rencana Anggaran Biaya UKK — ${jurusanNama} (${tahunPelajaran || '-'})`}
-      >
+      <div ref={printSheetRef} className="w-full flex flex-col items-center">
+        <PrintDocumentSheet
+          orientation="portrait"
+          pageNumber={1}
+          totalPages={1}
+          footerText={`Rencana Anggaran Biaya UKK — ${jurusanNama} (${tahunPelajaran || '-'})`}
+        >
         {/* === KOP SURAT RESMI MENGGUNAKAN KOMPONEN PrintHeader.tsx === */}
         <PrintHeader
           variant="portrait"
@@ -515,6 +557,7 @@ export const UkkRabPrintModal: React.FC<UkkRabPrintModalProps> = ({
           </div>
         </div>
       </PrintDocumentSheet>
+      </div>
     </UniversalDocumentModal>
   );
 };
