@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -13,7 +13,8 @@ import {
   ChevronRight,
   ClipboardList,
   Layers,
-  Award
+  Award,
+  ShieldAlert
 } from 'lucide-react';
 import { Button, Badge, Loader } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
@@ -34,6 +35,7 @@ import { KaprogBerandaTab } from './kaprog/tabs/KaprogBerandaTab';
 import { KaprogSiswaTab } from './kaprog/tabs/KaprogSiswaTab';
 import { KaprogPklTab } from './kaprog/tabs/KaprogPklTab';
 import { KaprogKehadiranTab } from './kaprog/tabs/KaprogKehadiranTab';
+import { KaprogPelanggaranTab } from './kaprog/tabs/KaprogPelanggaranTab';
 import { KaprogGuruTab } from './kaprog/tabs/KaprogGuruTab';
 import { KaprogSaranaTab } from './kaprog/tabs/KaprogSaranaTab';
 import { KaprogGuruDetailModal } from './kaprog/KaprogGuruDetailModal';
@@ -67,8 +69,22 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
 
   const currentUser = propUser || authUser;
 
-  // Active Tab State (beranda | pkl | kehadiran | guru | sarana)
-  const [activeTab, setActiveTab] = useState<KaprogTabId>('beranda');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const subtabParam = searchParams.get('subtab') as KaprogTabId | null;
+
+  // Active Tab State (beranda | siswa | pkl | kehadiran | pelanggaran | guru | sarana)
+  const [activeTab, setActiveTab] = useState<KaprogTabId>(() => {
+    if (subtabParam && ['beranda', 'siswa', 'pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana'].includes(subtabParam)) {
+      return subtabParam;
+    }
+    return 'beranda';
+  });
+
+  useEffect(() => {
+    if (subtabParam && ['beranda', 'siswa', 'pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana'].includes(subtabParam)) {
+      setActiveTab(subtabParam);
+    }
+  }, [subtabParam]);
 
   // Search filter inside PKL tab
   const [mitraFilter, setMitraFilter] = useState('');
@@ -338,6 +354,12 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
         icon: CalendarCheck,
         badge: atRiskStudents.length > 0 ? atRiskStudents.length : undefined,
       },
+      {
+        id: 'pelanggaran',
+        label: 'Pelanggaran Siswa',
+        icon: ShieldAlert,
+        badge: (pelanggaranList || []).length > 0 ? (pelanggaranList || []).length : undefined,
+      },
       { id: 'guru', label: 'Guru Produktif', icon: Users },
       {
         id: 'sarana',
@@ -346,7 +368,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
         badge: saranaCounts.rusak > 0 ? saranaCounts.rusak : undefined,
       },
     ],
-    [tpStatus.pendingMitra, atRiskStudents.length, saranaCounts.rusak]
+    [tpStatus.pendingMitra, atRiskStudents.length, (pelanggaranList || []).length, saranaCounts.rusak]
   );
 
   // Mutation: Simpan Deskripsi TP Inline
@@ -387,7 +409,16 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
   // Handlers dibungkus useCallback (Pilar 3: Optimasi DOM Churn)
   const handleTabSelect = useCallback((tabId: KaprogTabId) => {
     setActiveTab(tabId);
-  }, []);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (tabId === 'beranda') {
+        next.delete('subtab');
+      } else {
+        next.set('subtab', tabId);
+      }
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   const handleSelectEditingSlot = useCallback((slot: EditingMitraSlot) => {
     setActiveEditingSlot(slot);
@@ -622,9 +653,18 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                   <KaprogKehadiranTab
                     kelasKehadiranList={kelasKehadiranList}
                     atRiskStudents={atRiskStudents}
+                    jurusanId={resolvedJurusan?.id}
+                    jurusanNama={resolvedJurusan?.nama || 'Kejuruan'}
+                    tahunPelajaranId={academic.selectedTahunPelajaran}
+                    semesterId={academic.selectedSemester}
+                  />
+                )}
+                {activeTab === 'pelanggaran' && (
+                  <KaprogPelanggaranTab
                     pelanggaranList={pelanggaranList}
                     jurusanId={resolvedJurusan?.id}
                     jurusanNama={resolvedJurusan?.nama || 'Kejuruan'}
+                    kelasList={kelasKehadiranList}
                     tahunPelajaranId={academic.selectedTahunPelajaran}
                     semesterId={academic.selectedSemester}
                   />

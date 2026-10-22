@@ -13,7 +13,8 @@ import {
   GraduationCap, 
   Clock, 
   ArrowRight,
-  TrendingUp
+  TrendingUp,
+  ShieldAlert
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui';
@@ -182,6 +183,13 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
               tabId: 'siswa' as KaprogTabId,
               path: '/academic/kelas',
               icon: Layers,
+            },
+            {
+              title: 'Pelanggaran Siswa',
+              desc: 'Kedisiplinan & tatib',
+              tabId: 'pelanggaran' as KaprogTabId,
+              path: '/kesiswaan/pelanggaran',
+              icon: ShieldAlert,
             },
             {
               title: 'Sarana & Lab',
