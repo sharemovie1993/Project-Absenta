@@ -31,6 +31,7 @@ export const UkkBeritaAcaraPrintModal: React.FC<UkkBeritaAcaraPrintModalProps> =
 
   // Universal Hook: Resolves active Tenant & Sekolah data, plus pre-converts logos to Base64
   const { tenantInfo, logoDaerahBase64, logoSekolahBase64, rawSekolah } = usePrintHeaderData();
+  const sekolahData = rawSekolah;
 
   if (!beritaAcara) return null;
 
