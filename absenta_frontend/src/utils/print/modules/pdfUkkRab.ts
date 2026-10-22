@@ -132,18 +132,18 @@ export const generatePdfUkkRab = (data: UkkRabPrintData): { doc: jsPDF; blobUrl:
   }
 
   parsedHeaderLines.forEach((item: { text: string; bold: boolean; fontSize: number }) => {
-    doc.setFont('times', item.bold ? 'bold' : 'normal');
+    doc.setFont('helvetica', item.bold ? 'bold' : 'normal');
     doc.setFontSize(item.fontSize);
-    doc.setTextColor(0, 0, 0);
+    doc.setTextColor(15, 23, 42);
     doc.text(item.text.toUpperCase(), pageWidth / 2, curKopY, { align: 'center' });
     curKopY += item.fontSize > 11 ? 4.5 : 3.8;
   });
 
   // Alamat & Kontak
   if (data.sekolah.alamat) {
-    doc.setFont('times', 'normal');
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
-    doc.setTextColor(51, 65, 85);
+    doc.setTextColor(71, 85, 105);
     const alamatText = `${data.sekolah.alamat}${data.sekolah.telepon ? ' | Telp: ' + data.sekolah.telepon : ''}`;
     doc.text(alamatText, pageWidth / 2, curKopY, { align: 'center' });
     curKopY += 3.2;
@@ -151,7 +151,7 @@ export const generatePdfUkkRab = (data: UkkRabPrintData): { doc: jsPDF; blobUrl:
   if (data.sekolah.website || data.sekolah.email) {
     doc.setFont('courier', 'normal');
     doc.setFontSize(7.5);
-    doc.setTextColor(71, 85, 105);
+    doc.setTextColor(100, 116, 139);
     const contactText = `${data.sekolah.website ? 'Website: ' + data.sekolah.website : ''}${data.sekolah.email ? ' | Email: ' + data.sekolah.email : ''}`;
     doc.text(contactText, pageWidth / 2, curKopY, { align: 'center' });
     curKopY += 3.2;
@@ -159,40 +159,73 @@ export const generatePdfUkkRab = (data: UkkRabPrintData): { doc: jsPDF; blobUrl:
 
   // Double rule
   curKopY += 1;
-  doc.setDrawColor(0, 0, 0);
+  doc.setDrawColor(15, 23, 42);
   doc.setLineWidth(0.8);
   doc.line(margin, curKopY, pageWidth - margin, curKopY);
   doc.setLineWidth(0.3);
   doc.line(margin, curKopY + 0.8, pageWidth - margin, curKopY + 0.8);
 
   // Title
-  doc.setFont('times', 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
-  doc.setTextColor(0, 0, 0);
+  doc.setTextColor(15, 23, 42);
   curKopY += 7;
   doc.text('RENCANA ANGGARAN BIAYA (RAB) & DAFTAR KEBUTUHAN ALAT/BAHAN', pageWidth / 2, curKopY, {
     align: 'center',
   });
   doc.setFontSize(10);
-  curKopY += 5;
+  curKopY += 4.5;
   doc.text(`UJI KOMPETENSI KEAHLIAN (UKK) TAHUN PELAJARAN ${data.rab.tahunPelajaran || '-'}`, pageWidth / 2, curKopY, {
     align: 'center',
   });
 
-  // Metadata Box
+  // Metadata Card Box
   let currentY = curKopY + 6;
-  doc.setFont('times', 'normal');
-  doc.setFontSize(9);
-  doc.text(`Program Keahlian : ${data.rab.jurusanNama || '-'}`, margin, currentY);
-  doc.text(`Jumlah Peserta  : ${data.rab.jumlahPeserta || 0} Siswa`, margin + 110, currentY);
+  const metaBoxHeight = data.rab.judulPenugasan ? 18 : 14;
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(margin, currentY, contentWidth, metaBoxHeight, 1.5, 1.5, 'FD');
+
+  currentY += 4.5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(51, 65, 85);
+  doc.text('Program Keahlian', margin + 3, currentY);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text(`: ${data.rab.jurusanNama || '-'}`, margin + 30, currentY);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(51, 65, 85);
+  doc.text('Jumlah Peserta', margin + 110, currentY);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text(`: ${data.rab.jumlahPeserta || 0} Siswa`, margin + 135, currentY);
   currentY += 4.5;
 
   if (data.rab.judulPenugasan) {
-    doc.text(`Judul Penugasan  : ${data.rab.judulPenugasan}`, margin, currentY, { maxWidth: contentWidth });
-    currentY += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 65, 85);
+    doc.text('Judul Penugasan', margin + 3, currentY);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(15, 23, 42);
+    doc.text(`: ${data.rab.judulPenugasan}`, margin + 30, currentY, { maxWidth: contentWidth - 35 });
+    currentY += 4.5;
   }
-  doc.text(`Tanggal Pengajuan: ${data.rab.tanggalPengajuan || '-'}`, margin, currentY);
-  doc.text(`Status Verifikasi: ${data.rab.statusPengajuan.replace(/_/g, ' ')}`, margin + 110, currentY);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(51, 65, 85);
+  doc.text('Tgl Pengajuan', margin + 3, currentY);
+  doc.setTextColor(15, 23, 42);
+  doc.text(`: ${data.rab.tanggalPengajuan || '-'}`, margin + 30, currentY);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(51, 65, 85);
+  doc.text('Status Verifikasi', margin + 110, currentY);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(16, 185, 129);
+  doc.text(`: ${data.rab.statusPengajuan.replace(/_/g, ' ')}`, margin + 135, currentY);
   currentY += 6;
 
   // Group items
@@ -204,9 +237,13 @@ export const generatePdfUkkRab = (data: UkkRabPrintData): { doc: jsPDF; blobUrl:
   const grandTotal = totalBiayaAlat + totalBiayaBahan;
 
   // Table A: Kebutuhan Peralatan
-  doc.setFont('times', 'bold');
-  doc.setFontSize(9.5);
-  doc.text('A. DAFTAR KEBUTUHAN ALAT PRAKTIK & PERANGKAT UTAMA', margin, currentY);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(15, 23, 42);
+  doc.text('A. KEBUTUHAN PERALATAN / FASILITAS UTAMA UJIAN', margin, currentY);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(`Subtotal: ${formatRupiah(totalBiayaAlat)}`, pageWidth - margin, currentY, { align: 'right' });
   currentY += 2;
 
   const alatRows = alatList.map((item, idx) => [
@@ -232,8 +269,9 @@ export const generatePdfUkkRab = (data: UkkRabPrintData): { doc: jsPDF; blobUrl:
     head: [['No', 'Nama Alat / Perangkat', 'Spesifikasi', 'Kebutuhan', 'Ketersediaan', 'Estimasi Harga', 'Total Biaya']],
     body: alatRows,
     theme: 'grid',
-    styles: { font: 'times', fontSize: 8, cellPadding: 1.8 },
-    headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
+    styles: { font: 'helvetica', fontSize: 7.5, cellPadding: 2, lineColor: [226, 232, 240], lineWidth: 0.2 },
+    headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
     columnStyles: {
       0: { cellWidth: 8, halign: 'center' },
       1: { cellWidth: 45 },
@@ -249,9 +287,13 @@ export const generatePdfUkkRab = (data: UkkRabPrintData): { doc: jsPDF; blobUrl:
   currentY = (doc as any).lastAutoTable.finalY + 6;
 
   // Table B: Bahan Habis Pakai (BHP)
-  doc.setFont('times', 'bold');
-  doc.setFontSize(9.5);
-  doc.text('B. DAFTAR BAHAN PRAKTIK HABIS PAKAI (BHP)', margin, currentY);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(15, 23, 42);
+  doc.text('B. KEBUTUHAN BAHAN PRAKTIK HABIS PAKAI (BHP)', margin, currentY);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(`Subtotal: ${formatRupiah(totalBiayaBahan)}`, pageWidth - margin, currentY, { align: 'right' });
   currentY += 2;
 
   const bahanRows = bahanList.map((item, idx) => [
@@ -273,8 +315,9 @@ export const generatePdfUkkRab = (data: UkkRabPrintData): { doc: jsPDF; blobUrl:
     head: [['No', 'Nama Bahan Habis Pakai (BHP)', 'Spesifikasi', 'Rasio', 'Total Vol', 'Harga Satuan', 'Total Biaya']],
     body: bahanRows,
     theme: 'grid',
-    styles: { font: 'times', fontSize: 8, cellPadding: 1.8 },
-    headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
+    styles: { font: 'helvetica', fontSize: 7.5, cellPadding: 2, lineColor: [226, 232, 240], lineWidth: 0.2 },
+    headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
     columnStyles: {
       0: { cellWidth: 8, halign: 'center' },
       1: { cellWidth: 45 },
@@ -290,12 +333,18 @@ export const generatePdfUkkRab = (data: UkkRabPrintData): { doc: jsPDF; blobUrl:
   currentY = (doc as any).lastAutoTable.finalY + 4;
 
   // Grand Total Box
-  doc.setFont('times', 'bold');
+  doc.setFillColor(241, 245, 249);
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(margin, currentY, contentWidth, 8, 1, 1, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text('TOTAL REKAPITULASI ANGGARAN KEBUTUHAN UKK', margin + 3, currentY + 5.2);
   doc.setFontSize(9.5);
-  doc.text(`TOTAL REKAPITULASI ANGGARAN KEBUTUHAN UKK: ${formatRupiah(grandTotal)}`, pageWidth - margin, currentY, {
-    align: 'right',
-  });
-  currentY += 10;
+  doc.text(formatRupiah(grandTotal), pageWidth - margin - 3, currentY + 5.2, { align: 'right' });
+  currentY += 12;
 
   // Check page overflow for 2-tier signature block
   if (currentY > 215) {
@@ -317,8 +366,9 @@ export const generatePdfUkkRab = (data: UkkRabPrintData): { doc: jsPDF; blobUrl:
   const xCenter = pageWidth / 2;
 
   // Tanggal di atas Kaprog (Kanan)
-  doc.setFont('times', 'normal');
-  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(15, 23, 42);
   doc.text(`${kota}, ${tglStr}`, xRight, currentY, { align: 'center' });
   currentY += 4.5;
 
@@ -333,41 +383,46 @@ export const generatePdfUkkRab = (data: UkkRabPrintData): { doc: jsPDF; blobUrl:
   const yRow1Name = currentY + 22;
 
   // Nama & NIP Wakasek Sarpras (Kiri)
-  doc.setFont('times', 'bold');
-  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
   doc.text(data.wakasekSarpras?.nama || '...........................................', xLeft, yRow1Name, {
     align: 'center',
   });
-  doc.setFont('times', 'normal');
-  doc.setFontSize(8);
-  doc.text(`NIP. ${data.wakasekSarpras?.nip || '-'}`, xLeft, yRow1Name + 4, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`NIP. ${data.wakasekSarpras?.nip || '-'}`, xLeft, yRow1Name + 3.8, { align: 'center' });
 
   // Nama & NIP Kaprog (Kanan)
-  doc.setFont('times', 'bold');
-  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(15, 23, 42);
   doc.text(data.kaprog?.nama || '...........................................', xRight, yRow1Name, {
     align: 'center',
   });
-  doc.setFont('times', 'normal');
-  doc.setFontSize(8);
-  doc.text(`NIP. ${data.kaprog?.nip || '-'}`, xRight, yRow1Name + 4, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`NIP. ${data.kaprog?.nip || '-'}`, xRight, yRow1Name + 3.8, { align: 'center' });
 
   // --- BARIS 2: KEPALA SEKOLAH (TENGAH DI BAWAH) ---
   currentY = yRow1Name + 10;
   const yRow2Title = currentY;
-  doc.setFont('times', 'normal');
-  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(15, 23, 42);
   doc.text('Mengetahui / Menyetujui,\nKepala Sekolah', xCenter, yRow2Title, { align: 'center' });
 
   const yRow2Name = currentY + 22;
-  doc.setFont('times', 'bold');
-  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
   doc.text(data.sekolah.kepala_sekolah || '...........................................', xCenter, yRow2Name, {
     align: 'center',
   });
-  doc.setFont('times', 'normal');
-  doc.setFontSize(8);
-  doc.text(`NIP. ${data.sekolah.nip_kepala || '-'}`, xCenter, yRow2Name + 4, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`NIP. ${data.sekolah.nip_kepala || '-'}`, xCenter, yRow2Name + 3.8, { align: 'center' });
 
   const blobUrl = doc.output('bloburl').toString();
   return { doc, blobUrl };
