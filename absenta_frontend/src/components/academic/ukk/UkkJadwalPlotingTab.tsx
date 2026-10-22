@@ -28,6 +28,8 @@ import { Loader } from '@/components/ui/Loader';
 import { raporApi } from '@/api/rapor.api';
 import { sekolahApi } from '@/api/academic/sekolah.api';
 import { hubinApi } from '@/api/hubin.api';
+import { useGuruOptions } from '@/hooks/useGuruOptions';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import {
   generatePdfUkkJadwal,
   type UkkJadwalSesi,
@@ -119,6 +121,33 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
     const list = mitraRes?.data?.list || mitraRes?.list || mitraRes?.data || [];
     return Array.isArray(list) ? list : [];
   }, [mitraRes]);
+
+  // Hook Master Data Guru untuk Penguji Internal UKK
+  const { options: guruOptions, rawList: guruList, isLoading: isLoadingGuru } = useGuruOptions({
+    jenisPtk: 'ALL',
+    onlyActive: true,
+  });
+
+  const computedGuruOptions = useMemo(() => {
+    if (!sessionForm.asesor_internal) return guruOptions;
+    const exists = guruOptions.some(
+      (opt) =>
+        opt.value === sessionForm.asesor_internal ||
+        opt.label.toLowerCase().includes(sessionForm.asesor_internal.toLowerCase())
+    );
+    if (!exists && sessionForm.asesor_internal) {
+      return [{ value: sessionForm.asesor_internal, label: sessionForm.asesor_internal }, ...guruOptions];
+    }
+    return guruOptions;
+  }, [guruOptions, sessionForm.asesor_internal]);
+
+  const currentGuruValue = useMemo(() => {
+    if (!sessionForm.asesor_internal) return '';
+    const found = guruList.find(
+      (g) => g.nama_guru === sessionForm.asesor_internal || g.id === sessionForm.asesor_internal
+    );
+    return found?.id || sessionForm.asesor_internal;
+  }, [sessionForm.asesor_internal, guruList]);
 
   // Save Sessions Mutation
   const saveMutation = useMutation({
@@ -631,16 +660,31 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-foreground">Penguji Internal</label>
-              <input
-                type="text"
-                value={sessionForm.asesor_internal}
-                onChange={(e) =>
-                  setSessionForm({ ...sessionForm, asesor_internal: e.target.value })
-                }
-                placeholder="Nama Guru Penguji Internal"
-                className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
-              />
+              <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                <span>Penguji Internal (Guru Master)</span>
+                {sessionForm.asesor_internal && (
+                  <span className="text-[10px] text-primary font-normal truncate max-w-[150px]">
+                    {sessionForm.asesor_internal}
+                  </span>
+                )}
+              </label>
+              <div className="mt-1">
+                <SearchableSelect
+                  value={currentGuruValue}
+                  onValueChange={(val) => {
+                    const found = guruList.find((g) => g.id === val);
+                    setSessionForm({
+                      ...sessionForm,
+                      asesor_internal: found ? found.nama_guru : val,
+                    });
+                  }}
+                  options={computedGuruOptions}
+                  placeholder="Pilih Guru Penguji Internal..."
+                  searchPlaceholder="Cari nama guru atau NIP..."
+                  isLoading={isLoadingGuru}
+                  clearable
+                />
+              </div>
             </div>
             <div>
               <label className="text-xs font-semibold text-foreground">

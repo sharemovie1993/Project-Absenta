@@ -27,6 +27,8 @@ import { Modal } from '@/components/ui/Modal';
 import { Loader } from '@/components/ui/Loader';
 import { raporApi } from '@/api/rapor.api';
 import { sekolahApi } from '@/api/academic/sekolah.api';
+import { useGuruOptions } from '@/hooks/useGuruOptions';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import {
   generatePdfUkkBeritaAcara,
   type UkkBeritaAcaraItem,
@@ -99,6 +101,33 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
     const d = jadwalRes?.data || jadwalRes;
     return Array.isArray(d) ? d : [];
   }, [jadwalRes]);
+
+  // Hook Master Data Guru
+  const { options: guruOptions, rawList: guruList, isLoading: isLoadingGuru } = useGuruOptions({
+    jenisPtk: 'ALL',
+    onlyActive: true,
+  });
+
+  const computedGuruOptions = useMemo(() => {
+    if (!formData.penguji_internal) return guruOptions;
+    const exists = guruOptions.some(
+      (opt) =>
+        opt.value === formData.penguji_internal ||
+        opt.label.toLowerCase().includes(formData.penguji_internal.toLowerCase())
+    );
+    if (!exists && formData.penguji_internal) {
+      return [{ value: formData.penguji_internal, label: formData.penguji_internal }, ...guruOptions];
+    }
+    return guruOptions;
+  }, [guruOptions, formData.penguji_internal]);
+
+  const currentGuruValue = useMemo(() => {
+    if (!formData.penguji_internal) return '';
+    const found = guruList.find(
+      (g) => g.nama_guru === formData.penguji_internal || g.id === formData.penguji_internal
+    );
+    return found?.id || formData.penguji_internal;
+  }, [formData.penguji_internal, guruList]);
 
   // Mutation Save
   const saveMutation = useMutation({
@@ -541,14 +570,31 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-foreground">Penguji Internal</label>
-              <input
-                type="text"
-                value={formData.penguji_internal}
-                onChange={(e) => setFormData({ ...formData, penguji_internal: e.target.value })}
-                placeholder="Nama Penguji Internal"
-                className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
-              />
+              <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                <span>Penguji Internal (Guru Master)</span>
+                {formData.penguji_internal && (
+                  <span className="text-[10px] text-primary font-normal truncate max-w-[150px]">
+                    {formData.penguji_internal}
+                  </span>
+                )}
+              </label>
+              <div className="mt-1">
+                <SearchableSelect
+                  value={currentGuruValue}
+                  onValueChange={(val) => {
+                    const found = guruList.find((g) => g.id === val);
+                    setFormData({
+                      ...formData,
+                      penguji_internal: found ? found.nama_guru : val,
+                    });
+                  }}
+                  options={computedGuruOptions}
+                  placeholder="Pilih Guru Penguji Internal..."
+                  searchPlaceholder="Cari nama guru atau NIP..."
+                  isLoading={isLoadingGuru}
+                  clearable
+                />
+              </div>
             </div>
             <div>
               <label className="text-xs font-semibold text-foreground">

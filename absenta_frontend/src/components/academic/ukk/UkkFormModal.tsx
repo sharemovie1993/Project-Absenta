@@ -6,6 +6,8 @@ import toast from 'react-hot-toast';
 
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { useGuruOptions } from '@/hooks/useGuruOptions';
 import { raporApi } from '@/api/rapor.api';
 import { hubinApi } from '@/api/hubin.api';
 import { cn } from '@/lib/utils';
@@ -77,6 +79,33 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
     const list = mitraRes?.data?.list || mitraRes?.list || mitraRes?.data || [];
     return Array.isArray(list) ? list : [];
   }, [mitraRes]);
+
+  // Hook Master Data Guru
+  const { options: guruOptions, rawList: guruList, isLoading: isLoadingGuru } = useGuruOptions({
+    jenisPtk: 'ALL',
+    onlyActive: true,
+  });
+
+  const computedGuruOptions = useMemo(() => {
+    if (!asesorInternal) return guruOptions;
+    const exists = guruOptions.some(
+      (opt) =>
+        opt.value === asesorInternal ||
+        opt.label.toLowerCase().includes(asesorInternal.toLowerCase())
+    );
+    if (!exists && asesorInternal) {
+      return [{ value: asesorInternal, label: asesorInternal }, ...guruOptions];
+    }
+    return guruOptions;
+  }, [guruOptions, asesorInternal]);
+
+  const currentGuruValue = useMemo(() => {
+    if (!asesorInternal) return '';
+    const found = guruList.find(
+      (g) => g.nama_guru === asesorInternal || g.id === asesorInternal
+    );
+    return found?.id || asesorInternal;
+  }, [asesorInternal, guruList]);
 
   // Hitung predikat otomatis berdasarkan nilai praktik & teori
   const calculatePredikat = (praktik: number, teori?: number | null): string => {
@@ -316,15 +345,25 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
           {/* Asesor Internal & Eksternal (Responsif) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                Asesor Guru (Internal)
+              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                <span>Asesor Guru (Internal Master)</span>
+                {asesorInternal && (
+                  <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-normal truncate max-w-[140px]">
+                    {asesorInternal}
+                  </span>
+                )}
               </label>
-              <input
-                type="text"
-                value={asesorInternal}
-                onChange={(e) => setAsesorInternal(e.target.value)}
-                placeholder="Nama guru penguji"
-                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              <SearchableSelect
+                value={currentGuruValue}
+                onValueChange={(val) => {
+                  const found = guruList.find((g) => g.id === val);
+                  setAsesorInternal(found ? found.nama_guru : val);
+                }}
+                options={computedGuruOptions}
+                placeholder="Pilih Guru Penguji Internal..."
+                searchPlaceholder="Cari nama guru atau NIP..."
+                isLoading={isLoadingGuru}
+                clearable
               />
             </div>
 
