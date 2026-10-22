@@ -283,7 +283,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const defaultTabId = 'portal';
 
   // Synchronize Active Tab with Query Param (?tab=...) atau Smart Default Tab (dengan guard akses)
-  const requestedTab = searchParams.get('tab');
+  const rawRequestedTab = searchParams.get('tab');
+  const requestedTab = rawRequestedTab === 'walas' ? 'binaan' : rawRequestedTab;
   const activeTab = (requestedTab === 'pembimbing_pkl' && !isPembimbingPkl)
     ? defaultTabId
     : (requestedTab || defaultTabId);
@@ -831,7 +832,14 @@ export const UnifiedStaffDashboard: React.FC = () => {
       list.push({ id: 'jadwal', label: 'KBM & Absen', icon: BookOpen });
     }
 
-    // 3. Wali Kelas (Dihapus dari tab tabular atas sesuai arahan pengguna; diakses langsung via Portal)
+    // 3. Wali Kelas (Khusus Guru Wali Kelas Rombel Binaan)
+    if ((isWaliKelas || Boolean(waliKelasId)) && !isKepsek) {
+      list.push({ 
+        id: 'binaan', 
+        label: 'Dashboard Walas', 
+        icon: GraduationCap 
+      });
+    }
 
     // 4. Bimbingan PKL (Khusus Guru Pembimbing PKL yang bukan Waka Hubin)
     if (isPembimbingPkl && !isKepsek) {
@@ -901,8 +909,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   // Normalisasi tab aktif jika tab di URL tidak termasuk dalam daftar kapabilitas user
   useEffect(() => {
-    // Tab binaan valid jika user adalah wali kelas meskipun tidak ada di deretan tombol tab atas
-    if (activeTab === 'binaan' && isWaliKelas) return;
+    // Tab binaan valid jika user adalah wali kelas
+    if (activeTab === 'binaan' && (isWaliKelas || Boolean(waliKelasId))) return;
     if (tabs.length > 0 && !tabs.some(t => t.id === activeTab)) {
       const fallback = tabs.some(t => t.id === defaultTabId) ? defaultTabId : tabs[0].id;
       setSearchParams({ tab: fallback }, { replace: true });
