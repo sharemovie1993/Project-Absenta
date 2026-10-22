@@ -207,6 +207,92 @@ export const KaprogModulModal: React.FC<{
 
 ---
 
+## ⚡ Standar Konsumsi Tab: Pola Keep-Alive & Lazy-Mount (Zero DOM Destruction)
+
+DILARANG KERAS menggunakan conditional rendering murni `{activeTab === 'tabId' && <TabComponent />}` pada Dashboard Role yang memiliki banyak sub-tab (Kaprog, Walas, Kurikulum, Kepsek, Superadmin, dll). 
+
+Conditional rendering murni menghancurkan (*unmount*) seluruh node DOM dan state internal komponen (posisi scroll, halaman pagination tabel, keyword pencarian, dan nilai form) setiap kali pengguna berpindah tab. Akibatnya, saat pengguna kembali ke tab tersebut, browser dipaksa membangun ulang ribuan node DOM dari nol dan memicu jeda render (*lag / no instant loading*).
+
+### 🏛️ Aturan Baku Implementasi Keep-Alive Tab:
+
+1. **Registri `visitedTabs` (Set State)**:
+   Catat tab yang pernah dikunjungi agar sub-tab yang belum pernah dibuka tidak membebani initial mount (*lazy initial mount*).
+2. **CSS Visibility Toggle (`block` vs `hidden`)**:
+   Tab yang sudah pernah dikunjungi dipertahankan di memori DOM menggunakan kelas CSS `block` dan `hidden` (`display: none`).
+3. **Non-Blocking Transition**:
+   Gunakan animasi masuk CSS ringan (`animate-in fade-in duration-100`). Hindari Framer Motion `AnimatePresence mode="wait"` yang memblokir rendering tab baru selama ratusan milidetik.
+4. **Code-Split Modal Views (`React.lazy`)**:
+   Modul modal views berukuran besar wajib di-load secara asinkron via `React.lazy()` + `<Suspense>` agar initial bundle dashboard tetap ringan dan hemat memori.
+
+### 📋 Contoh Implementasi Kanonikal di Dashboard Role:
+
+```tsx
+import React, { useState, useCallback, useEffect, Suspense, lazy } from 'react';
+import { cn } from '@/lib/utils';
+import { Loader } from '@/components/ui';
+
+// 1. Lazy load modal-modal views besar (Pilar 21B & TBT Optimization)
+const PenempatanPklView = lazy(() => import('@/components/hubin/penempatan/PenempatanPklView').then(m => ({ default: m.PenempatanPklView })));
+
+export const RoleDashboard: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<TabId>('beranda');
+
+  // 2. Keep-Alive Cache: Simpan tab yang pernah dibuka
+  const [visitedTabs, setVisitedTabs] = useState<Set<TabId>>(() => new Set([activeTab]));
+
+  // 3. Tab Selector Handler
+  const handleTabSelect = useCallback((tabId: TabId) => {
+    setActiveTab(tabId);
+    setVisitedTabs((prev) => (prev.has(tabId) ? prev : new Set(prev).add(tabId)));
+  }, []);
+
+  return (
+    <div className="w-full">
+      {/* Navigasi Tab */}
+      <nav>
+        {tabs.map(tab => (
+          <button key={tab.id} onClick={() => handleTabSelect(tab.id)}>
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
+      {/* Kontainer Tab Panes (Keep-Alive + Zero DOM Destruction) */}
+      <main className="relative w-full min-w-0">
+        {visitedTabs.has('beranda') && (
+          <div className={cn('w-full', activeTab === 'beranda' ? 'block animate-in fade-in duration-100' : 'hidden')}>
+            <BerandaTab onSelectTab={handleTabSelect} />
+          </div>
+        )}
+
+        {visitedTabs.has('siswa') && (
+          <div className={cn('w-full', activeTab === 'siswa' ? 'block animate-in fade-in duration-100' : 'hidden')}>
+            <SiswaTab />
+          </div>
+        )}
+
+        {visitedTabs.has('prestasi') && (
+          <div className={cn('w-full', activeTab === 'prestasi' ? 'block animate-in fade-in duration-100' : 'hidden')}>
+            <PrestasiTab />
+          </div>
+        )}
+      </main>
+
+      {/* 4. Modal di-render secara asinkron dengan Suspense Fallback */}
+      {isModalOpen && (
+        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} size="full">
+          <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>
+            <PenempatanPklView isModal={true} onClose={() => setIsModalOpen(false)} />
+          </Suspense>
+        </Modal>
+      )}
+    </div>
+  );
+};
+```
+
+---
+
 ## ✅ Checklist Standarisasi (Definition of Done)
 
 Saat menstandarisasi modul menjadi Universal Role-Ready View, pastikan:
@@ -216,3 +302,5 @@ Saat menstandarisasi modul menjadi Universal Role-Ready View, pastikan:
 - [ ] Menggunakan `AcademicFilterToolbar` & `useAcademicFilter` dengan fallback internal jika prop filter tidak disediakan.
 - [ ] Tersedia pembungkus Tab (`[Role]Tab.tsx`) dan Modal (`[Role]Modal.tsx`) tanpa duplikasi kode logika bisnis.
 - [ ] Halaman route utama (`[Modul]Page.tsx`) direfaktor menjadi *thin wrapper* yang hanya memanggil `<[Modul]View />`.
+- [ ] Dashboard role induk mengadopsi pola **Keep-Alive + Lazy-Mount** (`visitedTabs` + CSS `hidden`/`block`) untuk menjamin True Instant Tab Switching (<16ms) tanpa *DOM destruction*.
+- [ ] Modal dialog views besar di-load secara asinkron dengan `React.lazy` + `Suspense` untuk menjaga ukuran initial bundle tetap ringan.
