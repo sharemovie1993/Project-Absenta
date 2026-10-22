@@ -261,145 +261,149 @@ export const WalasJurnalTab: React.FC<WalasJurnalTabProps> = React.memo(({
         )}
       </div>
 
-      {/* 4. MODAL TAMBAH JURNAL BARU */}
-      <Modal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        title="Tulis Catatan Jurnal Wali Kelas"
-        size="lg"
-      >
-        <form onSubmit={handleSave} className="space-y-4 p-4 text-xs">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* 4. MODAL TAMBAH JURNAL BARU - Lazy Mounted */}
+      {isAddModalOpen && (
+        <Modal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          title="Tulis Catatan Jurnal Wali Kelas"
+          size="lg"
+        >
+          <form onSubmit={handleSave} className="space-y-4 p-4 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Tanggal</label>
+                <input
+                  type="date"
+                  value={formData.tanggal}
+                  onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
+                  className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Jam Pelaksanaan</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 10:00 WIB"
+                  value={formData.jam}
+                  onChange={(e) => setFormData({ ...formData, jam: e.target.value })}
+                  className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                />
+              </div>
+            </div>
+
             <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Tanggal</label>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Kategori Aktivitas</label>
+              <select
+                value={formData.kategori}
+                onChange={(e) => setFormData({ ...formData, kategori: e.target.value })}
+                className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+              >
+                <option value="PEMBINAAN_KELAS">Pembinaan Karakter & Kelas</option>
+                <option value="KOORDINASI_BK">Koordinasi Guru BK</option>
+                <option value="RAPAT_ORTU">Rapat / Komunikasi Orang Tua</option>
+                <option value="KASUS_SELESAI">Penyelesaian Kasus Siswa</option>
+                <option value="LAINNYA">Lainnya</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Judul Agenda</label>
               <input
-                type="date"
-                value={formData.tanggal}
-                onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
+                type="text"
+                placeholder="e.g. Bimbingan Kedisiplinan Jam Pertama & Evaluasi Kerapian"
+                value={formData.judul}
+                onChange={(e) => setFormData({ ...formData, judul: e.target.value })}
                 className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
                 required
               />
             </div>
+
             <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Jam Pelaksanaan</label>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Isi Catatan Bimbingan</label>
+              <textarea
+                rows={4}
+                placeholder="Tuliskan catatan arahan, perkembangan siswa, atau hasil kesepakatan bimbingan..."
+                value={formData.isi}
+                onChange={(e) => setFormData({ ...formData, isi: e.target.value })}
+                className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Tags (Pisahkan dengan koma)</label>
               <input
                 type="text"
-                placeholder="e.g. 10:00 WIB"
-                value={formData.jam}
-                onChange={(e) => setFormData({ ...formData, jam: e.target.value })}
+                placeholder="e.g. kedisiplinan, piket, motivasi"
+                value={formData.tags}
+                onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
                 className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
               />
             </div>
-          </div>
 
-          <div>
-            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Kategori Aktivitas</label>
-            <select
-              value={formData.kategori}
-              onChange={(e) => setFormData({ ...formData, kategori: e.target.value })}
-              className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-            >
-              <option value="PEMBINAAN_KELAS">Pembinaan Karakter & Kelas</option>
-              <option value="KOORDINASI_BK">Koordinasi Guru BK</option>
-              <option value="RAPAT_ORTU">Rapat / Komunikasi Orang Tua</option>
-              <option value="KASUS_SELESAI">Penyelesaian Kasus Siswa</option>
-              <option value="LAINNYA">Lainnya</option>
-            </select>
-          </div>
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsAddModalOpen(false)}
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold"
+                disabled={createMutation.isPending}
+              >
+                {createMutation.isPending ? 'Menyimpan...' : 'Simpan Jurnal'}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
 
-          <div>
-            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Judul Agenda</label>
-            <input
-              type="text"
-              placeholder="e.g. Bimbingan Kedisiplinan Jam Pertama & Evaluasi Kerapian"
-              value={formData.judul}
-              onChange={(e) => setFormData({ ...formData, judul: e.target.value })}
-              className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-              required
-            />
+      {/* 5. MODAL KONFIRMASI HAPUS JURNAL - Lazy Mounted */}
+      {Boolean(deletingId) && (
+        <Modal
+          isOpen={Boolean(deletingId)}
+          onClose={() => setDeletingId(null)}
+          title="Konfirmasi Hapus Catatan Jurnal"
+          size="sm"
+        >
+          <div className="p-4 space-y-4 text-xs">
+            <p className="text-slate-600 dark:text-slate-400">
+              Apakah Anda yakin ingin menghapus catatan agenda pembinaan wali kelas ini? Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setDeletingId(null)}
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="bg-rose-600 hover:bg-rose-700 text-white font-semibold"
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  if (deletingId) {
+                    deleteMutation.mutate(deletingId);
+                    setDeletingId(null);
+                  }
+                }}
+              >
+                {deleteMutation.isPending ? 'Menghapus...' : 'Ya, Hapus Jurnal'}
+              </Button>
+            </div>
           </div>
-
-          <div>
-            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Isi Catatan Bimbingan</label>
-            <textarea
-              rows={4}
-              placeholder="Tuliskan catatan arahan, perkembangan siswa, atau hasil kesepakatan bimbingan..."
-              value={formData.isi}
-              onChange={(e) => setFormData({ ...formData, isi: e.target.value })}
-              className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Tags (Pisahkan dengan koma)</label>
-            <input
-              type="text"
-              placeholder="e.g. kedisiplinan, piket, motivasi"
-              value={formData.tags}
-              onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-              className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsAddModalOpen(false)}
-            >
-              Batal
-            </Button>
-            <Button
-              type="submit"
-              size="sm"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold"
-              disabled={createMutation.isPending}
-            >
-              {createMutation.isPending ? 'Menyimpan...' : 'Simpan Jurnal'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* 5. MODAL KONFIRMASI HAPUS JURNAL */}
-      <Modal
-        isOpen={Boolean(deletingId)}
-        onClose={() => setDeletingId(null)}
-        title="Konfirmasi Hapus Catatan Jurnal"
-        size="sm"
-      >
-        <div className="p-4 space-y-4 text-xs">
-          <p className="text-slate-600 dark:text-slate-400">
-            Apakah Anda yakin ingin menghapus catatan agenda pembinaan wali kelas ini? Tindakan ini tidak dapat dibatalkan.
-          </p>
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setDeletingId(null)}
-            >
-              Batal
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              className="bg-rose-600 hover:bg-rose-700 text-white font-semibold"
-              disabled={deleteMutation.isPending}
-              onClick={() => {
-                if (deletingId) {
-                  deleteMutation.mutate(deletingId);
-                  setDeletingId(null);
-                }
-              }}
-            >
-              {deleteMutation.isPending ? 'Menghapus...' : 'Ya, Hapus Jurnal'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        </Modal>
+      )}
     </div>
   );
 });

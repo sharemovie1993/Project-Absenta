@@ -25,8 +25,9 @@ export function useWalasDashboardData(options?: UseWalasDashboardDataOptions) {
       }
       return res;
     },
-    staleTime: 60 * 1000, // 60 detik (Fase 4 Hardening Dual-Layer Cache)
-    gcTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 menit (Dual-Layer High-Performance Cache Standar Industri)
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
     enabled: options?.enabled !== false,
   });
 }

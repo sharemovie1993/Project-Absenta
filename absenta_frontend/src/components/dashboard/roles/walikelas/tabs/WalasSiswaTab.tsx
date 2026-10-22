@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
-import { SiswaView } from '@/components/academic/siswa/SiswaView';
+import React, { useState, Suspense, lazy } from 'react';
 import { Users, UserCheck, Shield, Sparkles, Briefcase } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui';
+import { Badge, Loader } from '@/components/ui';
 import type { WalasDashboardData } from '../types';
+
+// Code-splitting heavy universal view to reduce initial tab bundle (Pilar 21B & TBT Optimization)
+const SiswaView = lazy(() =>
+  import('@/components/academic/siswa/SiswaView').then((m) => ({ default: m.SiswaView }))
+);
 
 export interface WalasSiswaTabProps {
   kelasId?: string;
@@ -72,14 +76,16 @@ export const WalasSiswaTab: React.FC<WalasSiswaTabProps> = React.memo(({
       {/* 2. KONTEN SUB-VIEW */}
       {subView === 'roster' ? (
         <div className="space-y-4">
-          {/* Universal Role-Ready Siswa View Scoped to Kelas */}
-          <SiswaView
-            hideLayout
-            kelasId={kelasId}
-            kelasNama={kelasNama}
-            tahunPelajaranId={tahunPelajaranId}
-            semesterId={semesterId}
-          />
+          {/* Universal Role-Ready Siswa View Scoped to Kelas - Code-split Chunk */}
+          <Suspense fallback={<div className="p-12 flex justify-center"><Loader size="lg" /></div>}>
+            <SiswaView
+              hideLayout
+              kelasId={kelasId}
+              kelasNama={kelasNama}
+              tahunPelajaranId={tahunPelajaranId}
+              semesterId={semesterId}
+            />
+          </Suspense>
         </div>
       ) : (
         /* Struktur Organisasi & Regu Piket Kelas */

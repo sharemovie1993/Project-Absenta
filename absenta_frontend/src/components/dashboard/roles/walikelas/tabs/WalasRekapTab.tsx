@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, Suspense, lazy } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Printer, 
@@ -14,9 +14,8 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
-import { Button, Badge } from '@/components/ui';
+import { Button, Badge, Loader } from '@/components/ui';
 import { 
-  UniversalDocumentModal, 
   PrintDocumentSheet, 
   PrintHeader, 
   usePrintHeaderData 
@@ -27,6 +26,11 @@ import { format } from 'date-fns';
 import { id as localeID } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import type { WalasDashboardData } from '../types';
+
+// Code-splitting document modal to optimize initial tab bundle (Pilar 21B & TBT Optimization)
+const UniversalDocumentModal = lazy(() =>
+  import('@/components/ui/PrintHeader').then((m) => ({ default: m.UniversalDocumentModal }))
+);
 
 export interface WalasRekapTabProps {
   kelasId?: string;
@@ -330,9 +334,10 @@ export const WalasRekapTab: React.FC<WalasRekapTabProps> = React.memo(({
         )}
       </Card>
 
-      {/* Universal Document Print Modal */}
+      {/* Universal Document Print Modal - Lazy Mounted & Code-split */}
       {isModalOpen && (
-        <UniversalDocumentModal
+        <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>
+          <UniversalDocumentModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           title={`Dokumen Resmi: ${activeDocType === 'PRESENSI_BULANAN' ? 'Rekapitulasi Kehadiran Bulanan' : activeDocType === 'JURNAL_PEMBINAAN' ? 'Buku Jurnal Pembinaan Wali Kelas' : 'Ledger Rombel'}`}
@@ -499,7 +504,8 @@ export const WalasRekapTab: React.FC<WalasRekapTabProps> = React.memo(({
               </div>
             </PrintDocumentSheet>
           </div>
-        </UniversalDocumentModal>
+          </UniversalDocumentModal>
+        </Suspense>
       )}
     </div>
   );

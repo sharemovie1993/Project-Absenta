@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, Suspense, lazy } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Activity, 
@@ -11,12 +11,18 @@ import {
   Sparkles
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
-import { Button, Badge } from '@/components/ui';
-import { RekapKolektifView } from '@/components/attendance/rekap/RekapKolektifView';
-import { TrackingSiswaModal } from '@/components/attendance/tracking/TrackingSiswaModal';
+import { Button, Badge, Loader } from '@/components/ui';
 import { getEwsPerKelasList } from '@/api/kurikulum/waliKelas.api';
 import { cn } from '@/lib/utils';
 import type { WalasDashboardData } from '../types';
+
+// Code-splitting heavy components to reduce initial tab bundle (Pilar 21B & TBT Optimization)
+const RekapKolektifView = lazy(() =>
+  import('@/components/attendance/rekap/RekapKolektifView').then((m) => ({ default: m.RekapKolektifView }))
+);
+const TrackingSiswaModal = lazy(() =>
+  import('@/components/attendance/tracking/TrackingSiswaModal').then((m) => ({ default: m.TrackingSiswaModal }))
+);
 
 export interface WalasPresensiTabProps {
   kelasId?: string;
@@ -182,32 +188,36 @@ export const WalasPresensiTab: React.FC<WalasPresensiTabProps> = React.memo(({
         </Card>
       )}
 
-      {/* 2. REKAPITULASI KOLEKTIF ROMBEL TERPADU (KOMPONEN REKAP KOLEKTIF VIEW DRY) */}
+      {/* 2. REKAPITULASI KOLEKTIF ROMBEL TERPADU (KOMPONEN REKAP KOLEKTIF VIEW DRY) - Code-split Chunk */}
       <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs p-4 sm:p-5">
-        <RekapKolektifView
-          kelasId={kelasId}
-          kelasNama={kelasNama}
-          initialKelasId={kelasId}
-          tahunPelajaranId={data?.academicContext?.selectedTahunPelajaranId}
-          semesterId={data?.academicContext?.selectedSemesterId}
-          hideLayout={true}
-          hideScopeBanner={true}
-          readOnly={isHistorical}
-        />
+        <Suspense fallback={<div className="p-12 flex justify-center"><Loader size="lg" /></div>}>
+          <RekapKolektifView
+            kelasId={kelasId}
+            kelasNama={kelasNama}
+            initialKelasId={kelasId}
+            tahunPelajaranId={data?.academicContext?.selectedTahunPelajaranId}
+            semesterId={data?.academicContext?.selectedSemesterId}
+            hideLayout={true}
+            hideScopeBanner={true}
+            readOnly={isHistorical}
+          />
+        </Suspense>
       </div>
 
-      {/* 3. MODAL TRACKING SISWA RESMI (STANDAR KAPROG & ABSENTA) */}
+      {/* 3. MODAL TRACKING SISWA RESMI (STANDAR KAPROG & ABSENTA) - Lazy Mounted */}
       {trackingTarget.isOpen && (
-        <TrackingSiswaModal
-          isOpen={trackingTarget.isOpen}
-          onClose={() => setTrackingTarget({ isOpen: false, siswaId: '', siswaNama: '' })}
-          siswaId={trackingTarget.siswaId}
-          siswaNama={trackingTarget.siswaNama}
-          kelasId={kelasId}
-          kelasNama={kelasNama}
-          tahunPelajaranId={data?.academicContext?.selectedTahunPelajaranId}
-          semesterId={data?.academicContext?.selectedSemesterId}
-        />
+        <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>
+          <TrackingSiswaModal
+            isOpen={trackingTarget.isOpen}
+            onClose={() => setTrackingTarget({ isOpen: false, siswaId: '', siswaNama: '' })}
+            siswaId={trackingTarget.siswaId}
+            siswaNama={trackingTarget.siswaNama}
+            kelasId={kelasId}
+            kelasNama={kelasNama}
+            tahunPelajaranId={data?.academicContext?.selectedTahunPelajaranId}
+            semesterId={data?.academicContext?.selectedSemesterId}
+          />
+        </Suspense>
       )}
     </div>
   );

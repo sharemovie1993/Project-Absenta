@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard,
   Users, 
@@ -56,24 +55,36 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
     return 'ringkasan';
   });
 
+  // Keep-Alive Cache: Catat tab yang pernah dibuka agar TIDAK DIHANCURKAN saat pindah tab (Instant 0ms Switch)
+  const [visitedTabs, setVisitedTabs] = useState<Set<WaliKelasTabId>>(() => new Set([activeTab]));
+
   useEffect(() => {
     if (subtabParam && validTabs.includes(subtabParam)) {
-      setActiveTab(subtabParam);
+      setActiveTab((curr) => {
+        if (curr !== subtabParam) return subtabParam;
+        return curr;
+      });
+      setVisitedTabs((prev) => (prev.has(subtabParam) ? prev : new Set(prev).add(subtabParam)));
     }
   }, [subtabParam]);
 
   const handleTabSelect = useCallback((tabId: WaliKelasTabId) => {
     setActiveTab(tabId);
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      if (tabId === 'ringkasan') {
-        next.delete('subtab');
-      } else {
-        next.set('subtab', tabId);
-      }
-      return next;
-    }, { replace: true });
-  }, [setSearchParams]);
+    setVisitedTabs((prev) => (prev.has(tabId) ? prev : new Set(prev).add(tabId)));
+
+    const currentSubtab = searchParams.get('subtab') || 'ringkasan';
+    if (currentSubtab !== tabId) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (tabId === 'ringkasan') {
+          next.delete('subtab');
+        } else {
+          next.set('subtab', tabId);
+        }
+        return next;
+      }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Konteks Akademik Standard Platform (useAcademicFilter SSOT)
   const academicFilter = useAcademicFilter({
@@ -341,25 +352,27 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
               </p>
             </div>
           ) : (
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab + (activeKelasId || '')}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.15 }}
-                className="w-full"
-              >
-                {activeTab === 'ringkasan' && (
+            <div className="relative w-full min-w-0">
+              {/* Keep-Alive + Lazy-Mounted Tab Panes for True Instant Switching (<16ms, Zero DOM Destruction) */}
+              {visitedTabs.has('ringkasan') && (
+                <div
+                  key="tab-ringkasan"
+                  className={cn('w-full', activeTab === 'ringkasan' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                >
                   <WalasBerandaTab
                     data={walasData}
                     isLoading={isLoading}
                     onSelectTab={handleTabSelect}
                     onOpenJurnalModal={() => handleTabSelect('jurnal')}
                   />
-                )}
+                </div>
+              )}
 
-                {activeTab === 'siswa' && (
+              {visitedTabs.has('siswa') && (
+                <div
+                  key="tab-siswa"
+                  className={cn('w-full', activeTab === 'siswa' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                >
                   <WalasSiswaTab
                     kelasId={activeKelasId}
                     kelasNama={activeKelasNama}
@@ -367,58 +380,88 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
                     semesterId={walasData?.tahun_pelajaran?.semester}
                     data={walasData}
                   />
-                )}
+                </div>
+              )}
 
-                {activeTab === 'presensi' && (
+              {visitedTabs.has('presensi') && (
+                <div
+                  key="tab-presensi"
+                  className={cn('w-full', activeTab === 'presensi' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                >
                   <WalasPresensiTab
                     kelasId={activeKelasId}
                     kelasNama={activeKelasNama}
                     data={walasData}
                     onOpenRujukanModal={() => handleTabSelect('disiplin')}
                   />
-                )}
+                </div>
+              )}
 
-                {activeTab === 'jurnal' && (
+              {visitedTabs.has('jurnal') && (
+                <div
+                  key="tab-jurnal"
+                  className={cn('w-full', activeTab === 'jurnal' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                >
                   <WalasJurnalTab
                     kelasId={activeKelasId}
                     kelasNama={activeKelasNama}
                     data={walasData}
                   />
-                )}
+                </div>
+              )}
 
-                {activeTab === 'izin' && (
+              {visitedTabs.has('izin') && (
+                <div
+                  key="tab-izin"
+                  className={cn('w-full', activeTab === 'izin' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                >
                   <WalasIzinTab
                     kelasId={activeKelasId}
                     kelasNama={activeKelasNama}
                     data={walasData}
                   />
-                )}
+                </div>
+              )}
 
-                {activeTab === 'disiplin' && (
+              {visitedTabs.has('disiplin') && (
+                <div
+                  key="tab-disiplin"
+                  className={cn('w-full', activeTab === 'disiplin' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                >
                   <WalasDisiplinTab
                     kelasId={activeKelasId}
                     kelasNama={activeKelasNama}
                     data={walasData}
                   />
-                )}
+                </div>
+              )}
 
-                {activeTab === 'prestasi' && (
+              {visitedTabs.has('prestasi') && (
+                <div
+                  key="tab-prestasi"
+                  className={cn('w-full', activeTab === 'prestasi' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                >
                   <WalasPrestasiTab
                     kelasId={activeKelasId}
                     kelasNama={activeKelasNama}
                     data={walasData}
                   />
-                )}
+                </div>
+              )}
 
-                {activeTab === 'rekap' && (
+              {visitedTabs.has('rekap') && (
+                <div
+                  key="tab-rekap"
+                  className={cn('w-full', activeTab === 'rekap' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                >
                   <WalasRekapTab
                     kelasId={activeKelasId}
                     kelasNama={activeKelasNama}
                     data={walasData}
                   />
-                )}
-              </motion.div>
-            </AnimatePresence>
+                </div>
+              )}
+            </div>
           )}
         </main>
       </div>

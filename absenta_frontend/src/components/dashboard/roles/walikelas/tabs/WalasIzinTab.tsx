@@ -272,106 +272,112 @@ export const WalasIzinTab: React.FC<WalasIzinTabProps> = React.memo(({
         )}
       </div>
 
-      {/* 3. MODAL VIEWER LAMPIRAN */}
-      <Modal
-        isOpen={Boolean(selectedAttachment)}
-        onClose={() => setSelectedAttachment(null)}
-        title="Dokumen Lampiran Izin / Surat Dokter"
-        size="lg"
-      >
-        <div className="p-4 space-y-4 text-center">
-          {selectedAttachment && (
-            <img 
-              src={selectedAttachment} 
-              alt="Lampiran Surat Dokter" 
-              className="max-h-[500px] mx-auto rounded-xl shadow-md border border-slate-200"
+      {/* 3. MODAL VIEWER LAMPIRAN - Lazy Mounted */}
+      {Boolean(selectedAttachment) && (
+        <Modal
+          isOpen={Boolean(selectedAttachment)}
+          onClose={() => setSelectedAttachment(null)}
+          title="Dokumen Lampiran Izin / Surat Dokter"
+          size="lg"
+        >
+          <div className="p-4 space-y-4 text-center">
+            {selectedAttachment && (
+              <img 
+                src={selectedAttachment} 
+                alt="Lampiran Surat Dokter" 
+                className="max-h-[500px] mx-auto rounded-xl shadow-md border border-slate-200"
+              />
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedAttachment(null)}
+            >
+              Tutup Pratinjau
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {/* 4. MODAL ALASAN PENOLAKAN IZIN - Lazy Mounted */}
+      {Boolean(rejectingItem) && (
+        <Modal
+          isOpen={Boolean(rejectingItem)}
+          onClose={() => setRejectingItem(null)}
+          title="Konfirmasi Penolakan Surat Izin"
+          size="md"
+        >
+          <form onSubmit={handleConfirmReject} className="p-4 space-y-4 text-xs">
+            <p className="text-slate-600 dark:text-slate-400">
+              Berikan alasan penolakan untuk disampaikan kembali kepada orang tua siswa:
+            </p>
+            <textarea
+              rows={3}
+              placeholder="e.g. Surat dokter tidak memuat stempel klinik resmi, mohon lampirkan ulang..."
+              value={catatanPenolakan}
+              onChange={(e) => setCatatanPenolakan(e.target.value)}
+              className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+              required
             />
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setSelectedAttachment(null)}
-          >
-            Tutup Pratinjau
-          </Button>
-        </div>
-      </Modal>
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setRejectingItem(null)}
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                className="bg-rose-600 hover:bg-rose-700 text-white font-semibold"
+                disabled={updateStatusMutation.isPending}
+              >
+                Konfirmasi Tolak
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
 
-      {/* 4. MODAL ALASAN PENOLAKAN IZIN */}
-      <Modal
-        isOpen={Boolean(rejectingItem)}
-        onClose={() => setRejectingItem(null)}
-        title="Konfirmasi Penolakan Surat Izin"
-        size="md"
-      >
-        <form onSubmit={handleConfirmReject} className="p-4 space-y-4 text-xs">
-          <p className="text-slate-600 dark:text-slate-400">
-            Berikan alasan penolakan untuk disampaikan kembali kepada orang tua siswa:
-          </p>
-          <textarea
-            rows={3}
-            placeholder="e.g. Surat dokter tidak memuat stempel klinik resmi, mohon lampirkan ulang..."
-            value={catatanPenolakan}
-            onChange={(e) => setCatatanPenolakan(e.target.value)}
-            className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-            required
-          />
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setRejectingItem(null)}
-            >
-              Batal
-            </Button>
-            <Button
-              type="submit"
-              size="sm"
-              className="bg-rose-600 hover:bg-rose-700 text-white font-semibold"
-              disabled={updateStatusMutation.isPending}
-            >
-              Konfirmasi Tolak
-            </Button>
+      {/* 5. MODAL KONFIRMASI PERSETUJUAN IZIN - Lazy Mounted */}
+      {Boolean(approvingItem) && (
+        <Modal
+          isOpen={Boolean(approvingItem)}
+          onClose={() => setApprovingItem(null)}
+          title="Konfirmasi Persetujuan Surat Izin"
+          size="sm"
+        >
+          <div className="p-4 space-y-4 text-xs">
+            <p className="text-slate-600 dark:text-slate-400">
+              Apakah Anda yakin ingin menyetujui permohonan izin <strong className="text-slate-900 dark:text-white">{approvingItem?.tipe_izin}</strong> untuk siswa <strong className="text-slate-900 dark:text-white">{approvingItem?.Siswa?.nama_siswa || 'siswa terpilih'}</strong>?
+            </p>
+            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
+              ✓ Catatan absensi pada tanggal tersebut akan otomatis disinkronkan ke rekapitulasi kehadiran kelas dan gerbang sekolah.
+            </p>
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setApprovingItem(null)}
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                disabled={updateStatusMutation.isPending}
+                onClick={handleConfirmApprove}
+              >
+                {updateStatusMutation.isPending ? 'Menyetujui...' : 'Ya, Setujui Permohonan'}
+              </Button>
+            </div>
           </div>
-        </form>
-      </Modal>
-
-      {/* 5. MODAL KONFIRMASI PERSETUJUAN IZIN */}
-      <Modal
-        isOpen={Boolean(approvingItem)}
-        onClose={() => setApprovingItem(null)}
-        title="Konfirmasi Persetujuan Surat Izin"
-        size="sm"
-      >
-        <div className="p-4 space-y-4 text-xs">
-          <p className="text-slate-600 dark:text-slate-400">
-            Apakah Anda yakin ingin menyetujui permohonan izin <strong className="text-slate-900 dark:text-white">{approvingItem?.tipe_izin}</strong> untuk siswa <strong className="text-slate-900 dark:text-white">{approvingItem?.Siswa?.nama_siswa || 'siswa terpilih'}</strong>?
-          </p>
-          <p className="text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
-            ✓ Catatan absensi pada tanggal tersebut akan otomatis disinkronkan ke rekapitulasi kehadiran kelas dan gerbang sekolah.
-          </p>
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setApprovingItem(null)}
-            >
-              Batal
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
-              disabled={updateStatusMutation.isPending}
-              onClick={handleConfirmApprove}
-            >
-              {updateStatusMutation.isPending ? 'Menyetujui...' : 'Ya, Setujui Permohonan'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        </Modal>
+      )}
     </div>
   );
 });
