@@ -17,6 +17,7 @@ import {
   Calendar,
   Settings2,
   BookOpen,
+  PackageCheck,
 } from 'lucide-react';
 
 import { Card } from '@/components/ui/Card';
@@ -31,6 +32,7 @@ import { UkkSertifikatModal, type UkkStudentItem } from './UkkSertifikatModal';
 import { UkkJurusanConfigModal } from './UkkJurusanConfigModal';
 import { UkkJadwalPlotingTab } from './UkkJadwalPlotingTab';
 import { UkkBeritaAcaraTab } from './UkkBeritaAcaraTab';
+import { UkkRabTab } from './UkkRabTab';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { cn } from '@/lib/utils';
 
@@ -100,7 +102,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
         '2025/2026';
   const effectiveTahunAjaran = String(rawTahunAjaran || '2025/2026');
 
-  const [activeTab, setActiveTab] = useState<'ploting' | 'berita_acara' | 'penilaian'>('ploting');
+  const [activeTab, setActiveTab] = useState<'rab' | 'ploting' | 'berita_acara' | 'penilaian'>('ploting');
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [selectedJadwalForBa, setSelectedJadwalForBa] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -430,6 +432,19 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
         <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-xl border border-slate-200/60 dark:border-slate-700 overflow-x-auto no-scrollbar max-w-full shadow-2xs">
           <button
             type="button"
+            onClick={() => setActiveTab('rab')}
+            className={cn(
+              'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer',
+              activeTab === 'rab'
+                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-bold border border-slate-200/60 dark:border-slate-600'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+            )}
+          >
+            <PackageCheck className="w-4 h-4 text-purple-500" />
+            1. Kebutuhan Alat & Bahan (RAB)
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab('ploting')}
             className={cn(
               'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer',
@@ -439,7 +454,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
             )}
           >
             <Calendar className="w-4 h-4 text-blue-500" />
-            1. Pra-UKK (Jadwal & Ploting)
+            2. Pra-UKK (Jadwal & Ploting)
           </button>
           <button
             type="button"
@@ -452,7 +467,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
             )}
           >
             <FileText className="w-4 h-4 text-emerald-500" />
-            2. Berita Acara & Pelaksanaan
+            3. Berita Acara & Pelaksanaan
           </button>
           <button
             type="button"
@@ -465,7 +480,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
             )}
           >
             <Award className="w-4 h-4 text-amber-500" />
-            3. Penilaian & Sertifikat
+            4. Penilaian & Sertifikat
           </button>
         </div>
 
@@ -486,6 +501,17 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
           )}
         </div>
       </div>
+
+      {activeTab === 'rab' && (
+        <UkkRabTab
+          jurusanId={jurusanId}
+          jurusanNama={jurusanNama}
+          tahunPelajaranId={effectiveTpId}
+          tahunAjaran={effectiveTahunAjaran}
+          jumlahPeserta={combinedList.length || 36}
+          readOnly={readOnly}
+        />
+      )}
 
       {activeTab === 'ploting' && (
         <UkkJadwalPlotingTab

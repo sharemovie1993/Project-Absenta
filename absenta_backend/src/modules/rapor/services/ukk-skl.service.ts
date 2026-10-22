@@ -546,6 +546,80 @@ export class UkkSklService {
     }
   }
 
+  // === UKK RAB Alat & Bahan Praktik (Integrasi Sarpras & Aware Tahun Ajaran) ===
+  static async getUkkRab(tenantId: string, jurusanId?: string, tahunAjaran?: string) {
+    if (tahunAjaran) {
+      const sanitizedYear = String(tahunAjaran).replace(/[^a-zA-Z0-9]/g, '_');
+      const yearKey = jurusanId ? `ukk_rab_${jurusanId}_${sanitizedYear}` : `ukk_rab_default_${sanitizedYear}`;
+      const yearConfig = await prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: yearKey },
+      });
+      if (yearConfig && yearConfig.value) {
+        try {
+          return JSON.parse(yearConfig.value);
+        } catch {}
+      }
+    }
+
+    const fallbackKey = jurusanId ? `ukk_rab_${jurusanId}` : 'ukk_rab_default';
+    const config = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key: fallbackKey },
+    });
+    if (!config || !config.value) return null;
+    try {
+      return JSON.parse(config.value);
+    } catch {
+      return null;
+    }
+  }
+
+  static async saveUkkRab(tenantId: string, jurusanId: string, payload: any, tahunAjaran?: string) {
+    const value = JSON.stringify(payload);
+
+    if (tahunAjaran) {
+      const sanitizedYear = String(tahunAjaran).replace(/[^a-zA-Z0-9]/g, '_');
+      const yearKey = jurusanId ? `ukk_rab_${jurusanId}_${sanitizedYear}` : `ukk_rab_default_${sanitizedYear}`;
+      const existingYear = await prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: yearKey },
+      });
+      if (existingYear) {
+        await prisma.config.update({
+          where: { id: existingYear.id },
+          data: { value, description: `RAB Alat & Bahan UKK Jurusan ${jurusanId || 'Default'} TA ${tahunAjaran}` },
+        });
+      } else {
+        await prisma.config.create({
+          data: {
+            tenant_id: tenantId,
+            key: yearKey,
+            value,
+            description: `RAB Alat & Bahan UKK Jurusan ${jurusanId || 'Default'} TA ${tahunAjaran}`,
+          },
+        });
+      }
+    }
+
+    const key = jurusanId ? `ukk_rab_${jurusanId}` : 'ukk_rab_default';
+    const existing = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key },
+    });
+    if (existing) {
+      return prisma.config.update({
+        where: { id: existing.id },
+        data: { value, description: `RAB Alat & Bahan UKK Jurusan ${jurusanId || 'Default'}` },
+      });
+    } else {
+      return prisma.config.create({
+        data: {
+          tenant_id: tenantId,
+          key,
+          value,
+          description: `RAB Alat & Bahan UKK Jurusan ${jurusanId || 'Default'}`,
+        },
+      });
+    }
+  }
+
   // === SKL (Surat Keterangan Lulus) ===
   static async upsertSkl(
     tenantId: string,

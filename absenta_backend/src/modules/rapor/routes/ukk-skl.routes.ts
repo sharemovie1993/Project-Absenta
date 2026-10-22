@@ -199,6 +199,41 @@ export default async function ukkSklRoutes(fastify: any) {
     UkkSklController.saveUkkBeritaAcara
   );
 
+  // UKK RAB Alat & Bahan Praktik (Integrasi Sarpras)
+  fastify.get(
+    '/ukk/rab',
+    {
+      preHandler: [
+        requireCapability([
+          'academic.subjects.view.list',
+          'academic.students.view.list',
+          'hubin.pkl.manage',
+          'academic.manage.academic',
+          'sarpras.inventory.view.list',
+        ]),
+        determineDataScope(),
+      ],
+    },
+    UkkSklController.getUkkRab
+  );
+
+  fastify.post(
+    '/ukk/rab',
+    {
+      preHandler: [
+        requireCapability([
+          'academic.manage.academic',
+          'hubin.pkl.manage',
+          'academic.teaching.rekap',
+          'academic.students.view.list',
+          'sarpras.inventory.manage',
+        ]),
+        determineDataScope(),
+      ],
+    },
+    UkkSklController.saveUkkRab
+  );
+
   // SKL (Surat Keterangan Lulus)
   fastify.post('/skl', { preHandler: [requireCapability('academic.manage.academic'), determineDataScope()]}, UkkSklController.upsertSkl);
   fastify.get('/skl', { preHandler: [requireCapability('academic.students.view.list'), determineDataScope()]}, UkkSklController.getSkl);

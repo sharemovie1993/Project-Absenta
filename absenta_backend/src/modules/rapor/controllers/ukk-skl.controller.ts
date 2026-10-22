@@ -268,4 +268,38 @@ export class UkkSklController {
       return sendError(reply, 500, 'Gagal menyimpan berita acara UKK', error);
     }
   }
+
+  // === UKK RAB Alat & Bahan Praktik (Integrasi Sarpras) ===
+  static async getUkkRab(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { jurusan_id, tahun_ajaran } = req.query;
+
+      const result = await UkkSklService.getUkkRab(tenant_id, jurusan_id, tahun_ajaran);
+      return sendResponse(reply, 200, true, 'RAB Alat & Bahan UKK berhasil dimuat', result || null);
+    } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
+      return sendError(reply, 500, 'Gagal memuat RAB Alat & Bahan UKK', error);
+    }
+  }
+
+  static async saveUkkRab(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { jurusan_id, rab_data, tahun_ajaran } = req.body;
+
+      if (!jurusan_id || !rab_data) {
+        return reply.status(400).send({
+          success: false,
+          message: 'jurusan_id dan rab_data wajib disertakan',
+        });
+      }
+
+      const result = await UkkSklService.saveUkkRab(tenant_id, jurusan_id, rab_data, tahun_ajaran);
+      return sendResponse(reply, 200, true, 'RAB Alat & Bahan UKK berhasil disimpan', result);
+    } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
+      return sendError(reply, 500, 'Gagal menyimpan RAB Alat & Bahan UKK', error);
+    }
+  }
 }

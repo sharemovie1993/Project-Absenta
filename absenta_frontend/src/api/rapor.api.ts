@@ -248,6 +248,21 @@ export const raporApi = {
     });
     return response.data;
   },
+  getUkkRab: async (jurusanId?: string, tahunAjaran?: string) => {
+    const params: Record<string, string> = {};
+    if (jurusanId) params.jurusan_id = jurusanId;
+    if (tahunAjaran) params.tahun_ajaran = tahunAjaran;
+    const response = await api.get('/rapor/ukk/rab', { params });
+    return response.data;
+  },
+  saveUkkRab: async (jurusanId: string, rabData: any, tahunAjaran?: string) => {
+    const response = await api.post('/rapor/ukk/rab', {
+      jurusan_id: jurusanId,
+      rab_data: rabData,
+      tahun_ajaran: tahunAjaran,
+    });
+    return response.data;
+  },
   getSkl: async (params?: { siswa_id?: string; query?: string }) => {
     const response = await api.get('/rapor/skl', { params });
     return response.data;

@@ -9,3 +9,4 @@ export * from './UkkBeritaAcaraTab';
 export * from './UkkBeritaAcaraPrintModal';
 export * from './UkkSettingsRekapTable';
 export * from './UkkSkkniCloudModal';
+export * from './UkkRabTab';
