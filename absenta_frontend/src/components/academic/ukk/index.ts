@@ -6,3 +6,4 @@ export * from './UkkSertifikatPreviewModal';
 export * from './UkkJurusanConfigModal';
 export * from './UkkJadwalPlotingTab';
 export * from './UkkBeritaAcaraTab';
+export * from './UkkBeritaAcaraPrintModal';

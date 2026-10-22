@@ -33,8 +33,19 @@ export interface UkkBeritaAcaraPrintData {
     nama: string;
     alamat?: string;
     kota?: string;
+    telepon?: string;
+    email?: string;
+    website?: string;
     kepala_sekolah?: string;
     nip_kepala?: string;
+    nama_dinas_atas?: string;
+    nama_dinas_bawah?: string;
+    nama_cabang_dinas?: string;
+    print_header_lines?: any[];
+  };
+  options?: {
+    logoDaerahBase64?: string | null;
+    logoSekolahBase64?: string | null;
   };
   beritaAcara: UkkBeritaAcaraItem;
 }
@@ -54,38 +65,109 @@ export const generatePdfUkkBeritaAcara = (
   const contentWidth = pageWidth - margin * 2;
   const ba = data.beritaAcara;
 
-  // Header / Kop
-  doc.setFont('times', 'bold');
-  doc.setFontSize(14);
-  doc.text((data.sekolah.nama || 'SEKOLAH MENENGAH KEJURUAN').toUpperCase(), pageWidth / 2, 20, {
-    align: 'center',
+  // 1. Kop Surat Resmi Terpusat (Sesuai Standar Komponen PrintHeader.tsx)
+  const rawLines =
+    data.sekolah?.print_header_lines && data.sekolah.print_header_lines.length > 0
+      ? data.sekolah.print_header_lines
+      : [
+          data.sekolah?.nama_dinas_atas || 'PEMERINTAH DAERAH PROVINSI JAWA BARAT',
+          data.sekolah?.nama_dinas_bawah || 'DINAS PENDIDIKAN',
+          data.sekolah?.nama_cabang_dinas || 'CABANG DINAS PENDIDIKAN WILAYAH IV',
+          data.sekolah?.nama || 'SEKOLAH MENENGAH KEJURUAN',
+        ];
+
+  const parsedHeaderLines = rawLines.map((line: any, idx: number) => {
+    let textStr = '';
+    let bold = true;
+    let fontSize = 9.5;
+    if (typeof line === 'object' && line !== null) {
+      textStr = line.text || '';
+      bold = line.bold !== false;
+      fontSize = line.fontSize ? line.fontSize * 0.85 : (idx === rawLines.length - 1 ? 12 : 9.5);
+    } else {
+      try {
+        const parsed = JSON.parse(line);
+        if (parsed && typeof parsed === 'object' && 'text' in parsed) {
+          textStr = parsed.text || '';
+          bold = parsed.bold !== false;
+          fontSize = parsed.fontSize ? parsed.fontSize * 0.85 : (idx === rawLines.length - 1 ? 12 : 9.5);
+        } else {
+          textStr = String(line);
+        }
+      } catch {
+        textStr = String(line);
+      }
+      if (idx === rawLines.length - 1) {
+        fontSize = textStr.length > 32 ? 11 : 12.5;
+      }
+    }
+    return { text: textStr, bold, fontSize };
   });
 
-  doc.setFont('times', 'normal');
-  doc.setFontSize(9.5);
-  if (data.sekolah.alamat) {
-    doc.text(data.sekolah.alamat, pageWidth / 2, 25, { align: 'center' });
+  let curKopY = 14;
+
+  // Logos on Left and Right (matching PrintHeader.tsx)
+  if (data.options?.logoDaerahBase64) {
+    try {
+      doc.addImage(data.options.logoDaerahBase64, 'PNG', margin, 11, 19, 19);
+    } catch {}
+  }
+  if (data.options?.logoSekolahBase64) {
+    try {
+      doc.addImage(data.options.logoSekolahBase64, 'PNG', pageWidth - margin - 19, 11, 19, 19);
+    } catch {}
   }
 
+  parsedHeaderLines.forEach((item: { text: string; bold: boolean; fontSize: number }) => {
+    doc.setFont('times', item.bold ? 'bold' : 'normal');
+    doc.setFontSize(item.fontSize);
+    doc.setTextColor(0, 0, 0);
+    doc.text(item.text.toUpperCase(), pageWidth / 2, curKopY, { align: 'center' });
+    curKopY += item.fontSize > 11 ? 5 : 4;
+  });
+
+  // Alamat & Kontak
+  if (data.sekolah.alamat) {
+    doc.setFont('times', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(51, 65, 85);
+    const alamatText = `${data.sekolah.alamat}${data.sekolah.telepon ? ' | Telp: ' + data.sekolah.telepon : ''}`;
+    doc.text(alamatText, pageWidth / 2, curKopY, { align: 'center' });
+    curKopY += 3.5;
+  }
+  if (data.sekolah.website || data.sekolah.email) {
+    doc.setFont('courier', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(71, 85, 105);
+    const contactText = `${data.sekolah.website ? 'Website: ' + data.sekolah.website : ''}${data.sekolah.email ? ' | Email: ' + data.sekolah.email : ''}`;
+    doc.text(contactText, pageWidth / 2, curKopY, { align: 'center' });
+    curKopY += 3.5;
+  }
+
+  // Double rule (matching PrintHeader 3.5px double)
+  curKopY += 1;
+  doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(0.8);
-  doc.line(margin, 29, pageWidth - margin, 29);
+  doc.line(margin, curKopY, pageWidth - margin, curKopY);
   doc.setLineWidth(0.3);
-  doc.line(margin, 30, pageWidth - margin, 30);
+  doc.line(margin, curKopY + 0.8, pageWidth - margin, curKopY + 0.8);
 
   // Title
+  let titleY = curKopY + 7;
   doc.setFont('times', 'bold');
   doc.setFontSize(12);
-  doc.text('BERITA ACARA PELAKSANAAN', pageWidth / 2, 38, { align: 'center' });
-  doc.text('UJI KOMPETENSI KEAHLIAN (UKK)', pageWidth / 2, 43, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+  doc.text('BERITA ACARA PELAKSANAAN', pageWidth / 2, titleY, { align: 'center' });
+  doc.text('UJI KOMPETENSI KEAHLIAN (UKK)', pageWidth / 2, titleY + 5, { align: 'center' });
 
   doc.setFont('times', 'normal');
   doc.setFontSize(10);
-  doc.text(`Tahun Pelajaran ${data.tahunPelajaran || new Date().getFullYear() + '/' + (new Date().getFullYear() + 1)}`, pageWidth / 2, 48, {
+  doc.text(`Tahun Pelajaran ${data.tahunPelajaran || new Date().getFullYear() + '/' + (new Date().getFullYear() + 1)}`, pageWidth / 2, titleY + 10, {
     align: 'center',
   });
 
   // Body Paragraph
-  let currentY = 56;
+  let currentY = titleY + 18;
   doc.setFont('times', 'normal');
   doc.setFontSize(10);
 

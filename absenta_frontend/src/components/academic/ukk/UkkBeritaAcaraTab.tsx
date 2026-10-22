@@ -36,6 +36,7 @@ import {
   type UkkBeritaAcaraItem,
   type UkkBeritaAcaraPrintData,
 } from '@/utils/print/modules/pdfUkkBeritaAcara';
+import { UkkBeritaAcaraPrintModal } from './UkkBeritaAcaraPrintModal';
 import { cn } from '@/lib/utils';
 
 export interface UkkBeritaAcaraTabProps {
@@ -58,6 +59,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [sessionFilter, setSessionFilter] = useState<string>('ALL');
+  const [printModalItem, setPrintModalItem] = useState<UkkBeritaAcaraItem | null>(null);
 
   // Form State
   const [formData, setFormData] = useState<UkkBeritaAcaraItem>({
@@ -451,12 +453,12 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handlePrintPdf(item)}
-                    className="h-8 px-2 text-xs gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950"
-                    title="Cetak Berita Acara Resmi (PDF)"
+                    onClick={() => setPrintModalItem(item)}
+                    className="h-8 px-2.5 text-xs gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950 font-medium"
+                    title="Cetak Berita Acara Resmi (Pratinjau Kop & PDF)"
                   >
                     <Printer className="w-3.5 h-3.5" />
-                    Cetak PDF
+                    Cetak Berita Acara
                   </Button>
                   {!readOnly && (
                     <>
@@ -879,6 +881,14 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
           </div>
         </div>
       </Modal>
+
+      {/* Official Print Preview & PDF Modal with PrintHeader */}
+      <UkkBeritaAcaraPrintModal
+        isOpen={!!printModalItem}
+        onClose={() => setPrintModalItem(null)}
+        beritaAcara={printModalItem}
+        jurusanNama={jurusanNama}
+      />
     </div>
   );
 };
