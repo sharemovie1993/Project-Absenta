@@ -39,6 +39,8 @@ export const UkkBeritaAcaraPrintModal: React.FC<UkkBeritaAcaraPrintModalProps> =
 
   if (!beritaAcara) return null;
 
+  const hasPhotos = Boolean(beritaAcara.foto_dokumentasi && beritaAcara.foto_dokumentasi.length > 0);
+
   const handleBrowserPrint = () => {
     window.print();
   };
@@ -168,14 +170,20 @@ export const UkkBeritaAcaraPrintModal: React.FC<UkkBeritaAcaraPrintModalProps> =
           </div>
         </div>
 
-        {/* Printable Paper Preview (A4 Portrait Container) */}
-        <div className="overflow-y-auto max-h-[78vh] p-3 sm:p-6 bg-slate-200/60 dark:bg-slate-950/70 rounded-xl border flex justify-center">
+        {/* Printable Paper Preview (Desk Container with Discrete A4 Sheets) */}
+        <div className="overflow-y-auto max-h-[76vh] p-4 sm:p-8 bg-slate-200/70 dark:bg-slate-950/80 rounded-xl border flex flex-col items-center gap-8 select-text">
           <div
             ref={printRef}
             id="print-area-berita-acara"
-            className="w-full max-w-[210mm] bg-white text-slate-900 p-8 sm:p-12 shadow-2xl rounded-sm font-serif text-[12px] leading-relaxed select-text border border-slate-300 dark:border-slate-800"
-            style={{ minHeight: '297mm' }}
+            className="w-full flex flex-col items-center gap-8"
           >
+            {/* ========================================================================= */}
+            {/* LEMBAR 1: NASKAH UTAMA BERITA ACARA UKK (STANDAR A4 PORTRAIT)              */}
+            {/* ========================================================================= */}
+            <div
+              className="print-sheet w-full max-w-[210mm] min-h-[297mm] bg-white text-slate-900 p-8 sm:p-12 shadow-2xl rounded-sm font-serif text-[12px] leading-relaxed border border-slate-300 dark:border-slate-800 flex flex-col justify-between"
+            >
+              <div>
             {/* === KOP SURAT RESMI MENGGUNAKAN KOMPONEN PrintHeader.tsx === */}
             <PrintHeader
               variant="portrait"
@@ -351,45 +359,80 @@ export const UkkBeritaAcaraPrintModal: React.FC<UkkBeritaAcaraPrintModalProps> =
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Lampiran Foto Dokumentasi (jika ada) */}
-            {beritaAcara.foto_dokumentasi && beritaAcara.foto_dokumentasi.length > 0 && (
-              <div className="mt-12 pt-8 border-t border-dashed border-slate-300 page-break-before">
-                <div className="text-center mb-6">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-black">
-                    LAMPIRAN DOKUMENTASI VISUAL PELAKSANAAN UKK
-                  </h4>
-                  <p className="text-[10px] text-slate-600">
-                    Sesi: {beritaAcara.nama_sesi} — Ruang: {beritaAcara.ruang} ({beritaAcara.tanggal})
-                  </p>
+          {/* Page 1 Footer */}
+          <div className="pt-4 border-t border-slate-200 text-[10px] text-slate-400 flex justify-between font-sans">
+            <span>Berita Acara Pelaksanaan UKK — {beritaAcara.nama_sesi}</span>
+            <span>Halaman 1 {hasPhotos ? 'dari 2' : ''}</span>
+          </div>
+        </div>
+
+            {/* ========================================================================= */}
+            {/* LEMBAR 2: LAMPIRAN FOTO DOKUMENTASI VISUAL (JIKA ADA FOTO)                */}
+            {/* ========================================================================= */}
+            {hasPhotos && (
+              <>
+                {/* Visual Separator di Layar Desk */}
+                <div className="print:hidden flex items-center gap-3 my-1 text-xs text-slate-500 font-sans">
+                  <div className="h-px bg-slate-300 dark:bg-slate-700 w-24" />
+                  <span className="bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-3.5 py-1 rounded-full text-[11px] font-semibold tracking-wide shadow-sm border border-slate-300 dark:border-slate-700">
+                    Halaman 2: Lampiran Dokumentasi Visual
+                  </span>
+                  <div className="h-px bg-slate-300 dark:bg-slate-700 w-24" />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  {beritaAcara.foto_dokumentasi.map((fotoItem, fIdx) => {
-                    const photoUrl = typeof fotoItem === 'string' ? fotoItem : (fotoItem as any)?.url || '';
-                    const photoCaption =
-                      typeof fotoItem === 'object' && (fotoItem as any)?.caption && (fotoItem as any).caption.trim()
-                        ? (fotoItem as any).caption.trim()
-                        : `Foto ${fIdx + 1}: Dokumentasi Pelaksanaan ${beritaAcara.nama_sesi}`;
+                <div
+                  className="print-sheet w-full max-w-[210mm] min-h-[297mm] bg-white text-slate-900 p-8 sm:p-12 shadow-2xl rounded-sm font-serif text-[12px] leading-relaxed border border-slate-300 dark:border-slate-800 flex flex-col justify-between"
+                >
+                  <div>
+                    {/* Header Lampiran */}
+                    <div className="text-center pb-4 mb-6 border-b border-slate-300">
+                      <h4 className="text-sm font-bold uppercase tracking-wider text-black">
+                        LAMPIRAN DOKUMENTASI VISUAL PELAKSANAAN UKK
+                      </h4>
+                      <p className="text-[11px] text-slate-600 font-sans mt-1">
+                        Sesi: <strong>{beritaAcara.nama_sesi}</strong> — Ruang: <strong>{beritaAcara.ruang}</strong> ({beritaAcara.tanggal})
+                      </p>
+                    </div>
 
-                    return (
-                      <div
-                        key={fIdx}
-                        className="border border-slate-200 rounded-lg p-2.5 bg-slate-50 flex flex-col items-center"
-                      >
-                        <img
-                          src={photoUrl}
-                          alt={photoCaption}
-                          className="w-full h-44 object-cover rounded bg-white shadow-sm"
-                        />
-                        <p className="text-[10.5px] text-slate-700 italic mt-2 text-center font-medium">
-                          {photoCaption}
-                        </p>
-                      </div>
-                    );
-                  })}
+                    {/* Grid Foto Dokumentasi (2 Kolom Presisi Sesuai Standar Cetak) */}
+                    <div className="grid grid-cols-2 gap-5">
+                      {beritaAcara.foto_dokumentasi?.map((fotoItem, fIdx) => {
+                        const photoUrl = typeof fotoItem === 'string' ? fotoItem : (fotoItem as any)?.url || '';
+                        const photoCaption =
+                          typeof fotoItem === 'object' && (fotoItem as any)?.caption && (fotoItem as any).caption.trim()
+                            ? (fotoItem as any).caption.trim()
+                            : `Foto ${fIdx + 1}: Dokumentasi Pelaksanaan ${beritaAcara.nama_sesi}`;
+
+                        return (
+                          <div
+                            key={fIdx}
+                            className="border border-slate-200 rounded-lg p-2.5 bg-slate-50 flex flex-col items-center"
+                          >
+                            <div className="w-full h-44 sm:h-48 overflow-hidden rounded bg-white border border-slate-100 flex items-center justify-center">
+                              <img
+                                src={photoUrl}
+                                alt={photoCaption}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <p className="text-[10px] text-slate-700 italic mt-2 text-center font-medium line-clamp-2">
+                              {photoCaption}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Page 2 Footer */}
+                  <div className="pt-4 border-t border-slate-200 text-[10px] text-slate-400 flex justify-between font-sans">
+                    <span>Lampiran Dokumentasi Visual UKK — {beritaAcara.nama_sesi}</span>
+                    <span>Halaman 2 dari 2</span>
+                  </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
         </div>
