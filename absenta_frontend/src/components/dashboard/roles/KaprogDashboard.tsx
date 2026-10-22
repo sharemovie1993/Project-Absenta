@@ -21,7 +21,6 @@ import { Modal } from '@/components/ui/Modal';
 import { cn } from '@/lib/utils';
 import { hubinApi } from '@/api/hubin.api';
 import { getKaprogStats } from '@/api/dashboard.api';
-import { getJurusanList } from '@/api/academic/jurusan.api';
 import { useAuthStore } from '@/store/authStore';
 import type { EditingMitraSlot } from '@/components/hubin/nilai-pkl/PklDeskripsiTpModal';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -167,25 +166,13 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
   }), [academicFilter]);
 
   // --------------------------------------------------------------------------
-  // Data Fetching: 0. Daftar Jurusan Tenant & State Pemilihan Jurusan
+  // Identitas Jurusan Kaprog Terkunci (RBAC & SK Assignment - Zero Cross-Jurusan)
   // --------------------------------------------------------------------------
-  const { data: jurusanListRes } = useQuery({
-    queryKey: ['academic-jurusan-list'],
-    queryFn: () => getJurusanList(1, 50),
-    staleTime: 5 * 60 * 1000,
-  });
-  const allJurusans = useMemo(() => (jurusanListRes as any)?.data || [], [jurusanListRes]);
+  const assignedJurusan = useMemo(() => {
+    return propJurusan || (currentUser as { kaprog_jurusan?: { id?: string; nama?: string; singkatan?: string; kode?: string; logo_url?: string } })?.kaprog_jurusan || null;
+  }, [propJurusan, currentUser]);
 
-  const defaultJurusanId = propJurusan?.id || (currentUser as { kaprog_jurusan?: { id?: string } })?.kaprog_jurusan?.id || undefined;
-  const [selectedJurusanId, setSelectedJurusanId] = useState<string | undefined>(defaultJurusanId);
-
-  useEffect(() => {
-    if (defaultJurusanId && !selectedJurusanId) {
-      setSelectedJurusanId(defaultJurusanId);
-    }
-  }, [defaultJurusanId, selectedJurusanId]);
-
-  const jurusanId = selectedJurusanId || defaultJurusanId;
+  const jurusanId = assignedJurusan?.id;
 
   // --------------------------------------------------------------------------
   // Data Fetching: 1. PKL Summary (Dual-Layer Cache)
@@ -232,32 +219,19 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
     return kaprogStatsData?.konteksAkademik || null;
   }, [kaprogStatsData]);
 
-  // Resolved Jurusan Info
+  // Resolved Jurusan Info (Terkunci Sesuai SK Kaprog)
   const resolvedJurusan: ResolvedJurusan = useMemo(() => {
-    if (selectedJurusanId && allJurusans.length > 0) {
-      const matched = allJurusans.find((j: any) => j.id === selectedJurusanId);
-      if (matched) {
-        return {
-          id: matched.id,
-          nama: matched.nama,
-          singkatan: matched.singkatan || matched.kode,
-          kode: matched.kode,
-          logo_url: matched.logo_url,
-        };
-      }
-    }
     return (
+      assignedJurusan ||
       kaprogStatsData?.jurusan ||
-      pklSummaryData?.jurusan ||
-      propJurusan ||
-      (currentUser as { kaprog_jurusan?: { id?: string; nama?: string; singkatan?: string } })?.kaprog_jurusan || {
-        id: allJurusans[0]?.id || 'jurusan-default',
-        nama: allJurusans[0]?.nama || 'Program Keahlian',
-        singkatan: allJurusans[0]?.singkatan || 'KAPROG',
-        kode: allJurusans[0]?.kode || 'KPR',
+      pklSummaryData?.jurusan || {
+        id: 'jurusan-default',
+        nama: 'Program Keahlian',
+        singkatan: 'KAPROG',
+        kode: 'KPR',
       }
     );
-  }, [selectedJurusanId, allJurusans, kaprogStatsData, pklSummaryData, propJurusan, currentUser]);
+  }, [assignedJurusan, kaprogStatsData, pklSummaryData]);
 
   // Status Perumusan TP Mitra (Dari API Riil Hubin)
   const tpStatus = useMemo(() => {
@@ -536,25 +510,19 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
               )}
             </div>
             <div className="min-w-0 flex-1">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block leading-tight">
+                Program Keahlian
+              </span>
               <h2 className="text-xs font-black text-slate-900 dark:text-slate-100 tracking-wider truncate uppercase">
                 {resolvedJurusan?.nama || 'KULINER'}
               </h2>
             </div>
+            {resolvedJurusan?.singkatan && (
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40 shrink-0">
+                {resolvedJurusan.singkatan}
+              </span>
+            )}
           </div>
-          {allJurusans.length > 1 && (
-            <select
-              aria-label="Pilih Program Keahlian"
-              value={resolvedJurusan?.id || ''}
-              onChange={(e) => setSelectedJurusanId(e.target.value)}
-              className="py-1 px-2 text-[10px] font-bold rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 max-w-[130px] truncate"
-            >
-              {allJurusans.map((j: any) => (
-                <option key={j.id} value={j.id}>
-                  {j.singkatan || j.kode || j.nama}
-                </option>
-              ))}
-            </select>
-          )}
         </div>
 
         {/* Mobile Academic Filter Toolbar */}
@@ -618,27 +586,22 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="text-sm font-black text-slate-900 dark:text-slate-100 tracking-wider truncate uppercase">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block leading-tight">
+                  Program Keahlian
+                </span>
+                <h2 className="text-sm font-black text-slate-900 dark:text-slate-100 tracking-wider truncate uppercase" title={resolvedJurusan?.nama}>
                   {resolvedJurusan?.nama || 'KULINER'}
                 </h2>
               </div>
             </div>
 
-            {/* Selector Jurusan Cerdas */}
-            {allJurusans.length > 1 && (
-              <select
-                aria-label="Pilih Program Keahlian"
-                value={resolvedJurusan?.id || ''}
-                onChange={(e) => setSelectedJurusanId(e.target.value)}
-                className="w-full py-1.5 px-2 text-[11px] font-bold rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
-              >
-                {allJurusans.map((j: any) => (
-                  <option key={j.id} value={j.id}>
-                    {j.nama} ({j.singkatan || j.kode})
-                  </option>
-                ))}
-              </select>
-            )}
+            {/* Badge Info Wewenang Kejuruan Terkunci */}
+            <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+              <span className="font-medium">Kode Bidang</span>
+              <span className="font-bold text-slate-700 dark:text-slate-200 font-mono text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                {resolvedJurusan?.kode || resolvedJurusan?.singkatan || 'KPR'}
+              </span>
+            </div>
           </div>
 
           {/* Academic Filter Toolbar (Sidebar Variant SSOT) */}
