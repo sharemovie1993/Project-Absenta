@@ -17,6 +17,7 @@ import {
   Camera,
   Save,
   Check,
+  PenTool,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -25,6 +26,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { Loader } from '@/components/ui/Loader';
+import { DigitalSignatureField } from '@/components/ui/DigitalSignatureField';
 import { raporApi } from '@/api/rapor.api';
 import { sekolahApi } from '@/api/academic/sekolah.api';
 import { useGuruOptions } from '@/hooks/useGuruOptions';
@@ -775,6 +777,39 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
               placeholder="Contoh: Gangguan koneksi selama 10 menit, namun berhasil diatasi..."
               className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none resize-none"
             />
+          </div>
+
+          {/* Tanda Tangan Digital Penguji & Panitia via Pen */}
+          <div className="p-3.5 bg-muted/40 rounded-xl border space-y-3">
+            <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+              <PenTool className="w-4 h-4 text-primary" />
+              <span>Tanda Tangan Digital Resmi (Pen Canvas)</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <DigitalSignatureField
+                label="TTD Penguji Internal"
+                penName={formData.penguji_internal || 'Penguji Internal'}
+                value={formData.ttd_penguji_internal}
+                onChange={(sig) => setFormData({ ...formData, ttd_penguji_internal: sig })}
+              />
+
+              <DigitalSignatureField
+                label="TTD Penguji Eksternal (DU/DI)"
+                penName={formData.penguji_eksternal || 'Penguji Eksternal'}
+                value={formData.ttd_penguji_eksternal}
+                onChange={(sig) => setFormData({ ...formData, ttd_penguji_eksternal: sig })}
+              />
+            </div>
+
+            <div className="pt-2 border-t">
+              <DigitalSignatureField
+                label="TTD Ketua Panitia / Kaprog"
+                penName={formData.panitia || 'Ketua Panitia UKK'}
+                value={formData.ttd_panitia}
+                onChange={(sig) => setFormData({ ...formData, ttd_panitia: sig })}
+              />
+            </div>
           </div>
 
           {/* Upload Foto Dokumentasi */}

@@ -19,6 +19,7 @@ export interface SertifikatUkkPrintData {
     website?: string;
     kepala_sekolah?: string;
     nip_kepala?: string;
+    ttd_kepala?: string | null;
     logo_url?: string;
     logo_daerah?: string;
   };
@@ -44,6 +45,9 @@ export interface SertifikatUkkPrintData {
     asesor_eksternal?: string;
     mitra_nama?: string;
     catatan?: string;
+    ttd_asesor_internal?: string | null;
+    ttd_asesor_eksternal?: string | null;
+    ttd_kepala_sekolah?: string | null;
     unit_kompetensi?: UkkUnitKompetensi[];
   };
 }
@@ -370,6 +374,14 @@ export const renderSertifikatUkkFront = (
   doc.text('Kepala Sekolah', colLeftX, signY + 7.5, { align: 'center' });
   doc.text('Headmaster', colLeftX, signY + 10.7, { align: 'center' });
 
+  // TTD Digital Kepala Sekolah
+  const ttdKepala = data.sekolah?.ttd_kepala || ukk.ttd_kepala_sekolah;
+  if (ttdKepala) {
+    try {
+      doc.addImage(ttdKepala, 'PNG', colLeftX - 16, signY + 12.5, 32, 17);
+    } catch {}
+  }
+
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(8.5);
   doc.text(kepalaSekolahNama, colLeftX, signY + 31, { align: 'center' });
@@ -384,6 +396,13 @@ export const renderSertifikatUkkFront = (
   doc.setFontSize(8);
   doc.text('Penguji Eksternal', colRightX, signY + 4, { align: 'center' });
   doc.text('External Assessor', colRightX, signY + 7.5, { align: 'center' });
+
+  // TTD Digital Penguji Eksternal (DU/DI)
+  if (ukk.ttd_asesor_eksternal) {
+    try {
+      doc.addImage(ukk.ttd_asesor_eksternal, 'PNG', colRightX - 16, signY + 12.5, 32, 17);
+    } catch {}
+  }
 
   const asesorEksName =
     ukk.asesor_eksternal ||
@@ -486,6 +505,12 @@ export const renderSertifikatUkkBack = (
   doc.setFontSize(8);
   doc.text('Internal Assessor', colLeftLabelX, signStartY + 4);
 
+  if (ukk.ttd_asesor_internal) {
+    try {
+      doc.addImage(ukk.ttd_asesor_internal, 'PNG', colRightNameX - 25, signStartY - 6, 22, 11);
+    } catch {}
+  }
+
   const asesorIntText = `${ukk.asesor_internal || 'Penguji Sekolah'} (${data.sekolah?.nama || 'SMK ASSALAM'})`;
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(9);
@@ -501,6 +526,12 @@ export const renderSertifikatUkkBack = (
   doc.setFont('Helvetica', 'italic');
   doc.setFontSize(8);
   doc.text('External Assessor', colLeftLabelX, row2Y + 4);
+
+  if (ukk.ttd_asesor_eksternal) {
+    try {
+      doc.addImage(ukk.ttd_asesor_eksternal, 'PNG', colRightNameX - 25, row2Y - 6, 22, 11);
+    } catch {}
+  }
 
   const asesorEksText = `${ukk.asesor_eksternal || 'Penguji DU/DI'} (${ukk.mitra_nama || 'Mitra Industri'})`;
   doc.setFont('Helvetica', 'bold');

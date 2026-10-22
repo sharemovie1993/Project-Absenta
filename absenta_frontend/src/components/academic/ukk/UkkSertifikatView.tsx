@@ -227,6 +227,12 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
               currentStudent.mitra_nama ||
               ukkRecord?.MitraIndustri?.nama ||
               'Mitra Industri / DU-DI',
+            ttd_asesor_internal:
+              jurusanSettings?.ttd_asesor_internal || undefined,
+            ttd_asesor_eksternal:
+              jurusanSettings?.ttd_asesor_eksternal || undefined,
+            ttd_kepala_sekolah:
+              jurusanSettings?.ttd_kepala_sekolah || undefined,
             unit_kompetensi:
               Array.isArray(jurusanSettings?.unit_kompetensi) && jurusanSettings.unit_kompetensi.length > 0
                 ? jurusanSettings.unit_kompetensi
@@ -371,6 +377,9 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
           asesor_internal: s.asesor_internal || 'Tim Asesor Sekolah',
           asesor_eksternal: s.asesor_eksternal || 'Penguji Asosiasi Industri',
           mitra_nama: s.mitra_nama || 'Mitra Industri / DU-DI',
+          ttd_asesor_internal: settingsData?.ttd_asesor_internal || undefined,
+          ttd_asesor_eksternal: settingsData?.ttd_asesor_eksternal || undefined,
+          ttd_kepala_sekolah: settingsData?.ttd_kepala_sekolah || undefined,
           unit_kompetensi:
             Array.isArray(settingsData?.unit_kompetensi) && settingsData.unit_kompetensi.length > 0
               ? settingsData.unit_kompetensi

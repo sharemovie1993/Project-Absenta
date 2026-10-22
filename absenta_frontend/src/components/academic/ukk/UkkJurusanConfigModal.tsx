@@ -10,11 +10,13 @@ import {
   CheckCircle2,
   AlertCircle,
   FileCheck2,
+  PenTool,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { DigitalSignatureField } from '@/components/ui/DigitalSignatureField';
 import { raporApi } from '@/api/rapor.api';
 import { getDefaultUnitKompetensi, type UkkUnitKompetensi } from '@/utils/print/modules/pdfSertifikatUkk';
 import { cn } from '@/lib/utils';
@@ -38,6 +40,9 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
   const [judulPenugasanId, setJudulPenugasanId] = useState('');
   const [judulPenugasanEn, setJudulPenugasanEn] = useState('');
   const [units, setUnits] = useState<UkkUnitKompetensi[]>([]);
+  const [ttdKepalaSekolah, setTtdKepalaSekolah] = useState<string | null>(null);
+  const [ttdAsesorEksternal, setTtdAsesorEksternal] = useState<string | null>(null);
+  const [ttdAsesorInternal, setTtdAsesorInternal] = useState<string | null>(null);
 
   // Query Settings
   const { data: settingsRes, isLoading } = useQuery({
@@ -55,6 +60,9 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
         setSkemaSertifikasi(data.skema_sertifikasi || '');
         setJudulPenugasanId(data.judul_penugasan_id || '');
         setJudulPenugasanEn(data.judul_penugasan_en || '');
+        setTtdKepalaSekolah(data.ttd_kepala_sekolah || null);
+        setTtdAsesorEksternal(data.ttd_asesor_eksternal || null);
+        setTtdAsesorInternal(data.ttd_asesor_internal || null);
         if (Array.isArray(data.unit_kompetensi) && data.unit_kompetensi.length > 0) {
           setUnits(data.unit_kompetensi);
           return;
@@ -113,6 +121,9 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
         judul_penugasan_id: judulPenugasanId,
         judul_penugasan_en: judulPenugasanEn,
         unit_kompetensi: units,
+        ttd_kepala_sekolah: ttdKepalaSekolah,
+        ttd_asesor_eksternal: ttdAsesorEksternal,
+        ttd_asesor_internal: ttdAsesorInternal,
       });
     },
     onSuccess: () => {
@@ -269,6 +280,42 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
                 </div>
               ))
             )}
+          </div>
+        </div>
+
+        {/* Tanda Tangan Digital Resmi Sertifikat (Pen Canvas) */}
+        <div className="bg-card border rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2 pb-2 border-b">
+            <PenTool className="w-4 h-4 text-primary" />
+            <h4 className="text-sm font-semibold text-foreground">
+              Master Tanda Tangan Digital Sertifikat (Pen Stylus)
+            </h4>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Tanda tangan yang digoreskan di sini akan otomatis distempel pada output fisik cetak Sertifikat UKK (Lembar Depan & Belakang).
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <DigitalSignatureField
+              label="TTD Kepala Sekolah"
+              penName="Kepala Sekolah"
+              value={ttdKepalaSekolah}
+              onChange={(sig) => setTtdKepalaSekolah(sig)}
+            />
+
+            <DigitalSignatureField
+              label="TTD Penguji Eksternal (DU/DI)"
+              penName="Penguji Eksternal"
+              value={ttdAsesorEksternal}
+              onChange={(sig) => setTtdAsesorEksternal(sig)}
+            />
+
+            <DigitalSignatureField
+              label="TTD Penguji Internal"
+              penName="Penguji Internal"
+              value={ttdAsesorInternal}
+              onChange={(sig) => setTtdAsesorInternal(sig)}
+            />
           </div>
         </div>
 

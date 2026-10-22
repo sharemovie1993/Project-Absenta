@@ -18,6 +18,9 @@ export interface UkkBeritaAcaraItem {
   penguji_eksternal: string;
   mitra_nama?: string;
   panitia?: string;
+  ttd_penguji_internal?: string | null;
+  ttd_penguji_eksternal?: string | null;
+  ttd_panitia?: string | null;
   status: 'DRAFT' | 'SELESAI';
   foto_dokumentasi?: string[]; // Base64 or URLs
 }
@@ -169,7 +172,19 @@ export const generatePdfUkkBeritaAcara = (
   doc.text('Penguji Internal,', margin + 5, currentY);
   doc.text('Penguji Eksternal (DU/DI),', margin + colWidth + 5, currentY);
 
-  currentY += 20;
+  // Stempel TTD Digital Pen (jika tersedia)
+  if (ba.ttd_penguji_internal) {
+    try {
+      doc.addImage(ba.ttd_penguji_internal, 'PNG', margin + 8, currentY + 1.5, 30, 16);
+    } catch {}
+  }
+  if (ba.ttd_penguji_eksternal) {
+    try {
+      doc.addImage(ba.ttd_penguji_eksternal, 'PNG', margin + colWidth + 8, currentY + 1.5, 30, 16);
+    } catch {}
+  }
+
+  currentY += 19;
   doc.setFont('times', 'bold');
   doc.text(ba.penguji_internal || 'Penguji Internal', margin + 5, currentY);
   doc.text(ba.penguji_eksternal || 'Penguji Eksternal', margin + colWidth + 5, currentY);
@@ -188,7 +203,13 @@ export const generatePdfUkkBeritaAcara = (
   doc.text('Ketua Panitia / Kaprog,', margin + 5, currentY);
   doc.text('Mengetahui,\nKepala Sekolah,', margin + colWidth + 5, currentY);
 
-  currentY += 20;
+  if (ba.ttd_panitia) {
+    try {
+      doc.addImage(ba.ttd_panitia, 'PNG', margin + 8, currentY + 1.5, 30, 16);
+    } catch {}
+  }
+
+  currentY += 19;
   doc.setFont('times', 'bold');
   doc.text(ba.panitia || 'Panitia UKK', margin + 5, currentY);
   doc.text(data.sekolah.kepala_sekolah || 'Kepala Sekolah', margin + colWidth + 5, currentY);
