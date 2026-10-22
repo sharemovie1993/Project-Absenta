@@ -462,6 +462,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.recap.view.monthly',
     'affairs.violations.view.list',
     'affairs.violations.view.detail',
+    'affairs.achievements.view.list',
+    'affairs.achievements.create',
     'bk.cases.view.list',
     'bk.referrals.create',
     'curriculum.supervision.view.report',

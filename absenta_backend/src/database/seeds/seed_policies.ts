@@ -517,6 +517,8 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'affairs.violations.update',
     'affairs.violations.view.detail',
     'affairs.violations.view.list',
+    'affairs.achievements.view.list',
+    'affairs.achievements.create',
     'whatsapp.manage.config',
     'whatsapp.send.test',
     'support.tickets.create',
@@ -572,6 +574,7 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
         id.startsWith('attendance.officers.') ||
         id.startsWith('affairs.violations.') || 
         id.startsWith('affairs.violation.types.') ||
+        id.startsWith('affairs.achievements.') ||
         id.startsWith('hubin.') ||
         id.startsWith('correspondence.') ||
         id.startsWith('sarpras.loans.') ||
