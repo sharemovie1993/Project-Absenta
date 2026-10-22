@@ -156,6 +156,31 @@ export class UkkSklController {
     }
   }
 
+  // === Master Katalog SKKNI Cloud dari Server Lisensi ===
+  static async getCloudSkkniKatalog(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { search, rumpun } = req.query;
+
+      const result = await UkkSklService.getCloudSkkniKatalog(tenant_id, { search, rumpun });
+      return sendResponse(reply, 200, true, 'Katalog SKKNI Cloud berhasil dimuat', result);
+    } catch (error) {
+      appLogger.error({ err: error }, 'getCloudSkkniKatalog error');
+      return sendError(reply, 500, 'Gagal memuat katalog SKKNI dari cloud', error);
+    }
+  }
+
+  static async getCloudSkkniRumpun(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const result = await UkkSklService.getCloudSkkniRumpun(tenant_id);
+      return sendResponse(reply, 200, true, 'Kategori Rumpun SKKNI berhasil dimuat', result);
+    } catch (error) {
+      appLogger.error({ err: error }, 'getCloudSkkniRumpun error');
+      return sendError(reply, 500, 'Gagal memuat kategori rumpun SKKNI', error);
+    }
+  }
+
   static async saveUkkSettings(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;

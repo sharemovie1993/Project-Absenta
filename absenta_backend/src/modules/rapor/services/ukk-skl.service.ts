@@ -1,4 +1,5 @@
 import { prisma } from '../../../utils/prisma';
+import { fetchCloudSkkniKatalog, fetchCloudSkkniRumpun } from '@/services/licenseClient';
 
 export class UkkSklService {
   // === UKK (Uji Kompetensi Keahlian) ===
@@ -259,6 +260,88 @@ export class UkkSklService {
         updated_at: cfg.updated_at,
       };
     });
+  }
+
+  // === MASTER KATALOG SKKNI CLOUD (Single Source of Truth dari Server Lisensi) ===
+  static async getCloudSkkniKatalog(tenantId: string, params?: { search?: string; rumpun?: string }) {
+    // 1. Coba ambil langsung dari Server Lisensi
+    const cloudData = await fetchCloudSkkniKatalog(params);
+    if (cloudData && cloudData.length > 0) {
+      // Simpan ke cache lokal untuk offline resiliency (jika tanpa filter)
+      if (!params?.search && (!params?.rumpun || params.rumpun === 'ALL')) {
+        const existing = await prisma.config.findFirst({
+          where: { tenant_id: tenantId, key: 'skkni_cloud_cache' },
+        });
+        if (existing) {
+          await prisma.config.update({
+            where: { id: existing.id },
+            data: { value: JSON.stringify(cloudData) },
+          }).catch(() => {});
+        } else {
+          await prisma.config.create({
+            data: {
+              tenant_id: tenantId,
+              key: 'skkni_cloud_cache',
+              value: JSON.stringify(cloudData),
+              description: 'Cache Katalog SKKNI Server Lisensi Offline Fallback',
+            },
+          }).catch(() => {});
+        }
+      }
+      return { source: 'cloud', data: cloudData };
+    }
+
+    // 2. Offline Fallback: Baca dari cache DB lokal jika server lisensi tidak terjangkau
+    const cached = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key: 'skkni_cloud_cache' },
+    });
+    if (cached && cached.value) {
+      try {
+        let list = JSON.parse(cached.value);
+        if (params?.rumpun && params.rumpun !== 'ALL') {
+          list = list.filter((k: any) => k.rumpun === params.rumpun);
+        }
+        if (params?.search) {
+          const q = params.search.toLowerCase();
+          list = list.filter((k: any) =>
+            (k.namaSkema && k.namaSkema.toLowerCase().includes(q)) ||
+            (k.kodeSkema && k.kodeSkema.toLowerCase().includes(q)) ||
+            k.units?.some((u: any) =>
+              (u.judulUnitId && u.judulUnitId.toLowerCase().includes(q)) ||
+              (u.kodeUnit && u.kodeUnit.toLowerCase().includes(q))
+            )
+          );
+        }
+        return { source: 'local_cache', data: list };
+      } catch {}
+    }
+
+    return { source: 'empty', data: [] };
+  }
+
+  static async getCloudSkkniRumpun(tenantId: string) {
+    const cloudRumpun = await fetchCloudSkkniRumpun();
+    if (cloudRumpun && cloudRumpun.length > 0) return cloudRumpun;
+
+    // Fallback dari cache DB lokal
+    const cached = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key: 'skkni_cloud_cache' },
+    });
+    if (cached && cached.value) {
+      try {
+        const list = JSON.parse(cached.value);
+        const distinct = Array.from(new Set(list.map((k: any) => k.rumpun))).filter(Boolean) as string[];
+        if (distinct.length > 0) return distinct;
+      } catch {}
+    }
+
+    return [
+      'Bisnis & Manajemen',
+      'Kuliner & Pariwisata',
+      'Seni & Ekonomi Kreatif',
+      'Teknologi & Rekayasa',
+      'Teknologi Informasi & Komunikasi',
+    ];
   }
 
   static async saveUkkSettings(tenantId: string, jurusanId: string, data: any, tahunAjaran?: string) {

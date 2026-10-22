@@ -14,6 +14,7 @@ import {
   Calendar,
   ShieldCheck,
   TableIcon,
+  Cloud,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -24,6 +25,7 @@ import { raporApi } from '@/api/rapor.api';
 import { getDefaultUnitKompetensi, type UkkUnitKompetensi } from '@/utils/print/modules/pdfSertifikatUkk';
 import { getAvailableRegulatoryEditions } from '@/config/ukkRegulatoryRegistry';
 import { UkkSettingsRekapTable } from './UkkSettingsRekapTable';
+import { UkkSkkniCloudModal, type AdoptedSkkniData } from './UkkSkkniCloudModal';
 import { cn } from '@/lib/utils';
 
 export interface UkkJurusanConfigModalProps {
@@ -59,6 +61,22 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
   const [ttdKepalaSekolah, setTtdKepalaSekolah] = useState<string | null>(null);
   const [ttdAsesorEksternal, setTtdAsesorEksternal] = useState<string | null>(null);
   const [ttdAsesorInternal, setTtdAsesorInternal] = useState<string | null>(null);
+  const [cloudModalOpen, setCloudModalOpen] = useState<boolean>(false);
+
+  const handleAdoptFromCloud = (adopted: AdoptedSkkniData) => {
+    if (adopted.skemaSertifikasi) {
+      setSkemaSertifikasi(adopted.skemaSertifikasi);
+    }
+    if (adopted.judulPenugasanId) {
+      setJudulPenugasanId(adopted.judulPenugasanId);
+    }
+    if (adopted.judulPenugasanEn) {
+      setJudulPenugasanEn(adopted.judulPenugasanEn);
+    }
+    if (Array.isArray(adopted.units) && adopted.units.length > 0) {
+      setUnits(adopted.units);
+    }
+  };
 
   // Query Settings with year scope support
   const { data: settingsRes, isLoading } = useQuery({
@@ -356,7 +374,17 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setCloudModalOpen(true)}
+                className="text-xs gap-1.5 text-sky-700 bg-sky-50/80 hover:bg-sky-100 border-sky-300 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800"
+              >
+                <Cloud className="w-3.5 h-3.5 text-sky-600" />
+                Impor dari Cloud SKKNI
+              </Button>
               <Button
                 type="button"
                 variant="outline"
@@ -484,6 +512,14 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
         </>
       )}
       </div>
+
+      {/* Modal Impor Master Katalog SKKNI Terpusat (License Cloud) */}
+      <UkkSkkniCloudModal
+        isOpen={cloudModalOpen}
+        onClose={() => setCloudModalOpen(false)}
+        jurusanNama={jurusanNama}
+        onAdopt={handleAdoptFromCloud}
+      />
     </Modal>
   );
 };

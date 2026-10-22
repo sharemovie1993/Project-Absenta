@@ -419,3 +419,72 @@ export async function rebindTenantEntitlements(params: RebindTenantParams): Prom
   if (!data.success) throw new Error(data.message || 'Gagal merekonsiliasi lisensi tenant.');
   return data;
 }
+
+// =========================================================================
+// SKKNI CLOUD CATALOG CLIENT (Single Source of Truth dari Server Lisensi)
+// =========================================================================
+
+export interface CloudSkkniUnit {
+  id: string;
+  kodeUnit: string;
+  judulUnitId: string;
+  judulUnitEn?: string | null;
+  urutan: number;
+  kategori?: string | null;
+}
+
+export interface CloudSkkniKatalog {
+  id: string;
+  rumpun: string;
+  kodeSkema: string;
+  namaSkema: string;
+  namaSkemaEn?: string | null;
+  levelKkni: number;
+  deskripsi?: string | null;
+  defaultJudulId?: string | null;
+  defaultJudulEn?: string | null;
+  units: CloudSkkniUnit[];
+}
+
+/** Mengambil daftar master katalog SKKNI dari Server Lisensi */
+export async function fetchCloudSkkniKatalog(params?: { search?: string; rumpun?: string }): Promise<CloudSkkniKatalog[]> {
+  try {
+    const query = new URLSearchParams();
+    if (params?.search) query.append('search', params.search);
+    if (params?.rumpun && params.rumpun !== 'ALL') query.append('rumpun', params.rumpun);
+
+    const res = await fetch(`${LICENSE_SERVER_URL}/api/skkni/katalog?${query.toString()}`, {
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (!res.ok) {
+      console.warn(`[licenseClient] fetchCloudSkkniKatalog HTTP ${res.status}`);
+      return [];
+    }
+
+    const data = (await res.json()) as any;
+    if (!data.success) return [];
+    return data.data || [];
+  } catch (err: any) {
+    console.warn('[licenseClient] fetchCloudSkkniKatalog offline/error:', err.message);
+    return [];
+  }
+}
+
+/** Mengambil daftar rumpun kategori kejuruan yang tersedia di Server Lisensi */
+export async function fetchCloudSkkniRumpun(): Promise<string[]> {
+  try {
+    const res = await fetch(`${LICENSE_SERVER_URL}/api/skkni/rumpun`, {
+      signal: AbortSignal.timeout(6000),
+    });
+
+    if (!res.ok) return [];
+    const data = (await res.json()) as any;
+    if (!data.success) return [];
+    return data.data || [];
+  } catch (err: any) {
+    console.warn('[licenseClient] fetchCloudSkkniRumpun offline/error:', err.message);
+    return [];
+  }
+}
+

@@ -200,6 +200,16 @@ export const raporApi = {
     });
     return response.data;
   },
+  /** Mengambil master katalog SKKNI dari Server Lisensi Cloud */
+  getCloudSkkniKatalog: async (params?: { search?: string; rumpun?: string }) => {
+    const response = await api.get('/rapor/ukk/skkni-cloud/katalog', { params });
+    return response.data;
+  },
+  /** Mengambil daftar rumpun kategori kejuruan dari Server Lisensi Cloud */
+  getCloudSkkniRumpun: async () => {
+    const response = await api.get('/rapor/ukk/skkni-cloud/rumpun');
+    return response.data;
+  },
   saveUkkSettings: async (jurusanId: string, data: any, tahunAjaran?: string) => {
     const response = await api.post('/rapor/ukk/settings', {
       jurusan_id: jurusanId,

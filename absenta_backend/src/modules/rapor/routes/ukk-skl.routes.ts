@@ -84,6 +84,39 @@ export default async function ukkSklRoutes(fastify: any) {
     UkkSklController.getAllUkkSettingsSummary
   );
 
+  // Master Katalog SKKNI Cloud dari Server Lisensi (dengan smart offline caching)
+  fastify.get(
+    '/ukk/skkni-cloud/katalog',
+    {
+      preHandler: [
+        requireCapability([
+          'academic.subjects.view.list',
+          'academic.students.view.list',
+          'hubin.pkl.manage',
+          'academic.manage.academic',
+        ]),
+        determineDataScope(),
+      ],
+    },
+    UkkSklController.getCloudSkkniKatalog
+  );
+
+  fastify.get(
+    '/ukk/skkni-cloud/rumpun',
+    {
+      preHandler: [
+        requireCapability([
+          'academic.subjects.view.list',
+          'academic.students.view.list',
+          'hubin.pkl.manage',
+          'academic.manage.academic',
+        ]),
+        determineDataScope(),
+      ],
+    },
+    UkkSklController.getCloudSkkniRumpun
+  );
+
   fastify.post(
     '/ukk/settings',
     {
