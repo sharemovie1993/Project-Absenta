@@ -1239,6 +1239,7 @@ model SiswaAkademik {
   AnggotaKegiatanEskul AnggotaKegiatanEskul[]
 
   @@unique([siswa_id, tahun_pelajaran_id, semester_id])
+  @@index([kelas_id, tahun_pelajaran_id, semester_id])
 }
 
 model AbsenGuru {
