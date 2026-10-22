@@ -367,56 +367,68 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Banner & Quick Metrics: AnalyticsCard Berstandar Pilar 30 & 23 */}
+      {/* Top Banner & Quick Metrics: Sesuai Benchmark Gambar 1 (Clean White Card + Small Gradient Icon Box) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <AnalyticsCard
-          variant="compact-premium"
-          mobileCompact={true}
-          title="Total Sesi UKK"
-          value={`${sessions.length} Sesi`}
-          icon={<Calendar className="w-5 h-5 text-blue-400" />}
-          description="Sesi terjadwal"
-          gradient="from-blue-600 to-indigo-600"
-        />
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5 transition-all hover:border-slate-300 dark:hover:border-slate-700">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shrink-0 shadow-sm shadow-blue-500/20">
+            <Calendar className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Total Sesi UKK</div>
+            <div className="text-lg font-black text-slate-900 dark:text-white mt-0.5 tracking-tight truncate">
+              {sessions.length} Sesi
+            </div>
+            <div className="text-[10px] text-slate-400 dark:text-slate-500">Sesi terjadwal</div>
+          </div>
+        </div>
 
-        <AnalyticsCard
-          variant="compact-premium"
-          mobileCompact={true}
-          title="Siswa Terploting"
-          value={`${plottedSiswaIds.size} / ${siswaList.length}`}
-          icon={<Users className="w-5 h-5 text-indigo-400" />}
-          description="Alokasi peserta ke sesi"
-          gradient="from-indigo-600 to-primary"
-        />
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5 transition-all hover:border-slate-300 dark:hover:border-slate-700">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shrink-0 shadow-sm shadow-indigo-500/20">
+            <Users className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Siswa Terploting</div>
+            <div className="text-lg font-black text-slate-900 dark:text-white mt-0.5 tracking-tight truncate">
+              {plottedSiswaIds.size} <span className="text-xs font-semibold text-slate-400">/ {siswaList.length}</span>
+            </div>
+            <div className="text-[10px] text-slate-400 dark:text-slate-500">Alokasi peserta</div>
+          </div>
+        </div>
 
-        <AnalyticsCard
-          variant="compact-premium"
-          mobileCompact={true}
-          title="Belum Diploting"
-          value={`${Math.max(0, siswaList.length - plottedSiswaIds.size)} Siswa`}
-          icon={<Clock className="w-5 h-5 text-amber-400" />}
-          description="Menunggu penempatan sesi"
-          gradient="from-amber-600 to-orange-600"
-        />
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5 transition-all hover:border-slate-300 dark:hover:border-slate-700">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shrink-0 shadow-sm shadow-amber-500/20">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Belum Diploting</div>
+            <div className="text-lg font-black text-slate-900 dark:text-white mt-0.5 tracking-tight truncate">
+              {Math.max(0, siswaList.length - plottedSiswaIds.size)} Siswa
+            </div>
+            <div className="text-[10px] text-slate-400 dark:text-slate-500">Menunggu sesi</div>
+          </div>
+        </div>
 
-        <AnalyticsCard
-          variant="compact-premium"
-          mobileCompact={true}
-          title="Kelengkapan Ploting"
-          value={`${siswaList.length > 0 ? Math.round((plottedSiswaIds.size / siswaList.length) * 100) : 0}%`}
-          icon={<CheckCircle2 className="w-5 h-5 text-emerald-400" />}
-          description="Rasio peserta terploting"
-          gradient="from-emerald-600 to-teal-700"
-        />
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5 transition-all hover:border-slate-300 dark:hover:border-slate-700">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shrink-0 shadow-sm shadow-emerald-500/20">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Kelengkapan Ploting</div>
+            <div className="text-lg font-black text-slate-900 dark:text-white mt-0.5 tracking-tight truncate">
+              {siswaList.length > 0 ? Math.round((plottedSiswaIds.size / siswaList.length) * 100) : 0}%
+            </div>
+            <div className="text-[10px] text-slate-400 dark:text-slate-500">Rasio peserta</div>
+          </div>
+        </div>
       </div>
 
       {/* Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card border border-border rounded-xl p-4 shadow-xs">
-        <div className="flex items-center gap-2">
-          <h3 className="text-base font-semibold text-foreground">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
+        <div className="flex items-center gap-2.5">
+          <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
             Daftar Sesi Ujian & Ploting Penguji
           </h3>
-          <Badge variant="outline" className="text-xs font-normal border-primary/20 text-primary bg-primary/5">
+          <Badge variant="outline" className="text-xs font-semibold border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 rounded-lg">
             {jurusanNama}
           </Badge>
         </div>
@@ -429,17 +441,17 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                 size="sm"
                 onClick={handleAutoDistributeStudents}
                 disabled={sessions.length === 0 || saveMutation.isPending}
-                className="text-xs gap-1.5 border-primary/30 text-primary hover:bg-primary/10 cursor-pointer"
+                className="h-9 px-3 rounded-xl border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold gap-1.5 cursor-pointer shadow-2xs"
                 title="Bagi rata siswa ke seluruh sesi yang aktif"
               >
-                <Sparkles className="w-3.5 h-3.5" />
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
                 Bagi Rata Otomatis
               </Button>
               <Button
                 size="sm"
                 onClick={handleOpenCreateModal}
                 disabled={saveMutation.isPending}
-                className="text-xs gap-1.5 cursor-pointer shadow-xs"
+                className="h-9 px-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold gap-1.5 cursor-pointer shadow-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Tambah Sesi Ujian
@@ -452,9 +464,9 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
             size="sm"
             onClick={handlePrintJadwalPdf}
             disabled={sessions.length === 0}
-            className="text-xs gap-1.5 border-border hover:bg-muted cursor-pointer"
+            className="h-9 px-3 rounded-xl border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold gap-1.5 cursor-pointer shadow-2xs"
           >
-            <Printer className="w-3.5 h-3.5 text-primary" />
+            <Printer className="w-3.5 h-3.5 text-indigo-600" />
             Cetak Jadwal & Ploting (PDF)
           </Button>
         </div>
@@ -463,19 +475,19 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
       {/* Sesi List Cards */}
       {isLoadingJadwal ? (
         <div className="py-16 flex flex-col items-center justify-center gap-3">
-          <Loader className="w-8 h-8 text-primary animate-spin" />
-          <p className="text-xs text-muted-foreground">Memuat data jadwal & ploting UKK...</p>
+          <Loader className="w-8 h-8 text-indigo-600 animate-spin" />
+          <p className="text-xs text-slate-500">Memuat data jadwal & ploting UKK...</p>
         </div>
       ) : sessions.length === 0 ? (
-        <div className="bg-card border rounded-xl p-12 text-center space-y-3">
-          <Calendar className="w-12 h-12 text-muted-foreground/40 mx-auto" />
-          <h4 className="text-base font-semibold text-foreground">Belum Ada Sesi UKK</h4>
-          <p className="text-xs text-muted-foreground max-w-md mx-auto">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-12 text-center space-y-3 shadow-xs">
+          <Calendar className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto" />
+          <h4 className="text-base font-bold text-slate-900 dark:text-white">Belum Ada Sesi UKK</h4>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
             Mulai atur pelaksanaan Pra-UKK dengan menambahkan sesi ujian, menentukan ruang/lab,
             mengalokasikan asesor internal dan asesor industri DU/DI, serta memploting daftar siswa.
           </p>
           {!readOnly && (
-            <Button size="sm" onClick={handleOpenCreateModal} className="mt-2 text-xs gap-1.5">
+            <Button size="sm" onClick={handleOpenCreateModal} className="mt-2 text-xs font-semibold gap-1.5 h-9 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs">
               <Plus className="w-3.5 h-3.5" />
               Buat Sesi Pertama
             </Button>
@@ -489,37 +501,37 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
             );
 
             return (
-              <Card key={sesi.id} className="border shadow-sm overflow-hidden flex flex-col">
+              <div key={sesi.id} className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden flex flex-col transition-all hover:border-slate-300 dark:hover:border-slate-700">
                 {/* Card Header */}
-                <div className="bg-muted/40 p-4 border-b flex items-start justify-between gap-3">
+                <div className="bg-slate-50/80 dark:bg-slate-800/40 p-4 border-b border-slate-100 dark:border-slate-800/60 flex items-start justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+                      <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[11px] font-bold flex items-center justify-center shadow-2xs">
                         {index + 1}
                       </span>
-                      <h4 className="text-sm font-bold text-foreground">{sesi.nama_sesi}</h4>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">{sesi.nama_sesi}</h4>
                       {sessionBa ? (
-                        <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <span className="text-[10px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
                           <CheckCircle2 className="w-3 h-3 text-emerald-500" />
                           BA: {sessionBa.jumlah_hadir} Hadir
                         </span>
                       ) : (
-                        <span className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
+                        <span className="text-[10px] bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-amber-500" />
                           BA Belum Dibuat
                         </span>
                       )}
                     </div>
-                  <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5 text-primary" />
+                  <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="flex items-center gap-1 font-medium">
+                      <Calendar className="w-3.5 h-3.5 text-indigo-500" />
                       {sesi.tanggal}
                     </span>
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-1 font-medium">
                       <Clock className="w-3.5 h-3.5 text-amber-500" />
                       {sesi.jam_mulai} - {sesi.jam_selesai} WIB
                     </span>
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-1 font-medium">
                       <MapPin className="w-3.5 h-3.5 text-rose-500" />
                       {sesi.ruang}
                     </span>
@@ -531,7 +543,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                     <button
                       type="button"
                       onClick={() => handleOpenEditModal(sesi)}
-                      className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
+                      className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
                       title="Edit Sesi & Ploting"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
@@ -539,7 +551,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                     <button
                       type="button"
                       onClick={() => handleDeleteSession(sesi.id)}
-                      className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded transition-colors"
+                      className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors cursor-pointer"
                       title="Hapus Sesi"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -549,16 +561,16 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
               </div>
 
               {/* Assessors info */}
-              <div className="px-4 py-3 bg-muted/10 border-b text-xs space-y-1.5">
+              <div className="px-4 py-3 bg-slate-50/40 dark:bg-slate-800/20 border-b border-slate-100 dark:border-slate-800/60 text-xs space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Penguji Internal:</span>
-                  <span className="font-semibold text-foreground">
+                  <span className="text-slate-500 dark:text-slate-400">Penguji Internal:</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
                     {sesi.asesor_internal || '-'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Penguji Eksternal (DU/DI):</span>
-                  <span className="font-semibold text-foreground">
+                  <span className="text-slate-500 dark:text-slate-400">Penguji Eksternal (DU/DI):</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
                     {sesi.asesor_eksternal || '-'}{' '}
                     {sesi.mitra_nama ? `(${sesi.mitra_nama})` : ''}
                   </span>
@@ -569,38 +581,38 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
               <div className="p-4 flex-1 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold text-foreground">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
                       Daftar Peserta Ujian
                     </span>
-                    <Badge variant="secondary" className="text-[11px] font-medium">
+                    <Badge variant="secondary" className="text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                       {sesi.siswa_list?.length || 0} Siswa
                     </Badge>
                   </div>
 
                   <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
                     {(!sesi.siswa_list || sesi.siswa_list.length === 0) ? (
-                      <p className="text-xs text-muted-foreground italic py-4 text-center">
+                      <p className="text-xs text-slate-400 italic py-4 text-center">
                         Belum ada siswa yang diplotkan pada sesi ini.
                       </p>
                     ) : (
                       sesi.siswa_list.map((s, sIdx) => (
                         <div
                           key={s.id || sIdx}
-                          className="flex items-center justify-between p-2 bg-muted/30 rounded-lg text-xs"
+                          className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 rounded-xl text-xs"
                         >
                           <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-[10px] text-muted-foreground font-mono w-4">
+                            <span className="text-[10px] text-slate-400 font-mono w-4">
                               {sIdx + 1}.
                             </span>
-                            <span className="font-medium text-foreground truncate">
+                            <span className="font-medium text-slate-800 dark:text-slate-200 truncate">
                               {s.nama_siswa}
                             </span>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-[11px] text-muted-foreground font-mono">
+                            <span className="text-[11px] text-slate-400 font-mono">
                               {s.nis || '-'}
                             </span>
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
                               {s.kelas || '-'}
                             </Badge>
                           </div>
@@ -610,9 +622,9 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                   </div>
                 </div>
 
-                <div className="pt-3 mt-3 border-t space-y-2">
+                <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800/60 space-y-2">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground font-medium">Laporan Berita Acara:</span>
+                    <span className="text-slate-500 dark:text-slate-400 font-medium">Laporan Berita Acara:</span>
                     {sessionBa ? (
                       <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                         <CheckCircle2 className="w-3.5 h-3.5" />
@@ -632,9 +644,9 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                         variant="outline"
                         size="sm"
                         onClick={() => handleOpenEditModal(sesi)}
-                        className="text-xs gap-1.5 w-full cursor-pointer"
+                        className="text-xs font-semibold gap-1.5 w-full cursor-pointer h-8 rounded-xl border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                       >
-                        <UserCheck className="w-3.5 h-3.5" />
+                        <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
                         Kelola Ploting
                       </Button>
                     )}
@@ -645,10 +657,10 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                         size="sm"
                         onClick={() => onManageBeritaAcara(sesi)}
                         className={cn(
-                          'text-xs gap-1.5 w-full cursor-pointer',
+                          'text-xs font-semibold gap-1.5 w-full cursor-pointer h-8 rounded-xl',
                           sessionBa
-                            ? 'text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950'
-                            : 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20'
+                            ? 'text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+                            : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50'
                         )}
                       >
                         <FileText className="w-3.5 h-3.5" />
@@ -658,9 +670,9 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                   </div>
                 </div>
               </div>
-            </Card>
-          );
-        })}
+            </div>
+            );
+          })}
         </div>
       )}
 
@@ -674,7 +686,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-foreground">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 Nama Sesi <span className="text-rose-500">*</span>
               </label>
               <input
@@ -682,61 +694,61 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                 value={sessionForm.nama_sesi}
                 onChange={(e) => setSessionForm({ ...sessionForm, nama_sesi: e.target.value })}
                 placeholder="Contoh: Sesi 1 (Pagi)"
-                className="mt-1 w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
+                className="mt-1 w-full px-3 py-2 text-xs bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-xs"
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-foreground">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 Tanggal Pelaksanaan <span className="text-rose-500">*</span>
               </label>
               <input
                 type="date"
                 value={sessionForm.tanggal}
                 onChange={(e) => setSessionForm({ ...sessionForm, tanggal: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
+                className="mt-1 w-full px-3 py-2 text-xs bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-xs"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="text-xs font-semibold text-foreground">Jam Mulai</label>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Jam Mulai</label>
               <input
                 type="text"
                 value={sessionForm.jam_mulai}
                 onChange={(e) => setSessionForm({ ...sessionForm, jam_mulai: e.target.value })}
                 placeholder="07:30"
-                className="mt-1 w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
+                className="mt-1 w-full px-3 py-2 text-xs bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-xs"
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-foreground">Jam Selesai</label>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Jam Selesai</label>
               <input
                 type="text"
                 value={sessionForm.jam_selesai}
                 onChange={(e) => setSessionForm({ ...sessionForm, jam_selesai: e.target.value })}
                 placeholder="11:30"
-                className="mt-1 w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
+                className="mt-1 w-full px-3 py-2 text-xs bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-xs"
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-foreground">Ruang / Bengkel / Lab</label>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Ruang / Bengkel / Lab</label>
               <input
                 type="text"
                 value={sessionForm.ruang}
                 onChange={(e) => setSessionForm({ ...sessionForm, ruang: e.target.value })}
                 placeholder="Lab Komputer 1"
-                className="mt-1 w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
+                className="mt-1 w-full px-3 py-2 text-xs bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-xs"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
                 <span>Penguji Internal (Guru Master)</span>
                 {sessionForm.asesor_internal && (
-                  <span className="text-[10px] text-primary font-normal truncate max-w-[150px]">
+                  <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold truncate max-w-[150px]">
                     {sessionForm.asesor_internal}
                   </span>
                 )}
@@ -760,7 +772,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
               </div>
             </div>
             <div>
-              <label className="text-xs font-semibold text-foreground">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 Penguji Eksternal (DU/DI)
               </label>
               <input
@@ -770,17 +782,17 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                   setSessionForm({ ...sessionForm, asesor_eksternal: e.target.value })
                 }
                 placeholder="Nama Asesor DU/DI"
-                className="mt-1 w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
+                className="mt-1 w-full px-3 py-2 text-xs bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-xs"
               />
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-foreground">Mitra Industri / DU-DI</label>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Mitra Industri / DU-DI</label>
             <select
               value={sessionForm.mitra_nama}
               onChange={(e) => setSessionForm({ ...sessionForm, mitra_nama: e.target.value })}
-              className="mt-1 w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors cursor-pointer"
+              className="mt-1 w-full px-3 py-2 text-xs bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all cursor-pointer shadow-xs"
             >
               <option value="">Pilih Mitra Industri (Opsional)...</option>
               {mitraOptions.map((m: any) => (
@@ -792,11 +804,11 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
           </div>
 
           {/* Student Multi-Select Section */}
-          <div className="pt-2 border-t border-border">
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60">
             <div className="flex items-center justify-between pb-2">
               <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-primary" />
-                <span className="text-xs font-semibold text-foreground">
+                <Users className="w-4 h-4 text-indigo-600" />
+                <span className="text-xs font-bold text-slate-900 dark:text-white">
                   Pilih Peserta Ujian Sesi Ini ({sessionForm.selected_siswa_ids.length} Dipilih)
                 </span>
               </div>
@@ -809,15 +821,15 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                       selected_siswa_ids: siswaList.map((s) => s.id),
                     })
                   }
-                  className="text-[11px] text-primary hover:underline font-medium cursor-pointer"
+                  className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline font-semibold cursor-pointer"
                 >
                   Pilih Semua
                 </button>
-                <span className="text-muted-foreground">|</span>
+                <span className="text-slate-300 dark:text-slate-700">|</span>
                 <button
                   type="button"
                   onClick={() => setSessionForm({ ...sessionForm, selected_siswa_ids: [] })}
-                  className="text-[11px] text-rose-500 hover:underline font-medium cursor-pointer"
+                  className="text-[11px] text-rose-500 hover:underline font-semibold cursor-pointer"
                 >
                   Reset
                 </button>
@@ -825,19 +837,19 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
             </div>
 
             <div className="relative mb-2">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-muted-foreground" />
+              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
               <input
                 type="text"
                 value={studentSearchInModal}
                 onChange={(e) => setStudentSearchInModal(e.target.value)}
                 placeholder="Cari nama siswa atau NIS..."
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-xs"
               />
             </div>
 
-            <div className="max-h-52 overflow-y-auto border border-border rounded-lg p-2 space-y-1 bg-background/50">
+            <div className="max-h-52 overflow-y-auto border border-slate-200/80 dark:border-slate-800 rounded-xl p-2 space-y-1 bg-slate-50/50 dark:bg-slate-900/40">
               {filteredStudentsForModal.length === 0 ? (
-                <div className="text-center py-4 text-xs text-muted-foreground">
+                <div className="text-center py-4 text-xs text-slate-400">
                   Siswa tidak ditemukan
                 </div>
               ) : (
@@ -853,10 +865,10 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                     <label
                       key={siswa.id}
                       className={cn(
-                        'flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs transition-colors',
+                        'flex items-center justify-between p-2 rounded-xl cursor-pointer text-xs transition-colors',
                         isChecked
-                          ? 'bg-primary/10 border border-primary/30 text-foreground font-medium'
-                          : 'hover:bg-muted/60 border border-transparent text-foreground'
+                          ? 'bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-slate-900 dark:text-white font-medium'
+                          : 'hover:bg-slate-100/60 dark:hover:bg-slate-800/60 border border-transparent text-slate-700 dark:text-slate-300'
                       )}
                     >
                       <div className="flex items-center gap-2.5">
@@ -881,15 +893,15 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                               });
                             }
                           }}
-                          className="rounded text-primary focus:ring-primary h-3.5 w-3.5 cursor-pointer"
+                          className="rounded text-indigo-600 focus:ring-indigo-500 h-3.5 w-3.5 cursor-pointer"
                         />
-                        <span className="font-medium text-foreground">{siswa.nama_siswa}</span>
+                        <span className="font-medium text-slate-900 dark:text-white">{siswa.nama_siswa}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-[11px] text-muted-foreground font-mono">
+                        <span className="text-[11px] text-slate-400 font-mono">
                           {siswa.nis || '-'}
                         </span>
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-border">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400">
                           {siswa.kelas || '-'}
                         </Badge>
                         {isPlottedOther && (
@@ -905,12 +917,13 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-3 border-t">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800/60">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setSessionModalOpen(false)}
               disabled={saveMutation.isPending}
+              className="h-9 px-3.5 rounded-xl border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold"
             >
               Batal
             </Button>
@@ -918,7 +931,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
               size="sm"
               onClick={handleSubmitSession}
               disabled={saveMutation.isPending}
-              className="gap-1.5 text-xs"
+              className="gap-1.5 text-xs font-semibold h-9 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
             >
               <Save className="w-3.5 h-3.5" />
               {saveMutation.isPending ? 'Menyimpan...' : 'Simpan Sesi & Ploting'}

@@ -188,10 +188,10 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
     >
       <div className="space-y-5">
         {/* Banner Info */}
-        <div className="bg-primary/5 border border-primary/20 rounded-xl p-3.5 sm:p-4 flex items-start gap-3">
-          <FileCheck2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-          <div className="text-xs text-muted-foreground leading-relaxed">
-            <span className="font-semibold text-foreground">
+        <div className="bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 rounded-2xl p-4 flex items-start gap-3 shadow-xs">
+          <FileCheck2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+          <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            <span className="font-bold text-slate-900 dark:text-white">
               Konfigurasi Dinamis Output Sertifikat UKK ({jurusanNama}):
             </span>{' '}
             Data pada form ini akan otomatis dicetak pada Lembar Depan (Judul Penugasan & Skema) dan
@@ -200,15 +200,15 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
         </div>
 
         {/* Tab Switcher: Rekap | Edit (Mobile Touch-Friendly) */}
-        <div className="grid grid-cols-2 sm:inline-flex items-center gap-1 bg-muted/50 rounded-xl p-1 text-xs font-medium w-full sm:w-auto">
+        <div className="grid grid-cols-2 sm:inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 rounded-xl p-1 text-xs font-semibold w-full sm:w-auto">
           <button
             type="button"
             onClick={() => setActiveView('rekap')}
             className={cn(
-              'flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg transition-all',
+              'flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg transition-all cursor-pointer',
               activeView === 'rekap'
-                ? 'bg-background shadow-sm text-foreground font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-white dark:bg-slate-900 shadow-xs text-slate-900 dark:text-white font-bold'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             )}
           >
             <TableIcon className="w-3.5 h-3.5 shrink-0" />
@@ -218,16 +218,16 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
             type="button"
             onClick={() => setActiveView('form')}
             className={cn(
-              'flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg transition-all',
+              'flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg transition-all cursor-pointer',
               activeView === 'form'
-                ? 'bg-background shadow-sm text-foreground font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-white dark:bg-slate-900 shadow-xs text-slate-900 dark:text-white font-bold'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             )}
           >
             <Settings2 className="w-3.5 h-3.5 shrink-0" />
             Edit Konfigurasi
             {tahunAjaran && (
-              <span className="ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px] font-mono">
+              <span className="ml-1 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 px-1.5 py-0.5 rounded-md text-[10px] font-mono">
                 {tahunAjaran}
               </span>
             )}
@@ -251,7 +251,7 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
               }}
             />
             <div className="flex items-center justify-end pt-2">
-              <Button variant="outline" onClick={onClose}>
+              <Button variant="outline" onClick={onClose} className="h-9 px-4 rounded-xl border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold">
                 Tutup
               </Button>
             </div>
@@ -262,10 +262,10 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
         {activeView === 'form' && (<>
 
         {/* Kontrol Fleksibilitas Versi Historis: Tahun Ajaran & Edisi Juknis Regulasi */}
-        <div className="bg-slate-50 dark:bg-slate-900/60 border rounded-xl p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs shadow-xs">
           <div>
-            <label className="font-semibold text-foreground flex items-center gap-1.5 mb-1.5">
-              <Calendar className="w-3.5 h-3.5 text-primary" />
+            <label className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 mb-1.5">
+              <Calendar className="w-3.5 h-3.5 text-indigo-600" />
               Tahun Ajaran Target:
             </label>
             <select
@@ -277,27 +277,27 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
                 else if (newYear === '2024/2025') setEdisiPedoman('2025');
                 else setEdisiPedoman('2026');
               }}
-              className="w-full px-2.5 py-1.5 text-xs bg-background border rounded-lg font-medium cursor-pointer focus:ring-2 focus:ring-primary/20 outline-none"
+              className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl font-medium cursor-pointer focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-xs"
             >
               <option value="2025/2026">2025/2026 (Aktif Berjalan)</option>
               <option value="2024/2025">2024/2025 (Arsip Historis)</option>
               <option value="2023/2024">2023/2024 (Arsip Historis)</option>
               <option value="2026/2027">2026/2027 (Mendatang)</option>
             </select>
-            <p className="text-[10px] text-muted-foreground mt-1">
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
               Pengaturan disimpan per tahun ajaran agar data arsip tidak tertimpa.
             </p>
           </div>
 
           <div>
-            <label className="font-semibold text-foreground flex items-center gap-1.5 mb-1.5">
+            <label className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 mb-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
               Edisi Juknis Regulasi:
             </label>
             <select
               value={edisiPedoman}
               onChange={(e) => setEdisiPedoman(e.target.value)}
-              className="w-full px-2.5 py-1.5 text-xs bg-background border rounded-lg font-medium cursor-pointer focus:ring-2 focus:ring-primary/20 outline-none"
+              className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl font-medium cursor-pointer focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-xs"
             >
               {getAvailableRegulatoryEditions().map((ed) => (
                 <option key={ed.id} value={ed.id}>
@@ -305,23 +305,23 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
                 </option>
               ))}
             </select>
-            <p className="text-[10px] text-muted-foreground mt-1">
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
               Standar ambang kelulusan & klausul masa berlaku menyesuaikan edisi ini.
             </p>
           </div>
         </div>
 
         {/* Form Fields: Lembar Depan */}
-        <div className="bg-card border rounded-xl p-4 space-y-4">
-          <div className="flex items-center gap-2 pb-2 border-b">
-            <BookOpen className="w-4 h-4 text-primary" />
-            <h4 className="text-sm font-semibold text-foreground">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 space-y-4 shadow-xs">
+          <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800/60">
+            <BookOpen className="w-4 h-4 text-indigo-600" />
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white">
               Konfigurasi Lembar Depan Sertifikat
             </h4>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-foreground">
+            <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
               Skema Sertifikasi <span className="text-rose-500">*</span>
             </label>
             <input
@@ -329,13 +329,13 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
               value={skemaSertifikasi}
               onChange={(e) => setSkemaSertifikasi(e.target.value)}
               placeholder="Contoh: Skema Sertifikasi KKNI Level II Pada Kompetensi Keahlian..."
-              className="mt-1.5 w-full px-3 py-2 text-sm bg-background border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+              className="mt-1.5 w-full px-3 py-2 text-xs bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-xs"
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-semibold text-foreground">
+              <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
                 Judul Penugasan (Bahasa Indonesia) <span className="text-rose-500">*</span>
               </label>
               <textarea
@@ -343,11 +343,11 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
                 value={judulPenugasanId}
                 onChange={(e) => setJudulPenugasanId(e.target.value)}
                 placeholder="Contoh: Pembuatan Sistem Kendali Berbasis IoT..."
-                className="mt-1.5 w-full px-3 py-2 text-sm bg-background border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none resize-none"
+                className="mt-1.5 w-full px-3 py-2 text-xs bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none resize-none transition-all shadow-xs"
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-foreground">
+              <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
                 Judul Penugasan (English) <span className="text-rose-500">*</span>
               </label>
               <textarea
@@ -355,21 +355,21 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
                 value={judulPenugasanEn}
                 onChange={(e) => setJudulPenugasanEn(e.target.value)}
                 placeholder="Example: Development of IoT-Based Control System..."
-                className="mt-1.5 w-full px-3 py-2 text-sm bg-background border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none resize-none"
+                className="mt-1.5 w-full px-3 py-2 text-xs bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none resize-none transition-all shadow-xs"
               />
             </div>
           </div>
         </div>
 
         {/* Unit Kompetensi: Lembar Belakang */}
-        <div className="bg-card border rounded-xl p-4 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 space-y-4 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800/60">
             <div className="flex items-center gap-2">
               <Settings2 className="w-4 h-4 text-emerald-500" />
-              <h4 className="text-sm font-semibold text-foreground">
+              <h4 className="text-sm font-bold text-slate-900 dark:text-white">
                 Daftar Unit Kompetensi (Lembar Belakang / SKKNI)
               </h4>
-              <span className="text-xs bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-full font-medium">
+              <span className="text-xs bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2.5 py-0.5 rounded-full font-bold">
                 {units.length} Unit
               </span>
             </div>
@@ -380,7 +380,7 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={() => setCloudModalOpen(true)}
-                className="text-xs gap-1.5 text-sky-700 bg-sky-50/80 hover:bg-sky-100 border-sky-300 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800"
+                className="h-8 px-3 rounded-xl text-xs font-semibold gap-1.5 text-sky-700 bg-sky-50 hover:bg-sky-100 border-sky-300 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800 cursor-pointer shadow-2xs"
               >
                 <Cloud className="w-3.5 h-3.5 text-sky-600" />
                 Impor dari Cloud SKKNI
@@ -390,16 +390,16 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={handleAutoPopulateUnits}
-                className="text-xs gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950"
+                className="h-8 px-3 rounded-xl text-xs font-semibold gap-1.5 text-indigo-700 border-indigo-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer shadow-2xs"
               >
-                <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
                 Rekomendasi Jurusan
               </Button>
               <Button
                 type="button"
                 size="sm"
                 onClick={handleAddUnit}
-                className="text-xs gap-1.5"
+                className="h-8 px-3 rounded-xl text-xs font-semibold gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Tambah Unit
@@ -409,28 +409,28 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
 
           <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1">
             {units.length === 0 ? (
-              <div className="text-center py-8 text-xs text-muted-foreground">
+              <div className="text-center py-8 text-xs text-slate-400">
                 Belum ada unit kompetensi. Klik "Rekomendasi Jurusan" untuk mengisi otomatis.
               </div>
             ) : (
               units.map((unit, idx) => (
                 <div
                   key={idx}
-                  className="flex flex-col sm:flex-row sm:items-center gap-2 p-2.5 sm:p-2 bg-muted/40 rounded-lg border text-xs group"
+                  className="flex flex-col sm:flex-row sm:items-center gap-2 p-2.5 sm:p-2 bg-slate-50/70 dark:bg-slate-800/40 rounded-xl border border-slate-200/70 dark:border-slate-800 text-xs group"
                 >
                   <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <span className="w-5 text-center font-bold text-muted-foreground shrink-0">{idx + 1}</span>
+                    <span className="w-5 text-center font-bold text-slate-400 shrink-0">{idx + 1}</span>
                     <input
                       type="text"
                       value={unit.kode_unit}
                       onChange={(e) => handleUpdateUnit(idx, 'kode_unit', e.target.value)}
                       placeholder="Kode Unit (misal: PRK.IH01.009.01)"
-                      className="w-full sm:w-48 px-2 py-1.5 bg-background border rounded font-mono text-xs focus:ring-1 focus:ring-primary outline-none"
+                      className="w-full sm:w-48 px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-lg font-mono text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-slate-900 dark:text-white"
                     />
                     <button
                       type="button"
                       onClick={() => handleRemoveUnit(idx)}
-                      className="sm:hidden p-1.5 text-rose-500 hover:bg-rose-50 rounded transition-colors shrink-0 ml-auto"
+                      className="sm:hidden p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors shrink-0 ml-auto cursor-pointer"
                       title="Hapus unit ini"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -442,12 +442,12 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
                       value={unit.judul_unit}
                       onChange={(e) => handleUpdateUnit(idx, 'judul_unit', e.target.value)}
                       placeholder="Judul Unit Kompetensi..."
-                      className="flex-1 px-2 py-1.5 bg-background border rounded text-xs focus:ring-1 focus:ring-primary outline-none"
+                      className="flex-1 px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-slate-900 dark:text-white"
                     />
                     <button
                       type="button"
                       onClick={() => handleRemoveUnit(idx)}
-                      className="hidden sm:block p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded transition-colors shrink-0"
+                      className="hidden sm:block p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors shrink-0 cursor-pointer"
                       title="Hapus unit ini"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -460,14 +460,14 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
         </div>
 
         {/* Tanda Tangan Digital Resmi Sertifikat (Pen Canvas) */}
-        <div className="bg-card border rounded-xl p-4 space-y-3">
-          <div className="flex items-center gap-2 pb-2 border-b">
-            <PenTool className="w-4 h-4 text-primary" />
-            <h4 className="text-sm font-semibold text-foreground">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 space-y-3 shadow-xs">
+          <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800/60">
+            <PenTool className="w-4 h-4 text-indigo-600" />
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white">
               Master Tanda Tangan Digital Sertifikat (Pen Stylus)
             </h4>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             Tanda tangan yang digoreskan di sini akan otomatis distempel pada output fisik cetak Sertifikat UKK (Lembar Depan & Belakang).
           </p>
 
@@ -496,16 +496,16 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
         </div>
 
         {/* Modal Actions */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t">
-          <Button variant="outline" onClick={onClose} disabled={saveMutation.isPending}>
+        <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800/60">
+          <Button variant="outline" onClick={onClose} disabled={saveMutation.isPending} className="h-9 px-4 rounded-xl border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold cursor-pointer">
             Batal
           </Button>
           <Button
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending}
-            className="gap-2"
+            className="gap-2 h-9 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs cursor-pointer"
           >
-            <Save className="w-4 h-4" />
+            <Save className="w-3.5 h-3.5" />
             {saveMutation.isPending ? 'Menyimpan...' : 'Simpan Pengaturan UKK'}
           </Button>
         </div>
