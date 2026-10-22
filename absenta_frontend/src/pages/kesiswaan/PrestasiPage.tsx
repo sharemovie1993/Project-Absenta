@@ -1,16 +1,8 @@
-import { z } from 'zod';
-import { formatDate } from '@/utils/date.utils';
 import React, { lazy, Suspense } from 'react';
-import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { SectionCard } from '../../components/ui/SectionCard';
+import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
+import { SectionCard } from '@/components/ui/SectionCard';
 
-const PrestasiSection = lazy(() => import('./components/PrestasiSection').then(m => ({ default: m.PrestasiSection })));
-
-const prestasiSchema = z.object({
-  nama_prestasi: z.string().min(1, 'Nama prestasi wajib diisi'),
-  tingkat: z.string().min(1, 'Tingkat kejuaraan wajib diisi'),
-  juara: z.string().min(1, 'Juara/Peringkat wajib diisi')
-});
+const PrestasiView = lazy(() => import('@/components/kesiswaan/prestasi').then(m => ({ default: m.PrestasiView })));
 
 export default function PrestasiPage() {
   return (
@@ -23,18 +15,19 @@ export default function PrestasiPage() {
       ]}
       hardeningModuleKey="kesiswaan_prestasi"
       instruction={{
-        title: "Panduan Prestasi & Penghargaan",
-        description: "Halaman ini digunakan untuk mengelola data prestasi dan penghargaan siswa.",
+        title: "Panduan Prestasi & Penghargaan Siswa",
+        description: "Pusat pendataan portofolio kejuaraan, lomba kejuruan/LKS, olimpiade sains, dan apresiasi bakat minat seluruh satuan pendidikan.",
         items: [
-          { text: "Gunakan tombol 'Catat Prestasi' untuk menginput prestasi baru siswa." },
-          { text: "Ketik nama siswa atau nama penghargaan di kolom pencarian untuk menyaring data." },
-          { text: "Poin prestasi akan meningkatkan total poin penghargaan siswa." }
+          { text: "Gunakan tombol 'Catat Prestasi' untuk menginput prestasi baru bagi peserta didik." },
+          { text: "Filter berdasarkan tingkat kejuaraan (Sekolah, Kecamatan, Kota, Provinsi, Nasional, Internasional)." },
+          { text: "Gunakan tombol 'Ekspor Excel' untuk mengunduh rekapitulasi data penghargaan." },
+          { text: "Poin apresiasi otomatis diakumulasikan ke rekam jejak kesiswaan peserta didik." }
         ]
       }}
     >
       <SectionCard fullWidth className="flex flex-col w-full min-w-0 max-w-full border-none shadow-none bg-transparent p-0">
         <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat data prestasi siswa...</div>}>
-          <PrestasiSection />
+          <PrestasiView hideLayout={true} />
         </Suspense>
       </SectionCard>
     </AcademicPageLayout>

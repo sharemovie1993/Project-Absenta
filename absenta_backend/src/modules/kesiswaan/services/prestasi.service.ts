@@ -169,16 +169,38 @@ export class PrestasiService {
       where.siswa_id = query.siswa_id;
     }
 
+    const andConditions: Prisma.PrestasiSiswaWhereInput[] = [];
+
     if ((query as any).kelas_id) {
-      where.kelas_id = (query as any).kelas_id;
+      andConditions.push({
+        OR: [
+          { kelas_id: (query as any).kelas_id },
+          { Siswa: { kelas_id: (query as any).kelas_id } }
+        ]
+      });
+    }
+
+    if ((query as any).jurusan_id) {
+      andConditions.push({
+        OR: [
+          { Kelas: { jurusan_id: (query as any).jurusan_id } },
+          { Siswa: { Kelas: { jurusan_id: (query as any).jurusan_id } } }
+        ]
+      });
     }
 
     if (query.search) {
-      where.OR = [
-        { nama_prestasi: { contains: query.search, mode: 'insensitive' } },
-        { keterangan: { contains: query.search, mode: 'insensitive' } },
-        { Siswa: { nama_siswa: { contains: query.search, mode: 'insensitive' } } }
-      ];
+      andConditions.push({
+        OR: [
+          { nama_prestasi: { contains: query.search, mode: 'insensitive' } },
+          { keterangan: { contains: query.search, mode: 'insensitive' } },
+          { Siswa: { nama_siswa: { contains: query.search, mode: 'insensitive' } } }
+        ]
+      });
+    }
+
+    if (andConditions.length > 0) {
+      where.AND = andConditions;
     }
 
     const [total, list] = await Promise.all([
