@@ -140,8 +140,8 @@ export const getDefaultUnitKompetensi = (
   ];
 };
 
-// Official Tut Wuri Handayani Vector Emblem (Standard Base64 Data URI)
-export const TUT_WURI_LOGO_SVG = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+CiAgPGRlZnM+CiAgICA8cGF0aCBpZD0iY3VydmUiIGQ9Ik0gMzIsOTggQSA3MCw3MCAwIDAsMSAxNjgsOTgiIGZpbGw9Im5vbmUiLz4KICA8L2RlZnM+CiAgPCEtLSBCYWNrZ3JvdW5kIFNoaWVsZCAvIFJvdW5kIE91dGVyIENpcmNsZSAtLT4KICA8Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9Ijk1IiBmaWxsPSIjMDI4NGM3IiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNCIvPgogIDxjaXJjbGUgY3g9IjEwMCIgY3k9IjEwMCIgcj0iODgiIGZpbGw9IiMwMjg0YzciIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtZGFzaGFycmF5PSI0LDQiLz4KICAKICA8IS0tIEdhcnVkYSBXaW5ncyAmIENlbnRyYWwgRmxhbWUgKE55YWxhIEFwaSkgLS0+CiAgPHBhdGggZD0iTTEwMCAyNCBDMTA1IDQ0LCAxMTYgNjIsIDE0MCA3MCBDMTIwIDcwLCAxMTAgNTgsIDEwMCA0OCBDOTAgNTgsIDgwIDcwLCA2MCA3MCBDODQgNjIsIDk1IDQ0LCAxMDAgMjQgWiIgZmlsbD0iI2ZmZmZmZiIvPgogIDxwYXRoIGQ9Ik0xMDAgNDggTDEwNSA2OCBMMTE5IDY0IEwxMTEgNzggTDEyNSA4MiBMMTEzIDkyIEwxMjMgMTAwIEwxMDkgMTA0IEwxMTUgMTE4IEwxMDAgMTEyIEw4NSAxMTggTDkxIDEwNCBMNzcgMTAwIEw4NyA5MiBMNzUgODIgTDg5IDc4IEw4MSA2NCBMOTUgNjggWiIgZmlsbD0iI2ZmZmZmZiIvPgogIDxwYXRoIGQ9Ik0xMDAgNzAgQzk0IDg0LCA5MCA5OCwgNzYgMTA2IEM4OCAxMDYsIDk2IDk4LCAxMDAgODYgQzEwNCA5OCwgMTEyIDEwNiwgMTI0IDEwNiBDMTEwIDk4LCAxMDYgODQsIDEwMCA3MCBaIiBmaWxsPSIjMDI4NGM3Ii8+CiAgCiAgPCEtLSBCZWxhbmdhIC8gT3BlbiBCb29rIEJhc2UgLS0+CiAgPHBhdGggZD0iTTQ4IDEzNiBDNjYgMTI0LCAxMzQgMTI0LCAxNTIgMTM2IEMxNDAgMTU0LCA2MCAxNTQsIDQ4IDEzNiBaIiBmaWxsPSIjZmZmZmZmIi8+CiAgPHBvbHlnb24gcG9pbnRzPSIxMDAsMTI4IDg1LDE0NSAxMTUsMTQ1IiBmaWxsPSIjMDI4NGM3Ii8+CiAgCiAgPCEtLSBUZXh0IEN1cnZlZCBvbiBUb3AgLS0+CiAgPHRleHQgZm9udC1mYW1pbHk9IkFyaWFsLCBIZWx2ZXRpY2EsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTEuNSIgZm9udC13ZWlnaHQ9IjkwMCIgZmlsbD0iI2ZmZmZmZiIgbGV0dGVyLXNwYWNpbmc9IjIuNSI+CiAgICA8dGV4dFBhdGggaHJlZj0iI2N1cnZlIiBzdGFydE9mZnNldD0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4KICAgICAgVFVUIFdVUkkgSEFOREFZQU5JCiAgICA8L3RleHRQYXRoPgogIDwvdGV4dD4KPC9zdmc+';
+// Official Tut Wuri Handayani Vector Emblem (Static Public Asset)
+export const TUT_WURI_LOGO_SVG = '/assets/tutwuri.svg';
 
 /**
  * Helper to rasterize SVG into a PNG data URL for rock-solid jsPDF compatibility
@@ -157,11 +157,11 @@ export const getTutWuriPngDataUrl = async (): Promise<string | null> => {
       img.onload = () => {
         try {
           const canvas = document.createElement('canvas');
-          canvas.width = 300;
-          canvas.height = 300;
+          canvas.width = 400;
+          canvas.height = 400;
           const ctx = canvas.getContext('2d');
           if (ctx) {
-            ctx.drawImage(img, 0, 0, 300, 300);
+            ctx.drawImage(img, 0, 0, 400, 400);
             cachedTutWuriPng = canvas.toDataURL('image/png');
             resolve(cachedTutWuriPng);
             return;
@@ -171,7 +171,10 @@ export const getTutWuriPngDataUrl = async (): Promise<string | null> => {
         }
         resolve(null);
       };
-      img.onerror = () => resolve(null);
+      img.onerror = () => {
+        console.warn('Failed to load /assets/tutwuri.svg into Image element');
+        resolve(null);
+      };
       img.src = TUT_WURI_LOGO_SVG;
     } catch {
       resolve(null);
