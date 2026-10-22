@@ -442,6 +442,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.students.view.list',
     'academic.teachers.view.list',
     'academic.teachers.view.detail',
+    'academic.manage.academic',
 
     // Operasional & Manajemen PKL Jurusan
     'hubin.pkl.view.list',
