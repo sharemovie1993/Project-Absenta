@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { Loader } from '@/components/ui/Loader';
+import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { raporApi } from '@/api/rapor.api';
 import { sekolahApi } from '@/api/academic/sekolah.api';
 import { hubinApi } from '@/api/hubin.api';
@@ -355,73 +356,56 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Banner & Quick Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-4 border shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-              <Calendar className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground font-medium">Total Sesi UKK</p>
-              <h3 className="text-xl font-bold text-foreground">{sessions.length} Sesi</h3>
-            </div>
-          </div>
-        </Card>
+      {/* Top Banner & Quick Metrics: AnalyticsCard Berstandar Pilar 30 & 23 */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <AnalyticsCard
+          variant="compact-premium"
+          mobileCompact={true}
+          title="Total Sesi UKK"
+          value={`${sessions.length} Sesi`}
+          icon={<Calendar className="w-5 h-5 text-blue-400" />}
+          description="Sesi terjadwal"
+          gradient="from-blue-600 to-indigo-600"
+        />
 
-        <Card className="p-4 border shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
-              <Users className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground font-medium">Siswa Terploting</p>
-              <h3 className="text-xl font-bold text-foreground">
-                {plottedSiswaIds.size} / {siswaList.length}
-              </h3>
-            </div>
-          </div>
-        </Card>
+        <AnalyticsCard
+          variant="compact-premium"
+          mobileCompact={true}
+          title="Siswa Terploting"
+          value={`${plottedSiswaIds.size} / ${siswaList.length}`}
+          icon={<Users className="w-5 h-5 text-indigo-400" />}
+          description="Alokasi peserta ke sesi"
+          gradient="from-indigo-600 to-primary"
+        />
 
-        <Card className="p-4 border shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-              <Clock className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground font-medium">Belum Diploting</p>
-              <h3 className="text-xl font-bold text-foreground">
-                {Math.max(0, siswaList.length - plottedSiswaIds.size)} Siswa
-              </h3>
-            </div>
-          </div>
-        </Card>
+        <AnalyticsCard
+          variant="compact-premium"
+          mobileCompact={true}
+          title="Belum Diploting"
+          value={`${Math.max(0, siswaList.length - plottedSiswaIds.size)} Siswa`}
+          icon={<Clock className="w-5 h-5 text-amber-400" />}
+          description="Menunggu penempatan sesi"
+          gradient="from-amber-600 to-orange-600"
+        />
 
-        <Card className="p-4 border shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground font-medium">Kelengkapan Ploting</p>
-              <h3 className="text-xl font-bold text-foreground">
-                {siswaList.length > 0
-                  ? Math.round((plottedSiswaIds.size / siswaList.length) * 100)
-                  : 0}
-                %
-              </h3>
-            </div>
-          </div>
-        </Card>
+        <AnalyticsCard
+          variant="compact-premium"
+          mobileCompact={true}
+          title="Kelengkapan Ploting"
+          value={`${siswaList.length > 0 ? Math.round((plottedSiswaIds.size / siswaList.length) * 100) : 0}%`}
+          icon={<CheckCircle2 className="w-5 h-5 text-emerald-400" />}
+          description="Rasio peserta terploting"
+          gradient="from-emerald-600 to-teal-700"
+        />
       </div>
 
       {/* Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card border rounded-xl p-4 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card border border-border rounded-xl p-4 shadow-xs">
         <div className="flex items-center gap-2">
           <h3 className="text-base font-semibold text-foreground">
             Daftar Sesi Ujian & Ploting Penguji
           </h3>
-          <Badge variant="outline" className="text-xs font-normal">
+          <Badge variant="outline" className="text-xs font-normal border-primary/20 text-primary bg-primary/5">
             {jurusanNama}
           </Badge>
         </div>
@@ -434,7 +418,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                 size="sm"
                 onClick={handleAutoDistributeStudents}
                 disabled={sessions.length === 0 || saveMutation.isPending}
-                className="text-xs gap-1.5 text-purple-600 border-purple-200 hover:bg-purple-50 dark:hover:bg-purple-950"
+                className="text-xs gap-1.5 border-primary/30 text-primary hover:bg-primary/10 cursor-pointer"
                 title="Bagi rata siswa ke seluruh sesi yang aktif"
               >
                 <Sparkles className="w-3.5 h-3.5" />
@@ -444,7 +428,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                 size="sm"
                 onClick={handleOpenCreateModal}
                 disabled={saveMutation.isPending}
-                className="text-xs gap-1.5"
+                className="text-xs gap-1.5 cursor-pointer shadow-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Tambah Sesi Ujian
@@ -457,9 +441,9 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
             size="sm"
             onClick={handlePrintJadwalPdf}
             disabled={sessions.length === 0}
-            className="text-xs gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950"
+            className="text-xs gap-1.5 border-border hover:bg-muted cursor-pointer"
           >
-            <Printer className="w-3.5 h-3.5" />
+            <Printer className="w-3.5 h-3.5 text-primary" />
             Cetak Jadwal & Ploting (PDF)
           </Button>
         </div>
@@ -653,7 +637,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                           'text-xs gap-1.5 w-full cursor-pointer',
                           sessionBa
                             ? 'text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950'
-                            : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100'
+                            : 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20'
                         )}
                       >
                         <FileText className="w-3.5 h-3.5" />
@@ -687,7 +671,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                 value={sessionForm.nama_sesi}
                 onChange={(e) => setSessionForm({ ...sessionForm, nama_sesi: e.target.value })}
                 placeholder="Contoh: Sesi 1 (Pagi)"
-                className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+                className="mt-1 w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
               />
             </div>
             <div>
@@ -698,7 +682,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                 type="date"
                 value={sessionForm.tanggal}
                 onChange={(e) => setSessionForm({ ...sessionForm, tanggal: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+                className="mt-1 w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
               />
             </div>
           </div>
@@ -711,7 +695,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                 value={sessionForm.jam_mulai}
                 onChange={(e) => setSessionForm({ ...sessionForm, jam_mulai: e.target.value })}
                 placeholder="07:30"
-                className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+                className="mt-1 w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
               />
             </div>
             <div>
@@ -721,7 +705,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                 value={sessionForm.jam_selesai}
                 onChange={(e) => setSessionForm({ ...sessionForm, jam_selesai: e.target.value })}
                 placeholder="11:30"
-                className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+                className="mt-1 w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
               />
             </div>
             <div>
@@ -731,7 +715,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                 value={sessionForm.ruang}
                 onChange={(e) => setSessionForm({ ...sessionForm, ruang: e.target.value })}
                 placeholder="Lab Komputer 1"
-                className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+                className="mt-1 w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
               />
             </div>
           </div>
@@ -775,7 +759,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                   setSessionForm({ ...sessionForm, asesor_eksternal: e.target.value })
                 }
                 placeholder="Nama Asesor DU/DI"
-                className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+                className="mt-1 w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
               />
             </div>
           </div>
@@ -785,7 +769,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
             <select
               value={sessionForm.mitra_nama}
               onChange={(e) => setSessionForm({ ...sessionForm, mitra_nama: e.target.value })}
-              className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+              className="mt-1 w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors cursor-pointer"
             >
               <option value="">Pilih Mitra Industri (Opsional)...</option>
               {mitraOptions.map((m: any) => (
@@ -797,7 +781,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
           </div>
 
           {/* Student Multi-Select Section */}
-          <div className="pt-2 border-t">
+          <div className="pt-2 border-t border-border">
             <div className="flex items-center justify-between pb-2">
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-primary" />
@@ -814,7 +798,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                       selected_siswa_ids: siswaList.map((s) => s.id),
                     })
                   }
-                  className="text-[11px] text-primary hover:underline font-medium"
+                  className="text-[11px] text-primary hover:underline font-medium cursor-pointer"
                 >
                   Pilih Semua
                 </button>
@@ -822,7 +806,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                 <button
                   type="button"
                   onClick={() => setSessionForm({ ...sessionForm, selected_siswa_ids: [] })}
-                  className="text-[11px] text-rose-500 hover:underline font-medium"
+                  className="text-[11px] text-rose-500 hover:underline font-medium cursor-pointer"
                 >
                   Reset
                 </button>
@@ -836,11 +820,11 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                 value={studentSearchInModal}
                 onChange={(e) => setStudentSearchInModal(e.target.value)}
                 placeholder="Cari nama siswa atau NIS..."
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-muted/30 border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
               />
             </div>
 
-            <div className="max-h-52 overflow-y-auto border rounded-lg p-2 space-y-1">
+            <div className="max-h-52 overflow-y-auto border border-border rounded-lg p-2 space-y-1 bg-background/50">
               {filteredStudentsForModal.length === 0 ? (
                 <div className="text-center py-4 text-xs text-muted-foreground">
                   Siswa tidak ditemukan
@@ -858,10 +842,10 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                     <label
                       key={siswa.id}
                       className={cn(
-                        'flex items-center justify-between p-2 rounded cursor-pointer text-xs transition-colors',
+                        'flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs transition-colors',
                         isChecked
-                          ? 'bg-primary/10 border border-primary/30'
-                          : 'hover:bg-muted/50 border border-transparent'
+                          ? 'bg-primary/10 border border-primary/30 text-foreground font-medium'
+                          : 'hover:bg-muted/60 border border-transparent text-foreground'
                       )}
                     >
                       <div className="flex items-center gap-2.5">
@@ -886,7 +870,7 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                               });
                             }
                           }}
-                          className="rounded text-primary focus:ring-primary h-3.5 w-3.5"
+                          className="rounded text-primary focus:ring-primary h-3.5 w-3.5 cursor-pointer"
                         />
                         <span className="font-medium text-foreground">{siswa.nama_siswa}</span>
                       </div>
@@ -894,11 +878,11 @@ export const UkkJadwalPlotingTab: React.FC<UkkJadwalPlotingTabProps> = ({
                         <span className="text-[11px] text-muted-foreground font-mono">
                           {siswa.nis || '-'}
                         </span>
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-border">
                           {siswa.kelas || '-'}
                         </Badge>
                         {isPlottedOther && (
-                          <Badge variant="secondary" className="text-[9px] text-amber-600 bg-amber-50">
+                          <Badge variant="secondary" className="text-[9px] text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20">
                             Sesi Lain
                           </Badge>
                         )}

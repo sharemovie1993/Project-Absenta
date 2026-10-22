@@ -188,8 +188,8 @@ export const UkkJurusanConfigModal: React.FC<UkkJurusanConfigModalProps> = ({
     >
       <div className="space-y-5">
         {/* Banner Info */}
-        <div className="bg-gradient-to-r from-blue-500/10 via-sky-500/10 to-indigo-500/10 border border-blue-500/20 rounded-xl p-3.5 sm:p-4 flex items-start gap-3">
-          <FileCheck2 className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+        <div className="bg-primary/5 border border-primary/20 rounded-xl p-3.5 sm:p-4 flex items-start gap-3">
+          <FileCheck2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
           <div className="text-xs text-muted-foreground leading-relaxed">
             <span className="font-semibold text-foreground">
               Konfigurasi Dinamis Output Sertifikat UKK ({jurusanNama}):

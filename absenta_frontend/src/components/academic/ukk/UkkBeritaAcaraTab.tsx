@@ -373,7 +373,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
   return (
     <div className="space-y-6">
       {/* Action Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card border rounded-xl p-4 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card border border-border rounded-xl p-4 shadow-xs">
         <div>
           <h3 className="text-base font-semibold text-foreground">
             Laporan Pelaksanaan & Berita Acara Tiap Sesi UKK
@@ -389,7 +389,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
             <select
               value={sessionFilter}
               onChange={(e) => setSessionFilter(e.target.value)}
-              className="px-3 py-1.5 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+              className="px-3 py-1.5 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors cursor-pointer"
             >
               <option value="ALL">Semua Sesi ({records.length})</option>
               {sessionsFromJadwal.map((s) => (
@@ -401,7 +401,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
           )}
 
           {!readOnly && (
-            <Button size="sm" onClick={handleOpenCreate} className="text-xs gap-1.5 shrink-0">
+            <Button size="sm" onClick={handleOpenCreate} className="text-xs gap-1.5 shrink-0 shadow-xs cursor-pointer">
               <Plus className="w-3.5 h-3.5" />
               Buat Berita Acara Sesi
             </Button>
@@ -449,7 +449,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
                     </Badge>
                     <h4 className="text-sm font-bold text-foreground">{item.nama_sesi}</h4>
                     {item.jadwal_id && (
-                      <span className="text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 font-medium px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 font-medium px-2 py-0.5 rounded-full">
                         Tersinkronisasi Jadwal
                       </span>
                     )}
@@ -475,10 +475,10 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
                     variant="outline"
                     size="sm"
                     onClick={() => setPrintModalItem(item)}
-                    className="h-8 px-2.5 text-xs gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950 font-medium"
+                    className="h-8 px-2.5 text-xs gap-1.5 border-border hover:bg-muted text-foreground font-medium cursor-pointer"
                     title="Cetak Berita Acara Resmi (Pratinjau Kop & PDF)"
                   >
-                    <Printer className="w-3.5 h-3.5" />
+                    <Printer className="w-3.5 h-3.5 text-primary" />
                     Cetak Berita Acara
                   </Button>
                   {!readOnly && (
@@ -591,14 +591,14 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
       >
         <div className="space-y-4">
           {/* Integrasi dengan Jadwal Sesi Pra-UKK */}
-          <div className="bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-sky-500/10 border border-blue-500/20 rounded-xl p-3.5 space-y-2">
+          <div className="bg-primary/5 border border-primary/20 rounded-xl p-3.5 space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-blue-600" />
+                <Calendar className="w-4 h-4 text-primary" />
                 Hubungkan ke Sesi Jadwal Pra-UKK
               </label>
               {formData.jadwal_id ? (
-                <span className="text-[10px] bg-blue-500/20 text-blue-700 dark:text-blue-300 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                <span className="text-[10px] bg-primary/15 text-primary border border-primary/20 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3 text-emerald-500" />
                   Terintegrasi
                 </span>
@@ -612,7 +612,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
             <select
               value={formData.jadwal_id || ''}
               onChange={(e) => handleSelectJadwalSession(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none font-medium cursor-pointer"
+              className="w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-medium cursor-pointer transition-colors"
             >
               <option value="">-- Pilih Sesi dari Jadwal UKK (Isi Otomatis) --</option>
               {sessionsFromJadwal.map((sesi) => (
@@ -636,7 +636,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
                 value={formData.nama_sesi}
                 onChange={(e) => setFormData({ ...formData, nama_sesi: e.target.value })}
                 placeholder="Contoh: Sesi 1 (Praktik Jaringan)"
-                className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+                className="mt-1 w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
               />
             </div>
             <div>
@@ -647,7 +647,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
                 type="date"
                 value={formData.tanggal}
                 onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+                className="mt-1 w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
               />
             </div>
           </div>
@@ -660,7 +660,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
                 value={formData.jam_mulai}
                 onChange={(e) => setFormData({ ...formData, jam_mulai: e.target.value })}
                 placeholder="07:30"
-                className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+                className="mt-1 w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
               />
             </div>
             <div>
@@ -670,7 +670,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
                 value={formData.jam_selesai}
                 onChange={(e) => setFormData({ ...formData, jam_selesai: e.target.value })}
                 placeholder="11:30"
-                className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+                className="mt-1 w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
               />
             </div>
             <div>
@@ -680,13 +680,13 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
                 value={formData.ruang}
                 onChange={(e) => setFormData({ ...formData, ruang: e.target.value })}
                 placeholder="Lab Komputer 1"
-                className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+                className="mt-1 w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
               />
             </div>
           </div>
 
           {/* Rekap Kehadiran */}
-          <div className="p-3 bg-muted/40 rounded-xl border space-y-2">
+          <div className="p-3 bg-muted/40 rounded-xl border border-border space-y-2">
             <span className="text-xs font-semibold text-foreground block">
               Rekapitulasi Kehadiran Peserta
             </span>
@@ -705,11 +705,11 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
                       jumlah_tidak_hadir: Math.max(0, total - formData.jumlah_hadir),
                     });
                   }}
-                  className="mt-1 w-full px-3 py-1.5 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+                  className="mt-1 w-full px-3 py-1.5 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
                 />
               </div>
               <div>
-                <label className="text-[11px] text-emerald-600 font-medium">Jumlah Hadir</label>
+                <label className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">Jumlah Hadir</label>
                 <input
                   type="number"
                   min="0"
@@ -722,7 +722,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
                       jumlah_tidak_hadir: Math.max(0, formData.jumlah_peserta - hadir),
                     });
                   }}
-                  className="mt-1 w-full px-3 py-1.5 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+                  className="mt-1 w-full px-3 py-1.5 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
                 />
               </div>
               <div>
@@ -731,7 +731,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
                   type="number"
                   readOnly
                   value={formData.jumlah_tidak_hadir}
-                  className="mt-1 w-full px-3 py-1.5 text-xs bg-muted border rounded-lg font-bold text-rose-500 outline-none cursor-not-allowed"
+                  className="mt-1 w-full px-3 py-1.5 text-xs bg-muted border border-border rounded-lg font-bold text-rose-500 outline-none cursor-not-allowed"
                 />
               </div>
             </div>
@@ -774,7 +774,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
                 value={formData.penguji_eksternal}
                 onChange={(e) => setFormData({ ...formData, penguji_eksternal: e.target.value })}
                 placeholder="Nama Penguji Eksternal"
-                className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+                className="mt-1 w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
               />
             </div>
           </div>
@@ -788,7 +788,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
               value={formData.catatan_pelaksanaan}
               onChange={(e) => setFormData({ ...formData, catatan_pelaksanaan: e.target.value })}
               placeholder="Catatan umum mengenai ketertiban, kedisiplinan dan kelancaran ujian..."
-              className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none resize-none"
+              className="mt-1 w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none transition-colors"
             />
           </div>
 
@@ -801,12 +801,12 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
               value={formData.kendala}
               onChange={(e) => setFormData({ ...formData, kendala: e.target.value })}
               placeholder="Contoh: Gangguan koneksi selama 10 menit, namun berhasil diatasi..."
-              className="mt-1 w-full px-3 py-2 text-xs bg-background border rounded-lg focus:ring-1 focus:ring-primary outline-none resize-none"
+              className="mt-1 w-full px-3 py-2 text-xs bg-background border border-border text-foreground rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none transition-colors"
             />
           </div>
 
           {/* Tanda Tangan Digital Penguji & Panitia via Pen */}
-          <div className="p-3.5 bg-muted/40 rounded-xl border space-y-3">
+          <div className="p-3.5 bg-muted/40 rounded-xl border border-border space-y-3">
             <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
               <PenTool className="w-4 h-4 text-primary" />
               <span>Tanda Tangan Digital Resmi (Pen Canvas)</span>
@@ -828,7 +828,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
               />
             </div>
 
-            <div className="pt-2 border-t">
+            <div className="pt-2 border-t border-border">
               <DigitalSignatureField
                 label="TTD Ketua Panitia / Kaprog"
                 penName={formData.panitia || 'Ketua Panitia UKK'}
@@ -839,13 +839,13 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
           </div>
 
           {/* Upload Foto Dokumentasi */}
-          <div className="pt-2 border-t space-y-2">
+          <div className="pt-2 border-t border-border space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                 <Camera className="w-4 h-4 text-primary" />
                 Foto Dokumentasi Pelaksanaan UKK
               </label>
-              <label className="text-xs text-primary hover:underline cursor-pointer flex items-center gap-1">
+              <label className="text-xs text-primary hover:underline cursor-pointer flex items-center gap-1 font-medium">
                 <Upload className="w-3.5 h-3.5" />
                 Unggah Foto
                 <input
@@ -866,9 +866,9 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
                 return (
                   <div
                     key={idx}
-                    className="relative group rounded-lg overflow-hidden border p-2 bg-muted/20 flex flex-col gap-2"
+                    className="relative group rounded-xl overflow-hidden border border-border p-2 bg-muted/20 flex flex-col gap-2"
                   >
-                    <div className="relative h-28 rounded overflow-hidden">
+                    <div className="relative h-28 rounded-lg overflow-hidden">
                       <img
                         src={photoUrl}
                         alt={`Preview ${idx + 1}`}
@@ -877,7 +877,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
                       <button
                         type="button"
                         onClick={() => handleRemovePhoto(idx)}
-                        className="absolute top-1 right-1 p-1 bg-rose-600 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-1 right-1 p-1 bg-rose-600 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-xs"
                         title="Hapus foto"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -889,26 +889,27 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
                         value={photoCaption}
                         onChange={(e) => handleCaptionChange(idx, e.target.value)}
                         placeholder={`Caption foto ${idx + 1} (cth: Pengujian Praktik Siswa)`}
-                        className="w-full text-xs px-2.5 py-1.5 rounded border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                       />
                     </div>
                   </div>
                 );
               })}
               {(formData.foto_dokumentasi?.length || 0) === 0 && (
-                <div className="col-span-full py-4 text-center border-2 border-dashed rounded-lg text-xs text-muted-foreground">
+                <div className="col-span-full py-6 text-center border-2 border-dashed border-border rounded-xl text-xs text-muted-foreground bg-muted/20">
                   Belum ada foto dokumentasi diunggah. Klik "Unggah Foto" di atas.
                 </div>
               )}
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-3 border-t">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setModalOpen(false)}
               disabled={saveMutation.isPending}
+              className="cursor-pointer"
             >
               Batal
             </Button>
@@ -916,7 +917,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
               size="sm"
               onClick={handleSubmit}
               disabled={saveMutation.isPending}
-              className="gap-1.5 text-xs"
+              className="gap-1.5 text-xs shadow-xs cursor-pointer"
             >
               <Save className="w-3.5 h-3.5" />
               {saveMutation.isPending ? 'Menyimpan...' : 'Simpan Berita Acara'}

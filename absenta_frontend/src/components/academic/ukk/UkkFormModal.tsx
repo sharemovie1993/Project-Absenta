@@ -248,14 +248,14 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
       className="w-full max-w-[94vw] sm:max-w-lg max-h-[92vh] flex flex-col overflow-hidden"
       title={
         <div className="flex items-center gap-2.5">
-          <div className="p-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
+          <div className="p-1.5 rounded-xl bg-primary/10 text-primary">
             <Award className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100">
+            <h3 className="text-sm sm:text-base font-bold text-foreground">
               Input Nilai UKK
             </h3>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            <p className="text-[11px] text-muted-foreground">
               Uji Kompetensi & Sertifikat Keahlian
             </p>
           </div>
@@ -268,18 +268,18 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
       >
         <div className="p-4 sm:p-5 space-y-4 overflow-y-auto max-h-[calc(92vh-125px)] no-scrollbar">
           {/* Profil Singkat Siswa */}
-          <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0">
+          <div className="flex items-center gap-3 p-2.5 rounded-xl bg-muted/40 border border-border">
+            <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shrink-0">
               <User className="w-4 h-4" />
             </div>
             <div className="min-w-0 flex-1">
-              <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+              <h4 className="text-xs font-bold text-foreground truncate">
                 {initialData.nama_siswa}
               </h4>
-              <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400">
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                 <span>NIS: {initialData.nis || '-'}</span>
                 <span>•</span>
-                <span className="font-semibold text-slate-700 dark:text-slate-300">
+                <span className="font-semibold text-foreground">
                   {initialData.kelas || '-'}
                 </span>
               </div>
@@ -289,7 +289,7 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
           {/* Nilai Praktik & Teori (2 Kolom di Desktop & HP) */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+              <label className="text-[11px] font-bold text-foreground">
                 Nilai Praktik <span className="text-rose-500">*</span>
               </label>
               <input
@@ -301,8 +301,8 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
                 onChange={(e) => handlePraktikChange(e.target.value)}
                 placeholder="0 - 100"
                 className={cn(
-                  'w-full px-3 py-2 text-sm font-mono font-bold rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500',
-                  formErrors.nilai_praktik ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'
+                  'w-full px-3 py-2 text-sm font-mono font-bold rounded-xl border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors',
+                  formErrors.nilai_praktik ? 'border-rose-500' : 'border-border'
                 )}
               />
               {formErrors.nilai_praktik && (
@@ -311,8 +311,8 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                Nilai Teori <span className="text-slate-400 font-normal">(Opsional)</span>
+              <label className="text-[11px] font-bold text-foreground">
+                Nilai Teori <span className="text-muted-foreground font-normal">(Opsional)</span>
               </label>
               <input
                 type="number"
@@ -322,17 +322,17 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
                 value={nilaiTeori}
                 onChange={(e) => handleTeoriChange(e.target.value)}
                 placeholder="Opsional"
-                className="w-full px-3 py-2 text-sm font-mono font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 text-sm font-mono font-bold rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
               />
             </div>
           </div>
 
           {/* Predikat (Segmented Bar Ramping) */}
           <div className="space-y-1.5">
-            <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+            <label className="text-[11px] font-bold text-foreground">
               Predikat Kelulusan <span className="text-rose-500">*</span>
             </label>
-            <div className="grid grid-cols-4 gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
+            <div className="grid grid-cols-4 gap-1 p-1 bg-muted/60 rounded-xl border border-border/50">
               {[
                 { id: 'Sangat Kompeten', label: 'Sangat' },
                 { id: 'Kompeten', label: 'Kompeten' },
@@ -349,9 +349,9 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
                       'py-1.5 px-1 rounded-lg text-[10px] sm:text-xs font-bold transition-all text-center cursor-pointer truncate',
                       isActive
                         ? p.id === 'Belum Kompeten'
-                          ? 'bg-rose-500 text-white shadow-xs'
-                          : 'bg-emerald-600 text-white shadow-xs'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                          ? 'bg-rose-600 text-white shadow-xs'
+                          : 'bg-primary text-primary-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                     )}
                   >
                     {p.label}
@@ -364,10 +364,10 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
           {/* Asesor Internal & Eksternal (Responsif) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+              <label className="text-[11px] font-bold text-foreground flex items-center justify-between">
                 <span>Asesor Guru (Internal Master)</span>
                 {asesorInternal && (
-                  <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-normal truncate max-w-[140px]">
+                  <span className="text-[10px] text-primary font-normal truncate max-w-[140px]">
                     {asesorInternal}
                   </span>
                 )}
@@ -387,7 +387,7 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+              <label className="text-[11px] font-bold text-foreground">
                 Asesor DUDI (Eksternal) <span className="text-rose-500">*</span>
               </label>
               <input
@@ -396,8 +396,8 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
                 onChange={(e) => setAsesorEksternal(e.target.value)}
                 placeholder="Nama asesor industri / LSP"
                 className={cn(
-                  'w-full px-3 py-2 text-xs rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500',
-                  formErrors.asesor_eksternal ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'
+                  'w-full px-3 py-2 text-xs rounded-xl border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors',
+                  formErrors.asesor_eksternal ? 'border-rose-500' : 'border-border'
                 )}
               />
               {formErrors.asesor_eksternal && (
@@ -408,13 +408,13 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
 
           {/* Mitra Industri DUDI */}
           <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+            <label className="text-[11px] font-bold text-foreground">
               Mitra Industri (DUDI)
             </label>
             <select
               value={mitraIndustriId}
               onChange={(e) => setMitraIndustriId(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer transition-colors"
             >
               <option value="">-- Pilih Mitra DUDI (Opsional) --</option>
               {mitraOptions.map((m: any) => (
@@ -428,7 +428,7 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
           {/* No Sertifikat & Tanggal Terbit */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+              <label className="text-[11px] font-bold text-foreground">
                 No. Sertifikat <span className="text-rose-500">*</span>
               </label>
               <input
@@ -437,8 +437,8 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
                 onChange={(e) => setNomorSertifikat(e.target.value)}
                 placeholder="UKK/2026/001"
                 className={cn(
-                  'w-full px-3 py-2 text-xs font-mono rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500',
-                  formErrors.nomor_sertifikat ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'
+                  'w-full px-3 py-2 text-xs font-mono rounded-xl border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors',
+                  formErrors.nomor_sertifikat ? 'border-rose-500' : 'border-border'
                 )}
               />
               {formErrors.nomor_sertifikat && (
@@ -447,21 +447,21 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+              <label className="text-[11px] font-bold text-foreground">
                 Tanggal Terbit <span className="text-rose-500">*</span>
               </label>
               <input
                 type="date"
                 value={tanggalTerbit}
                 onChange={(e) => setTanggalTerbit(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer transition-colors"
               />
             </div>
           </div>
         </div>
 
         {/* Modal Footer Actions */}
-        <div className="flex items-center justify-end gap-2 p-3 sm:p-4 bg-slate-50 dark:bg-slate-900/60 border-t border-slate-100 dark:border-slate-800 shrink-0">
+        <div className="flex items-center justify-end gap-2 p-3 sm:p-4 bg-muted/30 border-t border-border shrink-0">
           <Button
             type="button"
             variant="outline"
@@ -476,7 +476,7 @@ export const UkkFormModal: React.FC<UkkFormModalProps> = ({
             type="submit"
             size="sm"
             disabled={mutation.isPending}
-            className="text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-xs"
+            className="text-xs font-semibold rounded-xl cursor-pointer shadow-xs"
           >
             {mutation.isPending ? 'Menyimpan...' : 'Simpan Nilai'}
           </Button>

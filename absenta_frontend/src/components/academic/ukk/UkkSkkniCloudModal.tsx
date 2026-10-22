@@ -161,9 +161,9 @@ export const UkkSkkniCloudModal: React.FC<UkkSkkniCloudModalProps> = ({
     >
       <div className="space-y-4">
         {/* Banner Cloud Info */}
-        <div className="bg-gradient-to-r from-sky-500/10 via-blue-500/10 to-indigo-500/10 border border-sky-500/20 rounded-xl p-3.5 flex items-start justify-between gap-3">
+        <div className="bg-primary/5 border border-primary/20 rounded-xl p-3.5 flex items-start justify-between gap-3">
           <div className="flex items-start gap-2.5">
-            <Cloud className="w-5 h-5 text-sky-500 shrink-0 mt-0.5" />
+            <Cloud className="w-5 h-5 text-primary shrink-0 mt-0.5" />
             <div className="text-xs text-muted-foreground leading-relaxed">
               <span className="font-semibold text-foreground">
                 Master Data SKKNI Terpusat (Server Lisensi):
