@@ -1,0 +1,549 @@
+import React, { useState, useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Eye, BookOpen, BookMarked, ChevronLeft, ChevronRight } from 'lucide-react';
+
+import { useAcademicFilter, AcademicFilterToolbar } from '@/components/common/academic-filter';
+import { Loader, SectionCard } from '@/components/ui';
+import {
+  bukuIndukApi,
+  bukuIndukQueryKeys,
+  type BukuIndukListItem,
+  type KlapperListItem,
+} from '@/api/academic/buku-induk.api';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export interface UniversalBukuIndukViewProps {
+  jurusanId?: string;
+  jurusanNama?: string;
+  kelasId?: string;
+  kelasNama?: string;
+  tahunPelajaranId?: string;
+  tahunAjaran?: string;
+  isModal?: boolean;
+  hideLayout?: boolean;
+  readOnly?: boolean;
+  onClose?: () => void;
+}
+
+type ActiveTab = 'induk' | 'klapper';
+
+// ─── Status Badge ─────────────────────────────────────────────────────────────
+
+const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+function StatusBadge({ status }: { status: string }) {
+  const upper = (status || '').toUpperCase();
+  const colorMap: Record<string, string> = {
+    AKTIF: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
+    LULUS: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+    MUTASI: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
+    KELUAR: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+  };
+  const cls = colorMap[upper] ?? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${cls}`}>
+      {status || '-'}
+    </span>
+  );
+}
+
+// ─── Pagination ───────────────────────────────────────────────────────────────
+
+interface PaginationProps {
+  page: number;
+  totalPages: number;
+  total: number;
+  limit: number;
+  onPageChange: (p: number) => void;
+}
+
+function Pagination({ page, totalPages, total, limit, onPageChange }: PaginationProps) {
+  if (totalPages <= 1) return null;
+  const start = (page - 1) * limit + 1;
+  const end = Math.min(page * limit, total);
+  return (
+    <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 dark:border-slate-800">
+      <p className="text-xs text-slate-500 dark:text-slate-400">
+        Menampilkan <span className="font-bold text-slate-700 dark:text-slate-300">{start}–{end}</span> dari{' '}
+        <span className="font-bold text-slate-700 dark:text-slate-300">{total}</span> data
+      </p>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onPageChange(page - 1)}
+          disabled={page <= 1}
+          className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+          let p = i + 1;
+          if (totalPages > 5) {
+            if (page <= 3) p = i + 1;
+            else if (page >= totalPages - 2) p = totalPages - 4 + i;
+            else p = page - 2 + i;
+          }
+          return (
+            <button
+              key={p}
+              onClick={() => onPageChange(p)}
+              className={`min-w-[32px] h-8 px-2 rounded-lg text-xs font-bold transition-colors ${
+                p === page
+                  ? 'bg-indigo-600 text-white'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              {p}
+            </button>
+          );
+        })}
+        <button
+          onClick={() => onPageChange(page + 1)}
+          disabled={page >= totalPages}
+          className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          <ChevronRight size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Buku Induk Table ─────────────────────────────────────────────────────────
+
+interface BukuIndukTableProps {
+  data: BukuIndukListItem[];
+  isLoading: boolean;
+  onDetail: (id: string) => void;
+}
+
+function BukuIndukTable({ data, isLoading, onDetail }: BukuIndukTableProps) {
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <Loader size="lg" />
+      </div>
+    );
+  }
+
+  if (!data.length) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-slate-400 dark:text-slate-600">
+        <BookOpen size={48} className="mb-3 opacity-40" />
+        <p className="text-sm font-bold">Tidak ada data siswa ditemukan</p>
+        <p className="text-xs mt-1">Coba ubah filter pencarian Anda</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-slate-200 dark:border-slate-700">
+            <th className="py-3 px-4 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest w-12">No.</th>
+            <th className="py-3 px-4 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest">NIS</th>
+            <th className="py-3 px-4 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest">Nama Siswa</th>
+            <th className="py-3 px-4 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest">NISN</th>
+            <th className="py-3 px-4 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest">Kelas</th>
+            <th className="py-3 px-4 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest">Status</th>
+            <th className="py-3 px-4 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">Tgl. Masuk</th>
+            <th className="py-3 px-4 text-right text-[10px] font-black text-slate-500 uppercase tracking-widest">Aksi</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+          {data.map((siswa, idx) => (
+            <tr
+              key={siswa.id}
+              className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+            >
+              <td className="py-3 px-4 text-xs text-slate-400 dark:text-slate-500 font-mono">{idx + 1}</td>
+              <td className="py-3 px-4 text-xs font-mono font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                {siswa.nis || '-'}
+              </td>
+              <td className="py-3 px-4">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {siswa.foto_url ? (
+                    <img
+                      src={siswa.foto_url}
+                      alt={siswa.nama_siswa}
+                      className="w-7 h-7 rounded-full object-cover shrink-0 ring-1 ring-slate-200 dark:ring-slate-700"
+                    />
+                  ) : (
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 shrink-0 flex items-center justify-center text-white text-[10px] font-black">
+                      {(siswa.nama_siswa || '?')[0].toUpperCase()}
+                    </div>
+                  )}
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">
+                    {siswa.nama_siswa}
+                  </span>
+                </div>
+              </td>
+              <td className="py-3 px-4 text-xs font-mono text-slate-600 dark:text-slate-400">
+                {siswa.nisn || <span className="text-slate-300 dark:text-slate-600 italic">—</span>}
+              </td>
+              <td className="py-3 px-4 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                {siswa.Kelas?.nama_kelas || <span className="text-slate-300 dark:text-slate-600 italic">—</span>}
+              </td>
+              <td className="py-3 px-4">
+                <StatusBadge status={siswa.status} />
+              </td>
+              <td className="py-3 px-4 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                {siswa.tanggal_masuk
+                  ? new Date(siswa.tanggal_masuk).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+                  : <span className="text-slate-300 dark:text-slate-600 italic">—</span>}
+              </td>
+              <td className="py-3 px-4 text-right">
+                <button
+                  onClick={() => onDetail(siswa.id)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors"
+                >
+                  <Eye size={13} />
+                  Detail
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ─── Buku Klapper Table ───────────────────────────────────────────────────────
+
+interface KlapperTableProps {
+  data: KlapperListItem[];
+  isLoading: boolean;
+  selectedHuruf: string;
+  onDetail: (id: string) => void;
+}
+
+function KlapperTable({ data, isLoading, selectedHuruf, onDetail }: KlapperTableProps) {
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <Loader size="lg" />
+      </div>
+    );
+  }
+
+  if (!data.length) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-slate-400 dark:text-slate-600">
+        <BookMarked size={48} className="mb-3 opacity-40" />
+        <p className="text-sm font-bold">
+          {selectedHuruf ? `Tidak ada siswa dengan huruf "${selectedHuruf}"` : 'Tidak ada data klapper ditemukan'}
+        </p>
+        <p className="text-xs mt-1">Coba pilih huruf lain</p>
+      </div>
+    );
+  }
+
+  // Group data by first letter if no huruf filter selected
+  const groupedData = useMemo(() => {
+    if (selectedHuruf) return { [selectedHuruf]: data };
+    const groups: Record<string, KlapperListItem[]> = {};
+    data.forEach((item) => {
+      const letter = (item.nama_siswa || '?')[0].toUpperCase();
+      if (!groups[letter]) groups[letter] = [];
+      groups[letter].push(item);
+    });
+    return groups;
+  }, [data, selectedHuruf]);
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-slate-200 dark:border-slate-700">
+            <th className="py-3 px-4 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest w-12">No.</th>
+            <th className="py-3 px-4 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest">NIS</th>
+            <th className="py-3 px-4 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest">Nama Siswa</th>
+            <th className="py-3 px-4 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest">NISN</th>
+            <th className="py-3 px-4 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest">Kelas</th>
+            <th className="py-3 px-4 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest">Status</th>
+            <th className="py-3 px-4 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">Tgl. Masuk</th>
+            <th className="py-3 px-4 text-right text-[10px] font-black text-slate-500 uppercase tracking-widest">Aksi</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+          {Object.entries(groupedData).sort(([a], [b]) => a.localeCompare(b)).map(([letter, items]) => (
+            <React.Fragment key={letter}>
+              {/* Letter separator row */}
+              <tr className="bg-slate-50 dark:bg-slate-800/60">
+                <td colSpan={8} className="py-2 px-4">
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-600 text-white text-xs font-black shadow-sm">
+                    {letter}
+                  </span>
+                </td>
+              </tr>
+              {items.map((siswa, idx) => (
+                <tr
+                  key={siswa.id}
+                  className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                >
+                  <td className="py-3 px-4 text-xs text-slate-400 dark:text-slate-500 font-mono pl-8">
+                    {siswa.klapperNo ?? (idx + 1)}
+                  </td>
+                  <td className="py-3 px-4 text-xs font-mono font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                    {siswa.nis || '-'}
+                  </td>
+                  <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200 max-w-[200px] truncate">
+                    {siswa.nama_siswa}
+                  </td>
+                  <td className="py-3 px-4 text-xs font-mono text-slate-600 dark:text-slate-400">
+                    {siswa.nisn || <span className="text-slate-300 dark:text-slate-600 italic">—</span>}
+                  </td>
+                  <td className="py-3 px-4 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                    {siswa.Kelas?.nama_kelas || <span className="text-slate-300 dark:text-slate-600 italic">—</span>}
+                  </td>
+                  <td className="py-3 px-4">
+                    <StatusBadge status={siswa.status} />
+                  </td>
+                  <td className="py-3 px-4 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                    {siswa.tanggal_masuk
+                      ? new Date(siswa.tanggal_masuk).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+                      : <span className="text-slate-300 dark:text-slate-600 italic">—</span>}
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <button
+                      onClick={() => onDetail(siswa.id)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors"
+                    >
+                      <Eye size={13} />
+                      Detail
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </React.Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ─── Main View ────────────────────────────────────────────────────────────────
+
+export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo(({
+  jurusanId,
+  kelasId: propKelasId,
+  tahunPelajaranId: propTpId,
+  readOnly = false,
+}) => {
+  const [activeTab, setActiveTab] = useState<ActiveTab>('induk');
+  const [selectedSiswaId, setSelectedSiswaId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [klapperPage, setKlapperPage] = useState(1);
+  const [selectedHuruf, setSelectedHuruf] = useState('');
+
+  // AcademicFilter — disable kelas filter if kelasId is already scoped from outside
+  const filter = useAcademicFilter({
+    enableTp: true,
+    enableKelas: !propKelasId,
+    enableSearch: true,
+    enableStatusSiswa: true,
+    allowAllKelas: true,
+    jurusanId,
+  });
+
+  const effectiveTpId = propTpId || filter.values.tahunPelajaranId;
+  const effectiveKelasId = propKelasId || filter.values.kelasId;
+  const effectiveStatus = filter.values.statusSiswa;
+  const effectiveSearch = filter.debouncedSearchQuery;
+
+  // Reset page when filters change
+  const handleFilterChange = useCallback(() => setPage(1), []);
+  void handleFilterChange; // suppress unused warning — wired via filter values deps
+
+  // ── Query: Buku Induk List ──
+  const { data: indukData, isLoading: isLoadingInduk } = useQuery({
+    queryKey: bukuIndukQueryKeys.list({
+      tpId: effectiveTpId,
+      kelasId: effectiveKelasId,
+      search: effectiveSearch,
+      status: effectiveStatus,
+      page,
+    }),
+    queryFn: () =>
+      bukuIndukApi.getList({
+        tahun_pelajaran_id: effectiveTpId || undefined,
+        kelas_id: effectiveKelasId || undefined,
+        search: effectiveSearch || undefined,
+        status: effectiveStatus || undefined,
+        page,
+        limit: 15,
+      }),
+    enabled: activeTab === 'induk',
+    staleTime: 3 * 60 * 1000,
+  });
+
+  // ── Query: Buku Klapper ──
+  const { data: klapperData, isLoading: isLoadingKlapper } = useQuery({
+    queryKey: bukuIndukQueryKeys.klapper({
+      tpId: effectiveTpId,
+      huruf: selectedHuruf,
+      search: effectiveSearch,
+      page: klapperPage,
+    }),
+    queryFn: () =>
+      bukuIndukApi.getKlapper({
+        tahun_pelajaran_id: effectiveTpId || undefined,
+        huruf: selectedHuruf || undefined,
+        search: effectiveSearch || undefined,
+        page: klapperPage,
+        limit: 20,
+      }),
+    enabled: activeTab === 'klapper',
+    staleTime: 3 * 60 * 1000,
+  });
+
+  const indukList = indukData?.data ?? [];
+  const indukPagination = indukData?.pagination;
+  const klapperList = klapperData?.data ?? [];
+  const klapperPagination = klapperData?.pagination;
+
+  const handleDetail = useCallback((id: string) => {
+    setSelectedSiswaId(id);
+  }, []);
+
+  // ── Tab switch resets page ──
+  const handleTabSwitch = useCallback((tab: ActiveTab) => {
+    setActiveTab(tab);
+    setPage(1);
+    setKlapperPage(1);
+  }, []);
+
+  // ── Huruf filter handler ──
+  const handleHurufSelect = useCallback((huruf: string) => {
+    setSelectedHuruf((prev) => (prev === huruf ? '' : huruf));
+    setKlapperPage(1);
+  }, []);
+
+  return (
+    <div className="space-y-4 w-full min-w-0">
+      {/* Filter Toolbar */}
+      <AcademicFilterToolbar {...filter.toolbarProps} />
+
+      {/* Tabs */}
+      <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-fit">
+        <button
+          onClick={() => handleTabSwitch('induk')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+            activeTab === 'induk'
+              ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+          }`}
+        >
+          <BookOpen size={15} />
+          Buku Induk
+        </button>
+        <button
+          onClick={() => handleTabSwitch('klapper')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+            activeTab === 'klapper'
+              ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+          }`}
+        >
+          <BookMarked size={15} />
+          Buku Klapper
+        </button>
+      </div>
+
+      {/* Buku Klapper: Alphabet filter bar */}
+      {activeTab === 'klapper' && (
+        <div className="flex flex-wrap gap-1">
+          {ALPHABET.map((letter) => (
+            <button
+              key={letter}
+              onClick={() => handleHurufSelect(letter)}
+              className={`w-8 h-8 rounded-lg text-xs font-black transition-all ${
+                selectedHuruf === letter
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              {letter}
+            </button>
+          ))}
+          {selectedHuruf && (
+            <button
+              onClick={() => { setSelectedHuruf(''); setKlapperPage(1); }}
+              className="px-3 h-8 rounded-lg text-xs font-black bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Detail slide-in panel (placeholder state) */}
+      {selectedSiswaId && (
+        <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-white dark:bg-slate-900 shadow-2xl border-l border-slate-200 dark:border-slate-800 flex flex-col">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Detail Siswa</p>
+              <p className="text-sm font-black text-slate-800 dark:text-slate-200">Profil 360°</p>
+            </div>
+            <button
+              onClick={() => setSelectedSiswaId(null)}
+              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-5 flex flex-col items-center justify-center text-slate-400 dark:text-slate-600">
+            <BookOpen size={48} className="mb-3 opacity-30" />
+            <p className="text-sm font-bold text-center">Profil lengkap siswa akan tampil di sini</p>
+            <p className="text-xs mt-1 text-center opacity-70">ID: {selectedSiswaId}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Table */}
+      <SectionCard fullWidth noPadding className="w-full min-w-0 overflow-hidden">
+        {activeTab === 'induk' ? (
+          <>
+            <BukuIndukTable
+              data={indukList}
+              isLoading={isLoadingInduk}
+              onDetail={handleDetail}
+            />
+            {indukPagination && indukPagination.totalPages > 1 && (
+              <Pagination
+                page={page}
+                totalPages={indukPagination.totalPages}
+                total={indukPagination.total}
+                limit={indukPagination.limit}
+                onPageChange={setPage}
+              />
+            )}
+          </>
+        ) : (
+          <>
+            <KlapperTable
+              data={klapperList}
+              isLoading={isLoadingKlapper}
+              selectedHuruf={selectedHuruf}
+              onDetail={handleDetail}
+            />
+            {klapperPagination && klapperPagination.totalPages > 1 && (
+              <Pagination
+                page={klapperPage}
+                totalPages={klapperPagination.totalPages}
+                total={klapperPagination.total}
+                limit={klapperPagination.limit}
+                onPageChange={setKlapperPage}
+              />
+            )}
+          </>
+        )}
+      </SectionCard>
+    </div>
+  );
+});
+
+BukuIndukView.displayName = 'BukuIndukView';

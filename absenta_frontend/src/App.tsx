@@ -98,6 +98,7 @@ const CetakBerkasHubinPage = lazy(() => import('./pages/hubin/CetakBerkasHubinPa
 const BackupPage = lazy(() => import('./pages/academic/BackupPage'));
 const StaffActivityLogPage = lazy(() => import('./pages/academic/StaffActivityLogPage'));
 const PpdbMappingPage = lazy(() => import('./pages/academic/ppdb/PpdbMappingPage'));
+const BukuIndukPage = lazy(() => import('./pages/academic/BukuIndukPage').then(m => ({ default: m.BukuIndukPage })));
 
 // Named exports handled via lazy
 const GuruPage = lazy(() => import('./pages/academic/GuruPage').then(module => ({ default: module.GuruPage })));
@@ -618,6 +619,11 @@ function App() {
                     } />
                     <Route path="/academic/backup" element={<Navigate to="/settings/backup" replace />} />
                     <Route path="/backup" element={<Navigate to="/settings/backup" replace />} />
+                    <Route path="/academic/buku-induk" element={
+                      <ProtectedRoute requiredCapability="academic.students.view.list">
+                        <BukuIndukPage />
+                      </ProtectedRoute>
+                    } />
                     <Route path="/academic/staff-logs" element={
                       <ProtectedRoute requiredCapability="core.sekolah.view.profile">
                         <Suspense fallback={<div className="p-8"><Loader /></div>}>

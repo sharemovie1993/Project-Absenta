@@ -14,6 +14,7 @@ import { organizationalRoutes } from '../organizational/routes/organizational.ro
 import programKeahlianRoutes from '../program-keahlian/routes/program-keahlian.routes';
 import { ascImporterRoutes } from '../asc-importer/routes/asc-importer.routes';
 import { jadwalKontrakKbmRoutes } from '../jadwal-kontrak-kbm/routes/jadwal-kontrak-kbm.routes';
+import { bukuIndukRoutes } from '../buku-induk/routes/buku-induk.routes';
 import { AcademicStatsController } from '../controllers/academic-stats.controller';
 import { UniversalSearchController } from '../controllers/universal-search.controller';
 import { PrepChecklistController } from '../controllers/prep-checklist.controller';
@@ -39,6 +40,7 @@ export async function academicRoutes(fastify: any) {
   await fastify.register(programKeahlianRoutes, { prefix: '/program-keahlian' });
   await fastify.register(ascImporterRoutes, { prefix: '/asc-importer' });
   await fastify.register(jadwalKontrakKbmRoutes, { prefix: '/jadwal-kontrak-kbm' });
+  await fastify.register(bukuIndukRoutes, { prefix: '/buku-induk-klapper' });
 
   const academicStatsController = new AcademicStatsController();
   const universalSearchController = new UniversalSearchController();
