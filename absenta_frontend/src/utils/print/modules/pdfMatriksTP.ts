@@ -43,10 +43,9 @@ export interface PklMatriksTPPdfData {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Helpers
+// Helper: parse print_header_lines (sama dengan pdfUkkRab.ts)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Parse print_header_lines (same logic as pdfUkkRab.ts) */
 function parseHeaderLines(
   sekolah: PklMatriksTPPdfData['sekolah']
 ): Array<{ text: string; bold: boolean; fontSize: number }> {
@@ -68,7 +67,11 @@ function parseHeaderLines(
     if (typeof line === 'object' && line !== null) {
       textStr = line.text || '';
       bold = line.bold !== false;
-      fontSize = line.fontSize ? line.fontSize * 0.85 : idx === rawLines.length - 1 ? 11.5 : 9;
+      fontSize = line.fontSize
+        ? line.fontSize * 0.85
+        : idx === rawLines.length - 1
+        ? 11.5
+        : 9;
     } else {
       try {
         const parsed = JSON.parse(line);
@@ -95,7 +98,10 @@ function parseHeaderLines(
   });
 }
 
-/** Render kop surat resmi — returns the Y position right after the double rule */
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper: render kop surat → returns Y after double rule
+// ─────────────────────────────────────────────────────────────────────────────
+
 function renderKopSurat(
   doc: jsPDF,
   data: PklMatriksTPPdfData,
@@ -131,7 +137,9 @@ function renderKopSurat(
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(71, 85, 105);
-    const alamatText = `${data.sekolah.alamat}${data.sekolah.telepon ? ' | Telp: ' + data.sekolah.telepon : ''}`;
+    const alamatText = `${data.sekolah.alamat}${
+      data.sekolah.telepon ? ' | Telp: ' + data.sekolah.telepon : ''
+    }`;
     doc.text(alamatText, pageWidth / 2, curY, { align: 'center' });
     curY += 3.2;
   }
@@ -139,9 +147,12 @@ function renderKopSurat(
     doc.setFont('courier', 'normal');
     doc.setFontSize(7.5);
     doc.setTextColor(100, 116, 139);
-    const contactText = `${data.sekolah.website ? 'Website: ' + data.sekolah.website : ''}${
-      data.sekolah.email ? ' | Email: ' + data.sekolah.email : ''
-    }`;
+    const contactText = [
+      data.sekolah.website ? 'Website: ' + data.sekolah.website : '',
+      data.sekolah.email ? 'Email: ' + data.sekolah.email : '',
+    ]
+      .filter(Boolean)
+      .join(' | ');
     doc.text(contactText, pageWidth / 2, curY, { align: 'center' });
     curY += 3.2;
   }
@@ -157,7 +168,10 @@ function renderKopSurat(
   return curY + 0.8;
 }
 
-/** Render running header for continuation pages — returns new Y */
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper: running header on continuation pages → returns Y after the line
+// ─────────────────────────────────────────────────────────────────────────────
+
 function renderRunningHeader(
   doc: jsPDF,
   data: PklMatriksTPPdfData,
@@ -179,19 +193,25 @@ function renderRunningHeader(
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(8);
   doc.setTextColor(71, 85, 105);
-  doc.text(`Lanjutan (Halaman ${pageNum} dari ${totalPages})`, pageWidth - margin, startY, {
-    align: 'right',
-  });
+  doc.text(
+    `Lanjutan (Halaman ${pageNum} dari ${totalPages})`,
+    pageWidth - margin,
+    startY,
+    { align: 'right' }
+  );
 
   const lineY = startY + 1.5;
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(0.3);
   doc.line(margin, lineY, pageWidth - margin, lineY);
 
-  return lineY + 4;
+  return lineY + 3; // Y after the divider line
 }
 
-/** Render TTD block 3-tier — Waka Hubin (kiri) | Kaprog (kanan) di atas, Kepsek (tengah) di bawah */
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper: TTD block 3-tier
+// ─────────────────────────────────────────────────────────────────────────────
+
 function renderTTD(
   doc: jsPDF,
   data: PklMatriksTPPdfData,
@@ -208,36 +228,25 @@ function renderTTD(
 
   const contentWidth = pageWidth - margin * 2;
   const colHalfWidth = contentWidth / 2;
-  const xLeft = margin + colHalfWidth / 2;    // Center of left column
-  const xRight = margin + colHalfWidth + colHalfWidth / 2; // Center of right column
+  const xLeft = margin + colHalfWidth / 2;
+  const xRight = margin + colHalfWidth + colHalfWidth / 2;
   const xCenter = pageWidth / 2;
 
   let y = startY;
 
   // Catatan kepatuhan kurikulum
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.setTextColor(51, 65, 85);
-  const noteLabel = 'Catatan Kepatuhan Kurikulum: ';
-  doc.text(noteLabel, margin, y);
-  doc.setFont('helvetica', 'normal');
-  const noteBody =
-    'Rumusan Tujuan Pembelajaran (TP) di atas diselaraskan berdasarkan Standard Operating Procedure ' +
-    '(SOP) mitra dunia usaha/industri dan disahkan untuk dicetak pada buku Rapor PKL serta Sertifikat Praktik Kerja Lapangan siswa.';
-  const noteLines = doc.splitTextToSize(noteLabel + noteBody, contentWidth);
-  // Only draw body lines (skip header repeat)
-  const noteBodyLines = doc.splitTextToSize(noteBody, contentWidth - doc.getTextWidth(noteLabel));
+  const noteText =
+    'Catatan Kepatuhan Kurikulum: Rumusan Tujuan Pembelajaran (TP) di atas diselaraskan ' +
+    'berdasarkan Standard Operating Procedure (SOP) mitra dunia usaha/industri dan disahkan ' +
+    'untuk dicetak pada buku Rapor PKL serta Sertifikat Praktik Kerja Lapangan siswa.';
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(71, 85, 105);
-  // Simpler: just print the whole note as one block
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(51, 65, 85);
+  const noteLines = doc.splitTextToSize(noteText, contentWidth);
   doc.text(noteLines, margin, y);
-  y += noteLines.length * 3.2 + 2;
+  y += noteLines.length * 3.0 + 3;
 
-  // Date aligned above right column (Kaprog)
+  // Tanggal di atas kolom kanan (Kaprog)
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
@@ -246,28 +255,30 @@ function renderTTD(
 
   const yRow1Title = y;
 
-  // Left: Waka Hubin
+  // Kolom Kiri: Waka Hubin
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
   doc.text('Diverifikasi oleh,', xLeft, yRow1Title, { align: 'center' });
   doc.setFont('helvetica', 'bold');
-  doc.text('Wakil Kepala Sekolah Bidang Hubinmas', xLeft, yRow1Title + 4, { align: 'center' });
+  doc.text('Wakil Kepala Sekolah Bidang Hubinmas', xLeft, yRow1Title + 4.5, {
+    align: 'center',
+  });
 
-  // Right: Kaprog
+  // Kolom Kanan: Kaprog
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
   doc.text('Dibuat oleh,', xRight, yRow1Title, { align: 'center' });
   doc.setFont('helvetica', 'bold');
-  doc.text(`Ketua Program Keahlian ${data.jurusanNama}`, xRight, yRow1Title + 4, {
-    align: 'center',
-    maxWidth: colHalfWidth - 4,
-  });
+  // Wrap kaprog title if too long
+  const kaprogTitle = `Ketua Program Keahlian ${data.jurusanNama}`;
+  const kaprogTitleLines = doc.splitTextToSize(kaprogTitle, colHalfWidth - 4);
+  doc.text(kaprogTitleLines, xRight, yRow1Title + 4.5, { align: 'center' });
 
-  const yRow1Name = yRow1Title + 18; // Space for signature
+  const yRow1Name = yRow1Title + 20; // 20mm ruang TTD
 
-  // Left name & NIP
+  // Nama & NIP Waka Hubin (kiri)
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
@@ -280,9 +291,11 @@ function renderTTD(
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(71, 85, 105);
-  doc.text(`NIP. ${data.wakasekHubin?.nip || '-'}`, xLeft, yRow1Name + 3.5, { align: 'center' });
+  doc.text(`NIP. ${data.wakasekHubin?.nip || '-'}`, xLeft, yRow1Name + 3.8, {
+    align: 'center',
+  });
 
-  // Right name & NIP
+  // Nama & NIP Kaprog (kanan)
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
@@ -295,23 +308,27 @@ function renderTTD(
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(71, 85, 105);
-  doc.text(`NIP. ${data.kaprog?.nip || '-'}`, xRight, yRow1Name + 3.5, { align: 'center' });
+  doc.text(`NIP. ${data.kaprog?.nip || '-'}`, xRight, yRow1Name + 3.8, {
+    align: 'center',
+  });
 
-  // Row 2: Kepsek (center)
-  const yRow2Title = yRow1Name + 8;
+  // Baris 2: Kepala Sekolah (tengah bawah)
+  const yRow2Title = yRow1Name + 9;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
   doc.text('Mengetahui / Mengesahkan,', xCenter, yRow2Title, { align: 'center' });
   doc.setFont('helvetica', 'bold');
-  doc.text('Kepala Sekolah', xCenter, yRow2Title + 4, { align: 'center' });
+  doc.text('Kepala Sekolah', xCenter, yRow2Title + 4.5, { align: 'center' });
 
-  const yRow2Name = yRow2Title + 18;
+  const yRow2Name = yRow2Title + 20;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
   doc.text(
-    data.kepsek?.nama || data.sekolah.kepala_sekolah || '.......................................',
+    data.kepsek?.nama ||
+      data.sekolah.kepala_sekolah ||
+      '.......................................',
     xCenter,
     yRow2Name,
     { align: 'center' }
@@ -322,7 +339,7 @@ function renderTTD(
   doc.text(
     `NIP. ${data.kepsek?.nip || data.sekolah.nip_kepala || '-'}`,
     xCenter,
-    yRow2Name + 3.5,
+    yRow2Name + 3.8,
     { align: 'center' }
   );
 }
@@ -343,63 +360,103 @@ export function generatePdfMatriksTP(data: PklMatriksTPPdfData): {
     format: 'a4',
   });
 
-  // A4 dimensions (mm): Portrait = 210×297, Landscape = 297×210
+  // A4 (mm): Portrait = 210×297, Landscape = 297×210
   const pageWidth = isLandscape ? 297 : 210;
   const pageHeight = isLandscape ? 210 : 297;
   const margin = 15;
   const contentWidth = pageWidth - margin * 2;
 
-  const tp = data.tahunPelajaran || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
+  const tp =
+    data.tahunPelajaran ||
+    `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
   const totalMitra = data.mitraList.length;
   const totalSiswa = data.mitraList.reduce((a, m) => a + (m.siswa_count || 0), 0);
   const filledMitra = data.mitraList.filter((m) => m.has_tp).length;
 
-  // ── Column widths for the matrix table ──────────────────────────────────
+  // ── Column widths ────────────────────────────────────────────────────────
   const noColW = 8;
-  const dudiColW = isLandscape ? 88 : 65;
-  // remainder goes to TP column (autoTable handles it via flex)
+  const dudiColW = isLandscape ? 85 : 65;
+  // Kolom 2 (TP) mendapatkan sisa lebar secara otomatis
 
-  // ── Build body rows ──────────────────────────────────────────────────────
-  const bodyRows = data.mitraList.map((mitra, idx) => {
-    // Compose multi-line DUDI cell
-    const dudiLines: string[] = [mitra.nama_mitra];
-    if (mitra.alamat) dudiLines.push(mitra.alamat);
-    const meta: string[] = [`${mitra.siswa_count} Siswa PKL`];
-    if (mitra.rombel_list && mitra.rombel_list.length > 0) {
-      meta.push(mitra.rombel_list.join(', '));
-    }
-    if (mitra.bidang_usaha && mitra.bidang_usaha !== '-') {
-      meta.push(`(${mitra.bidang_usaha})`);
-    }
-    dudiLines.push(meta.join(' • '));
-
-    const tpText = mitra.has_tp && mitra.deskripsi_tp
-      ? `"${mitra.deskripsi_tp}"`
-      : 'Belum ada rumusan deskripsi capaian pembelajaran khusus yang ditetapkan.';
-
-    return [idx + 1, dudiLines.join('\n'), tpText];
-  });
-
-  if (bodyRows.length === 0) {
-    bodyRows.push(['-', 'Belum ada mitra penempatan PKL pada tahun pelajaran ini.', '-'] as any);
+  // ── Structured body rows ─────────────────────────────────────────────────
+  // Kolom DUDI kita simpan sebagai object agar bisa dirender manual via didDrawCell.
+  // Kolom lain tetap string biasa.
+  interface DudiCellData {
+    __type: 'dudi';
+    nama: string;
+    alamat?: string;
+    meta: string; // "N Siswa PKL • Rombel • (Bidang)"
   }
 
-  // ── Page tracking for running header ────────────────────────────────────
-  let isFirstPage = true;
-  let kopEndY = 0;
-  let firstPageContentStartY = 0;
+  const bodyRows = data.mitraList.length > 0
+    ? data.mitraList.map((mitra, idx) => {
+        const metaParts: string[] = [`${mitra.siswa_count} Siswa PKL`];
+        if (mitra.rombel_list && mitra.rombel_list.length > 0) {
+          metaParts.push(mitra.rombel_list.join(', '));
+        }
+        if (mitra.bidang_usaha && mitra.bidang_usaha !== '-') {
+          metaParts.push(`(${mitra.bidang_usaha})`);
+        }
 
-  // We use didDrawPage callback to render kop/running header on each page
-  // and track the finalY for TTD placement.
+        const dudiCell: DudiCellData = {
+          __type: 'dudi',
+          nama: mitra.nama_mitra,
+          alamat: mitra.alamat,
+          meta: metaParts.join(' • '),
+        };
 
-  // ── Step 1: Render kop surat on page 1 ──────────────────────────────────
-  kopEndY = renderKopSurat(doc, data, pageWidth, margin);
+        const tpText =
+          mitra.has_tp && mitra.deskripsi_tp
+            ? `"${mitra.deskripsi_tp}"`
+            : 'Belum ada rumusan deskripsi capaian pembelajaran khusus yang ditetapkan.';
 
-  // ── Step 2: Title block ──────────────────────────────────────────────────
-  let curY = kopEndY + (isLandscape ? 4 : 6);
+        // autoTable body rows support content + styles objects per cell.
+        // We pass dudiCell as content (will be stringified to placeholder),
+        // then override drawing manually in didDrawCell.
+        return [
+          idx + 1,
+          // Placeholder text: autoTable will calculate row height based on this.
+          // We provide the full text so autoTable sizes the row correctly.
+          [mitra.nama_mitra, mitra.alamat || '', metaParts.join(' • ')]
+            .filter(Boolean)
+            .join('\n'),
+          tpText,
+        ] as [number, string, string];
+      })
+    : [
+        [
+          '-',
+          'Belum ada mitra penempatan PKL pada tahun pelajaran ini.',
+          '-',
+        ] as any,
+      ];
+
+  // Store structured DUDI data parallel to bodyRows for custom rendering
+  const dudiData =
+    data.mitraList.length > 0
+      ? data.mitraList.map((mitra) => {
+          const metaParts: string[] = [`${mitra.siswa_count} Siswa PKL`];
+          if (mitra.rombel_list && mitra.rombel_list.length > 0)
+            metaParts.push(mitra.rombel_list.join(', '));
+          if (mitra.bidang_usaha && mitra.bidang_usaha !== '-')
+            metaParts.push(`(${mitra.bidang_usaha})`);
+          return {
+            nama: mitra.nama_mitra,
+            alamat: mitra.alamat,
+            meta: metaParts.join(' • '),
+          };
+        })
+      : null;
+
+  // ── Step 1: Kop surat (page 1) ───────────────────────────────────────────
+  const kopEndY = renderKopSurat(doc, data, pageWidth, margin);
+
+  // ── Step 2: Judul ────────────────────────────────────────────────────────
+  const titleFontSize = isLandscape ? 10 : 11;
+  let curY = kopEndY + (isLandscape ? 3.5 : 6);
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(isLandscape ? 10 : 11);
+  doc.setFontSize(titleFontSize);
   doc.setTextColor(0, 0, 0);
   doc.text(
     'MATRIKS RUMUSAN TUJUAN PEMBELAJARAN (TP)',
@@ -407,61 +464,72 @@ export function generatePdfMatriksTP(data: PklMatriksTPPdfData): {
     curY,
     { align: 'center' }
   );
-  curY += isLandscape ? 4 : 4.5;
+  curY += isLandscape ? 4 : 5;
   doc.text(
     'MATA PELAJARAN PRAKTIK KERJA LAPANGAN (PKL)',
     pageWidth / 2,
     curY,
     { align: 'center' }
   );
-  curY += isLandscape ? 4 : 4.5;
+  curY += isLandscape ? 4 : 5;
 
   doc.setFont('helvetica', 'italic');
-  doc.setFontSize(isLandscape ? 8.5 : 9);
+  doc.setFontSize(isLandscape ? 8 : 9);
   doc.setTextColor(51, 65, 85);
-  doc.text(`Tahun Pelajaran ${tp} • Fase F (Kelas XII)`, pageWidth / 2, curY, {
-    align: 'center',
-  });
-  curY += isLandscape ? 3.5 : 4;
+  doc.text(
+    `Tahun Pelajaran ${tp} • Fase F (Kelas XII)`,
+    pageWidth / 2,
+    curY,
+    { align: 'center' }
+  );
+  curY += isLandscape ? 3 : 4;
 
   // ── Step 3: Metadata box ─────────────────────────────────────────────────
-  const metaBoxHeight = isLandscape ? 11 : 14;
+  const metaBoxHeight = isLandscape ? 10 : 13;
   const metaBoxY = curY;
+
   doc.setFillColor(248, 250, 252);
   doc.setDrawColor(203, 213, 225);
   doc.setLineWidth(0.2);
   doc.rect(margin, metaBoxY, contentWidth, metaBoxHeight, 'FD');
 
-  const metaFontSize = isLandscape ? 7.5 : 8.5;
-  const metaPad = 2.5;
-  const metaLineH = isLandscape ? 3.8 : 4.5;
+  const mFs = isLandscape ? 7.5 : 8.5;
+  const mLH = isLandscape ? 3.8 : 4.5;
   const colMid = margin + contentWidth / 2 + 4;
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(metaFontSize);
-  doc.setTextColor(51, 65, 85);
+  const metaY1 = metaBoxY + 2.8;
+  const metaY2 = metaY1 + mLH;
 
   // Row 1
-  const metaY1 = metaBoxY + metaPad + metaFontSize * 0.35;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(mFs);
+  doc.setTextColor(51, 65, 85);
   doc.text('Program / Konsentrasi Keahlian', margin + 2, metaY1);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
   doc.text(`: ${data.jurusanNama}`, margin + 52, metaY1);
+
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(51, 65, 85);
   doc.text('Total Mitra Industri (DUDI)', colMid, metaY1);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
-  doc.text(`: ${totalMitra} Perusahaan (${filledMitra} Terisi TP)`, colMid + 44, metaY1);
+  doc.text(
+    `: ${totalMitra} Perusahaan (${filledMitra} Terisi TP)`,
+    colMid + 44,
+    metaY1
+  );
 
   // Row 2
-  const metaY2 = metaY1 + metaLineH;
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(51, 65, 85);
   doc.text('Mata Pelajaran / Elemen', margin + 2, metaY2);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
-  doc.text(': Praktik Kerja Lapangan (Teknis Kejuruan & Budaya Kerja)', margin + 52, metaY2);
+  doc.text(
+    ': Praktik Kerja Lapangan (Teknis Kejuruan & Budaya Kerja)',
+    margin + 52,
+    metaY2
+  );
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(51, 65, 85);
   doc.text('Total Peserta PKL', colMid, metaY2);
@@ -470,39 +538,25 @@ export function generatePdfMatriksTP(data: PklMatriksTPPdfData): {
   doc.text(`: ${totalSiswa} Siswa`, colMid + 44, metaY2);
 
   curY = metaBoxY + metaBoxHeight + (isLandscape ? 2 : 3);
-  firstPageContentStartY = curY;
+  const tableStartY = curY;
 
-  // ── Step 4: Main autoTable ───────────────────────────────────────────────
-  // We need an estimated total pages count for the running header.
-  // We'll do a two-pass approach: first pass to count, second to render.
-  // But jspdf-autotable doesn't easily support a pre-count.
-  // Solution: track page in didDrawPage and patch the running headers post-hoc
-  // using the simpler approach of just rendering page number as "…" then
-  // a second pass. Instead: just render "Halaman X" and accept we don't know total.
-  // Better solution: calculate total pages upfront.
+  // ── Running header height (reserved space on continuation pages) ─────────
+  // running header = ~8mm (text 8pt) + 1.5mm line + 3mm gap = ~14mm
+  const runningHeaderH = 14;
 
-  // Rough total-page estimate based on rows per page
-  // (not perfect, but close enough for the running header label)
-  const rowEstimate = bodyRows.length;
-  // Approximate rows per page after first page
-  const rowsFirstPage = isLandscape ? 5 : 8;
-  const rowsPerPage = isLandscape ? 9 : 14;
-  let estTotalPages = 1;
-  if (rowEstimate > rowsFirstPage) {
-    const remaining = rowEstimate - rowsFirstPage;
-    estTotalPages += Math.ceil(remaining / rowsPerPage);
-  }
-  // Add 1 if last page also needs TTD block (always true) — if TTD fits on last table page, stays 1
-  // This is approximate; the actual rendered pages may differ slightly.
+  // ── Estimate total pages for running header label ────────────────────────
+  // We'll update after autoTable via doc.getNumberOfPages()
+  let estTotalPages = 1; // will be patched in footer loop
 
-  let renderedPageCount = 0;
-  const pageNumbers: number[] = []; // actual page numbers drawn
+  // ── Step 4: autoTable ────────────────────────────────────────────────────
+  const tableFontSize = isLandscape ? 7.5 : 8;
+  const cellPad = isLandscape ? 1.5 : 2;
 
   autoTable(doc, {
-    startY: firstPageContentStartY,
+    startY: tableStartY,
     head: [
       [
-        { content: 'No', styles: { halign: 'center' } },
+        { content: 'No', styles: { halign: 'center', valign: 'middle' } },
         'Mitra Industri (DUDI) & Lokasi',
         'Rumusan Capaian & Tujuan Pembelajaran (TP) Khusus DUDI',
       ],
@@ -511,8 +565,8 @@ export function generatePdfMatriksTP(data: PklMatriksTPPdfData): {
     theme: 'grid',
     styles: {
       font: 'helvetica',
-      fontSize: isLandscape ? 7.5 : 8,
-      cellPadding: isLandscape ? 1.5 : 2,
+      fontSize: tableFontSize,
+      cellPadding: cellPad,
       lineColor: [0, 0, 0],
       lineWidth: 0.2,
       textColor: [0, 0, 0],
@@ -523,78 +577,143 @@ export function generatePdfMatriksTP(data: PklMatriksTPPdfData): {
       fillColor: [241, 245, 249],
       textColor: [0, 0, 0],
       fontStyle: 'bold',
-      fontSize: isLandscape ? 7.5 : 8.5,
+      fontSize: tableFontSize,
       lineColor: [0, 0, 0],
-      lineWidth: 0.2,
+      lineWidth: 0.3,
       halign: 'center',
+      valign: 'middle',
     },
     alternateRowStyles: { fillColor: [255, 255, 255] },
     columnStyles: {
       0: { cellWidth: noColW, halign: 'center', valign: 'middle' },
       1: { cellWidth: dudiColW },
-      // column 2 gets the remainder automatically
+      // kolom 2 otomatis
     },
-    margin: { left: margin, right: margin, top: margin, bottom: margin },
-    // Render kop / running header on each new page
-    didDrawPage: (hookData) => {
-      renderedPageCount = hookData.pageNumber;
-      const pgNum = hookData.pageNumber;
+    // margin.top digunakan autoTable sebagai topY saat addPage → harus cukup
+    // untuk running header (margin + runningHeaderH)
+    margin: {
+      left: margin,
+      right: margin,
+      top: margin + runningHeaderH, // ruang untuk running header di halaman 2+
+      bottom: margin + 8,           // ruang footer
+    },
+    showHead: 'everyPage',
 
-      if (pgNum === 1) {
-        // Page 1 already has kop + title + metadata rendered above;
-        // nothing extra to draw here.
-        return;
+    // ── Running header on continuation pages ─────────────────────────────
+    didDrawPage: (hookData) => {
+      const pgNum = hookData.pageNumber;
+      if (pgNum === 1) return; // page 1 sudah ada kop + judul + metadata
+
+      // Render running header di atas area tabel
+      renderRunningHeader(
+        doc,
+        data,
+        pageWidth,
+        margin,
+        pgNum,
+        estTotalPages, // akan diupdate di footer loop
+        margin + 2     // Y tepat di bawah top margin halaman
+      );
+    },
+
+    // ── Custom rendering untuk kolom DUDI (bold nama + normal alamat + kecil meta) ──
+    didDrawCell: (hookData) => {
+      // Hanya kolom index 1 (DUDI), hanya body rows
+      if (hookData.section !== 'body' || hookData.column.index !== 1) return;
+      if (!dudiData) return;
+
+      const rowIdx = hookData.row.index;
+      const dudi = dudiData[rowIdx];
+      if (!dudi) return;
+
+      // Cell geometry
+      const { x, y: cellY, width, height } = hookData.cell;
+      const pad = cellPad;
+      const innerW = width - pad * 2;
+
+      // Hapus teks default yang sudah digambar autoTable dengan rect putih
+      doc.setFillColor(
+        hookData.row.index % 2 === 0 ? 255 : 255,
+        255,
+        255
+      );
+      doc.rect(x + 0.15, cellY + 0.15, width - 0.3, height - 0.3, 'F');
+
+      // Re-draw border cell (agar tidak hilang setelah rect putih)
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.2);
+      doc.rect(x, cellY, width, height, 'S');
+
+      let textY = cellY + pad + tableFontSize * 0.35;
+
+      // 1. Nama DUDI — Bold
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(tableFontSize);
+      doc.setTextColor(0, 0, 0);
+      const namaLines = doc.splitTextToSize(dudi.nama, innerW);
+      doc.text(namaLines, x + pad, textY);
+      textY += namaLines.length * (tableFontSize * 0.37);
+
+      // 2. Alamat — Normal, slate-700
+      if (dudi.alamat) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(tableFontSize - 1);
+        doc.setTextColor(51, 65, 85);
+        const alamatLines = doc.splitTextToSize(dudi.alamat, innerW);
+        doc.text(alamatLines, x + pad, textY);
+        textY += alamatLines.length * ((tableFontSize - 1) * 0.37);
       }
 
-      // Continuation pages: running header
-      const newY = margin + 4;
-      renderRunningHeader(doc, data, pageWidth, margin, pgNum, estTotalPages, newY);
+      // 3. Meta info — kecil, abu-abu
+      if (dudi.meta) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(tableFontSize - 1.5);
+        doc.setTextColor(100, 116, 139);
+        const metaLines = doc.splitTextToSize(dudi.meta, innerW);
+        doc.text(metaLines, x + pad, textY + 0.5);
+      }
     },
-    // Ensure continuation pages start below the running header
-    didParseCell: () => {},
-    // Make row 2+ start further down so running header has room
-    // We handle this via margin.top above
   });
 
-  let tableEndY = (doc as any).lastAutoTable?.finalY ?? curY;
-
-  // Patch page count label if we can now read actual page count
-  const actualTotalPages = doc.getNumberOfPages();
+  const tableEndY: number = (doc as any).lastAutoTable?.finalY ?? curY;
 
   // ── Step 5: TTD block ────────────────────────────────────────────────────
-  // Space needed for TTD block (note ~10mm + signatures ~45mm = ~55mm total)
-  const ttdHeight = isLandscape ? 58 : 62;
+  // TTD butuh: catatan (≈10mm) + 3-tier ttd (≈58mm) = ≈68mm
+  const ttdHeight = isLandscape ? 62 : 68;
 
-  if (tableEndY + ttdHeight > pageHeight - margin) {
+  let ttdStartY = tableEndY + 4;
+  if (ttdStartY + ttdHeight > pageHeight - margin) {
     doc.addPage();
-    tableEndY = margin + 8;
-
-    // Render running header on the new TTD page
+    const ttdPageNum = doc.getNumberOfPages();
+    ttdStartY = margin + runningHeaderH + 2;
     renderRunningHeader(
       doc,
       data,
       pageWidth,
       margin,
-      doc.getNumberOfPages(),
-      doc.getNumberOfPages(), // last page
-      margin + 4
+      ttdPageNum,
+      ttdPageNum,
+      margin + 2
     );
-    tableEndY = margin + 4 + 6; // after running header
   }
 
-  renderTTD(doc, data, pageWidth, margin, tableEndY + 3);
+  renderTTD(doc, data, pageWidth, margin, ttdStartY);
 
-  // ── Step 6: Page footer on all pages ────────────────────────────────────
-  const footerText = `Matriks Capaian & Tujuan Pembelajaran PKL — ${data.jurusanNama} (${tp})`;
+  // ── Step 6: Footer + page numbers ───────────────────────────────────────
   const finalPageCount = doc.getNumberOfPages();
+  estTotalPages = finalPageCount; // update estimasi (dipakai running header sudah selesai render)
+
+  const footerText = `Matriks Capaian & Tujuan Pembelajaran PKL — ${data.jurusanNama} (${tp})`;
 
   for (let p = 1; p <= finalPageCount; p++) {
     doc.setPage(p);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(148, 163, 184);
-    doc.text(footerText, pageWidth / 2, pageHeight - 7, { align: 'center' });
-    doc.text(`${p} / ${finalPageCount}`, pageWidth - margin, pageHeight - 7, { align: 'right' });
+    doc.text(footerText, pageWidth / 2, pageHeight - 6, { align: 'center' });
+    doc.text(`${p} / ${finalPageCount}`, pageWidth - margin, pageHeight - 6, {
+      align: 'right',
+    });
   }
 
   const blobUrl = doc.output('bloburl').toString();
