@@ -422,7 +422,7 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
       <main className="relative z-10 flex-1 flex flex-col justify-between px-6 py-3 overflow-hidden">
 
         {/* ======================================================== */}
-        {/* 1. TOP DAHAN ZONE (INDUK DIVISI + ANAK RANTING FITUR)     */}
+        {/* 1. TOP DAHAN ZONE (SAYAP ATAS KUPU-KUPU: BERTUNAS KE ATAS)*/}
         {/* ======================================================== */}
         <section className="w-full flex-1 flex flex-col justify-end pb-1 max-w-6xl mx-auto">
           <div className="grid grid-cols-3 gap-5 w-full items-end">
@@ -434,48 +434,16 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
               return (
                 <div key={div.id} className="flex flex-col items-center">
                   
-                  {/* INDUK DIVISI ATAS */}
-                  <div
-                    className={`w-full p-2.5 rounded-2xl border transition-all duration-300 shadow-lg flex items-center justify-between ${
-                      hasChildren
-                        ? `bg-slate-900/90 ${div.theme.border} ring-1 ring-white/10 ${div.theme.glow}`
-                        : 'bg-slate-950/60 border-slate-900 opacity-40'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className={`p-1.5 rounded-xl bg-slate-950 border border-slate-800 ${div.theme.accent}`}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className={`text-[10px] font-black uppercase tracking-wider block truncate ${div.theme.accent}`}>
-                          {div.short}
-                        </span>
-                        <h3 className="text-xs font-bold text-white truncate">
-                          {div.name}
-                        </h3>
-                      </div>
-                    </div>
-
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border shrink-0 ${div.theme.badge}`}>
-                      {sproutedChildren.length} Ranting Aktif
-                    </span>
-                  </div>
-
-                  {/* STEM LINE DOWNWARD TO CHILDREN */}
-                  {hasChildren && (
-                    <div className="w-0.5 h-3 bg-gradient-to-b from-slate-600 to-cyan-500/60" />
-                  )}
-
-                  {/* ANAK / CABANG TOPOLOGI FITUR (BERTUNAS SESUAI FASE) */}
+                  {/* ANAK / CABANG TOPOLOGI FITUR (BERTUNAS KE ATAS) */}
                   <div className="w-full min-h-[90px] flex flex-col justify-end gap-1.5 py-1">
                     <AnimatePresence mode="popLayout">
                       {sproutedChildren.map((child, idx) => (
                         <motion.div
                           key={child.id}
                           layout
-                          initial={{ opacity: 0, scale: 0.85, y: -8 }}
+                          initial={{ opacity: 0, scale: 0.85, y: 10 }}
                           animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.85, y: -8 }}
+                          exit={{ opacity: 0, scale: 0.85, y: 10 }}
                           transition={{ duration: 0.25, delay: idx * 0.05 }}
                           className={`rounded-xl px-2.5 py-1.5 border transition-all flex items-center justify-between gap-2 shadow-md ${div.theme.nodeBg}`}
                         >
@@ -506,8 +474,40 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
                     )}
                   </div>
 
+                  {/* STEM LINE FROM PARENT UPWARD TO CHILDREN */}
+                  {hasChildren && (
+                    <div className="w-0.5 h-3 bg-gradient-to-t from-slate-600 to-cyan-500/60" />
+                  )}
+
+                  {/* INDUK DIVISI ATAS (DEKAT TIMELINE) */}
+                  <div
+                    className={`w-full p-2.5 rounded-2xl border transition-all duration-300 shadow-lg flex items-center justify-between ${
+                      hasChildren
+                        ? `bg-slate-900/90 ${div.theme.border} ring-1 ring-white/10 ${div.theme.glow}`
+                        : 'bg-slate-950/60 border-slate-900 opacity-40'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className={`p-1.5 rounded-xl bg-slate-950 border border-slate-800 ${div.theme.accent}`}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className={`text-[10px] font-black uppercase tracking-wider block truncate ${div.theme.accent}`}>
+                          {div.short}
+                        </span>
+                        <h3 className="text-xs font-bold text-white truncate">
+                          {div.name}
+                        </h3>
+                      </div>
+                    </div>
+
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border shrink-0 ${div.theme.badge}`}>
+                      {sproutedChildren.length} Ranting Aktif
+                    </span>
+                  </div>
+
                   {/* STEM CONNECTOR TO CENTRAL TIMELINE */}
-                  <div className="w-0.5 h-4 bg-gradient-to-b from-cyan-500/60 to-slate-700" />
+                  <div className="w-0.5 h-4 bg-gradient-to-b from-slate-600 to-cyan-500/60" />
                 </div>
               );
             })}
@@ -596,7 +596,7 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
         </section>
 
         {/* ======================================================== */}
-        {/* 3. BOTTOM DAHAN ZONE (INDUK DIVISI + ANAK RANTING FITUR)  */}
+        {/* 3. BOTTOM DAHAN ZONE (SAYAP BAWAH KUPU-KUPU: BERTUNAS KE BAWAH)*/}
         {/* ======================================================== */}
         <section className="w-full flex-1 flex flex-col justify-start pt-1 max-w-6xl mx-auto">
           <div className="grid grid-cols-4 gap-4 w-full items-start">
@@ -609,18 +609,50 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
                 <div key={div.id} className="flex flex-col items-center">
                   
                   {/* STEM CONNECTOR FROM CENTRAL TIMELINE */}
-                  <div className="w-0.5 h-4 bg-gradient-to-b from-slate-700 to-cyan-500/60" />
+                  <div className="w-0.5 h-4 bg-gradient-to-b from-slate-600 to-cyan-500/60" />
 
-                  {/* ANAK / CABANG TOPOLOGI FITUR (BERTUNAS SESUAI FASE) */}
+                  {/* INDUK DIVISI BAWAH (DEKAT TIMELINE) */}
+                  <div
+                    className={`w-full p-2.5 rounded-2xl border transition-all duration-300 shadow-lg flex items-center justify-between ${
+                      hasChildren
+                        ? `bg-slate-900/90 ${div.theme.border} ring-1 ring-white/10 ${div.theme.glow}`
+                        : 'bg-slate-950/60 border-slate-900 opacity-40'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className={`p-1.5 rounded-xl bg-slate-950 border border-slate-800 ${div.theme.accent}`}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className={`text-[10px] font-black uppercase tracking-wider block truncate ${div.theme.accent}`}>
+                          {div.short}
+                        </span>
+                        <h3 className="text-xs font-bold text-white truncate">
+                          {div.name}
+                        </h3>
+                      </div>
+                    </div>
+
+                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full border shrink-0 ${div.theme.badge}`}>
+                      {sproutedChildren.length}
+                    </span>
+                  </div>
+
+                  {/* STEM LINE DOWNWARD FROM PARENT TO CHILDREN */}
+                  {hasChildren && (
+                    <div className="w-0.5 h-3 bg-gradient-to-b from-slate-600 to-cyan-500/60" />
+                  )}
+
+                  {/* ANAK / CABANG TOPOLOGI FITUR (BERTUNAS KE BAWAH) */}
                   <div className="w-full min-h-[90px] flex flex-col justify-start gap-1.5 py-1">
                     <AnimatePresence mode="popLayout">
                       {sproutedChildren.map((child, idx) => (
                         <motion.div
                           key={child.id}
                           layout
-                          initial={{ opacity: 0, scale: 0.85, y: 8 }}
+                          initial={{ opacity: 0, scale: 0.85, y: -10 }}
                           animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.85, y: 8 }}
+                          exit={{ opacity: 0, scale: 0.85, y: -10 }}
                           transition={{ duration: 0.25, delay: idx * 0.05 }}
                           className={`rounded-xl px-2.5 py-1.5 border transition-all flex items-center justify-between gap-2 shadow-md ${div.theme.nodeBg}`}
                         >
@@ -649,38 +681,6 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
                         — Dahan non-aktif di fase ini —
                       </div>
                     )}
-                  </div>
-
-                  {/* STEM LINE DOWNWARD TO PARENT */}
-                  {hasChildren && (
-                    <div className="w-0.5 h-3 bg-gradient-to-t from-slate-600 to-cyan-500/60" />
-                  )}
-
-                  {/* INDUK DIVISI BAWAH */}
-                  <div
-                    className={`w-full p-2.5 rounded-2xl border transition-all duration-300 shadow-lg flex items-center justify-between ${
-                      hasChildren
-                        ? `bg-slate-900/90 ${div.theme.border} ring-1 ring-white/10 ${div.theme.glow}`
-                        : 'bg-slate-950/60 border-slate-900 opacity-40'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className={`p-1.5 rounded-xl bg-slate-950 border border-slate-800 ${div.theme.accent}`}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className={`text-[10px] font-black uppercase tracking-wider block truncate ${div.theme.accent}`}>
-                          {div.short}
-                        </span>
-                        <h3 className="text-xs font-bold text-white truncate">
-                          {div.name}
-                        </h3>
-                      </div>
-                    </div>
-
-                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full border shrink-0 ${div.theme.badge}`}>
-                      {sproutedChildren.length}
-                    </span>
                   </div>
 
                 </div>
