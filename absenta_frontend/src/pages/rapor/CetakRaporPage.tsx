@@ -102,8 +102,8 @@ export default React.memo(function CetakRaporPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const isCurrentRoute = location.pathname.toLowerCase().replace(/\/$/, '') === '/rapor/cetak';
-  const { isHomeroomTeacher, isKurikulum, isKepalaSekolah, isAdmin, walikelasKelas, walikelasKelasIds } = useCapabilities();
-  const canSupervise = isAdmin || isKurikulum || isKepalaSekolah;
+  const { isHomeroomTeacher, isKurikulum, isKepalaSekolah, isAdmin, isKaprog, isHubin, walikelasKelas, walikelasKelasIds } = useCapabilities();
+  const canSupervise = isAdmin || isKurikulum || isKepalaSekolah || isKaprog || isHubin;
 
   // ── User Auth & Wali Kelas Operational Context ──
   const { user } = useAuthStore();

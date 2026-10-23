@@ -438,6 +438,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
   [STRUKTUR_CODES.KAPROG]: [
     'organization.scope.unit_restricted',
     'dashboard.view.hubin',
+    'academic.teaching.view',
     'academic.teaching.rekap',
     'academic.students.view.list',
     'academic.teachers.view.list',
@@ -631,11 +632,13 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'hubin.tracer.view',
     'reports.hubin.view',
 
-    // Referensi Data
+    // Referensi Data & Nilai Rapor
     'academic.students.view.list',
     'academic.students.view.detail',
     'academic.structures.view.list',
     'academic.teachers.view.list',
+    'academic.teaching.view',
+    'academic.teaching.rekap',
   ],
 
   // BKK (Ketua Bursa Kerja Khusus)

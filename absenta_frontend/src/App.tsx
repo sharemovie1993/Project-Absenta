@@ -989,7 +989,15 @@ function App() {
                     <Route path="/rapor/dashboard" element={<Navigate to="/rapor/input-nilai" replace />} />
                     <Route path="/rapor" element={<Navigate to="/rapor/input-nilai" replace />} />
                     <Route path="/rapor/cetak" element={
-                      <ProtectedRoute requiredCapability={['academic.homeroom.manage', 'academic.teaching.view', 'academic.manage.academic']}>
+                      <ProtectedRoute requiredCapability={[
+                        'academic.homeroom.manage',
+                        'academic.teaching.view',
+                        'academic.manage.academic',
+                        'hubin.pkl.manage',
+                        'hubin.guidance.manage',
+                        'dashboard.view.hubin',
+                        'dashboard.view.walikelas',
+                      ]}>
                         <CetakRaporPage />
                       </ProtectedRoute>
                     } />

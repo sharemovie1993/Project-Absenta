@@ -10,6 +10,9 @@ export default async function raporRoutes(fastify: any) {
     'academic.teaching.view',
     'academic.manage.academic',
     'dashboard.view.kepsek',
+    'hubin.pkl.manage',
+    'hubin.guidance.manage',
+    'dashboard.view.hubin',
   ];
   const academicManageCaps = [
     'academic.manage.wali.kelas',
