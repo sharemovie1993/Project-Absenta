@@ -12,7 +12,8 @@ import {
   CalendarCheck,
   Edit3,
   Sparkles,
-  History
+  History,
+  Printer
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui';
@@ -53,6 +54,7 @@ interface KaprogPklTabProps {
   onOpenPlottingModal?: () => void;
   onOpenRekapNilai?: () => void;
   onOpenMonitoringPkl?: () => void;
+  onOpenPrintMatriksModal?: () => void;
   onRolloverAllTp?: () => void;
   isRolloverLoading?: boolean;
   isReadOnly?: boolean;
@@ -69,6 +71,7 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
   onOpenPlottingModal,
   onOpenRekapNilai,
   onOpenMonitoringPkl,
+  onOpenPrintMatriksModal,
   onRolloverAllTp,
   isRolloverLoading = false,
   isReadOnly = false,
@@ -262,6 +265,18 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
               >
                 <History className="w-3.5 h-3.5 text-emerald-600" />
                 <span>{isRolloverLoading ? 'Sedang Menyalin...' : `Salin Semua TP Tahun Lalu (${availableRolloverCount})`}</span>
+              </Button>
+            )}
+
+            {onOpenPrintMatriksModal && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onOpenPrintMatriksModal}
+                className="w-full sm:w-auto text-xs font-semibold rounded-xl gap-1.5 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 cursor-pointer shadow-2xs shrink-0"
+              >
+                <Printer className="w-3.5 h-3.5 text-slate-500" />
+                <span>Cetak Matriks TP</span>
               </Button>
             )}
 

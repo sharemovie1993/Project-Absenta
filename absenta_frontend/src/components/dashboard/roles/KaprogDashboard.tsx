@@ -32,6 +32,7 @@ const KelasView = lazy(() => import('@/components/academic/kelas/KelasView').the
 const NilaiPklView = lazy(() => import('@/components/hubin/nilai-pkl/NilaiPklView').then(m => ({ default: m.NilaiPklView })));
 const AbsensiPklView = lazy(() => import('@/components/hubin/absensi/AbsensiPklView').then(m => ({ default: m.AbsensiPklView })));
 const PklDeskripsiTpModal = lazy(() => import('@/components/hubin/nilai-pkl/PklDeskripsiTpModal').then(m => ({ default: m.PklDeskripsiTpModal })));
+const PklMatriksTpPrintModal = lazy(() => import('@/components/hubin/nilai-pkl/PklMatriksTpPrintModal').then(m => ({ default: m.PklMatriksTpPrintModal })));
 const KaprogGuruDetailModal = lazy(() => import('./kaprog/KaprogGuruDetailModal').then(m => ({ default: m.KaprogGuruDetailModal })));
 
 // Subkomponen Modular Ter-Hardening (Pilar 21B - God File Guard)
@@ -144,6 +145,9 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
     queryClient.invalidateQueries({ queryKey: ['kaprog-stats'] });
     queryClient.invalidateQueries({ queryKey: ['absensi-pkl-history'] });
   }, [queryClient]);
+
+  // Floating Modal state for Pratinjau Cetak Matriks TP PKL
+  const [isPrintMatriksModalOpen, setIsPrintMatriksModalOpen] = useState(false);
 
   // Konteks Akademik Standard Platform (useAcademicFilter SSOT)
   const academicFilter = useAcademicFilter({
@@ -737,6 +741,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                   onOpenPlottingModal={() => setIsPlottingPklModalOpen(true)}
                   onOpenRekapNilai={() => setIsRekapNilaiModalOpen(true)}
                   onOpenMonitoringPkl={() => setIsMonitoringPklModalOpen(true)}
+                  onOpenPrintMatriksModal={() => setIsPrintMatriksModalOpen(true)}
                   onRolloverAllTp={() => rolloverTpMutation.mutate()}
                   isRolloverLoading={rolloverTpMutation.isPending}
                   isReadOnly={isViewingHistorical}
@@ -1030,6 +1035,21 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
             </Suspense>
           </div>
         </Modal>
+      )}
+
+      {/* 11. Modal Universal Print Matriks TP PKL Kejuruan */}
+      {isPrintMatriksModalOpen && (
+        <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>
+          <PklMatriksTpPrintModal
+            isOpen={isPrintMatriksModalOpen}
+            onClose={() => setIsPrintMatriksModalOpen(false)}
+            jurusanNama={resolvedJurusan?.nama}
+            tahunPelajaran={academic.activeYear}
+            mitraList={filteredMitraList}
+            kaprogNama={(currentUser as any)?.nama || undefined}
+            kaprogNip={(currentUser as any)?.nip || undefined}
+          />
+        </Suspense>
       )}
     </div>
   );
