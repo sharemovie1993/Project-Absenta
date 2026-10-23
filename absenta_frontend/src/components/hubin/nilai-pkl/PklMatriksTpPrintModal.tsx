@@ -186,7 +186,7 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
 
   const printSheetRef = useRef<HTMLDivElement>(null);
 
-  const { tenantInfo, rawSekolah } = usePrintHeaderData();
+  const { tenantInfo, rawSekolah, logoDaerahBase64, logoSekolahBase64 } = usePrintHeaderData();
   const sekolahData = rawSekolah;
 
   // Sinkronisasi otomatis dari Organizational Structure (Struktur Organisasi)
@@ -250,79 +250,52 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
 
   const handleDownloadPdf = async () => {
     setIsExportingPdf(true);
-    // Cari elemen canvas area yang memiliki CSS zoom responsif untuk dinetralkan selama export
-    const canvasArea = document.getElementById('print-desk-canvas-area');
-    const originalZoom = canvasArea ? canvasArea.style.zoom : '';
-
     try {
-      // 1. Matikan sementara CSS zoom ke 1 agar getBoundingClientRect mengukur teks secara presisi (mencegah teks bertumpuk di Landscape)
-      if (canvasArea) {
-        canvasArea.style.zoom = '1';
-      }
+      toast.loading('Membuat PDF vektor…', { id: 'pdf-tp-export' });
 
-      const sheetElements = printSheetRef.current?.querySelectorAll('.print-sheet');
-      if (sheetElements && sheetElements.length > 0) {
-        const isLandscape = orientation === 'landscape';
-        const toastId = 'pdf-tp-export';
-        toast.loading(`Menyiapkan ${sheetElements.length} halaman PDF presisi A4 ${orientation}...`, { id: toastId });
+      const { generatePdfMatriksTP } = await import('@/utils/print/modules/pdfMatriksTP');
 
-        const html2canvas = (await import('html2canvas-pro')).default;
-        const { jsPDF } = await import('jspdf');
+      const sekolahPayload = {
+        nama: (rawSekolah as any)?.nama || (tenantInfo as any)?.nama || '',
+        alamat: (rawSekolah as any)?.alamat,
+        kota: (rawSekolah as any)?.kota,
+        telepon: (rawSekolah as any)?.telepon,
+        email: (rawSekolah as any)?.email,
+        website: (rawSekolah as any)?.website,
+        kepala_sekolah: (rawSekolah as any)?.kepala_sekolah,
+        nip_kepala: (rawSekolah as any)?.nip_kepala,
+        nama_dinas_atas: (rawSekolah as any)?.nama_dinas_atas,
+        nama_dinas_bawah: (rawSekolah as any)?.nama_dinas_bawah,
+        nama_cabang_dinas: (rawSekolah as any)?.nama_cabang_dinas,
+        print_header_lines: (rawSekolah as any)?.print_header_lines,
+      };
 
-        const pdf = new jsPDF({
-          orientation: orientation,
-          unit: 'mm',
-          format: 'a4',
-        });
+      const { blobUrl } = generatePdfMatriksTP({
+        orientation,
+        jurusanNama,
+        tahunPelajaran,
+        mitraList,
+        sekolah: sekolahPayload,
+        options: {
+          logoDaerahBase64: showLogoDaerah ? (logoDaerahBase64 ?? null) : null,
+          logoSekolahBase64: showLogoSekolah ? (logoSekolahBase64 ?? null) : null,
+        },
+        kaprog: { nama: kaprogNama, nip: kaprogNip },
+        wakasekHubin: { nama: wakasekHubinNama, nip: wakasekHubinNip },
+        kepsek: { nama: kepalaSekolahNama, nip: kepalaSekolahNip },
+      });
 
-        const pageWidth = isLandscape ? 297 : 210;
-        const pageHeight = isLandscape ? 210 : 297;
+      const filename = `MATRIKS_TP_PKL_${jurusanNama.replace(/\s+/g, '_')}_TA_${(tahunPelajaran || 'TA').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      a.click();
 
-        for (let i = 0; i < sheetElements.length; i++) {
-          if (i > 0) {
-            pdf.addPage(undefined, orientation);
-          }
-          const sheet = sheetElements[i] as HTMLElement;
-          const canvas = await html2canvas(sheet, {
-            scale: 2.5,
-            useCORS: true,
-            allowTaint: true,
-            backgroundColor: '#ffffff',
-            logging: false,
-            windowWidth: isLandscape ? 1200 : 850,
-            onclone: (clonedDoc) => {
-              const area = clonedDoc.getElementById('print-desk-canvas-area');
-              if (area) {
-                area.style.zoom = '1';
-                area.style.transform = 'none';
-              }
-            },
-          });
-
-          const imgData = canvas.toDataURL('image/png');
-          const imgWidth = pageWidth;
-          const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-          // Render exact page size or preserve natural aspect ratio
-          if (Math.abs(imgHeight - pageHeight) < 6) {
-            pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
-          } else {
-            pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, Math.min(imgHeight, pageHeight), undefined, 'FAST');
-          }
-        }
-
-        const filename = `MATRIKS_TP_PKL_${jurusanNama.replace(/\s+/g, '_')}_TA_${(tahunPelajaran || 'TA').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-        pdf.save(filename);
-        toast.success(`Dokumen PDF berhasil diunduh (${sheetElements.length} lembar presisi)`, { id: toastId });
-      }
+      toast.success('PDF vektor berhasil diunduh!', { id: 'pdf-tp-export' });
     } catch (err) {
-      console.error('Canvas export error:', err);
-      toast.error('Gagal mengunduh dokumen PDF', { id: 'pdf-tp-export' });
+      console.error('Vector PDF export error:', err);
+      toast.error('Gagal membuat PDF vektor', { id: 'pdf-tp-export' });
     } finally {
-      // 2. Pulihkan kembali zoom untuk kenyamanan preview layar responsif
-      if (canvasArea) {
-        canvasArea.style.zoom = originalZoom;
-      }
       setIsExportingPdf(false);
     }
   };
