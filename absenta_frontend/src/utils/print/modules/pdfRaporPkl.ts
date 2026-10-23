@@ -144,10 +144,17 @@ export const renderRaporPklPage1 = (doc: jsPDF, data: RaporPklItemData, isNewPag
   const deskripsiK3lh =
     'Peserta didik sudah memiliki soft skill sesuai harapan dalam melaksanakan pekerjaan sesuai POS namun masih perlu ditingkatkan dalam hal, menggunakan APD dengan tertib dan benar';
 
-  // Baris 3: DINAMIS DARI MASTER CAPAIAN TP DUDI
-  const defaultDeskripsiTeknis =
-    `Peserta didik diharapkan mampu memahami dan menerapkan Kompetensi teknis kejuruan pada ${data.pkl.mitra_nama || 'dunia kerja'}, melaksanakan SOP standar industri, memahami alur kerja operasional, serta peserta didik mampu mengerjakan tugas dengan penuh rasa tanggung jawab.`;
-  const deskripsiTeknis = data.pkl.deskripsi_tp?.trim() || defaultDeskripsiTeknis;
+  // Baris 3: DINAMIS DARI MASTER CAPAIAN TP DUDI (Tanpa fallback diam-diam)
+  const hasCustomTp = Boolean(data.pkl.deskripsi_tp?.trim());
+  const deskripsiTeknisCell = hasCustomTp
+    ? data.pkl.deskripsi_tp!.trim()
+    : {
+        content: '[Tujuan Pembelajaran belum dirumuskan oleh Ketua Program Keahlian untuk tahun ajaran aktif]',
+        styles: {
+          textColor: [220, 38, 38] as [number, number, number], // Teks merah peringatan
+          fontStyle: 'italic' as const,
+        },
+      };
 
   // Baris 4: Statis Kurikulum Merdeka
   const deskripsiAlurBisnis =
@@ -171,7 +178,7 @@ export const renderRaporPklPage1 = (doc: jsPDF, data: RaporPklItemData, isNewPag
       [
         'Menerapkan Kompetensi teknis yang sudah dipelajari di sekolah dan/atau baru di pelajari pada dunia kerja (tempat PKL)',
         String(skorTeknis),
-        deskripsiTeknis
+        deskripsiTeknisCell as any
       ],
       [
         'Memahami alur bisnis dunia kerja tempat PKL',
