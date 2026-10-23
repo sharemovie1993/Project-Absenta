@@ -85,6 +85,8 @@ import { StaffAdminOverviewTab } from '../staff/tabs/StaffAdminOverviewTab';
 const KepalaSekolahDashboard = React.lazy(() => import('./KepalaSekolahDashboard').then(m => ({ default: m.KepalaSekolahDashboard })));
 // Kepegawaian Dashboard — dirender di tab TU Kepegawaian
 const KepegawaianDashboard = React.lazy(() => import('./KepegawaianDashboard').then(m => ({ default: m.KepegawaianDashboard })));
+// Tata Usaha Dashboard — unified command center untuk TU
+const TataUsahaDashboard = React.lazy(() => import('./TataUsahaDashboard').then(m => ({ default: m.TataUsahaDashboard })));
 
 const CatatPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/CatatPelanggaranModal').then(m => ({ default: m.CatatPelanggaranModal })));
 const TindakMasalPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/TindakMasalPelanggaranModal').then(m => ({ default: m.TindakMasalPelanggaranModal })));
@@ -861,8 +863,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
     }
 
     // 10. Tab Tata Usaha Sesuai Spesialisasi Fungsional
-    if ((isTUKepegawaian || isTU || (isAdminRole && !isKepsek)) && !isKepsek) {
-      list.push({ id: 'kepegawaian', label: tuTabMeta.label, icon: Users });
+    if ((isTUKepegawaian || isTU || isTUKepala || isTUPersuratan || (isAdminRole && !isKepsek)) && !isKepsek) {
+      list.push({ id: 'kepegawaian', label: isTUKepala || isTUPersuratan ? 'Dashboard TU' : tuTabMeta.label, icon: Building });
     }
 
     // 11. Piket & Gerbang (Tugas piket harian, gerbang, kesiswaan, kurikulum, dan seluruh guru pendidik)
@@ -1234,10 +1236,14 @@ export const UnifiedStaffDashboard: React.FC = () => {
           <StaffAdminOverviewTab user={user} />
         )}
 
-        {/* 🧑‍💼 TAB 10: TU KEPEGAWAIAN (DATA INDUK & DAPODIK) */}
+        {/* 🧑‍💼 TAB 10: TATA USAHA TERPADU & KEPEGAWAIAN */}
         {activeTab === 'kepegawaian' && (
           <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
-            <KepegawaianDashboard user={user} />
+            {isTUKepala || isTUPersuratan || isTU ? (
+              <TataUsahaDashboard user={user} />
+            ) : (
+              <KepegawaianDashboard user={user} />
+            )}
           </Suspense>
         )}
 

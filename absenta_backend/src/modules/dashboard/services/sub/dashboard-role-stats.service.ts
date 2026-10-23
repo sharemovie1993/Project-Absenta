@@ -8,12 +8,14 @@ import { STRUKTUR_CODES } from '@/config/organization-structure';
 import { DashboardKaprogStatsService } from './dashboard-kaprog-stats.service';
 import { DashboardKepegawaianStatsService } from './dashboard-kepegawaian-stats.service';
 import { DashboardWalasStatsService } from './dashboard-walas-stats.service';
+import { DashboardTuStatsService } from './dashboard-tu-stats.service';
 
 export class DashboardRoleStatsService {
   private helper = new DashboardCommonHelper();
   private kaprogStats = new DashboardKaprogStatsService();
   private kepegawaianStats = new DashboardKepegawaianStatsService();
   private walasStats = new DashboardWalasStatsService();
+  private tuStats = new DashboardTuStatsService();
   private resolveDayRange(...args: any[]) { return this.helper.resolveDayRange(...args); }
 
   async getHubinStats(tenantId: string, userId?: string) {
@@ -495,41 +497,21 @@ export class DashboardRoleStatsService {
   /**
    * 🆕 Get TU (Administration) Stats
    */
-  async getTUStats(tenantId: string) {
+  async getTUStats(tenantId: string, userId?: string, options?: any) {
+    const tuData = await this.tuStats.getTuStats(tenantId, userId || '', options);
+    // Backward compatibility with legacy suratMasuk
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    const [suratMasukCount, suratKeluarCount] = await Promise.all([
-      prisma.suratMasuk.count({
-        where: {
-          tenant_id: tenantId,
-          tanggal_terima: { gte: startOfMonth }
-        }
-      }),
-      prisma.suratKeluar.count({
-        where: {
-          tenant_id: tenantId,
-          tanggal_surat: { gte: startOfMonth }
-        }
-      })
-    ]);
-
-    const recentSuratMasuk = await prisma.suratMasuk.findMany({
-      where: { tenant_id: tenantId },
-      orderBy: { tanggal_terima: 'desc' },
-      take: 5
+    const suratMasukCount = await prisma.suratMasuk.count({
+      where: {
+        tenant_id: tenantId,
+        tanggal_terima: { gte: startOfMonth },
+      },
     });
 
     return {
+      ...tuData,
       suratMasukBulanIni: suratMasukCount,
-      suratKeluarBulanIni: suratKeluarCount,
-      recentSuratMasuk: recentSuratMasuk.map(s => ({
-        id: s.id,
-        nomor: s.nomor_surat,
-        judul: s.judul,
-        asal: s.asal_surat,
-        tanggal: s.tanggal_terima.toISOString()
-      }))
     };
   }
 

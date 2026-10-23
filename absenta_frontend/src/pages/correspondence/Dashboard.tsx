@@ -1,135 +1,23 @@
-import React from 'react';
-import { Mail, Inbox, Send, FileText, Clock, UserCheck, TrendingUp, AlertCircle, ArrowUpRight } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
-import { WorkspaceAppLauncherCard } from '@/components/common/WorkspaceAppLauncherCard';
-import { Card } from '@/components/ui/Card';
-import { TvModeToggle } from '@/components/ui/TvModeToggle';
-import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
-
-const mockChartData = [
-  { name: 'Jan', Masuk: 12, Keluar: 8 },
-  { name: 'Feb', Masuk: 19, Keluar: 14 },
-  { name: 'Mar', Masuk: 22, Keluar: 18 },
-  { name: 'Apr', Masuk: 15, Keluar: 20 },
-  { name: 'May', Masuk: 28, Keluar: 25 },
-  { name: 'Jun', Masuk: 35, Keluar: 30 },
-];
-
-const mockRecentInbox = [
-  { id: 1, pengirim: 'Dinas Pendidikan', perihal: 'Undangan Rapat Koordinasi Kurikulum', tanggal: '11 Juli 2026', urgensi: 'PENTING' },
-  { id: 2, pengirim: 'Kementerian Pendidikan', perihal: 'Pemberitahuan Akreditasi Sekolah', tanggal: '10 Juli 2026', urgensi: 'Biasa' },
-  { id: 3, pengirim: 'PT. Telkom Indonesia', perihal: 'MOU Kerja Sama Magang Industri', tanggal: '08 Juli 2026', urgensi: 'PENTING' },
-];
+import React, { Suspense } from 'react';
+import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
+import { TataUsahaDashboard } from '@/components/dashboard/roles/TataUsahaDashboard';
+import { Loader } from '@/components/ui';
 
 export default function CorrespondenceDashboard() {
-  const [chartData, setChartData] = React.useState(mockChartData);
-
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      setChartData(prev => 
-        prev.map(item => ({
-          ...item,
-          Masuk: Math.max(5, Math.min(30, item.Masuk + (Math.random() > 0.5 ? 1 : -1))),
-          Keluar: Math.max(5, Math.min(25, item.Keluar + (Math.random() > 0.5 ? 1 : -1)))
-        }))
-      );
-    }, 15000);
-
-    return () => clearInterval(interval);
-  }, []);
-
   return (
-    <AcademicPageLayout 
-      title="Dashboard Persuratan" 
-      description="Monitoring volume surat masuk, surat keluar, dan disposisi aktif"
-      topSlot={<WorkspaceAppLauncherCard workspaceId="TU_KOORDINATOR_WORKSPACE" />}
-      toolbar={<TvModeToggle />}
-    >
-      <div className="space-y-6">
-        
-        {/* Metrik Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <AnalyticsCard 
-            title="Surat Masuk Baru" 
-            value="14 Surat" 
-            icon={<Inbox />} 
-            gradient="from-blue-500 to-blue-700 text-white" 
-            subtitle="Belum didisposisikan" 
-          />
-          <AnalyticsCard 
-            title="Surat Keluar Disetujui" 
-            value="38 Surat" 
-            icon={<Send />} 
-            gradient="from-emerald-500 to-emerald-700 text-white" 
-            subtitle="Siap didistribusikan" 
-          />
-          <AnalyticsCard 
-            title="Menunggu Tanda Tangan" 
-            value="5 Dokumen" 
-            icon={<UserCheck />} 
-            gradient="from-purple-500 to-purple-700 text-white" 
-            subtitle="Menunggu ttd kepala sekolah" 
-          />
-          <AnalyticsCard 
-            title="Total Arsip" 
-            value="324 Dokumen" 
-            icon={<FileText />} 
-            gradient="from-rose-500 to-rose-700 text-white" 
-            subtitle="Terarsip secara digital" 
-          />
-        </div>
-
-        {/* Chart & Recent Inbox */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2 p-6 border-none shadow-sm dark:bg-slate-900/40">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-sm font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">Volume Surat Masuk & Keluar</h3>
-                <p className="text-xs text-slate-450 dark:text-slate-450">Statistik aktivitas persuratan 6 bulan terakhir</p>
-              </div>
-              <TrendingUp size={16} className="text-slate-400" />
+    <InfraErrorBoundary>
+      <div className="p-3 sm:p-6 max-w-7xl mx-auto space-y-4">
+        <Suspense
+          fallback={
+            <div className="py-24 flex flex-col items-center justify-center gap-3 text-slate-500">
+              <Loader />
+              <p className="text-xs font-medium">Memuat Command Center Tata Usaha...</p>
             </div>
-            <div className="h-72 w-full">
-              <ResponsiveContainer minWidth={0} width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" className="dark:stroke-slate-800" />
-                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)' }} />
-                  <Bar dataKey="Masuk" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={20} name="Surat Masuk" />
-                  <Bar dataKey="Keluar" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={20} name="Surat Keluar" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-
-          {/* Agenda Kanan */}
-          <Card className="p-6 border-none shadow-sm dark:bg-slate-900/40 space-y-6">
-            <div>
-              <h3 className="text-sm font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">Surat Masuk Terbaru</h3>
-              <p className="text-xs text-slate-450 dark:text-slate-450">Daftar agenda surat masuk resmi yang baru diterima</p>
-            </div>
-            <div className="space-y-4">
-              {mockRecentInbox.map((item) => (
-                <div key={item.id} className="flex items-start justify-between p-3.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl">
-                  <div className="space-y-1">
-                    <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">{item.pengirim}</h4>
-                    <p className="text-[10px] text-slate-500 line-clamp-1">{item.perihal}</p>
-                    <p className="text-[9px] text-slate-400">{item.tanggal}</p>
-                  </div>
-                  {item.urgensi === 'PENTING' ? (
-                    <span className="text-[9px] font-black uppercase bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full flex-shrink-0">Penting</span>
-                  ) : (
-                    <span className="text-[9px] font-black uppercase bg-slate-100 text-slate-650 px-2 py-0.5 rounded-full flex-shrink-0">Biasa</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-
+          }
+        >
+          <TataUsahaDashboard />
+        </Suspense>
       </div>
-    </AcademicPageLayout>
+    </InfraErrorBoundary>
   );
 }

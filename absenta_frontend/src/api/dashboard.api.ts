@@ -178,3 +178,16 @@ export async function getKbmGlobalMonitoring(tanggal?: string): Promise<any> {
     headers: { 'X-Skip-403-Redirect': 'true' }
   });
 }
+
+// TU (Tata Usaha) Stats - GET /dashboard/tu/stats
+export interface TuStatsParams {
+  tahun_pelajaran_id?: string;
+  semester_id?: string;
+}
+
+export async function getTuStats(params?: TuStatsParams): Promise<any> {
+  return requestWithFallback<any>('get', '/dashboard/tu/stats', {
+    params,
+    headers: { 'X-Skip-403-Redirect': 'true' }
+  });
+}

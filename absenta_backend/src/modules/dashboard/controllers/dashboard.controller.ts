@@ -534,8 +534,9 @@ export class DashboardController {
   async getTUStats(request: AuthenticatedRequest, reply: any) {
     try {
       const tenantId = request.tenantId;
+      const userId = (request.user as any)?.id || (request.user as any)?.userId;
       if (!tenantId) throw new Error('Tenant ID required');
-      const data = await this.dashboardService.getTUStats(tenantId);
+      const data = await this.dashboardService.getTUStats(tenantId, userId, request.query);
       return reply.status(200).send({ success: true, data });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
