@@ -1,9 +1,14 @@
 import { bukuIndukController } from '../controllers/buku-induk.controller';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { organizationalScopeMiddleware } from '@/middlewares/organizationalScope';
+import {
+  getBukuIndukListSchema,
+  getKlapperListSchema,
+  getBukuIndukDetailSchema,
+} from '../services/buku-induk.schema';
 
 export async function bukuIndukRoutes(fastify: any) {
-  // GET /buku-induk → getList
+  // GET /buku-induk → getList (Zod validated)
   fastify.get(
     '/buku-induk',
     {
@@ -12,10 +17,21 @@ export async function bukuIndukRoutes(fastify: any) {
         organizationalScopeMiddleware,
       ],
     },
-    bukuIndukController.getList.bind(bukuIndukController)
+    async (request: any, reply: any) => {
+      const parsed = getBukuIndukListSchema.safeParse(request.query);
+      if (!parsed.success) {
+        return reply.code(400).send({
+          success: false,
+          message: 'Parameter tidak valid',
+          errors: parsed.error.flatten().fieldErrors,
+        });
+      }
+      request.query = parsed.data;
+      return bukuIndukController.getList(request, reply);
+    }
   );
 
-  // GET /buku-induk/:siswaId → getDetail
+  // GET /buku-induk/:siswaId → getDetail (Zod validated)
   fastify.get(
     '/buku-induk/:siswaId',
     {
@@ -24,10 +40,20 @@ export async function bukuIndukRoutes(fastify: any) {
         organizationalScopeMiddleware,
       ],
     },
-    bukuIndukController.getDetail.bind(bukuIndukController)
+    async (request: any, reply: any) => {
+      const parsed = getBukuIndukDetailSchema.safeParse(request.params);
+      if (!parsed.success) {
+        return reply.code(400).send({
+          success: false,
+          message: 'ID siswa tidak valid',
+          errors: parsed.error.flatten().fieldErrors,
+        });
+      }
+      return bukuIndukController.getDetail(request, reply);
+    }
   );
 
-  // GET /buku-klapper → getKlapper
+  // GET /buku-klapper → getKlapper (Zod validated)
   fastify.get(
     '/buku-klapper',
     {
@@ -36,6 +62,17 @@ export async function bukuIndukRoutes(fastify: any) {
         organizationalScopeMiddleware,
       ],
     },
-    bukuIndukController.getKlapper.bind(bukuIndukController)
+    async (request: any, reply: any) => {
+      const parsed = getKlapperListSchema.safeParse(request.query);
+      if (!parsed.success) {
+        return reply.code(400).send({
+          success: false,
+          message: 'Parameter tidak valid',
+          errors: parsed.error.flatten().fieldErrors,
+        });
+      }
+      request.query = parsed.data;
+      return bukuIndukController.getKlapper(request, reply);
+    }
   );
 }
