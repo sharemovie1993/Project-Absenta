@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Eye, BookOpen, BookMarked, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Eye, BookOpen, BookMarked, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
+import { BukuIndukPrintModal } from './BukuIndukPrintModal';
 
 import { useAcademicFilter, AcademicFilterToolbar } from '@/components/common/academic-filter';
 import { Loader, SectionCard } from '@/components/ui';
@@ -115,9 +116,10 @@ interface BukuIndukTableProps {
   data: BukuIndukListItem[];
   isLoading: boolean;
   onDetail: (id: string) => void;
+  onPrint: (id: string) => void;
 }
 
-function BukuIndukTable({ data, isLoading, onDetail }: BukuIndukTableProps) {
+function BukuIndukTable({ data, isLoading, onDetail, onPrint }: BukuIndukTableProps) {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-20">
@@ -194,13 +196,22 @@ function BukuIndukTable({ data, isLoading, onDetail }: BukuIndukTableProps) {
                   : <span className="text-slate-300 dark:text-slate-600 italic">—</span>}
               </td>
               <td className="py-3 px-4 text-right">
-                <button
-                  onClick={() => onDetail(siswa.id)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors"
-                >
-                  <Eye size={13} />
-                  Detail
-                </button>
+                <div className="flex items-center justify-end gap-1">
+                  <button
+                    onClick={() => onDetail(siswa.id)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors"
+                  >
+                    <Eye size={13} />
+                    Detail
+                  </button>
+                  <button
+                    onClick={() => onPrint(siswa.id)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition-colors"
+                  >
+                    <Printer size={13} />
+                    Cetak
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
@@ -335,6 +346,7 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
 }) => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('induk');
   const [selectedSiswaId, setSelectedSiswaId] = useState<string | null>(null);
+  const [printSiswaId, setPrintSiswaId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [klapperPage, setKlapperPage] = useState(1);
   const [selectedHuruf, setSelectedHuruf] = useState('');
@@ -407,6 +419,10 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
 
   const handleDetail = useCallback((id: string) => {
     setSelectedSiswaId(id);
+  }, []);
+
+  const handlePrint = useCallback((id: string) => {
+    setPrintSiswaId(id);
   }, []);
 
   // ── Tab switch resets page ──
@@ -511,6 +527,7 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
               data={indukList}
               isLoading={isLoadingInduk}
               onDetail={handleDetail}
+              onPrint={handlePrint}
             />
             {indukPagination && indukPagination.totalPages > 1 && (
               <Pagination
@@ -542,6 +559,15 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
           </>
         )}
       </SectionCard>
+
+      {/* Buku Induk Print Modal */}
+      {printSiswaId && (
+        <BukuIndukPrintModal
+          isOpen={Boolean(printSiswaId)}
+          onClose={() => setPrintSiswaId(null)}
+          siswaId={printSiswaId}
+        />
+      )}
     </div>
   );
 });
