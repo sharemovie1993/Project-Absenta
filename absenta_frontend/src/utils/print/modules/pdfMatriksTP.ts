@@ -451,40 +451,29 @@ export function generatePdfMatriksTP(data: PklMatriksTPPdfData): {
   // ── Step 1: Kop surat (page 1) ───────────────────────────────────────────
   const kopEndY = renderKopSurat(doc, data, pageWidth, margin);
 
-  // ── Step 2: Judul ────────────────────────────────────────────────────────
+  // ── Step 2: Judul (disederhanakan, 1 baris utama + subtitle) ────────────
   const titleFontSize = isLandscape ? 10 : 11;
-  let curY = kopEndY + (isLandscape ? 3.5 : 6);
+  let curY = kopEndY + (isLandscape ? 3 : 5);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(titleFontSize);
   doc.setTextColor(0, 0, 0);
-  doc.text(
-    'MATRIKS RUMUSAN TUJUAN PEMBELAJARAN (TP)',
-    pageWidth / 2,
-    curY,
-    { align: 'center' }
-  );
-  curY += isLandscape ? 4 : 5;
-  doc.text(
-    'MATA PELAJARAN PRAKTIK KERJA LAPANGAN (PKL)',
-    pageWidth / 2,
-    curY,
-    { align: 'center' }
-  );
+  doc.text('MATRIKS RUMUSAN TP — PRAKTIK KERJA LAPANGAN (PKL)', pageWidth / 2, curY, {
+    align: 'center',
+  });
   curY += isLandscape ? 4 : 5;
 
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(isLandscape ? 8 : 9);
   doc.setTextColor(51, 65, 85);
-  doc.text(
-    `Tahun Pelajaran ${tp} • Fase F (Kelas XII)`,
-    pageWidth / 2,
-    curY,
-    { align: 'center' }
-  );
+  doc.text(`Tahun Pelajaran ${tp} • Fase F (Kelas XII)`, pageWidth / 2, curY, {
+    align: 'center',
+  });
   curY += isLandscape ? 3 : 4;
 
   // ── Step 3: Metadata box ─────────────────────────────────────────────────
+  // Layout 2 kolom simetris — setiap kolom lebar = contentWidth / 2
+  // Label + nilai tidak boleh melewati batas kolom masing-masing.
   const metaBoxHeight = isLandscape ? 10 : 13;
   const metaBoxY = curY;
 
@@ -493,49 +482,71 @@ export function generatePdfMatriksTP(data: PklMatriksTPPdfData): {
   doc.setLineWidth(0.2);
   doc.rect(margin, metaBoxY, contentWidth, metaBoxHeight, 'FD');
 
-  const mFs = isLandscape ? 7.5 : 8.5;
+  const mFs = isLandscape ? 7.5 : 8;
   const mLH = isLandscape ? 3.8 : 4.5;
-  const colMid = margin + contentWidth / 2 + 4;
+
+  // Batas kolom kiri: margin → midX | kolom kanan: midX → margin kanan
+  const midX = margin + contentWidth / 2;
+  const colHalf = contentWidth / 2;              // lebar per kolom (mm)
+  const labelW = isLandscape ? 36 : 44;          // lebar label (mm)
+  const colonGap = 2;                            // jarak setelah titik-dua
+  // Posisi titik-dua & nilai
+  const lColonX = margin + 2 + labelW;
+  const lValueX = lColonX + colonGap;
+  const lValueMaxW = midX - lValueX - 2;        // nilai kiri tidak boleh melewati midX
+
+  const rLabelX = midX + 2;
+  const rColonX = midX + 2 + labelW;
+  const rValueX = rColonX + colonGap;
+  const rValueMaxW = margin + contentWidth - rValueX - 2;
+
   const metaY1 = metaBoxY + 2.8;
   const metaY2 = metaY1 + mLH;
 
-  // Row 1
+  // ── Baris 1 ──────────────────────────────────────────────────────────────
+  // Kiri: Program Keahlian
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(mFs);
   doc.setTextColor(51, 65, 85);
-  doc.text('Program / Konsentrasi Keahlian', margin + 2, metaY1);
+  doc.text('Program Keahlian', margin + 2, metaY1);
+  doc.setTextColor(100, 116, 139);
+  doc.text(':', lColonX, metaY1);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
-  doc.text(`: ${data.jurusanNama}`, margin + 52, metaY1);
+  doc.text(data.jurusanNama, lValueX, metaY1, { maxWidth: lValueMaxW });
 
+  // Kanan: Total Mitra
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(51, 65, 85);
-  doc.text('Total Mitra Industri (DUDI)', colMid, metaY1);
+  doc.text('Total DUDI', rLabelX, metaY1);
+  doc.setTextColor(100, 116, 139);
+  doc.text(':', rColonX, metaY1);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
-  doc.text(
-    `: ${totalMitra} Perusahaan (${filledMitra} Terisi TP)`,
-    colMid + 44,
-    metaY1
-  );
+  doc.text(`${totalMitra} DUDI (${filledMitra} Terisi TP)`, rValueX, metaY1, {
+    maxWidth: rValueMaxW,
+  });
 
-  // Row 2
+  // ── Baris 2 ──────────────────────────────────────────────────────────────
+  // Kiri: Mata Pelajaran
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(51, 65, 85);
-  doc.text('Mata Pelajaran / Elemen', margin + 2, metaY2);
+  doc.text('Mata Pelajaran', margin + 2, metaY2);
+  doc.setTextColor(100, 116, 139);
+  doc.text(':', lColonX, metaY2);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
-  doc.text(
-    ': Praktik Kerja Lapangan (Teknis Kejuruan & Budaya Kerja)',
-    margin + 52,
-    metaY2
-  );
+  doc.text('Praktik Kerja Lapangan (PKL)', lValueX, metaY2, { maxWidth: lValueMaxW });
+
+  // Kanan: Total Siswa
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(51, 65, 85);
-  doc.text('Total Peserta PKL', colMid, metaY2);
+  doc.text('Total Siswa PKL', rLabelX, metaY2);
+  doc.setTextColor(100, 116, 139);
+  doc.text(':', rColonX, metaY2);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
-  doc.text(`: ${totalSiswa} Siswa`, colMid + 44, metaY2);
+  doc.text(`${totalSiswa} Siswa`, rValueX, metaY2, { maxWidth: rValueMaxW });
 
   curY = metaBoxY + metaBoxHeight + (isLandscape ? 2 : 3);
   const tableStartY = curY;
