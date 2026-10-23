@@ -219,4 +219,4 @@ export interface WalasDashboardData {
   totalJurnalWalasTercatat: number;
 }
 
-export type WaliKelasTabId = 'ringkasan' | 'siswa' | 'presensi' | 'jurnal' | 'izin' | 'disiplin' | 'prestasi' | 'rekap';
+export type WaliKelasTabId = 'ringkasan' | 'siswa' | 'presensi' | 'jurnal' | 'izin' | 'disiplin' | 'prestasi' | 'rekap' | 'rapor';

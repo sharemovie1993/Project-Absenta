@@ -14,7 +14,8 @@ import {
   Layers,
   Award,
   ShieldAlert,
-  Trophy
+  Trophy,
+  Printer
 } from 'lucide-react';
 import { Button, Badge, Loader } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
@@ -45,6 +46,7 @@ import { KaprogPrestasiTab } from './kaprog/tabs/KaprogPrestasiTab';
 import { KaprogGuruTab } from './kaprog/tabs/KaprogGuruTab';
 import { KaprogSaranaTab } from './kaprog/tabs/KaprogSaranaTab';
 import { KaprogUkkTab } from './kaprog/tabs/KaprogUkkTab';
+import { KaprogCetakRaporTab } from './kaprog/tabs/KaprogCetakRaporTab';
 import { 
   KaprogTabId, 
   NavTabItem, 
@@ -78,9 +80,9 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
   const [searchParams, setSearchParams] = useSearchParams();
   const subtabParam = searchParams.get('subtab') as KaprogTabId | null;
 
-  // Active Tab State (beranda | siswa | pkl | kehadiran | pelanggaran | prestasi | guru | sarana | ukk)
+  // Active Tab State (beranda | siswa | pkl | kehadiran | pelanggaran | prestasi | guru | sarana | ukk | rapor)
   const [activeTab, setActiveTab] = useState<KaprogTabId>(() => {
-    if (subtabParam && ['beranda', 'siswa', 'prestasi', 'pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana', 'ukk'].includes(subtabParam)) {
+    if (subtabParam && ['beranda', 'siswa', 'prestasi', 'pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana', 'ukk', 'rapor'].includes(subtabParam)) {
       return subtabParam;
     }
     return 'beranda';
@@ -90,7 +92,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
   const [visitedTabs, setVisitedTabs] = useState<Set<KaprogTabId>>(() => new Set([activeTab]));
 
   useEffect(() => {
-    if (subtabParam && ['beranda', 'siswa', 'prestasi', 'pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana', 'ukk'].includes(subtabParam)) {
+    if (subtabParam && ['beranda', 'siswa', 'prestasi', 'pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana', 'ukk', 'rapor'].includes(subtabParam)) {
       setActiveTab((curr) => {
         if (curr !== subtabParam) return subtabParam;
         return curr;
@@ -406,6 +408,11 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
         id: 'ukk',
         label: 'UKK & Sertifikasi',
         icon: Award,
+      },
+      {
+        id: 'rapor',
+        label: 'Cetak Rapor',
+        icon: Printer,
       },
     ],
     [tpStatus.pendingMitra, atRiskStudents.length, (pelanggaranList || []).length, saranaCounts.rusak]
@@ -828,6 +835,21 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                 className={cn('w-full', activeTab === 'ukk' ? 'block animate-in fade-in duration-100' : 'hidden')}
               >
                 <KaprogUkkTab
+                  jurusanId={resolvedJurusan?.id}
+                  jurusanNama={resolvedJurusan?.nama || 'Kejuruan'}
+                  tahunPelajaranId={academic.selectedTahunPelajaran}
+                  tahunAjaran={academic.activeYear}
+                  semesterId={academic.selectedSemester}
+                />
+              </div>
+            )}
+
+            {visitedTabs.has('rapor') && (
+              <div
+                key="tab-rapor"
+                className={cn('w-full', activeTab === 'rapor' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              >
+                <KaprogCetakRaporTab
                   jurusanId={resolvedJurusan?.id}
                   jurusanNama={resolvedJurusan?.nama || 'Kejuruan'}
                   tahunPelajaranId={academic.selectedTahunPelajaran}

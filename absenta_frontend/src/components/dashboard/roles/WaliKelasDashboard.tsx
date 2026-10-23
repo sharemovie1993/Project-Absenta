@@ -10,7 +10,8 @@ import {
   Award, 
   FileSpreadsheet,
   GraduationCap,
-  Loader
+  Loader,
+  Printer
 } from 'lucide-react';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { useWalasDashboardData } from './walikelas/useWalasDashboardData';
@@ -23,6 +24,7 @@ import { WalasIzinTab } from './walikelas/tabs/WalasIzinTab';
 import { WalasDisiplinTab } from './walikelas/tabs/WalasDisiplinTab';
 import { WalasPrestasiTab } from './walikelas/tabs/WalasPrestasiTab';
 import { WalasRekapTab } from './walikelas/tabs/WalasRekapTab';
+import { WalasCetakRaporTab } from './walikelas/tabs/WalasCetakRaporTab';
 import { cn } from '@/lib/utils';
 
 export interface WaliKelasDashboardProps {
@@ -44,7 +46,7 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
   const subtabParam = searchParams.get('subtab') as WaliKelasTabId | null;
 
   const validTabs: WaliKelasTabId[] = [
-    'ringkasan', 'siswa', 'presensi', 'jurnal', 'izin', 'disiplin', 'prestasi', 'rekap'
+    'ringkasan', 'siswa', 'presensi', 'jurnal', 'izin', 'disiplin', 'prestasi', 'rekap', 'rapor'
   ];
 
   // Active Tab State
@@ -183,6 +185,7 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
         badge: totalPrestasi > 0 ? totalPrestasi : undefined,
       },
       { id: 'rekap' as WaliKelasTabId, label: 'Cetak & Rekap', icon: FileSpreadsheet },
+      { id: 'rapor' as WaliKelasTabId, label: 'Cetak Rapor', icon: Printer },
     ];
   }, [walasData]);
 
@@ -458,6 +461,20 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
                     kelasId={activeKelasId}
                     kelasNama={activeKelasNama}
                     data={walasData}
+                  />
+                </div>
+              )}
+
+              {visitedTabs.has('rapor') && (
+                <div
+                  key="tab-rapor"
+                  className={cn('w-full', activeTab === 'rapor' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                >
+                  <WalasCetakRaporTab
+                    kelasId={activeKelasId}
+                    kelasNama={activeKelasNama}
+                    tahunPelajaranId={walasData?.tahun_pelajaran?.id}
+                    semesterId={walasData?.tahun_pelajaran?.semester}
                   />
                 </div>
               )}
