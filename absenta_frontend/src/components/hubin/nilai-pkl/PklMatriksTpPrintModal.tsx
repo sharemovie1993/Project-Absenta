@@ -45,7 +45,7 @@ interface PageChunk {
 
 /**
  * Membagi daftar mitra ke dalam lembar fisik A4 yang presisi
- * mencegah pemaksaan konten dan teks gepeng saat cetak / ekspor PDF
+ * mencegah pemaksaan konten dan teks gepeng/bertumpuk saat cetak / ekspor PDF
  */
 function chunkMitraList(
   items: PklMatriksTpPrintModalProps['mitraList'],
@@ -65,11 +65,11 @@ function chunkMitraList(
   }
 
   const isPortrait = orientation === 'portrait';
-  // Batas item yang muat dengan nyaman per halaman fisik A4
-  const singlePageMax = isPortrait ? 5 : 4;
-  const firstPageMax = isPortrait ? 7 : 5;
-  const normalPageMax = isPortrait ? 10 : 7;
-  const lastPageMaxWithSig = isPortrait ? 6 : 4;
+  // Batas item per lembar fisik A4: Landscape memiliki tinggi lebih pendek (794px vs 1123px)
+  const singlePageMax = isPortrait ? 5 : 2;
+  const firstPageMax = isPortrait ? 7 : 4;
+  const normalPageMax = isPortrait ? 10 : 5;
+  const lastPageMaxWithSig = isPortrait ? 6 : 3;
 
   if (items.length <= singlePageMax) {
     return [
@@ -271,7 +271,8 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
           if (i > 0) {
             pdf.addPage(undefined, orientation);
           }
-          const canvas = await html2canvas(sheetElements[i] as HTMLElement, {
+          const sheet = sheetElements[i] as HTMLElement;
+          const canvas = await html2canvas(sheet, {
             scale: 2.5,
             useCORS: true,
             allowTaint: true,
@@ -280,7 +281,15 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
           });
 
           const imgData = canvas.toDataURL('image/png');
-          pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
+          const imgWidth = pageWidth;
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+          // Render exact page size or preserve natural aspect ratio
+          if (Math.abs(imgHeight - pageHeight) < 6) {
+            pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
+          } else {
+            pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, Math.min(imgHeight, pageHeight), undefined, 'FAST');
+          }
         }
 
         const filename = `MATRIKS_TP_PKL_${jurusanNama.replace(/\s+/g, '_')}_TA_${(tahunPelajaran || 'TA').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
@@ -505,6 +514,9 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
             pageNumber={chunk.pageIndex + 1}
             totalPages={pageChunks.length}
             footerText={`Matriks Capaian & Tujuan Pembelajaran PKL — ${jurusanNama} (${tahunPelajaran || '-'})`}
+            className={cn(
+              orientation === 'landscape' ? '!p-6 sm:!p-8' : ''
+            )}
           >
             {/* 1. HEADER HALAMAN PERTAMA (KOP SURAT LENGKAP & JUDUL UTAMA) */}
             {chunk.isFirstPage ? (
@@ -624,55 +636,73 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
               </table>
             </div>
 
-            {/* 3. CATATAN & BLOK TANDA TANGAN 3-TIER (HANYA DI LEMBAR TERAKHIR) */}
+            {/* 3. CATATAN & BLOK TANDA TANGAN 3-TIER SIMETRIS SEMPURNA (HANYA DI LEMBAR TERAKHIR) */}
             {chunk.hasSignatures && (
-              <>
+              <div className="mt-auto pt-2">
                 {/* CATATAN RESMI */}
                 <div className="my-2 p-1.5 bg-slate-50 border border-slate-200 rounded text-[9.5px] text-slate-600">
                   <strong>Catatan Kepatuhan Kurikulum:</strong> Rumusan Tujuan Pembelajaran (TP) di atas diselaraskan berdasarkan Standard Operating Procedure (SOP) mitra dunia usaha/industri dan disahkan untuk dicetak pada buku Rapor PKL serta Sertifikat Praktik Kerja Lapangan siswa.
                 </div>
 
-                {/* TANDA TANGAN RESMI 3-TIER */}
-                <div className="mt-4 pt-1">
-                  <div className="grid grid-cols-2 gap-8 text-center text-[10px]">
+                {/* TANDA TANGAN RESMI 3-TIER SIMETRIS */}
+                <div className="mt-3">
+                  {/* Baris Tanggal di Kanan (Tepat di atas kolom Kaprog) */}
+                  <div className="flex justify-end mb-1 text-[10px] text-black">
+                    <div className="w-1/2 text-center">
+                      {(sekolahData as any)?.kota || 'Purwakarta'}, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </div>
+                  </div>
+
+                  {/* Grid 2 Kolom Sejajar Sempurna */}
+                  <div className="grid grid-cols-2 gap-8 text-[10px]">
                     {/* Kolom Kiri: Verifikator (Wakasek Hubin) */}
-                    <div>
-                      <p className="text-slate-800">Diverifikasi oleh,</p>
-                      <p className="font-bold text-black -mt-0.5">Wakil Kepala Sekolah Bidang Hubinmas</p>
-                      <div className="h-12 flex items-center justify-center my-0.5" />
-                      <p className="font-bold underline text-black">{wakasekHubinNama}</p>
-                      <p className="text-[9px] text-slate-600">NIP. {wakasekHubinNip}</p>
+                    <div className="flex flex-col justify-between h-[130px] text-center">
+                      <div>
+                        <p className="text-slate-800">Diverifikasi oleh,</p>
+                        <p className="font-bold text-black min-h-[28px] flex items-center justify-center leading-snug">
+                          Wakil Kepala Sekolah Bidang Hubinmas
+                        </p>
+                      </div>
+                      <div>
+                        <p className="font-bold underline text-black text-[10.5px]">{wakasekHubinNama}</p>
+                        <p className="text-[9px] text-slate-700">NIP. {wakasekHubinNip}</p>
+                      </div>
                     </div>
 
                     {/* Kolom Kanan: Penyusun (Kaprog) */}
-                    <div>
-                      <div className="text-[10px] text-black mb-0.5">
-                        {(sekolahData as any)?.kota || 'Purwakarta'}, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    <div className="flex flex-col justify-between h-[130px] text-center">
+                      <div>
+                        <p className="text-slate-800">Dibuat oleh,</p>
+                        <p className="font-bold text-black min-h-[28px] flex items-center justify-center leading-snug">
+                          Ketua Program Keahlian {jurusanNama}
+                        </p>
                       </div>
-                      <p className="text-slate-800">Dibuat oleh,</p>
-                      <p className="font-bold text-black -mt-0.5">Ketua Program Keahlian {jurusanNama}</p>
-                      <div className="h-12 flex items-center justify-center my-0.5" />
-                      <p className="font-bold underline text-black">{kaprogNama}</p>
-                      <p className="text-[9px] text-slate-600">NIP. {kaprogNip}</p>
+                      <div>
+                        <p className="font-bold underline text-black text-[10.5px]">{kaprogNama}</p>
+                        <p className="text-[9px] text-slate-700">NIP. {kaprogNip}</p>
+                      </div>
                     </div>
                   </div>
 
                   {/* Baris 2: Pengesahan Kepala Sekolah (Di Tengah Bawah) */}
                   <div className="mt-3 flex justify-center text-center text-[10px]">
-                    <div className="w-80">
-                      <p className="text-slate-800">Mengetahui / Mengesahkan,</p>
-                      <p className="font-bold text-black -mt-0.5">Kepala Sekolah</p>
-                      <div className="h-12 flex items-center justify-center my-0.5" />
-                      <p className="font-bold underline text-black">
-                        {kepalaSekolahNama || (sekolahData as any)?.kepala_sekolah || 'Kepala Sekolah'}
-                      </p>
-                      <p className="text-[9px] text-slate-600">
-                        NIP. {kepalaSekolahNip || (sekolahData as any)?.nip_kepala || '-'}
-                      </p>
+                    <div className="w-80 flex flex-col justify-between h-[115px]">
+                      <div>
+                        <p className="text-slate-800">Mengetahui / Mengesahkan,</p>
+                        <p className="font-bold text-black">Kepala Sekolah</p>
+                      </div>
+                      <div>
+                        <p className="font-bold underline text-black text-[10.5px]">
+                          {kepalaSekolahNama || (sekolahData as any)?.kepala_sekolah || 'Kepala Sekolah'}
+                        </p>
+                        <p className="text-[9px] text-slate-700">
+                          NIP. {kepalaSekolahNip || (sekolahData as any)?.nip_kepala || '-'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </>
+              </div>
             )}
           </PrintDocumentSheet>
         ))}
