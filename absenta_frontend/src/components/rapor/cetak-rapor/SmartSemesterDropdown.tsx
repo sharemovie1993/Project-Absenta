@@ -42,7 +42,7 @@ export const SmartSemesterDropdown: React.FC<SmartSemesterDropdownProps> = React
   }, [isOpen]);
 
   const isRaporSemester = documentType === 'RAPOR_SEMESTER';
-  const triggerLabel = isRaporSemester ? 'Rapor Semester' : 'Rapor Sumatif';
+  const triggerLabel = isRaporSemester ? 'Rapor' : 'Sumatif';
   const Icon = isRaporSemester ? FileText : Award;
 
   const triggerColorClasses = isRaporSemester
@@ -61,22 +61,22 @@ export const SmartSemesterDropdown: React.FC<SmartSemesterDropdownProps> = React
         onClick={() => setIsOpen((prev) => !prev)}
         disabled={isLoading}
         className={cn(
-          'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 cursor-pointer whitespace-nowrap',
+          'inline-flex items-center gap-1 h-7 px-2 py-1 rounded-lg text-[11px] font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 cursor-pointer whitespace-nowrap',
           triggerColorClasses,
           isLoading && 'opacity-60 cursor-not-allowed'
         )}
-        title={`${triggerLabel} untuk ${studentName}`}
+        title={`${isRaporSemester ? 'Rapor Semester (CK1-CK2)' : 'Rapor Penilaian Sumatif'} untuk ${studentName}`}
         aria-expanded={isOpen}
       >
-        <Icon className="w-3.5 h-3.5 shrink-0" />
+        <Icon className="w-3 h-3 shrink-0" />
         <span>{triggerLabel}</span>
         {readyCount > 0 && (
-          <span className="px-1 py-0.2 text-[10px] rounded-full bg-white/25 font-bold leading-none">
+          <span className="px-1 py-0.2 text-[9px] rounded-full bg-white/25 font-bold leading-none">
             {readyCount}
           </span>
         )}
         <ChevronDown
-          className={cn('w-3.5 h-3.5 transition-transform duration-200 shrink-0', isOpen && 'rotate-180')}
+          className={cn('w-3 h-3 transition-transform duration-200 shrink-0', isOpen && 'rotate-180')}
         />
       </button>
 

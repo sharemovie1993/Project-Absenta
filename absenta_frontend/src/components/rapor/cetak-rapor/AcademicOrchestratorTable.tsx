@@ -55,12 +55,12 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center p-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
-        <Loader className="w-9 h-9 text-indigo-600 animate-spin mb-3" />
+      <div className="flex flex-col items-center justify-center p-12 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <Loader className="w-8 h-8 text-indigo-600 animate-spin mb-2.5" />
         <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
           Memuat Pangkalan Data Dokumen Akademik...
         </p>
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs text-slate-400 mt-0.5">
           Menyusun riwayat semester dan status kelayakan berkas tiap siswa
         </p>
       </div>
@@ -69,14 +69,14 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
 
   if (students.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-16 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 text-center">
-        <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 mb-3">
-          <FileSpreadsheet className="w-6 h-6" />
+      <div className="flex flex-col items-center justify-center p-12 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 text-center">
+        <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 mb-2.5">
+          <FileSpreadsheet className="w-5 h-5" />
         </div>
-        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
           Tidak Ada Data Siswa Ditemukan
         </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mt-1">
+        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mt-0.5">
           Pilih rombel atau kelas lain pada bar navigasi atas untuk menampilkan berkas orkestrasi dokumen akademik.
         </p>
       </div>
@@ -85,22 +85,22 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
 
   return (
     <div className="w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
-      <div className="overflow-x-auto no-scrollbar">
+      <div className="w-full overflow-x-auto no-scrollbar">
         <table className="w-full text-left border-collapse text-xs">
           <thead>
-            <tr className="bg-slate-50/80 dark:bg-slate-850 border-b border-slate-200/80 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase tracking-wider text-[11px]">
-              <th className="py-3.5 px-3 w-12 text-center">No</th>
-              <th className="py-3.5 px-4 min-w-[220px]">Data & Identitas Siswa</th>
-              <th className="py-3.5 px-3 min-w-[130px] text-center">Cover & Biodata</th>
-              <th className="py-3.5 px-3 min-w-[160px] text-center">Rapor Semester (CK1-CK2)</th>
+            <tr className="bg-slate-50/90 dark:bg-slate-850 border-b border-slate-200/80 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+              <th className="py-2.5 px-2 w-9 text-center">No</th>
+              <th className="py-2.5 px-3 min-w-[150px]">Siswa</th>
+              <th className="py-2.5 px-1.5 text-center whitespace-nowrap">Biodata</th>
+              <th className="py-2.5 px-1.5 text-center whitespace-nowrap">Rapor Semester</th>
               {showSumatif && (
-                <th className="py-3.5 px-3 min-w-[160px] text-center">Rapor Sumatif</th>
+                <th className="py-2.5 px-1.5 text-center whitespace-nowrap">Sumatif</th>
               )}
-              <th className="py-3.5 px-3 min-w-[120px] text-center">Rapor P5</th>
+              <th className="py-2.5 px-1.5 text-center whitespace-nowrap">P5</th>
               {isJenjangSmk && (
-                <th className="py-3.5 px-3 min-w-[220px] text-center">Berkas PKL (DUDI)</th>
+                <th className="py-2.5 px-2 text-center whitespace-nowrap">Berkas PKL</th>
               )}
-              <th className="py-3.5 px-3 min-w-[240px] text-center">Berkas Kelulusan</th>
+              <th className="py-2.5 px-2 text-center whitespace-nowrap">Berkas Kelulusan</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
@@ -115,33 +115,33 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
               return (
                 <tr
                   key={student.id}
-                  className="hover:bg-slate-50/60 dark:hover:bg-slate-850/50 transition-colors"
+                  className="hover:bg-slate-50/70 dark:hover:bg-slate-850/50 transition-colors"
                 >
                   {/* 1. No */}
-                  <td className="py-3 px-3 text-center font-bold text-slate-400">
+                  <td className="py-2 px-2 text-center font-bold text-slate-400 text-[11px]">
                     {index + 1}
                   </td>
 
                   {/* 2. Identitas Siswa */}
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-400 flex items-center justify-center font-black text-xs shrink-0">
+                  <td className="py-2 px-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-400 flex items-center justify-center font-black text-[11px] shrink-0">
                         {student.nama_siswa.charAt(0).toUpperCase()}
                       </div>
-                      <div className="min-w-0">
-                        <div className="font-bold text-slate-900 dark:text-slate-100 truncate text-xs">
+                      <div className="min-w-0 max-w-[180px] xl:max-w-[220px]">
+                        <div className="font-bold text-slate-900 dark:text-slate-100 truncate text-[11px]">
                           {student.nama_siswa}
                         </div>
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                          NIS: {student.nis || '-'} {student.nisn ? `• NISN: ${student.nisn}` : ''}
+                        <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
+                          NIS: {student.nis || '-'}
                         </div>
                         {/* Badge Siswa Pindahan */}
                         {student.is_pindahan && (
                           <div
-                            className="inline-flex items-center gap-1 mt-0.5 px-1.5 py-0.2 rounded-md bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-800/60 text-amber-700 dark:text-amber-400 text-[10px] font-semibold"
+                            className="inline-flex items-center gap-0.5 mt-0.5 px-1 py-0.1 rounded-sm bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-800/60 text-amber-700 dark:text-amber-400 text-[9px] font-semibold"
                             title={`Siswa pindahan dari: ${student.sekolah_asal || 'Sekolah lain'}`}
                           >
-                            <ArrowRightLeft className="w-2.5 h-2.5" />
+                            <ArrowRightLeft className="w-2 h-2" />
                             <span>Pindahan</span>
                           </div>
                         )}
@@ -150,21 +150,21 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
                   </td>
 
                   {/* 3. Cover & Biodata */}
-                  <td className="py-3 px-3 text-center">
+                  <td className="py-2 px-1.5 text-center whitespace-nowrap">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => onPrintBiodata(student.id)}
-                      className="text-xs font-semibold border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 whitespace-nowrap"
+                      className="h-7 px-2 py-0.5 text-[11px] font-semibold border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 whitespace-nowrap cursor-pointer rounded-lg"
                       title="Cetak Cover & Biodata 17 Butir Siswa"
                     >
-                      <UserCheck className="w-3.5 h-3.5 mr-1 text-indigo-600 dark:text-indigo-400" />
+                      <UserCheck className="w-3 h-3 mr-1 text-indigo-600 dark:text-indigo-400" />
                       <span>Biodata</span>
                     </Button>
                   </td>
 
                   {/* 4. Rapor Semester (CK1-CK2) Dropdown Smart Sem 1-6 */}
-                  <td className="py-3 px-3 text-center">
+                  <td className="py-2 px-1.5 text-center whitespace-nowrap">
                     <SmartSemesterDropdown
                       studentId={student.id}
                       studentName={student.nama_siswa}
@@ -182,7 +182,7 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
 
                   {/* 5. Rapor Sumatif Dropdown Smart */}
                   {showSumatif && (
-                    <td className="py-3 px-3 text-center">
+                    <td className="py-2 px-1.5 text-center whitespace-nowrap">
                       <SmartSemesterDropdown
                         studentId={student.id}
                         studentName={student.nama_siswa}
@@ -200,23 +200,23 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
                   )}
 
                   {/* 6. Rapor P5 */}
-                  <td className="py-3 px-3 text-center">
+                  <td className="py-2 px-1.5 text-center whitespace-nowrap">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => onPrintP5(student.id)}
-                      className="text-xs font-semibold border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50 whitespace-nowrap"
+                      className="h-7 px-2 py-0.5 text-[11px] font-semibold border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50 whitespace-nowrap cursor-pointer rounded-lg"
                       title="Cetak Lembar Rapor Projek Penguatan Profil Pelajar Pancasila"
                     >
-                      <Sparkles className="w-3.5 h-3.5 mr-1 text-amber-500" />
-                      <span>Rapor P5</span>
+                      <Sparkles className="w-3 h-3 mr-1 text-amber-500" />
+                      <span>P5</span>
                     </Button>
                   </td>
 
                   {/* 7. Berkas PKL (Hanya SMK) */}
                   {isJenjangSmk && (
-                    <td className="py-3 px-3 text-center">
-                      <div className="inline-flex items-center gap-1.5 flex-nowrap">
+                    <td className="py-2 px-2 text-center whitespace-nowrap">
+                      <div className="inline-flex items-center gap-1 flex-nowrap">
                         {/* Rapor PKL */}
                         <Button
                           variant="outline"
@@ -231,9 +231,9 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
                             onPrintRaporPkl?.(student);
                           }}
                           className={cn(
-                            'text-xs font-semibold whitespace-nowrap',
+                            'h-7 px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap rounded-lg',
                             isPklRaporEligible
-                              ? 'border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/50'
+                              ? 'border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/50 cursor-pointer'
                               : 'opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-850 text-slate-400 border-slate-200 dark:border-slate-800'
                           )}
                           title={
@@ -242,10 +242,10 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
                               : `🔒 Terkunci: ${elig?.rapor_pkl?.reason || 'Belum memenuhi syarat'}`
                           }
                         >
-                          <Briefcase className="w-3.5 h-3.5 mr-1 text-purple-600 dark:text-purple-400" />
-                          <span>Rapor PKL</span>
+                          <Briefcase className="w-3 h-3 mr-0.5 text-purple-600 dark:text-purple-400" />
+                          <span>Rapor</span>
                           {!isPklRaporEligible && (
-                            <Lock className="w-2.5 h-2.5 ml-1 text-amber-500 shrink-0" />
+                            <Lock className="w-2.5 h-2.5 ml-0.5 text-amber-500 shrink-0" />
                           )}
                         </Button>
 
@@ -263,9 +263,9 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
                             onPrintSertifikatPkl?.(student);
                           }}
                           className={cn(
-                            'text-xs font-semibold whitespace-nowrap',
+                            'h-7 px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap rounded-lg',
                             isPklSertifikatEligible
-                              ? 'border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50'
+                              ? 'border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50 cursor-pointer'
                               : 'opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-850 text-slate-400 border-slate-200 dark:border-slate-800'
                           )}
                           title={
@@ -274,10 +274,10 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
                               : `🔒 Terkunci: ${elig?.sertifikat_pkl?.reason || 'Belum memenuhi syarat'}`
                           }
                         >
-                          <Award className="w-3.5 h-3.5 mr-1 text-amber-500" />
-                          <span>Sertifikat PKL</span>
+                          <Award className="w-3 h-3 mr-0.5 text-amber-500" />
+                          <span>Sertifikat</span>
                           {!isPklSertifikatEligible && (
-                            <Lock className="w-2.5 h-2.5 ml-1 text-amber-500 shrink-0" />
+                            <Lock className="w-2.5 h-2.5 ml-0.5 text-amber-500 shrink-0" />
                           )}
                         </Button>
                       </div>
@@ -285,8 +285,8 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
                   )}
 
                   {/* 8. Berkas Kelulusan (UKK, SKL, Transkrip) */}
-                  <td className="py-3 px-3 text-center">
-                    <div className="inline-flex items-center gap-1.5 flex-nowrap">
+                  <td className="py-2 px-2 text-center whitespace-nowrap">
+                    <div className="inline-flex items-center gap-1 flex-nowrap">
                       {/* Sertifikat UKK (Hanya SMK) */}
                       {isJenjangSmk && (
                         <Button
@@ -302,9 +302,9 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
                             onPrintSertifikatUkk?.(student);
                           }}
                           className={cn(
-                            'text-xs font-semibold whitespace-nowrap',
+                            'h-7 px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap rounded-lg',
                             isUkkEligible
-                              ? 'border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/50'
+                              ? 'border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/50 cursor-pointer'
                               : 'opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-850 text-slate-400 border-slate-200 dark:border-slate-800'
                           )}
                           title={
@@ -313,10 +313,10 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
                               : `🔒 Terkunci: ${elig?.sertifikat_ukk?.reason || 'Belum memenuhi syarat'}`
                           }
                         >
-                          <Award className="w-3.5 h-3.5 mr-1 text-orange-600 dark:text-orange-400" />
+                          <Award className="w-3 h-3 mr-0.5 text-orange-600 dark:text-orange-400" />
                           <span>UKK</span>
                           {!isUkkEligible && (
-                            <Lock className="w-2.5 h-2.5 ml-1 text-amber-500 shrink-0" />
+                            <Lock className="w-2.5 h-2.5 ml-0.5 text-amber-500 shrink-0" />
                           )}
                         </Button>
                       )}
@@ -335,9 +335,9 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
                           onPrintSkl?.(student.id);
                         }}
                         className={cn(
-                          'text-xs font-semibold whitespace-nowrap',
+                          'h-7 px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap rounded-lg',
                           isSklEligible
-                            ? 'border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50'
+                            ? 'border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer'
                             : 'opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-850 text-slate-400 border-slate-200 dark:border-slate-800'
                         )}
                         title={
@@ -346,10 +346,10 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
                             : `🔒 Terkunci: ${elig?.skl?.reason || 'Belum memenuhi syarat'}`
                         }
                       >
-                        <GraduationCap className="w-3.5 h-3.5 mr-1 text-rose-600 dark:text-rose-400" />
+                        <GraduationCap className="w-3 h-3 mr-0.5 text-rose-600 dark:text-rose-400" />
                         <span>SKL</span>
                         {!isSklEligible && (
-                          <Lock className="w-2.5 h-2.5 ml-1 text-amber-500 shrink-0" />
+                          <Lock className="w-2.5 h-2.5 ml-0.5 text-amber-500 shrink-0" />
                         )}
                       </Button>
 
@@ -367,9 +367,9 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
                           onOpenTranskrip?.(student);
                         }}
                         className={cn(
-                          'text-xs font-semibold whitespace-nowrap',
+                          'h-7 px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap rounded-lg',
                           isTranskripEligible
-                            ? 'border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50'
+                            ? 'border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 cursor-pointer'
                             : 'opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-850 text-slate-400 border-slate-200 dark:border-slate-800'
                         )}
                         title={
@@ -378,10 +378,10 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
                             : `🔒 Terkunci: ${elig?.transkrip?.reason || 'Belum memenuhi syarat'}`
                         }
                       >
-                        <Award className="w-3.5 h-3.5 mr-1 text-indigo-600 dark:text-indigo-400" />
+                        <Award className="w-3 h-3 mr-0.5 text-indigo-600 dark:text-indigo-400" />
                         <span>Transkrip</span>
                         {!isTranskripEligible && (
-                          <Lock className="w-2.5 h-2.5 ml-1 text-amber-500 shrink-0" />
+                          <Lock className="w-2.5 h-2.5 ml-0.5 text-amber-500 shrink-0" />
                         )}
                       </Button>
                     </div>
