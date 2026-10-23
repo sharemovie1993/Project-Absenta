@@ -14,6 +14,8 @@ import {
   Clock,
   Sparkles,
   Users,
+  Inbox,
+  Send,
 } from 'lucide-react';
 import { Loader } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -24,6 +26,12 @@ import { TuBerandaTab } from './tu/tabs/TuBerandaTab';
 import type { TuTabId, TuNavTabItem, TuStatsData } from './tu/types';
 
 // Code-splitting Universal Views (Pilar 21B & TBT Optimization)
+const SuratMasukView = lazy(() =>
+  import('@/components/correspondence/surat-masuk/SuratMasukView').then((m) => ({ default: m.SuratMasukView }))
+);
+const SuratKeluarView = lazy(() =>
+  import('@/components/correspondence/surat-keluar/SuratKeluarView').then((m) => ({ default: m.SuratKeluarView }))
+);
 const BukuIndukView = lazy(() =>
   import('@/components/academic/buku-induk/BukuIndukView').then((m) => ({ default: m.BukuIndukView }))
 );
@@ -76,7 +84,7 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
   const [activeTab, setActiveTab] = useState<TuTabId>(() => {
     if (
       subtabParam &&
-      ['beranda', 'buku-induk', 'surat-keterangan', 'mutasi', 'bast-ijazah', 'dkn', 'kepegawaian'].includes(subtabParam)
+      ['beranda', 'surat-masuk', 'surat-keluar', 'buku-induk', 'surat-keterangan', 'mutasi', 'bast-ijazah', 'dkn', 'kepegawaian'].includes(subtabParam)
     ) {
       return subtabParam;
     }
@@ -89,7 +97,7 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
   useEffect(() => {
     if (
       subtabParam &&
-      ['beranda', 'buku-induk', 'surat-keterangan', 'mutasi', 'bast-ijazah', 'dkn', 'kepegawaian'].includes(subtabParam)
+      ['beranda', 'surat-masuk', 'surat-keluar', 'buku-induk', 'surat-keterangan', 'mutasi', 'bast-ijazah', 'dkn', 'kepegawaian'].includes(subtabParam)
     ) {
       setActiveTab((curr) => (curr !== subtabParam ? subtabParam : curr));
       setVisitedTabs((prev) => (prev.has(subtabParam) ? prev : new Set(prev).add(subtabParam)));
@@ -133,10 +141,20 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
     () => [
       { id: 'beranda', label: 'Ringkasan', icon: LayoutDashboard },
       {
-        id: 'buku-induk',
-        label: 'Data Siswa & Klapper',
-        icon: BookOpen,
-        badge: tuStats?.bukuInduk?.totalSiswaAktif !== undefined ? `${tuStats.bukuInduk.totalSiswaAktif}` : undefined,
+        id: 'surat-masuk',
+        label: 'Surat Masuk & Disposisi',
+        icon: Inbox,
+        badge: tuStats?.suratMasuk?.baru !== undefined && tuStats.suratMasuk.baru > 0
+          ? `${tuStats.suratMasuk.baru}`
+          : undefined,
+      },
+      {
+        id: 'surat-keluar',
+        label: 'Surat Keluar & Dinas',
+        icon: Send,
+        badge: tuStats?.suratKeluar?.draft !== undefined && tuStats.suratKeluar.draft > 0
+          ? `${tuStats.suratKeluar.draft}`
+          : undefined,
       },
       {
         id: 'surat-keterangan',
@@ -159,6 +177,12 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
         badge: tuStats?.ijazah?.sisaBrankas !== undefined && tuStats.ijazah.sisaBrankas > 0 ? `${tuStats.ijazah.sisaBrankas}` : undefined,
       },
       { id: 'dkn', label: 'DKN & Kelulusan', icon: FileSpreadsheet },
+      {
+        id: 'buku-induk',
+        label: 'Data Siswa & Klapper',
+        icon: BookOpen,
+        badge: tuStats?.bukuInduk?.totalSiswaAktif !== undefined ? `${tuStats.bukuInduk.totalSiswaAktif}` : undefined,
+      },
       {
         id: 'kepegawaian',
         label: 'Kepegawaian & PTK',
@@ -346,16 +370,34 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
             </div>
           )}
 
-          {/* TAB 2: BUKU INDUK & KLAPPER */}
-          {visitedTabs.has('buku-induk') && (
-            <div className={activeTab === 'buku-induk' ? 'block animate-in fade-in duration-100' : 'hidden'}>
+          {/* TAB 2: SURAT MASUK & DISPOSISI */}
+          {visitedTabs.has('surat-masuk') && (
+            <div className={activeTab === 'surat-masuk' ? 'block animate-in fade-in duration-100' : 'hidden'}>
               <Suspense fallback={<div className="py-20 flex justify-center"><Loader /></div>}>
-                <BukuIndukView hideLayout={true} />
+                <SuratMasukView hideLayout={true} />
               </Suspense>
             </div>
           )}
 
-          {/* TAB 3: SURAT KETERANGAN */}
+          {/* TAB 2: SURAT MASUK & DISPOSISI */}
+          {visitedTabs.has('surat-masuk') && (
+            <div className={activeTab === 'surat-masuk' ? 'block animate-in fade-in duration-100' : 'hidden'}>
+              <Suspense fallback={<div className="py-20 flex justify-center"><Loader /></div>}>
+                <SuratMasukView hideLayout={true} />
+              </Suspense>
+            </div>
+          )}
+
+          {/* TAB 3: SURAT KELUAR & NASKAH DINAS */}
+          {visitedTabs.has('surat-keluar') && (
+            <div className={activeTab === 'surat-keluar' ? 'block animate-in fade-in duration-100' : 'hidden'}>
+              <Suspense fallback={<div className="py-20 flex justify-center"><Loader /></div>}>
+                <SuratKeluarView hideLayout={true} />
+              </Suspense>
+            </div>
+          )}
+
+          {/* TAB 4: SURAT KETERANGAN */}
           {visitedTabs.has('surat-keterangan') && (
             <div className={activeTab === 'surat-keterangan' ? 'block animate-in fade-in duration-100' : 'hidden'}>
               <Suspense fallback={<div className="py-20 flex justify-center"><Loader /></div>}>
@@ -364,7 +406,7 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
             </div>
           )}
 
-          {/* TAB 4: DOKUMEN MUTASI SISWA */}
+          {/* TAB 5: DOKUMEN MUTASI SISWA */}
           {visitedTabs.has('mutasi') && (
             <div className={activeTab === 'mutasi' ? 'block animate-in fade-in duration-100' : 'hidden'}>
               <Suspense fallback={<div className="py-20 flex justify-center"><Loader /></div>}>
@@ -373,7 +415,7 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
             </div>
           )}
 
-          {/* TAB 5: BAST IJAZAH & CLEARANCE */}
+          {/* TAB 6: BAST IJAZAH & CLEARANCE */}
           {visitedTabs.has('bast-ijazah') && (
             <div className={activeTab === 'bast-ijazah' ? 'block animate-in fade-in duration-100' : 'hidden'}>
               <Suspense fallback={<div className="py-20 flex justify-center"><Loader /></div>}>
@@ -382,7 +424,7 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
             </div>
           )}
 
-          {/* TAB 6: DKN & ARSIP KELULUSAN */}
+          {/* TAB 7: DKN & ARSIP KELULUSAN */}
           {visitedTabs.has('dkn') && (
             <div className={activeTab === 'dkn' ? 'block animate-in fade-in duration-100' : 'hidden'}>
               <Suspense fallback={<div className="py-20 flex justify-center"><Loader /></div>}>
@@ -391,7 +433,16 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
             </div>
           )}
 
-          {/* TAB 7: KEPEGAWAIAN & DAPODIK PTK */}
+          {/* TAB 8: DATA SISWA & KLAPPER */}
+          {visitedTabs.has('buku-induk') && (
+            <div className={activeTab === 'buku-induk' ? 'block animate-in fade-in duration-100' : 'hidden'}>
+              <Suspense fallback={<div className="py-20 flex justify-center"><Loader /></div>}>
+                <BukuIndukView hideLayout={true} />
+              </Suspense>
+            </div>
+          )}
+
+          {/* TAB 9: KEPEGAWAIAN & DAPODIK PTK */}
           {visitedTabs.has('kepegawaian') && (
             <div className={activeTab === 'kepegawaian' ? 'block animate-in fade-in duration-100' : 'hidden'}>
               <Suspense fallback={<div className="py-20 flex justify-center"><Loader /></div>}>

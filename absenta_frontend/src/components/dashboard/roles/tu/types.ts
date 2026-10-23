@@ -2,6 +2,8 @@ import React from 'react';
 
 export type TuTabId =
   | 'beranda'
+  | 'surat-masuk'
+  | 'surat-keluar'
   | 'buku-induk'
   | 'surat-keterangan'
   | 'mutasi'
@@ -29,6 +31,15 @@ export interface TuStatsData {
   persuratan?: {
     totalSuratBulanIni?: number;
     suratKeteranganBulanIni?: number;
+  };
+  suratMasuk?: {
+    total?: number;
+    baru?: number;
+    disposisi?: number;
+  };
+  suratKeluar?: {
+    total?: number;
+    draft?: number;
   };
   mutasi?: {
     keluar?: number;

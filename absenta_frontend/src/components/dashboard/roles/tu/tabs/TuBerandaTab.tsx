@@ -60,10 +60,10 @@ export const TuBerandaTab: React.FC<TuBerandaTabProps> = React.memo(({
         <AnalyticsCard
           variant="compact-premium"
           mobileCompact={true}
-          title="SURAT KELUAR BULAN INI"
-          value={`${stats?.persuratan?.totalSuratBulanIni || 0} Surat`}
-          icon={<Send className="w-5 h-5 text-emerald-500" />}
-          description={`${stats?.persuratan?.suratKeteranganBulanIni || 0} Surat Keterangan Siswa terbit`}
+          title="SURAT MASUK BARU"
+          value={`${stats?.suratMasuk?.baru || stats?.persuratan?.totalSuratBulanIni || 0}`}
+          icon={<Inbox className="w-5 h-5 text-emerald-500" />}
+          description={`Total ${stats?.suratMasuk?.total || 0} surat masuk | ${stats?.suratMasuk?.disposisi || 0} disposisi aktif`}
           gradient="from-emerald-600 to-teal-700"
         />
 
@@ -262,6 +262,40 @@ export const TuBerandaTab: React.FC<TuBerandaTabProps> = React.memo(({
             </h4>
             <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
               Buku Induk PTK & Beban 24 JP
+            </p>
+          </button>
+
+          {/* Card 10: Surat Masuk & Disposisi */}
+          <button
+            type="button"
+            onClick={() => onSelectTab?.('surat-masuk')}
+            className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:border-sky-400 dark:hover:border-sky-600 hover:shadow-xs transition-all text-left group cursor-pointer"
+          >
+            <div className="w-9 h-9 rounded-lg bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+              <Inbox className="w-4 h-4" />
+            </div>
+            <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-400">
+              Surat Masuk
+            </h4>
+            <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+              Agenda & lembar disposisi Kepsek
+            </p>
+          </button>
+
+          {/* Card 11: Surat Keluar & Naskah Dinas */}
+          <button
+            type="button"
+            onClick={() => onSelectTab?.('surat-keluar')}
+            className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:border-teal-400 dark:hover:border-teal-600 hover:shadow-xs transition-all text-left group cursor-pointer"
+          >
+            <div className="w-9 h-9 rounded-lg bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+              <Send className="w-4 h-4" />
+            </div>
+            <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400">
+              Surat Keluar & Dinas
+            </h4>
+            <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+              Draft, penomoran & TTD digital
             </p>
           </button>
         </div>
