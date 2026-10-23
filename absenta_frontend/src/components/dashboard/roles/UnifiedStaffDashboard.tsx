@@ -281,8 +281,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
 
 
-  // 🎯 SMART DEFAULT TAB RESOLUTION (Default Landing: Portal Pusat Modul Sekolah)
-  const defaultTabId = 'portal';
+  // 🎯 SMART DEFAULT TAB RESOLUTION (Default Landing: Sesuai Peran Utama Guru/Staf)
+  const defaultTabId = useMemo(() => {
+    if (isKaprog) return 'kaprog';
+    if (isWaliKelas || Boolean(waliKelasId)) return 'binaan';
+    if (isTUKepala || isTUPersuratan || isTUKepegawaian || isTU) return 'kepegawaian';
+    return 'portal';
+  }, [isKaprog, isWaliKelas, waliKelasId, isTUKepala, isTUPersuratan, isTUKepegawaian, isTU]);
 
   // Synchronize Active Tab with Query Param (?tab=...) atau Smart Default Tab (dengan guard akses)
   const rawRequestedTab = searchParams.get('tab');
@@ -290,6 +295,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const activeTab = (requestedTab === 'pembimbing_pkl' && !isPembimbingPkl)
     ? defaultTabId
     : (requestedTab || defaultTabId);
+
+  // Sinkronisasi query param otomatis saat akses /dashboard polosan
+  useEffect(() => {
+    if (!rawRequestedTab && defaultTabId !== 'portal') {
+      setSearchParams({ tab: defaultTabId }, { replace: true });
+    }
+  }, [rawRequestedTab, defaultTabId, setSearchParams]);
 
   const handleTabChange = React.useCallback((newTab: string) => {
     if (newTab === 'p5_projek') {
@@ -911,13 +923,19 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   // Normalisasi tab aktif jika tab di URL tidak termasuk dalam daftar kapabilitas user
   useEffect(() => {
-    // Tab binaan valid jika user adalah wali kelas
+    // Tab binaan, kaprog, dan kepegawaian valid jika user memiliki peran tersebut
     if (activeTab === 'binaan' && (isWaliKelas || Boolean(waliKelasId))) return;
-    if (tabs.length > 0 && !tabs.some(t => t.id === activeTab)) {
+    if (activeTab === 'kaprog' && isKaprog) return;
+    if (activeTab === 'kepegawaian' && (isTUKepala || isTUPersuratan || isTUKepegawaian || isTU)) return;
+
+    // Tunggu sampai tabs siap sebelum melakukan fallback
+    if (tabs.length === 0) return;
+
+    if (!tabs.some(t => t.id === activeTab)) {
       const fallback = tabs.some(t => t.id === defaultTabId) ? defaultTabId : tabs[0].id;
       setSearchParams({ tab: fallback }, { replace: true });
     }
-  }, [tabs, activeTab, defaultTabId, setSearchParams, isWaliKelas]);
+  }, [tabs, activeTab, defaultTabId, setSearchParams, isWaliKelas, waliKelasId, isKaprog, isTUKepala, isTUPersuratan, isTUKepegawaian, isTU]);
 
   // ── 6. Quick Actions ──────────────────────────────────────────────────────────
   const quickActions = useMemo(() => {

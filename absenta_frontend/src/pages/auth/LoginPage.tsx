@@ -327,11 +327,12 @@ export default function LoginPage() {
     }
   }, [credentials.email]);
   if (isAuthenticated) {
-    const sub = useAuthStore.getState().subscription;
-    const positions = getUserPositions(user);
-    const isGerbang = positions.includes('GERBANG');
-    const roleName = user?.role?.name || (user as Record<string, unknown>)?.roleName || '';
-    const tenantId = (user as any)?.tenant_id;
+    const authState = useAuthStore.getState();
+    const currentUser = user || authState.user;
+    const sub = authState.subscription;
+    const positions = getUserPositions(currentUser);
+    const roleName = currentUser?.role?.name || (currentUser as Record<string, unknown>)?.roleName || '';
+    const tenantId = (currentUser as any)?.tenant_id;
     const isSuper = isSystemSuperAdmin(roleName, tenantId);
 
     // Platform Superadmin should NEVER be routed to school onboarding
@@ -339,37 +340,40 @@ export default function LoginPage() {
       return <Navigate to={location.state?.from?.pathname || '/tenants'} replace />;
     }
 
+    const demoRole = (sessionStorage.getItem('demo_active_role') || '').toUpperCase();
+    const isGerbang = positions.includes('GERBANG') || demoRole.includes('GERBANG') || demoRole.includes('SATPAM');
+
     // Smart role-based default landing (Kaprog, Wali Kelas, TU, Kurikulum, dll.)
     let defaultHome: string;
     if (isGerbang) {
       defaultHome = '/attendance/ops';
-    } else if (positions.includes('KAPROG')) {
+    } else if (positions.includes('KAPROG') || demoRole.includes('KAPROG') || demoRole.includes('KEJURUAN')) {
       defaultHome = '/dashboard?tab=kaprog';
-    } else if (positions.includes('WALIKELAS') || Boolean((user as any)?.guru_profile?.wali_kelas_di)) {
+    } else if (positions.includes('WALIKELAS') || Boolean((currentUser as any)?.guru_profile?.wali_kelas_di) || demoRole.includes('WALI KELAS') || demoRole.includes('WALAS')) {
       defaultHome = '/dashboard?tab=binaan';
-    } else if (positions.includes('TU_KEPALA') || positions.includes('TU_PERSURATAN') || positions.includes('TU')) {
+    } else if (positions.includes('TU_KEPALA') || positions.includes('TU_PERSURATAN') || positions.includes('TU') || demoRole.includes('PERSURATAN') || demoRole.includes('TATA USAHA')) {
       defaultHome = '/correspondence/dashboard';
-    } else if (positions.includes('TU_KEPEGAWAIAN')) {
+    } else if (positions.includes('TU_KEPEGAWAIAN') || demoRole.includes('KEPEGAWAIAN')) {
       defaultHome = '/dashboard?tab=kepegawaian';
-    } else if (positions.includes('TU_KEUANGAN')) {
+    } else if (positions.includes('TU_KEUANGAN') || demoRole.includes('KEUANGAN')) {
       defaultHome = '/billing/invoices';
     } else if (positions.includes('TU_SARPRAS')) {
       defaultHome = '/sarpras/inventory';
-    } else if (positions.includes('KURIKULUM')) {
+    } else if (positions.includes('KURIKULUM') || demoRole.includes('KURIKULUM')) {
       defaultHome = '/kurikulum/dashboard';
-    } else if (positions.includes('KESISWAAN')) {
+    } else if (positions.includes('KESISWAAN') || demoRole.includes('KESISWAAN')) {
       defaultHome = '/kesiswaan/monitoring';
-    } else if (positions.includes('SARPRAS')) {
+    } else if (positions.includes('SARPRAS') || demoRole.includes('SARPRAS')) {
       defaultHome = '/sarpras/dashboard';
-    } else if (positions.includes('HUBIN')) {
+    } else if (positions.includes('HUBIN') || demoRole.includes('HUBIN')) {
       defaultHome = '/hubin';
-    } else if (positions.includes('BPBK')) {
+    } else if (positions.includes('BPBK') || demoRole.includes('BK') || demoRole.includes('BPBK')) {
       defaultHome = '/bpbk/dashboard';
     } else {
       defaultHome = '/dashboard?tab=portal';
     }
 
-    const hasCompletedOnboarding = useAuthStore.getState().hasCompletedOnboarding;
+    const hasCompletedOnboarding = authState.hasCompletedOnboarding;
     const isAdmin = roleName === 'ADMIN';
 
     const fromPath = location.state?.from?.pathname;

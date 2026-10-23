@@ -630,6 +630,11 @@ export const getUserPositions = (user: any): string[] => {
   if (user?.guru_profile?.is_pembimbing_pkl || (user as any)?.is_pembimbing_pkl) {
     rawList.push('PEMBIMBING_PKL');
   }
+  if (Array.isArray(user?.capabilities)) {
+    if (user.capabilities.includes('dashboard.view.walikelas')) rawList.push('WALIKELAS');
+    if (user.capabilities.includes('dashboard.view.gerbang')) rawList.push('GERBANG');
+    if (user.capabilities.includes('academic.manage.academic')) rawList.push('KURIKULUM');
+  }
 
   const normalizedSet = new Set<string>();
   rawList.forEach((item) => {
