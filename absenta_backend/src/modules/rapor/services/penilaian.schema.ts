@@ -27,6 +27,7 @@ export const nilaiSiswaUpsertSchema = z.object({
 });
 
 export const bulkNilaiSiswaSchema = z.object({
+  kelas_id: z.string().uuid('ID Kelas Rombel wajib diisi agar riwayat SiswaAkademik terjaga'),
   mapel_id: z.string().uuid('ID Mata Pelajaran wajib diisi'),
   tahun_pelajaran_id: z.string().uuid('ID Tahun Pelajaran wajib diisi'),
   semester_id: z.string().uuid('ID Semester wajib diisi'),

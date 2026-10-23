@@ -223,6 +223,7 @@ export class NilaiExcelService {
     tenantId: string,
     buffer: Buffer,
     metadata: {
+      kelas_id: string;
       mapel_id: string;
       tahun_pelajaran_id: string;
       semester_id: string;
@@ -263,6 +264,7 @@ export class NilaiExcelService {
     const isSumatifMode = metadata.mode === 'sumatif' || !metadata.jenis_nilai_id;
     const operations: any[] = [];
     const skippedRows: any[] = [];
+    const importedSiswaIds = new Set<string>();
 
     rawData.forEach((row: any, index: number) => {
       const nis = String(row['nis'] || row['NIS'] || '').trim();
@@ -279,6 +281,9 @@ export class NilaiExcelService {
         skippedRows.push({ row: row.__rowNum || (index + 2), reason: `NIS '${nis}' / NISN '${nisn}' tidak cocok dengan siswa aktif` });
         return;
       }
+
+      // Catat siswa yang berhasil diidentifikasi untuk upsert SiswaAkademik
+      importedSiswaIds.add(siswaId);
 
       const notes = String(
         row['capaian_kompetensi'] ||
@@ -412,6 +417,35 @@ export class NilaiExcelService {
 
     if (operations.length > 0) {
       await prisma.$transaction(operations);
+
+      // ── Upsert SiswaAkademik: Jamin snapshot rombel per siswa yang berhasil diimpor ──
+      if (importedSiswaIds.size > 0 && metadata.kelas_id) {
+        await prisma.$transaction(
+          [...importedSiswaIds].map((siswaId) =>
+            prisma.siswaAkademik.upsert({
+              where: {
+                siswa_id_tahun_pelajaran_id_semester_id: {
+                  siswa_id: siswaId,
+                  tahun_pelajaran_id: metadata.tahun_pelajaran_id,
+                  semester_id: metadata.semester_id,
+                },
+              },
+              create: {
+                siswa_id: siswaId,
+                kelas_id: metadata.kelas_id,
+                tahun_pelajaran_id: metadata.tahun_pelajaran_id,
+                semester_id: metadata.semester_id,
+                status: 'AKTIF',
+              },
+              update: {
+                kelas_id: metadata.kelas_id,
+                status: 'AKTIF',
+              },
+            })
+          )
+        );
+      }
+
       // Invalidate leger cache — nilai hasil impor berubah, leger harus direcalculate
       void cacheInvalidationService.invalidateRaporCache(tenantId);
     }

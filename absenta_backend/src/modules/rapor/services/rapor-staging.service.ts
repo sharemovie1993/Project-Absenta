@@ -1039,28 +1039,6 @@ export class RaporStagingService {
           siswaId = createdSiswa.id;
           autoProvisionedCount++;
 
-          // Tautkan juga riwayat kelas ke SiswaAkademik
-          await prisma.siswaAkademik.upsert({
-            where: {
-              siswa_id_tahun_pelajaran_id_semester_id: {
-                siswa_id: siswaId,
-                tahun_pelajaran_id: tpId,
-                semester_id: semId,
-              },
-            },
-            create: {
-              siswa_id: siswaId,
-              kelas_id: kelasId,
-              tahun_pelajaran_id: tpId,
-              semester_id: semId,
-              status: 'AKTIF',
-            },
-            update: {
-              kelas_id: kelasId,
-              status: 'AKTIF',
-            },
-          });
-
           // Daftarkan ke lookup map lokal
           if (item.nis) siswaByNis.set(item.nis.trim(), siswaId);
           if (item.nisn) siswaByNisn.set(item.nisn.trim(), siswaId);
@@ -1073,6 +1051,31 @@ export class RaporStagingService {
       if (!siswaId) {
         unmappedStudents.push(`${item.nama} (NIS: ${item.nis || '-'})`);
         continue;
+      }
+
+      // ── Tautkan Riwayat Kelas & Semester ke SiswaAkademik (SSOT Historis) ──
+      // Berlaku untuk SELURUH siswa (baik siswa lama maupun siswa baru auto-provisioned)
+      if (kelasId) {
+        await prisma.siswaAkademik.upsert({
+          where: {
+            siswa_id_tahun_pelajaran_id_semester_id: {
+              siswa_id: siswaId,
+              tahun_pelajaran_id: tpId,
+              semester_id: semId,
+            },
+          },
+          create: {
+            siswa_id: siswaId,
+            kelas_id: kelasId,
+            tahun_pelajaran_id: tpId,
+            semester_id: semId,
+            status: 'AKTIF',
+          },
+          update: {
+            kelas_id: kelasId,
+            status: 'AKTIF',
+          },
+        });
       }
 
       // A. Sinkronisasi Data Rapor & Kehadiran (RaporSiswa)

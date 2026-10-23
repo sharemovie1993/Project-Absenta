@@ -172,6 +172,7 @@ export class NilaiCrudService {
   static async upsertBulkNilai(
     tenantId: string,
     data: {
+      kelas_id: string;
       mapel_id: string;
       tahun_pelajaran_id: string;
       semester_id: string;
@@ -218,6 +219,34 @@ export class NilaiCrudService {
 
     const results = await prisma.$transaction(operations);
 
+    // ── Upsert SiswaAkademik: Jamin snapshot rombel per siswa per semester ──
+    // Dijalankan setelah NilaiSiswa tersimpan. 1 baris per siswa unik (bukan per nilai).
+    const uniqueSiswaIds = [...new Set(data.scores.map((s) => s.siswa_id))];
+    await prisma.$transaction(
+      uniqueSiswaIds.map((siswaId) =>
+        prisma.siswaAkademik.upsert({
+          where: {
+            siswa_id_tahun_pelajaran_id_semester_id: {
+              siswa_id: siswaId,
+              tahun_pelajaran_id: data.tahun_pelajaran_id,
+              semester_id: data.semester_id,
+            },
+          },
+          create: {
+            siswa_id: siswaId,
+            kelas_id: data.kelas_id,
+            tahun_pelajaran_id: data.tahun_pelajaran_id,
+            semester_id: data.semester_id,
+            status: 'AKTIF',
+          },
+          update: {
+            kelas_id: data.kelas_id,
+            status: 'AKTIF',
+          },
+        })
+      )
+    );
+
     // Invalidate leger cache — batch nilai berubah, leger harus direcalculate
     void cacheInvalidationService.invalidateRaporCache(tenantId);
     return results;
@@ -230,6 +259,7 @@ export class NilaiCrudService {
   static async upsertBatchSumatifNilai(
     tenantId: string,
     data: {
+      kelas_id: string;
       mapel_id: string;
       tahun_pelajaran_id: string;
       semester_id: string;
@@ -346,6 +376,36 @@ export class NilaiCrudService {
     });
 
     const results = await prisma.$transaction(operations);
+
+    // ── Upsert SiswaAkademik: Jamin snapshot rombel per siswa per semester ──
+    // Dijalankan setelah NilaiSiswa tersimpan. 1 baris per siswa unik (bukan per nilai/mapel).
+    const uniqueSiswaIds = [...new Set(data.scores.map((s) => s.siswa_id))];
+    if (uniqueSiswaIds.length > 0 && data.kelas_id) {
+      await prisma.$transaction(
+        uniqueSiswaIds.map((siswaId) =>
+          prisma.siswaAkademik.upsert({
+            where: {
+              siswa_id_tahun_pelajaran_id_semester_id: {
+                siswa_id: siswaId,
+                tahun_pelajaran_id: data.tahun_pelajaran_id,
+                semester_id: data.semester_id,
+              },
+            },
+            create: {
+              siswa_id: siswaId,
+              kelas_id: data.kelas_id,
+              tahun_pelajaran_id: data.tahun_pelajaran_id,
+              semester_id: data.semester_id,
+              status: 'AKTIF',
+            },
+            update: {
+              kelas_id: data.kelas_id,
+              status: 'AKTIF',
+            },
+          })
+        )
+      );
+    }
 
     // Invalidate leger cache
     void cacheInvalidationService.invalidateRaporCache(tenantId);

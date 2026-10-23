@@ -141,16 +141,17 @@ export class NilaiController {
   static async upsertBatchSumatif(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
-      const { mapel_id, tahun_pelajaran_id, semester_id, scores } = req.body;
+      const { kelas_id, mapel_id, tahun_pelajaran_id, semester_id, scores } = req.body;
 
-      if (!mapel_id || !tahun_pelajaran_id || !semester_id || !Array.isArray(scores)) {
+      if (!kelas_id || !mapel_id || !tahun_pelajaran_id || !semester_id || !Array.isArray(scores)) {
         return reply.status(400).send({
           success: false,
-          message: 'mapel_id, tahun_pelajaran_id, semester_id, dan scores (array) wajib diisi',
+          message: 'kelas_id, mapel_id, tahun_pelajaran_id, semester_id, dan scores (array) wajib diisi',
         });
       }
 
       const result = await NilaiService.upsertBatchSumatifNilai(tenant_id, {
+        kelas_id,
         mapel_id,
         tahun_pelajaran_id,
         semester_id,
@@ -235,19 +236,21 @@ export class NilaiController {
       const mapel_id = fileData.fields.mapel_id?.value;
       const tahun_pelajaran_id = fileData.fields.tahun_pelajaran_id?.value;
       const semester_id = fileData.fields.semester_id?.value;
+      const kelas_id = fileData.fields.kelas_id?.value;
       const jenis_nilai_id = fileData.fields.jenis_nilai_id?.value;
       const sesi_absensi_id = fileData.fields.sesi_absensi_id?.value;
       const mode = fileData.fields.mode?.value;
 
-      if (!mapel_id || !tahun_pelajaran_id || !semester_id) {
+      if (!mapel_id || !tahun_pelajaran_id || !semester_id || !kelas_id) {
         return reply.status(400).send({
           success: false,
-          message: 'Parameter mapel_id, tahun_pelajaran_id, dan semester_id wajib disertakan'
+          message: 'Parameter mapel_id, tahun_pelajaran_id, semester_id, dan kelas_id wajib disertakan'
         });
       }
 
       const buffer = await fileData.toBuffer();
       const result = await NilaiService.importNilaiExcel(tenant_id, buffer, {
+        kelas_id,
         mapel_id,
         tahun_pelajaran_id,
         semester_id,
