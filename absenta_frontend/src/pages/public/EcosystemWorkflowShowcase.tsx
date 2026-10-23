@@ -49,7 +49,7 @@ import {
 } from 'lucide-react';
 
 export type DivisionId = 'kurikulum' | 'kesiswaan' | 'konseling' | 'tu' | 'hubin' | 'sarpras' | 'koperasi';
-export type StageId = 'ppdb' | 'kelas-10' | 'kelas-11' | 'kelas-12' | 'alumni';
+export type StageId = 'onboarding' | 'kbm-presensi' | 'disiplin-bk' | 'evaluasi-rapor' | 'vokasi-pkl' | 'kelulusan-karir';
 export type RolePOV = 'all' | 'kepsek' | 'kaprog' | 'walas' | 'tu' | 'hubin' | 'siswa';
 
 // Canonical Menu Node from seed.ts
@@ -86,11 +86,12 @@ interface StagePoint {
 }
 
 const STAGES: StagePoint[] = [
-  { id: 'ppdb', label: 'PPDB', sub: 'Calon Siswa', avatarIcon: '🎒', studentStatus: 'Calon Siswa' },
-  { id: 'kelas-10', label: 'KELAS X', sub: 'Fase Pondasi', avatarIcon: '👦', studentStatus: 'Siswa Tingkat X' },
-  { id: 'kelas-11', label: 'KELAS XI', sub: 'Kejuruan & PKL', avatarIcon: '🛠️', studentStatus: 'Siswa PKL / DUDI' },
-  { id: 'kelas-12', label: 'KELAS XII', sub: 'Ujian & UKK', avatarIcon: '🎓', studentStatus: 'Calon Lulusan' },
-  { id: 'alumni', label: 'LULUS', sub: 'Karir & Alumni', avatarIcon: '💼', studentStatus: 'Alumni / BKK' },
+  { id: 'onboarding', label: '1. ONBOARDING', sub: 'PPDB & Biometrik', avatarIcon: '🎒', studentStatus: 'Calon / Siswa Baru' },
+  { id: 'kbm-presensi', label: '2. KBM & PRESENSI', sub: 'Gerbang & Kelas', avatarIcon: '🏫', studentStatus: 'Siswa Aktif Belajar' },
+  { id: 'disiplin-bk', label: '3. DISIPLIN & BK', sub: 'Restorasi Karakter', avatarIcon: '🤝', studentStatus: 'Siswa Dibina & Didampingi' },
+  { id: 'evaluasi-rapor', label: '4. EVALUASI & RAPOR', sub: 'CBT & Ledger Rapor', avatarIcon: '📝', studentStatus: 'Peserta Ujian & Rapor' },
+  { id: 'vokasi-pkl', label: '5. VOKASI & PKL', sub: 'Praktik Industri DUDI', avatarIcon: '🛠️', studentStatus: 'Siswa Magang Industri' },
+  { id: 'kelulusan-karir', label: '6. UKK & KELULUSAN', sub: 'Alumni & Karir BKK', avatarIcon: '🎓', studentStatus: 'Calon Lulusan / Alumni' },
 ];
 
 // Master Division Data mapping real menus from seed.ts
@@ -109,32 +110,36 @@ const DIVISIONS: Record<DivisionId, DivisionDefinition> = {
       nodeBg: 'bg-slate-900/90 border-sky-500/40 hover:border-sky-400',
     },
     menusPerStage: {
-      ppdb: [
+      onboarding: [
         { id: 'm-kosp', label: 'Dokumen KOSP', icon: Sparkles, path: '/kurikulum/kosp-builder', roles: ['kaprog', 'kepsek'] },
         { id: 'm-struktur', label: 'Struktur Kurikulum', icon: Layout, path: '/kurikulum/struktur', roles: ['kaprog', 'kepsek'] },
-        { id: 'm-kalender', label: 'Kalender Akademik', icon: Calendar, path: '/kurikulum/kalender', roles: ['kaprog', 'kepsek'] }
-      ],
-      'kelas-10': [
-        { id: 'm-jam', label: 'Jam Pelajaran', icon: Clock, path: '/kurikulum/jam-kbm', roles: ['walas', 'kaprog', 'kepsek'] },
-        { id: 'm-jadwal', label: 'Jadwal KBM', icon: Calendar, path: '/kurikulum/jadwal', roles: ['walas', 'kaprog', 'kepsek'] },
-        { id: 'm-ploting', label: 'Ploting Guru', icon: Users, path: '/kurikulum/guru-mapel', roles: ['kaprog', 'kepsek'] },
+        { id: 'm-ploting', label: 'Ploting Guru Mapel', icon: Users, path: '/kurikulum/guru-mapel', roles: ['kaprog', 'kepsek'] },
         { id: 'm-walas', label: 'Wali Kelas', icon: UserCheck, path: '/kurikulum/wali-kelas', roles: ['walas', 'kepsek'] }
       ],
-      'kelas-11': [
+      'kbm-presensi': [
+        { id: 'm-jam', label: 'Jam Pelajaran', icon: Clock, path: '/kurikulum/jam-kbm', roles: ['walas', 'kaprog', 'kepsek'] },
+        { id: 'm-jadwal', label: 'Jadwal KBM', icon: Calendar, path: '/kurikulum/jadwal', roles: ['walas', 'kaprog', 'kepsek'] },
         { id: 'm-beban', label: 'Beban Mengajar', icon: Layers, path: '/kurikulum/jadwal-kontrak-kbm', roles: ['kaprog', 'kepsek'] },
-        { id: 'm-perangkat', label: 'Perangkat Ajar', icon: FileText, path: '/kurikulum/perangkat', roles: ['kaprog', 'walas'] },
-        { id: 'm-rekap', label: 'Rekap KBM', icon: BarChart2, path: '/kurikulum/rekap-kbm', roles: ['kaprog', 'kepsek'] },
+        { id: 'm-perangkat', label: 'Perangkat Ajar', icon: FileText, path: '/kurikulum/perangkat', roles: ['kaprog', 'walas'] }
+      ],
+      'disiplin-bk': [
+        { id: 'm-pantau-kbm', label: 'Pantau Kelas', icon: Activity, path: '/attendance/monitoring', roles: ['walas', 'kepsek'] },
+        { id: 'm-rekap-kbm', label: 'Rekap KBM', icon: BarChart2, path: '/kurikulum/rekap-kbm', roles: ['kaprog', 'kepsek'] },
         { id: 'm-supervisi', label: 'Supervisi Guru', icon: ShieldCheck, path: '/kurikulum/supervisi', roles: ['kepsek', 'kaprog'] }
       ],
-      'kelas-12': [
+      'evaluasi-rapor': [
         { id: 'm-cbt', label: 'Ujian CBT', icon: Laptop, path: '/cbt/dashboard', roles: ['kaprog', 'kepsek'] },
         { id: 'm-nilai', label: 'Input Nilai', icon: Award, path: '/rapor/nilai', roles: ['walas', 'kaprog'] },
-        { id: 'm-rapor', label: 'Cetak Rapor', icon: Printer, path: '/rapor/cetak', roles: ['walas', 'siswa'] },
-        { id: 'm-p5', label: 'Projek P5', icon: Layers, path: '/rapor/p5', roles: ['walas', 'kaprog'] }
+        { id: 'm-pleno', label: 'Rapat Pleno', icon: Users, path: '/academic/pleno', roles: ['kepsek', 'kaprog', 'walas'] },
+        { id: 'm-rapor', label: 'Cetak Rapor', icon: Printer, path: '/rapor/cetak', roles: ['walas', 'siswa'] }
       ],
-      alumni: [
-        { id: 'm-evaluasi', label: 'Evaluasi Kinerja', icon: Award, path: '/kurikulum/evaluasi-kinerja', roles: ['kepsek'] },
-        { id: 'm-cetak-kuri', label: 'Cetak Berkas', icon: Printer, path: '/kurikulum/cetak-berkas', roles: ['tu', 'kepsek'] }
+      'vokasi-pkl': [
+        { id: 'm-perangkat-pkl', label: 'Capaian Pembelajaran PKL', icon: FileText, path: '/kurikulum/perangkat', roles: ['kaprog', 'walas'] },
+        { id: 'm-jadwal-blok', label: 'Jadwal Blok PKL', icon: Calendar, path: '/kurikulum/jadwal', roles: ['kaprog', 'kepsek'] }
+      ],
+      'kelulusan-karir': [
+        { id: 'm-ukk', label: 'Uji Kompetensi (UKK)', icon: Award, path: '/kurikulum/ukk-asesmen', roles: ['kaprog', 'kepsek'] },
+        { id: 'm-transisi', label: 'Kenaikan & Kelulusan', icon: GraduationCap, path: '/academic/transition', roles: ['tu', 'kepsek'] }
       ]
     }
   },
@@ -152,30 +157,35 @@ const DIVISIONS: Record<DivisionId, DivisionDefinition> = {
       nodeBg: 'bg-slate-900/90 border-amber-500/40 hover:border-amber-400',
     },
     menusPerStage: {
-      ppdb: [
+      onboarding: [
         { id: 'm-taruna', label: 'Program Ketarunaan', icon: ShieldCheck, path: '/kesiswaan/program-ketarunaan', roles: ['walas', 'kepsek'] },
-        { id: 'm-poin-master', label: 'Master Poin', icon: List, path: '/kesiswaan/jenis-pelanggaran', roles: ['walas', 'kepsek'] }
+        { id: 'm-poin-master', label: 'Master Poin Pelanggaran', icon: List, path: '/kesiswaan/jenis-pelanggaran', roles: ['walas', 'kepsek'] },
+        { id: 'm-agenda-ks', label: 'Agenda Kesiswaan', icon: Calendar, path: '/kesiswaan/jadwal-kegiatan', roles: ['walas'] }
       ],
-      'kelas-10': [
-        { id: 'm-piket', label: 'Meja Piket', icon: ShieldCheck, path: '/kesiswaan/piket', roles: ['walas', 'kepsek'] },
+      'kbm-presensi': [
+        { id: 'm-gate', label: 'Gate Scanner', icon: Scan, path: '/attendance/gate', roles: ['tu', 'walas'] },
+        { id: 'm-piket', label: 'Meja Piket Harian', icon: ShieldCheck, path: '/kesiswaan/piket', roles: ['walas', 'kepsek'] },
+        { id: 'm-ops', label: 'Ruang Operasional', icon: Scan, path: '/attendance/ops', roles: ['tu', 'walas'] },
+        { id: 'm-dhuha', label: 'Pembiasaan Dhuha', icon: Moon, path: '/kesiswaan/program-dhuha', roles: ['walas'] }
+      ],
+      'disiplin-bk': [
         { id: 'm-pelanggaran', label: 'Pelanggaran Siswa', icon: AlertTriangle, path: '/kesiswaan/pelanggaran', roles: ['walas', 'kepsek'] },
-        { id: 'm-dhuha', label: 'Pembiasaan Dhuha', icon: Moon, path: '/kesiswaan/program-dhuha', roles: ['walas'] },
-        { id: 'm-scanner', label: 'Ruang Operasional', icon: Scan, path: '/attendance/ops', roles: ['tu', 'walas'] }
+        { id: 'm-sp', label: 'Surat Peringatan', icon: FileText, path: '/kesiswaan/surat-peringatan', roles: ['walas', 'kepsek'] },
+        { id: 'm-upacara', label: 'Pembina Upacara', icon: Award, path: '/kesiswaan/pembina-upacara', roles: ['walas', 'kepsek'] }
       ],
-      'kelas-11': [
-        { id: 'm-pantau', label: 'Pantau Kelas', icon: Activity, path: '/attendance/monitoring', roles: ['walas', 'kepsek'] },
-        { id: 'm-prestasi', label: 'Prestasi Siswa', icon: Trophy, path: '/kesiswaan/prestasi', roles: ['walas', 'siswa'] },
-        { id: 'm-agenda', label: 'Agenda Kesiswaan', icon: Calendar, path: '/kesiswaan/jadwal-kegiatan', roles: ['walas'] },
-        { id: 'm-pelanggaran-11', label: 'Pelanggaran Siswa', icon: AlertTriangle, path: '/kesiswaan/pelanggaran', roles: ['walas', 'kepsek'] }
+      'evaluasi-rapor': [
+        { id: 'm-prestasi-eval', label: 'Prestasi Siswa', icon: Trophy, path: '/kesiswaan/prestasi', roles: ['walas', 'siswa'] },
+        { id: 'm-rekap-pres-eval', label: 'Rekap Presensi Semester', icon: Calendar, path: '/attendance/rekap', roles: ['tu', 'kepsek'] },
+        { id: 'm-catatan-sikap', label: 'Verifikasi Poin Siswa', icon: AlertTriangle, path: '/kesiswaan/pelanggaran', roles: ['walas', 'kepsek'] }
       ],
-      'kelas-12': [
-        { id: 'm-upacara', label: 'Pembina Upacara', icon: Award, path: '/kesiswaan/pembina-upacara', roles: ['walas', 'kepsek'] },
-        { id: 'm-pelanggaran-12', label: 'Pelanggaran Siswa', icon: AlertTriangle, path: '/kesiswaan/pelanggaran', roles: ['walas', 'kepsek'] },
-        { id: 'm-berkas-ks', label: 'Cetak Berkas', icon: FileText, path: '/kesiswaan/cetak-berkas', roles: ['walas', 'kepsek'] }
+      'vokasi-pkl': [
+        { id: 'm-tatib-dudi', label: 'Disiplin Budaya Industri', icon: ShieldCheck, path: '/kesiswaan/program-ketarunaan', roles: ['walas', 'hubin'] },
+        { id: 'm-pelanggaran-pkl', label: 'Insiden Lapangan PKL', icon: AlertTriangle, path: '/kesiswaan/pelanggaran', roles: ['walas', 'kepsek'] }
       ],
-      alumni: [
-        { id: 'm-prestasi-alumni', label: 'Prestasi Siswa', icon: Trophy, path: '/kesiswaan/prestasi', roles: ['walas', 'siswa'] },
-        { id: 'm-rekap-pres', label: 'Rekap Presensi', icon: Calendar, path: '/attendance/rekap', roles: ['tu', 'kepsek'] }
+      'kelulusan-karir': [
+        { id: 'm-skkb', label: 'Surat Rekomendasi (SKKB)', icon: ShieldCheck, path: '/kesiswaan/surat-rekomendasi', roles: ['walas', 'tu'] },
+        { id: 'm-prestasi-akhir', label: 'Portofolio Prestasi', icon: Trophy, path: '/kesiswaan/prestasi', roles: ['walas', 'siswa'] },
+        { id: 'm-berkas-ks', label: 'Cetak Berkas Kelulusan', icon: FileText, path: '/kesiswaan/cetak-berkas', roles: ['walas', 'kepsek'] }
       ]
     }
   },
@@ -193,25 +203,32 @@ const DIVISIONS: Record<DivisionId, DivisionDefinition> = {
       nodeBg: 'bg-slate-900/90 border-rose-500/40 hover:border-rose-400',
     },
     menusPerStage: {
-      ppdb: [
-        { id: 'm-minat', label: 'Minat & Bakat', icon: FileText, path: '/bpbk/asesmen', roles: ['walas', 'kepsek'] }
+      onboarding: [
+        { id: 'm-asesmen', label: 'Minat & Bakat Diagnostik', icon: FileText, path: '/bpbk/asesmen', roles: ['walas', 'kepsek'] },
+        { id: 'm-gaya-belajar', label: 'Pemetaan Gaya Belajar', icon: Sparkles, path: '/bpbk/asesmen', roles: ['walas'] }
       ],
-      'kelas-10': [
-        { id: 'm-konseling', label: 'Konseling Siswa', icon: HeartHandshake, path: '/bpbk/konseling', roles: ['walas'] },
-        { id: 'm-deteksi', label: 'Deteksi Dini', icon: AlertTriangle, path: '/bpbk/cases', roles: ['walas', 'kepsek'] }
+      'kbm-presensi': [
+        { id: 'm-deteksi', label: 'Deteksi Dini Masalah', icon: AlertTriangle, path: '/bpbk/cases', roles: ['walas', 'kepsek'] },
+        { id: 'm-konseling-kbm', label: 'Konseling Siswa', icon: HeartHandshake, path: '/bpbk/konseling', roles: ['walas'] }
       ],
-      'kelas-11': [
-        { id: 'm-kasus', label: 'Buku Kasus', icon: FileText, path: '/bpbk/siswa', roles: ['walas', 'kepsek'] },
-        { id: 'm-homevisit', label: 'Home Visit', icon: Home, path: '/bpbk/homevisit', roles: ['walas'] },
-        { id: 'm-panggilan', label: 'Panggilan Ortu', icon: Mail, path: '/bpbk/pemanggilan', roles: ['walas'] }
-      ],
-      'kelas-12': [
-        { id: 'm-konseling-12', label: 'Konseling Siswa', icon: HeartHandshake, path: '/bpbk/konseling', roles: ['walas', 'kepsek'] },
+      'disiplin-bk': [
+        { id: 'm-kasus', label: 'Buku Kasus Siswa', icon: FileText, path: '/bpbk/siswa', roles: ['walas', 'kepsek'] },
+        { id: 'm-homevisit', label: 'Home Visit Siswa', icon: Home, path: '/bpbk/homevisit', roles: ['walas'] },
+        { id: 'm-panggilan', label: 'Panggilan Orang Tua', icon: Mail, path: '/bpbk/pemanggilan', roles: ['walas'] },
         { id: 'm-rujukan', label: 'Rujukan Kasus', icon: Send, path: '/bpbk/rujukan', roles: ['walas', 'kepsek'] }
       ],
-      alumni: [
-        { id: 'm-laporan-bk', label: 'Laporan BK', icon: BarChart3, path: '/bpbk/reports', roles: ['kepsek'] },
-        { id: 'm-berkas-bk', label: 'Cetak Berkas', icon: FileText, path: '/bpbk/cetak-berkas', roles: ['tu'] }
+      'evaluasi-rapor': [
+        { id: 'm-eval-bk', label: 'Catatan Perkembangan Sikap', icon: FileText, path: '/bpbk/siswa', roles: ['walas', 'kepsek'] },
+        { id: 'm-laporan-bk', label: 'Laporan Layanan BK', icon: BarChart3, path: '/bpbk/reports', roles: ['kepsek'] }
+      ],
+      'vokasi-pkl': [
+        { id: 'm-adaptasi-pkl', label: 'Bimbingan Adaptasi Industri', icon: HeartHandshake, path: '/bpbk/konseling', roles: ['walas', 'hubin'] },
+        { id: 'm-kasus-pkl', label: 'Mediasi Kasus Magang', icon: AlertTriangle, path: '/bpbk/cases', roles: ['walas', 'hubin'] }
+      ],
+      'kelulusan-karir': [
+        { id: 'm-karir', label: 'Dashboard Karir & SNBP', icon: HeartHandshake, path: '/bpbk/dashboard', roles: ['walas', 'siswa'] },
+        { id: 'm-rujukan-karir', label: 'Rekomendasi Kuliah/Kerja', icon: Send, path: '/bpbk/rujukan', roles: ['walas', 'kepsek'] },
+        { id: 'm-berkas-bk', label: 'Cetak Berkas Rekam BK', icon: FileText, path: '/bpbk/cetak-berkas', roles: ['tu'] }
       ]
     }
   },
@@ -229,30 +246,34 @@ const DIVISIONS: Record<DivisionId, DivisionDefinition> = {
       nodeBg: 'bg-slate-900/90 border-emerald-500/40 hover:border-emerald-400',
     },
     menusPerStage: {
-      ppdb: [
-        { id: 'm-siswa', label: 'Data Siswa', icon: GraduationCap, path: '/academic/siswa', roles: ['tu', 'kepsek'] },
-        { id: 'm-kelas', label: 'Daftar Kelas', icon: Users, path: '/academic/kelas', roles: ['tu', 'kepsek'] },
-        { id: 'm-tagihan', label: 'Tagihan Siswa', icon: FileText, path: '/billing/invoices', roles: ['tu', 'siswa', 'kepsek'] }
+      onboarding: [
+        { id: 'm-ppdb-map', label: 'PPDB Mapping & Verifikasi', icon: FileText, path: '/academic/ppdb-mapping', roles: ['tu', 'kepsek'] },
+        { id: 'm-buku-induk', label: 'Buku Induk Siswa', icon: GraduationCap, path: '/academic/buku-induk', roles: ['tu', 'kepsek'] },
+        { id: 'm-wajah', label: 'Perekaman Wajah Biometrik', icon: Camera, path: '/attendance/rekam-wajah', roles: ['tu'] },
+        { id: 'm-smart-card', label: 'Kartu Pelajar RFID', icon: Scan, path: '/academic/siswa-cards', roles: ['tu', 'siswa'] }
       ],
-      'kelas-10': [
-        { id: 'm-guru', label: 'Guru & Staf', icon: UserCheck, path: '/academic/guru', roles: ['tu', 'kepsek'] },
+      'kbm-presensi': [
+        { id: 'm-guru', label: 'Data Guru & Staf', icon: UserCheck, path: '/academic/guru', roles: ['tu', 'kepsek'] },
         { id: 'm-surat-masuk', label: 'Surat Masuk', icon: Inbox, path: '/correspondence/surat-masuk', roles: ['tu', 'kepsek'] },
-        { id: 'm-suket', label: 'Surat Keterangan', icon: FileText, path: '/correspondence/surat-keterangan', roles: ['tu', 'siswa'] },
-        { id: 'm-wajah', label: 'Perekaman Wajah', icon: Camera, path: '/attendance/rekam-wajah', roles: ['tu'] }
+        { id: 'm-suket', label: 'Surat Keterangan Aktif', icon: FileText, path: '/correspondence/surat-keterangan', roles: ['tu', 'siswa'] }
       ],
-      'kelas-11': [
-        { id: 'm-surat-keluar', label: 'Surat Keluar', icon: Send, path: '/correspondence/surat-keluar', roles: ['tu', 'hubin'] },
-        { id: 'm-agenda-tu', label: 'Buku Agenda', icon: FileText, path: '/correspondence/templates', roles: ['tu'] },
-        { id: 'm-kas-masuk', label: 'Riwayat Kas Masuk', icon: Wallet, path: '/billing/payments', roles: ['tu', 'kepsek'] }
+      'disiplin-bk': [
+        { id: 'm-surat-keluar', label: 'Surat Panggilan Dinas', icon: Send, path: '/correspondence/surat-keluar', roles: ['tu', 'walas'] },
+        { id: 'm-agenda-tu', label: 'Buku Agenda Surat', icon: FileText, path: '/correspondence/templates', roles: ['tu'] }
       ],
-      'kelas-12': [
-        { id: 'm-bebas-tu', label: 'Bebas Tanggungan', icon: ShieldCheck, path: '/billing', roles: ['tu', 'kepsek'] },
-        { id: 'm-transisi', label: 'Kenaikan Kelas', icon: GraduationCap, path: '/academic/transition', roles: ['tu', 'kepsek'] }
+      'evaluasi-rapor': [
+        { id: 'm-tagihan', label: 'Tagihan Keuangan Siswa', icon: FileText, path: '/billing/invoices', roles: ['tu', 'siswa', 'kepsek'] },
+        { id: 'm-kas-masuk', label: 'Riwayat Kas Pembayaran', icon: Wallet, path: '/billing/payments', roles: ['tu', 'kepsek'] },
+        { id: 'm-bebas-tu', label: 'Bebas Tanggungan SPP', icon: ShieldCheck, path: '/billing', roles: ['tu', 'kepsek'] }
       ],
-      alumni: [
-        { id: 'm-cetak-tu', label: 'Cetak Berkas', icon: Printer, path: '/academic/prep-checklist', roles: ['tu', 'kepsek'] },
-        { id: 'm-dokumen', label: 'Dokumen', icon: FileText, path: '/documents', roles: ['tu', 'kepsek'] },
-        { id: 'm-log-staf', label: 'Log Aktivitas', icon: Clock, path: '/academic/staff-logs', roles: ['kepsek'] }
+      'vokasi-pkl': [
+        { id: 'm-surat-tugas-pkl', label: 'Surat Tugas PKL Industri', icon: Send, path: '/correspondence/surat-keluar', roles: ['tu', 'hubin'] },
+        { id: 'm-mou-arsip', label: 'Arsip MoU Kemitraan', icon: FileText, path: '/documents', roles: ['tu', 'hubin'] }
+      ],
+      'kelulusan-karir': [
+        { id: 'm-skl-transkrip', label: 'SKL & Transkrip Nilai', icon: GraduationCap, path: '/academic/prep-checklist', roles: ['tu', 'kepsek'] },
+        { id: 'm-arsip-dokumen', label: 'Dokumen Ijazah & Arsip', icon: FileText, path: '/documents', roles: ['tu', 'kepsek'] },
+        { id: 'm-log-staf', label: 'Log Aktivitas Staf', icon: Clock, path: '/academic/staff-logs', roles: ['kepsek'] }
       ]
     }
   },
@@ -270,25 +291,31 @@ const DIVISIONS: Record<DivisionId, DivisionDefinition> = {
       nodeBg: 'bg-slate-900/90 border-indigo-500/40 hover:border-indigo-400',
     },
     menusPerStage: {
-      ppdb: [
-        { id: 'm-mitra-ppdb', label: 'Mitra Industri', icon: Building2, path: '/hubin/mitra', roles: ['hubin', 'kepsek'] }
+      onboarding: [
+        { id: 'm-mitra-awal', label: 'Mitra Industri (DUDI)', icon: Building2, path: '/hubin/mitra', roles: ['hubin', 'kepsek'] },
+        { id: 'm-setting-hb', label: 'Pengaturan Hubin', icon: Compass, path: '/hubin/settings', roles: ['hubin'] }
       ],
-      'kelas-10': [
-        { id: 'm-mitra-10', label: 'Mitra Industri', icon: Building2, path: '/hubin/mitra', roles: ['hubin', 'kaprog', 'kepsek'] },
-        { id: 'm-pengaturan-hb', label: 'Pengaturan Hubin', icon: Compass, path: '/hubin/settings', roles: ['hubin'] }
+      'kbm-presensi': [
+        { id: 'm-sinkron-dudi', label: 'Sinkronisasi Kurikulum DUDI', icon: Building2, path: '/hubin/mitra', roles: ['hubin', 'kaprog'] },
+        { id: 'm-kunjungan-ind', label: 'Kunjungan Industri', icon: Compass, path: '/hubin/settings', roles: ['hubin', 'kaprog'] }
       ],
-      'kelas-11': [
+      'disiplin-bk': [
+        { id: 'm-evaluasi-budaya', label: 'Evaluasi Budaya Kerja', icon: ShieldCheck, path: '/hubin/evaluasi', roles: ['hubin', 'walas'] }
+      ],
+      'evaluasi-rapor': [
+        { id: 'm-nilai-pkl-rapor', label: 'Nilai PKL Industri', icon: Award, path: '/hubin/nilai-pkl', roles: ['hubin', 'kaprog'] },
+        { id: 'm-sertifikat-dudi', label: 'Cetak Berkas Sertifikat', icon: FileText, path: '/hubin/cetak-berkas', roles: ['hubin'] }
+      ],
+      'vokasi-pkl': [
         { id: 'm-plot-pkl', label: 'Plot & Pantau PKL', icon: Users, path: '/hubin/penempatan', roles: ['hubin', 'kaprog', 'tu'] },
-        { id: 'm-absen-pkl', label: 'Presensi PKL', icon: Clock, path: '/hubin/absensi', roles: ['hubin', 'kaprog', 'siswa'] },
-        { id: 'm-nilai-pkl', label: 'Nilai PKL', icon: Award, path: '/hubin/nilai-pkl', roles: ['hubin', 'kaprog'] }
+        { id: 'm-absen-pkl', label: 'Presensi GPS PKL', icon: Clock, path: '/hubin/absensi', roles: ['hubin', 'kaprog', 'siswa'] },
+        { id: 'm-jurnal-pkl', label: 'Jurnal Kegiatan Lapangan', icon: FileText, path: '/hubin/jurnal', roles: ['hubin', 'siswa'] },
+        { id: 'm-monitoring-pkl', label: 'Monitoring Guru Lapangan', icon: Activity, path: '/hubin/monitoring-pkl', roles: ['hubin', 'kaprog'] }
       ],
-      'kelas-12': [
-        { id: 'm-tefa', label: 'Teaching Factory', icon: Hammer, path: '/hubin/tefa', roles: ['hubin', 'kaprog'] },
-        { id: 'm-berkas-pkl', label: 'Cetak Berkas', icon: FileText, path: '/hubin/cetak-berkas', roles: ['hubin'] }
-      ],
-      alumni: [
-        { id: 'm-bkk', label: 'Bursa Kerja (BKK)', icon: Briefcase, path: '/hubin/bkk', roles: ['hubin', 'kepsek', 'siswa'] },
-        { id: 'm-tracer', label: 'Tracer Study', icon: GraduationCap, path: '/hubin/tracer', roles: ['hubin', 'kepsek'] }
+      'kelulusan-karir': [
+        { id: 'm-tefa', label: 'Teaching Factory (TEFA)', icon: Hammer, path: '/hubin/tefa', roles: ['hubin', 'kaprog'] },
+        { id: 'm-bkk', label: 'Bursa Kerja Khusus (BKK)', icon: Briefcase, path: '/hubin/bkk', roles: ['hubin', 'kepsek', 'siswa'] },
+        { id: 'm-tracer', label: 'Tracer Study Alumni', icon: GraduationCap, path: '/hubin/tracer', roles: ['hubin', 'kepsek'] }
       ]
     }
   },
@@ -306,23 +333,28 @@ const DIVISIONS: Record<DivisionId, DivisionDefinition> = {
       nodeBg: 'bg-slate-900/90 border-orange-500/40 hover:border-orange-400',
     },
     menusPerStage: {
-      ppdb: [
-        { id: 'm-inv-ppdb', label: 'Inventaris Barang', icon: Package, path: '/sarpras/inventory', roles: ['kepsek'] }
+      onboarding: [
+        { id: 'm-inv-awal', label: 'Inventaris Barang Masuk', icon: Package, path: '/sarpras/inventory', roles: ['kepsek'] },
+        { id: 'm-katalog-sarpras', label: 'Katalog Sarana Prasarana', icon: Package, path: '/sarpras/catalog', roles: ['kepsek', 'tu'] }
       ],
-      'kelas-10': [
-        { id: 'm-inv-10', label: 'Inventaris Barang', icon: Package, path: '/sarpras/inventory', roles: ['walas'] },
-        { id: 'm-pinjam-10', label: 'Peminjaman Alat', icon: Package, path: '/sarpras/loans', roles: ['walas'] }
+      'kbm-presensi': [
+        { id: 'm-pinjam-kbm', label: 'Peminjaman Alat KBM', icon: Package, path: '/sarpras/loans', roles: ['walas', 'kaprog'] },
+        { id: 'm-ruang-lab', label: 'Jadwal Ruangan Lab', icon: Building2, path: '/sarpras/rooms', roles: ['kaprog', 'walas'] }
       ],
-      'kelas-11': [
-        { id: 'm-pinjam-11', label: 'Peminjaman Alat', icon: Package, path: '/sarpras/loans', roles: ['kaprog'] },
-        { id: 'm-perbaikan', label: 'Perbaikan Alat', icon: Wrench, path: '/sarpras/maintenance', roles: ['kaprog', 'kepsek'] }
+      'disiplin-bk': [
+        { id: 'm-rusak-sarpras', label: 'Klaim Kerusakan Sarana', icon: Wrench, path: '/sarpras/maintenance', roles: ['walas', 'tu'] }
       ],
-      'kelas-12': [
-        { id: 'm-perbaikan-cbt', label: 'Perbaikan Alat', icon: Wrench, path: '/sarpras/maintenance', roles: ['kaprog', 'kepsek'] },
-        { id: 'm-pinjam-bebas', label: 'Peminjaman Alat', icon: Package, path: '/sarpras/loans', roles: ['tu'] }
+      'evaluasi-rapor': [
+        { id: 'm-kesiapan-cbt', label: 'Kesiapan Lab Komputer CBT', icon: Laptop, path: '/sarpras/rooms', roles: ['kaprog', 'kepsek'] },
+        { id: 'm-maintenance-cbt', label: 'Perawatan Perangkat Ujian', icon: Wrench, path: '/sarpras/maintenance', roles: ['kaprog'] }
       ],
-      alumni: [
-        { id: 'm-berkas-sarpras', label: 'Cetak Berkas', icon: FileText, path: '/sarpras/cetak-berkas', roles: ['tu'] }
+      'vokasi-pkl': [
+        { id: 'm-alat-bengkel', label: 'Alat Praktik Bengkel Kejuruan', icon: Package, path: '/sarpras/loans', roles: ['kaprog'] },
+        { id: 'm-sarpras-tefa', label: 'Fasilitas Produksi TEFA', icon: Building2, path: '/sarpras/inventory', roles: ['kaprog'] }
+      ],
+      'kelulusan-karir': [
+        { id: 'm-bebas-pinjam', label: 'Bebas Pinjaman Sarana', icon: ShieldCheck, path: '/sarpras/loans', roles: ['tu'] },
+        { id: 'm-berkas-sarpras', label: 'Cetak Berkas Bebas Lab', icon: FileText, path: '/sarpras/cetak-berkas', roles: ['tu'] }
       ]
     }
   },
@@ -340,25 +372,27 @@ const DIVISIONS: Record<DivisionId, DivisionDefinition> = {
       nodeBg: 'bg-slate-900/90 border-teal-500/40 hover:border-teal-400',
     },
     menusPerStage: {
-      ppdb: [
-        { id: 'm-barang', label: 'Data Barang', icon: Package, path: '/cooperative/products', roles: ['tu', 'siswa'] },
-        { id: 'm-pos-ppdb', label: 'Kasir Toko', icon: ShoppingCart, path: '/cooperative/pos', roles: ['tu', 'siswa'] }
+      onboarding: [
+        { id: 'm-pos-seragam', label: 'Kasir Pembelian Seragam', icon: ShoppingCart, path: '/cooperative/pos', roles: ['tu', 'siswa'] },
+        { id: 'm-produk-seragam', label: 'Data Barang & Atribut', icon: Package, path: '/cooperative/products', roles: ['tu'] }
       ],
-      'kelas-10': [
-        { id: 'm-anggota', label: 'Data Anggota', icon: Users, path: '/cooperative/members', roles: ['walas', 'siswa'] },
-        { id: 'm-pos-10', label: 'Kasir Toko', icon: ShoppingCart, path: '/cooperative/pos', roles: ['siswa'] }
+      'kbm-presensi': [
+        { id: 'm-anggota-kop', label: 'Data Anggota Koperasi', icon: Users, path: '/cooperative/members', roles: ['walas', 'siswa'] },
+        { id: 'm-pos-harian', label: 'Kasir Toko & ATK', icon: ShoppingCart, path: '/cooperative/pos', roles: ['siswa'] }
       ],
-      'kelas-11': [
-        { id: 'm-simpanan', label: 'Simpanan', icon: Wallet, path: '/cooperative/savings', roles: ['walas', 'siswa'] },
-        { id: 'm-pos-11', label: 'Kasir Toko', icon: ShoppingCart, path: '/cooperative/pos', roles: ['siswa'] }
+      'disiplin-bk': [
+        { id: 'm-simpanan-tab', label: 'Tabungan Siswa Terjadwal', icon: Wallet, path: '/cooperative/savings', roles: ['walas', 'siswa'] }
       ],
-      'kelas-12': [
-        { id: 'm-simpanan-12', label: 'Simpanan', icon: Wallet, path: '/cooperative/savings', roles: ['walas', 'siswa'] },
-        { id: 'm-pinjaman', label: 'Pinjaman', icon: HeartHandshake, path: '/cooperative/loans', roles: ['tu', 'siswa'] }
+      'evaluasi-rapor': [
+        { id: 'm-rekap-transaksi', label: 'Rekap Transaksi Semester', icon: BarChart3, path: '/cooperative/pos', roles: ['tu', 'kepsek'] }
       ],
-      alumni: [
-        { id: 'm-simpanan-tutup', label: 'Simpanan', icon: Wallet, path: '/cooperative/savings', roles: ['tu', 'siswa'] },
-        { id: 'm-shu', label: 'Sisa Hasil Usaha', icon: Award, path: '/cooperative/shu', roles: ['tu', 'kepsek'] }
+      'vokasi-pkl': [
+        { id: 'm-unit-produksi', label: 'Pemasaran Produk Siswa PKL', icon: Package, path: '/cooperative/products', roles: ['kaprog', 'siswa'] },
+        { id: 'm-pos-tefa', label: 'Kasir Penjualan Unit TEFA', icon: ShoppingCart, path: '/cooperative/pos', roles: ['siswa'] }
+      ],
+      'kelulusan-karir': [
+        { id: 'm-tutup-simpanan', label: 'Pencairan Simpanan Anggota', icon: Wallet, path: '/cooperative/savings', roles: ['tu', 'siswa'] },
+        { id: 'm-shu-alumni', label: 'Sisa Hasil Usaha (SHU)', icon: Award, path: '/cooperative/shu', roles: ['tu', 'kepsek'] }
       ]
     }
   }
@@ -375,7 +409,7 @@ const ROLE_OPTIONS: { id: RolePOV; name: string }[] = [
 ];
 
 export const EcosystemWorkflowShowcase: React.FC = () => {
-  const [selectedStage, setSelectedStage] = useState<StageId>('kelas-11');
+  const [selectedStage, setSelectedStage] = useState<StageId>('kbm-presensi');
   const [selectedRole, setSelectedRole] = useState<RolePOV>('all');
   const [isFullscreen, setIsFullscreen] = useState(false);
 
