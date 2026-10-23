@@ -422,10 +422,10 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
       <main className="relative z-10 flex-1 flex flex-col justify-between px-6 py-3 overflow-hidden">
 
         {/* ======================================================== */}
-        {/* 1. TOP DAHAN ZONE (SAYAP ATAS KUPU-KUPU: BERTUNAS KE ATAS)*/}
+        {/* 1. TOP DAHAN ZONE (SAYAP ATAS: RANTING BERTUNAS KE ATAS) */}
         {/* ======================================================== */}
         <section className="w-full flex-1 flex flex-col justify-end pb-1 max-w-6xl mx-auto">
-          <div className="grid grid-cols-3 gap-5 w-full items-end">
+          <div className="grid grid-cols-3 gap-6 w-full items-end">
             {topDivisions.map(div => {
               const Icon = div.icon;
               const sproutedChildren = getDivisionSproutedFeatures(div.id);
@@ -434,42 +434,41 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
               return (
                 <div key={div.id} className="flex flex-col items-center">
                   
-                  {/* ANAK / CABANG TOPOLOGI FITUR (BERTUNAS KE ATAS) */}
-                  <div className="w-full min-h-[90px] flex flex-col justify-end gap-1.5 py-1">
+                  {/* ANAK / CABANG TOPOLOGI FITUR (BERTUNAS KE ATAS - LEBAR RAMPING & TIDAK MELEBAR) */}
+                  <div className="w-full min-h-[96px] flex flex-col justify-end items-center gap-1.5 py-1">
                     <AnimatePresence mode="popLayout">
                       {sproutedChildren.map((child, idx) => (
                         <motion.div
                           key={child.id}
                           layout
-                          initial={{ opacity: 0, scale: 0.85, y: 10 }}
+                          initial={{ opacity: 0, scale: 0.85, y: 8 }}
                           animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.85, y: 10 }}
-                          transition={{ duration: 0.25, delay: idx * 0.05 }}
-                          className={`rounded-xl px-2.5 py-1.5 border transition-all flex items-center justify-between gap-2 shadow-md ${div.theme.nodeBg}`}
+                          exit={{ opacity: 0, scale: 0.85, y: 8 }}
+                          transition={{ duration: 0.22, delay: idx * 0.04 }}
+                          className={`w-fit max-w-[80%] rounded-full px-3 py-1 border transition-all flex items-center justify-between gap-2 shadow-sm ${div.theme.nodeBg}`}
                         >
                           <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0 animate-ping" />
-                            <span className="text-[11px] font-bold text-slate-100 truncate">
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" />
+                            <span className="text-[10px] font-bold text-slate-200 truncate">
                               {child.name}
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-1 shrink-0">
-                            <Link
-                              to={child.route}
-                              className="px-2 py-0.5 rounded text-[10px] font-black bg-cyan-500/20 hover:bg-cyan-400 text-cyan-300 hover:text-slate-950 border border-cyan-500/40 transition-all flex items-center gap-0.5"
-                              title="Buka Halaman Langsung"
-                            >
-                              Buka <ExternalLink className="w-2.5 h-2.5" />
-                            </Link>
-                          </div>
+                          <Link
+                            to={child.route}
+                            className="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-cyan-500/20 hover:bg-cyan-400 text-cyan-300 hover:text-slate-950 border border-cyan-500/40 transition-all flex items-center gap-0.5 shrink-0"
+                            title="Buka Halaman Langsung"
+                          >
+                            <span>Buka</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </Link>
                         </motion.div>
                       ))}
                     </AnimatePresence>
 
                     {!hasChildren && (
-                      <div className="h-[90px] flex items-center justify-center text-[10px] text-slate-400 font-mono italic">
-                        — Dahan non-aktif di fase ini —
+                      <div className="h-[96px] flex items-center justify-center text-[10px] text-slate-500 font-mono italic">
+                        — Non-aktif di fase ini —
                       </div>
                     )}
                   </div>
@@ -481,7 +480,7 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
 
                   {/* INDUK DIVISI ATAS (DEKAT TIMELINE) */}
                   <div
-                    className={`w-full p-2.5 rounded-2xl border transition-all duration-300 shadow-lg flex items-center justify-between ${
+                    className={`w-full p-2.5 rounded-2xl border transition-all duration-300 shadow-md flex items-center justify-between ${
                       hasChildren
                         ? `bg-slate-900/90 ${div.theme.border} ring-1 ring-white/10 ${div.theme.glow}`
                         : 'bg-slate-950/60 border-slate-900 opacity-40'
@@ -502,12 +501,12 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
                     </div>
 
                     <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border shrink-0 ${div.theme.badge}`}>
-                      {sproutedChildren.length} Ranting Aktif
+                      {sproutedChildren.length}
                     </span>
                   </div>
 
                   {/* STEM CONNECTOR TO CENTRAL TIMELINE */}
-                  <div className="w-0.5 h-4 bg-gradient-to-b from-slate-600 to-cyan-500/60" />
+                  <div className="w-0.5 h-5 bg-gradient-to-b from-slate-600 to-cyan-500/60" />
                 </div>
               );
             })}
@@ -609,11 +608,11 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
                 <div key={div.id} className="flex flex-col items-center">
                   
                   {/* STEM CONNECTOR FROM CENTRAL TIMELINE */}
-                  <div className="w-0.5 h-4 bg-gradient-to-b from-slate-600 to-cyan-500/60" />
+                  <div className="w-0.5 h-5 bg-gradient-to-b from-cyan-500/60 to-slate-600" />
 
                   {/* INDUK DIVISI BAWAH (DEKAT TIMELINE) */}
                   <div
-                    className={`w-full p-2.5 rounded-2xl border transition-all duration-300 shadow-lg flex items-center justify-between ${
+                    className={`w-full p-2.5 rounded-2xl border transition-all duration-300 shadow-md flex items-center justify-between ${
                       hasChildren
                         ? `bg-slate-900/90 ${div.theme.border} ring-1 ring-white/10 ${div.theme.glow}`
                         : 'bg-slate-950/60 border-slate-900 opacity-40'
@@ -643,42 +642,41 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
                     <div className="w-0.5 h-3 bg-gradient-to-b from-slate-600 to-cyan-500/60" />
                   )}
 
-                  {/* ANAK / CABANG TOPOLOGI FITUR (BERTUNAS KE BAWAH) */}
-                  <div className="w-full min-h-[90px] flex flex-col justify-start gap-1.5 py-1">
+                  {/* ANAK / CABANG TOPOLOGI FITUR (BERTUNAS KE BAWAH - LEBAR RAMPING & TIDAK MELEBAR) */}
+                  <div className="w-full min-h-[96px] flex flex-col justify-start items-center gap-1.5 py-1">
                     <AnimatePresence mode="popLayout">
                       {sproutedChildren.map((child, idx) => (
                         <motion.div
                           key={child.id}
                           layout
-                          initial={{ opacity: 0, scale: 0.85, y: -10 }}
+                          initial={{ opacity: 0, scale: 0.85, y: -8 }}
                           animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.85, y: -10 }}
-                          transition={{ duration: 0.25, delay: idx * 0.05 }}
-                          className={`rounded-xl px-2.5 py-1.5 border transition-all flex items-center justify-between gap-2 shadow-md ${div.theme.nodeBg}`}
+                          exit={{ opacity: 0, scale: 0.85, y: -8 }}
+                          transition={{ duration: 0.22, delay: idx * 0.04 }}
+                          className={`w-fit max-w-[80%] rounded-full px-3 py-1 border transition-all flex items-center justify-between gap-2 shadow-sm ${div.theme.nodeBg}`}
                         >
                           <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 animate-ping" />
-                            <span className="text-[11px] font-bold text-slate-100 truncate">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                            <span className="text-[10px] font-bold text-slate-200 truncate">
                               {child.name}
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-1 shrink-0">
-                            <Link
-                              to={child.route}
-                              className="px-2 py-0.5 rounded text-[10px] font-black bg-cyan-500/20 hover:bg-cyan-400 text-cyan-300 hover:text-slate-950 border border-cyan-500/40 transition-all flex items-center gap-0.5"
-                              title="Buka Halaman Langsung"
-                            >
-                              Buka <ExternalLink className="w-2.5 h-2.5" />
-                            </Link>
-                          </div>
+                          <Link
+                            to={child.route}
+                            className="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-cyan-500/20 hover:bg-cyan-400 text-cyan-300 hover:text-slate-950 border border-cyan-500/40 transition-all flex items-center gap-0.5 shrink-0"
+                            title="Buka Halaman Langsung"
+                          >
+                            <span>Buka</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </Link>
                         </motion.div>
                       ))}
                     </AnimatePresence>
 
                     {!hasChildren && (
-                      <div className="h-[90px] flex items-center justify-center text-[10px] text-slate-400 font-mono italic">
-                        — Dahan non-aktif di fase ini —
+                      <div className="h-[96px] flex items-center justify-center text-[10px] text-slate-500 font-mono italic">
+                        — Non-aktif di fase ini —
                       </div>
                     )}
                   </div>
