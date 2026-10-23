@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Eye, BookOpen, BookMarked, ChevronLeft, ChevronRight, Printer, X, User, GraduationCap, Award, Briefcase, Heart, MapPin, Phone, Calendar } from 'lucide-react';
+import { Eye, BookOpen, BookMarked, ChevronLeft, ChevronRight, Printer, X, User, GraduationCap, Award, Briefcase, Heart, MapPin, Phone, Calendar, FileText } from 'lucide-react';
 import { BukuIndukPrintModal } from './BukuIndukPrintModal';
 import { KlapperPrintModal } from './KlapperPrintModal';
+import { SuratKeteranganModal } from '@/components/correspondence/surat-keterangan/SuratKeteranganModal';
 
 import { useAcademicFilter, AcademicFilterToolbar } from '@/components/common/academic-filter';
 import { Loader, SectionCard } from '@/components/ui';
@@ -343,6 +344,7 @@ interface DetailPanel360Props {
   siswaId: string;
   onClose: () => void;
   onPrint: () => void;
+  onTerbitkanSurat: () => void;
 }
 
 function InfoRow({ label, value }: { label: string; value?: string | number | null }) {
@@ -365,7 +367,7 @@ function SectionTitle({ icon: Icon, label }: { icon: React.ElementType; label: s
   );
 }
 
-function DetailPanel360({ siswaId, onClose, onPrint }: DetailPanel360Props) {
+function DetailPanel360({ siswaId, onClose, onPrint, onTerbitkanSurat }: DetailPanel360Props) {
   const { data, isLoading, isError } = useQuery({
     queryKey: bukuIndukQueryKeys.detail(siswaId),
     queryFn: () => bukuIndukApi.getDetail(siswaId),
@@ -399,13 +401,23 @@ function DetailPanel360({ siswaId, onClose, onPrint }: DetailPanel360Props) {
         </div>
         <div className="flex items-center gap-1 shrink-0 ml-2">
           {siswa && (
-            <button
-              onClick={onPrint}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors"
-            >
-              <Printer size={13} />
-              Cetak
-            </button>
+            <>
+              <button
+                onClick={onTerbitkanSurat}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors"
+                title="Terbitkan Surat Keterangan Siswa"
+              >
+                <FileText size={13} />
+                Surat Keterangan
+              </button>
+              <button
+                onClick={onPrint}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors"
+              >
+                <Printer size={13} />
+                Cetak
+              </button>
+            </>
           )}
           <button
             onClick={onClose}
@@ -448,6 +460,21 @@ function DetailPanel360({ siswaId, onClose, onPrint }: DetailPanel360Props) {
                 <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400">{siswa.nis} · {siswa.nisn || 'NISN -'}</p>
                 <StatusBadge status={siswa.status} />
               </div>
+            </div>
+
+            {/* Quick Action Persuratan */}
+            <div className="flex items-center justify-between mb-4 p-2.5 bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 rounded-xl">
+              <div>
+                <p className="text-[11px] font-bold text-indigo-950 dark:text-indigo-200">Layanan Persuratan Siswa</p>
+                <p className="text-[10px] text-indigo-600 dark:text-indigo-400">Siswa Aktif, SKKB, & Rekomendasi</p>
+              </div>
+              <button
+                onClick={onTerbitkanSurat}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-sm transition-colors"
+              >
+                <FileText size={12} />
+                Terbitkan Surat
+              </button>
             </div>
 
             {/* Identitas Pribadi */}
@@ -586,6 +613,7 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
   const [activeTab, setActiveTab] = useState<ActiveTab>('induk');
   const [selectedSiswaId, setSelectedSiswaId] = useState<string | null>(null);
   const [printSiswaId, setPrintSiswaId] = useState<string | null>(null);
+  const [suratSiswaId, setSuratSiswaId] = useState<string | null>(null);
   const [showKlapperPrint, setShowKlapperPrint] = useState(false);
   const [page, setPage] = useState(1);
   const [klapperPage, setKlapperPage] = useState(1);
@@ -792,6 +820,7 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
           siswaId={selectedSiswaId}
           onClose={() => setSelectedSiswaId(null)}
           onPrint={() => { setPrintSiswaId(selectedSiswaId); }}
+          onTerbitkanSurat={() => { setSuratSiswaId(selectedSiswaId); }}
         />
       )}
 
@@ -853,6 +882,15 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
         huruf={selectedHuruf || undefined}
         tahunPelajaran={filter.activeTpYear?.tahun}
       />
+
+      {/* Surat Keterangan Modal */}
+      {suratSiswaId && (
+        <SuratKeteranganModal
+          isOpen={Boolean(suratSiswaId)}
+          onClose={() => setSuratSiswaId(null)}
+          siswaId={suratSiswaId}
+        />
+      )}
     </div>
   );
 });
