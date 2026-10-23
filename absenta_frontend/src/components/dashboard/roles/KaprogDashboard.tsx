@@ -165,6 +165,13 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
     isLoadingSem: academicFilter.isLoadingSem,
   }), [academicFilter]);
 
+  // Strict Mode: Filter UI HANYA untuk membaca data historis
+  const isViewingHistorical = Boolean(
+    academic.activeYearObj?.id &&
+    academic.selectedTahunPelajaran &&
+    academic.selectedTahunPelajaran !== academic.activeYearObj.id
+  );
+
   // --------------------------------------------------------------------------
   // Identitas Jurusan Kaprog Terkunci (RBAC & SK Assignment - Zero Cross-Jurusan)
   // --------------------------------------------------------------------------
@@ -402,11 +409,12 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
 
   // Mutation: Simpan Deskripsi TP Inline
   const saveTpMutation = useMutation({
-    mutationFn: (payload: { mitra_id: string; jurusan_id?: string; deskripsi_tp: string }) =>
+    mutationFn: (payload: { mitra_id: string; jurusan_id?: string; tahun_pelajaran_id?: string; deskripsi_tp: string }) =>
       hubinApi.upsertSettingDeskripsiPkl({
         mitra_id: payload.mitra_id,
         deskripsi_tp: payload.deskripsi_tp,
         jurusan_id: payload.jurusan_id || resolvedJurusan?.id,
+        tahun_pelajaran_id: payload.tahun_pelajaran_id || academic.selectedTahunPelajaran || undefined,
       }),
     onSuccess: () => {
       toast.success('Deskripsi Tujuan Pembelajaran berhasil disimpan');
@@ -416,6 +424,24 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
     },
     onError: (err: { response?: { data?: { message?: string } } }) => {
       const msg = err.response?.data?.message || 'Gagal menyimpan deskripsi TP';
+      toast.error(msg);
+    },
+  });
+
+  // Mutation: Rollover Deskripsi TP Massal dari Tahun Sebelumnya
+  const rolloverTpMutation = useMutation({
+    mutationFn: () =>
+      hubinApi.rolloverDeskripsiTp({
+        jurusan_id: resolvedJurusan?.id,
+        to_tahun_pelajaran_id: academic.selectedTahunPelajaran || undefined,
+      }),
+    onSuccess: (res: any) => {
+      toast.success(res?.message || 'Berhasil menyalin seluruh rumusan TP dari tahun sebelumnya');
+      queryClient.invalidateQueries({ queryKey: ['kaprog-pkl-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['kaprog-stats'] });
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      const msg = err.response?.data?.message || 'Gagal melakukan rollover TP';
       toast.error(msg);
     },
   });
@@ -476,7 +502,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
   }, [navigate]);
 
   const handleSaveTp = useCallback(
-    (payload: { mitra_id: string; jurusan_id?: string; deskripsi_tp: string }) => {
+    (payload: { mitra_id: string; jurusan_id?: string; tahun_pelajaran_id?: string; deskripsi_tp: string }) => {
       saveTpMutation.mutate(payload);
     },
     [saveTpMutation]
@@ -711,6 +737,9 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                   onOpenPlottingModal={() => setIsPlottingPklModalOpen(true)}
                   onOpenRekapNilai={() => setIsRekapNilaiModalOpen(true)}
                   onOpenMonitoringPkl={() => setIsMonitoringPklModalOpen(true)}
+                  onRolloverAllTp={() => rolloverTpMutation.mutate()}
+                  isRolloverLoading={rolloverTpMutation.isPending}
+                  isReadOnly={isViewingHistorical}
                   jurusanNama={resolvedJurusan?.nama}
                 />
               </div>
@@ -815,6 +844,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
             onClose={handleCloseEditingSlot}
             slot={activeEditingSlot}
             kaprogJurusan={resolvedJurusan}
+            tahunPelajaranId={academic.selectedTahunPelajaran}
             onSave={handleSaveTp}
             onDelete={handleDeleteTp}
             isSaving={saveTpMutation.isPending}

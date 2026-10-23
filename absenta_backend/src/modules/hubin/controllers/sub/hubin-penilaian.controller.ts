@@ -140,12 +140,31 @@ export class HubinPenilaianController {
 
   async upsertSettingDeskripsiPkl(request: AuthenticatedRequest, reply: any) {
     try {
-      const { mitra_id, jurusan_id, deskripsi_tp } = request.body;
+      const { mitra_id, jurusan_id, tahun_pelajaran_id, deskripsi_tp } = request.body;
       if (!mitra_id || !deskripsi_tp) {
         return reply.status(400).send({ success: false, message: 'mitra_id dan deskripsi_tp wajib diisi' });
       }
-      const data = await this.hubinService.upsertSettingDeskripsiPkl(request.tenantId!, { mitra_id, jurusan_id, deskripsi_tp });
+      const data = await this.hubinService.upsertSettingDeskripsiPkl(request.tenantId!, {
+        mitra_id,
+        jurusan_id,
+        tahun_pelajaran_id,
+        deskripsi_tp,
+      });
       return reply.status(200).send({ success: true, message: 'Setting deskripsi TP PKL berhasil disimpan', data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async rolloverSettingDeskripsiPkl(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { jurusan_id, to_tahun_pelajaran_id, from_tahun_pelajaran_id } = request.body || {};
+      const result = await this.hubinService.rolloverSettingDeskripsiPkl(request.tenantId!, {
+        jurusan_id,
+        to_tahun_pelajaran_id,
+        from_tahun_pelajaran_id,
+      });
+      return reply.status(200).send({ success: true, ...result });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
     }
@@ -153,8 +172,8 @@ export class HubinPenilaianController {
 
   async getSettingDeskripsiPklList(request: AuthenticatedRequest, reply: any) {
     try {
-      const { mitra_id, jurusan_id } = request.query as any;
-      const data = await this.hubinService.getSettingDeskripsiPklList(request.tenantId!, mitra_id, jurusan_id);
+      const { mitra_id, jurusan_id, tahun_pelajaran_id } = request.query as any;
+      const data = await this.hubinService.getSettingDeskripsiPklList(request.tenantId!, mitra_id, jurusan_id, tahun_pelajaran_id);
       return reply.status(200).send({ success: true, data });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });

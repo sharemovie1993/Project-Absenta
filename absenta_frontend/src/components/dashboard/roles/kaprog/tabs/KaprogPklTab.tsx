@@ -11,7 +11,8 @@ import {
   Users,
   CalendarCheck,
   Edit3,
-  Sparkles
+  Sparkles,
+  History
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui';
@@ -32,6 +33,7 @@ interface KaprogPklTabProps {
     filledMitra: number;
     pendingMitra: number;
     completionPercentage: number;
+    rolloverAvailableCount?: number;
   };
   mitraFilter: string;
   setMitraFilter: (filter: string) => void;
@@ -44,11 +46,16 @@ interface KaprogPklTabProps {
     has_tp: boolean;
     deskripsi_tp?: string;
     saved_id?: string;
+    previous_tp?: string;
+    previous_tahun?: string;
   }>;
   onSelectEditingSlot: (slot: EditingMitraSlot) => void;
   onOpenPlottingModal?: () => void;
   onOpenRekapNilai?: () => void;
   onOpenMonitoringPkl?: () => void;
+  onRolloverAllTp?: () => void;
+  isRolloverLoading?: boolean;
+  isReadOnly?: boolean;
   jurusanNama?: string;
 }
 
@@ -62,6 +69,9 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
   onOpenPlottingModal,
   onOpenRekapNilai,
   onOpenMonitoringPkl,
+  onRolloverAllTp,
+  isRolloverLoading = false,
+  isReadOnly = false,
   jurusanNama = 'Kejuruan',
 }) => {
   const navigate = useNavigate();
@@ -92,6 +102,12 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
   const totalCount = (filteredMitraList || []).length;
   const pendingCount = (filteredMitraList || []).filter((m) => !m.has_tp).length;
   const filledCount = (filteredMitraList || []).filter((m) => m.has_tp).length;
+  const availableRolloverCount = useMemo(() => {
+    return (
+      tpStatus?.rolloverAvailableCount ??
+      (filteredMitraList || []).filter((m) => !m.has_tp && m.previous_tp).length
+    );
+  }, [tpStatus, filteredMitraList]);
 
   return (
     <div className="space-y-6">
@@ -235,17 +251,32 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
             </p>
           </div>
 
-          {/* Search Input Filter */}
-          <div className="relative w-full sm:w-64">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              aria-label="Cari mitra atau rombel..."
-              placeholder="Cari mitra atau rombel..."
-              value={mitraFilter}
-              onChange={(e) => setMitraFilter(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
+            {availableRolloverCount > 0 && !isReadOnly && onRolloverAllTp && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onRolloverAllTp}
+                disabled={isRolloverLoading}
+                className="w-full sm:w-auto text-xs font-bold rounded-xl gap-1.5 border-emerald-300 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 cursor-pointer shadow-2xs shrink-0"
+              >
+                <History className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{isRolloverLoading ? 'Sedang Menyalin...' : `Salin Semua TP Tahun Lalu (${availableRolloverCount})`}</span>
+              </Button>
+            )}
+
+            {/* Search Input Filter */}
+            <div className="relative w-full sm:w-64">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                aria-label="Cari mitra atau rombel..."
+                placeholder="Cari mitra atau rombel..."
+                value={mitraFilter}
+                onChange={(e) => setMitraFilter(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
           </div>
         </div>
 
@@ -317,6 +348,11 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
                         <CheckCircle2 className="w-3 h-3" />
                         <span>Tersedia</span>
                       </span>
+                    ) : mitra.previous_tp ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800 shrink-0">
+                        <History className="w-3 h-3 text-emerald-600" />
+                        <span>Ada Arsip {mitra.previous_tahun || 'Tahun Lalu'}</span>
+                      </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-800/40 shrink-0">
                         <AlertCircle className="w-3 h-3" />
@@ -367,6 +403,8 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
                         rombel_list: mitra.rombel_list || [],
                         deskripsi_tp: mitra.deskripsi_tp || '',
                         saved_id: mitra.saved_id,
+                        previous_tp: mitra.previous_tp,
+                        previous_tahun: mitra.previous_tahun,
                       })
                     }
                     className={cn(
@@ -445,6 +483,11 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
                             <CheckCircle2 className="w-3 h-3" />
                             <span>Tersedia</span>
                           </span>
+                        ) : mitra.previous_tp ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                            <History className="w-3 h-3 text-emerald-600" />
+                            <span>Ada Arsip {mitra.previous_tahun || 'Tahun Lalu'}</span>
+                          </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-800/40">
                             <AlertCircle className="w-3 h-3" />
@@ -463,6 +506,8 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
                               rombel_list: mitra.rombel_list || [],
                               deskripsi_tp: mitra.deskripsi_tp || '',
                               saved_id: mitra.saved_id,
+                              previous_tp: mitra.previous_tp,
+                              previous_tahun: mitra.previous_tahun,
                             })
                           }
                           className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 inline-flex items-center gap-0.5 cursor-pointer"

@@ -918,16 +918,26 @@ export class HubinPenilaianService extends HubinCommonHelper {
    */
   async upsertSettingDeskripsiPkl(
     tenantId: string,
-    data: { mitra_id: string; jurusan_id?: string | null; deskripsi_tp: string }
+    data: { mitra_id: string; jurusan_id?: string | null; tahun_pelajaran_id?: string | null; deskripsi_tp: string }
   ) {
     const targetJurusanId = data.jurusan_id || null;
 
-    // Cari rekaman deskripsi TP eksisting untuk kombinasi tenant + mitra + jurusan
+    let targetTpId = data.tahun_pelajaran_id || null;
+    if (!targetTpId) {
+      const activeTp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true },
+      });
+      targetTpId = activeTp?.id || null;
+    }
+
+    // Cari rekaman deskripsi TP eksisting untuk kombinasi tenant + mitra + jurusan + tahun_pelajaran
     const existing = await prisma.settingDeskripsiPkl.findFirst({
       where: {
         tenant_id: tenantId,
         mitra_id: data.mitra_id,
         jurusan_id: targetJurusanId,
+        tahun_pelajaran_id: targetTpId,
       },
     });
 
@@ -943,6 +953,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
           tenant_id: tenantId,
           mitra_id: data.mitra_id,
           jurusan_id: targetJurusanId,
+          tahun_pelajaran_id: targetTpId,
           deskripsi_tp: data.deskripsi_tp,
         },
       });
@@ -952,16 +963,123 @@ export class HubinPenilaianService extends HubinCommonHelper {
     return result;
   }
 
-  async getSettingDeskripsiPklList(tenantId: string, mitraId?: string, jurusanId?: string) {
+  async rolloverSettingDeskripsiPkl(
+    tenantId: string,
+    params: {
+      jurusan_id?: string;
+      to_tahun_pelajaran_id?: string;
+      from_tahun_pelajaran_id?: string;
+    }
+  ) {
+    const { jurusan_id, to_tahun_pelajaran_id, from_tahun_pelajaran_id } = params;
+
+    let targetTpId = to_tahun_pelajaran_id;
+    if (!targetTpId) {
+      const activeTp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true },
+      });
+      targetTpId = activeTp?.id;
+    }
+
+    if (!targetTpId) {
+      throw new Error('Tahun pelajaran tujuan tidak valid atau belum aktif');
+    }
+
+    let sourceTpId = from_tahun_pelajaran_id;
+    if (!sourceTpId) {
+      const currentTp = await prisma.tahunPelajaran.findUnique({
+        where: { id: targetTpId },
+        select: { created_at: true },
+      });
+      const previousTp = await prisma.tahunPelajaran.findFirst({
+        where: {
+          tenant_id: tenantId,
+          id: { not: targetTpId },
+          created_at: { lt: currentTp?.created_at || new Date() },
+        },
+        orderBy: { created_at: 'desc' },
+        select: { id: true },
+      });
+      sourceTpId = previousTp?.id;
+    }
+
+    if (!sourceTpId) {
+      const anyTp = await prisma.settingDeskripsiPkl.findFirst({
+        where: {
+          tenant_id: tenantId,
+          ...(jurusan_id ? { jurusan_id } : {}),
+          tahun_pelajaran_id: { not: targetTpId },
+        },
+        select: { tahun_pelajaran_id: true },
+      });
+      sourceTpId = anyTp?.tahun_pelajaran_id || undefined;
+    }
+
+    if (!sourceTpId) {
+      return { count: 0, message: 'Tidak ditemukan riwayat rumusan TP dari tahun sebelumnya' };
+    }
+
+    const sourceRecords = await prisma.settingDeskripsiPkl.findMany({
+      where: {
+        tenant_id: tenantId,
+        tahun_pelajaran_id: sourceTpId,
+        ...(jurusan_id ? { jurusan_id } : {}),
+        deskripsi_tp: { not: '' },
+      },
+    });
+
+    if (sourceRecords.length === 0) {
+      return { count: 0, message: 'Tidak ada rumusan TP yang dapat disalin dari tahun sumber' };
+    }
+
+    const existingTargetRecords = await prisma.settingDeskripsiPkl.findMany({
+      where: {
+        tenant_id: tenantId,
+        tahun_pelajaran_id: targetTpId,
+        ...(jurusan_id ? { jurusan_id } : {}),
+      },
+      select: { mitra_id: true },
+    });
+    const existingMitraSet = new Set(existingTargetRecords.map((r) => r.mitra_id));
+
+    const toCreate = sourceRecords.filter((r) => !existingMitraSet.has(r.mitra_id));
+
+    let createdCount = 0;
+    for (const item of toCreate) {
+      await prisma.settingDeskripsiPkl.create({
+        data: {
+          tenant_id: tenantId,
+          mitra_id: item.mitra_id,
+          jurusan_id: item.jurusan_id,
+          tahun_pelajaran_id: targetTpId,
+          deskripsi_tp: item.deskripsi_tp,
+        },
+      });
+      createdCount++;
+    }
+
+    void cacheInvalidationService.invalidatePklCache(tenantId);
+    void cacheInvalidationService.invalidateHubinCache(tenantId);
+
+    return {
+      count: createdCount,
+      message: `Berhasil me-rollover ${createdCount} rumusan TP dari tahun sebelumnya`,
+    };
+  }
+
+  async getSettingDeskripsiPklList(tenantId: string, mitraId?: string, jurusanId?: string, tahunPelajaranId?: string) {
     const where: any = { tenant_id: tenantId };
     if (mitraId) where.mitra_id = mitraId;
     if (jurusanId) where.jurusan_id = jurusanId;
+    if (tahunPelajaranId) where.tahun_pelajaran_id = tahunPelajaranId;
 
     return await prisma.settingDeskripsiPkl.findMany({
       where,
       include: {
         Mitra: { select: { id: true, nama: true, alamat: true } },
         Jurusan: { select: { id: true, nama: true, singkatan: true } },
+        TahunPelajaran: { select: { id: true, tahun: true } },
       },
       orderBy: { Mitra: { nama: 'asc' } },
     });
@@ -1118,22 +1236,60 @@ export class HubinPenilaianService extends HubinCommonHelper {
       }
     }
 
+    // Resolve target academic year
+    let targetTpId = options?.tahunPelajaranId;
+    if (!targetTpId) {
+      const activeTp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true },
+      });
+      targetTpId = activeTp?.id;
+    }
+
     const uniqueMitraIds = Array.from(mitraMap.keys());
 
-    // 4. Periksa keterisian SettingDeskripsiPkl untuk pasangan (tenantId, mitraId, jurusanId)
+    // 4. Periksa keterisian SettingDeskripsiPkl untuk tahun ajaran target
     const existingDeskripsi = await prisma.settingDeskripsiPkl.findMany({
       where: {
         tenant_id: tenantId,
         mitra_id: { in: uniqueMitraIds },
-        ...(jurusanId ? { jurusan_id: jurusanId } : {})
+        ...(jurusanId ? { jurusan_id: jurusanId } : {}),
+        ...(targetTpId ? { tahun_pelajaran_id: targetTpId } : {}),
       },
-      select: { id: true, mitra_id: true, deskripsi_tp: true }
+      select: { id: true, mitra_id: true, deskripsi_tp: true, tahun_pelajaran_id: true },
     });
 
     const deskripsiMap = new Map<string, { id: string; deskripsi_tp: string }>();
     for (const d of existingDeskripsi) {
       if ((d.deskripsi_tp || '').trim().length > 0) {
         deskripsiMap.set(d.mitra_id, { id: d.id, deskripsi_tp: d.deskripsi_tp });
+      }
+    }
+
+    // 5. Cek riwayat rumusan tahun lampau untuk mitra yang belum diisi (Rollover helper)
+    const previousDeskripsi = await prisma.settingDeskripsiPkl.findMany({
+      where: {
+        tenant_id: tenantId,
+        mitra_id: { in: uniqueMitraIds },
+        ...(jurusanId ? { jurusan_id: jurusanId } : {}),
+        ...(targetTpId ? { tahun_pelajaran_id: { not: targetTpId } } : {}),
+      },
+      orderBy: { created_at: 'desc' },
+      select: {
+        mitra_id: true,
+        deskripsi_tp: true,
+        tahun_pelajaran_id: true,
+        TahunPelajaran: { select: { tahun: true } },
+      },
+    });
+
+    const previousTpMap = new Map<string, { deskripsi_tp: string; tahun: string }>();
+    for (const p of previousDeskripsi) {
+      if (!previousTpMap.has(p.mitra_id) && (p.deskripsi_tp || '').trim().length > 0) {
+        previousTpMap.set(p.mitra_id, {
+          deskripsi_tp: p.deskripsi_tp,
+          tahun: p.TahunPelajaran?.tahun || 'Tahun Lalu',
+        });
       }
     }
 
@@ -1145,21 +1301,25 @@ export class HubinPenilaianService extends HubinCommonHelper {
     const completionPercentage = totalMitra > 0 ? Math.round((filledMitra / totalMitra) * 100) : 100;
 
     const pendingMitraList = uniqueMitraIds
-      .filter(mId => !filledMitraIds.has(mId))
-      .map(mId => {
+      .filter((mId) => !filledMitraIds.has(mId))
+      .map((mId) => {
         const item = mitraMap.get(mId)!;
+        const prev = previousTpMap.get(mId);
         return {
           mitra_id: item.mitra_id,
           nama_mitra: item.nama_mitra,
           alamat: item.alamat,
           bidang_usaha: item.bidang_usaha,
           siswa_count: item.siswa_count,
-          rombel_list: Array.from(item.rombel_set)
+          rombel_list: Array.from(item.rombel_set),
+          previous_tp: prev?.deskripsi_tp || undefined,
+          previous_tahun: prev?.tahun || undefined,
         };
       });
 
-    const allMitraList = Array.from(mitraMap.values()).map(item => {
+    const allMitraList = Array.from(mitraMap.values()).map((item) => {
       const saved = deskripsiMap.get(item.mitra_id);
+      const prev = previousTpMap.get(item.mitra_id);
       return {
         mitra_id: item.mitra_id,
         nama_mitra: item.nama_mitra,
@@ -1169,9 +1329,13 @@ export class HubinPenilaianService extends HubinCommonHelper {
         rombel_list: Array.from(item.rombel_set),
         has_tp: Boolean(saved),
         deskripsi_tp: saved?.deskripsi_tp || '',
-        saved_id: saved?.id || undefined
+        saved_id: saved?.id || undefined,
+        previous_tp: prev?.deskripsi_tp || undefined,
+        previous_tahun: prev?.tahun || undefined,
       };
     });
+
+    const rolloverAvailableCount = allMitraList.filter((m) => !m.has_tp && m.previous_tp).length;
 
     return {
       jurusan: jurusanInfo,
@@ -1179,7 +1343,8 @@ export class HubinPenilaianService extends HubinCommonHelper {
         totalMitra,
         filledMitra,
         pendingMitra,
-        completionPercentage
+        completionPercentage,
+        rolloverAvailableCount,
       },
       penilaianStatus: {
         totalSiswaPkl,

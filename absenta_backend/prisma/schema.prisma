@@ -974,6 +974,7 @@ model TahunPelajaran {
   JadwalKontrakKbm       JadwalKontrakKbm[]
   AlurTujuanPembelajaran AlurTujuanPembelajaran[]
   AcademicPlenoSession   AcademicPlenoSession[]
+  SettingDeskripsiPkl    SettingDeskripsiPkl[]
 
   @@unique([tenant_id, tahun])
   @@index([tenant_id])
@@ -3890,21 +3891,24 @@ model SiswaPkl {
 }
 
 model SettingDeskripsiPkl {
-  id           String   @id @default(uuid())
-  tenant_id    String
-  mitra_id     String
-  jurusan_id   String?
-  deskripsi_tp String   @db.Text
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
+  id                 String          @id @default(uuid())
+  tenant_id          String
+  mitra_id           String
+  jurusan_id         String?
+  tahun_pelajaran_id String?
+  deskripsi_tp       String          @db.Text
+  created_at         DateTime        @default(now())
+  updated_at         DateTime        @updatedAt
 
-  Tenant  Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Mitra   MitraIndustri @relation(fields: [mitra_id], references: [id], onDelete: Cascade)
-  Jurusan Jurusan?      @relation(fields: [jurusan_id], references: [id])
+  Tenant         Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Mitra          MitraIndustri   @relation(fields: [mitra_id], references: [id], onDelete: Cascade)
+  Jurusan        Jurusan?        @relation(fields: [jurusan_id], references: [id])
+  TahunPelajaran TahunPelajaran? @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: Cascade)
 
-  @@unique([tenant_id, mitra_id, jurusan_id])
+  @@unique([tenant_id, mitra_id, jurusan_id, tahun_pelajaran_id])
   @@index([tenant_id])
   @@index([tenant_id, mitra_id])
+  @@index([tenant_id, tahun_pelajaran_id])
 }
 
 model AbsensiPkl {

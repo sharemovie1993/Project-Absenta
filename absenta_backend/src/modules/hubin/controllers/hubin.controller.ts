@@ -82,6 +82,7 @@ export class HubinController {
   async upsertSettingDeskripsiPkl(...args: any[]) { return (this.penilaian as any).upsertSettingDeskripsiPkl(...args); }
   async getSettingDeskripsiPklList(...args: any[]) { return (this.penilaian as any).getSettingDeskripsiPklList(...args); }
   async deleteSettingDeskripsiPkl(...args: any[]) { return (this.penilaian as any).deleteSettingDeskripsiPkl(...args); }
+  async rolloverSettingDeskripsiPkl(...args: any[]) { return (this.penilaian as any).rolloverSettingDeskripsiPkl(...args); }
   async getKaprogSummary(...args: any[]) { return (this.penilaian as any).getKaprogSummary(...args); }
   async getSertifikatPklData(...args: any[]) { return (this.penilaian as any).getSertifikatPklData(...args); }
 }

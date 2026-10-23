@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit3, Sparkles, Save, Trash2, X } from 'lucide-react';
+import { Edit3, Sparkles, Save, Trash2, X, History } from 'lucide-react';
 import { Button } from '@/components/ui';
 import toast from 'react-hot-toast';
 
@@ -10,6 +10,8 @@ export interface EditingMitraSlot {
   rombel_list: string[];
   deskripsi_tp?: string;
   saved_id?: string;
+  previous_tp?: string;
+  previous_tahun?: string;
 }
 
 export interface PklDeskripsiTpModalProps {
@@ -17,7 +19,8 @@ export interface PklDeskripsiTpModalProps {
   onClose: () => void;
   slot: EditingMitraSlot | null;
   kaprogJurusan?: { id?: string; nama?: string; singkatan?: string } | null;
-  onSave: (payload: { mitra_id: string; jurusan_id?: string; deskripsi_tp: string }) => void;
+  tahunPelajaranId?: string;
+  onSave: (payload: { mitra_id: string; jurusan_id?: string; tahun_pelajaran_id?: string; deskripsi_tp: string }) => void;
   onDelete?: (savedId: string) => void;
   isSaving?: boolean;
   isDeleting?: boolean;
@@ -28,6 +31,7 @@ export const PklDeskripsiTpModal: React.FC<PklDeskripsiTpModalProps> = ({
   onClose,
   slot,
   kaprogJurusan,
+  tahunPelajaranId,
   onSave,
   onDelete,
   isSaving = false,
@@ -62,6 +66,7 @@ export const PklDeskripsiTpModal: React.FC<PklDeskripsiTpModalProps> = ({
     onSave({
       mitra_id: slot.mitra_id,
       jurusan_id: kaprogJurusan?.id || undefined,
+      tahun_pelajaran_id: tahunPelajaranId || undefined,
       deskripsi_tp: editorText.trim(),
     });
   };
@@ -104,18 +109,33 @@ export const PklDeskripsiTpModal: React.FC<PklDeskripsiTpModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-4 sm:p-5 space-y-3.5 overflow-y-auto">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <label htmlFor="tp-modal-editor-text" className="text-xs font-bold text-slate-700 dark:text-slate-200">
               Deskripsi Capaian Pembelajaran (TP)
             </label>
-            <button
-              type="button"
-              onClick={handleApplyTemplate}
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer shrink-0"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Gunakan Template</span>
-            </button>
+            <div className="flex items-center gap-2.5">
+              {slot.previous_tp && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditorText(slot.previous_tp || '');
+                    toast.success(`Berhasil menyalin rumusan TP dari ${slot.previous_tahun || 'tahun lalu'}!`);
+                  }}
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer shrink-0"
+                >
+                  <History className="w-3.5 h-3.5" />
+                  <span>Salin dari {slot.previous_tahun || 'Tahun Lalu'}</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleApplyTemplate}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer shrink-0"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Gunakan Template</span>
+              </button>
+            </div>
           </div>
 
           <textarea
