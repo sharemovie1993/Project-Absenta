@@ -674,6 +674,7 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
                         hasPkl={isJenjangSmk !== false}
                         hasUkk={isJenjangSmk !== false}
                         hasSkl={true}
+                        eligibility={student.dokumen_eligibility}
                         showSumatifArchive={modeCetakRapor === 'SUMATIF_AND_CP' || modeCetakRapor === 'SUMATIF_ONLY'}
                         onPrintRaporPkl={() => onPrintRaporPkl?.(student)}
                         onPrintSertifikatPkl={() => onPrintSertifikatPkl?.(student)}

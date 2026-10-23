@@ -30,12 +30,16 @@ import {
   TranskripNilaiData,
 } from '../../../types/cetakRapor.types';
 import { LegerStudentTable } from './LegerStudentTable';
+import { AcademicOrchestratorTable } from './AcademicOrchestratorTable';
 import { CetakRaporHeaderCard } from './CetakRaporHeaderCard';
 import { useRaporPklPrint, KelasOptionItem } from './useRaporPklPrint';
 import { useRaporSummaryManager } from './useRaporSummaryManager';
 import { useCetakRaporActions } from './useCetakRaporActions';
 
 // Lazy-loaded modals for architectural compliance & performance
+const UkkSertifikatModal = lazy(() =>
+  import('../../academic/ukk/UkkSertifikatModal').then((m) => ({ default: m.UkkSertifikatModal }))
+);
 const RaporSummaryModal = lazy(() =>
   import('./RaporSummaryModal').then((m) => ({ default: m.RaporSummaryModal }))
 );
@@ -211,10 +215,13 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
   const initialContext = initialContextRef.current;
 
   // ── State ──
+  const [viewMode, setViewMode] = useState<'orchestrator' | 'leger'>('orchestrator');
   const [activeRoleTab, setActiveRoleTab] = useState<'wali_kelas' | 'supervisi'>(initialContext.tab);
   const [selectedKelas, setSelectedKelas] = useState<string>(initialContext.kelasId);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTranskripStudent, setSelectedTranskripStudent] = useState<LegerStudent | null>(null);
+  const [selectedUkkStudent, setSelectedUkkStudent] = useState<LegerStudent | null>(null);
+  const [isUkkModalOpen, setIsUkkModalOpen] = useState(false);
   const [showMonitoringModal, setShowMonitoringModal] = useState(false);
 
   // Tab Options (Disimplifikasi 1-2 kata agar kompak dan tidak overflow)
@@ -437,9 +444,18 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
   }, [settingsRes]);
 
   // Hook cetak PDF terpadu
-  const { printLeger } = useRaporPdf({
+  const {
+    printLeger,
+    printBiodata,
+    printRaporSemester,
+    printRaporSumatif,
+    printP5,
+    printSkl,
+  } = useRaporPdf({
     tahunPelajaranId: activeYear?.id,
     semesterId: activeSemester?.id,
+    tahunPelajaranNama: activeYear?.nama || academicActiveYear?.tahun,
+    semesterNama: activeSemester?.nama || academicActiveSemester?.nama_semester,
   });
 
   // ── Hook Struktur Kurikulum Rombel ──
@@ -551,6 +567,9 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
           id: s.id,
           nama_siswa: nama,
           nis,
+          nisn: (found as any)?.nisn || (s as any)?.nisn || '',
+          sekolah_asal: (found as any)?.sekolah_asal || (s as any)?.sekolah_asal || null,
+          is_pindahan: (found as any)?.is_pindahan ?? false,
           rank: found?.rank ?? '—',
           rata_rata: found?.rata_rata ?? 0,
           sakit: found?.sakit ?? s.sakit ?? 0,
@@ -560,6 +579,8 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
           keputusan_transisi: found?.keputusan_transisi ?? '',
           catatan_kokurikuler: found?.catatan_kokurikuler ?? '',
           referensi_absensi_harian: found?.referensi_absensi_harian || { sakit: 0, izin: 0, alpa: 0 },
+          dokumen_eligibility: (found as any)?.dokumen_eligibility,
+          riwayat_semester: (found as any)?.riwayat_semester || [],
         };
       })
       .filter((s) => {
@@ -711,41 +732,119 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
         }}
       />
 
-      {/* Student List & Leger Table */}
-      <LegerStudentTable
-        students={filteredStudents}
-        isLoading={isLoadingLeger}
-        isJenjangSmk={isJenjangSmk}
-        pdfLoading={pdfLoading}
-        tahunPelajaranId={activeYear?.id}
-        semesterId={activeSemester?.id}
-        tahunPelajaranNama={activeYear?.nama || academicActiveYear?.tahun}
-        semesterNama={activeSemester?.nama || academicActiveSemester?.nama_semester}
-        modeCetakRapor={modeCetakRapor}
-        onOpenSummaryModal={handleOpenSummaryModal}
-        onPrintRapor={handlePrintRapor}
-        onPrintP5={handlePrintP5}
-        onPrintRaporPkl={handlePrintRaporPkl}
-        onPrintSertifikatPkl={handlePrintSertifikatPkl}
-        onPrintLeger={() => printLeger(selectedKelas, activeYear?.id, activeSemester?.id, currentKelasObj?.nama_kelas)}
-        onExportLeger={handleExportLeger}
-        onBatchPrintRapor={handleBatchPrintRapor}
-        onBatchPrintBiodata={handleBatchPrintBiodata}
-        onBatchPrintRaporSumatif={handleBatchPrintRaporSumatif}
-        onBatchPrintP5={handleBatchPrintP5}
-        onBatchPrintBundelLengkap={handleBatchPrintBundelLengkap}
-        isBatchPrinting={isBatchPrinting}
-        onBatchPrintRaporPkl={handleBatchPrintRaporPkl}
-        isBatchPklPrinting={isBatchPklPrinting}
-        onBatchPrintSertifikatPkl={handleBatchPrintSertifikatPkl}
-        isBatchSertifikatPrinting={isBatchSertifikatPrinting}
-        hasLegerData={Boolean(leger?.data || filteredStudents.length > 0)}
-        showLogoKananSertifikat={showLogoKananSertifikat}
-        toggleShowLogoKananSertifikat={toggleShowLogoKananSertifikat}
-        onOpenTranskripModal={(s) => setSelectedTranskripStudent(s)}
-        getPdfSklUrl={(sId) => raporApi.getPdfSklUrl(sId)}
-        getPdfUkkUrl={(sId) => raporApi.getPdfUkkUrl(sId)}
-      />
+      {/* View Mode Switcher: Orkestrator Dokumen (Default) vs Buku Leger Nilai */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2 bg-slate-100/80 dark:bg-slate-850 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          <button
+            type="button"
+            onClick={() => setViewMode('orchestrator')}
+            className={cn(
+              'flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
+              viewMode === 'orchestrator'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+            )}
+          >
+            <Layers className="w-4 h-4" />
+            <span>Pusat Orkestrasi Dokumen Siswa</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold border border-indigo-200/60 dark:border-indigo-800/60">
+              Utama
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('leger')}
+            className={cn(
+              'flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
+              viewMode === 'leger'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+            )}
+          >
+            <GraduationCap className="w-4 h-4" />
+            <span>Buku Leger Nilai &amp; Ranking</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 px-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
+          <span>Total: <b>{filteredStudents.length}</b> Siswa</span>
+        </div>
+      </div>
+
+      {/* Main View: Academic Document Orchestrator Table vs Leger Nilai Table */}
+      {viewMode === 'orchestrator' ? (
+        <AcademicOrchestratorTable
+          students={filteredStudents}
+          isLoading={isLoadingLeger}
+          isJenjangSmk={isJenjangSmk}
+          pdfLoading={pdfLoading}
+          modeCetakRapor={modeCetakRapor}
+          onPrintBiodata={(sId) => printBiodata(sId)}
+          onPrintRaporSemester={(sId, tpId, semId) => printRaporSemester(sId, tpId, semId)}
+          onPrintRaporSumatif={(sId, tpId, semId) => printRaporSumatif(sId, tpId, semId)}
+          onPrintP5={(sId) => printP5(sId)}
+          onPrintRaporPkl={(s) => handlePrintRaporPkl(s)}
+          onPrintSertifikatPkl={(s) => handlePrintSertifikatPkl(s)}
+          onPrintSertifikatUkk={(s) => {
+            setSelectedUkkStudent(s);
+            setIsUkkModalOpen(true);
+          }}
+          onPrintSkl={(sId) => printSkl(sId)}
+          onOpenTranskrip={(s) => setSelectedTranskripStudent(s)}
+          onOpenSummaryModal={(s) => handleOpenSummaryModal(s)}
+        />
+      ) : (
+        <LegerStudentTable
+          students={filteredStudents}
+          isLoading={isLoadingLeger}
+          isJenjangSmk={isJenjangSmk}
+          pdfLoading={pdfLoading}
+          tahunPelajaranId={activeYear?.id}
+          semesterId={activeSemester?.id}
+          tahunPelajaranNama={activeYear?.nama || academicActiveYear?.tahun}
+          semesterNama={activeSemester?.nama || academicActiveSemester?.nama_semester}
+          modeCetakRapor={modeCetakRapor}
+          onOpenSummaryModal={handleOpenSummaryModal}
+          onPrintRapor={handlePrintRapor}
+          onPrintP5={handlePrintP5}
+          onPrintRaporPkl={handlePrintRaporPkl}
+          onPrintSertifikatPkl={handlePrintSertifikatPkl}
+          onPrintLeger={() => printLeger(selectedKelas, activeYear?.id, activeSemester?.id, currentKelasObj?.nama_kelas)}
+          onExportLeger={handleExportLeger}
+          onBatchPrintRapor={handleBatchPrintRapor}
+          onBatchPrintBiodata={handleBatchPrintBiodata}
+          onBatchPrintRaporSumatif={handleBatchPrintRaporSumatif}
+          onBatchPrintP5={handleBatchPrintP5}
+          onBatchPrintBundelLengkap={handleBatchPrintBundelLengkap}
+          isBatchPrinting={isBatchPrinting}
+          onBatchPrintRaporPkl={handleBatchPrintRaporPkl}
+          isBatchPklPrinting={isBatchPklPrinting}
+          onBatchPrintSertifikatPkl={handleBatchPrintSertifikatPkl}
+          isBatchSertifikatPrinting={isBatchSertifikatPrinting}
+          hasLegerData={Boolean(leger?.data || filteredStudents.length > 0)}
+          showLogoKananSertifikat={showLogoKananSertifikat}
+          toggleShowLogoKananSertifikat={toggleShowLogoKananSertifikat}
+          onOpenTranskripModal={(s) => setSelectedTranskripStudent(s)}
+          getPdfSklUrl={(sId) => raporApi.getPdfSklUrl(sId)}
+          getPdfUkkUrl={(sId) => raporApi.getPdfUkkUrl(sId)}
+        />
+      )}
+
+      {/* Modal Universal Sertifikat UKK (Lazy-Loaded) */}
+      {isJenjangSmk && isUkkModalOpen && (
+        <Suspense fallback={null}>
+          <UkkSertifikatModal
+            isOpen={isUkkModalOpen}
+            onClose={() => {
+              setIsUkkModalOpen(false);
+              setSelectedUkkStudent(null);
+            }}
+            siswaId={selectedUkkStudent?.id || filteredStudents[0]?.id}
+            namaSiswa={selectedUkkStudent?.nama_siswa || filteredStudents[0]?.nama_siswa}
+            kelasNama={currentKelasObj?.nama_kelas || waliKelasNama}
+          />
+        </Suspense>
+      )}
 
       {/* Summary Modal (Lazy-Loaded) */}
       <Suspense fallback={null}>

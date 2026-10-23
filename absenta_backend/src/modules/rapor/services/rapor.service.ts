@@ -762,6 +762,111 @@ export class RaporService {
       nilaiEskulMap.set(ne.siswa_id, arr);
     });
 
+    // Resolusi Validasi Kelayakan Dokumen Resmi (Eligibility Guard)
+    const [pklList, ukkList, sklList] = await Promise.all([
+      prisma.siswaPkl.findMany({
+        where: {
+          tenant_id: tenantId,
+          siswa_id: { in: safeStudentIds },
+          status: { not: 'BATAL' },
+        },
+      }).catch(() => []),
+      prisma.sertifikatUkk.findMany({
+        where: {
+          tenant_id: tenantId,
+          siswa_id: { in: safeStudentIds },
+        },
+      }).catch(() => []),
+      prisma.kelulusanSiswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          siswa_id: { in: safeStudentIds },
+        },
+      }).catch(() => []),
+    ]);
+
+    const pklMap = new Map<string, any>();
+    pklList.forEach((p) => pklMap.set(p.siswa_id, p));
+
+    const ukkMap = new Map<string, any>();
+    ukkList.forEach((u) => ukkMap.set(u.siswa_id, u));
+
+    const sklMap = new Map<string, any>();
+    sklList.forEach((sk) => sklMap.set(sk.siswa_id, sk));
+
+    const tingkatNum = Number(kelas.tingkat);
+    const isTingkatAkhir = tingkatNum === 12 || tingkatNum === 13 || tingkatNum === 9 || tingkatNum === 6;
+    const isSmk = Boolean(kelas.jurusan_id);
+
+    // Resolusi Multi-Jenjang & Riwayat Semester Kronologis (Multi-Tenant & Multi-Jenjang Engine)
+    const [sekolahRes, allTenantTp, allTenantSem, allHistoricalNilaiCounts, allHistoricalSumatifCounts] = await Promise.all([
+      prisma.sekolah.findFirst({
+        where: { tenant_id: tenantId },
+        select: { jenjang: true, durasi_smk: true },
+      }).catch(() => null),
+      prisma.tahunPelajaran.findMany({
+        where: { tenant_id: tenantId },
+        orderBy: { tahun: 'asc' },
+      }).catch(() => []),
+      prisma.semester.findMany({
+        where: { tenant_id: tenantId },
+        orderBy: { nama_semester: 'asc' },
+      }).catch(() => []),
+      prisma.nilaiSiswa.groupBy({
+        by: ['siswa_id', 'tahun_pelajaran_id', 'semester_id'],
+        where: {
+          tenant_id: tenantId,
+          siswa_id: { in: safeStudentIds },
+        },
+        _count: { id: true },
+      }).catch(() => []),
+      prisma.nilaiSiswa.groupBy({
+        by: ['siswa_id', 'tahun_pelajaran_id', 'semester_id'],
+        where: {
+          tenant_id: tenantId,
+          siswa_id: { in: safeStudentIds },
+          OR: [
+            { nilai_akhir_sumatif: { not: null } },
+            { sumatif_1: { not: null } },
+            { sumatif_2: { not: null } },
+          ],
+        },
+        _count: { id: true },
+      }).catch(() => []),
+    ]);
+
+    const rawJenjang = (sekolahRes?.jenjang || (kelas.jurusan_id ? 'SMK' : 'SMA')).toUpperCase();
+    const isJenjangSmk = rawJenjang === 'SMK' || rawJenjang === 'MAK';
+    const isDurasi4Tahun = sekolahRes?.durasi_smk === '4_TAHUN';
+
+    let tingkatMin = 10;
+    let tingkatMax = isDurasi4Tahun ? 13 : 12;
+    if (rawJenjang === 'SD' || rawJenjang === 'MI') {
+      tingkatMin = 1;
+      tingkatMax = 6;
+    } else if (rawJenjang === 'SMP' || rawJenjang === 'MTS') {
+      tingkatMin = 7;
+      tingkatMax = 9;
+    }
+
+    const nilaiCountMap = new Map<string, number>();
+    allHistoricalNilaiCounts.forEach((item) => {
+      const key = `${item.siswa_id}_${item.tahun_pelajaran_id}_${item.semester_id}`;
+      const count = typeof item._count === 'number' ? item._count : (item._count?.id || 0);
+      nilaiCountMap.set(key, count);
+    });
+
+    const sumatifCountMap = new Map<string, number>();
+    allHistoricalSumatifCounts.forEach((item) => {
+      const key = `${item.siswa_id}_${item.tahun_pelajaran_id}_${item.semester_id}`;
+      const count = typeof item._count === 'number' ? item._count : (item._count?.id || 0);
+      sumatifCountMap.set(key, count);
+    });
+
+    const currentTpIndex = allTenantTp.findIndex((t) => t.id === params.tahun_pelajaran_id);
+    const semGanjil = allTenantSem.find((s) => (s.nama_semester || '').toLowerCase().includes('ganjil') || (s.nama_semester || '').includes('1')) || allTenantSem[0];
+    const semGenap = allTenantSem.find((s) => (s.nama_semester || '').toLowerCase().includes('genap') || (s.nama_semester || '').includes('2')) || allTenantSem[1] || allTenantSem[0];
+
     // Resolusi Nama & NIP Wali Kelas
     let walasNama = 'Wali Kelas';
     let walasNip = '-';
@@ -1015,11 +1120,174 @@ export class RaporService {
         ekskul2 = (siswa as any).ekskul_2 || studentEskuls[1] || '';
       }
 
+      // Evaluasi Kelayakan Dokumen Resmi per Siswa (Industrial Eligibility Guard)
+      const pklRecord = pklMap.get(siswa.id);
+      const ukkRecord = ukkMap.get(siswa.id);
+      const sklRecord = sklMap.get(siswa.id);
+
+      // 1. Rapor PKL
+      let pklRaporEligible = false;
+      let pklRaporReason = '';
+      if (!isSmk && !pklRecord) {
+        pklRaporReason = 'Hanya untuk jenjang SMK';
+      } else if (!pklRecord) {
+        pklRaporReason = 'Belum memiliki data penempatan PKL di Hubin';
+      } else {
+        const hasNilaiPkl =
+          (pklRecord.nilai_akhir_pkl != null && pklRecord.nilai_akhir_pkl > 0) ||
+          pklRecord.hard_kompetensi_teknis != null ||
+          pklRecord.hard_sop_k3lh != null ||
+          pklRecord.soft_kedisiplinan != null;
+        if (!hasNilaiPkl) {
+          pklRaporReason = 'Nilai PKL belum diinput oleh DUDI / Pembimbing';
+        } else {
+          pklRaporEligible = true;
+        }
+      }
+
+      // 2. Sertifikat PKL
+      let pklSertifikatEligible = false;
+      let pklSertifikatReason = '';
+      if (!pklRecord) {
+        pklSertifikatReason = 'Belum memiliki data penempatan PKL di Hubin';
+      } else if (pklRecord.status !== 'SELESAI') {
+        pklSertifikatReason = 'Masa pelaksanaan PKL belum berstatus SELESAI';
+      } else if (!pklRecord.nilai_akhir_pkl || pklRecord.nilai_akhir_pkl <= 0 || !pklRecord.predikat_pkl) {
+        pklSertifikatReason = 'Nilai akhir & predikat PKL belum tervalidasi';
+      } else {
+        pklSertifikatEligible = true;
+      }
+
+      // 3. Sertifikat UKK
+      let ukkEligible = false;
+      let ukkReason = '';
+      if (!isTingkatAkhir) {
+        ukkReason = 'Hanya untuk siswa tingkat akhir (Kelas XII)';
+      } else if (!ukkRecord) {
+        ukkReason = 'Hasil uji kompetensi UKK belum diinput Kaprog';
+      } else if (!ukkRecord.nomor_sertifikat) {
+        ukkReason = 'Nomor sertifikat UKK resmi belum diterbitkan';
+      } else {
+        ukkEligible = true;
+      }
+
+      // 4. SKL
+      let sklEligible = false;
+      let sklReason = '';
+      if (!isTingkatAkhir) {
+        sklReason = 'Hanya untuk siswa tingkat akhir (Kelas XII)';
+      } else if (!sklRecord || sklRecord.status_kelulusan !== 'LULUS') {
+        sklReason = 'Hasil rapat pleno belum menetapkan status Lulus';
+      } else if (!sklRecord.nomor_skl) {
+        sklReason = 'Nomor SKL resmi belum diterbitkan';
+      } else {
+        sklEligible = true;
+      }
+
+      // 5. Transkrip Nilai
+      let transkripEligible = false;
+      let transkripReason = '';
+      if (!isTingkatAkhir) {
+        transkripReason = 'Hanya untuk siswa tingkat akhir (Kelas XII)';
+      } else {
+        transkripEligible = true;
+      }
+
+      const dokumenEligibility = {
+        rapor_pkl: { eligible: pklRaporEligible, reason: pklRaporReason },
+        sertifikat_pkl: { eligible: pklSertifikatEligible, reason: pklSertifikatReason },
+        sertifikat_ukk: { eligible: ukkEligible, reason: ukkReason },
+        skl: { eligible: sklEligible, reason: sklReason },
+        transkrip: { eligible: transkripEligible, reason: transkripReason },
+      };
+
+      // Bangun Riwayat Semester Kronologis (Multi-Jenjang & Siswa Pindahan Aware)
+      const riwayatSemester: Array<{
+        semesterNumber: number;
+        semesterNama: string;
+        tingkatLabel: string;
+        tahunPelajaranTahun: string;
+        tahunPelajaranId: string;
+        semesterId: string;
+        hasNilaiRapor: boolean;
+        hasNilaiSumatif: boolean;
+        totalMapelDinilai: number;
+        statusLabel: string;
+      }> = [];
+
+      const currentTingkatVal = tingkatNum || tingkatMin;
+      const isSiswaPindahan = Boolean(
+        siswa.sekolah_asal ||
+        (siswa.tanggal_masuk && new Date(siswa.tanggal_masuk).getFullYear() > 2020)
+      );
+
+      for (let t = tingkatMin; t <= currentTingkatVal; t++) {
+        const diffYears = currentTingkatVal - t;
+        const tpIdx = currentTpIndex >= 0 ? currentTpIndex - diffYears : -1;
+        const targetTp = tpIdx >= 0 && tpIdx < allTenantTp.length ? allTenantTp[tpIdx] : tp;
+
+        const semIndexBase = (t - tingkatMin) * 2;
+        const semNumGanjil = semIndexBase + 1;
+        const semNumGenap = semIndexBase + 2;
+
+        // 1. Semester Ganjil
+        if (semGanjil) {
+          const keyGanjil = `${siswa.id}_${targetTp.id}_${semGanjil.id}`;
+          const countNilai = nilaiCountMap.get(keyGanjil) || 0;
+          const countSumatif = sumatifCountMap.get(keyGanjil) || 0;
+          const hasNilai = countNilai > 0;
+          let label = hasNilai ? `Tersedia (${countNilai} Mapel)` : 'Belum ada nilai';
+          if (!hasNilai && isSiswaPindahan && t < currentTingkatVal) {
+            label = 'Siswa Pindahan (Nilai asal belum diinput)';
+          }
+
+          riwayatSemester.push({
+            semesterNumber: semNumGanjil,
+            semesterNama: `Semester ${semNumGanjil} (Ganjil)`,
+            tingkatLabel: `Kelas ${t}`,
+            tahunPelajaranTahun: targetTp.tahun,
+            tahunPelajaranId: targetTp.id,
+            semesterId: semGanjil.id,
+            hasNilaiRapor: hasNilai,
+            hasNilaiSumatif: countSumatif > 0,
+            totalMapelDinilai: countNilai,
+            statusLabel: label,
+          });
+        }
+
+        // 2. Semester Genap
+        if (semGenap) {
+          const keyGenap = `${siswa.id}_${targetTp.id}_${semGenap.id}`;
+          const countNilai = nilaiCountMap.get(keyGenap) || 0;
+          const countSumatif = sumatifCountMap.get(keyGenap) || 0;
+          const hasNilai = countNilai > 0;
+          let label = hasNilai ? `Tersedia (${countNilai} Mapel)` : 'Belum ada nilai';
+          if (!hasNilai && isSiswaPindahan && t < currentTingkatVal) {
+            label = 'Siswa Pindahan (Nilai asal belum diinput)';
+          }
+
+          riwayatSemester.push({
+            semesterNumber: semNumGenap,
+            semesterNama: `Semester ${semNumGenap} (Genap)`,
+            tingkatLabel: `Kelas ${t}`,
+            tahunPelajaranTahun: targetTp.tahun,
+            tahunPelajaranId: targetTp.id,
+            semesterId: semGenap.id,
+            hasNilaiRapor: hasNilai,
+            hasNilaiSumatif: countSumatif > 0,
+            totalMapelDinilai: countNilai,
+            statusLabel: label,
+          });
+        }
+      }
+
       return {
         id: siswa.id,
         nama_siswa: siswa.nama_siswa,
         nis: siswa.nis,
         nisn: siswa.nisn || '',
+        sekolah_asal: siswa.sekolah_asal || null,
+        is_pindahan: isSiswaPindahan,
         grades,
         gradeDetails,
         ekskul_1: ekskul1,
@@ -1033,6 +1301,8 @@ export class RaporService {
         keputusan_transisi: raporRec?.keputusan_transisi || '',
         catatan_kokurikuler: kokurikulerMap.get(siswa.id) || '',
         referensi_absensi_harian: refPresensi,
+        dokumen_eligibility: dokumenEligibility,
+        riwayat_semester: riwayatSemester,
         rank: 0,
       };
     });
@@ -1045,9 +1315,16 @@ export class RaporService {
     const studentsSortedByName = [...studentsData].sort((a, b) => a.nama_siswa.localeCompare(b.nama_siswa));
 
     return {
-      kelas: { id: kelas.id, nama_kelas: kelas.nama_kelas },
+      kelas: { id: kelas.id, nama_kelas: kelas.nama_kelas, tingkat: kelas.tingkat },
       tahun_pelajaran: { id: tp.id, tahun: tp.tahun },
       semester: { id: sem.id, nama_semester: sem.nama_semester },
+      jenjang_info: {
+        jenjang: rawJenjang,
+        is_smk: isJenjangSmk,
+        durasi_smk: sekolahRes?.durasi_smk || '3_TAHUN',
+        tingkat_min: tingkatMin,
+        tingkat_max: tingkatMax,
+      },
       mapel_list: mapelList,
       students: studentsSortedByName,
       walas: {

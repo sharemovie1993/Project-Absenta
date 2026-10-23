@@ -32,10 +32,39 @@ export const SummaryFormSchema = z.object({
 
 export type SummaryFormData = z.infer<typeof SummaryFormSchema>;
 
+export interface DokumenEligibilityItem {
+  eligible: boolean;
+  reason?: string;
+}
+
+export interface DokumenEligibility {
+  rapor_pkl?: DokumenEligibilityItem;
+  sertifikat_pkl?: DokumenEligibilityItem;
+  sertifikat_ukk?: DokumenEligibilityItem;
+  skl?: DokumenEligibilityItem;
+  transkrip?: DokumenEligibilityItem;
+}
+
+export interface SemesterDocumentOption {
+  semesterNumber: number;
+  semesterNama: string;
+  tingkatLabel: string;
+  tahunPelajaranTahun: string;
+  tahunPelajaranId: string;
+  semesterId: string;
+  hasNilaiRapor: boolean;
+  hasNilaiSumatif: boolean;
+  totalMapelDinilai: number;
+  statusLabel: string;
+}
+
 export interface LegerStudent {
   id: string;
   nama_siswa: string;
   nis: string;
+  nisn?: string;
+  sekolah_asal?: string | null;
+  is_pindahan?: boolean;
   rank: number | string;
   rata_rata: number;
   sakit: number;
@@ -45,6 +74,8 @@ export interface LegerStudent {
   keputusan_transisi: string;
   catatan_kokurikuler?: string;
   referensi_absensi_harian?: { sakit: number; izin: number; alpa: number };
+  dokumen_eligibility?: DokumenEligibility;
+  riwayat_semester?: SemesterDocumentOption[];
 }
 
 export interface AcademicYear {
@@ -76,6 +107,12 @@ export interface RawStudent {
 export interface RawLegerEntry {
   id?: string;
   siswa_id?: string;
+  nis?: string;
+  nisn?: string;
+  nama_siswa?: string;
+  nama?: string;
+  sekolah_asal?: string | null;
+  is_pindahan?: boolean;
   rank?: number | string;
   rata_rata?: number;
   sakit?: number;
@@ -85,6 +122,8 @@ export interface RawLegerEntry {
   keputusan_transisi?: string;
   catatan_kokurikuler?: string;
   referensi_absensi_harian?: { sakit: number; izin: number; alpa: number };
+  dokumen_eligibility?: DokumenEligibility;
+  riwayat_semester?: SemesterDocumentOption[];
 }
 
 export interface TranskripSubjectEntry {
