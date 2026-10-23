@@ -262,8 +262,8 @@ export class NilaiExcelService {
     });
 
     const isSumatifMode = metadata.mode === 'sumatif' || !metadata.jenis_nilai_id;
-    const operations: any[] = [];
     const skippedRows: any[] = [];
+    const validRows: Array<{ siswaId: string; row: any }> = [];
     const importedSiswaIds = new Set<string>();
 
     rawData.forEach((row: any, index: number) => {
@@ -282,9 +282,58 @@ export class NilaiExcelService {
         return;
       }
 
-      // Catat siswa yang berhasil diidentifikasi untuk upsert SiswaAkademik
       importedSiswaIds.add(siswaId);
+      validRows.push({ siswaId, row });
+    });
 
+    // ── 1. Upsert SiswaAkademik: Jamin snapshot rombel dan dapatkan ID relasi fisik ──
+    const saMap = new Map<string, string>();
+    if (importedSiswaIds.size > 0) {
+      if (metadata.kelas_id) {
+        const saRecords = await Promise.all(
+          [...importedSiswaIds].map((siswaId) =>
+            prisma.siswaAkademik.upsert({
+              where: {
+                siswa_id_tahun_pelajaran_id_semester_id: {
+                  siswa_id: siswaId,
+                  tahun_pelajaran_id: metadata.tahun_pelajaran_id,
+                  semester_id: metadata.semester_id,
+                },
+              },
+              create: {
+                siswa_id: siswaId,
+                kelas_id: metadata.kelas_id,
+                tahun_pelajaran_id: metadata.tahun_pelajaran_id,
+                semester_id: metadata.semester_id,
+                status: 'AKTIF',
+              },
+              update: {
+                kelas_id: metadata.kelas_id,
+                status: 'AKTIF',
+              },
+              select: { id: true, siswa_id: true },
+            })
+          )
+        );
+        saRecords.forEach((sa) => saMap.set(sa.siswa_id, sa.id));
+      } else {
+        const existingSas = await prisma.siswaAkademik.findMany({
+          where: {
+            siswa_id: { in: [...importedSiswaIds] },
+            tahun_pelajaran_id: metadata.tahun_pelajaran_id,
+            semester_id: metadata.semester_id,
+          },
+          select: { id: true, siswa_id: true },
+        });
+        existingSas.forEach((sa) => saMap.set(sa.siswa_id, sa.id));
+      }
+    }
+
+    // ── 2. Bangun Operasi Upsert NilaiSiswa dengan Relasi Eksplisit SiswaAkademik ──
+    const operations: any[] = [];
+
+    validRows.forEach(({ siswaId, row }, index) => {
+      const saId = saMap.get(siswaId) || null;
       const notes = String(
         row['capaian_kompetensi'] ||
         row['Capaian Kompetensi'] ||
@@ -355,10 +404,12 @@ export class NilaiExcelService {
               capaian_kompetensi: notes || null,
               catatan_deskripsi: notes || null,
               sesi_absensi_id: metadata.sesi_absensi_id || null,
+              ...(saId ? { siswa_akademik_id: saId } : {}),
             },
             create: {
               tenant_id: tenantId,
               siswa_id: siswaId,
+              siswa_akademik_id: saId,
               mapel_id: metadata.mapel_id,
               tahun_pelajaran_id: metadata.tahun_pelajaran_id,
               semester_id: metadata.semester_id,
@@ -398,10 +449,12 @@ export class NilaiExcelService {
               nilai: score,
               catatan_deskripsi: notes || null,
               sesi_absensi_id: metadata.sesi_absensi_id || null,
+              ...(saId ? { siswa_akademik_id: saId } : {}),
             },
             create: {
               tenant_id: tenantId,
               siswa_id: siswaId,
+              siswa_akademik_id: saId,
               mapel_id: metadata.mapel_id,
               tahun_pelajaran_id: metadata.tahun_pelajaran_id,
               semester_id: metadata.semester_id,
@@ -417,34 +470,6 @@ export class NilaiExcelService {
 
     if (operations.length > 0) {
       await prisma.$transaction(operations);
-
-      // ── Upsert SiswaAkademik: Jamin snapshot rombel per siswa yang berhasil diimpor ──
-      if (importedSiswaIds.size > 0 && metadata.kelas_id) {
-        await prisma.$transaction(
-          [...importedSiswaIds].map((siswaId) =>
-            prisma.siswaAkademik.upsert({
-              where: {
-                siswa_id_tahun_pelajaran_id_semester_id: {
-                  siswa_id: siswaId,
-                  tahun_pelajaran_id: metadata.tahun_pelajaran_id,
-                  semester_id: metadata.semester_id,
-                },
-              },
-              create: {
-                siswa_id: siswaId,
-                kelas_id: metadata.kelas_id,
-                tahun_pelajaran_id: metadata.tahun_pelajaran_id,
-                semester_id: metadata.semester_id,
-                status: 'AKTIF',
-              },
-              update: {
-                kelas_id: metadata.kelas_id,
-                status: 'AKTIF',
-              },
-            })
-          )
-        );
-      }
 
       // Invalidate leger cache — nilai hasil impor berubah, leger harus direcalculate
       void cacheInvalidationService.invalidateRaporCache(tenantId);

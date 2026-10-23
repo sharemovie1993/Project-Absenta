@@ -8,6 +8,7 @@ export class UkkSklService {
     data: {
       id?: string | null;
       siswa_id: string;
+      siswa_akademik_id?: string | null;
       asesor_internal?: string | null;
       asesor_eksternal: string;
       mitra_industri_id?: string | null;
@@ -18,6 +19,17 @@ export class UkkSklService {
       tanggal_terbit: Date;
     }
   ) {
+    // ── Resolusi SiswaAkademik: Tautkan ke riwayat akademik tingkat akhir siswa ──
+    let saId = data.siswa_akademik_id;
+    if (!saId) {
+      const sa = await prisma.siswaAkademik.findFirst({
+        where: { siswa_id: data.siswa_id },
+        include: { kelas: true },
+        orderBy: [{ kelas: { tingkat: 'desc' } }, { created_at: 'desc' }],
+      });
+      saId = sa?.id || null;
+    }
+
     if (data.id) {
       return prisma.sertifikatUkk.update({
         where: {
@@ -33,6 +45,7 @@ export class UkkSklService {
           predikat: data.predikat,
           nomor_sertifikat: data.nomor_sertifikat,
           tanggal_terbit: data.tanggal_terbit,
+          ...(saId ? { siswa_akademik_id: saId } : {}),
         },
       });
     }
@@ -49,10 +62,12 @@ export class UkkSklService {
         nilai_teori: data.nilai_teori,
         predikat: data.predikat,
         tanggal_terbit: data.tanggal_terbit,
+        ...(saId ? { siswa_akademik_id: saId } : {}),
       },
       create: {
         tenant_id: tenantId,
         siswa_id: data.siswa_id,
+        siswa_akademik_id: saId,
         asesor_internal: data.asesor_internal,
         asesor_eksternal: data.asesor_eksternal,
         mitra_industri_id: data.mitra_industri_id,
@@ -644,6 +659,7 @@ export class UkkSklService {
     tenantId: string,
     data: {
       siswa_id: string;
+      siswa_akademik_id?: string | null;
       nomor_skl: string;
       tanggal_lulus: Date;
       rata_rata_nilai: number;
@@ -651,6 +667,17 @@ export class UkkSklService {
       catatan?: string | null;
     }
   ) {
+    // ── Resolusi SiswaAkademik: Tautkan ke riwayat kelulusan tingkat akhir ──
+    let saId = data.siswa_akademik_id;
+    if (!saId) {
+      const sa = await prisma.siswaAkademik.findFirst({
+        where: { siswa_id: data.siswa_id },
+        include: { kelas: true },
+        orderBy: [{ kelas: { tingkat: 'desc' } }, { created_at: 'desc' }],
+      });
+      saId = sa?.id || null;
+    }
+
     return prisma.kelulusanSiswa.upsert({
       where: {
         nomor_skl: data.nomor_skl,
@@ -660,10 +687,12 @@ export class UkkSklService {
         rata_rata_nilai: data.rata_rata_nilai,
         status_kelulusan: data.status_kelulusan || 'LULUS',
         catatan: data.catatan,
+        ...(saId ? { siswa_akademik_id: saId } : {}),
       },
       create: {
         tenant_id: tenantId,
         siswa_id: data.siswa_id,
+        siswa_akademik_id: saId,
         nomor_skl: data.nomor_skl,
         tanggal_lulus: data.tanggal_lulus,
         rata_rata_nilai: data.rata_rata_nilai,

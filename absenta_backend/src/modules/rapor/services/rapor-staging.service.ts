@@ -1055,8 +1055,9 @@ export class RaporStagingService {
 
       // ── Tautkan Riwayat Kelas & Semester ke SiswaAkademik (SSOT Historis) ──
       // Berlaku untuk SELURUH siswa (baik siswa lama maupun siswa baru auto-provisioned)
+      let sa: any = null;
       if (kelasId) {
-        await prisma.siswaAkademik.upsert({
+        sa = await prisma.siswaAkademik.upsert({
           where: {
             siswa_id_tahun_pelajaran_id_semester_id: {
               siswa_id: siswaId,
@@ -1095,6 +1096,7 @@ export class RaporStagingService {
           create: {
             tenant_id: tenantId,
             siswa_id: siswaId,
+            siswa_akademik_id: sa?.id || null,
             kelas_id: kelasId,
             tahun_pelajaran_id: tpId,
             semester_id: semId,
@@ -1106,6 +1108,7 @@ export class RaporStagingService {
           },
           update: {
             kelas_id: kelasId,
+            ...(sa?.id ? { siswa_akademik_id: sa.id } : {}),
             sakit: kehadiran.sakit || 0,
             izin: kehadiran.izin || 0,
             alpa: kehadiran.alpa || 0,
@@ -1193,6 +1196,7 @@ export class RaporStagingService {
           create: {
             tenant_id: tenantId,
             siswa_id: siswaId,
+            siswa_akademik_id: sa?.id || null,
             mapel_id: mapelId,
             tahun_pelajaran_id: tpId,
             semester_id: semId,
@@ -1207,6 +1211,7 @@ export class RaporStagingService {
           },
           update: {
             nilai: nilaiFinal,
+            ...(sa?.id ? { siswa_akademik_id: sa.id } : {}),
             sumatif_1: s1,
             sumatif_2: s2,
             sumatif_3: s3,

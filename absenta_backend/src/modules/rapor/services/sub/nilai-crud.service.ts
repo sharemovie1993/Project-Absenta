@@ -132,9 +132,49 @@ export class NilaiCrudService {
       nilai: number;
       catatan_deskripsi?: string | null;
       sesi_absensi_id?: string | null;
+      kelas_id?: string | null;
+      siswa_akademik_id?: string | null;
     }
   ) {
     await this.assertTahunPelajaranAktif(tenantId, data.tahun_pelajaran_id, data.semester_id);
+
+    let saId = data.siswa_akademik_id || null;
+    if (!saId) {
+      const sa = await prisma.siswaAkademik.findFirst({
+        where: {
+          siswa_id: data.siswa_id,
+          tahun_pelajaran_id: data.tahun_pelajaran_id,
+          semester_id: data.semester_id,
+        },
+        select: { id: true },
+      });
+      if (sa) {
+        saId = sa.id;
+      } else if (data.kelas_id) {
+        const createdSa = await prisma.siswaAkademik.upsert({
+          where: {
+            siswa_id_tahun_pelajaran_id_semester_id: {
+              siswa_id: data.siswa_id,
+              tahun_pelajaran_id: data.tahun_pelajaran_id,
+              semester_id: data.semester_id,
+            },
+          },
+          create: {
+            siswa_id: data.siswa_id,
+            kelas_id: data.kelas_id,
+            tahun_pelajaran_id: data.tahun_pelajaran_id,
+            semester_id: data.semester_id,
+            status: 'AKTIF',
+          },
+          update: {
+            kelas_id: data.kelas_id,
+            status: 'AKTIF',
+          },
+          select: { id: true },
+        });
+        saId = createdSa.id;
+      }
+    }
 
     const result = await prisma.nilaiSiswa.upsert({
       where: {
@@ -149,11 +189,13 @@ export class NilaiCrudService {
         nilai: data.nilai,
         catatan_deskripsi: data.catatan_deskripsi || null,
         sesi_absensi_id: data.sesi_absensi_id || null,
+        ...(saId ? { siswa_akademik_id: saId } : {}),
         ...(data.jenis_nilai_id ? { jenis_nilai_id: data.jenis_nilai_id } : {}),
       },
       create: {
         tenant_id: tenantId,
         siswa_id: data.siswa_id,
+        siswa_akademik_id: saId,
         mapel_id: data.mapel_id,
         tahun_pelajaran_id: data.tahun_pelajaran_id,
         semester_id: data.semester_id,
@@ -187,7 +229,42 @@ export class NilaiCrudService {
   ) {
     await this.assertTahunPelajaranAktif(tenantId, data.tahun_pelajaran_id, data.semester_id);
 
+    // ── 1. Upsert SiswaAkademik: Jamin snapshot rombel per siswa per semester ──
+    const uniqueSiswaIds = [...new Set(data.scores.map((s) => s.siswa_id))];
+    const saMap = new Map<string, string>();
+
+    if (uniqueSiswaIds.length > 0 && data.kelas_id) {
+      const saRecords = await Promise.all(
+        uniqueSiswaIds.map((siswaId) =>
+          prisma.siswaAkademik.upsert({
+            where: {
+              siswa_id_tahun_pelajaran_id_semester_id: {
+                siswa_id: siswaId,
+                tahun_pelajaran_id: data.tahun_pelajaran_id,
+                semester_id: data.semester_id,
+              },
+            },
+            create: {
+              siswa_id: siswaId,
+              kelas_id: data.kelas_id,
+              tahun_pelajaran_id: data.tahun_pelajaran_id,
+              semester_id: data.semester_id,
+              status: 'AKTIF',
+            },
+            update: {
+              kelas_id: data.kelas_id,
+              status: 'AKTIF',
+            },
+            select: { id: true, siswa_id: true },
+          })
+        )
+      );
+      saRecords.forEach((sa) => saMap.set(sa.siswa_id, sa.id));
+    }
+
+    // ── 2. Upsert NilaiSiswa dengan Relasi Eksplisit siswa_akademik_id ──
     const operations = data.scores.map((score) => {
+      const saId = saMap.get(score.siswa_id) || null;
       return prisma.nilaiSiswa.upsert({
         where: {
           siswa_id_mapel_id_tahun_pelajaran_id_semester_id: {
@@ -201,11 +278,13 @@ export class NilaiCrudService {
           nilai: score.nilai,
           catatan_deskripsi: score.catatan_deskripsi || null,
           sesi_absensi_id: data.sesi_absensi_id || null,
+          ...(saId ? { siswa_akademik_id: saId } : {}),
           ...(data.jenis_nilai_id ? { jenis_nilai_id: data.jenis_nilai_id } : {}),
         },
         create: {
           tenant_id: tenantId,
           siswa_id: score.siswa_id,
+          siswa_akademik_id: saId,
           mapel_id: data.mapel_id,
           tahun_pelajaran_id: data.tahun_pelajaran_id,
           semester_id: data.semester_id,
@@ -218,34 +297,6 @@ export class NilaiCrudService {
     });
 
     const results = await prisma.$transaction(operations);
-
-    // ── Upsert SiswaAkademik: Jamin snapshot rombel per siswa per semester ──
-    // Dijalankan setelah NilaiSiswa tersimpan. 1 baris per siswa unik (bukan per nilai).
-    const uniqueSiswaIds = [...new Set(data.scores.map((s) => s.siswa_id))];
-    await prisma.$transaction(
-      uniqueSiswaIds.map((siswaId) =>
-        prisma.siswaAkademik.upsert({
-          where: {
-            siswa_id_tahun_pelajaran_id_semester_id: {
-              siswa_id: siswaId,
-              tahun_pelajaran_id: data.tahun_pelajaran_id,
-              semester_id: data.semester_id,
-            },
-          },
-          create: {
-            siswa_id: siswaId,
-            kelas_id: data.kelas_id,
-            tahun_pelajaran_id: data.tahun_pelajaran_id,
-            semester_id: data.semester_id,
-            status: 'AKTIF',
-          },
-          update: {
-            kelas_id: data.kelas_id,
-            status: 'AKTIF',
-          },
-        })
-      )
-    );
 
     // Invalidate leger cache — batch nilai berubah, leger harus direcalculate
     void cacheInvalidationService.invalidateRaporCache(tenantId);
@@ -299,7 +350,42 @@ export class NilaiCrudService {
       | 'FORMULA_SUMATIF'
       | 'MURNI_CP_MANUAL';
 
+    // ── 2. Upsert SiswaAkademik: Jamin snapshot rombel per siswa per semester ──
+    const uniqueSiswaIds = [...new Set(data.scores.map((s) => s.siswa_id))];
+    const saMap = new Map<string, string>();
+
+    if (uniqueSiswaIds.length > 0 && data.kelas_id) {
+      const saRecords = await Promise.all(
+        uniqueSiswaIds.map((siswaId) =>
+          prisma.siswaAkademik.upsert({
+            where: {
+              siswa_id_tahun_pelajaran_id_semester_id: {
+                siswa_id: siswaId,
+                tahun_pelajaran_id: data.tahun_pelajaran_id,
+                semester_id: data.semester_id,
+              },
+            },
+            create: {
+              siswa_id: siswaId,
+              kelas_id: data.kelas_id,
+              tahun_pelajaran_id: data.tahun_pelajaran_id,
+              semester_id: data.semester_id,
+              status: 'AKTIF',
+            },
+            update: {
+              kelas_id: data.kelas_id,
+              status: 'AKTIF',
+            },
+            select: { id: true, siswa_id: true },
+          })
+        )
+      );
+      saRecords.forEach((sa) => saMap.set(sa.siswa_id, sa.id));
+    }
+
+    // ── 3. Upsert NilaiSiswa dengan Relasi Eksplisit siswa_akademik_id ──
     const operations = data.scores.map((item) => {
+      const saId = saMap.get(item.siswa_id) || null;
       // Calculate Rata-rata Sumatif
       const sumatifList = [item.sumatif_1, item.sumatif_2, item.sumatif_3].filter(
         (v): v is number => v !== undefined && v !== null && !isNaN(v)
@@ -351,6 +437,7 @@ export class NilaiCrudService {
           sumatif_3: item.sumatif_3 ?? null,
           rata_rata_sumatif: rataRataSumatif,
           nilai_akhir_sumatif: nilaiAkhir,
+          ...(saId ? { siswa_akademik_id: saId } : {}),
           ...(nilaiRaporFinal !== null ? { nilai_rapor_final: nilaiRaporFinal, nilai: mainNilai } : {}),
           ...(cpText !== undefined
             ? { capaian_kompetensi: cpText, catatan_deskripsi: cpText }
@@ -359,6 +446,7 @@ export class NilaiCrudService {
         create: {
           tenant_id: tenantId,
           siswa_id: item.siswa_id,
+          siswa_akademik_id: saId,
           mapel_id: data.mapel_id,
           tahun_pelajaran_id: data.tahun_pelajaran_id,
           semester_id: data.semester_id,
@@ -376,36 +464,6 @@ export class NilaiCrudService {
     });
 
     const results = await prisma.$transaction(operations);
-
-    // ── Upsert SiswaAkademik: Jamin snapshot rombel per siswa per semester ──
-    // Dijalankan setelah NilaiSiswa tersimpan. 1 baris per siswa unik (bukan per nilai/mapel).
-    const uniqueSiswaIds = [...new Set(data.scores.map((s) => s.siswa_id))];
-    if (uniqueSiswaIds.length > 0 && data.kelas_id) {
-      await prisma.$transaction(
-        uniqueSiswaIds.map((siswaId) =>
-          prisma.siswaAkademik.upsert({
-            where: {
-              siswa_id_tahun_pelajaran_id_semester_id: {
-                siswa_id: siswaId,
-                tahun_pelajaran_id: data.tahun_pelajaran_id,
-                semester_id: data.semester_id,
-              },
-            },
-            create: {
-              siswa_id: siswaId,
-              kelas_id: data.kelas_id,
-              tahun_pelajaran_id: data.tahun_pelajaran_id,
-              semester_id: data.semester_id,
-              status: 'AKTIF',
-            },
-            update: {
-              kelas_id: data.kelas_id,
-              status: 'AKTIF',
-            },
-          })
-        )
-      );
-    }
 
     // Invalidate leger cache
     void cacheInvalidationService.invalidateRaporCache(tenantId);

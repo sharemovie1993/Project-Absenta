@@ -58,6 +58,7 @@ export const raporSiswaUpsertSchema = z.object({
 export const sertifikatUkkUpsertSchema = z.object({
   id: z.string().uuid().optional().nullable(),
   siswa_id: z.string().uuid('ID Siswa wajib diisi'),
+  siswa_akademik_id: z.string().uuid().optional().nullable(),
   asesor_internal: z.string().max(255).optional().nullable(),
   asesor_eksternal: z.string().min(1, 'Nama Asesor Eksternal wajib diisi').max(255),
   mitra_industri_id: z.string().uuid().optional().nullable(),
@@ -70,6 +71,7 @@ export const sertifikatUkkUpsertSchema = z.object({
 
 export const kelulusanSiswaUpsertSchema = z.object({
   siswa_id: z.string().uuid('ID Siswa wajib diisi'),
+  siswa_akademik_id: z.string().uuid().optional().nullable(),
   nomor_skl: z.string().min(1, 'Nomor SKL wajib diisi').max(255),
   tanggal_lulus: z.preprocess((val) => (typeof val === 'string' ? new Date(val) : val), z.date()),
   rata_rata_nilai: z.number().min(0).max(100, 'Rata-rata nilai harus berada di rentang 0 s.d. 100'),
