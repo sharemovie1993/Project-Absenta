@@ -59,14 +59,22 @@ export class BukuIndukService {
       where.AND = where.AND ? [...where.AND, angkatanCond] : [angkatanCond];
     }
 
-    if (tahun_pelajaran_id) {
-      const siswaAkademikFilter: any = { tahun_pelajaran_id };
-      if (kelas_id) {
-        siswaAkademikFilter.kelas_id = kelas_id;
-      }
-      where.SiswaAkademik = { some: siswaAkademikFilter };
-    } else if (kelas_id) {
-      where.kelas_id = kelas_id;
+    if (tahun_pelajaran_id || kelas_id) {
+      const directFilter: any = {};
+      if (tahun_pelajaran_id) directFilter.tahun_pelajaran_id = tahun_pelajaran_id;
+      if (kelas_id) directFilter.kelas_id = kelas_id;
+
+      const saFilter: any = {};
+      if (tahun_pelajaran_id) saFilter.tahun_pelajaran_id = tahun_pelajaran_id;
+      if (kelas_id) saFilter.kelas_id = kelas_id;
+
+      const academicCond = {
+        OR: [
+          directFilter,
+          { SiswaAkademik: { some: saFilter } },
+        ],
+      };
+      where.AND = where.AND ? [...where.AND, academicCond] : [academicCond];
     }
 
     if (jurusan_id) {
@@ -239,6 +247,9 @@ export class BukuIndukService {
     tenantId: string,
     params: {
       tahun_pelajaran_id?: string;
+      kelas_id?: string;
+      jurusan_id?: string;
+      tingkat?: string;
       angkatan?: string;
       status?: string;
       search?: string;
@@ -247,7 +258,18 @@ export class BukuIndukService {
       limit?: number;
     }
   ) {
-    const { tahun_pelajaran_id, angkatan, status, search, huruf, page = 1, limit = 20 } = params;
+    const {
+      tahun_pelajaran_id,
+      kelas_id,
+      jurusan_id,
+      tingkat,
+      angkatan,
+      status,
+      search,
+      huruf,
+      page = 1,
+      limit = 20,
+    } = params;
 
     const skip = (page - 1) * limit;
 
@@ -283,6 +305,7 @@ export class BukuIndukService {
       if (huruf) {
         // Combine huruf filter with search
         where.AND = [
+          ...(where.AND || []),
           { nama_siswa: { startsWith: huruf, mode: 'insensitive' } },
           {
             OR: searchConditions,
@@ -294,8 +317,30 @@ export class BukuIndukService {
       }
     }
 
-    if (tahun_pelajaran_id) {
-      where.SiswaAkademik = { some: { tahun_pelajaran_id } };
+    if (tahun_pelajaran_id || kelas_id) {
+      const directFilter: any = {};
+      if (tahun_pelajaran_id) directFilter.tahun_pelajaran_id = tahun_pelajaran_id;
+      if (kelas_id) directFilter.kelas_id = kelas_id;
+
+      const saFilter: any = {};
+      if (tahun_pelajaran_id) saFilter.tahun_pelajaran_id = tahun_pelajaran_id;
+      if (kelas_id) saFilter.kelas_id = kelas_id;
+
+      const academicCond = {
+        OR: [
+          directFilter,
+          { SiswaAkademik: { some: saFilter } },
+        ],
+      };
+      where.AND = where.AND ? [...where.AND, academicCond] : [academicCond];
+    }
+
+    if (jurusan_id) {
+      where.jurusan_id = jurusan_id;
+    }
+
+    if (tingkat) {
+      where.Kelas = { tingkat: parseInt(tingkat, 10) };
     }
 
     const [data, total] = await Promise.all([

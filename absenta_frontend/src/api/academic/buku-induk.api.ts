@@ -70,6 +70,9 @@ export const bukuIndukApi = {
 
   getKlapper: async (params: {
     tahun_pelajaran_id?: string;
+    kelas_id?: string;
+    jurusan_id?: string;
+    tingkat?: string;
     angkatan?: string;
     status?: string;
     search?: string;

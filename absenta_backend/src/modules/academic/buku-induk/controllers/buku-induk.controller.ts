@@ -21,6 +21,7 @@ export class BukuIndukController {
         kelas_id,
         jurusan_id,
         tingkat,
+        angkatan,
         search,
         status,
         page,
@@ -32,6 +33,7 @@ export class BukuIndukController {
         kelas_id,
         jurusan_id,
         tingkat,
+        angkatan,
         search,
         status,
         page: page ? parseInt(page, 10) : undefined,
@@ -113,11 +115,26 @@ export class BukuIndukController {
         });
       }
 
-      const { tahun_pelajaran_id, search, huruf, page, limit } =
-        request.query || {};
+      const {
+        tahun_pelajaran_id,
+        kelas_id,
+        jurusan_id,
+        tingkat,
+        angkatan,
+        status,
+        search,
+        huruf,
+        page,
+        limit,
+      } = request.query || {};
 
       const result = await bukuIndukService.getKlapperList(tenantId, {
         tahun_pelajaran_id,
+        kelas_id,
+        jurusan_id,
+        tingkat,
+        angkatan,
+        status,
         search,
         huruf,
         page: page ? parseInt(page, 10) : undefined,

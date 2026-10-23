@@ -609,16 +609,16 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
     enableStatusSiswa: true,
     allowAllKelas: true,
     jurusanId,
+    onFilterChange: () => {
+      setPage(1);
+      setKlapperPage(1);
+    },
   });
 
   const effectiveTpId = propTpId || filter.values.tahunPelajaranId;
   const effectiveKelasId = propKelasId || filter.values.kelasId;
   const effectiveStatus = filter.values.statusSiswa;
   const effectiveSearch = filter.debouncedSearchQuery;
-
-  // Reset page when filters change
-  const handleFilterChange = useCallback(() => setPage(1), []);
-  void handleFilterChange; // suppress unused warning — wired via filter values deps
 
   // ── Query: Buku Induk List ──
   const { data: indukData, isLoading: isLoadingInduk } = useQuery({
@@ -648,6 +648,7 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
   const { data: klapperData, isLoading: isLoadingKlapper } = useQuery({
     queryKey: bukuIndukQueryKeys.klapper({
       tpId: effectiveTpId,
+      kelasId: effectiveKelasId,
       huruf: selectedHuruf,
       search: effectiveSearch,
       status: effectiveStatus,
@@ -657,6 +658,7 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
     queryFn: () =>
       bukuIndukApi.getKlapper({
         tahun_pelajaran_id: effectiveTpId || undefined,
+        kelas_id: effectiveKelasId || undefined,
         huruf: selectedHuruf || undefined,
         search: effectiveSearch || undefined,
         status: effectiveStatus || undefined,
