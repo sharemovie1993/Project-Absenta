@@ -238,6 +238,20 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
     return chunkMitraList(mitraList, orientation);
   }, [mitraList, orientation]);
 
+  // Tanggal pengesahan akreditasi: 1 Juli awal tahun pelajaran
+  const tanggalPengesahan = useMemo(() => {
+    const raw = tahunPelajaran || '';
+    const split = raw.split('/')[0];
+    const parsed = parseInt(split?.trim() || String(new Date().getFullYear()), 10);
+    const validYear = isNaN(parsed) ? new Date().getFullYear() : parsed;
+    const d = new Date(validYear, 6, 1);
+    return d.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+  }, [tahunPelajaran]);
+
   if (!isOpen) return null;
 
   const totalSiswa = mitraList.reduce((acc, curr) => acc + (curr.siswa_count || 0), 0);
@@ -523,33 +537,30 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
                   showLogoSekolah={showLogoSekolah}
                 />
 
-                {/* JUDUL DOKUMEN RESMI — lebih ringkas di Landscape */}
-                <div className={cn("text-center space-y-0", orientation === 'landscape' ? 'my-1.5' : 'my-3')}>
+                {/* JUDUL DOKUMEN RESMI — Ringkas & elegan */}
+                <div className={cn("text-center space-y-0", orientation === 'landscape' ? 'my-1.5' : 'my-2.5')}>
                   <h3 className={cn("font-bold uppercase tracking-wider text-black", orientation === 'landscape' ? 'text-xs' : 'text-sm')}>
-                    MATRIKS RUMUSAN TUJUAN PEMBELAJARAN (TP)
-                  </h3>
-                  <h3 className={cn("font-bold uppercase tracking-wider text-black", orientation === 'landscape' ? 'text-xs' : 'text-sm')}>
-                    MATA PELAJARAN PRAKTIK KERJA LAPANGAN (PKL)
+                    MATRIKS RUMUSAN TP — PRAKTIK KERJA LAPANGAN (PKL)
                   </h3>
                   <p className="text-[10px] font-medium text-slate-700">
                     Tahun Pelajaran {tahunPelajaran || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`} • Fase F (Kelas XII)
                   </p>
                 </div>
 
-                {/* METADATA DOKUMEN — ringkas di Landscape */}
+                {/* METADATA DOKUMEN — disederhanakan & selaras dengan PDF */}
                 <div className={cn("p-1.5 bg-slate-50 border border-slate-300 rounded text-[10px]", orientation === 'landscape' ? 'my-1' : 'my-2.5 p-2')}>
                   <table className="w-full border-collapse">
                     <tbody>
                       <tr>
-                        <td className="w-44 font-semibold text-slate-700 py-0.5">Program / Konsentrasi Keahlian</td>
+                        <td className="w-36 font-semibold text-slate-700 py-0.5">Program Keahlian</td>
                         <td className="font-bold text-slate-900 py-0.5">: {jurusanNama}</td>
-                        <td className="w-40 font-semibold text-slate-700 py-0.5">Total Mitra Industri (DUDI)</td>
-                        <td className="font-bold text-slate-900 py-0.5">: {totalMitra} Perusahaan ({filledMitra} Terisi TP)</td>
+                        <td className="w-36 font-semibold text-slate-700 py-0.5">Total DUDI</td>
+                        <td className="font-bold text-slate-900 py-0.5">: {totalMitra} DUDI ({filledMitra} Terisi TP)</td>
                       </tr>
                       <tr>
-                        <td className="font-semibold text-slate-700 py-0.5">Mata Pelajaran / Elemen</td>
-                        <td className="text-slate-900 py-0.5">: Praktik Kerja Lapangan (Teknis Kejuruan & Budaya Kerja)</td>
-                        <td className="font-semibold text-slate-700 py-0.5">Total Peserta PKL</td>
+                        <td className="font-semibold text-slate-700 py-0.5">Mata Pelajaran</td>
+                        <td className="font-bold text-slate-900 py-0.5">: Praktik Kerja Lapangan (PKL)</td>
+                        <td className="font-semibold text-slate-700 py-0.5">Total Siswa PKL</td>
                         <td className="font-bold text-slate-900 py-0.5">: {totalSiswa} Siswa</td>
                       </tr>
                     </tbody>
@@ -643,7 +654,7 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
                   {/* Baris Tanggal di Kanan (Tepat di atas kolom Kaprog) */}
                   <div className="flex justify-end mb-1 text-[10px] text-black">
                     <div className="w-1/2 text-center">
-                      {(sekolahData as any)?.kota || 'Purwakarta'}, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      {(sekolahData as any)?.kota || 'Purwakarta'}, {tanggalPengesahan}
                     </div>
                   </div>
 
