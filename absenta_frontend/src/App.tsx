@@ -212,6 +212,7 @@ const SuratKeluarPage = lazy(() => import('./pages/correspondence/SuratKeluarPag
 const SuratKeteranganPage = lazy(() => import('./pages/correspondence/SuratKeteranganPage'));
 const MutasiSiswaPage = lazy(() => import('./pages/correspondence/MutasiSiswaPage'));
 const BastIjazahPage = lazy(() => import('./pages/correspondence/BastIjazahPage'));
+const DknPage = lazy(() => import('./pages/correspondence/DknPage'));
 const BukuAgendaTemplatePage = lazy(() => import('./pages/correspondence/BukuAgendaTemplatePage'));
 const PiketPage = lazy(() => import('./pages/kesiswaan/PiketPage'));
 const PiketSecurityStandalonePage = lazy(() => import('./pages/kesiswaan/PiketSecurityStandalonePage'));
@@ -704,6 +705,11 @@ function App() {
                     <Route path="/correspondence/bast-ijazah" element={
                       <ProtectedRoute requiredCapability={['academic.transitions.manage', 'academic.students.view.list', 'correspondence.outbox.view']}>
                         <BastIjazahPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/correspondence/dkn" element={
+                      <ProtectedRoute requiredCapability={['academic.transitions.manage', 'academic.students.view.list', 'correspondence.outbox.view']}>
+                        <DknPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/correspondence/templates" element={

@@ -435,7 +435,8 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/academic/buku-induk',
       '/correspondence/surat-keterangan',
       '/correspondence/mutasi',
-      '/correspondence/bast-ijazah'
+      '/correspondence/bast-ijazah',
+      '/correspondence/dkn'
     ]
   },
   {
@@ -453,7 +454,8 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     crossModulePaths: [
       '/correspondence/surat-keterangan',
       '/correspondence/mutasi',
-      '/correspondence/bast-ijazah'
+      '/correspondence/bast-ijazah',
+      '/correspondence/dkn'
     ]
   },
   {
@@ -513,7 +515,8 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/academic/buku-induk',
       '/correspondence/surat-keterangan',
       '/correspondence/mutasi',
-      '/correspondence/bast-ijazah'
+      '/correspondence/bast-ijazah',
+      '/correspondence/dkn'
     ]
   },
   {
