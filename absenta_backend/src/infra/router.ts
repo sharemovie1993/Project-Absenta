@@ -637,6 +637,9 @@ export async function registerRoutes(fastify: any, prisma: any) {
       const { mutasiRoutes } = await import('../modules/correspondence/routes/mutasi.routes');
       await fastify.register(mutasiRoutes, { prefix: '/correspondence/mutasi' });
 
+      const { bastIjazahRoutes } = await import('../modules/correspondence/routes/bast-ijazah.routes');
+      await fastify.register(bastIjazahRoutes, { prefix: '/correspondence/clearance-bast' });
+
       const { bpbkRoutes } = await import('../modules/bpbk/routes/bpbk.routes');
       await fastify.register(bpbkRoutes, { prefix: '/bpbk' });
 

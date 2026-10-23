@@ -264,6 +264,7 @@ export const filterNavByWorkspace = (
       '/academic/buku-induk',
       '/correspondence/surat-keterangan',
       '/correspondence/mutasi',
+      '/correspondence/bast-ijazah',
       '/users',
       '/settings',
       '/academic/tahun-pelajaran',

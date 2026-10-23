@@ -434,7 +434,8 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/academic/struktur-organisasi',
       '/academic/buku-induk',
       '/correspondence/surat-keterangan',
-      '/correspondence/mutasi'
+      '/correspondence/mutasi',
+      '/correspondence/bast-ijazah'
     ]
   },
   {
@@ -451,7 +452,8 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     targetGroupKeywords: ['PERSURATAN'],
     crossModulePaths: [
       '/correspondence/surat-keterangan',
-      '/correspondence/mutasi'
+      '/correspondence/mutasi',
+      '/correspondence/bast-ijazah'
     ]
   },
   {
@@ -510,7 +512,8 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/kurikulum/rekap-kbm',
       '/academic/buku-induk',
       '/correspondence/surat-keterangan',
-      '/correspondence/mutasi'
+      '/correspondence/mutasi',
+      '/correspondence/bast-ijazah'
     ]
   },
   {
