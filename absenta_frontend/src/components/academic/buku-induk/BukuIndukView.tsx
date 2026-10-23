@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Eye, BookOpen, BookMarked, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
+import { Eye, BookOpen, BookMarked, ChevronLeft, ChevronRight, Printer, X, User, GraduationCap, Award, Briefcase, Heart, MapPin, Phone, Calendar } from 'lucide-react';
 import { BukuIndukPrintModal } from './BukuIndukPrintModal';
 import { KlapperPrintModal } from './KlapperPrintModal';
 
@@ -337,6 +337,244 @@ function KlapperTable({ data, isLoading, selectedHuruf, onDetail }: KlapperTable
   );
 }
 
+// ─── Detail Panel 360° ───────────────────────────────────────────────────────
+
+interface DetailPanel360Props {
+  siswaId: string;
+  onClose: () => void;
+  onPrint: () => void;
+}
+
+function InfoRow({ label, value }: { label: string; value?: string | number | null }) {
+  return (
+    <div className="flex gap-2 py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0">
+      <span className="text-[11px] text-slate-500 dark:text-slate-400 min-w-[130px] shrink-0">{label}</span>
+      <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-200 break-words">
+        {value !== undefined && value !== null && value !== '' ? String(value) : <span className="text-slate-300 dark:text-slate-600 font-normal italic">—</span>}
+      </span>
+    </div>
+  );
+}
+
+function SectionTitle({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
+  return (
+    <div className="flex items-center gap-2 mt-5 mb-2 first:mt-0">
+      <Icon size={13} className="text-indigo-500 shrink-0" />
+      <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">{label}</p>
+    </div>
+  );
+}
+
+function DetailPanel360({ siswaId, onClose, onPrint }: DetailPanel360Props) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: bukuIndukQueryKeys.detail(siswaId),
+    queryFn: () => bukuIndukApi.getDetail(siswaId),
+    enabled: Boolean(siswaId),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const siswa = data?.data;
+  const akademikList: any[] = siswa?.SiswaAkademik || [];
+
+  const formatDate = (val?: string | null) => {
+    if (!val) return null;
+    try { return new Date(val).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }); }
+    catch { return val; }
+  };
+
+  const genderLabel = (g?: string | null) => {
+    if (!g) return null;
+    return g.toUpperCase().startsWith('L') ? 'Laki-laki' : 'Perempuan';
+  };
+
+  return (
+    <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-white dark:bg-slate-900 shadow-2xl border-l border-slate-200 dark:border-slate-800 flex flex-col animate-in slide-in-from-right duration-200">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
+        <div className="min-w-0">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Detail Siswa</p>
+          <p className="text-sm font-black text-slate-800 dark:text-slate-200 truncate">
+            {siswa?.nama_siswa || 'Profil 360°'}
+          </p>
+        </div>
+        <div className="flex items-center gap-1 shrink-0 ml-2">
+          {siswa && (
+            <button
+              onClick={onPrint}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors"
+            >
+              <Printer size={13} />
+              Cetak
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 overflow-y-auto px-5 py-4">
+        {isLoading && (
+          <div className="flex flex-col items-center justify-center h-48 gap-3">
+            <div className="animate-spin h-8 w-8 rounded-full border-2 border-indigo-600 border-t-transparent" />
+            <p className="text-xs text-slate-400">Memuat profil siswa...</p>
+          </div>
+        )}
+
+        {isError && (
+          <div className="flex flex-col items-center justify-center h-48 text-red-400 gap-2">
+            <p className="text-sm font-bold">Gagal memuat data</p>
+            <p className="text-xs">Coba tutup dan buka kembali</p>
+          </div>
+        )}
+
+        {siswa && (
+          <div>
+            {/* Foto + identitas singkat */}
+            <div className="flex items-center gap-3 mb-4 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
+              {siswa.foto ? (
+                <img src={siswa.foto} alt={siswa.nama_siswa} className="w-14 h-14 rounded-full object-cover ring-2 ring-white dark:ring-slate-700 shrink-0" />
+              ) : (
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-xl font-black shrink-0">
+                  {(siswa.nama_siswa || '?')[0].toUpperCase()}
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="font-black text-slate-900 dark:text-white text-sm truncate">{siswa.nama_siswa}</p>
+                <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400">{siswa.nis} · {siswa.nisn || 'NISN -'}</p>
+                <StatusBadge status={siswa.status} />
+              </div>
+            </div>
+
+            {/* Identitas Pribadi */}
+            <SectionTitle icon={User} label="Identitas Pribadi" />
+            <InfoRow label="Tempat, Tgl Lahir" value={[siswa.tempat_lahir, formatDate(siswa.tanggal_lahir)].filter(Boolean).join(', ')} />
+            <InfoRow label="Jenis Kelamin" value={genderLabel(siswa.gender || siswa.jenis_kelamin)} />
+            <InfoRow label="Agama" value={siswa.agama} />
+            <InfoRow label="Kewarganegaraan" value={siswa.kewarganegaraan} />
+            <InfoRow label="Anak ke-" value={siswa.anak_ke} />
+            <InfoRow label="No. Akta Lahir" value={siswa.no_akta_lahir} />
+            <InfoRow label="No. Ijazah SMP" value={siswa.no_ijazah_smp} />
+            <InfoRow label="Asal Sekolah" value={siswa.sekolah_asal} />
+
+            {/* Kontak & Alamat */}
+            <SectionTitle icon={MapPin} label="Alamat & Kontak" />
+            <InfoRow label="Alamat" value={[siswa.alamat_jalan || siswa.alamat, siswa.rt ? `RT ${siswa.rt}` : '', siswa.rw ? `RW ${siswa.rw}` : ''].filter(Boolean).join(' ')} />
+            <InfoRow label="Kelurahan/Kec" value={[siswa.kelurahan, siswa.kecamatan].filter(Boolean).join(', ')} />
+            <InfoRow label="Kota/Kab" value={[siswa.kota || siswa.kabupaten, siswa.kode_pos].filter(Boolean).join(' ')} />
+            <InfoRow label="No. HP" value={siswa.no_hp} />
+            <InfoRow label="Email" value={siswa.email} />
+
+            {/* Data Fisik */}
+            <SectionTitle icon={Heart} label="Data Fisik" />
+            <InfoRow label="Tinggi Badan" value={siswa.tinggi_badan ? `${siswa.tinggi_badan} cm` : null} />
+            <InfoRow label="Berat Badan" value={siswa.berat_badan ? `${siswa.berat_badan} kg` : null} />
+            <InfoRow label="Golongan Darah" value={siswa.golongan_darah} />
+
+            {/* Data Masuk */}
+            <SectionTitle icon={Calendar} label="Data Masuk / Keluar" />
+            <InfoRow label="Tanggal Masuk" value={formatDate(siswa.tanggal_masuk)} />
+            <InfoRow label="Kelas Awal" value={akademikList[0]?.kelas?.nama_kelas || akademikList[0]?.Kelas?.nama_kelas} />
+            <InfoRow label="Tanggal Keluar" value={formatDate(siswa.tanggal_keluar)} />
+            <InfoRow label="Alasan Keluar" value={siswa.alasan_keluar} />
+
+            {/* Orang Tua */}
+            {(siswa.OrangTuaSiswa || []).length > 0 && (
+              <>
+                <SectionTitle icon={User} label="Orang Tua / Wali" />
+                {(siswa.OrangTuaSiswa as any[]).map((ots: any, i: number) => {
+                  const ot = ots?.OrangTua || ots;
+                  return (
+                    <div key={i} className="mb-2 pl-2 border-l-2 border-indigo-200 dark:border-indigo-800">
+                      <InfoRow label={`Nama (${ot?.hubungan || 'Wali'})`} value={ot?.nama} />
+                      <InfoRow label="No. HP" value={ot?.no_hp} />
+                      <InfoRow label="Pekerjaan" value={ot?.pekerjaan} />
+                    </div>
+                  );
+                })}
+              </>
+            )}
+
+            {/* Riwayat Kelas */}
+            {akademikList.length > 0 && (
+              <>
+                <SectionTitle icon={GraduationCap} label="Riwayat Kelas" />
+                <div className="space-y-1">
+                  {akademikList.map((ak: any, i: number) => (
+                    <div key={i} className="flex items-center gap-2 py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 min-w-[110px] shrink-0">
+                        {ak?.tahunPelajaran?.tahun || ak?.TahunPelajaran?.tahun || '-'} · {ak?.semester?.nama_semester || ak?.Semester?.nama_semester || '-'}
+                      </span>
+                      <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-200">
+                        {ak?.kelas?.nama_kelas || ak?.Kelas?.nama_kelas || '-'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* PKL */}
+            {(() => {
+              const pklList = Array.isArray(siswa.SiswaPkl) ? siswa.SiswaPkl
+                : siswa.SiswaPkl ? [siswa.SiswaPkl]
+                : akademikList.flatMap((ak: any) => Array.isArray(ak?.SiswaPkl) ? ak.SiswaPkl : ak?.SiswaPkl ? [ak.SiswaPkl] : []);
+              if (!pklList.length) return null;
+              return (
+                <>
+                  <SectionTitle icon={Briefcase} label="PKL" />
+                  {pklList.map((pkl: any, i: number) => (
+                    <div key={i} className="mb-2">
+                      <InfoRow label="Nama DUDI" value={pkl?.nama_mitra || pkl?.nama_dudi} />
+                      <InfoRow label="Bidang" value={pkl?.bidang_keahlian} />
+                      <InfoRow label="Nilai PKL" value={pkl?.nilai_pkl} />
+                    </div>
+                  ))}
+                </>
+              );
+            })()}
+
+            {/* Kelulusan */}
+            {(() => {
+              const kel = Array.isArray(siswa.KelulusanSiswa) ? siswa.KelulusanSiswa[0]
+                : siswa.KelulusanSiswa || akademikList.flatMap((ak: any) => ak?.KelulusanSiswa || [])[0];
+              if (!kel) return null;
+              return (
+                <>
+                  <SectionTitle icon={Award} label="Kelulusan / SKL" />
+                  <InfoRow label="Nomor SKL" value={kel.nomor_skl} />
+                  <InfoRow label="Status" value={kel.status_kelulusan} />
+                  <InfoRow label="Tanggal Lulus" value={formatDate(kel.tanggal_lulus)} />
+                </>
+              );
+            })()}
+
+            {/* Tracer Study */}
+            {(() => {
+              const tr = Array.isArray(siswa.HubinTracerStudy) ? siswa.HubinTracerStudy[0] : siswa.HubinTracerStudy;
+              if (!tr) return null;
+              return (
+                <>
+                  <SectionTitle icon={Phone} label="Tracer Study / Alumni" />
+                  <InfoRow label="Status Alumni" value={tr.status_alumni} />
+                  <InfoRow label="Instansi" value={tr.nama_instansi} />
+                  <InfoRow label="Jurusan/Divisi" value={tr.jurusan || tr.divisi} />
+                </>
+              );
+            })()}
+
+            <div className="h-8" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main View ────────────────────────────────────────────────────────────────
 
 export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo(({
@@ -505,27 +743,13 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
         </div>
       )}
 
-      {/* Detail slide-in panel (placeholder state) */}
+      {/* Detail Panel 360° */}
       {selectedSiswaId && (
-        <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-white dark:bg-slate-900 shadow-2xl border-l border-slate-200 dark:border-slate-800 flex flex-col">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
-            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Detail Siswa</p>
-              <p className="text-sm font-black text-slate-800 dark:text-slate-200">Profil 360°</p>
-            </div>
-            <button
-              onClick={() => setSelectedSiswaId(null)}
-              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
-            >
-              ✕
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto p-5 flex flex-col items-center justify-center text-slate-400 dark:text-slate-600">
-            <BookOpen size={48} className="mb-3 opacity-30" />
-            <p className="text-sm font-bold text-center">Profil lengkap siswa akan tampil di sini</p>
-            <p className="text-xs mt-1 text-center opacity-70">ID: {selectedSiswaId}</p>
-          </div>
-        </div>
+        <DetailPanel360
+          siswaId={selectedSiswaId}
+          onClose={() => setSelectedSiswaId(null)}
+          onPrint={() => { setPrintSiswaId(selectedSiswaId); }}
+        />
       )}
 
       {/* Table */}
