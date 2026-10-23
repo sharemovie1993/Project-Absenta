@@ -432,7 +432,8 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/sarpras/inventory',
       '/academic/ppdb-mapping',
       '/academic/struktur-organisasi',
-      '/academic/buku-induk'
+      '/academic/buku-induk',
+      '/correspondence/surat-keterangan'
     ]
   },
   {
@@ -446,7 +447,10 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     desc: 'Arsip & Surat Menyurat',
     requiredPositionCode: 'TU_PERSURATAN',
     defaultPath: '/correspondence/dashboard',
-    targetGroupKeywords: ['PERSURATAN']
+    targetGroupKeywords: ['PERSURATAN'],
+    crossModulePaths: [
+      '/correspondence/surat-keterangan'
+    ]
   },
   {
     id: 'TU_KEUANGAN_WORKSPACE',
@@ -502,7 +506,8 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/kurikulum/jadwal',
       '/kurikulum/jadwal-piket',
       '/kurikulum/rekap-kbm',
-      '/academic/buku-induk'
+      '/academic/buku-induk',
+      '/correspondence/surat-keterangan'
     ]
   },
   {

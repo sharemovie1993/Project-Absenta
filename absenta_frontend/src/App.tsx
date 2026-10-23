@@ -208,6 +208,7 @@ const PembiasaanDhuhaPage = lazy(() => import('./pages/kesiswaan/PembiasaanDhuha
 
 const SuratMasukPage = lazy(() => import('./pages/correspondence/SuratMasukPage'));
 const SuratKeluarPage = lazy(() => import('./pages/correspondence/SuratKeluarPage'));
+const SuratKeteranganPage = lazy(() => import('./pages/correspondence/SuratKeteranganPage'));
 const BukuAgendaTemplatePage = lazy(() => import('./pages/correspondence/BukuAgendaTemplatePage'));
 const PiketPage = lazy(() => import('./pages/kesiswaan/PiketPage'));
 const PiketSecurityStandalonePage = lazy(() => import('./pages/kesiswaan/PiketSecurityStandalonePage'));
@@ -683,6 +684,11 @@ function App() {
                     <Route path="/correspondence/surat-keluar" element={
                       <ProtectedRoute requiredCapability="correspondence.outbox.view">
                         <SuratKeluarPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/correspondence/surat-keterangan" element={
+                      <ProtectedRoute requiredCapability={['correspondence.outbox.view', 'academic.students.view.list']}>
+                        <SuratKeteranganPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/correspondence/templates" element={
