@@ -1485,7 +1485,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                     )}
 
                     {/* Bulk actions — tampil hanya saat ada siswa dipilih */}
-                    {selectedIds.size > 0 && canManage && (
+                    {selectedIds.size > 0 && canManage && !readOnly && (
                       <>
                         <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
                         <Button

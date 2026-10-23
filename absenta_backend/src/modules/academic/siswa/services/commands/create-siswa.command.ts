@@ -64,10 +64,23 @@ export async function createSiswaCommand(
     }
   }
 
-  if (validatedInput.tahun_pelajaran_id) {
+  let resolvedTpId = validatedInput.tahun_pelajaran_id;
+  let resolvedSemId = validatedInput.semester_id;
+
+  // Strict mode: Fallback strictly to server active academic period SSOT if not provided
+  if (!resolvedTpId || !resolvedSemId) {
+    const [activeTp, activeSem] = await Promise.all([
+      !resolvedTpId ? siswaDb.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } }) : null,
+      !resolvedSemId ? siswaDb.semester.findFirst({ where: { tenant_id: tenantId, is_active: true } }) : null,
+    ]);
+    if (!resolvedTpId && activeTp) resolvedTpId = activeTp.id;
+    if (!resolvedSemId && activeSem) resolvedSemId = activeSem.id;
+  }
+
+  if (resolvedTpId) {
     const tahunPelajaran = await siswaDb.tahunPelajaran.findFirst({
       where: {
-        id: validatedInput.tahun_pelajaran_id,
+        id: resolvedTpId,
         tenant_id: tenantId,
       },
     });
@@ -77,10 +90,10 @@ export async function createSiswaCommand(
     }
   }
 
-  if (validatedInput.semester_id) {
+  if (resolvedSemId) {
     const semester = await siswaDb.semester.findFirst({
       where: {
-        id: validatedInput.semester_id,
+        id: resolvedSemId,
         tenant_id: tenantId,
       },
     });
@@ -347,8 +360,8 @@ export async function createSiswaCommand(
       no_kip: input.no_kip || null,
       kelas_id: input.kelas_id || null,
       jurusan_id: input.jurusan_id || null,
-      tahun_pelajaran_id: input.tahun_pelajaran_id || null,
-      semester_id: input.semester_id || null,
+      tahun_pelajaran_id: resolvedTpId || null,
+      semester_id: resolvedSemId || null,
       tanggal_masuk: tanggalMasukToUse,
       tanggal_keluar: tanggalKeluarToUse,
       alasan_keluar: input.alasan_keluar || null,

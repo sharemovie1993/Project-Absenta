@@ -19,6 +19,7 @@ interface AcademicSectionProps {
     tahunPelajaranOptions: DropdownOption[];
     semesterOptions: DropdownOption[];
     loadingDropdowns: boolean;
+    mode?: 'create' | 'edit' | 'view';
 }
 
 const STATUS_SISWA_OPTIONS = [
@@ -38,7 +39,8 @@ export const AcademicSection: React.FC<AcademicSectionProps> = React.memo(({
     kelasOptions,
     tahunPelajaranOptions,
     semesterOptions,
-    loadingDropdowns
+    loadingDropdowns,
+    mode = 'create'
 }) => {
     const { user, can, isAdmin, isSiswa } = useCapabilities();
     const isAcademicRestricted = isSiswa || (!can('academic.students.manage') && !isAdmin);
@@ -118,7 +120,7 @@ export const AcademicSection: React.FC<AcademicSectionProps> = React.memo(({
                             onValueChange={field.onChange}
                             options={tahunPelajaranOptions}
                             placeholder={loadingDropdowns ? 'Memuat...' : 'Pilih Tahun'}
-                            disabled={isViewMode || loadingDropdowns || isAcademicRestricted}
+                            disabled={isViewMode || loadingDropdowns || isAcademicRestricted || mode === 'create'}
                             triggerClassName={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.tahun_pelajaran_id ? 'border-red-500' : ''}`}
                         />
                     )}
@@ -144,7 +146,7 @@ export const AcademicSection: React.FC<AcademicSectionProps> = React.memo(({
                             onValueChange={field.onChange}
                             options={semesterOptions}
                             placeholder="Pilih Semester"
-                            disabled={isViewMode || !watch('tahun_pelajaran_id') || isAcademicRestricted}
+                            disabled={isViewMode || !watch('tahun_pelajaran_id') || isAcademicRestricted || mode === 'create'}
                             triggerClassName={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.semester_id ? 'border-red-500' : ''}`}
                         />
                     )}

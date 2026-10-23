@@ -24,6 +24,8 @@ import {
   getKelasForDropdown,
   getTahunPelajaranForDropdown,
   getSemesterByTahunPelajaranForDropdown,
+  getActiveTahunPelajaran,
+  getActiveSemester,
   type DropdownOption
 } from '../../../api/dropdown.api';
 import { siswaSchema, type SiswaFormValues } from '../../../schemas/academic/siswa.schema';
@@ -263,6 +265,31 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
     staleTime: 10 * 60 * 1000,
   });
 
+  // Active Academic SSOT Queries (Strict Dapur Harian)
+  const { data: activeYearData } = useQuery({
+    queryKey: ['active-tahun-pelajaran'],
+    queryFn: () => getActiveTahunPelajaran().catch(() => null),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const { data: activeSemesterData } = useQuery({
+    queryKey: ['active-semester'],
+    queryFn: () => getActiveSemester().catch(() => null),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  // Auto-lock and prefill create mode strictly to active academic period
+  useEffect(() => {
+    if (mode === 'create') {
+      if (activeYearData?.id && !watch('tahun_pelajaran_id')) {
+        setValue('tahun_pelajaran_id', activeYearData.id);
+      }
+      if (activeSemesterData?.id && !watch('semester_id')) {
+        setValue('semester_id', activeSemesterData.id);
+      }
+    }
+  }, [mode, activeYearData, activeSemesterData, setValue, watch]);
+
   const kelasOptions = kelasData || [];
   const tahunPelajaranOptions = tahunData || [];
   const semesterOptions = semesterData || [];
@@ -484,6 +511,7 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
               tahunPelajaranOptions={tahunPelajaranOptions}
               semesterOptions={semesterOptions}
               loadingDropdowns={loadingDropdowns}
+              mode={mode}
             />
           </TabsContent>
 

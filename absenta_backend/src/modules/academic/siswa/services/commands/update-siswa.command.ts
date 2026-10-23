@@ -364,14 +364,35 @@ export async function updateSiswaCommand(
     }
   }
 
-  if (currentSiswa && currentSiswa.kelas_id && currentSiswa.tahun_pelajaran_id && currentSiswa.semester_id) {
+  // Strict mode: Anchor SiswaAkademik operational sync strictly to server active academic period
+  const [activeTp, activeSem] = await Promise.all([
+    siswaDb.tahunPelajaran.findFirst({
+      where: {
+        ...(tenantId ? { tenant_id: tenantId } : {}),
+        is_active: true,
+      },
+      select: { id: true },
+    }),
+    siswaDb.semester.findFirst({
+      where: {
+        ...(tenantId ? { tenant_id: tenantId } : {}),
+        is_active: true,
+      },
+      select: { id: true },
+    }),
+  ]);
+
+  const targetTpId = activeTp?.id || currentSiswa?.tahun_pelajaran_id;
+  const targetSemId = activeSem?.id || currentSiswa?.semester_id;
+
+  if (currentSiswa && currentSiswa.kelas_id && targetTpId && targetSemId) {
     try {
       await siswaDb.siswaAkademik.upsert({
         where: {
           siswa_id_tahun_pelajaran_id_semester_id: {
             siswa_id: siswaId,
-            tahun_pelajaran_id: currentSiswa.tahun_pelajaran_id,
-            semester_id: currentSiswa.semester_id,
+            tahun_pelajaran_id: targetTpId,
+            semester_id: targetSemId,
           },
         },
         update: {
@@ -381,11 +402,25 @@ export async function updateSiswaCommand(
         create: {
           siswa_id: siswaId,
           kelas_id: currentSiswa.kelas_id,
-          tahun_pelajaran_id: currentSiswa.tahun_pelajaran_id,
-          semester_id: currentSiswa.semester_id,
+          tahun_pelajaran_id: targetTpId,
+          semester_id: targetSemId,
           status: (currentSiswa.status || 'AKTIF') as any,
         },
       });
+
+      // Keep Siswa table operational pointer aligned with active academic context
+      if (
+        currentSiswa.tahun_pelajaran_id !== targetTpId ||
+        currentSiswa.semester_id !== targetSemId
+      ) {
+        await siswaDb.siswa.update({
+          where: { id: siswaId },
+          data: {
+            tahun_pelajaran_id: targetTpId,
+            semester_id: targetSemId,
+          },
+        });
+      }
     } catch (e: any) {
       console.error('[AUTO-SYNC] Failed to sync SiswaAkademik upon update:', e.message || e);
     }

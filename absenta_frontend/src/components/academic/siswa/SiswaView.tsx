@@ -171,6 +171,13 @@ export const SiswaView: React.FC<UniversalSiswaViewProps> = React.memo(({
     staleTime: 10 * 60 * 1000,
   });
   const activeYearId = propTahunPelajaranId || activeYearData?.id;
+
+  // Strict Mode: Filter UI HANYA untuk membaca data
+  const isViewingHistorical = Boolean(activeYearData?.id && propTahunPelajaranId && propTahunPelajaranId !== activeYearData?.id);
+  const effectiveReadOnly = readOnly || isViewingHistorical;
+  const effectiveCanCreate = canCreate && !isViewingHistorical;
+  const effectiveCanImport = canImport && !isViewingHistorical;
+  const effectiveCanEdit = canEdit && !isViewingHistorical;
   const activeSemesterId = propSemesterId || activeSemesterData?.id;
 
   // ── Scoped Stats Queries ──────────────────────────────────────────────────
