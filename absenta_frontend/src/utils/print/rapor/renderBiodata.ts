@@ -73,7 +73,7 @@ export const renderOfficialBiodataPage = (
     ['9.', 'Nomor Telepon Rumah', ':', siswa.no_telepon || '-'],
     ['10.', 'Sekolah Asal', ':', siswa.sekolah_asal || '-'],
     ['11.', 'Diterima di sekolah ini', '', ''],
-    ['', 'Di kelas', ':', siswa.kelas || '-'],
+    ['', 'Di kelas', ':', siswa.kelas_awal || siswa.kelas || '-'],
     ['', 'Pada tanggal', ':', tglMasuk],
     ['12.', 'Nama Orang Tua', '', ''],
     ['', 'a. Ayah', ':', siswa.nama_ayah || '-'],

@@ -69,7 +69,7 @@ export class RaporService {
       semester_id: string;
     }
   ) {
-    // 1. Ambil data siswa & kelas
+    // 1. Ambil data siswa & kelas aktif saat ini
     const siswa = await prisma.siswa.findFirst({
       where: { id: filter.siswa_id, tenant_id: tenantId },
       include: {
@@ -80,12 +80,30 @@ export class RaporService {
     if (!siswa) {
       throw new Error('Siswa tidak ditemukan');
     }
-    if (!siswa.Kelas) {
-      throw new Error('Siswa belum memiliki kelas');
-    }
 
-    // 2. Ambil catatan, kehadiran & kokurikuler rapor, pengaturan rapor, serta data semester & TP
-    const [raporSummary, kokurikulerCfg, raporSettings, semRecord, tpRecord] = await Promise.all([
+    // 2. Ambil snapshot SiswaAkademik (SSOT), catatan rapor, kehadiran & kokurikuler rapor, pengaturan rapor, serta data semester & TP
+    const [saSnapshot, saAwal, raporSummary, kokurikulerCfg, raporSettings, semRecord, tpRecord] = await Promise.all([
+      prisma.siswaAkademik.findFirst({
+        where: {
+          siswa_id: filter.siswa_id,
+          tahun_pelajaran_id: filter.tahun_pelajaran_id,
+          semester_id: filter.semester_id,
+        },
+        include: {
+          kelas: { include: { Jurusan: true } },
+        },
+      }),
+      prisma.siswaAkademik.findFirst({
+        where: {
+          siswa_id: filter.siswa_id,
+        },
+        include: {
+          kelas: { select: { nama_kelas: true } },
+        },
+        orderBy: {
+          created_at: 'asc',
+        },
+      }),
       prisma.raporSiswa.findFirst({
         where: {
           tenant_id: tenantId,
@@ -112,14 +130,20 @@ export class RaporService {
       }),
     ]);
 
-    // Resolusi Kelas Historis: Jika ada catatan rapor di periode ini, gunakan kelas tersebut
-    let effectiveKelas = siswa.Kelas;
-    if (raporSummary?.kelas_id) {
+    // Resolusi Kelas Historis: Prioritaskan snapshot SiswaAkademik periode ini (SSOT)
+    let effectiveKelas: any = (saSnapshot as any)?.kelas || null;
+    if (!effectiveKelas && raporSummary?.kelas_id) {
       const histKelas = await prisma.kelas.findFirst({
         where: { id: raporSummary.kelas_id, tenant_id: tenantId },
         include: { Jurusan: true },
       });
       if (histKelas) effectiveKelas = histKelas;
+    }
+    if (!effectiveKelas) {
+      effectiveKelas = siswa.Kelas;
+    }
+    if (!effectiveKelas) {
+      throw new Error('Data rombongan belajar siswa tidak ditemukan untuk semester ini');
     }
 
     // 3. Ambil Struktur Kurikulum untuk tingkat & jurusan siswa
@@ -189,7 +213,7 @@ export class RaporService {
     const listKkm = await prisma.kkmp.findMany({
       where: {
         tenant_id: tenantId,
-        tingkat: siswa.Kelas.tingkat,
+        tingkat: effectiveKelas.tingkat,
       },
     });
 
@@ -518,6 +542,7 @@ export class RaporService {
         bidang_keahlian: (effectiveKelas as any)?.Jurusan?.bidang_keahlian || (siswa as any).bidang_keahlian || null,
         program_keahlian: (effectiveKelas as any)?.Jurusan?.program_keahlian || (siswa as any).program_keahlian || null,
         konsentrasi_keahlian: (effectiveKelas as any)?.Jurusan?.nama_jurusan || (siswa as any).konsentrasi_keahlian || null,
+        kelas_awal: (saAwal as any)?.kelas?.nama_kelas || effectiveKelas.nama_kelas || null,
       },
       absensi: {
         sakit: raporSummary?.sakit || 0,
@@ -1403,15 +1428,23 @@ export class RaporService {
           throw new Error('Siswa tidak ditemukan atau akses lintas tenant ditolak');
         }
 
-        // Fetch all historical grades for this student across all semesters
+        // Fetch all historical grades for this student across all semesters with SiswaAkademik context
         const listNilai = await prisma.nilaiSiswa.findMany({
           where: { tenant_id: tenantId, siswa_id: siswaId },
           include: {
             Mapel: true,
             TahunPelajaran: true,
             Semester: true,
+            SiswaAkademik: {
+              include: {
+                kelas: true,
+              },
+            },
           },
-          orderBy: [{ Semester: { nama_semester: 'asc' } }],
+          orderBy: [
+            { TahunPelajaran: { tahun: 'asc' } },
+            { Semester: { nama_semester: 'asc' } },
+          ],
         });
 
         // Group by Mapel across all semesters
