@@ -468,10 +468,10 @@ export const PrintHeaderPure: React.FC<PrintHeaderProps> = ({
                   lineHeight: '1.2',
                   fontFamily: line.fontFamily || "'Book Antiqua', 'Bookman Old Style', serif",
                   fontSize: line.fontSize
-                    ? `${isLandscape ? line.fontSize * 1.15 : line.fontSize}pt`
+                    ? `${line.fontSize}pt`
                     : isLast
-                    ? '13pt'
-                    : '11pt',
+                    ? isLandscape ? '12pt' : '13pt'
+                    : isLandscape ? '10pt' : '11pt',
                   fontWeight: line.bold !== false ? 'bold' : 'normal',
                   fontStyle: line.italic ? 'italic' : 'normal',
                   textDecoration: line.underline ? 'underline' : 'none',

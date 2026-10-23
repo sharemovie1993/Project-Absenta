@@ -65,11 +65,13 @@ function chunkMitraList(
   }
 
   const isPortrait = orientation === 'portrait';
-  // Batas item per lembar fisik A4: Landscape memiliki tinggi lebih pendek (794px vs 1123px)
-  const singlePageMax = isPortrait ? 5 : 2;
-  const firstPageMax = isPortrait ? 7 : 4;
-  const normalPageMax = isPortrait ? 10 : 5;
-  const lastPageMaxWithSig = isPortrait ? 6 : 3;
+  // Batas item per lembar fisik A4.
+  // Landscape = 794px tinggi (sangat pendek), maka kapasitas baris sangat terbatas.
+  // Portrait  = 1123px tinggi, lebih lega vertikal.
+  const singlePageMax   = isPortrait ? 5  : 2;
+  const firstPageMax    = isPortrait ? 7  : 3;   // Landscape page-1: ada kop surat besar + metadata
+  const normalPageMax   = isPortrait ? 10 : 5;
+  const lastPageMaxWithSig = isPortrait ? 6 : 3; // Landscape last: ada blok TTD 3-tier
 
   if (items.length <= singlePageMax) {
     return [
@@ -248,7 +250,16 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
 
   const handleDownloadPdf = async () => {
     setIsExportingPdf(true);
+    // Cari elemen canvas area yang memiliki CSS zoom responsif untuk dinetralkan selama export
+    const canvasArea = document.getElementById('print-desk-canvas-area');
+    const originalZoom = canvasArea ? canvasArea.style.zoom : '';
+
     try {
+      // 1. Matikan sementara CSS zoom ke 1 agar getBoundingClientRect mengukur teks secara presisi (mencegah teks bertumpuk di Landscape)
+      if (canvasArea) {
+        canvasArea.style.zoom = '1';
+      }
+
       const sheetElements = printSheetRef.current?.querySelectorAll('.print-sheet');
       if (sheetElements && sheetElements.length > 0) {
         const isLandscape = orientation === 'landscape';
@@ -278,6 +289,14 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
             allowTaint: true,
             backgroundColor: '#ffffff',
             logging: false,
+            windowWidth: isLandscape ? 1200 : 850,
+            onclone: (clonedDoc) => {
+              const area = clonedDoc.getElementById('print-desk-canvas-area');
+              if (area) {
+                area.style.zoom = '1';
+                area.style.transform = 'none';
+              }
+            },
           });
 
           const imgData = canvas.toDataURL('image/png');
@@ -300,6 +319,10 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
       console.error('Canvas export error:', err);
       toast.error('Gagal mengunduh dokumen PDF', { id: 'pdf-tp-export' });
     } finally {
+      // 2. Pulihkan kembali zoom untuk kenyamanan preview layar responsif
+      if (canvasArea) {
+        canvasArea.style.zoom = originalZoom;
+      }
       setIsExportingPdf(false);
     }
   };
@@ -514,36 +537,34 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
             pageNumber={chunk.pageIndex + 1}
             totalPages={pageChunks.length}
             footerText={`Matriks Capaian & Tujuan Pembelajaran PKL — ${jurusanNama} (${tahunPelajaran || '-'})`}
-            className={cn(
-              orientation === 'landscape' ? '!p-6 sm:!p-8' : ''
-            )}
+            style={orientation === 'landscape' ? { padding: '24px 32px' } : undefined}
           >
             {/* 1. HEADER HALAMAN PERTAMA (KOP SURAT LENGKAP & JUDUL UTAMA) */}
             {chunk.isFirstPage ? (
               <>
                 {/* KOP SURAT RESMI SEKOLAH */}
                 <PrintHeader
-                  variant={orientation}
+                  variant="portrait"
                   tenantInfo={tenantInfo}
                   showLogoDaerah={showLogoDaerah}
                   showLogoSekolah={showLogoSekolah}
                 />
 
-                {/* JUDUL DOKUMEN RESMI */}
-                <div className="text-center my-3 space-y-0.5">
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-black">
+                {/* JUDUL DOKUMEN RESMI — lebih ringkas di Landscape */}
+                <div className={cn("text-center space-y-0", orientation === 'landscape' ? 'my-1.5' : 'my-3')}>
+                  <h3 className={cn("font-bold uppercase tracking-wider text-black", orientation === 'landscape' ? 'text-xs' : 'text-sm')}>
                     MATRIKS RUMUSAN TUJUAN PEMBELAJARAN (TP)
                   </h3>
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-black">
+                  <h3 className={cn("font-bold uppercase tracking-wider text-black", orientation === 'landscape' ? 'text-xs' : 'text-sm')}>
                     MATA PELAJARAN PRAKTIK KERJA LAPANGAN (PKL)
                   </h3>
-                  <p className="text-[11px] font-medium text-slate-700">
+                  <p className="text-[10px] font-medium text-slate-700">
                     Tahun Pelajaran {tahunPelajaran || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`} • Fase F (Kelas XII)
                   </p>
                 </div>
 
-                {/* METADATA DOKUMEN */}
-                <div className="my-2.5 p-2 bg-slate-50 border border-slate-300 rounded text-[10.5px]">
+                {/* METADATA DOKUMEN — ringkas di Landscape */}
+                <div className={cn("p-1.5 bg-slate-50 border border-slate-300 rounded text-[10px]", orientation === 'landscape' ? 'my-1' : 'my-2.5 p-2')}>
                   <table className="w-full border-collapse">
                     <tbody>
                       <tr>
@@ -554,7 +575,7 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
                       </tr>
                       <tr>
                         <td className="font-semibold text-slate-700 py-0.5">Mata Pelajaran / Elemen</td>
-                        <td className="text-slate-900 py-0.5">: Praktik Kerja Lapangan (Elemen Teknis Kejuruan & Budaya Kerja)</td>
+                        <td className="text-slate-900 py-0.5">: Praktik Kerja Lapangan (Teknis Kejuruan & Budaya Kerja)</td>
                         <td className="font-semibold text-slate-700 py-0.5">Total Peserta PKL</td>
                         <td className="font-bold text-slate-900 py-0.5">: {totalSiswa} Siswa</td>
                       </tr>
@@ -564,7 +585,7 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
               </>
             ) : (
               /* RUNNING HEADER UNTUK HALAMAN LANJUTAN */
-              <div className="pb-2 mb-3 border-b border-black flex justify-between items-center text-[10px] text-slate-700">
+              <div className="pb-1.5 mb-2 border-b border-black flex justify-between items-center text-[10px] text-slate-700">
                 <span className="font-bold uppercase tracking-wider text-black">
                   Matriks Rumusan TP PKL — {jurusanNama} ({tahunPelajaran || '-'})
                 </span>
