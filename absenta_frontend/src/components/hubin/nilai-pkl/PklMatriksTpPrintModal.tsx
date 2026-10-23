@@ -371,20 +371,14 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
               </div>
             )}
 
-            {/* 2. TABEL MATRIKS TP DUDI (POTONGAN PER LEMBAR PRESISI) */}
+            {/* 2. TABEL MATRIKS TP DUDI (3 KOLOM ELEGAN & LEGA TANPA TERPOTONG) */}
             <div className="my-2 overflow-x-auto">
               <table className="w-full text-left border-collapse border border-black text-[10px]">
                 <thead>
                   <tr className="bg-slate-100 text-black font-bold border-b border-black text-center">
                     <th className="border-r border-black p-1.5 w-8">No</th>
-                    <th className={cn("border-r border-black p-1.5 text-left", orientation === 'portrait' ? "w-44" : "w-56")}>
-                      Mitra Industri (DUDI)
-                    </th>
-                    <th className={cn("border-r border-black p-1.5", orientation === 'portrait' ? "w-28" : "w-32")}>
-                      Bidang Usaha
-                    </th>
-                    <th className={cn("border-r border-black p-1.5", orientation === 'portrait' ? "w-24" : "w-28")}>
-                      Peserta & Rombel
+                    <th className={cn("border-r border-black p-1.5 text-left", orientation === 'portrait' ? "w-64" : "w-80")}>
+                      Mitra Industri (DUDI) & Lokasi
                     </th>
                     <th className="p-1.5 text-left">
                       Rumusan Capaian & Tujuan Pembelajaran (TP) Khusus DUDI
@@ -394,7 +388,7 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
                 <tbody>
                   {chunk.items.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="p-4 text-center text-slate-500 italic">
+                      <td colSpan={3} className="p-4 text-center text-slate-500 italic">
                         Belum ada mitra penempatan PKL pada tahun pelajaran ini.
                       </td>
                     </tr>
@@ -405,25 +399,25 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
                           {chunk.startIndex + idx + 1}
                         </td>
                         <td className="border-r border-black p-1.5">
-                          <div className="font-bold text-black">{mitra.nama_mitra}</div>
+                          <div className="font-bold text-black text-[10.5px]">{mitra.nama_mitra}</div>
                           {mitra.alamat && (
-                            <div className="text-[9px] text-slate-600 line-clamp-1 mt-0.5">
+                            <div className="text-[9px] text-slate-700 leading-tight mt-0.5 whitespace-normal break-words">
                               {mitra.alamat}
                             </div>
                           )}
-                        </td>
-                        <td className="border-r border-black p-1.5 text-slate-700 text-center">
-                          {mitra.bidang_usaha || '-'}
-                        </td>
-                        <td className="border-r border-black p-1.5 text-center">
-                          <div className="font-bold text-black">{mitra.siswa_count} Siswa</div>
-                          <div className="text-[9px] text-slate-600">
-                            {mitra.rombel_list?.join(', ') || '-'}
+                          <div className="text-[8.5px] text-slate-500 mt-1 flex flex-wrap items-center gap-1">
+                            <span className="font-semibold text-slate-700">{mitra.siswa_count} Siswa PKL</span>
+                            {mitra.rombel_list && mitra.rombel_list.length > 0 && (
+                              <span>• {mitra.rombel_list.join(', ')}</span>
+                            )}
+                            {mitra.bidang_usaha && mitra.bidang_usaha !== '-' && (
+                              <span>• ({mitra.bidang_usaha})</span>
+                            )}
                           </div>
                         </td>
                         <td className="p-1.5 text-black leading-relaxed">
                           {mitra.has_tp && mitra.deskripsi_tp ? (
-                            <div className="font-normal italic">
+                            <div className="font-normal italic whitespace-normal break-words">
                               "{mitra.deskripsi_tp}"
                             </div>
                           ) : (
