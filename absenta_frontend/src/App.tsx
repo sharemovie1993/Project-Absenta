@@ -186,6 +186,7 @@ const AttendanceDashboardPage = lazy(() => import('./pages/attendance/Attendance
 // Removed KegiatanPage and ManualPage per deprecation request
 const StudentCardPage = lazy(() => import('./pages/academic/StudentCardPage'));
 const HomePage = lazy(() => import('./pages/public/HomePage'));
+const EcosystemWorkflowShowcase = lazy(() => import('./pages/public/EcosystemWorkflowShowcase'));
 const PricingPage = lazy(() => import('./pages/public/PricingPage'));
 const LearnMorePage = lazy(() => import('./pages/public/LearnMorePage'));
 const AboutUsPage = lazy(() => import('./pages/public/AboutUsPage'));
@@ -481,6 +482,8 @@ function App() {
               <Routes>
                 {/* Public routes */}
                 <Route path="/home" element={<HomePage />} />
+                <Route path="/ecosystem" element={<EcosystemWorkflowShowcase />} />
+                <Route path="/showcase/ecosystem" element={<EcosystemWorkflowShowcase />} />
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/learn-more" element={<LearnMorePage />} />
                 <Route path="/about" element={<AboutUsPage />} />
