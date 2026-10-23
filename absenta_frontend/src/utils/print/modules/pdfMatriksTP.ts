@@ -471,84 +471,81 @@ export function generatePdfMatriksTP(data: PklMatriksTPPdfData): {
   });
   curY += isLandscape ? 3 : 4;
 
-  // ── Step 3: Metadata box ─────────────────────────────────────────────────
-  // Layout 2 kolom simetris — setiap kolom lebar = contentWidth / 2
-  // Label + nilai tidak boleh melewati batas kolom masing-masing.
-  const metaBoxHeight = isLandscape ? 10 : 13;
+  // ── Step 3: Metadata box — pakai autoTable agar auto-height saat nilai panjang ──
+  // theme: 'plain' = tidak ada border antar sel; tableLineWidth = border luar saja
+  const mFs = isLandscape ? 7.5 : 8;
+  const mLH = isLandscape ? 3.8 : 4.2;
   const metaBoxY = curY;
 
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(203, 213, 225);
-  doc.setLineWidth(0.2);
-  doc.rect(margin, metaBoxY, contentWidth, metaBoxHeight, 'FD');
+  // Landscape: 4 kolom (label | nilai | label | nilai)
+  // Portrait : 2 kolom (label | nilai) × 4 baris
+  const metaBody = isLandscape
+    ? [
+        [
+          { content: 'Program Keahlian', styles: { textColor: [51, 65, 85] as [number, number, number] } },
+          { content: data.jurusanNama, styles: { fontStyle: 'bold' as const, textColor: [0, 0, 0] as [number, number, number] } },
+          { content: 'Total DUDI', styles: { textColor: [51, 65, 85] as [number, number, number] } },
+          { content: `${totalMitra} DUDI (${filledMitra} Terisi TP)`, styles: { fontStyle: 'bold' as const, textColor: [0, 0, 0] as [number, number, number] } },
+        ],
+        [
+          { content: 'Mata Pelajaran', styles: { textColor: [51, 65, 85] as [number, number, number] } },
+          { content: 'Praktik Kerja Lapangan (PKL)', styles: { fontStyle: 'bold' as const, textColor: [0, 0, 0] as [number, number, number] } },
+          { content: 'Total Siswa PKL', styles: { textColor: [51, 65, 85] as [number, number, number] } },
+          { content: `${totalSiswa} Siswa`, styles: { fontStyle: 'bold' as const, textColor: [0, 0, 0] as [number, number, number] } },
+        ],
+      ]
+    : [
+        [
+          { content: 'Program Keahlian', styles: { textColor: [51, 65, 85] as [number, number, number] } },
+          { content: data.jurusanNama, styles: { fontStyle: 'bold' as const, textColor: [0, 0, 0] as [number, number, number] } },
+        ],
+        [
+          { content: 'Mata Pelajaran', styles: { textColor: [51, 65, 85] as [number, number, number] } },
+          { content: 'Praktik Kerja Lapangan (PKL)', styles: { fontStyle: 'bold' as const, textColor: [0, 0, 0] as [number, number, number] } },
+        ],
+        [
+          { content: 'Total DUDI', styles: { textColor: [51, 65, 85] as [number, number, number] } },
+          { content: `${totalMitra} DUDI (${filledMitra} Terisi TP)`, styles: { fontStyle: 'bold' as const, textColor: [0, 0, 0] as [number, number, number] } },
+        ],
+        [
+          { content: 'Total Siswa PKL', styles: { textColor: [51, 65, 85] as [number, number, number] } },
+          { content: `${totalSiswa} Siswa`, styles: { fontStyle: 'bold' as const, textColor: [0, 0, 0] as [number, number, number] } },
+        ],
+      ];
 
-  const mFs = isLandscape ? 7.5 : 8;
-  const mLH = isLandscape ? 3.8 : 4.5;
+  const metaColStyles = isLandscape
+    ? {
+        0: { cellWidth: 30 },   // label kiri
+        1: { cellWidth: 'auto' as const }, // nilai kiri (nama jurusan dll)
+        2: { cellWidth: 26 },   // label kanan
+        3: { cellWidth: 40 },   // nilai kanan (fixed agar tidak overflow)
+      }
+    : {
+        0: { cellWidth: 38 },   // label
+        1: { cellWidth: 'auto' as const }, // nilai
+      };
 
-  // Batas kolom kiri: margin → midX | kolom kanan: midX → margin kanan
-  const midX = margin + contentWidth / 2;
-  const colHalf = contentWidth / 2;              // lebar per kolom (mm)
-  const labelW = isLandscape ? 36 : 44;          // lebar label (mm)
-  const colonGap = 2;                            // jarak setelah titik-dua
-  // Posisi titik-dua & nilai
-  const lColonX = margin + 2 + labelW;
-  const lValueX = lColonX + colonGap;
-  const lValueMaxW = midX - lValueX - 2;        // nilai kiri tidak boleh melewati midX
-
-  const rLabelX = midX + 2;
-  const rColonX = midX + 2 + labelW;
-  const rValueX = rColonX + colonGap;
-  const rValueMaxW = margin + contentWidth - rValueX - 2;
-
-  const metaY1 = metaBoxY + 2.8;
-  const metaY2 = metaY1 + mLH;
-
-  // ── Baris 1 ──────────────────────────────────────────────────────────────
-  // Kiri: Program Keahlian
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(mFs);
-  doc.setTextColor(51, 65, 85);
-  doc.text('Program Keahlian', margin + 2, metaY1);
-  doc.setTextColor(100, 116, 139);
-  doc.text(':', lColonX, metaY1);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text(data.jurusanNama, lValueX, metaY1, { maxWidth: lValueMaxW });
-
-  // Kanan: Total Mitra
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  doc.text('Total DUDI', rLabelX, metaY1);
-  doc.setTextColor(100, 116, 139);
-  doc.text(':', rColonX, metaY1);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text(`${totalMitra} DUDI (${filledMitra} Terisi TP)`, rValueX, metaY1, {
-    maxWidth: rValueMaxW,
+  autoTable(doc, {
+    startY: metaBoxY,
+    body: metaBody,
+    theme: 'plain',
+    styles: {
+      fillColor: [248, 250, 252],
+      font: 'helvetica',
+      fontSize: mFs,
+      cellPadding: { top: 1.5, bottom: 1.5, left: 2, right: 2 },
+      overflow: 'linebreak',
+      textColor: [0, 0, 0],
+      lineWidth: 0,
+    },
+    columnStyles: metaColStyles,
+    tableWidth: contentWidth,
+    margin: { left: margin, right: margin },
+    tableLineColor: [203, 213, 225],
+    tableLineWidth: 0.2,
   });
 
-  // ── Baris 2 ──────────────────────────────────────────────────────────────
-  // Kiri: Mata Pelajaran
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  doc.text('Mata Pelajaran', margin + 2, metaY2);
-  doc.setTextColor(100, 116, 139);
-  doc.text(':', lColonX, metaY2);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text('Praktik Kerja Lapangan (PKL)', lValueX, metaY2, { maxWidth: lValueMaxW });
-
-  // Kanan: Total Siswa
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  doc.text('Total Siswa PKL', rLabelX, metaY2);
-  doc.setTextColor(100, 116, 139);
-  doc.text(':', rColonX, metaY2);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text(`${totalSiswa} Siswa`, rValueX, metaY2, { maxWidth: rValueMaxW });
-
-  curY = metaBoxY + metaBoxHeight + (isLandscape ? 2 : 3);
+  curY = (doc as any).lastAutoTable.finalY + (isLandscape ? 2 : 3);
   const tableStartY = curY;
 
   // ── Running header height (reserved space on continuation pages) ─────────
