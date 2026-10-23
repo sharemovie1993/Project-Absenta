@@ -1043,6 +1043,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
           <PklMatriksTpPrintModal
             isOpen={isPrintMatriksModalOpen}
             onClose={() => setIsPrintMatriksModalOpen(false)}
+            jurusanId={resolvedJurusan?.id}
             jurusanNama={resolvedJurusan?.nama}
             tahunPelajaran={academic.activeYear}
             mitraList={filteredMitraList}

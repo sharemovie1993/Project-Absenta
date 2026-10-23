@@ -6,11 +6,14 @@ import {
   usePrintHeaderData,
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
+import { usePklMatriksSigners } from './usePklMatriksSigners';
+import { ChevronDown, ChevronUp, RefreshCw, Users, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export interface PklMatriksTpPrintModalProps {
   isOpen: boolean;
   onClose: () => void;
+  jurusanId?: string;
   jurusanNama?: string;
   tahunPelajaran?: string;
   mitraList: Array<{
@@ -150,6 +153,7 @@ function chunkMitraList(
 export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
   isOpen,
   onClose,
+  jurusanId,
   jurusanNama = 'Kejuruan',
   tahunPelajaran,
   mitraList = [],
@@ -165,6 +169,10 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
   const [showLogoSekolah, setShowLogoSekolah] = useState<boolean>(true);
   const [showLogoDaerah, setShowLogoDaerah] = useState<boolean>(true);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+  const [showSignerConfig, setShowSignerConfig] = useState<boolean>(false);
+
+  // Hook Resolving Active Organizational Structure (Kaprog, Waka Hubin, Kepsek)
+  const autoSigners = usePklMatriksSigners(jurusanId, jurusanNama);
 
   // Penandatangan yang dapat disesuaikan
   const [kaprogNama, setKaprogNama] = useState<string>('');
@@ -179,14 +187,49 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
   const { tenantInfo, rawSekolah } = usePrintHeaderData();
   const sekolahData = rawSekolah;
 
+  // Sinkronisasi otomatis dari Organizational Structure (Struktur Organisasi)
   useEffect(() => {
-    setKaprogNama(propKaprogNama || 'Ketua Program Keahlian');
-    setKaprogNip(propKaprogNip || '-');
-    setWakasekHubinNama(propHubinNama || 'Wakasek Bidang Hubinmas');
-    setWakasekHubinNip(propHubinNip || '-');
-    setKepalaSekolahNama(propKepsekNama || (rawSekolah as any)?.kepala_sekolah || 'Kepala Sekolah');
-    setKepalaSekolahNip(propKepsekNip || (rawSekolah as any)?.nip_kepala || '-');
-  }, [propKaprogNama, propKaprogNip, propHubinNama, propHubinNip, propKepsekNama, propKepsekNip, rawSekolah]);
+    if (autoSigners) {
+      setKaprogNama(
+        propKaprogNama ||
+        (autoSigners.kaprog.isAssigned ? autoSigners.kaprog.nama : 'Ketua Program Keahlian')
+      );
+      setKaprogNip(
+        propKaprogNip ||
+        (autoSigners.kaprog.isAssigned ? autoSigners.kaprog.nip : '-')
+      );
+      setWakasekHubinNama(
+        propHubinNama ||
+        (autoSigners.wakasekHubin.isAssigned ? autoSigners.wakasekHubin.nama : 'Wakil Kepala Sekolah Bidang Hubinmas')
+      );
+      setWakasekHubinNip(
+        propHubinNip ||
+        (autoSigners.wakasekHubin.isAssigned ? autoSigners.wakasekHubin.nip : '-')
+      );
+      setKepalaSekolahNama(
+        propKepsekNama ||
+        autoSigners.kepsek.nama ||
+        (rawSekolah as any)?.kepala_sekolah ||
+        'Kepala Sekolah'
+      );
+      setKepalaSekolahNip(
+        propKepsekNip ||
+        autoSigners.kepsek.nip ||
+        (rawSekolah as any)?.nip_kepala ||
+        '-'
+      );
+    }
+  }, [autoSigners, propKaprogNama, propKaprogNip, propHubinNama, propHubinNip, propKepsekNama, propKepsekNip, rawSekolah]);
+
+  const handleResetToStruktur = () => {
+    setKaprogNama(autoSigners.kaprog.nama);
+    setKaprogNip(autoSigners.kaprog.nip);
+    setWakasekHubinNama(autoSigners.wakasekHubin.nama);
+    setWakasekHubinNip(autoSigners.wakasekHubin.nip);
+    setKepalaSekolahNama(autoSigners.kepsek.nama || (rawSekolah as any)?.kepala_sekolah || 'Kepala Sekolah');
+    setKepalaSekolahNip(autoSigners.kepsek.nip || (rawSekolah as any)?.nip_kepala || '-');
+    toast.success('Penandatangan disinkronkan kembali dari Struktur Organisasi');
+  };
 
   // Kalkulasi lembar fisik A4 berdasarkan orientasi aktif
   const pageChunks = useMemo(() => {
@@ -281,6 +324,23 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
       downloadPdfText={isExportingPdf ? 'Mengunduh...' : 'Unduh PDF'}
       printButtonText="Cetak Dokumen"
       size="5xl"
+      extraActions={
+        <button
+          type="button"
+          onClick={() => setShowSignerConfig(!showSignerConfig)}
+          className={cn(
+            "text-xs px-2.5 py-1.5 rounded-lg border flex items-center gap-1.5 cursor-pointer font-medium transition-colors",
+            showSignerConfig
+              ? "bg-indigo-50 dark:bg-indigo-950 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300"
+              : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50"
+          )}
+          title="Sesuaikan nama dan NIP penandatangan"
+        >
+          <Users className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+          <span className="hidden sm:inline">Penandatangan</span>
+          {showSignerConfig ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        </button>
+      }
     >
       {/* Dynamic CSS untuk Browser Print Page Break Presisi */}
       <style>{`
@@ -305,6 +365,137 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
           }
         }
       `}</style>
+
+      {/* PANEL KONFIGURASI PENANDATANGAN ORGANIZATIONAL ASSIGNMENT */}
+      <div className="mb-4 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+        <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <span className="font-bold text-slate-800 dark:text-slate-200">
+              Penandatangan Resmi (Struktur Organisasi Terhubung)
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleResetToStruktur}
+              className="text-[11px] font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 inline-flex items-center gap-1 cursor-pointer"
+              title="Reset ke data awal struktur organisasi"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Reset Struktur
+            </button>
+          </div>
+        </div>
+
+        {/* Ringkasan status koneksi saat panel form diminimalkan */}
+        {!showSignerConfig && (
+          <div className="mt-2 text-[11px] text-slate-600 dark:text-slate-400 flex flex-wrap gap-x-4 gap-y-1">
+            <span className="inline-flex items-center gap-1">
+              <strong>Kaprog:</strong> {kaprogNama} {kaprogNip !== '-' && `(${kaprogNip})`}
+              {autoSigners.kaprog.isAssigned && (
+                <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                  <CheckCircle2 className="w-3 h-3" /> Terhubung
+                </span>
+              )}
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <strong>Waka Hubin:</strong> {wakasekHubinNama} {wakasekHubinNip !== '-' && `(${wakasekHubinNip})`}
+              {autoSigners.wakasekHubin.isAssigned && (
+                <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                  <CheckCircle2 className="w-3 h-3" /> Terhubung
+                </span>
+              )}
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <strong>Kepsek:</strong> {kepalaSekolahNama}
+            </span>
+          </div>
+        )}
+
+        {/* Form input pengeditan saat panel dibuka */}
+        {showSignerConfig && (
+          <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Kaprog */}
+            <div className="space-y-1.5 p-2.5 rounded-lg bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                <span>Ketua Program Keahlian</span>
+                {autoSigners.kaprog.isAssigned && (
+                  <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-600 font-semibold">
+                    <CheckCircle2 className="w-3 h-3" /> Terhubung
+                  </span>
+                )}
+              </div>
+              <input
+                type="text"
+                placeholder="Nama Kaprog"
+                value={kaprogNama}
+                onChange={(e) => setKaprogNama(e.target.value)}
+                className="w-full h-8 px-2.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent text-slate-800 dark:text-slate-200"
+              />
+              <input
+                type="text"
+                placeholder="NIP Kaprog (atau -)"
+                value={kaprogNip}
+                onChange={(e) => setKaprogNip(e.target.value)}
+                className="w-full h-8 px-2.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent text-slate-800 dark:text-slate-200"
+              />
+            </div>
+
+            {/* Wakasek Hubin */}
+            <div className="space-y-1.5 p-2.5 rounded-lg bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                <span>Waka Bidang Hubinmas</span>
+                {autoSigners.wakasekHubin.isAssigned && (
+                  <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-600 font-semibold">
+                    <CheckCircle2 className="w-3 h-3" /> Terhubung
+                  </span>
+                )}
+              </div>
+              <input
+                type="text"
+                placeholder="Nama Wakasek Hubin"
+                value={wakasekHubinNama}
+                onChange={(e) => setWakasekHubinNama(e.target.value)}
+                className="w-full h-8 px-2.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent text-slate-800 dark:text-slate-200"
+              />
+              <input
+                type="text"
+                placeholder="NIP Wakasek Hubin (atau -)"
+                value={wakasekHubinNip}
+                onChange={(e) => setWakasekHubinNip(e.target.value)}
+                className="w-full h-8 px-2.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent text-slate-800 dark:text-slate-200"
+              />
+            </div>
+
+            {/* Kepala Sekolah */}
+            <div className="space-y-1.5 p-2.5 rounded-lg bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                <span>Kepala Sekolah</span>
+                {autoSigners.kepsek.isAssigned && (
+                  <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-600 font-semibold">
+                    <CheckCircle2 className="w-3 h-3" /> Terhubung
+                  </span>
+                )}
+              </div>
+              <input
+                type="text"
+                placeholder="Nama Kepala Sekolah"
+                value={kepalaSekolahNama}
+                onChange={(e) => setKepalaSekolahNama(e.target.value)}
+                className="w-full h-8 px-2.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent text-slate-800 dark:text-slate-200"
+              />
+              <input
+                type="text"
+                placeholder="NIP Kepala Sekolah"
+                value={kepalaSekolahNip}
+                onChange={(e) => setKepalaSekolahNip(e.target.value)}
+                className="w-full h-8 px-2.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent text-slate-800 dark:text-slate-200"
+              />
+            </div>
+          </div>
+        )}
+      </div>
 
       <div ref={printSheetRef} className="w-full flex flex-col items-center gap-6">
         {pageChunks.map((chunk) => (
