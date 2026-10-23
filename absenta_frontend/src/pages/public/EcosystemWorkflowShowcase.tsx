@@ -127,8 +127,8 @@ const DIVISIONS: Record<DivisionId, DivisionDefinition> = {
         { id: 'm-supervisi', label: 'Supervisi Guru', icon: ShieldCheck, path: '/kurikulum/supervisi', roles: ['kepsek', 'kaprog'] }
       ],
       'kelas-12': [
-        { id: 'm-cbt', label: 'CBT Ujian Komputer', icon: Laptop, path: '/cbt/dashboard', roles: ['kaprog', 'kepsek'] },
-        { id: 'm-nilai', label: 'Input Nilai (UKK)', icon: Award, path: '/rapor/nilai', roles: ['walas', 'kaprog'] },
+        { id: 'm-cbt', label: 'Ujian CBT', icon: Laptop, path: '/cbt/dashboard', roles: ['kaprog', 'kepsek'] },
+        { id: 'm-nilai', label: 'Input Nilai', icon: Award, path: '/rapor/nilai', roles: ['walas', 'kaprog'] },
         { id: 'm-rapor', label: 'Cetak Rapor', icon: Printer, path: '/rapor/cetak', roles: ['walas', 'siswa'] },
         { id: 'm-p5', label: 'Projek P5', icon: Layers, path: '/rapor/p5', roles: ['walas', 'kaprog'] }
       ],
@@ -241,7 +241,7 @@ const DIVISIONS: Record<DivisionId, DivisionDefinition> = {
         { id: 'm-wajah', label: 'Perekaman Wajah', icon: Camera, path: '/attendance/rekam-wajah', roles: ['tu'] }
       ],
       'kelas-11': [
-        { id: 'm-surat-keluar', label: 'Surat Keluar (PKL)', icon: Send, path: '/correspondence/surat-keluar', roles: ['tu', 'hubin'] },
+        { id: 'm-surat-keluar', label: 'Surat Keluar', icon: Send, path: '/correspondence/surat-keluar', roles: ['tu', 'hubin'] },
         { id: 'm-agenda-tu', label: 'Buku Agenda', icon: FileText, path: '/correspondence/templates', roles: ['tu'] },
         { id: 'm-kas-masuk', label: 'Riwayat Kas Masuk', icon: Wallet, path: '/billing/payments', roles: ['tu', 'kepsek'] }
       ],
@@ -250,8 +250,8 @@ const DIVISIONS: Record<DivisionId, DivisionDefinition> = {
         { id: 'm-transisi', label: 'Kenaikan Kelas', icon: GraduationCap, path: '/academic/transition', roles: ['tu', 'kepsek'] }
       ],
       alumni: [
-        { id: 'm-cetak-tu', label: 'Cetak Berkas (Ijazah)', icon: Printer, path: '/academic/prep-checklist', roles: ['tu', 'kepsek'] },
-        { id: 'm-dokumen', label: 'Dokumen Sekolah', icon: FileText, path: '/documents', roles: ['tu', 'kepsek'] },
+        { id: 'm-cetak-tu', label: 'Cetak Berkas', icon: Printer, path: '/academic/prep-checklist', roles: ['tu', 'kepsek'] },
+        { id: 'm-dokumen', label: 'Dokumen', icon: FileText, path: '/documents', roles: ['tu', 'kepsek'] },
         { id: 'm-log-staf', label: 'Log Aktivitas', icon: Clock, path: '/academic/staff-logs', roles: ['kepsek'] }
       ]
     }
@@ -342,7 +342,7 @@ const DIVISIONS: Record<DivisionId, DivisionDefinition> = {
     menusPerStage: {
       ppdb: [
         { id: 'm-barang', label: 'Data Barang', icon: Package, path: '/cooperative/products', roles: ['tu', 'siswa'] },
-        { id: 'm-pos-ppdb', label: 'Kasir Toko (Seragam)', icon: ShoppingCart, path: '/cooperative/pos', roles: ['tu', 'siswa'] }
+        { id: 'm-pos-ppdb', label: 'Kasir Toko', icon: ShoppingCart, path: '/cooperative/pos', roles: ['tu', 'siswa'] }
       ],
       'kelas-10': [
         { id: 'm-anggota', label: 'Data Anggota', icon: Users, path: '/cooperative/members', roles: ['walas', 'siswa'] },
@@ -502,12 +502,12 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
                           >
                             <Link
                               to={menu.path}
-                              className={`w-fit max-w-[85%] rounded-full px-3 py-1 border transition-all flex items-center justify-between gap-2.5 shadow-sm group ${div.theme.nodeBg}`}
+                              className={`w-fit whitespace-nowrap rounded-full px-3 py-1 border transition-all flex items-center justify-between gap-2 shadow-sm group ${div.theme.nodeBg}`}
                               title={`Buka menu ${menu.label} (${menu.path})`}
                             >
                               <div className="flex items-center gap-1.5 min-w-0">
                                 <MenuIcon className={`w-3.5 h-3.5 shrink-0 ${div.theme.accent}`} />
-                                <span className="text-[11px] font-bold text-slate-200 group-hover:text-cyan-300 truncate transition-colors">
+                                <span className="text-[11px] font-bold text-slate-200 group-hover:text-cyan-300 whitespace-nowrap transition-colors">
                                   {menu.label}
                                 </span>
                               </div>
@@ -713,12 +713,12 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
                           >
                             <Link
                               to={menu.path}
-                              className={`w-fit max-w-[85%] rounded-full px-3 py-1 border transition-all flex items-center justify-between gap-2.5 shadow-sm group ${div.theme.nodeBg}`}
+                              className={`w-fit whitespace-nowrap rounded-full px-3 py-1 border transition-all flex items-center justify-between gap-2 shadow-sm group ${div.theme.nodeBg}`}
                               title={`Buka menu ${menu.label} (${menu.path})`}
                             >
                               <div className="flex items-center gap-1.5 min-w-0">
                                 <MenuIcon className={`w-3.5 h-3.5 shrink-0 ${div.theme.accent}`} />
-                                <span className="text-[11px] font-bold text-slate-200 group-hover:text-cyan-300 truncate transition-colors">
+                                <span className="text-[11px] font-bold text-slate-200 group-hover:text-cyan-300 whitespace-nowrap transition-colors">
                                   {menu.label}
                                 </span>
                               </div>
