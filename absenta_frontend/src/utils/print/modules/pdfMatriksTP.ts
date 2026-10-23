@@ -220,7 +220,13 @@ function renderTTD(
   startY: number
 ): void {
   const kota = data.sekolah.kota || 'Purwakarta';
-  const tglStr = new Date().toLocaleDateString('id-ID', {
+
+  // Tanggal pengesahan = 1 Juli tahun awal tahun pelajaran
+  // tp contoh: "2026/2027" → tahun = 2026
+  const tp = data.tahunPelajaran || '';
+  const tpYear = parseInt((tp.split('/')[0] || String(new Date().getFullYear())).trim(), 10);
+  const pengesahanDate = new Date(tpYear, 6, 1); // bulan ke-7 (Juli), tanggal 1
+  const tglStr = pengesahanDate.toLocaleDateString('id-ID', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -228,9 +234,29 @@ function renderTTD(
 
   const contentWidth = pageWidth - margin * 2;
   const colHalfWidth = contentWidth / 2;
-  const xLeft = margin + colHalfWidth / 2;
-  const xRight = margin + colHalfWidth + colHalfWidth / 2;
+  const xLeft   = margin + colHalfWidth / 2;                      // pusat kolom kiri
+  const xRight  = margin + colHalfWidth + colHalfWidth / 2;       // pusat kolom kanan
   const xCenter = pageWidth / 2;
+
+  // ── Helper: gambar teks bold + garis bawah (centered di xC) ─────────────
+  const drawUnderlinedName = (
+    text: string,
+    xC: number,
+    yPos: number,
+    fontSize: number
+  ) => {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(fontSize);
+    doc.setTextColor(15, 23, 42);
+    doc.text(text, xC, yPos, { align: 'center' });
+
+    // Hitung lebar teks untuk underline tepat di bawah teks
+    const tw = doc.getTextWidth(text);
+    const lx = xC - tw / 2;
+    doc.setDrawColor(15, 23, 42);
+    doc.setLineWidth(0.25);
+    doc.line(lx, yPos + 0.6, lx + tw, yPos + 0.6);
+  };
 
   let y = startY;
 
@@ -246,7 +272,7 @@ function renderTTD(
   doc.text(noteLines, margin, y);
   y += noteLines.length * 3.0 + 3;
 
-  // Tanggal di atas kolom kanan (Kaprog)
+  // Tanggal pengesahan (1 Juli tahun awal TP) — rata tengah kolom kanan (Kaprog)
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
@@ -255,7 +281,7 @@ function renderTTD(
 
   const yRow1Title = y;
 
-  // Kolom Kiri: Waka Hubin
+  // ── Kolom Kiri: Waka Hubin ───────────────────────────────────────────────
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
@@ -265,54 +291,39 @@ function renderTTD(
     align: 'center',
   });
 
-  // Kolom Kanan: Kaprog
+  // ── Kolom Kanan: Kaprog ──────────────────────────────────────────────────
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
   doc.text('Dibuat oleh,', xRight, yRow1Title, { align: 'center' });
   doc.setFont('helvetica', 'bold');
-  // Wrap kaprog title if too long
   const kaprogTitle = `Ketua Program Keahlian ${data.jurusanNama}`;
   const kaprogTitleLines = doc.splitTextToSize(kaprogTitle, colHalfWidth - 4);
   doc.text(kaprogTitleLines, xRight, yRow1Title + 4.5, { align: 'center' });
 
-  const yRow1Name = yRow1Title + 20; // 20mm ruang TTD
+  const yRow1Name = yRow1Title + 20; // 20mm ruang tanda tangan
 
-  // Nama & NIP Waka Hubin (kiri)
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(15, 23, 42);
-  doc.text(
-    data.wakasekHubin?.nama || '.......................................',
-    xLeft,
-    yRow1Name,
-    { align: 'center' }
-  );
+  // Nama Waka Hubin — bold + underline
+  const hubinNama = data.wakasekHubin?.nama || '.......................................';
+  drawUnderlinedName(hubinNama, xLeft, yRow1Name, 8.5);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(71, 85, 105);
-  doc.text(`NIP. ${data.wakasekHubin?.nip || '-'}`, xLeft, yRow1Name + 3.8, {
+  doc.text(`NIP. ${data.wakasekHubin?.nip || '-'}`, xLeft, yRow1Name + 4, {
     align: 'center',
   });
 
-  // Nama & NIP Kaprog (kanan)
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(15, 23, 42);
-  doc.text(
-    data.kaprog?.nama || '.......................................',
-    xRight,
-    yRow1Name,
-    { align: 'center' }
-  );
+  // Nama Kaprog — bold + underline
+  const kaprogNama = data.kaprog?.nama || '.......................................';
+  drawUnderlinedName(kaprogNama, xRight, yRow1Name, 8.5);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(71, 85, 105);
-  doc.text(`NIP. ${data.kaprog?.nip || '-'}`, xRight, yRow1Name + 3.8, {
+  doc.text(`NIP. ${data.kaprog?.nip || '-'}`, xRight, yRow1Name + 4, {
     align: 'center',
   });
 
-  // Baris 2: Kepala Sekolah (tengah bawah)
+  // ── Baris 2: Kepala Sekolah (tengah bawah) ───────────────────────────────
   const yRow2Title = yRow1Name + 9;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
@@ -322,24 +333,18 @@ function renderTTD(
   doc.text('Kepala Sekolah', xCenter, yRow2Title + 4.5, { align: 'center' });
 
   const yRow2Name = yRow2Title + 20;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(15, 23, 42);
-  doc.text(
+  const kepsekNama =
     data.kepsek?.nama ||
-      data.sekolah.kepala_sekolah ||
-      '.......................................',
-    xCenter,
-    yRow2Name,
-    { align: 'center' }
-  );
+    data.sekolah.kepala_sekolah ||
+    '.......................................';
+  drawUnderlinedName(kepsekNama, xCenter, yRow2Name, 8.5);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(71, 85, 105);
   doc.text(
     `NIP. ${data.kepsek?.nip || data.sekolah.nip_kepala || '-'}`,
     xCenter,
-    yRow2Name + 3.8,
+    yRow2Name + 4,
     { align: 'center' }
   );
 }
