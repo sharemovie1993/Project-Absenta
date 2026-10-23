@@ -381,6 +381,9 @@ export function generatePdfMatriksTP(data: PklMatriksTPPdfData): {
   // ── Column widths ────────────────────────────────────────────────────────
   const noColW = 8;
   const dudiColW = isLandscape ? 85 : 65;
+  const tableFontSize = isLandscape ? 7.5 : 8;
+  const cellPad = isLandscape ? 1.5 : 2;
+  const innerDudiColW = dudiColW - cellPad * 2;
   // Kolom 2 (TP) mendapatkan sisa lebar secara otomatis
 
   // ── Structured body rows ─────────────────────────────────────────────────
@@ -415,16 +418,28 @@ export function generatePdfMatriksTP(data: PklMatriksTPPdfData): {
             ? `"${mitra.deskripsi_tp}"`
             : 'Belum ada rumusan deskripsi capaian pembelajaran khusus yang ditetapkan.';
 
-        // autoTable body rows support content + styles objects per cell.
-        // We pass dudiCell as content (will be stringified to placeholder),
-        // then override drawing manually in didDrawCell.
+        // Hitung baris persis dengan font & lebar kolom riil agar autoTable
+        // menghitung tinggi baris yang 100% akurat sebelum menentukan page break
+        const measureLines: string[] = [];
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(tableFontSize);
+        measureLines.push(...doc.splitTextToSize(mitra.nama_mitra, innerDudiColW));
+
+        if (mitra.alamat) {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(tableFontSize - 1);
+          measureLines.push(...doc.splitTextToSize(mitra.alamat, innerDudiColW));
+        }
+
+        if (metaParts.length > 0) {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(tableFontSize - 1.5);
+          measureLines.push(...doc.splitTextToSize(metaParts.join(' • '), innerDudiColW));
+        }
+
         return [
           idx + 1,
-          // Placeholder text: autoTable will calculate row height based on this.
-          // We provide the full text so autoTable sizes the row correctly.
-          [mitra.nama_mitra, mitra.alamat || '', metaParts.join(' • ')]
-            .filter(Boolean)
-            .join('\n'),
+          measureLines.join('\n'),
           tpText,
         ] as [number, string, string];
       })
@@ -562,11 +577,9 @@ export function generatePdfMatriksTP(data: PklMatriksTPPdfData): {
   let estTotalPages = 1; // will be patched in footer loop
 
   // ── Step 4: autoTable ────────────────────────────────────────────────────
-  const tableFontSize = isLandscape ? 7.5 : 8;
-  const cellPad = isLandscape ? 1.5 : 2;
-
   autoTable(doc, {
     startY: tableStartY,
+    rowPageBreak: 'avoid',
     head: [
       [
         { content: 'No', styles: { halign: 'center', valign: 'middle' } },
@@ -585,6 +598,7 @@ export function generatePdfMatriksTP(data: PklMatriksTPPdfData): {
       textColor: [0, 0, 0],
       valign: 'top',
       overflow: 'linebreak',
+      rowPageBreak: 'avoid',
     },
     headStyles: {
       fillColor: [241, 245, 249],
@@ -608,7 +622,7 @@ export function generatePdfMatriksTP(data: PklMatriksTPPdfData): {
       left: margin,
       right: margin,
       top: margin + runningHeaderH, // ruang untuk running header di halaman 2+
-      bottom: margin + 8,           // ruang footer
+      bottom: margin + 12,          // ruang aman footer (mencegah baris menempel/terpotong di footer)
     },
     showHead: 'everyPage',
 
