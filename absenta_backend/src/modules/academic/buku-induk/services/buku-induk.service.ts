@@ -11,6 +11,7 @@ export class BukuIndukService {
       kelas_id?: string;
       jurusan_id?: string;
       tingkat?: string;
+      angkatan?: string;
       search?: string;
       status?: string;
       page?: number;
@@ -22,6 +23,7 @@ export class BukuIndukService {
       kelas_id,
       jurusan_id,
       tingkat,
+      angkatan,
       search,
       status,
       page = 1,
@@ -43,6 +45,18 @@ export class BukuIndukService {
 
     if (status) {
       where.status = status;
+    }
+
+    if (angkatan) {
+      const startOfYear = new Date(`${angkatan}-01-01T00:00:00.000Z`);
+      const endOfYear = new Date(`${angkatan}-12-31T23:59:59.999Z`);
+      const angkatanCond = {
+        OR: [
+          { tanggal_masuk: { gte: startOfYear, lte: endOfYear } },
+          { nis: { startsWith: angkatan } },
+        ],
+      };
+      where.AND = where.AND ? [...where.AND, angkatanCond] : [angkatanCond];
     }
 
     if (tahun_pelajaran_id) {
@@ -225,19 +239,37 @@ export class BukuIndukService {
     tenantId: string,
     params: {
       tahun_pelajaran_id?: string;
+      angkatan?: string;
+      status?: string;
       search?: string;
       huruf?: string;
       page?: number;
       limit?: number;
     }
   ) {
-    const { tahun_pelajaran_id, search, huruf, page = 1, limit = 20 } = params;
+    const { tahun_pelajaran_id, angkatan, status, search, huruf, page = 1, limit = 20 } = params;
 
     const skip = (page - 1) * limit;
 
     const where: any = {
       tenant_id: tenantId,
     };
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (angkatan) {
+      const startOfYear = new Date(`${angkatan}-01-01T00:00:00.000Z`);
+      const endOfYear = new Date(`${angkatan}-12-31T23:59:59.999Z`);
+      const angkatanCond = {
+        OR: [
+          { tanggal_masuk: { gte: startOfYear, lte: endOfYear } },
+          { nis: { startsWith: angkatan } },
+        ],
+      };
+      where.AND = where.AND ? [...where.AND, angkatanCond] : [angkatanCond];
+    }
 
     if (huruf) {
       where.nama_siswa = { startsWith: huruf, mode: 'insensitive' };

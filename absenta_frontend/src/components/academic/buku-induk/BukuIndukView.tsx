@@ -590,6 +590,16 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
   const [page, setPage] = useState(1);
   const [klapperPage, setKlapperPage] = useState(1);
   const [selectedHuruf, setSelectedHuruf] = useState('');
+  const [selectedAngkatan, setSelectedAngkatan] = useState('');
+
+  const angkatanOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const years: number[] = [];
+    for (let y = currentYear + 1; y >= currentYear - 6; y--) {
+      years.push(y);
+    }
+    return years;
+  }, []);
 
   // AcademicFilter — disable kelas filter if kelasId is already scoped from outside
   const filter = useAcademicFilter({
@@ -617,12 +627,14 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
       kelasId: effectiveKelasId,
       search: effectiveSearch,
       status: effectiveStatus,
+      angkatan: selectedAngkatan,
       page,
     }),
     queryFn: () =>
       bukuIndukApi.getList({
         tahun_pelajaran_id: effectiveTpId || undefined,
         kelas_id: effectiveKelasId || undefined,
+        angkatan: selectedAngkatan || undefined,
         search: effectiveSearch || undefined,
         status: effectiveStatus || undefined,
         page,
@@ -638,6 +650,8 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
       tpId: effectiveTpId,
       huruf: selectedHuruf,
       search: effectiveSearch,
+      status: effectiveStatus,
+      angkatan: selectedAngkatan,
       page: klapperPage,
     }),
     queryFn: () =>
@@ -645,6 +659,8 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
         tahun_pelajaran_id: effectiveTpId || undefined,
         huruf: selectedHuruf || undefined,
         search: effectiveSearch || undefined,
+        status: effectiveStatus || undefined,
+        angkatan: selectedAngkatan || undefined,
         page: klapperPage,
         limit: 20,
       }),
@@ -683,30 +699,55 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
       {/* Filter Toolbar */}
       <AcademicFilterToolbar {...filter.toolbarProps} />
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-fit">
-        <button
-          onClick={() => handleTabSwitch('induk')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-            activeTab === 'induk'
-              ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-sm'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-          }`}
-        >
-          <BookOpen size={15} />
-          Buku Induk
-        </button>
-        <button
-          onClick={() => handleTabSwitch('klapper')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-            activeTab === 'klapper'
-              ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-sm'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-          }`}
-        >
-          <BookMarked size={15} />
-          Buku Klapper
-        </button>
+      {/* Tabs & Scope Selector (Angkatan) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-fit">
+          <button
+            onClick={() => handleTabSwitch('induk')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+              activeTab === 'induk'
+                ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-sm'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            <BookOpen size={15} />
+            Buku Induk
+          </button>
+          <button
+            onClick={() => handleTabSwitch('klapper')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+              activeTab === 'klapper'
+                ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-sm'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            <BookMarked size={15} />
+            Buku Klapper
+          </button>
+        </div>
+
+        {/* Angkatan Filter */}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+            Angkatan:
+          </span>
+          <select
+            value={selectedAngkatan}
+            onChange={(e) => {
+              setSelectedAngkatan(e.target.value);
+              setPage(1);
+              setKlapperPage(1);
+            }}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm transition-colors"
+          >
+            <option value="">Semua Angkatan</option>
+            {angkatanOptions.map((yr) => (
+              <option key={yr} value={String(yr)}>
+                Angkatan {yr}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {activeTab === 'klapper' && (

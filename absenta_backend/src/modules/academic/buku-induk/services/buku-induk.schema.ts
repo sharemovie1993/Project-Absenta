@@ -6,6 +6,7 @@ export const getBukuIndukListSchema = z.object({
   kelas_id: z.string().uuid().optional(),
   jurusan_id: z.string().uuid().optional(),
   tingkat: z.string().regex(/^\d+$/).optional(),
+  angkatan: z.string().regex(/^\d{4}$/).optional(), // tahun masuk, misal "2023"
   search: z.string().max(100).optional(),
   status: z.enum(['AKTIF', 'LULUS', 'MUTASI', 'KELUAR', 'CUTI']).optional(),
   page: z
@@ -27,6 +28,8 @@ export type GetBukuIndukListParams = z.output<typeof getBukuIndukListSchema>;
 // ── Query Params: Buku Klapper List ───────────────────────────────────────
 export const getKlapperListSchema = z.object({
   tahun_pelajaran_id: z.string().uuid().optional(),
+  angkatan: z.string().regex(/^\d{4}$/).optional(),
+  status: z.enum(['AKTIF', 'LULUS', 'MUTASI', 'KELUAR', 'CUTI']).optional(),
   search: z.string().max(100).optional(),
   huruf: z
     .string()

@@ -55,6 +55,7 @@ export const bukuIndukApi = {
   getList: async (params: {
     tahun_pelajaran_id?: string;
     kelas_id?: string;
+    angkatan?: string;
     search?: string;
     status?: string;
     page?: number;
@@ -69,6 +70,8 @@ export const bukuIndukApi = {
 
   getKlapper: async (params: {
     tahun_pelajaran_id?: string;
+    angkatan?: string;
+    status?: string;
     search?: string;
     huruf?: string;
     page?: number;
