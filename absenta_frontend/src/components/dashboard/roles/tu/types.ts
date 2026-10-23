@@ -6,7 +6,8 @@ export type TuTabId =
   | 'surat-keterangan'
   | 'mutasi'
   | 'bast-ijazah'
-  | 'dkn';
+  | 'dkn'
+  | 'kepegawaian';
 
 export interface TuNavTabItem {
   id: TuTabId;
@@ -42,6 +43,9 @@ export interface TuStatsData {
   };
   dkn?: {
     totalArsip?: number;
+  };
+  kepegawaian?: {
+    totalPtk?: number;
   };
   recentActivities?: Array<{
     id: string;

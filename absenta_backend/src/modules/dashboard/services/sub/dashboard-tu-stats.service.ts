@@ -49,6 +49,7 @@ export class DashboardTuStatsService {
       totalLulusan,
       bastIjazahDiserahkan,
       dknArsipCount,
+      totalPtk,
       recentSuratKeluar,
     ] = await Promise.all([
       // Total Siswa Aktif untuk Buku Induk
@@ -102,6 +103,10 @@ export class DashboardTuStatsService {
           kategori_surat: 'DKN',
         },
       }),
+      // Total PTK (Guru & Tendik)
+      prisma.guru.count({
+        where: { tenant_id: tenantId },
+      }),
       // Recent Surat Keluar
       prisma.suratKeluar.findMany({
         where: { tenant_id: tenantId },
@@ -150,6 +155,9 @@ export class DashboardTuStatsService {
       },
       dkn: {
         totalArsip: dknArsipCount,
+      },
+      kepegawaian: {
+        totalPtk,
       },
       recentActivities: recentSuratKeluar.map((item) => ({
         id: item.id,

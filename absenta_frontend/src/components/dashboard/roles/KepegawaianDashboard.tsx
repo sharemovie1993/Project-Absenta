@@ -47,6 +47,7 @@ export type KepegawaianTabId = 'beranda' | 'ptk' | 'dapodik' | 'karir' | 'vokasi
 
 export interface KepegawaianDashboardProps {
   user?: any;
+  hideLayout?: boolean;
 }
 
 interface NavTabItem {
@@ -60,7 +61,7 @@ interface NavTabItem {
 // 2. MAIN COMPONENT
 // ============================================================================
 
-export const KepegawaianDashboard: React.FC<KepegawaianDashboardProps> = ({ user }) => {
+export const KepegawaianDashboard: React.FC<KepegawaianDashboardProps> = ({ user, hideLayout = false }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -957,7 +958,7 @@ export const KepegawaianDashboard: React.FC<KepegawaianDashboardProps> = ({ user
   return (
     <div className="w-full max-w-full min-w-0 space-y-6 pb-12">
       {/* Zone 1: Header */}
-      {renderHeader()}
+      {!hideLayout && renderHeader()}
 
       {/* Zone 2: Sub-Nav Tabs */}
       {renderNavTabs()}

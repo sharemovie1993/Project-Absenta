@@ -247,6 +247,23 @@ export const TuBerandaTab: React.FC<TuBerandaTabProps> = React.memo(({
               Laporan kelulusan resmi
             </p>
           </button>
+
+          {/* Card 9: Kepegawaian & Dapodik PTK */}
+          <button
+            type="button"
+            onClick={() => onSelectTab?.('kepegawaian')}
+            className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:border-violet-400 dark:hover:border-violet-600 hover:shadow-xs transition-all text-left group cursor-pointer"
+          >
+            <div className="w-9 h-9 rounded-lg bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+              <Users className="w-4 h-4" />
+            </div>
+            <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400">
+              Kepegawaian & PTK
+            </h4>
+            <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+              Buku Induk PTK & Beban 24 JP
+            </p>
+          </button>
         </div>
       </div>
 
