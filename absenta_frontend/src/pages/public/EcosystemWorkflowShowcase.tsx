@@ -15,30 +15,57 @@ import {
   ExternalLink,
   Compass,
   CheckCircle2,
+  Calendar,
+  Clock,
+  Layout,
+  Award,
+  Layers,
   Sparkles,
-  ArrowRight,
-  GitBranch,
-  Eye
+  ShieldCheck,
+  BarChart2,
+  AlertTriangle,
+  Trophy,
+  Moon,
+  List,
+  Scan,
+  Activity,
+  UserCheck,
+  Camera,
+  Mail,
+  Inbox,
+  Send,
+  Home,
+  BarChart3,
+  Hammer,
+  GraduationCap,
+  Package,
+  Wrench,
+  Printer,
+  Laptop,
+  Wallet,
+  Zap,
+  FolderTree,
+  Vote
 } from 'lucide-react';
 
 export type DivisionId = 'kurikulum' | 'kesiswaan' | 'konseling' | 'tu' | 'hubin' | 'sarpras' | 'koperasi';
 export type StageId = 'ppdb' | 'kelas-10' | 'kelas-11' | 'kelas-12' | 'alumni';
 export type RolePOV = 'all' | 'kepsek' | 'kaprog' | 'walas' | 'tu' | 'hubin' | 'siswa';
 
-interface FeatureChild {
+// Canonical Menu Node from seed.ts
+export interface CanonicalMenuItem {
   id: string;
-  name: string;
-  route: string;
-  desc: string;
+  label: string;
+  icon: any;
+  path: string;
   roles: RolePOV[];
 }
 
-interface DivisionData {
+interface DivisionDefinition {
   id: DivisionId;
   name: string;
   short: string;
   icon: any;
-  position: 'top' | 'bottom';
   theme: {
     accent: string;
     border: string;
@@ -47,7 +74,7 @@ interface DivisionData {
     badge: string;
     nodeBg: string;
   };
-  featuresPerStage: Record<StageId, FeatureChild[]>;
+  menusPerStage: Record<StageId, CanonicalMenuItem[]>;
 }
 
 interface StagePoint {
@@ -63,80 +90,92 @@ const STAGES: StagePoint[] = [
   { id: 'kelas-10', label: 'KELAS X', sub: 'Fase Pondasi', avatarIcon: '👦', studentStatus: 'Siswa Tingkat X' },
   { id: 'kelas-11', label: 'KELAS XI', sub: 'Kejuruan & PKL', avatarIcon: '🛠️', studentStatus: 'Siswa PKL / DUDI' },
   { id: 'kelas-12', label: 'KELAS XII', sub: 'Ujian & UKK', avatarIcon: '🎓', studentStatus: 'Calon Lulusan' },
-  { id: 'alumni', label: 'LULUS', sub: 'Karir & Alumni', avatarIcon: '💼', studentStatus: 'Alumni / Kerja' },
+  { id: 'alumni', label: 'LULUS', sub: 'Karir & Alumni', avatarIcon: '💼', studentStatus: 'Alumni / BKK' },
 ];
 
-const DIVISIONS: Record<DivisionId, DivisionData> = {
+// Master Division Data mapping real menus from seed.ts
+const DIVISIONS: Record<DivisionId, DivisionDefinition> = {
   kurikulum: {
     id: 'kurikulum',
-    name: 'Kurikulum & KBM',
+    name: 'Bidang Kurikulum',
     short: 'KURIKULUM',
     icon: BookOpen,
-    position: 'top',
     theme: {
       accent: 'text-sky-400',
       border: 'border-sky-500/40',
       bg: 'bg-sky-500/10',
       glow: 'shadow-sky-500/20',
       badge: 'bg-sky-950/90 text-sky-300 border-sky-800',
-      nodeBg: 'bg-sky-950/70 border-sky-800/80 hover:border-sky-400',
+      nodeBg: 'bg-slate-900/90 border-sky-500/40 hover:border-sky-400',
     },
-    featuresPerStage: {
+    menusPerStage: {
       ppdb: [
-        { id: 'k-1', name: 'Plotting Kuota & Peminatan', route: '/kurikulum/plotting', desc: 'Penetapan kuota rombel dan pembagian jurusan siswa baru.', roles: ['kaprog', 'kepsek'] },
-        { id: 'k-2', name: 'Struktur KOSP & Capaian', route: '/kurikulum/kosp-builder', desc: 'Penyusunan kurikulum operasional sekolah.', roles: ['kaprog', 'kepsek'] }
+        { id: 'm-kosp', label: 'Dokumen KOSP', icon: Sparkles, path: '/kurikulum/kosp-builder', roles: ['kaprog', 'kepsek'] },
+        { id: 'm-struktur', label: 'Struktur Kurikulum', icon: Layout, path: '/kurikulum/struktur', roles: ['kaprog', 'kepsek'] },
+        { id: 'm-kalender', label: 'Kalender Akademik', icon: Calendar, path: '/kurikulum/kalender', roles: ['kaprog', 'kepsek'] }
       ],
       'kelas-10': [
-        { id: 'k-3', name: 'Distribusi Jadwal KBM', route: '/kurikulum/jam-kbm', desc: 'Jadwal tatap muka harian dan kalender KBM.', roles: ['walas', 'kaprog', 'kepsek'] },
-        { id: 'k-4', name: 'Jurnal Mengajar di Kelas', route: '/attendance/riwayat-ajar', desc: 'Presensi harian mapel dan materi tatap muka.', roles: ['walas', 'kepsek'] }
+        { id: 'm-jam', label: 'Jam Pelajaran', icon: Clock, path: '/kurikulum/jam-kbm', roles: ['walas', 'kaprog', 'kepsek'] },
+        { id: 'm-jadwal', label: 'Jadwal KBM', icon: Calendar, path: '/kurikulum/jadwal', roles: ['walas', 'kaprog', 'kepsek'] },
+        { id: 'm-ploting', label: 'Ploting Guru', icon: Users, path: '/kurikulum/guru-mapel', roles: ['kaprog', 'kepsek'] },
+        { id: 'm-walas', label: 'Wali Kelas', icon: UserCheck, path: '/kurikulum/wali-kelas', roles: ['walas', 'kepsek'] }
       ],
       'kelas-11': [
-        { id: 'k-5', name: 'Sinkronisasi Kurikulum Industri', route: '/kurikulum/struktur', desc: 'Penyelarasan kompetensi vokasi dengan DUDI.', roles: ['kaprog', 'hubin'] },
-        { id: 'k-6', name: 'Rekapitulasi KBM & Supervisi', route: '/kurikulum/rekap-kbm', desc: 'Monitoring jam mengajar dan ketercapaian silabus.', roles: ['kepsek', 'kaprog'] }
+        { id: 'm-beban', label: 'Beban Mengajar', icon: Layers, path: '/kurikulum/jadwal-kontrak-kbm', roles: ['kaprog', 'kepsek'] },
+        { id: 'm-perangkat', label: 'Perangkat Ajar', icon: FileText, path: '/kurikulum/perangkat', roles: ['kaprog', 'walas'] },
+        { id: 'm-rekap', label: 'Rekap KBM', icon: BarChart2, path: '/kurikulum/rekap-kbm', roles: ['kaprog', 'kepsek'] },
+        { id: 'm-supervisi', label: 'Supervisi Guru', icon: ShieldCheck, path: '/kurikulum/supervisi', roles: ['kepsek', 'kaprog'] }
       ],
       'kelas-12': [
-        { id: 'k-7', name: 'Bank Soal & Ujian CBT', route: '/cbt/dashboard', desc: 'Pelaksanaan ujian formatif/sumatif anti-curang.', roles: ['kaprog', 'kepsek'] },
-        { id: 'k-8', name: 'Asesmen Sertifikasi UKK', route: '/rapor/input-nilai', desc: 'Uji kompetensi asesor internal & eksternal DUDI.', roles: ['kaprog', 'hubin'] },
-        { id: 'k-9', name: 'Pencetakan Rapor Akhir', route: '/rapor/cetak', desc: 'Pengolahan leger nilai dan cetak rapor sah.', roles: ['walas', 'siswa'] }
+        { id: 'm-cbt', label: 'CBT Ujian Komputer', icon: Laptop, path: '/cbt/dashboard', roles: ['kaprog', 'kepsek'] },
+        { id: 'm-nilai', label: 'Input Nilai (UKK)', icon: Award, path: '/rapor/nilai', roles: ['walas', 'kaprog'] },
+        { id: 'm-rapor', label: 'Cetak Rapor', icon: Printer, path: '/rapor/cetak', roles: ['walas', 'siswa'] },
+        { id: 'm-p5', label: 'Projek P5', icon: Layers, path: '/rapor/p5', roles: ['walas', 'kaprog'] }
       ],
       alumni: [
-        { id: 'k-10', name: 'Leger Kelulusan & Transkrip', route: '/academic/cetak-berkas', desc: 'Arsip nilai komprehensif 6 semester untuk ijazah.', roles: ['tu', 'kepsek'] }
+        { id: 'm-evaluasi', label: 'Evaluasi Kinerja', icon: Award, path: '/kurikulum/evaluasi-kinerja', roles: ['kepsek'] },
+        { id: 'm-cetak-kuri', label: 'Cetak Berkas', icon: Printer, path: '/kurikulum/cetak-berkas', roles: ['tu', 'kepsek'] }
       ]
     }
   },
   kesiswaan: {
     id: 'kesiswaan',
-    name: 'Kesiswaan & Karakter',
+    name: 'Bidang Kesiswaan',
     short: 'KESISWAAN',
     icon: Users,
-    position: 'top',
     theme: {
       accent: 'text-amber-400',
       border: 'border-amber-500/40',
       bg: 'bg-amber-500/10',
       glow: 'shadow-amber-500/20',
       badge: 'bg-amber-950/90 text-amber-300 border-amber-800',
-      nodeBg: 'bg-amber-950/70 border-amber-800/80 hover:border-amber-400',
+      nodeBg: 'bg-slate-900/90 border-amber-500/40 hover:border-amber-400',
     },
-    featuresPerStage: {
+    menusPerStage: {
       ppdb: [
-        { id: 'ks-1', name: 'Wawancara Komitmen Disiplin', route: '/kesiswaan/program-ketarunaan', desc: 'Asesmen awal sikap dan komitmen tata tertib.', roles: ['walas', 'kepsek'] }
+        { id: 'm-taruna', label: 'Program Ketarunaan', icon: ShieldCheck, path: '/kesiswaan/program-ketarunaan', roles: ['walas', 'kepsek'] },
+        { id: 'm-poin-master', label: 'Master Poin', icon: List, path: '/kesiswaan/jenis-pelanggaran', roles: ['walas', 'kepsek'] }
       ],
       'kelas-10': [
-        { id: 'ks-2', name: 'MPLS & Pembinaan Ketarunaan', route: '/kesiswaan/program-ketarunaan', desc: 'Orientasi disiplin, respek, dan mental sekolah.', roles: ['walas', 'kepsek'] },
-        { id: 'ks-3', name: 'Gerbang Presensi QR & Wajah', route: '/attendance/gate', desc: 'Scanner kedatangan siswa masuk dan pulang.', roles: ['walas', 'tu', 'kepsek'] },
-        { id: 'ks-4', name: 'Buku Poin & Tata Tertib', route: '/kesiswaan/pelanggaran', desc: 'Akumulasi skor pelanggaran dan reward kebaikan.', roles: ['walas', 'kepsek'] }
+        { id: 'm-piket', label: 'Meja Piket', icon: ShieldCheck, path: '/kesiswaan/piket', roles: ['walas', 'kepsek'] },
+        { id: 'm-pelanggaran', label: 'Pelanggaran Siswa', icon: AlertTriangle, path: '/kesiswaan/pelanggaran', roles: ['walas', 'kepsek'] },
+        { id: 'm-dhuha', label: 'Pembiasaan Dhuha', icon: Moon, path: '/kesiswaan/program-dhuha', roles: ['walas'] },
+        { id: 'm-scanner', label: 'Ruang Operasional', icon: Scan, path: '/attendance/ops', roles: ['tu', 'walas'] }
       ],
       'kelas-11': [
-        { id: 'ks-5', name: 'Live Monitoring Presensi', route: '/attendance/live-status', desc: 'Papan pantau kehadiran real-time per detik.', roles: ['walas', 'kepsek'] },
-        { id: 'ks-6', name: 'Rekam Prestasi & Lomba Siswa', route: '/kesiswaan/prestasi', desc: 'Portofolio medali dan kejuaraan perlombaan.', roles: ['walas', 'siswa'] },
-        { id: 'ks-7', name: 'Monitoring Ekstrakurikuler', route: '/kesiswaan/anggota-eskul', desc: 'Keaktifan latihan klub dan organisasi siswa.', roles: ['walas'] }
+        { id: 'm-pantau', label: 'Pantau Kelas', icon: Activity, path: '/attendance/monitoring', roles: ['walas', 'kepsek'] },
+        { id: 'm-prestasi', label: 'Prestasi Siswa', icon: Trophy, path: '/kesiswaan/prestasi', roles: ['walas', 'siswa'] },
+        { id: 'm-agenda', label: 'Agenda Kesiswaan', icon: Calendar, path: '/kesiswaan/jadwal-kegiatan', roles: ['walas'] },
+        { id: 'm-pelanggaran-11', label: 'Pelanggaran Siswa', icon: AlertTriangle, path: '/kesiswaan/pelanggaran', roles: ['walas', 'kepsek'] }
       ],
       'kelas-12': [
-        { id: 'ks-8', name: 'Verifikasi Bebas Sanksi Karakter', route: '/kesiswaan/pelanggaran', desc: 'Pemeriksaan status poin tata tertib syarat lulus.', roles: ['walas', 'kepsek'] }
+        { id: 'm-upacara', label: 'Pembina Upacara', icon: Award, path: '/kesiswaan/pembina-upacara', roles: ['walas', 'kepsek'] },
+        { id: 'm-pelanggaran-12', label: 'Pelanggaran Siswa', icon: AlertTriangle, path: '/kesiswaan/pelanggaran', roles: ['walas', 'kepsek'] },
+        { id: 'm-berkas-ks', label: 'Cetak Berkas', icon: FileText, path: '/kesiswaan/cetak-berkas', roles: ['walas', 'kepsek'] }
       ],
       alumni: [
-        { id: 'ks-9', name: 'Portofolio Sertifikat Prestasi', route: '/kesiswaan/prestasi', desc: 'Surat rekam jejak prestasi siswa untuk beasiswa.', roles: ['walas', 'siswa'] }
+        { id: 'm-prestasi-alumni', label: 'Prestasi Siswa', icon: Trophy, path: '/kesiswaan/prestasi', roles: ['walas', 'siswa'] },
+        { id: 'm-rekap-pres', label: 'Rekap Presensi', icon: Calendar, path: '/attendance/rekap', roles: ['tu', 'kepsek'] }
       ]
     }
   },
@@ -145,31 +184,34 @@ const DIVISIONS: Record<DivisionId, DivisionData> = {
     name: 'Bimbingan Konseling (BK)',
     short: 'KONSELING',
     icon: HeartHandshake,
-    position: 'top',
     theme: {
       accent: 'text-rose-400',
       border: 'border-rose-500/40',
       bg: 'bg-rose-500/10',
       glow: 'shadow-rose-500/20',
       badge: 'bg-rose-950/90 text-rose-300 border-rose-800',
-      nodeBg: 'bg-rose-950/70 border-rose-800/80 hover:border-rose-400',
+      nodeBg: 'bg-slate-900/90 border-rose-500/40 hover:border-rose-400',
     },
-    featuresPerStage: {
+    menusPerStage: {
       ppdb: [
-        { id: 'bk-1', name: 'Asesmen Diagnostik Gaya Belajar', route: '/bpbk/asesmen', desc: 'Pemetaan psikologis dan tipe belajar siswa baru.', roles: ['walas', 'kepsek'] }
+        { id: 'm-minat', label: 'Minat & Bakat', icon: FileText, path: '/bpbk/asesmen', roles: ['walas', 'kepsek'] }
       ],
       'kelas-10': [
-        { id: 'bk-2', name: 'Bimbingan Adaptasi & Sosiometri', route: '/bpbk/konseling', desc: 'Pendampingan siswa baru agar cepat beradaptasi.', roles: ['walas'] }
+        { id: 'm-konseling', label: 'Konseling Siswa', icon: HeartHandshake, path: '/bpbk/konseling', roles: ['walas'] },
+        { id: 'm-deteksi', label: 'Deteksi Dini', icon: AlertTriangle, path: '/bpbk/cases', roles: ['walas', 'kepsek'] }
       ],
       'kelas-11': [
-        { id: 'bk-3', name: 'Buku Catatan Kasus Siswa', route: '/bpbk/cases', desc: 'Pencatatan insiden dan konseling konfidensial.', roles: ['walas', 'kepsek'] },
-        { id: 'bk-4', name: 'Agenda Kunjungan Rumah (Home Visit)', route: '/bpbk/homevisit', desc: 'Kunjungan guru BK ke orang tua murid bermasalah.', roles: ['walas'] }
+        { id: 'm-kasus', label: 'Buku Kasus', icon: FileText, path: '/bpbk/siswa', roles: ['walas', 'kepsek'] },
+        { id: 'm-homevisit', label: 'Home Visit', icon: Home, path: '/bpbk/homevisit', roles: ['walas'] },
+        { id: 'm-panggilan', label: 'Panggilan Ortu', icon: Mail, path: '/bpbk/pemanggilan', roles: ['walas'] }
       ],
       'kelas-12': [
-        { id: 'bk-5', name: 'Bimbingan Karir: Kuliah vs Kerja', route: '/bpbk/dashboard', desc: 'Arahan seleksi SNBP/UTBK atau kesiapan kerja.', roles: ['walas', 'kepsek'] }
+        { id: 'm-konseling-12', label: 'Konseling Siswa', icon: HeartHandshake, path: '/bpbk/konseling', roles: ['walas', 'kepsek'] },
+        { id: 'm-rujukan', label: 'Rujukan Kasus', icon: Send, path: '/bpbk/rujukan', roles: ['walas', 'kepsek'] }
       ],
       alumni: [
-        { id: 'bk-6', name: 'Konseling Tindak Lanjut Alumni', route: '/bpbk/dashboard', desc: 'Layanan konsultasi alih bidang karir lulusan.', roles: ['hubin'] }
+        { id: 'm-laporan-bk', label: 'Laporan BK', icon: BarChart3, path: '/bpbk/reports', roles: ['kepsek'] },
+        { id: 'm-berkas-bk', label: 'Cetak Berkas', icon: FileText, path: '/bpbk/cetak-berkas', roles: ['tu'] }
       ]
     }
   },
@@ -178,34 +220,39 @@ const DIVISIONS: Record<DivisionId, DivisionData> = {
     name: 'Tata Usaha & Keuangan',
     short: 'TATA USAHA',
     icon: FileText,
-    position: 'bottom',
     theme: {
       accent: 'text-emerald-400',
       border: 'border-emerald-500/40',
       bg: 'bg-emerald-500/10',
       glow: 'shadow-emerald-500/20',
       badge: 'bg-emerald-950/90 text-emerald-300 border-emerald-800',
-      nodeBg: 'bg-emerald-950/70 border-emerald-800/80 hover:border-emerald-400',
+      nodeBg: 'bg-slate-900/90 border-emerald-500/40 hover:border-emerald-400',
     },
-    featuresPerStage: {
+    menusPerStage: {
       ppdb: [
-        { id: 'tu-1', name: 'Verifikasi Berkas & Validasi NISN', route: '/academic/ppdb-mapping', desc: 'Penerimaan digital KK/Akta dan integrasi Dapodik.', roles: ['tu', 'kepsek'] },
-        { id: 'tu-2', name: 'Billing Tagihan DSP & Uang Masuk', route: '/billing/invoices', desc: 'Penerbitan kwitansi dan invoice registrasi awal.', roles: ['tu', 'siswa', 'kepsek'] }
+        { id: 'm-siswa', label: 'Data Siswa', icon: GraduationCap, path: '/academic/siswa', roles: ['tu', 'kepsek'] },
+        { id: 'm-kelas', label: 'Daftar Kelas', icon: Users, path: '/academic/kelas', roles: ['tu', 'kepsek'] },
+        { id: 'm-tagihan', label: 'Tagihan Siswa', icon: FileText, path: '/billing/invoices', roles: ['tu', 'siswa', 'kepsek'] }
       ],
       'kelas-10': [
-        { id: 'tu-3', name: 'Buku Induk Digital & Klapper', route: '/academic/buku-induk', desc: 'Pusat data induk permanen siswa 360 derajat.', roles: ['tu', 'walas', 'kepsek'] },
-        { id: 'tu-4', name: 'Cetak ID Card Pelajar (QR)', route: '/academic/siswa-cards', desc: 'Kartu pelajar pintar untuk scanner dan kantin.', roles: ['tu', 'siswa'] },
-        { id: 'tu-5', name: 'Surat Keterangan Siswa Aktif', route: '/correspondence/surat-keterangan', desc: 'Layanan instan surat resmi permohonan siswa.', roles: ['tu', 'siswa'] }
+        { id: 'm-guru', label: 'Guru & Staf', icon: UserCheck, path: '/academic/guru', roles: ['tu', 'kepsek'] },
+        { id: 'm-surat-masuk', label: 'Surat Masuk', icon: Inbox, path: '/correspondence/surat-masuk', roles: ['tu', 'kepsek'] },
+        { id: 'm-suket', label: 'Surat Keterangan', icon: FileText, path: '/correspondence/surat-keterangan', roles: ['tu', 'siswa'] },
+        { id: 'm-wajah', label: 'Perekaman Wajah', icon: Camera, path: '/attendance/rekam-wajah', roles: ['tu'] }
       ],
       'kelas-11': [
-        { id: 'tu-6', name: 'Surat Pengantar & Tugas PKL Resmi', route: '/correspondence/surat-keluar', desc: 'Surat dinas penempatan magang format nasional.', roles: ['tu', 'hubin'] },
-        { id: 'tu-7', name: 'Billing SPP & Kas Masuk Bulanan', route: '/billing/payments', desc: 'Pencatatan kas dan rekonsiliasi pembayaran.', roles: ['tu', 'kepsek'] }
+        { id: 'm-surat-keluar', label: 'Surat Keluar (PKL)', icon: Send, path: '/correspondence/surat-keluar', roles: ['tu', 'hubin'] },
+        { id: 'm-agenda-tu', label: 'Buku Agenda', icon: FileText, path: '/correspondence/templates', roles: ['tu'] },
+        { id: 'm-kas-masuk', label: 'Riwayat Kas Masuk', icon: Wallet, path: '/billing/payments', roles: ['tu', 'kepsek'] }
       ],
       'kelas-12': [
-        { id: 'tu-8', name: 'Verifikasi Bebas Tanggungan Biaya', route: '/billing', desc: 'Cek otomatis lunas SPP sebelum ijazah diterbitkan.', roles: ['tu', 'kepsek'] }
+        { id: 'm-bebas-tu', label: 'Bebas Tanggungan', icon: ShieldCheck, path: '/billing', roles: ['tu', 'kepsek'] },
+        { id: 'm-transisi', label: 'Kenaikan Kelas', icon: GraduationCap, path: '/academic/transition', roles: ['tu', 'kepsek'] }
       ],
       alumni: [
-        { id: 'tu-9', name: 'Penerbitan SKL & Buku Ijazah', route: '/academic/cetak-berkas', desc: 'Arsip nomor ijazah dan penyerahan transkrip kelulusan.', roles: ['tu', 'kepsek'] }
+        { id: 'm-cetak-tu', label: 'Cetak Berkas (Ijazah)', icon: Printer, path: '/academic/prep-checklist', roles: ['tu', 'kepsek'] },
+        { id: 'm-dokumen', label: 'Dokumen Sekolah', icon: FileText, path: '/documents', roles: ['tu', 'kepsek'] },
+        { id: 'm-log-staf', label: 'Log Aktivitas', icon: Clock, path: '/academic/staff-logs', roles: ['kepsek'] }
       ]
     }
   },
@@ -214,33 +261,34 @@ const DIVISIONS: Record<DivisionId, DivisionData> = {
     name: 'Hubungan Industri (DUDI)',
     short: 'HUBIN',
     icon: Briefcase,
-    position: 'bottom',
     theme: {
       accent: 'text-indigo-400',
       border: 'border-indigo-500/40',
       bg: 'bg-indigo-500/10',
       glow: 'shadow-indigo-500/20',
       badge: 'bg-indigo-950/90 text-indigo-300 border-indigo-800',
-      nodeBg: 'bg-indigo-950/70 border-indigo-800/80 hover:border-indigo-400',
+      nodeBg: 'bg-slate-900/90 border-indigo-500/40 hover:border-indigo-400',
     },
-    featuresPerStage: {
+    menusPerStage: {
       ppdb: [
-        { id: 'hb-1', name: 'Sosialisasi Jejaring Industri Mitra', route: '/hubin/mitra', desc: 'Pengenalan kemitraan DUDI ke orang tua calon murid.', roles: ['hubin', 'kepsek'] }
+        { id: 'm-mitra-ppdb', label: 'Mitra Industri', icon: Building2, path: '/hubin/mitra', roles: ['hubin', 'kepsek'] }
       ],
       'kelas-10': [
-        { id: 'hb-2', name: 'Database MoU Perusahaan Mitra', route: '/hubin/mitra', desc: 'Pengelolaan kuota tempat PKL dan legalitas MoU.', roles: ['hubin', 'kaprog', 'kepsek'] }
+        { id: 'm-mitra-10', label: 'Mitra Industri', icon: Building2, path: '/hubin/mitra', roles: ['hubin', 'kaprog', 'kepsek'] },
+        { id: 'm-pengaturan-hb', label: 'Pengaturan Hubin', icon: Compass, path: '/hubin/settings', roles: ['hubin'] }
       ],
       'kelas-11': [
-        { id: 'hb-3', name: 'Plotting Penempatan Magang PKL', route: '/hubin/penempatan', desc: 'Distribusi siswa ke pabrik/kantor sesuai jurusan.', roles: ['hubin', 'kaprog', 'tu'] },
-        { id: 'hb-4', name: 'Jurnal Harian & Presensi GPS PKL', route: '/hubin/monitoring', desc: 'Siswa mengisi kegiatan praktikum dan absen lokasi.', roles: ['hubin', 'kaprog', 'siswa'] },
-        { id: 'hb-5', name: 'Penilaian Mentor & Sertifikat DUDI', route: '/hubin/nilai-pkl', desc: 'Input nilai teknis langsung dari supervisor industri.', roles: ['hubin', 'kaprog'] }
+        { id: 'm-plot-pkl', label: 'Plot & Pantau PKL', icon: Users, path: '/hubin/penempatan', roles: ['hubin', 'kaprog', 'tu'] },
+        { id: 'm-absen-pkl', label: 'Presensi PKL', icon: Clock, path: '/hubin/absensi', roles: ['hubin', 'kaprog', 'siswa'] },
+        { id: 'm-nilai-pkl', label: 'Nilai PKL', icon: Award, path: '/hubin/nilai-pkl', roles: ['hubin', 'kaprog'] }
       ],
       'kelas-12': [
-        { id: 'hb-6', name: 'Sinkronisasi Standar Uji Industri', route: '/hubin/nilai-pkl', desc: 'Penyelarasan rubrik UKK dengan kebutuhan industri.', roles: ['kaprog', 'hubin'] }
+        { id: 'm-tefa', label: 'Teaching Factory', icon: Hammer, path: '/hubin/tefa', roles: ['hubin', 'kaprog'] },
+        { id: 'm-berkas-pkl', label: 'Cetak Berkas', icon: FileText, path: '/hubin/cetak-berkas', roles: ['hubin'] }
       ],
       alumni: [
-        { id: 'hb-7', name: 'BKK: Lowongan Kerja Mitra', route: '/hubin/bkk', desc: 'Bursa kerja khusus lowongan eksklusif bagi tamatan.', roles: ['hubin', 'kepsek', 'siswa'] },
-        { id: 'hb-8', name: 'Tracer Study Penelusuran BMW', route: '/hubin/tracer', desc: 'Pelacakan alumni bekerja, kuliah, atau wirausaha.', roles: ['hubin', 'kepsek'] }
+        { id: 'm-bkk', label: 'Bursa Kerja (BKK)', icon: Briefcase, path: '/hubin/bkk', roles: ['hubin', 'kepsek', 'siswa'] },
+        { id: 'm-tracer', label: 'Tracer Study', icon: GraduationCap, path: '/hubin/tracer', roles: ['hubin', 'kepsek'] }
       ]
     }
   },
@@ -249,31 +297,32 @@ const DIVISIONS: Record<DivisionId, DivisionData> = {
     name: 'Sarana & Prasarana',
     short: 'SARPRAS',
     icon: Building2,
-    position: 'bottom',
     theme: {
       accent: 'text-orange-400',
       border: 'border-orange-500/40',
       bg: 'bg-orange-500/10',
       glow: 'shadow-orange-500/20',
       badge: 'bg-orange-950/90 text-orange-300 border-orange-800',
-      nodeBg: 'bg-orange-950/70 border-orange-800/80 hover:border-orange-400',
+      nodeBg: 'bg-slate-900/90 border-orange-500/40 hover:border-orange-400',
     },
-    featuresPerStage: {
+    menusPerStage: {
       ppdb: [
-        { id: 'sp-1', name: 'Kesiapan Sarana Ruang Kelas', route: '/sarpras/inventory', desc: 'Inventarisasi meja, kursi, dan AC kelas baru.', roles: ['kepsek'] }
+        { id: 'm-inv-ppdb', label: 'Inventaris Barang', icon: Package, path: '/sarpras/inventory', roles: ['kepsek'] }
       ],
       'kelas-10': [
-        { id: 'sp-2', name: 'Peminjaman Buku Paket & Loker', route: '/sarpras/inventory', desc: 'Sirkulasi buku teks pelajaran per rombel.', roles: ['walas'] }
+        { id: 'm-inv-10', label: 'Inventaris Barang', icon: Package, path: '/sarpras/inventory', roles: ['walas'] },
+        { id: 'm-pinjam-10', label: 'Peminjaman Alat', icon: Package, path: '/sarpras/loans', roles: ['walas'] }
       ],
       'kelas-11': [
-        { id: 'sp-3', name: 'Peminjaman Alat Praktik Bengkel/Lab', route: '/sarpras/loans', desc: 'Sirkulasi toolset mesin dan perangkat simulasi.', roles: ['kaprog'] }
+        { id: 'm-pinjam-11', label: 'Peminjaman Alat', icon: Package, path: '/sarpras/loans', roles: ['kaprog'] },
+        { id: 'm-perbaikan', label: 'Perbaikan Alat', icon: Wrench, path: '/sarpras/maintenance', roles: ['kaprog', 'kepsek'] }
       ],
       'kelas-12': [
-        { id: 'sp-4', name: 'Kesiapan Lab Komputer & Server CBT', route: '/sarpras/maintenance', desc: 'Inspeksi workstation dan LAN jelang ujian akhir.', roles: ['kaprog', 'kepsek'] },
-        { id: 'sp-5', name: 'Surat Bebas Pinjaman Sarpras', route: '/sarpras/loans', desc: 'Pemeriksaan pengembalian seluruh inventaris.', roles: ['tu'] }
+        { id: 'm-perbaikan-cbt', label: 'Perbaikan Alat', icon: Wrench, path: '/sarpras/maintenance', roles: ['kaprog', 'kepsek'] },
+        { id: 'm-pinjam-bebas', label: 'Peminjaman Alat', icon: Package, path: '/sarpras/loans', roles: ['tu'] }
       ],
       alumni: [
-        { id: 'sp-6', name: 'Arsip Bebas Pinjam Sarpras', route: '/sarpras/loans', desc: 'Surat bukti pengembalian alat untuk ijazah.', roles: ['tu'] }
+        { id: 'm-berkas-sarpras', label: 'Cetak Berkas', icon: FileText, path: '/sarpras/cetak-berkas', roles: ['tu'] }
       ]
     }
   },
@@ -282,30 +331,34 @@ const DIVISIONS: Record<DivisionId, DivisionData> = {
     name: 'Koperasi & Finansial',
     short: 'KOPERASI',
     icon: ShoppingCart,
-    position: 'bottom',
     theme: {
       accent: 'text-teal-400',
       border: 'border-teal-500/40',
       bg: 'bg-teal-500/10',
       glow: 'shadow-teal-500/20',
       badge: 'bg-teal-950/90 text-teal-300 border-teal-800',
-      nodeBg: 'bg-teal-950/70 border-teal-800/80 hover:border-teal-400',
+      nodeBg: 'bg-slate-900/90 border-teal-500/40 hover:border-teal-400',
     },
-    featuresPerStage: {
+    menusPerStage: {
       ppdb: [
-        { id: 'kp-1', name: 'Paket Seragam & Atribut Sekolah', route: '/cooperative/pos', desc: 'Distribusi seragam batik, jas almamater, kaos olah raga.', roles: ['tu', 'siswa'] }
+        { id: 'm-barang', label: 'Data Barang', icon: Package, path: '/cooperative/products', roles: ['tu', 'siswa'] },
+        { id: 'm-pos-ppdb', label: 'Kasir Toko (Seragam)', icon: ShoppingCart, path: '/cooperative/pos', roles: ['tu', 'siswa'] }
       ],
       'kelas-10': [
-        { id: 'kp-2', name: 'Buku Modul Praktikum Kejuruan', route: '/cooperative/products', desc: 'Penyediaan modul ajar cetak di toko sekolah.', roles: ['siswa'] }
+        { id: 'm-anggota', label: 'Data Anggota', icon: Users, path: '/cooperative/members', roles: ['walas', 'siswa'] },
+        { id: 'm-pos-10', label: 'Kasir Toko', icon: ShoppingCart, path: '/cooperative/pos', roles: ['siswa'] }
       ],
       'kelas-11': [
-        { id: 'kp-3', name: 'Tabungan Siswa Persiapan PKL', route: '/cooperative/savings', desc: 'Simpanan mandiri siswa untuk operasional magang.', roles: ['walas', 'siswa'] }
+        { id: 'm-simpanan', label: 'Simpanan', icon: Wallet, path: '/cooperative/savings', roles: ['walas', 'siswa'] },
+        { id: 'm-pos-11', label: 'Kasir Toko', icon: ShoppingCart, path: '/cooperative/pos', roles: ['siswa'] }
       ],
       'kelas-12': [
-        { id: 'kp-4', name: 'Perlengkapan Wisuda & Album Kenangan', route: '/cooperative/pos', desc: 'Paket toga wisuda dan buku tahunan kelulusan.', roles: ['siswa'] }
+        { id: 'm-simpanan-12', label: 'Simpanan', icon: Wallet, path: '/cooperative/savings', roles: ['walas', 'siswa'] },
+        { id: 'm-pinjaman', label: 'Pinjaman', icon: HeartHandshake, path: '/cooperative/loans', roles: ['tu', 'siswa'] }
       ],
       alumni: [
-        { id: 'kp-5', name: 'Penutupan Saldo Tabungan Siswa', route: '/cooperative/savings', desc: 'Pencairan saldo tabungan siswa saat kelulusan.', roles: ['tu', 'siswa'] }
+        { id: 'm-simpanan-tutup', label: 'Simpanan', icon: Wallet, path: '/cooperative/savings', roles: ['tu', 'siswa'] },
+        { id: 'm-shu', label: 'Sisa Hasil Usaha', icon: Award, path: '/cooperative/shu', roles: ['tu', 'kepsek'] }
       ]
     }
   }
@@ -325,7 +378,6 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
   const [selectedStage, setSelectedStage] = useState<StageId>('kelas-11');
   const [selectedRole, setSelectedRole] = useState<RolePOV>('all');
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [activeFeatureDetail, setActiveFeatureDetail] = useState<FeatureChild | null>(null);
 
   // Active Stage Object
   const currentStage = useMemo(() => {
@@ -337,11 +389,11 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
     return STAGES.findIndex(s => s.id === selectedStage);
   }, [selectedStage]);
 
-  // Filter features per division according to stage & role
-  const getDivisionSproutedFeatures = (divId: DivisionId): FeatureChild[] => {
-    const raw = DIVISIONS[divId].featuresPerStage[selectedStage] || [];
+  // Filter menus per division according to stage & role
+  const getDivisionSproutedMenus = (divId: DivisionId): CanonicalMenuItem[] => {
+    const raw = DIVISIONS[divId].menusPerStage[selectedStage] || [];
     if (selectedRole === 'all') return raw;
-    return raw.filter(f => f.roles.includes(selectedRole));
+    return raw.filter(m => m.roles.includes(selectedRole));
   };
 
   const topDivisions = useMemo(() => [DIVISIONS.kurikulum, DIVISIONS.kesiswaan, DIVISIONS.konseling], []);
@@ -367,9 +419,9 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400">
-                DYNAMIC BRANCHING TOPOLOGY
+                CANONICAL MENU TOPOLOGY
               </span>
-              <span className="text-[10px] text-slate-400">• Induk & Ranting Fitur Otomatis Bertunas</span>
+              <span className="text-[10px] text-slate-400">• Hirarki Modul Menu Berdasarkan seed.ts</span>
             </div>
             <h1 className="text-sm font-extrabold text-white tracking-tight">
               ABSENTA LIVING ECOSYSTEM
@@ -418,70 +470,73 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
         </div>
       </header>
 
-      {/* MASTER TREE CANVAS (FITS IN SCREEN) */}
-      <main className="relative z-10 flex-1 flex flex-col justify-between px-6 py-3 overflow-hidden">
+      {/* MASTER BUTTERFLY TREE CANVAS */}
+      <main className="relative z-10 flex-1 flex flex-col justify-between px-6 py-2 overflow-hidden">
 
         {/* ======================================================== */}
-        {/* 1. TOP DAHAN ZONE (SAYAP ATAS: RANTING BERTUNAS KE ATAS) */}
+        {/* 1. TOP DAHAN ZONE (SAYAP ATAS: MENU BERTUNAS KE ATAS)    */}
         {/* ======================================================== */}
         <section className="w-full flex-1 flex flex-col justify-end pb-1 max-w-6xl mx-auto">
           <div className="grid grid-cols-3 gap-6 w-full items-end">
             {topDivisions.map(div => {
               const Icon = div.icon;
-              const sproutedChildren = getDivisionSproutedFeatures(div.id);
-              const hasChildren = sproutedChildren.length > 0;
+              const sproutedMenus = getDivisionSproutedMenus(div.id);
+              const hasMenus = sproutedMenus.length > 0;
 
               return (
                 <div key={div.id} className="flex flex-col items-center">
                   
-                  {/* ANAK / CABANG TOPOLOGI FITUR (BERTUNAS KE ATAS - LEBAR RAMPING & TIDAK MELEBAR) */}
+                  {/* ANAK MENU YANG BERTUNAS KE ATAS (RAMPING & COMPACT) */}
                   <div className="w-full min-h-[96px] flex flex-col justify-end items-center gap-1.5 py-1">
                     <AnimatePresence mode="popLayout">
-                      {sproutedChildren.map((child, idx) => (
-                        <motion.div
-                          key={child.id}
-                          layout
-                          initial={{ opacity: 0, scale: 0.85, y: 8 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.85, y: 8 }}
-                          transition={{ duration: 0.22, delay: idx * 0.04 }}
-                          className={`w-fit max-w-[80%] rounded-full px-3 py-1 border transition-all flex items-center justify-between gap-2 shadow-sm ${div.theme.nodeBg}`}
-                        >
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" />
-                            <span className="text-[10px] font-bold text-slate-200 truncate">
-                              {child.name}
-                            </span>
-                          </div>
-
-                          <Link
-                            to={child.route}
-                            className="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-cyan-500/20 hover:bg-cyan-400 text-cyan-300 hover:text-slate-950 border border-cyan-500/40 transition-all flex items-center gap-0.5 shrink-0"
-                            title="Buka Halaman Langsung"
+                      {sproutedMenus.map((menu, idx) => {
+                        const MenuIcon = menu.icon;
+                        return (
+                          <motion.div
+                            key={menu.id}
+                            layout
+                            initial={{ opacity: 0, scale: 0.85, y: 8 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.85, y: 8 }}
+                            transition={{ duration: 0.22, delay: idx * 0.04 }}
                           >
-                            <span>Buka</span>
-                            <ExternalLink className="w-2.5 h-2.5" />
-                          </Link>
-                        </motion.div>
-                      ))}
+                            <Link
+                              to={menu.path}
+                              className={`w-fit max-w-[85%] rounded-full px-3 py-1 border transition-all flex items-center justify-between gap-2.5 shadow-sm group ${div.theme.nodeBg}`}
+                              title={`Buka menu ${menu.label} (${menu.path})`}
+                            >
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <MenuIcon className={`w-3.5 h-3.5 shrink-0 ${div.theme.accent}`} />
+                                <span className="text-[11px] font-bold text-slate-200 group-hover:text-cyan-300 truncate transition-colors">
+                                  {menu.label}
+                                </span>
+                              </div>
+
+                              <span className="p-0.5 rounded-full bg-slate-800 text-slate-400 group-hover:text-cyan-400 group-hover:bg-cyan-500/20 transition-all shrink-0">
+                                <ExternalLink className="w-2.5 h-2.5" />
+                              </span>
+                            </Link>
+                          </motion.div>
+                        );
+                      })}
                     </AnimatePresence>
 
-                    {!hasChildren && (
+                    {!hasMenus && (
                       <div className="h-[96px] flex items-center justify-center text-[10px] text-slate-500 font-mono italic">
-                        — Non-aktif di fase ini —
+                        — Tidak ada menu di fase ini —
                       </div>
                     )}
                   </div>
 
                   {/* STEM LINE FROM PARENT UPWARD TO CHILDREN */}
-                  {hasChildren && (
+                  {hasMenus && (
                     <div className="w-0.5 h-3 bg-gradient-to-t from-slate-600 to-cyan-500/60" />
                   )}
 
                   {/* INDUK DIVISI ATAS (DEKAT TIMELINE) */}
                   <div
                     className={`w-full p-2.5 rounded-2xl border transition-all duration-300 shadow-md flex items-center justify-between ${
-                      hasChildren
+                      hasMenus
                         ? `bg-slate-900/90 ${div.theme.border} ring-1 ring-white/10 ${div.theme.glow}`
                         : 'bg-slate-950/60 border-slate-900 opacity-40'
                     }`}
@@ -501,7 +556,7 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
                     </div>
 
                     <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border shrink-0 ${div.theme.badge}`}>
-                      {sproutedChildren.length}
+                      {sproutedMenus.length} Menu
                     </span>
                   </div>
 
@@ -561,7 +616,7 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
                       {isPassed && !isCurrent ? <CheckCircle2 className="w-3.5 h-3.5" /> : idx + 1}
                     </div>
 
-                    {/* MOVING OBJECT: HERO SISWA AVATAR */}
+                    {/* MOVING HERO SISWA AVATAR */}
                     {isCurrent && (
                       <motion.div
                         layoutId="sproutingStudentAvatar"
@@ -595,14 +650,14 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
         </section>
 
         {/* ======================================================== */}
-        {/* 3. BOTTOM DAHAN ZONE (SAYAP BAWAH KUPU-KUPU: BERTUNAS KE BAWAH)*/}
+        {/* 3. BOTTOM DAHAN ZONE (SAYAP BAWAH: MENU BERTUNAS KE BAWAH)*/}
         {/* ======================================================== */}
         <section className="w-full flex-1 flex flex-col justify-start pt-1 max-w-6xl mx-auto">
           <div className="grid grid-cols-4 gap-4 w-full items-start">
             {bottomDivisions.map(div => {
               const Icon = div.icon;
-              const sproutedChildren = getDivisionSproutedFeatures(div.id);
-              const hasChildren = sproutedChildren.length > 0;
+              const sproutedMenus = getDivisionSproutedMenus(div.id);
+              const hasMenus = sproutedMenus.length > 0;
 
               return (
                 <div key={div.id} className="flex flex-col items-center">
@@ -613,7 +668,7 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
                   {/* INDUK DIVISI BAWAH (DEKAT TIMELINE) */}
                   <div
                     className={`w-full p-2.5 rounded-2xl border transition-all duration-300 shadow-md flex items-center justify-between ${
-                      hasChildren
+                      hasMenus
                         ? `bg-slate-900/90 ${div.theme.border} ring-1 ring-white/10 ${div.theme.glow}`
                         : 'bg-slate-950/60 border-slate-900 opacity-40'
                     }`}
@@ -633,50 +688,53 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
                     </div>
 
                     <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full border shrink-0 ${div.theme.badge}`}>
-                      {sproutedChildren.length}
+                      {sproutedMenus.length} Menu
                     </span>
                   </div>
 
                   {/* STEM LINE DOWNWARD FROM PARENT TO CHILDREN */}
-                  {hasChildren && (
+                  {hasMenus && (
                     <div className="w-0.5 h-3 bg-gradient-to-b from-slate-600 to-cyan-500/60" />
                   )}
 
-                  {/* ANAK / CABANG TOPOLOGI FITUR (BERTUNAS KE BAWAH - LEBAR RAMPING & TIDAK MELEBAR) */}
+                  {/* ANAK MENU YANG BERTUNAS KE BAWAH (RAMPING & COMPACT) */}
                   <div className="w-full min-h-[96px] flex flex-col justify-start items-center gap-1.5 py-1">
                     <AnimatePresence mode="popLayout">
-                      {sproutedChildren.map((child, idx) => (
-                        <motion.div
-                          key={child.id}
-                          layout
-                          initial={{ opacity: 0, scale: 0.85, y: -8 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.85, y: -8 }}
-                          transition={{ duration: 0.22, delay: idx * 0.04 }}
-                          className={`w-fit max-w-[80%] rounded-full px-3 py-1 border transition-all flex items-center justify-between gap-2 shadow-sm ${div.theme.nodeBg}`}
-                        >
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-                            <span className="text-[10px] font-bold text-slate-200 truncate">
-                              {child.name}
-                            </span>
-                          </div>
-
-                          <Link
-                            to={child.route}
-                            className="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-cyan-500/20 hover:bg-cyan-400 text-cyan-300 hover:text-slate-950 border border-cyan-500/40 transition-all flex items-center gap-0.5 shrink-0"
-                            title="Buka Halaman Langsung"
+                      {sproutedMenus.map((menu, idx) => {
+                        const MenuIcon = menu.icon;
+                        return (
+                          <motion.div
+                            key={menu.id}
+                            layout
+                            initial={{ opacity: 0, scale: 0.85, y: -8 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.85, y: -8 }}
+                            transition={{ duration: 0.22, delay: idx * 0.04 }}
                           >
-                            <span>Buka</span>
-                            <ExternalLink className="w-2.5 h-2.5" />
-                          </Link>
-                        </motion.div>
-                      ))}
+                            <Link
+                              to={menu.path}
+                              className={`w-fit max-w-[85%] rounded-full px-3 py-1 border transition-all flex items-center justify-between gap-2.5 shadow-sm group ${div.theme.nodeBg}`}
+                              title={`Buka menu ${menu.label} (${menu.path})`}
+                            >
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <MenuIcon className={`w-3.5 h-3.5 shrink-0 ${div.theme.accent}`} />
+                                <span className="text-[11px] font-bold text-slate-200 group-hover:text-cyan-300 truncate transition-colors">
+                                  {menu.label}
+                                </span>
+                              </div>
+
+                              <span className="p-0.5 rounded-full bg-slate-800 text-slate-400 group-hover:text-cyan-400 group-hover:bg-cyan-500/20 transition-all shrink-0">
+                                <ExternalLink className="w-2.5 h-2.5" />
+                              </span>
+                            </Link>
+                          </motion.div>
+                        );
+                      })}
                     </AnimatePresence>
 
-                    {!hasChildren && (
+                    {!hasMenus && (
                       <div className="h-[96px] flex items-center justify-center text-[10px] text-slate-500 font-mono italic">
-                        — Non-aktif di fase ini —
+                        — Tidak ada menu di fase ini —
                       </div>
                     )}
                   </div>
@@ -689,11 +747,11 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
 
       </main>
 
-      {/* FOOTER BAR */}
+      {/* FOOTER STATUS */}
       <footer className="relative z-20 px-6 py-2 bg-slate-950/90 border-t border-slate-900 text-slate-400 text-[11px] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-cyan-400" />
-          <span>Klik salah satu checkpoint fase: Induk divisi akan otomatis menumbuhkan dahan fitur relevan secara live.</span>
+          <span>Klik salah satu menu kapsul untuk langsung membuka modulnya di sistem.</span>
         </div>
         <div className="text-[10px] font-mono text-slate-400">
           FASE AKTIF: {currentStage.label} ({currentStage.studentStatus})
