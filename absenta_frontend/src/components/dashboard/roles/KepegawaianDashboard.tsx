@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -26,7 +26,8 @@ import {
   Layers,
   Sparkles,
   UserX,
-  HeartHandshake
+  HeartHandshake,
+  BookOpen
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button, Badge, Loader } from '@/components/ui';
@@ -34,11 +35,15 @@ import { cn } from '@/lib/utils';
 import { getKepegawaianStats } from '@/api/dashboard.api';
 import toast from 'react-hot-toast';
 
+const BukuIndukView = lazy(() =>
+  import('@/components/academic/buku-induk/BukuIndukView').then(m => ({ default: m.BukuIndukView }))
+);
+
 // ============================================================================
 // 1. INTERFACES & TYPES
 // ============================================================================
 
-export type KepegawaianTabId = 'beranda' | 'ptk' | 'dapodik' | 'karir' | 'vokasi';
+export type KepegawaianTabId = 'beranda' | 'ptk' | 'dapodik' | 'karir' | 'vokasi' | 'buku-induk';
 
 export interface KepegawaianDashboardProps {
   user?: any;
@@ -60,6 +65,12 @@ export const KepegawaianDashboard: React.FC<KepegawaianDashboardProps> = ({ user
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<KepegawaianTabId>('beranda');
+  const [visitedTabs, setVisitedTabs] = useState<Set<KepegawaianTabId>>(() => new Set<KepegawaianTabId>(['beranda']));
+
+  const handleTabSelect = (tabId: KepegawaianTabId) => {
+    setActiveTab(tabId);
+    setVisitedTabs(prev => prev.has(tabId) ? prev : new Set(prev).add(tabId));
+  };
   const [searchPtk, setSearchPtk] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [filterJenis, setFilterJenis] = useState<string>('ALL');
@@ -150,6 +161,7 @@ export const KepegawaianDashboard: React.FC<KepegawaianDashboardProps> = ({ user
     { id: 'dapodik', label: 'Beban 24 JP & Dapodik', icon: Clock, badge: urgentAlerts.kurangJamCount > 0 ? `${urgentAlerts.kurangJamCount} Kurang` : undefined },
     { id: 'karir', label: 'KGB & Pensiun', icon: Award, badge: urgentAlerts.mendekatiPensiunCount > 0 ? `${urgentAlerts.mendekatiPensiunCount} BUP` : undefined },
     { id: 'vokasi', label: 'Vokasi & Asesor LSP', icon: GraduationCap, badge: summary.asesorCount || undefined },
+    { id: 'buku-induk', label: 'Buku Induk', icon: BookOpen },
   ];
 
   // ============================================================================
@@ -259,7 +271,7 @@ export const KepegawaianDashboard: React.FC<KepegawaianDashboardProps> = ({ user
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabSelect(tab.id)}
                 className={cn(
                   "flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-xs sm:text-sm whitespace-nowrap transition-all",
                   isActive
@@ -953,21 +965,33 @@ export const KepegawaianDashboard: React.FC<KepegawaianDashboardProps> = ({ user
       {/* Zone 3: Main Dynamic Content + Contextual Side Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
         <div className="lg:col-span-3 min-w-0">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-            >
-              {activeTab === 'beranda' && renderBerandaTab()}
-              {activeTab === 'ptk' && renderPtkTab()}
-              {activeTab === 'dapodik' && renderDapodikTab()}
-              {activeTab === 'karir' && renderKarirTab()}
-              {activeTab === 'vokasi' && renderVokasiTab()}
-            </motion.div>
-          </AnimatePresence>
+          {/* Keep-Alive tab: Buku Induk (lazy loaded, preserved across tab switches) */}
+          {visitedTabs.has('buku-induk') && (
+            <div className={cn('w-full', activeTab === 'buku-induk' ? 'block animate-in fade-in duration-100' : 'hidden')}>
+              <Suspense fallback={<div className="p-8 flex items-center justify-center"><div className="animate-spin h-6 w-6 rounded-full border-b-2 border-violet-600" /></div>}>
+                <BukuIndukView hideLayout={true} readOnly={false} />
+              </Suspense>
+            </div>
+          )}
+
+          {/* Animated tabs for remaining tab content */}
+          {activeTab !== 'buku-induk' && (
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                {activeTab === 'beranda' && renderBerandaTab()}
+                {activeTab === 'ptk' && renderPtkTab()}
+                {activeTab === 'dapodik' && renderDapodikTab()}
+                {activeTab === 'karir' && renderKarirTab()}
+                {activeTab === 'vokasi' && renderVokasiTab()}
+              </motion.div>
+            </AnimatePresence>
+          )}
         </div>
 
         <div className="lg:col-span-1 min-w-0">

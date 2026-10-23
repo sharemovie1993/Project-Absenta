@@ -431,7 +431,8 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/billing/invoices',
       '/sarpras/inventory',
       '/academic/ppdb-mapping',
-      '/academic/struktur-organisasi'
+      '/academic/struktur-organisasi',
+      '/academic/buku-induk'
     ]
   },
   {
@@ -500,7 +501,8 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/kurikulum/jam-kbm',
       '/kurikulum/jadwal',
       '/kurikulum/jadwal-piket',
-      '/kurikulum/rekap-kbm'
+      '/kurikulum/rekap-kbm',
+      '/academic/buku-induk'
     ]
   },
   {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   UniversalDocumentModal,
@@ -14,6 +14,7 @@ import { BukuIndukSheet1 } from './BukuIndukSheet1';
 import { BukuIndukSheet2 } from './BukuIndukSheet2';
 import { BukuIndukSheet3 } from './BukuIndukSheet3';
 import { BukuIndukSheet4 } from './BukuIndukSheet4';
+import { generateBukuIndukPdf } from '@/utils/print/modules/pdfBukuInduk';
 
 interface BukuIndukPrintModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export const BukuIndukPrintModal: React.FC<BukuIndukPrintModalProps> = ({
   siswaId,
 }) => {
   const { tenantInfo } = usePrintHeaderData();
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: bukuIndukQueryKeys.detail(siswaId),
@@ -36,6 +38,23 @@ export const BukuIndukPrintModal: React.FC<BukuIndukPrintModalProps> = ({
 
   const siswa = data?.data;
 
+  const handleDownload = useCallback(async () => {
+    if (!siswa || isDownloading) return;
+    setIsDownloading(true);
+    try {
+      const { blobUrl, filename } = await generateBukuIndukPdf(siswa, tenantInfo);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error('[BukuInduk] PDF generation failed:', err);
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [siswa, tenantInfo, isDownloading]);
+
   return (
     <UniversalDocumentModal
       isOpen={isOpen}
@@ -44,6 +63,8 @@ export const BukuIndukPrintModal: React.FC<BukuIndukPrintModalProps> = ({
       subtitle={siswa ? `NIS: ${siswa.nis} | NISN: ${siswa.nisn || '-'}` : undefined}
       allowLogoToggles={true}
       orientation="portrait"
+      onDownloadPdf={siswa ? handleDownload : undefined}
+      downloadPdfText={isDownloading ? 'Mengunduh...' : 'Unduh PDF'}
     >
       <div className="flex flex-col gap-8">
         {isLoading ? (

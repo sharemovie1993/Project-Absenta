@@ -261,6 +261,7 @@ export const filterNavByWorkspace = (
       '/academic/transition',
       '/academic/siswa-cards',
       '/academic/staff-logs',
+      '/academic/buku-induk',
       '/users',
       '/settings',
       '/academic/tahun-pelajaran',

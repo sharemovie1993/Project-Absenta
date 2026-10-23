@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Eye, BookOpen, BookMarked, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
 import { BukuIndukPrintModal } from './BukuIndukPrintModal';
+import { KlapperPrintModal } from './KlapperPrintModal';
 
 import { useAcademicFilter, AcademicFilterToolbar } from '@/components/common/academic-filter';
 import { Loader, SectionCard } from '@/components/ui';
@@ -347,6 +348,7 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
   const [activeTab, setActiveTab] = useState<ActiveTab>('induk');
   const [selectedSiswaId, setSelectedSiswaId] = useState<string | null>(null);
   const [printSiswaId, setPrintSiswaId] = useState<string | null>(null);
+  const [showKlapperPrint, setShowKlapperPrint] = useState(false);
   const [page, setPage] = useState(1);
   const [klapperPage, setKlapperPage] = useState(1);
   const [selectedHuruf, setSelectedHuruf] = useState('');
@@ -469,9 +471,8 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
         </button>
       </div>
 
-      {/* Buku Klapper: Alphabet filter bar */}
       {activeTab === 'klapper' && (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1 items-center">
           {ALPHABET.map((letter) => (
             <button
               key={letter}
@@ -493,6 +494,14 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
               Reset
             </button>
           )}
+          {/* Cetak Klapper */}
+          <button
+            onClick={() => setShowKlapperPrint(true)}
+            className="ml-auto flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-black bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors"
+          >
+            <Printer size={13} />
+            Cetak Klapper
+          </button>
         </div>
       )}
 
@@ -568,6 +577,15 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
           siswaId={printSiswaId}
         />
       )}
+
+      {/* Buku Klapper Print Modal */}
+      <KlapperPrintModal
+        isOpen={showKlapperPrint}
+        onClose={() => setShowKlapperPrint(false)}
+        klapperData={klapperList}
+        huruf={selectedHuruf || undefined}
+        tahunPelajaran={filter.activeTpYear?.tahun}
+      />
     </div>
   );
 });
