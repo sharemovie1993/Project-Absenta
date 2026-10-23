@@ -148,6 +148,9 @@ export class EskulService {
         semester_id: params.semester_id,
         siswa_id: { in: studentIds },
       },
+      include: {
+        SiswaAkademik: true,
+      },
     });
 
     const gradeMap = new Map<string, { predikat: string; keterangan: string | null }>();
@@ -209,10 +212,56 @@ export class EskulService {
       throw new Error('Kegiatan ekstrakurikuler tidak valid');
     }
 
+    // Resolusi / upsert SiswaAkademik untuk seluruh siswa dalam payload
+    const uniqueSiswaIds = [...new Set(grades.map((g) => g.siswa_id))];
+    const saMap = new Map<string, string>();
+
+    const existingSas = await prisma.siswaAkademik.findMany({
+      where: {
+        siswa_id: { in: uniqueSiswaIds },
+        tahun_pelajaran_id,
+        semester_id,
+      },
+      select: { id: true, siswa_id: true },
+    });
+    existingSas.forEach((sa) => saMap.set(sa.siswa_id, sa.id));
+
+    const missingSiswaIds = uniqueSiswaIds.filter((id) => !saMap.has(id));
+    if (missingSiswaIds.length > 0) {
+      const students = await prisma.siswa.findMany({
+        where: { id: { in: missingSiswaIds }, tenant_id: tenantId, kelas_id: { not: null } },
+        select: { id: true, kelas_id: true },
+      });
+      for (const s of students) {
+        if (s.kelas_id) {
+          const createdSa = await prisma.siswaAkademik.upsert({
+            where: {
+              siswa_id_tahun_pelajaran_id_semester_id: {
+                siswa_id: s.id,
+                tahun_pelajaran_id,
+                semester_id,
+              },
+            },
+            create: {
+              siswa_id: s.id,
+              kelas_id: s.kelas_id,
+              tahun_pelajaran_id,
+              semester_id,
+              status: 'AKTIF',
+            },
+            update: {},
+            select: { id: true },
+          });
+          saMap.set(s.id, createdSa.id);
+        }
+      }
+    }
+
     // Transaksi atomik upsert seluruh baris nilai
     await prisma.$transaction(
-      grades.map((item) =>
-        prisma.nilaiEskul.upsert({
+      grades.map((item) => {
+        const saId = item.siswa_akademik_id || saMap.get(item.siswa_id) || null;
+        return prisma.nilaiEskul.upsert({
           where: {
             unique_nilai_eskul_semester: {
               tenant_id: tenantId,
@@ -225,19 +274,21 @@ export class EskulService {
           update: {
             predikat: item.predikat,
             keterangan: item.keterangan || null,
+            ...(saId ? { siswa_akademik_id: saId } : {}),
             updated_at: new Date(),
           },
           create: {
             tenant_id: tenantId,
             siswa_id: item.siswa_id,
+            siswa_akademik_id: saId,
             jenis_kegiatan_id,
             tahun_pelajaran_id,
             semester_id,
             predikat: item.predikat,
             keterangan: item.keterangan || null,
           },
-        })
-      )
+        });
+      })
     );
 
     return {
@@ -301,6 +352,7 @@ export class EskulService {
       },
       include: {
         JenisKegiatanMaster: { select: { id: true, nama: true } },
+        SiswaAkademik: true,
       },
     });
 

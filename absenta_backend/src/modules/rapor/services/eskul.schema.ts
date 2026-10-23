@@ -7,6 +7,7 @@ export const saveNilaiEskulSchema = z.object({
   grades: z.array(
     z.object({
       siswa_id: z.string().min(1, 'ID siswa wajib diisi'),
+      siswa_akademik_id: z.string().uuid().optional().nullable(),
       predikat: z.enum(['A', 'B', 'C', 'D'], {
         errorMap: () => ({ message: 'Predikat harus salah satu dari A, B, C, atau D' })
       }),

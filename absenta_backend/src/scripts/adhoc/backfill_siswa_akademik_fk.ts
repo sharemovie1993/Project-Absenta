@@ -106,6 +106,18 @@ async function main() {
     console.log(`✅ Seluruh sisa baris P5NilaiSiswa berhasil ditautkan.`);
   }
 
+  // 6. Backfill NilaiEskul
+  const resEskul = await prisma.$executeRawUnsafe(`
+    UPDATE "nilai_eskul" e
+    SET "siswa_akademik_id" = sa."id"
+    FROM "SiswaAkademik" sa
+    WHERE e."siswa_id" = sa."siswa_id"
+      AND e."tahun_pelajaran_id" = sa."tahun_pelajaran_id"
+      AND e."semester_id" = sa."semester_id"
+      AND e."siswa_akademik_id" IS NULL;
+  `);
+  console.log(`✅ Backfill NilaiEskul: ${resEskul} baris diperbarui dengan siswa_akademik_id.`);
+
   console.log('🎉 Seluruh relasi historis SiswaAkademik berhasil direkonsiliasi!');
 }
 

@@ -1246,6 +1246,7 @@ model SiswaAkademik {
   SertifikatUkk        SertifikatUkk[]
   KelulusanSiswa       KelulusanSiswa[]
   P5NilaiSiswa         P5NilaiSiswa[]
+  NilaiEskul           NilaiEskul[]
 
   @@unique([siswa_id, tahun_pelajaran_id, semester_id])
   @@index([kelas_id, tahun_pelajaran_id, semester_id])
@@ -4908,6 +4909,7 @@ model NilaiEskul {
   id                 String              @id @default(uuid())
   tenant_id          String
   siswa_id           String
+  siswa_akademik_id  String?
   jenis_kegiatan_id  String
   tahun_pelajaran_id String
   semester_id        String
@@ -4918,6 +4920,7 @@ model NilaiEskul {
 
   Tenant              Tenant              @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Siswa               Siswa               @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
+  SiswaAkademik       SiswaAkademik?      @relation(fields: [siswa_akademik_id], references: [id], onDelete: Cascade)
   JenisKegiatanMaster JenisKegiatanMaster @relation(fields: [jenis_kegiatan_id], references: [id], onDelete: Cascade)
   TahunPelajaran      TahunPelajaran      @relation(fields: [tahun_pelajaran_id], references: [id])
   Semester            Semester            @relation(fields: [semester_id], references: [id])
@@ -4926,6 +4929,7 @@ model NilaiEskul {
   @@index([tenant_id])
   @@index([tenant_id, jenis_kegiatan_id, tahun_pelajaran_id, semester_id])
   @@index([tenant_id, siswa_id, tahun_pelajaran_id, semester_id])
+  @@index([tenant_id, siswa_akademik_id])
   @@map("nilai_eskul")
 }
 
