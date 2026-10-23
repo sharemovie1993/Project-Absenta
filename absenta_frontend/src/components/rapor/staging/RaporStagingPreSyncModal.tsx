@@ -283,7 +283,8 @@ export const RaporStagingPreSyncModal: React.FC<RaporStagingPreSyncModalProps> =
                       </p>
                       <p className="text-[11px] opacity-90 leading-relaxed">
                         {!isAcademicReady
-                          ? 'Tahun Pelajaran, Semester, atau Rombel Kelas belum terdaftar di platform master sekolah.'
+                          ? report.academicSlots.semester.reason ||
+                            'Tahun Pelajaran, Semester, atau Rombel Kelas belum terdaftar di platform master sekolah.'
                           : 'Identitas Tahun Pelajaran, Semester, dan Rombel Kelas cocok dengan data pokok Absenta.'}
                       </p>
                     </div>
@@ -308,17 +309,41 @@ export const RaporStagingPreSyncModal: React.FC<RaporStagingPreSyncModalProps> =
                           <Badge variant="outline" className="text-[10px] text-rose-600 border-rose-300 shrink-0">Belum Ada</Badge>
                         )}
                       </div>
-                      {/* Semester */}
-                      <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
-                        <div className="min-w-0">
-                          <span className="text-[10px] text-slate-400 block">Semester</span>
-                          <span className="font-semibold block truncate">{report.academicSlots.semester.raw}</span>
-                        </div>
-                        {report.academicSlots.semester.isReady ? (
-                          <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-300 shrink-0">Ada</Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[10px] text-rose-600 border-rose-300 shrink-0">Belum Ada</Badge>
+                      {/* Semester (Strict Parent TAPEL Guard) */}
+                      <div
+                        className={cn(
+                          'p-2.5 bg-white dark:bg-slate-900 rounded-xl border flex flex-col justify-between',
+                          !report.academicSlots.semester.isReady
+                            ? 'border-rose-300 dark:border-rose-800/80 bg-rose-50/20'
+                            : 'border-slate-200/60 dark:border-slate-700/60'
                         )}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <div className="min-w-0">
+                            <span className="text-[10px] text-slate-400 block">Semester</span>
+                            <span className="font-semibold block truncate">{report.academicSlots.semester.raw}</span>
+                          </div>
+                          {report.academicSlots.semester.isReady ? (
+                            <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-300 shrink-0">Ada</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] text-rose-600 border-rose-300 shrink-0">Belum Ada</Badge>
+                          )}
+                        </div>
+                        {report.academicSlots.semester.isReady && report.academicSlots.semester.parentTahunPelajaran ? (
+                          <div
+                            className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 truncate"
+                            title={`Menginduk resmi ke Tahun Pelajaran: ${report.academicSlots.semester.parentTahunPelajaran}`}
+                          >
+                            Induk: <span className="font-semibold text-slate-700 dark:text-slate-200">{report.academicSlots.semester.parentTahunPelajaran}</span>
+                          </div>
+                        ) : !report.academicSlots.semester.isReady && report.academicSlots.semester.reason ? (
+                          <div
+                            className="text-[10px] font-medium text-rose-600 dark:text-rose-400 mt-1 truncate"
+                            title={report.academicSlots.semester.reason}
+                          >
+                            ⚠️ {report.academicSlots.semester.reason}
+                          </div>
+                        ) : null}
                       </div>
                       {/* Kelas */}
                       <div

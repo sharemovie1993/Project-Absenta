@@ -561,43 +561,74 @@ export class RaporStagingService {
   }
 
   /**
-   * ── RESOLVER CERDAS SEMESTER DENGAN RELASI TAHUN PELAJARAN ──
-   * Memastikan semester yang dipilih benar-benar terikat pada Tahun Pelajaran yang dituju.
+   * ── RESOLVER CERDAS SEMESTER DENGAN RELASI TAHUN PELAJARAN (ZERO SALAH KAMAR) ──
+   * Memastikan semester yang dipilih BENAR-BENAR MENGINDUK ke Tahun Pelajaran yang dituju.
+   * DILARANG KERAS mencari atau mengambil fallback semester dari Tahun Pelajaran lain,
+   * karena nama semester antar-tapel sama-sama hanya 'Ganjil' dan 'Genap'.
    */
   static async resolveSemester(tenantId: string, tpId: string | null | undefined, rawSemName?: string | null) {
-    if (!rawSemName) return null;
+    if (!rawSemName || !tpId) return null;
+
     const cleanSem = rawSemName.trim().toLowerCase();
-    const isGenap = cleanSem.includes('genap') || cleanSem === '2';
-    const targetSem = isGenap ? 'Genap' : 'Ganjil';
+    const isGenap =
+      cleanSem.includes('genap') ||
+      cleanSem === '2' ||
+      cleanSem.includes('semester 2') ||
+      cleanSem.includes('semester ii') ||
+      cleanSem === 'ii';
+    const targetSemKeyword = isGenap ? 'Genap' : 'Ganjil';
 
-    // 1. Cari semester spesifik pada Tahun Pelajaran tersebut
-    if (tpId) {
-      let sem = await prisma.semester.findFirst({
-        where: {
-          tenant_id: tenantId,
-          tahun_pelajaran_id: tpId,
-          nama_semester: { equals: rawSemName.trim(), mode: 'insensitive' },
-        },
-      });
-      if (!sem) {
-        sem = await prisma.semester.findFirst({
-          where: {
-            tenant_id: tenantId,
-            tahun_pelajaran_id: tpId,
-            nama_semester: { contains: targetSem, mode: 'insensitive' },
-          },
-        });
-      }
-      if (sem) return sem;
-    }
-
-    // 2. Fallback global jika tpId tidak ditemukan
-    return prisma.semester.findFirst({
+    // Ambil seluruh semester yang terikat resmi HANYA pada Tahun Pelajaran terpilih
+    const semestersInTp = await prisma.semester.findMany({
       where: {
         tenant_id: tenantId,
-        nama_semester: { contains: targetSem, mode: 'insensitive' },
+        tahun_pelajaran_id: tpId,
+      },
+      include: {
+        TahunPelajaran: {
+          select: { id: true, tahun: true },
+        },
       },
     });
+
+    if (!semestersInTp || semestersInTp.length === 0) {
+      return null;
+    }
+
+    // 1. Exact match (case insensitive)
+    const exact = semestersInTp.find((s) => s.nama_semester.trim().toLowerCase() === cleanSem);
+    if (exact) return exact;
+
+    // 2. Keyword match berdasarkan klasifikasi Ganjil / Genap
+    const keywordMatch = semestersInTp.find((s) => {
+      const sName = s.nama_semester.trim().toLowerCase();
+      if (isGenap) {
+        return (
+          sName.includes('genap') ||
+          sName === '2' ||
+          sName.includes('semester 2') ||
+          sName.includes('semester ii') ||
+          sName === 'ii'
+        );
+      }
+      return (
+        sName.includes('ganjil') ||
+        sName === '1' ||
+        sName.includes('semester 1') ||
+        sName.includes('semester i') ||
+        sName === 'i'
+      );
+    });
+    if (keywordMatch) return keywordMatch;
+
+    // 3. Fallback partial contains terhadap 'Genap' atau 'Ganjil'
+    const partialMatch = semestersInTp.find((s) =>
+      s.nama_semester.toLowerCase().includes(targetSemKeyword.toLowerCase())
+    );
+    if (partialMatch) return partialMatch;
+
+    // 4. TIDAK ADA FALLBACK GLOBAL: Jika tidak ada di tpId, kembalikan null (Cegah Salah Kamar)
+    return null;
   }
 
   /**
@@ -760,7 +791,19 @@ export class RaporStagingService {
       semester: sheet.semester,
       academicSlots: {
         tahunPelajaran: { raw: tpRaw, isReady: !!tp, matchedName: tp?.tahun || null, id: tp?.id || null },
-        semester: { raw: semRaw, isReady: !!sem, matchedName: sem?.nama_semester || null, id: sem?.id || null },
+        semester: {
+          raw: semRaw,
+          isReady: !!sem && !!tp && sem.tahun_pelajaran_id === tp.id,
+          matchedName: sem?.nama_semester || null,
+          id: sem?.id || null,
+          parentTahunPelajaran: (sem as any)?.TahunPelajaran?.tahun || tp?.tahun || null,
+          tahunPelajaranId: sem?.tahun_pelajaran_id || null,
+          reason: !tp
+            ? `Tahun Pelajaran '${tpRaw}' belum terdaftar di platform master sekolah`
+            : !sem
+            ? `Slot Semester '${semRaw}' belum terdaftar pada Tahun Pelajaran ${tp.tahun}`
+            : null,
+        },
         kelas: {
           raw: kelasRaw,
           isReady: !!matchedKelas,
@@ -840,9 +883,9 @@ export class RaporStagingService {
     const semester = await RaporStagingService.resolveSemester(tenantId, tpId, sheet.semester);
     const semId = semester?.id || null;
 
-    if (!tpId || !semId) {
+    if (!tpId || !semId || semester?.tahun_pelajaran_id !== tpId) {
       throw new Error(
-        `Master Tahun Pelajaran '${sheet.tahun_pelajaran_nama}' atau Semester '${sheet.semester}' belum terdaftar di platform. Pastikan sudah dibuat pada menu Master Akademik.`
+        `Master Tahun Pelajaran '${sheet.tahun_pelajaran_nama}' atau Semester '${sheet.semester}' belum terdaftar atau salah kamar. Pastikan semester '${sheet.semester}' terdaftar secara resmi di bawah Tahun Pelajaran '${sheet.tahun_pelajaran_nama}' pada menu Master Akademik.`
       );
     }
 

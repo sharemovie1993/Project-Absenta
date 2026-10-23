@@ -534,6 +534,9 @@ export interface PreSyncAcademicSlot {
   jurusanNama?: string | null;
   jurusanKode?: string | null;
   candidateClasses?: PreSyncCandidateClass[];
+  parentTahunPelajaran?: string | null;
+  tahunPelajaranId?: string | null;
+  reason?: string | null;
 }
 
 export interface PreSyncStudentItem {
