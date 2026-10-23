@@ -346,7 +346,11 @@ export class UkkSklService {
 
   static async saveUkkSettings(tenantId: string, jurusanId: string, data: any, tahunAjaran?: string) {
     const value = JSON.stringify(data);
-    const targetYear = tahunAjaran || data?.tahun_ajaran;
+    let targetYear = tahunAjaran || data?.tahun_ajaran;
+    if (!targetYear) {
+      const activeTp = await prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } });
+      targetYear = activeTp?.tahun;
+    }
 
     // 1. If year is present, save year-specific historical record
     if (targetYear) {
@@ -425,9 +429,14 @@ export class UkkSklService {
 
   static async saveUkkJadwal(tenantId: string, jurusanId: string, sessions: any[], tahunAjaran?: string) {
     const value = JSON.stringify(sessions);
+    let targetYear = tahunAjaran;
+    if (!targetYear) {
+      const activeTp = await prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } });
+      targetYear = activeTp?.tahun;
+    }
 
-    if (tahunAjaran) {
-      const sanitizedYear = String(tahunAjaran).replace(/[^a-zA-Z0-9]/g, '_');
+    if (targetYear) {
+      const sanitizedYear = String(targetYear).replace(/[^a-zA-Z0-9]/g, '_');
       const yearKey = jurusanId ? `ukk_jadwal_${jurusanId}_${sanitizedYear}` : `ukk_jadwal_default_${sanitizedYear}`;
       const existingYear = await prisma.config.findFirst({
         where: { tenant_id: tenantId, key: yearKey },
@@ -435,7 +444,7 @@ export class UkkSklService {
       if (existingYear) {
         await prisma.config.update({
           where: { id: existingYear.id },
-          data: { value, description: `Jadwal & Ploting UKK Jurusan ${jurusanId || 'Default'} TA ${tahunAjaran}` },
+          data: { value, description: `Jadwal & Ploting UKK Jurusan ${jurusanId || 'Default'} TA ${targetYear}` },
         });
       } else {
         await prisma.config.create({
@@ -443,7 +452,7 @@ export class UkkSklService {
             tenant_id: tenantId,
             key: yearKey,
             value,
-            description: `Jadwal & Ploting UKK Jurusan ${jurusanId || 'Default'} TA ${tahunAjaran}`,
+            description: `Jadwal & Ploting UKK Jurusan ${jurusanId || 'Default'} TA ${targetYear}`,
           },
         });
       }
@@ -501,9 +510,14 @@ export class UkkSklService {
 
   static async saveUkkBeritaAcara(tenantId: string, jurusanId: string, records: any[], tahunAjaran?: string) {
     const value = JSON.stringify(records);
+    let targetYear = tahunAjaran;
+    if (!targetYear) {
+      const activeTp = await prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } });
+      targetYear = activeTp?.tahun;
+    }
 
-    if (tahunAjaran) {
-      const sanitizedYear = String(tahunAjaran).replace(/[^a-zA-Z0-9]/g, '_');
+    if (targetYear) {
+      const sanitizedYear = String(targetYear).replace(/[^a-zA-Z0-9]/g, '_');
       const yearKey = jurusanId ? `ukk_berita_acara_${jurusanId}_${sanitizedYear}` : `ukk_berita_acara_default_${sanitizedYear}`;
       const existingYear = await prisma.config.findFirst({
         where: { tenant_id: tenantId, key: yearKey },
@@ -511,7 +525,7 @@ export class UkkSklService {
       if (existingYear) {
         await prisma.config.update({
           where: { id: existingYear.id },
-          data: { value, description: `Berita Acara UKK Jurusan ${jurusanId || 'Default'} TA ${tahunAjaran}` },
+          data: { value, description: `Berita Acara UKK Jurusan ${jurusanId || 'Default'} TA ${targetYear}` },
         });
       } else {
         await prisma.config.create({
@@ -519,7 +533,7 @@ export class UkkSklService {
             tenant_id: tenantId,
             key: yearKey,
             value,
-            description: `Berita Acara UKK Jurusan ${jurusanId || 'Default'} TA ${tahunAjaran}`,
+            description: `Berita Acara UKK Jurusan ${jurusanId || 'Default'} TA ${targetYear}`,
           },
         });
       }
@@ -575,9 +589,14 @@ export class UkkSklService {
 
   static async saveUkkRab(tenantId: string, jurusanId: string, payload: any, tahunAjaran?: string) {
     const value = JSON.stringify(payload);
+    let targetYear = tahunAjaran;
+    if (!targetYear) {
+      const activeTp = await prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } });
+      targetYear = activeTp?.tahun;
+    }
 
-    if (tahunAjaran) {
-      const sanitizedYear = String(tahunAjaran).replace(/[^a-zA-Z0-9]/g, '_');
+    if (targetYear) {
+      const sanitizedYear = String(targetYear).replace(/[^a-zA-Z0-9]/g, '_');
       const yearKey = jurusanId ? `ukk_rab_${jurusanId}_${sanitizedYear}` : `ukk_rab_default_${sanitizedYear}`;
       const existingYear = await prisma.config.findFirst({
         where: { tenant_id: tenantId, key: yearKey },
@@ -585,7 +604,7 @@ export class UkkSklService {
       if (existingYear) {
         await prisma.config.update({
           where: { id: existingYear.id },
-          data: { value, description: `RAB Alat & Bahan UKK Jurusan ${jurusanId || 'Default'} TA ${tahunAjaran}` },
+          data: { value, description: `RAB Alat & Bahan UKK Jurusan ${jurusanId || 'Default'} TA ${targetYear}` },
         });
       } else {
         await prisma.config.create({
@@ -593,7 +612,7 @@ export class UkkSklService {
             tenant_id: tenantId,
             key: yearKey,
             value,
-            description: `RAB Alat & Bahan UKK Jurusan ${jurusanId || 'Default'} TA ${tahunAjaran}`,
+            description: `RAB Alat & Bahan UKK Jurusan ${jurusanId || 'Default'} TA ${targetYear}`,
           },
         });
       }

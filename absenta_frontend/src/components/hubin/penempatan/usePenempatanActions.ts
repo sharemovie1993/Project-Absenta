@@ -35,14 +35,13 @@ export interface UsePenempatanActionsProps {
   rawMitra: MitraData[];
   rawPenempatan: SiswaPkl[];
   canManage: boolean;
-  selectedTpFilter: string;
+  selectedTpFilter?: string;
 }
 
 export function usePenempatanActions({
   rawMitra,
   rawPenempatan,
   canManage,
-  selectedTpFilter
 }: UsePenempatanActionsProps) {
   const queryClient = useQueryClient();
   const printTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -348,7 +347,8 @@ export function usePenempatanActions({
     const latOverride = formData.get('lat_override') ? parseFloat(formData.get('lat_override') as string) : null;
     const lonOverride = formData.get('lon_override') ? parseFloat(formData.get('lon_override') as string) : null;
     const radiusOverride = formData.get('radius_override') ? parseInt(formData.get('radius_override') as string) : null;
-    const tpId = (formData.get('tahun_pelajaran_id') as string) || selectedTpFilter || null;
+    // Strict Mode: Filter UI is ONLY for reading data. Writes do not inherit UI filter fallback.
+    const tpId = (formData.get('tahun_pelajaran_id') as string) || null;
     const semId = (formData.get('semester_id') as string) || null;
 
     const data: CreatePenempatanPayload = {
@@ -384,7 +384,7 @@ export function usePenempatanActions({
     } else {
       createMutation.mutate(data);
     }
-  }, [selectedSiswaId, selectedMitraId, selectedPembimbingId, selectedPkl, selectedTpFilter, createMutation, updateMutation]);
+  }, [selectedSiswaId, selectedMitraId, selectedPembimbingId, selectedPkl, createMutation, updateMutation]);
 
   const handleBulkPlottingSubmit = useCallback((data: {
     siswa_ids: string[];
@@ -397,6 +397,7 @@ export function usePenempatanActions({
     kelas_id?: string | null;
     items?: Array<{ siswa_id: string; kelas_id?: string | null }>;
   }) => {
+    // Strict Mode: Do not leak selectedTpFilter into bulk creation
     const payload: CreatePenempatanPayload[] = (data.items && data.items.length > 0)
       ? data.items.map(item => ({
           siswa_id: item.siswa_id,
@@ -405,7 +406,7 @@ export function usePenempatanActions({
           tanggal_mulai: data.tanggal_mulai,
           tanggal_selesai: data.tanggal_selesai,
           status: 'AKTIF',
-          tahun_pelajaran_id: data.tahun_pelajaran_id || selectedTpFilter || null,
+          tahun_pelajaran_id: data.tahun_pelajaran_id || null,
           semester_id: data.semester_id || null,
           kelas_id: item.kelas_id || data.kelas_id || null,
         }))
@@ -416,12 +417,12 @@ export function usePenempatanActions({
           tanggal_mulai: data.tanggal_mulai,
           tanggal_selesai: data.tanggal_selesai,
           status: 'AKTIF',
-          tahun_pelajaran_id: data.tahun_pelajaran_id || selectedTpFilter || null,
+          tahun_pelajaran_id: data.tahun_pelajaran_id || null,
           semester_id: data.semester_id || null,
           kelas_id: data.kelas_id || null,
         }));
     bulkCreateMutation.mutate(payload);
-  }, [bulkCreateMutation, selectedTpFilter]);
+  }, [bulkCreateMutation]);
 
   const handleNilaiSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

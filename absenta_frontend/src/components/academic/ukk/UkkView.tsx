@@ -102,6 +102,13 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
         '2025/2026';
   const effectiveTahunAjaran = String(rawTahunAjaran || '2025/2026');
 
+  // Mode Strict: Filter UI HANYA untuk membaca data.
+  // Jika filter menampilkan tahun ajaran historis (berbeda dengan tahun ajaran aktif SSOT server),
+  // maka tampilan secara otomatis terkunci hanya baca (read-only) tanpa celah mutasi ke belakang.
+  const activeTahunAjaran = internalAcademic.activeAcademicYear?.tahun || internalAcademic.activeAcademicYear?.nama || '';
+  const isViewingHistorical = Boolean(activeTahunAjaran && effectiveTahunAjaran && effectiveTahunAjaran !== activeTahunAjaran);
+  const effectiveReadOnly = readOnly || isViewingHistorical;
+
   const [activeTab, setActiveTab] = useState<'rab' | 'ploting' | 'berita_acara' | 'penilaian'>('ploting');
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [selectedJadwalForBa, setSelectedJadwalForBa] = useState<string | null>(null);
@@ -488,7 +495,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
           <span className="text-xs font-mono font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/60 px-3 py-1.5 rounded-xl shadow-xs">
             TA {effectiveTahunAjaran}
           </span>
-          {!readOnly && (
+          {!effectiveReadOnly && (
             <button
               type="button"
               onClick={() => setConfigModalOpen(true)}
@@ -509,7 +516,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
           tahunPelajaranId={effectiveTpId}
           tahunAjaran={effectiveTahunAjaran}
           jumlahPeserta={combinedList.length || 36}
-          readOnly={readOnly}
+          readOnly={effectiveReadOnly}
         />
       )}
 
@@ -520,7 +527,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
           tahunPelajaranId={effectiveTpId}
           tahunAjaran={effectiveTahunAjaran}
           siswaList={siswaListForPloting}
-          readOnly={readOnly}
+          readOnly={effectiveReadOnly}
           onManageBeritaAcara={(sesi) => {
             setSelectedJadwalForBa(sesi.id);
             setActiveTab('berita_acara');
@@ -538,7 +545,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
           jurusanNama={jurusanNama}
           tahunPelajaranId={effectiveTpId}
           tahunAjaran={effectiveTahunAjaran}
-          readOnly={readOnly}
+          readOnly={effectiveReadOnly}
           selectedJadwalId={selectedJadwalForBa}
           onClearSelectedJadwal={() => setSelectedJadwalForBa(null)}
         />
@@ -938,7 +945,7 @@ export const UkkView: React.FC<UniversalUkkViewProps> = React.memo(({
                               )}
 
                               {/* Tombol Input / Edit Nilai */}
-                              {!readOnly && (
+                              {!effectiveReadOnly && (
                                 <button
                                   type="button"
                                   onClick={() =>

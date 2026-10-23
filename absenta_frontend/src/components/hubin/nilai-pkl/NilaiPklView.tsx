@@ -445,9 +445,8 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
       toast.error('Tidak ada data siswa untuk disimpan');
       return;
     }
+    // Strict Mode: Filter UI is ONLY for reading data. Do not pass filter state to grade batch write.
     saveBatchMutation.mutate({
-      tahun_pelajaran_id: selectedTp || undefined,
-      semester_id: selectedSemester || undefined,
       scores: scores?.map(s => ({
         siswa_pkl_id: s.siswa_pkl_id,
         hard_kompetensi_teknis: s.hard_kompetensi_teknis,

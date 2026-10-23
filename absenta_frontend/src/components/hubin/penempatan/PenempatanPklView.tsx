@@ -219,7 +219,6 @@ export const PenempatanPklView: React.FC<PenempatanPklViewProps> = React.memo(({
     rawMitra,
     rawPenempatan,
     canManage,
-    selectedTpFilter
   });
 
   useEffect(() => {

@@ -349,14 +349,25 @@ export class HubinPenempatanService extends HubinCommonHelper {
       }
     }
 
-    // Ambil info akademik saat ini
+    // Ambil info akademik saat ini (Fallback ke periode aktif server jika kosong)
     const siswa = await prisma.siswa.findUnique({
       where: { id: data.siswa_id },
       select: { kelas_id: true, tahun_pelajaran_id: true, semester_id: true, nama_siswa: true }
     });
 
-    const targetTpId = data.tahun_pelajaran_id || siswa?.tahun_pelajaran_id;
-    const targetSemId = data.semester_id || siswa?.semester_id;
+    let activeTpId = siswa?.tahun_pelajaran_id;
+    let activeSemId = siswa?.semester_id;
+    if (!activeTpId || !activeSemId) {
+      const [activeTp, activeSem] = await Promise.all([
+        prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } }),
+        prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true } })
+      ]);
+      activeTpId = activeTpId || activeTp?.id;
+      activeSemId = activeSemId || activeSem?.id;
+    }
+
+    const targetTpId = data.tahun_pelajaran_id || activeTpId;
+    const targetSemId = data.semester_id || activeSemId;
     const targetKelasId = data.kelas_id || siswa?.kelas_id;
 
     let siswaAkademikId: string | undefined;
@@ -592,6 +603,12 @@ export class HubinPenempatanService extends HubinCommonHelper {
       where: { tenant_id: tenantId, mitra_id: firstMitraId, status: 'AKTIF' }
     }) : 0;
 
+    // Fallback SSOT Tahun Pelajaran & Semester Aktif jika data siswa belum lengkap
+    const [fallbackActiveTp, fallbackActiveSem] = await Promise.all([
+      prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } }),
+      prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true } })
+    ]);
+
     const results = [];
     for (const item of items) {
       const siswa = await prisma.siswa.findUnique({
@@ -599,8 +616,8 @@ export class HubinPenempatanService extends HubinCommonHelper {
         select: { kelas_id: true, tahun_pelajaran_id: true, semester_id: true, nama_siswa: true }
       });
 
-      const targetTpId = (item as any).tahun_pelajaran_id || (data && (data as any).tahun_pelajaran_id) || siswa?.tahun_pelajaran_id;
-      const targetSemId = (item as any).semester_id || (data && (data as any).semester_id) || siswa?.semester_id;
+      const targetTpId = (item as any).tahun_pelajaran_id || (data && (data as any).tahun_pelajaran_id) || siswa?.tahun_pelajaran_id || fallbackActiveTp?.id;
+      const targetSemId = (item as any).semester_id || (data && (data as any).semester_id) || siswa?.semester_id || fallbackActiveSem?.id;
       const targetKelasId = (item as any).kelas_id || (data && (data as any).kelas_id) || siswa?.kelas_id;
 
       let siswaAkademikId: string | undefined;

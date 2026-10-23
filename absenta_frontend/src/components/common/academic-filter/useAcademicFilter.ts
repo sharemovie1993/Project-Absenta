@@ -580,6 +580,14 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     isLoadingSiswa,
     isLoadingCohort,
 
+    activeAcademicYear: activeTp
+      ? {
+          id: activeTp.id,
+          tahun: activeTp.tahun,
+          nama: (activeTp as any).nama || activeTp.tahun,
+          is_active: Boolean(activeTp.is_active),
+        }
+      : null,
     activeTpYear: (() => {
       const selectedTpObj = tpRawList?.find((y) => y.id === tahunPelajaranId) || activeTp || null;
       return selectedTpObj
