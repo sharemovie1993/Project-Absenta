@@ -18,6 +18,7 @@ import { type DemoRoleProfile } from '@/config/demoProfiles.config';
 import { ServerDomainSetupModal } from '@/components/auth/ServerDomainSetupModal';
 import { getSavedServerDomain, isCapacitorApp } from '@/services/serverConfig';
 import { isSystemSuperAdmin } from '@/utils/rbac';
+import { getUserPositions } from '@/config/navigation.config';
 import toast from 'react-hot-toast';
 const loginFormSchema = z.object({
   email: z.string().min(1, 'Email atau NISN/NIP wajib diisi'),
@@ -327,7 +328,8 @@ export default function LoginPage() {
   }, [credentials.email]);
   if (isAuthenticated) {
     const sub = useAuthStore.getState().subscription;
-    const isGerbang = (user as Record<string, unknown>)?.position_codes?.includes('GERBANG');
+    const positions = getUserPositions(user);
+    const isGerbang = positions.includes('GERBANG');
     const roleName = user?.role?.name || (user as Record<string, unknown>)?.roleName || '';
     const tenantId = (user as any)?.tenant_id;
     const isSuper = isSystemSuperAdmin(roleName, tenantId);
@@ -337,7 +339,36 @@ export default function LoginPage() {
       return <Navigate to={location.state?.from?.pathname || '/tenants'} replace />;
     }
 
-    const defaultHome = isGerbang ? '/attendance/ops' : '/dashboard?tab=portal';
+    // Smart role-based default landing (Kaprog, Wali Kelas, TU, Kurikulum, dll.)
+    let defaultHome: string;
+    if (isGerbang) {
+      defaultHome = '/attendance/ops';
+    } else if (positions.includes('KAPROG')) {
+      defaultHome = '/dashboard?tab=kaprog';
+    } else if (positions.includes('WALIKELAS') || Boolean((user as any)?.guru_profile?.wali_kelas_di)) {
+      defaultHome = '/dashboard?tab=binaan';
+    } else if (positions.includes('TU_KEPALA') || positions.includes('TU_PERSURATAN') || positions.includes('TU')) {
+      defaultHome = '/correspondence/dashboard';
+    } else if (positions.includes('TU_KEPEGAWAIAN')) {
+      defaultHome = '/dashboard?tab=kepegawaian';
+    } else if (positions.includes('TU_KEUANGAN')) {
+      defaultHome = '/billing/invoices';
+    } else if (positions.includes('TU_SARPRAS')) {
+      defaultHome = '/sarpras/inventory';
+    } else if (positions.includes('KURIKULUM')) {
+      defaultHome = '/kurikulum/dashboard';
+    } else if (positions.includes('KESISWAAN')) {
+      defaultHome = '/kesiswaan/monitoring';
+    } else if (positions.includes('SARPRAS')) {
+      defaultHome = '/sarpras/dashboard';
+    } else if (positions.includes('HUBIN')) {
+      defaultHome = '/hubin';
+    } else if (positions.includes('BPBK')) {
+      defaultHome = '/bpbk/dashboard';
+    } else {
+      defaultHome = '/dashboard?tab=portal';
+    }
+
     const hasCompletedOnboarding = useAuthStore.getState().hasCompletedOnboarding;
     const isAdmin = roleName === 'ADMIN';
 

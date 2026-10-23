@@ -11,7 +11,8 @@ import {
   Laptop,
   Mail,
   ShieldCheck,
-  UserCheck
+  UserCheck,
+  Award
 } from 'lucide-react';
 import type { HubType } from '../store/navStore';
 
@@ -246,14 +247,33 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     desc: 'Monitoring & Rekap Kelas',
     requiredCapability: 'dashboard.view.walikelas',
     requiredPositionCode: 'WALIKELAS',
-    defaultPath: '/attendance/monitoring',
+    defaultPath: '/dashboard?tab=binaan',
     crossModulePaths: [
+      '/dashboard',
       '/bpbk/cases',
       '/kesiswaan/pelanggaran',
       '/rapor/input-nilai',
       '/rapor/cetak',
       '/rapor/nilai',
       '/rapor/p5'
+    ]
+  },
+  {
+    id: 'KAPROG_WORKSPACE',
+    label: 'Kaprog / Jurusan',
+    badge: 'Kaprog',
+    icon: Award,
+    color: 'text-indigo-600',
+    bg: 'bg-indigo-50',
+    solidBg: 'bg-indigo-600',
+    desc: 'Monitoring & Tata Kelola Jurusan',
+    requiredPositionCode: 'KAPROG',
+    defaultPath: '/dashboard?tab=kaprog',
+    crossModulePaths: [
+      '/dashboard',
+      '/academic/siswa',
+      '/kurikulum/jadwal',
+      '/hubin/pkl'
     ]
   },
   {
@@ -484,8 +504,9 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     solidBg: 'bg-blue-600',
     desc: 'Data Induk & Dapodik',
     requiredPositionCode: 'TU_KEPEGAWAIAN',
-    defaultPath: '/academic',
+    defaultPath: '/dashboard?tab=kepegawaian',
     crossModulePaths: [
+      '/dashboard',
       '/academic',
       '/kurikulum/dashboard',
       '/academic/siswa',
