@@ -1245,6 +1245,7 @@ model SiswaAkademik {
   RaporSiswa           RaporSiswa[]
   SertifikatUkk        SertifikatUkk[]
   KelulusanSiswa       KelulusanSiswa[]
+  P5NilaiSiswa         P5NilaiSiswa[]
 
   @@unique([siswa_id, tahun_pelajaran_id, semester_id])
   @@index([kelas_id, tahun_pelajaran_id, semester_id])
@@ -4879,25 +4880,28 @@ model P5FasilitatorKelas {
 }
 
 model P5NilaiSiswa {
-  id             String   @id @default(uuid())
-  tenant_id      String
-  projek_id      String
-  siswa_id       String
-  dimensi        String
-  sub_elemen     String
-  kualifikasi    String
-  catatan_proses String?  @db.Text
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  id                String          @id @default(uuid())
+  tenant_id         String
+  projek_id         String
+  siswa_id          String
+  siswa_akademik_id String?
+  dimensi           String
+  sub_elemen        String
+  kualifikasi       String
+  catatan_proses    String?         @db.Text
+  created_at        DateTime        @default(now())
+  updated_at        DateTime        @updatedAt
 
-  Tenant Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Projek P5Projek @relation(fields: [projek_id], references: [id], onDelete: Cascade)
-  Siswa  Siswa    @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
+  Tenant        Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Projek        P5Projek       @relation(fields: [projek_id], references: [id], onDelete: Cascade)
+  Siswa         Siswa          @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
+  SiswaAkademik SiswaAkademik? @relation(fields: [siswa_akademik_id], references: [id], onDelete: Cascade)
 
   @@unique([siswa_id, projek_id, dimensi, sub_elemen])
   @@index([tenant_id])
   @@index([tenant_id, siswa_id])
   @@index([tenant_id, projek_id])
+  @@index([tenant_id, siswa_akademik_id])
 }
 
 model NilaiEskul {

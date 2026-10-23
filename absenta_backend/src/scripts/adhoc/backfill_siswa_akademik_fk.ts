@@ -57,6 +57,55 @@ async function main() {
   `);
   console.log(`✅ Backfill KelulusanSiswa: ${resSkl} baris diperbarui dengan siswa_akademik_id.`);
 
+  // 5. Backfill P5NilaiSiswa (Tautkan melalui tahun_pelajaran_id & semester_id pada P5Projek)
+  const resP5 = await prisma.$executeRawUnsafe(`
+    UPDATE "P5NilaiSiswa" p
+    SET "siswa_akademik_id" = sa."id"
+    FROM "P5Projek" proj, "SiswaAkademik" sa
+    WHERE p."projek_id" = proj."id"
+      AND p."siswa_id" = sa."siswa_id"
+      AND proj."tahun_pelajaran_id" = sa."tahun_pelajaran_id"
+      AND proj."semester_id" = sa."semester_id"
+      AND p."siswa_akademik_id" IS NULL;
+  `);
+  console.log(`✅ Backfill P5NilaiSiswa: ${resP5} baris diperbarui dengan siswa_akademik_id.`);
+
+  // Cek apakah ada sisa P5 yang belum tertaut
+  const unlinkedP5 = await prisma.p5NilaiSiswa.findMany({
+    where: { siswa_akademik_id: null },
+    include: { Siswa: true, Projek: true },
+  });
+
+  if (unlinkedP5.length > 0) {
+    console.log(`ℹ️ Ditemukan ${unlinkedP5.length} baris P5NilaiSiswa tanpa SiswaAkademik. Membuat snapshot SiswaAkademik...`);
+    for (const item of unlinkedP5) {
+      if (item.Siswa.kelas_id) {
+        const sa = await prisma.siswaAkademik.upsert({
+          where: {
+            siswa_id_tahun_pelajaran_id_semester_id: {
+              siswa_id: item.siswa_id,
+              tahun_pelajaran_id: item.Projek.tahun_pelajaran_id,
+              semester_id: item.Projek.semester_id,
+            },
+          },
+          create: {
+            siswa_id: item.siswa_id,
+            kelas_id: item.Siswa.kelas_id,
+            tahun_pelajaran_id: item.Projek.tahun_pelajaran_id,
+            semester_id: item.Projek.semester_id,
+            status: 'AKTIF',
+          },
+          update: {},
+        });
+        await prisma.p5NilaiSiswa.update({
+          where: { id: item.id },
+          data: { siswa_akademik_id: sa.id },
+        });
+      }
+    }
+    console.log(`✅ Seluruh sisa baris P5NilaiSiswa berhasil ditautkan.`);
+  }
+
   console.log('🎉 Seluruh relasi historis SiswaAkademik berhasil direkonsiliasi!');
 }
 
