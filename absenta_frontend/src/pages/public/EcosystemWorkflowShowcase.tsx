@@ -400,6 +400,13 @@ const DIVISIONS: Record<DivisionId, DivisionDefinition> = {
   }
 };
 
+export interface DynamicDivisionItem extends DivisionDefinition {
+  sproutedMenus: CanonicalMenuItem[];
+  earliestStep: number;
+  relayOrder: number;
+  stepRangeLabel: string;
+}
+
 const ROLE_OPTIONS: { id: RolePOV; name: string }[] = [
   { id: 'all', name: 'Semua Role' },
   { id: 'kepsek', name: 'POV Kepala Sekolah' },
@@ -420,20 +427,58 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
     return STAGES.find(s => s.id === selectedStage) || STAGES[2];
   }, [selectedStage]);
 
-  // Active Stage Index (0 - 4)
+  // Active Stage Index (0 - 5)
   const stageIndex = useMemo(() => {
     return STAGES.findIndex(s => s.id === selectedStage);
   }, [selectedStage]);
 
-  // Filter menus per division according to stage & role
-  const getDivisionSproutedMenus = (divId: DivisionId): CanonicalMenuItem[] => {
-    const raw = DIVISIONS[divId].menusPerStage[selectedStage] || [];
-    if (selectedRole === 'all') return raw;
-    return raw.filter(m => m.roles.includes(selectedRole));
-  };
+  // Compute active divisions dynamically sorted by their earliest estafet step in this stage
+  const activeDivisionsRanked = useMemo<DynamicDivisionItem[]>(() => {
+    const allDivs = Object.values(DIVISIONS);
+    
+    // 1. Get sprouted menus per division for selected stage & role
+    const mapped = allDivs.map(div => {
+      const raw = div.menusPerStage[selectedStage] || [];
+      const filtered = selectedRole === 'all' ? raw : raw.filter(m => m.roles.includes(selectedRole));
+      const steps = filtered.map(m => m.estafetStep || 99).filter(s => s > 0);
+      const earliestStep = steps.length > 0 ? Math.min(...steps) : 999;
+      const latestStep = steps.length > 0 ? Math.max(...steps) : 999;
+      
+      let stepRangeLabel = '';
+      if (steps.length > 0) {
+        stepRangeLabel = earliestStep === latestStep ? `Langkah #${earliestStep}` : `Langkah #${earliestStep}-#${latestStep}`;
+      }
 
-  const topDivisions = useMemo(() => [DIVISIONS.kurikulum, DIVISIONS.kesiswaan, DIVISIONS.konseling], []);
-  const bottomDivisions = useMemo(() => [DIVISIONS.tu, DIVISIONS.hubin, DIVISIONS.sarpras, DIVISIONS.koperasi], []);
+      return {
+        ...div,
+        sproutedMenus: filtered,
+        earliestStep,
+        stepRangeLabel,
+        relayOrder: 0
+      };
+    });
+
+    // 2. Sort by earliest step so the baton flows chronologically
+    mapped.sort((a, b) => a.earliestStep - b.earliestStep);
+
+    // 3. Assign 1-based relay rank
+    mapped.forEach((item, index) => {
+      item.relayOrder = index + 1;
+    });
+
+    return mapped;
+  }, [selectedStage, selectedRole]);
+
+  // Distribute dynamically across Top and Bottom wings:
+  // Even indices (0, 2, 4...) -> Top Wing (Sayap Atas)
+  // Odd indices (1, 3, 5, 7...) -> Bottom Wing (Sayap Bawah)
+  const topDivisions = useMemo(() => {
+    return activeDivisionsRanked.filter((_, idx) => idx % 2 === 0);
+  }, [activeDivisionsRanked]);
+
+  const bottomDivisions = useMemo(() => {
+    return activeDivisionsRanked.filter((_, idx) => idx % 2 === 1);
+  }, [activeDivisionsRanked]);
 
   return (
     <div className={`w-full bg-slate-950 text-slate-100 flex flex-col font-sans select-none overflow-hidden ${
@@ -513,10 +558,13 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
         {/* 1. TOP DAHAN ZONE (SAYAP ATAS: MENU BERTUNAS KE ATAS)    */}
         {/* ======================================================== */}
         <section className="w-full flex-1 flex flex-col justify-end pb-1 max-w-6xl mx-auto">
-          <div className="grid grid-cols-3 gap-6 w-full items-end">
+          <div
+            className="grid gap-6 w-full items-end"
+            style={{ gridTemplateColumns: `repeat(${topDivisions.length}, minmax(0, 1fr))` }}
+          >
             {topDivisions.map(div => {
               const Icon = div.icon;
-              const sproutedMenus = getDivisionSproutedMenus(div.id);
+              const sproutedMenus = div.sproutedMenus;
               const hasMenus = sproutedMenus.length > 0;
 
               return (
@@ -574,8 +622,9 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
                     <div className="w-0.5 h-3 bg-gradient-to-t from-slate-600 to-cyan-500/60" />
                   )}
 
-                  {/* INDUK DIVISI ATAS (DEKAT TIMELINE) */}
-                  <div
+                  {/* INDUK DIVISI ATAS (DEKAT TIMELINE DENGAN GILIRAN ESTAFET) */}
+                  <motion.div
+                    layout
                     className={`w-full p-2.5 rounded-2xl border transition-all duration-300 shadow-md flex items-center justify-between ${
                       hasMenus
                         ? `bg-slate-900/90 ${div.theme.border} ring-1 ring-white/10 ${div.theme.glow}`
@@ -583,13 +632,26 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
+                      {/* Urutan Estafet Divisi Badge */}
+                      <div className="flex flex-col items-center justify-center px-1.5 py-0.5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 shrink-0">
+                        <span className="text-[7px] font-black uppercase tracking-wider text-cyan-400">URUTAN</span>
+                        <span className="text-[11px] font-black text-cyan-300 font-mono leading-none">#{div.relayOrder}</span>
+                      </div>
+
                       <div className={`p-1.5 rounded-xl bg-slate-950 border border-slate-800 ${div.theme.accent}`}>
                         <Icon className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
-                        <span className={`text-[10px] font-black uppercase tracking-wider block truncate ${div.theme.accent}`}>
-                          {div.short}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[10px] font-black uppercase tracking-wider block truncate ${div.theme.accent}`}>
+                            {div.short}
+                          </span>
+                          {div.stepRangeLabel && (
+                            <span className="text-[9px] font-mono text-cyan-400/80 shrink-0">
+                              • {div.stepRangeLabel}
+                            </span>
+                          )}
+                        </div>
                         <h3 className="text-xs font-bold text-white truncate">
                           {div.name}
                         </h3>
@@ -599,7 +661,7 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
                     <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border shrink-0 ${div.theme.badge}`}>
                       {sproutedMenus.length} Menu
                     </span>
-                  </div>
+                  </motion.div>
 
                   {/* STEM CONNECTOR TO CENTRAL TIMELINE */}
                   <div className="w-0.5 h-5 bg-gradient-to-b from-slate-600 to-cyan-500/60" />
@@ -700,10 +762,13 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
         {/* 3. BOTTOM DAHAN ZONE (SAYAP BAWAH: MENU BERTUNAS KE BAWAH)*/}
         {/* ======================================================== */}
         <section className="w-full flex-1 flex flex-col justify-start pt-1 max-w-6xl mx-auto">
-          <div className="grid grid-cols-4 gap-4 w-full items-start">
+          <div
+            className="grid gap-4 w-full items-start"
+            style={{ gridTemplateColumns: `repeat(${bottomDivisions.length}, minmax(0, 1fr))` }}
+          >
             {bottomDivisions.map(div => {
               const Icon = div.icon;
-              const sproutedMenus = getDivisionSproutedMenus(div.id);
+              const sproutedMenus = div.sproutedMenus;
               const hasMenus = sproutedMenus.length > 0;
 
               return (
@@ -712,8 +777,9 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
                   {/* STEM CONNECTOR FROM CENTRAL TIMELINE */}
                   <div className="w-0.5 h-5 bg-gradient-to-b from-cyan-500/60 to-slate-600" />
 
-                  {/* INDUK DIVISI BAWAH (DEKAT TIMELINE) */}
-                  <div
+                  {/* INDUK DIVISI BAWAH (DEKAT TIMELINE DENGAN GILIRAN ESTAFET) */}
+                  <motion.div
+                    layout
                     className={`w-full p-2.5 rounded-2xl border transition-all duration-300 shadow-md flex items-center justify-between ${
                       hasMenus
                         ? `bg-slate-900/90 ${div.theme.border} ring-1 ring-white/10 ${div.theme.glow}`
@@ -721,13 +787,26 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
+                      {/* Urutan Estafet Divisi Badge */}
+                      <div className="flex flex-col items-center justify-center px-1.5 py-0.5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 shrink-0">
+                        <span className="text-[7px] font-black uppercase tracking-wider text-cyan-400">URUTAN</span>
+                        <span className="text-[11px] font-black text-cyan-300 font-mono leading-none">#{div.relayOrder}</span>
+                      </div>
+
                       <div className={`p-1.5 rounded-xl bg-slate-950 border border-slate-800 ${div.theme.accent}`}>
                         <Icon className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
-                        <span className={`text-[10px] font-black uppercase tracking-wider block truncate ${div.theme.accent}`}>
-                          {div.short}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[10px] font-black uppercase tracking-wider block truncate ${div.theme.accent}`}>
+                            {div.short}
+                          </span>
+                          {div.stepRangeLabel && (
+                            <span className="text-[9px] font-mono text-cyan-400/80 shrink-0">
+                              • {div.stepRangeLabel}
+                            </span>
+                          )}
+                        </div>
                         <h3 className="text-xs font-bold text-white truncate">
                           {div.name}
                         </h3>
@@ -737,7 +816,7 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
                     <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full border shrink-0 ${div.theme.badge}`}>
                       {sproutedMenus.length} Menu
                     </span>
-                  </div>
+                  </motion.div>
 
                   {/* STEM LINE DOWNWARD FROM PARENT TO CHILDREN */}
                   {hasMenus && (
