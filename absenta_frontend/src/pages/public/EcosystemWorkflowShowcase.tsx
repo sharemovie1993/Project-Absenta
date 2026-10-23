@@ -30,8 +30,10 @@ import {
   Award,
   Clock,
   Coins,
-  ChevronLeft
+  ChevronLeft,
+  Network
 } from 'lucide-react';
+import { EcosystemTopologyGraph } from './EcosystemTopologyGraph';
 
 // --- DATA TYPES ---
 export type DivisionType = 'tu' | 'kurikulum' | 'kesiswaan' | 'hubin' | 'konseling' | 'sarpras' | 'koperasi';
@@ -494,6 +496,7 @@ const ROLE_POVS: { id: RolePOV; name: string; icon: any; desc: string; color: st
 
 export const EcosystemWorkflowShowcase: React.FC = () => {
   const navigate = useNavigate();
+  const [mainTab, setMainTab] = useState<'workflow' | 'topology'>('workflow');
   const [selectedStage, setSelectedStage] = useState<StageId>('kelas-11');
   const [selectedDivision, setSelectedDivision] = useState<DivisionType | 'all'>('all');
   const [selectedRole, setSelectedRole] = useState<RolePOV>('all');
@@ -575,6 +578,32 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap justify-end">
+            {/* View Mode Toggle */}
+            <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800">
+              <button
+                onClick={() => setMainTab('workflow')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  mainTab === 'workflow'
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/20'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Workflow className="w-3.5 h-3.5" />
+                <span>Workflow Siswa</span>
+              </button>
+              <button
+                onClick={() => setMainTab('topology')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  mainTab === 'topology'
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/20'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Network className="w-3.5 h-3.5" />
+                <span>Topologi Rute & Alur Data</span>
+              </button>
+            </div>
+
             <Link
               to="/dashboard"
               className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition-all flex items-center gap-1.5"
@@ -627,41 +656,46 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
       {/* MAIN CONTAINER */}
       <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 flex flex-col gap-8">
         
-        {/* EXECUTIVE INTRO BANNER */}
-        <div className="relative rounded-2xl p-6 bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-800 border border-slate-800 shadow-2xl overflow-hidden">
-          <div className="absolute top-0 right-0 w-80 h-full bg-gradient-to-l from-cyan-500/10 to-transparent pointer-events-none" />
-          
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-2 max-w-3xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold">
-                <Sparkles className="w-3.5 h-3.5" />
-                Arsitektur Ekosistem Siswa 360 Derajat
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                Bagaimana Absenta Mengawal Siswa <span className="text-cyan-400">Dari PPDB Hingga Lulus</span>
-              </h2>
-              <p className="text-sm text-slate-300 leading-relaxed">
-                Tujuh divisi sekolah bergerak serempak dalam satu data terpadu (*single source of truth*). Setiap perpindahan fase siswa memicu alur kerja otomatis antar-divisi tanpa birokrasi manual.
-              </p>
-            </div>
+        {/* CONDITIONAL CONTENT: TOPOLOGY VS WORKFLOW */}
+        {mainTab === 'topology' ? (
+          <EcosystemTopologyGraph initialRole={selectedRole} />
+        ) : (
+          <>
+            {/* EXECUTIVE INTRO BANNER */}
+            <div className="relative rounded-2xl p-6 bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-800 border border-slate-800 shadow-2xl overflow-hidden">
+              <div className="absolute top-0 right-0 w-80 h-full bg-gradient-to-l from-cyan-500/10 to-transparent pointer-events-none" />
+              
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-2 max-w-3xl">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Arsitektur Ekosistem Siswa 360 Derajat
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                    Bagaimana Absenta Mengawal Siswa <span className="text-cyan-400">Dari PPDB Hingga Lulus</span>
+                  </h2>
+                  <p className="text-sm text-slate-300 leading-relaxed">
+                    Tujuh divisi sekolah bergerak serempak dalam satu data terpadu (*single source of truth*). Setiap perpindahan fase siswa memicu alur kerja otomatis antar-divisi tanpa birokrasi manual.
+                  </p>
+                </div>
 
-            {/* QUICK STATS */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 shrink-0">
-              <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-center">
-                <div className="text-xl font-black text-cyan-400">7</div>
-                <div className="text-[10px] uppercase font-bold text-slate-400">Divisi Terpadu</div>
-              </div>
-              <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-center">
-                <div className="text-xl font-black text-emerald-400">5</div>
-                <div className="text-[10px] uppercase font-bold text-slate-400">Fase Milestone</div>
-              </div>
-              <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-center col-span-2 sm:col-span-1">
-                <div className="text-xl font-black text-amber-400">50+</div>
-                <div className="text-[10px] uppercase font-bold text-slate-400">Fitur Terhubung</div>
+                {/* QUICK STATS */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 shrink-0">
+                  <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-center">
+                    <div className="text-xl font-black text-cyan-400">7</div>
+                    <div className="text-[10px] uppercase font-bold text-slate-400">Divisi Terpadu</div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-center">
+                    <div className="text-xl font-black text-emerald-400">5</div>
+                    <div className="text-[10px] uppercase font-bold text-slate-400">Fase Milestone</div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-center col-span-2 sm:col-span-1">
+                    <div className="text-xl font-black text-amber-400">50+</div>
+                    <div className="text-[10px] uppercase font-bold text-slate-400">Fitur Terhubung</div>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
 
         {/* ======================================================== */}
         {/* POHON MODUL ATAS (KURIKULUM, KESISWAAN, KONSELING)       */}
@@ -1022,6 +1056,8 @@ export const EcosystemWorkflowShowcase: React.FC = () => {
             </div>
           )}
         </section>
+        </>
+      )}
 
       </main>
 
