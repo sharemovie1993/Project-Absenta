@@ -164,6 +164,13 @@ export class HubinPenempatanService extends HubinCommonHelper {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
+    // Resolusi tahun pelajaran aktif untuk isolasi ketat SettingDeskripsiPkl agar tidak bocor lintas tahun ajaran
+    const activeTp = await prisma.tahunPelajaran.findFirst({
+      where: { tenant_id: tenantId, is_active: true },
+      select: { id: true },
+    });
+    const targetTpId = params?.tahun_pelajaran_id || activeTp?.id;
+
     const [total, activeCount, finishedCount, mitraGroup, overdueCount, data] = await Promise.all([
       prisma.siswaPkl.count({ where }),
       prisma.siswaPkl.count({ where: { ...where, status: 'AKTIF' } }),
@@ -217,7 +224,8 @@ export class HubinPenempatanService extends HubinCommonHelper {
               alamat: true, 
               pic_nama: true,
               SettingDeskripsiPkl: {
-                select: { id: true, deskripsi_tp: true, jurusan_id: true }
+                where: targetTpId ? { tahun_pelajaran_id: targetTpId } : undefined,
+                select: { id: true, deskripsi_tp: true, jurusan_id: true, tahun_pelajaran_id: true }
               }
             } 
           },
@@ -258,8 +266,15 @@ export class HubinPenempatanService extends HubinCommonHelper {
 
     const enrichedData = data.map((item: any) => {
       const stats = countMap.get(item.id) || { sakit: 0, izin: 0, alpa: 0, hadir: 0 };
+      const studentJurusanId = item.Siswa?.jurusan_id || item.Siswa?.Jurusan?.id;
+      const matchedTp = (item.Mitra?.SettingDeskripsiPkl || []).find(
+        (s: any) => !s.jurusan_id || s.jurusan_id === studentJurusanId
+      );
+      const effectiveDeskripsiTp = item.deskripsi_tp || matchedTp?.deskripsi_tp || undefined;
+
       return {
         ...item,
+        deskripsi_tp: effectiveDeskripsiTp,
         auto_sakit: stats.sakit,
         auto_izin: stats.izin,
         auto_alpa: stats.alpa,

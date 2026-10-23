@@ -265,6 +265,7 @@ export function useRaporPklPrint({
         const res = (await hubinApi.getPenempatan({
           search: student.nis || student.nama_siswa,
           kelas_id: selectedKelas,
+          tahun_pelajaran_id: activeYear?.id,
           limit: 20,
         })) as unknown as HubinPlacementResponse;
 
@@ -319,7 +320,7 @@ export function useRaporPklPrint({
             pembimbing_nama: placement.Pembimbing?.nama_guru || placement.Pembimbing?.nama || '',
             pembimbing_nip: placement.Pembimbing?.nip || '',
             catatan_pkl: placement.catatan_pkl || '',
-            deskripsi_tp: placement.deskripsi_tp || placement.Mitra?.SettingDeskripsiPkl?.[0]?.deskripsi_tp || placement.Mitra?.deskripsi_tp || '',
+            deskripsi_tp: placement.deskripsi_tp || '',
             sakit_pkl: placement.sakit_pkl ?? (placement.auto_sakit ?? (student.sakit ?? 0)),
             izin_pkl: placement.izin_pkl ?? (placement.auto_izin ?? (student.izin ?? 0)),
             alpa_pkl: placement.alpa_pkl ?? (placement.auto_alpa ?? (student.alpa ?? 0)),
@@ -388,6 +389,7 @@ export function useRaporPklPrint({
     try {
       const res = (await hubinApi.getPenempatan({
         kelas_id: selectedKelas,
+        tahun_pelajaran_id: activeYear?.id,
         limit: 200,
       })) as unknown as HubinPlacementResponse;
 
@@ -438,7 +440,7 @@ export function useRaporPklPrint({
             pembimbing_nama: placement.Pembimbing?.nama_guru || placement.Pembimbing?.nama || '',
             pembimbing_nip: placement.Pembimbing?.nip || '',
             catatan_pkl: placement.catatan_pkl || '',
-            deskripsi_tp: placement.deskripsi_tp || placement.Mitra?.SettingDeskripsiPkl?.[0]?.deskripsi_tp || placement.Mitra?.deskripsi_tp || '',
+            deskripsi_tp: placement.deskripsi_tp || '',
             sakit_pkl: placement.sakit_pkl ?? 0,
             izin_pkl: placement.izin_pkl ?? 0,
             alpa_pkl: placement.alpa_pkl ?? 0,
@@ -516,6 +518,7 @@ export function useRaporPklPrint({
         const res = (await hubinApi.getPenempatan({
           search: student.nis || student.nama_siswa,
           kelas_id: selectedKelas,
+          tahun_pelajaran_id: activeYear?.id,
           limit: 20,
         })) as unknown as HubinPlacementResponse;
 
@@ -620,6 +623,7 @@ export function useRaporPklPrint({
     try {
       const res = (await hubinApi.getPenempatan({
         kelas_id: selectedKelas,
+        tahun_pelajaran_id: activeYear?.id,
         limit: 200,
       })) as unknown as HubinPlacementResponse;
 
@@ -749,6 +753,7 @@ export function useRaporPklPrint({
         const res = (await hubinApi.getPenempatan({
           search: student.nis || student.nama_siswa,
           kelas_id: selectedKelas,
+          tahun_pelajaran_id: activeYear?.id,
           limit: 20,
         })) as unknown as HubinPlacementResponse;
 
