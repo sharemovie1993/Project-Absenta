@@ -54,7 +54,7 @@ export const HubCard: React.FC<HubCardProps> = React.memo(({
               title
             )}
             {subtitle && (
-              <span className="text-[10px] text-slate-400 font-normal truncate">
+              <span className="text-[10px] text-slate-400 font-normal truncate hidden sm:inline">
                 {subtitle}
               </span>
             )}

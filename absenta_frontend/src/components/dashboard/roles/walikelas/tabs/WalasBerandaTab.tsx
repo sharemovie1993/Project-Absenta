@@ -109,23 +109,20 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
     }
   ];
 
-  // Bento Metrik Grid Cells (2x2 Flat dengan Hairline Divider - STRICTLY MAX 2 LINES)
-  const siswaL = data?.kelasInfo?.totalLaki ?? 0;
-  const siswaP = data?.kelasInfo?.totalPerempuan ?? 0;
-
+  // Bento Metrik Grid Cells (2x2 Flat dengan Hairline Divider - STRICTLY MAX 2 WORDS)
   const bentoCells: HubBentoCell[] = [
     {
       id: 'siswa',
       title: 'Total Siswa',
-      value: totalSiswa > 0 ? `${totalSiswa} Siswa (${siswaL}L • ${siswaP}P)` : '0 Siswa',
+      value: totalSiswa > 0 ? `${totalSiswa} Siswa` : '0 Siswa',
       icon: Users,
       iconColorClass: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60',
       onClick: () => onSelectTab('siswa'),
     },
     {
       id: 'presensi',
-      title: 'Presensi Hari Ini',
-      value: totalSiswa > 0 ? `${hadir}/${totalSiswa} (${rateKehadiran}% Hadir)` : '0 / 0 Hadir',
+      title: 'Presensi Harian',
+      value: totalSiswa > 0 ? `${hadir}/${totalSiswa} Hadir` : '0/0 Hadir',
       icon: UserCheck,
       iconColorClass: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60',
       onClick: () => onSelectTab('presensi'),
@@ -142,7 +139,7 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
     {
       id: 'ews',
       title: 'Siswa At-Risk',
-      value: ewsAlerts.length > 0 ? `${ewsAlerts.length} Perlu Tindakan BK` : 'Aman (0 Kasus)',
+      value: ewsAlerts.length > 0 ? `${ewsAlerts.length} Kasus BK` : 'Aman (0)',
       icon: AlertTriangle,
       iconColorClass: ewsAlerts.length > 0
         ? 'text-amber-600 bg-amber-50 dark:bg-amber-950/60'
@@ -262,9 +259,8 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
       {/* 3. DAFTAR SISWA TIDAK HADIR HARI INI (Direct Actionable Feed) */}
       {daftarTidakHadir.length > 0 ? (
         <HubCard
-          title={`Siswa Tidak Hadir Hari Ini (${daftarTidakHadir.length})`}
-          subtitle="Verifikasi izin & tindak lanjut kehadiran rombel"
-          actionLabel="Lihat Presensi >"
+          title={`Tidak Hadir (${daftarTidakHadir.length})`}
+          actionLabel="Presensi >"
           onAction={() => onSelectTab('presensi')}
           noPadding
         >
@@ -272,11 +268,26 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
             {daftarTidakHadir.map((s) => {
               const isAlfa = s.status === 'Alpha' || s.status === 'Alfa';
               const isSakit = s.status === 'Sakit';
+              const isIzin = s.status === 'Izin';
+              const isBelumAbsen = s.status === 'Belum Absen';
+
+              const cleanSubtitle = (s.alasan && s.alasan !== '-')
+                ? s.alasan
+                : isAlfa
+                ? 'Tanpa keterangan'
+                : isSakit
+                ? 'Surat dokter'
+                : isIzin
+                ? 'Izin keluarga'
+                : isBelumAbsen
+                ? (s.nis ? `NIS ${s.nis}` : 'Belum presensi')
+                : 'Tertib';
+
               return (
                 <HubListRow
                   key={s.siswaId}
                   title={s.nama}
-                  subtitle={s.alasan || (isAlfa ? 'Tanpa keterangan resmi' : 'Menunggu surat dokter')}
+                  subtitle={cleanSubtitle}
                   icon={isAlfa ? ShieldAlert : isSakit ? Clock : FileCheck2}
                   iconColorClass={
                     isAlfa 
@@ -357,8 +368,7 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
         {/* Kolom 1: Log Aktivitas Rombel */}
         <HubCard
-          title="Aktivitas & Log Rombel"
-          subtitle="Pembaruan real-time"
+          title="Aktivitas Rombel"
           noPadding
         >
           <div className="divide-y divide-slate-100 dark:divide-slate-800/70">
@@ -386,8 +396,7 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
 
         {/* Kolom 2: Agenda & Jadwal KBM Hari Ini */}
         <HubCard
-          title="Agenda & KBM Hari Ini"
-          subtitle="Jadwal waktu nyata"
+          title="Agenda KBM"
           noPadding
         >
           <div className="divide-y divide-slate-100 dark:divide-slate-800/70">

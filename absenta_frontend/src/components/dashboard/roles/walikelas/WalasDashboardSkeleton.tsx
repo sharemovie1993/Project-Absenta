@@ -29,7 +29,7 @@ export const WalasDashboardSkeleton: React.FC = () => {
       <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl py-2.5 sm:py-3 px-2 sm:px-3 shadow-xs">
         <div className="flex items-center gap-3 overflow-hidden">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="flex flex-col items-center gap-1.5 shrink-0 w-[64px]">
+            <div key={i} className="flex flex-col items-center gap-1.5 shrink-0 w-[70px]">
               <div className="w-11 h-11 rounded-2xl bg-slate-200 dark:bg-slate-800" />
               <div className="w-11 h-2.5 rounded bg-slate-200 dark:bg-slate-800" />
             </div>

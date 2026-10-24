@@ -85,7 +85,7 @@ export const HubActionSlider: React.FC<HubActionSliderProps> = React.memo(({
               onClick={item.onClick}
               className={cn(
                 'group flex flex-col items-center justify-start py-1 px-0.5 rounded-2xl transition-all duration-150 text-center shrink-0',
-                'w-[66px] sm:w-auto',
+                'w-[70px] sm:w-auto',
                 isInteractive
                   ? 'cursor-pointer active:scale-95'
                   : 'cursor-default',
@@ -112,7 +112,7 @@ export const HubActionSlider: React.FC<HubActionSliderProps> = React.memo(({
               </div>
 
               {/* Label Teks Shopee Style (Capitalize Ramping 2-baris rapi) */}
-              <span className="text-[10px] sm:text-[10.5px] font-medium text-slate-700 dark:text-slate-300 leading-tight block text-center line-clamp-2 max-w-[64px] break-words group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+              <span className="text-[10px] sm:text-[10.5px] font-medium text-slate-700 dark:text-slate-300 leading-tight block text-center line-clamp-2 max-w-[70px] group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
                 {item.label}
               </span>
             </button>
