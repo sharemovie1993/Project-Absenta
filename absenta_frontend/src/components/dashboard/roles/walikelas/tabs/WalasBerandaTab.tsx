@@ -255,16 +255,8 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
         <HubBentoGrid cells={bentoCells} columns={2} />
       </HubCard>
 
-      {/* 2. PINTASAN AKSI OPERASIONAL (Prioritas Harian Walas) */}
-      <HubCard 
-        title="Pintasan Aksi Operasional" 
-        subtitle="Prioritas alur kerja harian wali kelas"
-        actionLabel="Tulis Jurnal >"
-        onAction={() => {
-          if (onOpenJurnalModal) onOpenJurnalModal();
-          else onSelectTab('jurnal');
-        }}
-      >
+      {/* 2. PINTASAN AKSI OPERASIONAL (Shopee-Grade Headerless Quick Action Slider) */}
+      <HubCard bodyClassName="py-2 sm:py-2.5 px-1 sm:px-2">
         <HubActionGrid items={actionItems} variant="slider" />
       </HubCard>
 

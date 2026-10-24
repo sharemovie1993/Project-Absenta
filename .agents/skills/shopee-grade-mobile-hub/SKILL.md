@@ -135,17 +135,19 @@ const actionItems: HubActionItem[] = [
 Bila jumlah menu lebih dari 4 atau membutuhkan layout horizontal hemat ruang:
 
 ```tsx
-<HubCard title="Pintasan Aksi Operasional" subtitle="Prioritas alur kerja harian">
+{/* Quick Action Shopee selalu HEADERLESS (tanpa judul seksi / title yang memakan ruang vertikal) */}
+<HubCard bodyClassName="py-2 sm:py-2.5 px-1 sm:px-2">
   <HubActionGrid items={actionItems} variant="slider" />
   {/* atau langsung gunakan <HubActionSlider items={actionItems} /> */}
 </HubCard>
 ```
 
 **Karakteristik Kunci Shopee Slider:**
-1. **1-Baris Penuh (Single Row)**: Seluruh aksi diletakkan dalam 1 jalur horizontal (`flex overflow-x-auto no-scrollbar scroll-smooth`).
-2. **Content Peeking Affordance**: Lebar item dikunci pada `66px` sehingga pada layar ponsel rata-rata (360px-414px), item ke-5/6 sengaja terpotong sebagian di tepi kanan layar. Ini secara visual memberi tahu pengguna bahwa daftar dapat digeser tanpa membutuhkan teks instruksi.
-3. **Dynamic Capsule Scroll Indicator Bar**: Baris kapsul tipis di tengah bawah (`trackWidth: 36px`, `capsuleWidth: 14px`) yang bergeser mengikuti persentase scroll jari secara real-time.
-4. **Squircle Tile 44px Ringan**: Kotak ikon berupa squircle lembut dengan hairline border tipis dan line-art icon berwarna, menghindari latar blok tebal yang membuat UI terlihat gemuk.
+1. **Headerless (Tanpa Judul Seksi)**: Pengguna secara naluriah memahami ikon-ikon aksi tanpa membutuhkan label seperti "Pintasan Menu" atau "Aksi Cepat". Menghemat ~40px tinggi vertikal di atas lipatan layar.
+2. **1-Baris Penuh (Single Row)**: Seluruh aksi diletakkan dalam 1 jalur horizontal (`flex overflow-x-auto no-scrollbar scroll-smooth`).
+3. **Content Peeking Affordance**: Lebar item dikunci pada `66px` sehingga pada layar ponsel rata-rata (360px-414px), item ke-5/6 sengaja terpotong sebagian di tepi kanan layar. Ini secara visual memberi tahu pengguna bahwa daftar dapat digeser tanpa membutuhkan teks instruksi.
+4. **Dynamic Capsule Scroll Indicator Bar**: Baris kapsul tipis di tengah bawah (`trackWidth: 36px`, `capsuleWidth: 14px`) yang bergeser mengikuti persentase scroll jari secara real-time.
+5. **Squircle Tile 44px Ringan**: Kotak ikon berupa squircle lembut dengan hairline border tipis dan line-art icon berwarna, menghindari latar blok tebal yang membuat UI terlihat gemuk.
 
 ---
 
