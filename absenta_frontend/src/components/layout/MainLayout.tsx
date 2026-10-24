@@ -186,7 +186,7 @@ function MainLayoutContent() {
         {/* Main Content Area - Below Topbar */}
         <div className={cn(
           "flex-1 w-full pb-20 lg:pb-12 px-4 relative transition-all duration-300",
-          isTvMode ? "pt-4" : "pt-[72px]"
+          isTvMode ? "pt-4" : "pt-2.5 sm:pt-3 lg:pt-[72px]"
         )}>
           <div className={cn(
             "w-full gap-4 items-start transition-all duration-500",

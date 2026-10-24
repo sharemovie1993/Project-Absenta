@@ -345,6 +345,7 @@ export function getWalasTabs(waliKelasNama: string, currentSubtab: string | null
         { id: 'prestasi', label: 'Prestasi Siswa', icon: Award, targetPath: '/dashboard?tab=binaan&subtab=prestasi', color: 'bg-yellow-50 dark:bg-yellow-950/70 text-yellow-600 dark:text-yellow-400' },
         { id: 'rekap', label: 'Cetak Rekap F-BK', icon: FileSpreadsheet, targetPath: '/dashboard?tab=binaan&subtab=rekap', color: 'bg-cyan-50 dark:bg-cyan-950/70 text-cyan-600 dark:text-cyan-400' },
         { id: 'rapor', label: 'Cetak Rapor Siswa', icon: Printer, targetPath: '/dashboard?tab=binaan&subtab=rapor', color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400' },
+        { id: 'profil', label: 'Profil Saya & Akun', icon: User, targetPath: '/dashboard?tab=profil', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
       ],
     },
   ];

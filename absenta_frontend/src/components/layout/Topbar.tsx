@@ -182,7 +182,7 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
   }, [location.pathname]);
 
   return (
-    <header className="topbar fixed top-0 left-0 right-0 z-30 h-16 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800/60 transition-all">
+    <header className="topbar hidden lg:flex fixed top-0 left-0 right-0 z-30 h-16 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800/60 transition-all">
         <div className="w-full h-full flex items-center px-4 transition-all duration-500">
 
         {/* Sisi Kiri: Branding & Nama Aplikasi Aktif */}
