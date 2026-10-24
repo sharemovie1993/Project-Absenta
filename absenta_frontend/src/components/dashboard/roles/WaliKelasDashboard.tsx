@@ -13,6 +13,7 @@ import {
   GraduationCap,
   Printer,
   SlidersHorizontal,
+  Shield,
 } from 'lucide-react';
 import { WalasDashboardSkeleton } from './walikelas/WalasDashboardSkeleton';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -20,6 +21,7 @@ import { useWalasDashboardData } from './walikelas/useWalasDashboardData';
 import type { WaliKelasTabId } from './walikelas/types';
 import { WalasBerandaTab } from './walikelas/tabs/WalasBerandaTab';
 import { WalasSiswaTab } from './walikelas/tabs/WalasSiswaTab';
+import { WalasStrukturTab } from './walikelas/tabs/WalasStrukturTab';
 import { WalasPresensiTab } from './walikelas/tabs/WalasPresensiTab';
 import { WalasJurnalTab } from './walikelas/tabs/WalasJurnalTab';
 import { WalasIzinTab } from './walikelas/tabs/WalasIzinTab';
@@ -49,7 +51,7 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
   const subtabParam = searchParams.get('subtab') as WaliKelasTabId | null;
 
   const validTabs: WaliKelasTabId[] = [
-    'ringkasan', 'siswa', 'presensi', 'jurnal', 'izin', 'disiplin', 'prestasi', 'rekap', 'rapor'
+    'ringkasan', 'siswa', 'struktur', 'presensi', 'jurnal', 'izin', 'disiplin', 'prestasi', 'rekap', 'rapor'
   ];
 
   // Mobile Filter Collapsible State
@@ -162,6 +164,11 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
         label: 'Data Siswa', 
         icon: Users,
         badge: totalSiswa > 0 ? totalSiswa : undefined,
+      },
+      { 
+        id: 'struktur' as WaliKelasTabId, 
+        label: 'Struktur Kelas', 
+        icon: Shield,
       },
       { 
         id: 'presensi' as WaliKelasTabId, 
@@ -389,6 +396,19 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
                     kelasNama={activeKelasNama}
                     tahunPelajaranId={walasData?.tahun_pelajaran?.id}
                     semesterId={walasData?.tahun_pelajaran?.semester}
+                    data={walasData}
+                  />
+                </div>
+              )}
+
+              {visitedTabs.has('struktur') && (
+                <div
+                  key="tab-struktur"
+                  className={cn('w-full', activeTab === 'struktur' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                >
+                  <WalasStrukturTab
+                    kelasId={activeKelasId}
+                    kelasNama={activeKelasNama}
                     data={walasData}
                   />
                 </div>

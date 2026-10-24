@@ -10,7 +10,8 @@ import {
   Clock, 
   AlertTriangle, 
   GraduationCap,
-  FileText
+  FileText,
+  Shield
 } from 'lucide-react';
 import { Badge } from '@/components/ui';
 import { 
@@ -195,6 +196,14 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
       icon: GraduationCap,
       iconColorClass: 'text-sky-600 dark:text-sky-400',
       onClick: () => onSelectTab('siswa'),
+    },
+    // Slot 5b: Struktur & Piket Rombel
+    {
+      id: 'struktur',
+      label: 'Struktur Kelas',
+      icon: Shield,
+      iconColorClass: 'text-indigo-600 dark:text-indigo-400',
+      onClick: () => onSelectTab('struktur'),
     },
     // Slot 6: Cetak Rekapitulasi F-BK
     {

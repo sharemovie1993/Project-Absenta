@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useRef, Suspense, lazy, useEffec
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import useConfirm from '../../../hooks/useConfirm';
-import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, GraduationCap, CheckSquare, CheckCircle2, AlertCircle, Sparkles, Check, Edit2, Zap, Camera, Wrench, Copy, ExternalLink, MessageSquare } from 'lucide-react';
+import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, GraduationCap, CheckSquare, CheckCircle2, AlertCircle, Sparkles, Check, Edit2, Zap, Camera, Wrench, Copy, ExternalLink, MessageSquare, SlidersHorizontal } from 'lucide-react';
 import { 
   Button, 
   Input, 
@@ -287,7 +287,17 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const [filterKelas, setFilterKelas] = useState(initialKelasId || '');
   const [filterStatus, setFilterStatus] = useState(initialStatus || 'AKTIF');
   const [filterGender, setFilterGender] = useState('');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [kelasList, setKelasList] = useState<Kelas[]>([]);
+
+  const activeMobileFilterCount = useMemo(() => {
+    let count = 0;
+    if (filterTingkat) count++;
+    if (filterKelas && !isKelasDisabled) count++;
+    if (filterStatus && filterStatus !== 'AKTIF') count++;
+    if (filterGender) count++;
+    return count;
+  }, [filterTingkat, filterKelas, isKelasDisabled, filterStatus, filterGender]);
 
   useEffect(() => {
     if (initialKelasId !== undefined) {
@@ -1133,120 +1143,164 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
               </div>
             )}
 
-            {/* Mobile Search & Filter Section */}
-            <div className="space-y-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  type="text"
-                  placeholder="Cari siswa (NIS, Nama, RFID)..."
-                  aria-label="Cari siswa"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-                />
-              </div>
+            {/* Mobile Search & Filter Section (Academic Filter Toolbar Versi Mini) */}
+            <div className="bg-white dark:bg-slate-900 p-2.5 sm:p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
+              {/* Row 1: Search Bar Kompak + Tombol Filter & Refresh Cepat */}
+              <div className="flex items-center gap-1.5">
+                <div className="relative flex-1 min-w-0">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                  <Input
+                    type="text"
+                    placeholder="Cari siswa (NIS, Nama, RFID)..."
+                    aria-label="Cari siswa"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9 pr-3 h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200/80 dark:border-slate-800"
+                  />
+                </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <SearchableSelect
-                  value={filterTingkat}
-                  onValueChange={setFilterTingkat}
-                  options={[
-                    { label: 'Semua Tingkat', value: '' },
-                    ...tingkatList.map(t => ({ label: `Tingkat ${t}`, value: String(t) }))
-                  ]}
-                  placeholder="Tingkat"
-                  searchPlaceholder="Cari Tingkat..."
-                  triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-                />
+                {/* Tombol Filter Mini dengan Badge Counter */}
+                <button
+                  type="button"
+                  onClick={() => setShowMobileFilters((prev) => !prev)}
+                  className={`h-9 px-2.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                    showMobileFilters || activeMobileFilterCount > 0
+                      ? 'bg-indigo-50 text-indigo-600 border-indigo-200 dark:bg-indigo-950/50 dark:border-indigo-800 dark:text-indigo-400'
+                      : 'bg-slate-50 text-slate-600 border-slate-200/80 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300'
+                  }`}
+                  aria-label="Toggle Filter"
+                >
+                  <SlidersHorizontal size={13} />
+                  <span className="text-[11px]">Filter</span>
+                  {activeMobileFilterCount > 0 && (
+                    <span className="w-4 h-4 rounded-full bg-indigo-600 text-white text-[9.5px] font-bold flex items-center justify-center">
+                      {activeMobileFilterCount}
+                    </span>
+                  )}
+                </button>
 
-                <SearchableSelect
-                  value={filterKelas}
-                  onValueChange={setFilterKelas}
-                  options={filteredKelasOptions}
-                  placeholder="Kelas"
-                  searchPlaceholder="Cari Kelas..."
-                  disabled={isKelasDisabled}
-                  triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-                />
-
-                <SearchableSelect
-                  value={filterStatus}
-                  onValueChange={setFilterStatus}
-                  options={[
-                    { label: 'Semua Status', value: '' },
-                    { label: 'Aktif', value: 'AKTIF' },
-                    { label: 'Tidak Aktif', value: 'TIDAK_AKTIF' },
-                    { label: 'Lulus', value: 'LULUS' },
-                    { label: 'Pindah', value: 'PINDAH' },
-                    { label: 'Keluar', value: 'KELUAR' }
-                  ]}
-                  placeholder="Status"
-                  searchPlaceholder="Cari Status..."
-                  triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-                />
-
-                <SearchableSelect
-                  value={filterGender}
-                  onValueChange={setFilterGender}
-                  options={[
-                    { label: 'Semua Gender', value: '' },
-                    { label: 'Laki-laki', value: 'L' },
-                    { label: 'Perempuan', value: 'P' }
-                  ]}
-                  placeholder="Gender"
-                  searchPlaceholder="Cari Gender..."
-                  triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-                />
-              </div>
-
-              {/* Action Buttons on Mobile */}
-              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                {canManage && onAdd && !hideAdd && (
-                  <Button 
-                    onClick={onAdd}
-                    variant="toolbarPrimary"
-                    size="toolbar"
-                    className="flex-1"
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Tambah
-                  </Button>
-                )}
-                {canManage && onImport && !hideImport && (
-                  <Button
-                    variant="toolbarOutline"
-                    size="toolbar"
-                    onClick={onImport}
-                    className="flex-1"
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5 mr-1" />
-                    Import
-                  </Button>
-                )}
-                {onExport && !hideExport && (
-                  <Button
-                    variant="toolbarOutline"
-                    size="toolbar"
-                    onClick={onExport}
-                    disabled={isExporting}
-                    className="rounded-xl flex-1"
-                  >
-                    <Download className="w-3.5 h-3.5 mr-1" />
-                    Export
-                  </Button>
-                )}
+                {/* Tombol Refresh Cepat */}
                 <Button
                   variant="toolbarOutline"
                   size="toolbarIcon"
                   onClick={() => refetch()}
                   aria-label="Refresh Data"
-                  className="rounded-xl"
+                  className="h-9 w-9 rounded-xl shrink-0"
                   disabled={loading}
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                 </Button>
               </div>
+
+              {/* Collapsible Advanced Filters Drawer */}
+              {showMobileFilters && (
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2.5 animate-in fade-in duration-150">
+                  <div className="grid grid-cols-2 gap-2">
+                    <SearchableSelect
+                      value={filterTingkat}
+                      onValueChange={setFilterTingkat}
+                      options={[
+                        { label: 'Semua Tingkat', value: '' },
+                        ...tingkatList.map(t => ({ label: `Tingkat ${t}`, value: String(t) }))
+                      ]}
+                      placeholder="Tingkat"
+                      searchPlaceholder="Cari Tingkat..."
+                      triggerClassName="h-8.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                    />
+
+                    <SearchableSelect
+                      value={filterKelas}
+                      onValueChange={setFilterKelas}
+                      options={filteredKelasOptions}
+                      placeholder="Kelas"
+                      searchPlaceholder="Cari Kelas..."
+                      disabled={isKelasDisabled}
+                      triggerClassName="h-8.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                    />
+
+                    <SearchableSelect
+                      value={filterStatus}
+                      onValueChange={setFilterStatus}
+                      options={[
+                        { label: 'Semua Status', value: '' },
+                        { label: 'Aktif', value: 'AKTIF' },
+                        { label: 'Tidak Aktif', value: 'TIDAK_AKTIF' },
+                        { label: 'Lulus', value: 'LULUS' },
+                        { label: 'Pindah', value: 'PINDAH' },
+                        { label: 'Keluar', value: 'KELUAR' }
+                      ]}
+                      placeholder="Status"
+                      searchPlaceholder="Cari Status..."
+                      triggerClassName="h-8.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                    />
+
+                    <SearchableSelect
+                      value={filterGender}
+                      onValueChange={setFilterGender}
+                      options={[
+                        { label: 'Semua Gender', value: '' },
+                        { label: 'Laki-laki', value: 'L' },
+                        { label: 'Perempuan', value: 'P' }
+                      ]}
+                      placeholder="Gender"
+                      searchPlaceholder="Cari Gender..."
+                      triggerClassName="h-8.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                    />
+                  </div>
+
+                  {/* Action Buttons on Mobile */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+                    {activeMobileFilterCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFilterTingkat('');
+                          if (!isKelasDisabled) setFilterKelas('');
+                          setFilterStatus('AKTIF');
+                          setFilterGender('');
+                        }}
+                        className="text-[11px] font-medium text-rose-500 hover:text-rose-600 px-2 py-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                      >
+                        Reset Filter
+                      </button>
+                    )}
+                    {canManage && onAdd && !hideAdd && (
+                      <Button 
+                        onClick={onAdd}
+                        variant="toolbarPrimary"
+                        size="toolbar"
+                        className="flex-1 h-8 text-xs"
+                      >
+                        <Plus className="w-3.5 h-3.5 mr-1" />
+                        Tambah
+                      </Button>
+                    )}
+                    {canManage && onImport && !hideImport && (
+                      <Button
+                        variant="toolbarOutline"
+                        size="toolbar"
+                        onClick={onImport}
+                        className="flex-1 h-8 text-xs"
+                      >
+                        <FileSpreadsheet className="w-3.5 h-3.5 mr-1" />
+                        Import
+                      </Button>
+                    )}
+                    {onExport && !hideExport && (
+                      <Button
+                        variant="toolbarOutline"
+                        size="toolbar"
+                        onClick={onExport}
+                        disabled={isExporting}
+                        className="rounded-xl flex-1 h-8 text-xs"
+                      >
+                        <Download className="w-3.5 h-3.5 mr-1" />
+                        Export
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <MobileAcademicList

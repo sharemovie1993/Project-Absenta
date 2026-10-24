@@ -224,7 +224,7 @@ export interface AcademicFilterToolbarProps {
   children?: React.ReactNode;
 
   // Presentation variants
-  variant?: 'card' | 'plain' | 'compact' | 'sidebar';
+  variant?: 'card' | 'plain' | 'compact' | 'sidebar' | 'mini';
   className?: string;
   searchPlaceholder?: string;
 }

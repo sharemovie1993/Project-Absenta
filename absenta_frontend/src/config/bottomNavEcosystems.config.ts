@@ -23,6 +23,7 @@ import {
   ArrowLeftRight,
   FileSpreadsheet,
   Inbox,
+  Shield,
   Send,
   Wrench,
   Printer,
@@ -333,6 +334,7 @@ export function getWalasTabs(waliKelasNama: string, currentSubtab: string | null
       isActive: (p, t) => t === 'binaan' && Boolean(currentSubtab && !['ringkasan', 'izin', 'presensi', 'jurnal'].includes(currentSubtab)),
       children: [
         { id: 'siswa', label: 'Data Siswa & Kontak', icon: Users, targetPath: '/dashboard?tab=binaan&subtab=siswa', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
+        { id: 'struktur', label: 'Struktur & Piket Kelas', icon: Shield, targetPath: '/dashboard?tab=binaan&subtab=struktur', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
         { id: 'disiplin', label: 'Kasus & Rujukan BK', icon: ShieldAlert, targetPath: '/dashboard?tab=binaan&subtab=disiplin', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
         { id: 'prestasi', label: 'Prestasi Siswa', icon: Award, targetPath: '/dashboard?tab=binaan&subtab=prestasi', color: 'bg-yellow-50 dark:bg-yellow-950/70 text-yellow-600 dark:text-yellow-400' },
         { id: 'rekap', label: 'Cetak Rekap F-BK', icon: FileSpreadsheet, targetPath: '/dashboard?tab=binaan&subtab=rekap', color: 'bg-cyan-50 dark:bg-cyan-950/70 text-cyan-600 dark:text-cyan-400' },

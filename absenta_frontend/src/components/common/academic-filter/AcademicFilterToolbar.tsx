@@ -9,7 +9,8 @@ import {
   Upload, 
   Search, 
   X,
-  RotateCcw
+  RotateCcw,
+  SlidersHorizontal
 } from 'lucide-react';
 import type { AcademicFilterToolbarProps } from './types';
 
@@ -108,6 +109,8 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
       'p-2 sm:p-2.5 rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/30',
     variant === 'sidebar' &&
       'p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs w-full',
+    variant === 'mini' &&
+      'p-2 sm:p-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs w-full',
     variant === 'plain' && '',
     DEBUG_BORDER_ACADEMIC_FILTER &&
       '!border-2 !border-rose-500 shadow-md shadow-rose-500/10 ring-2 ring-rose-500/20',
@@ -136,6 +139,27 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
     { value: 'KELUAR', label: 'Keluar' },
   ];
 
+  const [isMiniExpanded, setIsMiniExpanded] = React.useState(false);
+
+  const activeCount = React.useMemo(() => {
+    let c = 0;
+    if (enableTp && values.tahunPelajaranId) c++;
+    if (enableSemester && values.semesterId) c++;
+    if (enableTingkat && values.tingkat) c++;
+    if (enableKelas && values.kelasId) c++;
+    if (enableMapel && values.mapelId) c++;
+    if (enableGuru && values.guruId) c++;
+    if (enableSiswa && values.siswaId) c++;
+    if (enableMitra && values.mitraId) c++;
+    if (enableGender && values.gender) c++;
+    if (enableStatusSiswa && values.statusSiswa) c++;
+    return c;
+  }, [
+    enableTp, enableSemester, enableTingkat, enableKelas, enableMapel,
+    enableGuru, enableSiswa, enableMitra, enableGender, enableStatusSiswa,
+    values
+  ]);
+
   return (
     <div className={containerClasses}>
       {DEBUG_BORDER_ACADEMIC_FILTER && (
@@ -152,12 +176,66 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
           </div>
         )}
 
+        {/* Header Baris Mini jika variant === 'mini' */}
+        {variant === 'mini' && (
+          <div className="flex items-center gap-1.5">
+            {enableSearch && (
+              <div className="relative flex-1 min-w-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                <Input
+                  id="filter-search-mini"
+                  aria-label="Pencarian Cepat"
+                  value={values.searchQuery || ''}
+                  onChange={(e) => setSearchQuery?.(e.target.value)}
+                  placeholder={searchPlaceholder}
+                  className="pl-9 pr-3 h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200/80 dark:border-slate-800"
+                />
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setIsMiniExpanded((prev) => !prev)}
+              className={cn(
+                "h-9 px-2.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer",
+                isMiniExpanded || activeCount > 0
+                  ? "bg-indigo-50 text-indigo-600 border-indigo-200 dark:bg-indigo-950/50 dark:border-indigo-800 dark:text-indigo-400"
+                  : "bg-slate-50 text-slate-600 border-slate-200/80 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300"
+              )}
+              aria-label="Toggle Filter Lanjutan"
+            >
+              <SlidersHorizontal size={13} />
+              <span className="text-[11px]">Filter</span>
+              {activeCount > 0 && (
+                <span className="w-4 h-4 rounded-full bg-indigo-600 text-white text-[9.5px] font-bold flex items-center justify-center">
+                  {activeCount}
+                </span>
+              )}
+            </button>
+
+            {onReset && activeCount > 0 && (
+              <button
+                type="button"
+                onClick={onReset}
+                className="h-9 px-2 rounded-xl text-xs text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+                title="Reset Semua Filter"
+              >
+                <RotateCcw size={13} />
+              </button>
+            )}
+
+            {actionsRight && <div className="shrink-0">{actionsRight}</div>}
+          </div>
+        )}
+
         {/* Baris Filter Dinamis */}
-        <div className={cn(
-          variant === 'sidebar'
-            ? 'flex flex-col gap-3 w-full'
-            : 'flex flex-wrap items-start gap-2.5 sm:gap-3.5'
-        )}>
+        {(variant !== 'mini' || isMiniExpanded) && (
+          <div className={cn(
+            variant === 'sidebar'
+              ? 'flex flex-col gap-3 w-full'
+              : 'flex flex-wrap items-start gap-2.5 sm:gap-3.5',
+            variant === 'mini' && 'pt-2 border-t border-slate-100 dark:border-slate-800 animate-in fade-in duration-150'
+          )}>
           {/* 1. Tahun Pelajaran */}
           {enableTp && (
             <div className={cn('space-y-1.5', variant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[140px] max-w-full sm:max-w-[240px]')}>
@@ -600,6 +678,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
             </div>
           )}
         </div>
+      )}
 
         {/* Bottom Content / Embedded Slot dengan Divider */}
         {bottomContent && (
