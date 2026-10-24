@@ -16,6 +16,7 @@ import { Badge } from '../../ui/Badge';
 import { SearchableSelect, SearchableSelectOption } from '../../ui/SearchableSelect';
 import { ClassSubjectProgressData, ClassSubjectItem } from '../cetak-rapor/ClassSubjectProgressCard';
 import { getShortSubjectName } from '../../../utils/mapelAbbreviator';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 
 export interface MonitoringMapelRombelModalProps {
   isOpen: boolean;
@@ -44,6 +45,7 @@ export const MonitoringMapelRombelModal: React.FC<MonitoringMapelRombelModalProp
   activeSemesterNama,
   kelasNama,
 }) => {
+  const isMobile = useIsMobile(640);
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'partial' | 'empty'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -98,29 +100,29 @@ export const MonitoringMapelRombelModal: React.FC<MonitoringMapelRombelModalProp
         aria-labelledby="monitoring-modal-title"
       >
         {/* Header Modal */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 shrink-0">
-              <BarChart3 className="w-5 h-5" />
+        <div className="p-3.5 sm:p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 flex items-center justify-between gap-2.5 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xs shrink-0">
+              <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 id="monitoring-modal-title" className="font-bold text-slate-900 dark:text-white text-base">
-                  Monitoring Status Pengisian Nilai Mapel
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h3 id="monitoring-modal-title" className="font-bold text-slate-900 dark:text-white text-sm sm:text-base truncate">
+                  Status Mapel
                 </h3>
-                <Badge variant="outline" className="text-[10px] font-bold border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300">
+                <Badge variant="outline" className="text-[10px] font-bold border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 py-0 px-1.5 shrink-0">
                   {currentClassName}
                 </Badge>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                {activeYearNama || 'TP Aktif'} • {activeSemesterNama || 'Semester Aktif'}
+              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                {activeYearNama || 'TP Aktif'} • {activeSemesterNama || 'Semester'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-center">
+          <div className="flex items-center gap-1.5 shrink-0">
             {kelasOptions.length > 0 && onSelectKelas && (
-              <div className="w-44 sm:w-52">
+              <div className="w-32 sm:w-48">
                 <SearchableSelect
                   options={kelasOptions}
                   value={selectedKelas}
@@ -142,63 +144,103 @@ export const MonitoringMapelRombelModal: React.FC<MonitoringMapelRombelModalProp
         </div>
 
         {/* Modal Body (Scrollable) */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
-          {/* KPI Summary Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Mapel</span>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-xl font-black text-slate-800 dark:text-slate-100">{totalMapel}</span>
-                <span className="text-[10px] text-slate-400">mata pelajaran</span>
+        <div className="p-3.5 sm:p-6 overflow-y-auto space-y-3.5 flex-1">
+          {/* KPI Summary: Compact 1-Row for Mobile vs Full Grid for Desktop */}
+          {isMobile ? (
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-2.5">
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-slate-700 dark:text-slate-200">Ketuntasan Nilai</span>
+                  <span className="text-[10px] text-slate-400">({mapelCompleted}/{totalMapel} mapel)</span>
+                </div>
+                <span className="text-indigo-600 dark:text-indigo-400 font-bold font-mono text-xs">{percentage}%</span>
+              </div>
+              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, Math.max(0, percentage))}%` }}
+                />
+              </div>
+              {/* 4-Item Mini Row */}
+              <div className="grid grid-cols-4 gap-1.5 pt-0.5 text-center">
+                <div className="bg-white dark:bg-slate-900/80 py-1.5 px-1 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
+                  <div className="text-[9px] font-bold text-slate-400 uppercase">Total</div>
+                  <div className="text-xs font-black text-slate-800 dark:text-slate-100 mt-0.5">{totalMapel}</div>
+                </div>
+                <div className="bg-emerald-50/80 dark:bg-emerald-950/40 py-1.5 px-1 rounded-xl border border-emerald-200/60 dark:border-emerald-800/60">
+                  <div className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Tuntas</div>
+                  <div className="text-xs font-black text-emerald-700 dark:text-emerald-300 mt-0.5">{mapelCompleted}</div>
+                </div>
+                <div className="bg-amber-50/80 dark:bg-amber-950/40 py-1.5 px-1 rounded-xl border border-amber-200/60 dark:border-amber-800/60">
+                  <div className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase">Proses</div>
+                  <div className="text-xs font-black text-amber-700 dark:text-amber-300 mt-0.5">{mapelPartial}</div>
+                </div>
+                <div className="bg-rose-50/80 dark:bg-rose-950/40 py-1.5 px-1 rounded-xl border border-rose-200/60 dark:border-rose-800/60">
+                  <div className="text-[9px] font-bold text-rose-600 dark:text-rose-400 uppercase">Kosong</div>
+                  <div className="text-xs font-black text-rose-700 dark:text-rose-300 mt-0.5">{mapelEmpty}</div>
+                </div>
               </div>
             </div>
+          ) : (
+            <>
+              {/* Desktop KPI Summary Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Mapel</span>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-xl font-black text-slate-800 dark:text-slate-100">{totalMapel}</span>
+                    <span className="text-[10px] text-slate-400">mata pelajaran</span>
+                  </div>
+                </div>
 
-            <div className="bg-emerald-50/60 dark:bg-emerald-950/30 p-3 rounded-2xl border border-emerald-100 dark:border-emerald-900/40">
-              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Tuntas Terisi</span>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-xl font-black text-emerald-700 dark:text-emerald-300">{mapelCompleted}</span>
-                <span className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70">mapel ({totalMapel > 0 ? Math.round((mapelCompleted / totalMapel) * 100) : 0}%)</span>
+                <div className="bg-emerald-50/60 dark:bg-emerald-950/30 p-3 rounded-2xl border border-emerald-100 dark:border-emerald-900/40">
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Tuntas Terisi</span>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-xl font-black text-emerald-700 dark:text-emerald-300">{mapelCompleted}</span>
+                    <span className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70">mapel ({totalMapel > 0 ? Math.round((mapelCompleted / totalMapel) * 100) : 0}%)</span>
+                  </div>
+                </div>
+
+                <div className="bg-amber-50/60 dark:bg-amber-950/30 p-3 rounded-2xl border border-amber-100 dark:border-amber-900/40">
+                  <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">Sebagian / Proses</span>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-xl font-black text-amber-700 dark:text-amber-300">{mapelPartial}</span>
+                    <span className="text-[10px] text-amber-600/70 dark:text-amber-400/70">mapel</span>
+                  </div>
+                </div>
+
+                <div className="bg-rose-50/60 dark:bg-rose-950/30 p-3 rounded-2xl border border-rose-100 dark:border-rose-900/40">
+                  <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider block">Belum Ada Nilai</span>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-xl font-black text-rose-700 dark:text-rose-300">{mapelEmpty}</span>
+                    <span className="text-[10px] text-rose-600/70 dark:text-rose-400/70">mapel</span>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div className="bg-amber-50/60 dark:bg-amber-950/30 p-3 rounded-2xl border border-amber-100 dark:border-amber-900/40">
-              <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">Sebagian / Proses</span>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-xl font-black text-amber-700 dark:text-amber-300">{mapelPartial}</span>
-                <span className="text-[10px] text-amber-600/70 dark:text-amber-400/70">mapel</span>
+              {/* Overall Progress Bar Desktop */}
+              <div className="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-bold">
+                  <span className="text-slate-600 dark:text-slate-300">Ketuntasan Pengisian Rombel</span>
+                  <span className="text-indigo-600 dark:text-indigo-400 font-mono text-sm">{percentage}%</span>
+                </div>
+                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, Math.max(0, percentage))}%` }}
+                  />
+                </div>
               </div>
-            </div>
-
-            <div className="bg-rose-50/60 dark:bg-rose-950/30 p-3 rounded-2xl border border-rose-100 dark:border-rose-900/40">
-              <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider block">Belum Ada Nilai</span>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-xl font-black text-rose-700 dark:text-rose-300">{mapelEmpty}</span>
-                <span className="text-[10px] text-rose-600/70 dark:text-rose-400/70">mapel</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Overall Progress Bar */}
-          <div className="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1.5">
-            <div className="flex items-center justify-between text-xs font-bold">
-              <span className="text-slate-600 dark:text-slate-300">Ketuntasan Pengisian Rombel</span>
-              <span className="text-indigo-600 dark:text-indigo-400 font-mono text-sm">{percentage}%</span>
-            </div>
-            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
-              <div
-                className="bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 h-full rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, Math.max(0, percentage))}%` }}
-              />
-            </div>
-          </div>
+            </>
+          )}
 
           {/* Filter Bar & Search */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
-            <div className="flex items-center gap-1.5 flex-wrap text-xs">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar flex-nowrap text-xs pb-0.5">
               <button
                 type="button"
                 onClick={() => setFilterStatus('all')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                   filterStatus === 'all'
                     ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-xs'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -209,37 +251,37 @@ export const MonitoringMapelRombelModal: React.FC<MonitoringMapelRombelModalProp
               <button
                 type="button"
                 onClick={() => setFilterStatus('completed')}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                   filterStatus === 'completed'
                     ? 'bg-emerald-600 text-white shadow-xs'
                     : 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100'
                 }`}
               >
-                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
                 Tuntas ({mapelCompleted})
               </button>
               <button
                 type="button"
                 onClick={() => setFilterStatus('partial')}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                   filterStatus === 'partial'
                     ? 'bg-amber-600 text-white shadow-xs'
                     : 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100'
                 }`}
               >
-                <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
-                Sebagian ({mapelPartial})
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
+                Proses ({mapelPartial})
               </button>
               <button
                 type="button"
                 onClick={() => setFilterStatus('empty')}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                   filterStatus === 'empty'
                     ? 'bg-rose-600 text-white shadow-xs'
                     : 'text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100'
                 }`}
               >
-                <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block" />
                 Kosong ({mapelEmpty})
               </button>
             </div>
@@ -353,7 +395,7 @@ export const MonitoringMapelRombelModal: React.FC<MonitoringMapelRombelModalProp
                         }}
                         className="w-full py-1.5 px-3 rounded-xl bg-white dark:bg-slate-800 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-slate-700 dark:text-slate-200 font-bold text-[11px] border border-slate-200 dark:border-slate-700 hover:border-transparent transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer group"
                       >
-                        <span>Buka Lembar Nilai</span>
+                        <span>Buka Nilai</span>
                         <ExternalLink size={12} className="text-slate-400 group-hover:text-white transition-colors" />
                       </button>
                     )}
@@ -367,7 +409,7 @@ export const MonitoringMapelRombelModal: React.FC<MonitoringMapelRombelModalProp
         {/* Footer */}
         <div className="p-3.5 sm:p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between text-xs shrink-0">
           <div className="text-slate-400 text-[11px] hidden sm:block">
-            Klik <strong className="text-slate-600 dark:text-slate-300">Buka Lembar Nilai</strong> untuk langsung mengarahkan ke mapel terpilih.
+            Klik <strong className="text-slate-600 dark:text-slate-300">Buka Nilai</strong> untuk langsung mengarahkan ke mapel terpilih.
           </div>
           <button
             type="button"
