@@ -16,7 +16,7 @@ import { Badge } from '../../ui/Badge';
 import { SearchableSelect, SearchableSelectOption } from '../../ui/SearchableSelect';
 import { AcademicFilterToolbar } from '../../common/academic-filter';
 import { TabSwitcher, TabOption } from '../../ui/TabSwitcher';
-import { cn } from '../../lib/utils';
+import { cn } from '@/lib/utils';
 
 export interface CetakRaporHeaderCardProps {
   selectedKelas: string;
