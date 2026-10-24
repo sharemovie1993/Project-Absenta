@@ -16,7 +16,8 @@ import {
   Printer,
   Eye,
   Building2,
-  GraduationCap
+  GraduationCap,
+  SlidersHorizontal
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Table, type Column } from '@/components/ui/Table';
@@ -128,6 +129,7 @@ export const PrestasiView: React.FC<UniversalPrestasiViewProps> = React.memo(({
 
   const [selectedBidang, setSelectedBidang] = useState<string>('ALL');
   const [selectedTingkat, setSelectedTingkat] = useState<string>('ALL');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(15);
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
@@ -809,9 +811,9 @@ export const PrestasiView: React.FC<UniversalPrestasiViewProps> = React.memo(({
         </Card>
       </div>
 
-      {/* 5. Leaderboard Bintang Prestasi (Top 3 Bintang Siswa) */}
+      {/* 5. Leaderboard Bintang Prestasi (Desktop >= lg Only) */}
       {leaderboard.length > 0 && (
-        <Card noPadding className="p-4 sm:p-5 rounded-2xl border border-amber-200/80 dark:border-amber-900/50 bg-linear-to-r from-amber-500/5 via-orange-500/5 to-transparent">
+        <Card noPadding className="hidden lg:block p-4 sm:p-5 rounded-2xl border border-amber-200/80 dark:border-amber-900/50 bg-linear-to-r from-amber-500/5 via-orange-500/5 to-transparent">
           <div className="flex items-center justify-between gap-2 mb-3">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
@@ -874,151 +876,259 @@ export const PrestasiView: React.FC<UniversalPrestasiViewProps> = React.memo(({
         </Card>
       )}
 
-      {/* 6. Main Card dengan Multi-Filter & Table */}
-      <Card noPadding className="p-3 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-3 sm:space-y-4">
-        {/* Header Action Toolbar (Shopee-Grade: Strictly Max 2 Words) */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5 truncate">
-              <Trophy className="w-4 h-4 text-amber-500 shrink-0" />
-              <span className="sm:hidden">Prestasi Siswa</span>
-              <span className="hidden sm:inline">Daftar Portofolio Prestasi</span>
-              {(kelasNama || jurusanNama) && (
-                <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40">
-                  {kelasNama || jurusanNama}
-                </span>
-              )}
-            </h3>
-            <p className="hidden sm:block text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Riwayat kejuaraan lomba, kompetisi kejuruan, olimpiade sains, dan apresiasi bakat minat.
-            </p>
-          </div>
+      {/* 6. Mobile vs Desktop Data Section */}
+      {isMobile ? (
+        <div className="space-y-3 w-full max-w-full min-w-0">
+          {/* Mini Search & Filter Toolbar (Shopee-Grade: Sederhana seperti Sub Tab Data Siswa) */}
+          <div className="bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
+            <div className="flex items-center gap-1.5">
+              <div className="relative flex-1 min-w-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Cari prestasi, siswa..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportExcel}
-              className="h-8 sm:h-9 px-2.5 sm:px-3 text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-              title="Unduh format spreadsheet Excel"
-            >
-              <Download className="w-3.5 h-3.5 sm:mr-1.5 text-emerald-600" />
-              <span className="hidden sm:inline">Ekspor Excel</span>
-              <span className="sm:hidden">Ekspor</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePrint}
-              className="h-8 sm:h-9 px-3 text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer hidden sm:inline-flex"
-              title="Cetak dokumen rekap"
-            >
-              <Printer className="w-3.5 h-3.5 mr-1.5 text-slate-600 dark:text-slate-300" />
-              Cetak
-            </Button>
-            {!readOnly && (
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => { resetForm(); setModalOpen(true); }}
-                className="h-8 sm:h-9 px-2.5 sm:px-3 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-xs"
+              {/* Tombol Filter Mini dengan Badge Counter */}
+              <button
+                type="button"
+                onClick={() => setShowMobileFilters((prev) => !prev)}
+                className={cn(
+                  'h-9 px-2.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer',
+                  showMobileFilters || selectedBidang !== 'ALL' || selectedTingkat !== 'ALL'
+                    ? 'bg-indigo-50 text-indigo-600 border-indigo-200 dark:bg-indigo-950/50 dark:border-indigo-800 dark:text-indigo-400'
+                    : 'bg-slate-50 text-slate-600 border-slate-200/80 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300'
+                )}
+                aria-label="Toggle Filter"
               >
-                <Plus className="w-3.5 h-3.5 sm:mr-1.5" />
-                <span className="hidden sm:inline">Catat Prestasi</span>
-                <span className="sm:hidden">Catat</span>
-              </Button>
-            )}
-          </div>
-        </div>
+                <SlidersHorizontal size={13} />
+                <span className="text-[11px]">Filter</span>
+                {(selectedBidang !== 'ALL' || selectedTingkat !== 'ALL') && (
+                  <span className="w-4 h-4 rounded-full bg-indigo-600 text-white text-[9.5px] font-bold flex items-center justify-center">
+                    {(selectedBidang !== 'ALL' ? 1 : 0) + (selectedTingkat !== 'ALL' ? 1 : 0)}
+                  </span>
+                )}
+              </button>
 
-        {/* Multi-Dimensional Filter Controls */}
-        <div className="space-y-2.5 pt-1">
-          <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
-            {/* Search Input */}
-            <div className="relative sm:col-span-12 lg:col-span-6">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Cari prestasi, siswa, kejuaraan..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
-              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportExcel}
+                className="h-9 w-9 p-0 rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer shrink-0"
+                title="Unduh format spreadsheet Excel"
+              >
+                <Download className="w-3.5 h-3.5 text-emerald-600" />
+              </Button>
+
+              {!readOnly && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => { resetForm(); setModalOpen(true); }}
+                  className="h-9 px-2.5 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-xs shrink-0"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" />
+                  Catat
+                </Button>
+              )}
             </div>
 
-            {/* Filter Bidang Pills */}
-            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar sm:col-span-12 lg:col-span-6 justify-start lg:justify-end">
-              {BIDANG_OPTIONS.map((cat) => (
+            {/* Collapsible Advanced Filters Drawer */}
+            {showMobileFilters && (
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2 animate-in fade-in duration-150">
+                {(selectedBidang !== 'ALL' || selectedTingkat !== 'ALL') && (
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedBidang('ALL'); setSelectedTingkat('ALL'); }}
+                      className="text-[11px] font-medium text-rose-500 hover:text-rose-600 transition-colors"
+                    >
+                      Reset Filter
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">
+                  {BIDANG_OPTIONS.map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setSelectedBidang(cat.id)}
+                      className={cn(
+                        'px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer',
+                        selectedBidang === cat.id
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                      )}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1 text-xs">
+                  {TINGKAT_OPTIONS.map((tingkat) => (
+                    <button
+                      key={tingkat.id}
+                      type="button"
+                      onClick={() => setSelectedTingkat(tingkat.id)}
+                      className={cn(
+                        'px-2 py-0.5 rounded-lg text-[10.5px] font-bold whitespace-nowrap transition-all cursor-pointer border',
+                        selectedTingkat === tingkat.id
+                          ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
+                          : 'bg-white dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                      )}
+                    >
+                      {tingkat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* List Data Prestasi Langsung */}
+          {loading && filteredData.length === 0 ? (
+            <div className="py-20 flex flex-col items-center justify-center">
+              <Loader size="md" className="mb-4" />
+              <p className="text-xs text-slate-400 font-medium">Memuat data portofolio prestasi...</p>
+            </div>
+          ) : (
+            <MobileAcademicList
+              title="Prestasi Siswa"
+              data={filteredData}
+              loading={loading}
+              totalItems={totalItems}
+              emptyMessage="Belum ada catatan prestasi pada kriteria yang dipilih"
+              pagination={{
+                currentPage: page,
+                itemsPerPage: limit,
+                totalItems: totalItems,
+                totalPages,
+                onPageChange: setPage,
+                onLimitChange: (val) => { setLimit(val); setPage(1); }
+              }}
+              renderCard={renderMobileCard}
+            />
+          )}
+        </div>
+      ) : (
+        <Card noPadding className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 truncate">
+                <Trophy className="w-4 h-4 text-amber-500 shrink-0" />
+                <span>Daftar Portofolio Prestasi Siswa</span>
+                {(kelasNama || jurusanNama) && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40">
+                    {kelasNama || jurusanNama}
+                  </span>
+                )}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Riwayat kejuaraan lomba, kompetisi kejuruan, olimpiade sains, dan apresiasi bakat minat.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportExcel}
+                className="text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                title="Unduh format spreadsheet Excel"
+              >
+                <Download className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
+                Ekspor Excel
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrint}
+                className="text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer hidden sm:inline-flex"
+                title="Cetak dokumen rekap"
+              >
+                <Printer className="w-3.5 h-3.5 mr-1.5 text-slate-600 dark:text-slate-300" />
+                Cetak
+              </Button>
+              {!readOnly && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => { resetForm(); setModalOpen(true); }}
+                  className="text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1.5" />
+                  Catat Prestasi
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-2.5 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+              <div className="relative sm:col-span-12 lg:col-span-6">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Cari siswa, NIS, kejuaraan, atau penyelenggara..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar sm:col-span-12 lg:col-span-6 justify-start lg:justify-end">
+                {BIDANG_OPTIONS.map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setSelectedBidang(cat.id)}
+                    className={cn(
+                      'px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer',
+                      selectedBidang === cat.id
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    )}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">
+                Tingkat:
+              </span>
+              {TINGKAT_OPTIONS.map((tingkat) => (
                 <button
-                  key={cat.id}
+                  key={tingkat.id}
                   type="button"
-                  onClick={() => setSelectedBidang(cat.id)}
+                  onClick={() => setSelectedTingkat(tingkat.id)}
                   className={cn(
-                    'px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer',
-                    selectedBidang === cat.id
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    'px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer border',
+                    selectedTingkat === tingkat.id
+                      ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
+                      : 'bg-white dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
                   )}
                 >
-                  {cat.label}
+                  {tingkat.label}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Filter Tingkat Kejuaraan Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">
-              Tingkat:
-            </span>
-            {TINGKAT_OPTIONS.map((tingkat) => (
-              <button
-                key={tingkat.id}
-                type="button"
-                onClick={() => setSelectedTingkat(tingkat.id)}
-                className={cn(
-                  'px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer border',
-                  selectedTingkat === tingkat.id
-                    ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
-                    : 'bg-white dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
-                )}
-              >
-                {tingkat.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Table / Mobile Cards */}
-        {loading && filteredData.length === 0 ? (
-          <div className="py-20 flex flex-col items-center justify-center">
-            <Loader size="md" className="mb-4" />
-            <p className="text-xs text-slate-400 font-medium">Memuat data portofolio prestasi...</p>
-          </div>
-        ) : isMobile ? (
-          <MobileAcademicList
-            title="Prestasi Siswa"
-            data={filteredData}
-            loading={loading}
-            totalItems={totalItems}
-            emptyMessage="Belum ada catatan prestasi pada kriteria yang dipilih"
-            pagination={{
-              currentPage: page,
-              itemsPerPage: limit,
-              totalItems: totalItems,
-              totalPages,
-              onPageChange: setPage,
-              onLimitChange: (val) => { setLimit(val); setPage(1); }
-            }}
-            renderCard={renderMobileCard}
-          />
-        ) : (
           <Table
             columns={columns}
             data={filteredData}
             sortBy={sortBy}
             sortOrder={sortOrder}
             onSort={handleSort}
+            loading={loading}
             pagination={{
               currentPage: page,
               itemsPerPage: limit,
@@ -1028,8 +1138,8 @@ export const PrestasiView: React.FC<UniversalPrestasiViewProps> = React.memo(({
               onLimitChange: (val) => { setLimit(val); setPage(1); }
             }}
           />
-        )}
-      </Card>
+        </Card>
+      )}
 
       {/* Form Modal Catat / Edit Prestasi */}
       <Suspense fallback={null}>
