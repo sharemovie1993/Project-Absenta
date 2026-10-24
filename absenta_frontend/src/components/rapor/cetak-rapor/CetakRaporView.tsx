@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback, useRef, useEffect, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { GraduationCap, Layers, X, Printer } from 'lucide-react';
+import { GraduationCap, Layers, X, Printer, Search, BarChart3, BookOpen } from 'lucide-react';
 import { SectionCard } from '../../ui/SectionCard';
 import { Button } from '../../ui/Button';
 import { SearchableSelectOption } from '../../ui/SearchableSelect';
@@ -9,6 +9,7 @@ import { TabOption } from '../../ui/TabSwitcher';
 import { raporApi } from '../../../api/rapor.api';
 import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../../hooks/useCapabilities';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 import { useKelasOptions } from '../../../hooks/useKelasOptions';
 import { useSiswaOptions } from '../../../hooks/useSiswaOptions';
 import { useAcademicContext } from '../../../hooks/useAcademicContext';
@@ -128,6 +129,7 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
   onNavigateDetail,
 }) => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const location = useLocation();
   const isCurrentRoute = location.pathname.toLowerCase().replace(/\/$/, '') === '/rapor/cetak';
   const { isHomeroomTeacher, isKurikulum, isKepalaSekolah, isAdmin, isKaprog, isHubin, walikelasKelas, walikelasKelasIds } = useCapabilities();
@@ -687,50 +689,107 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
       )}
 
       {/* Unified Selector Header Card with Integrated Toolbar & Action Bar */}
-      <CetakRaporHeaderCard
-        selectedKelas={selectedKelas}
-        onSelectKelas={setSelectedKelas}
-        activeRoleTab={activeRoleTab}
-        kelasOptions={kelasOptions}
-        isLoadingClasses={isLoadingClasses}
-        selectedTahunPelajaran={selectedTahunPelajaran}
-        selectedSemester={selectedSemester}
-        onTahunPelajaranChange={handleAcademicTpChange}
-        onSemesterChange={handleSemesterChange}
-        tpOptions={tpOptions}
-        semesterOptions={semesterOptions}
-        isLoadingTp={isLoadingTp}
-        isLoadingSem={isLoadingSem}
-        tabOptions={tabOptions}
-        onRoleTabChange={handleRoleTabChange}
-        searchQuery={searchQuery}
-        onSearchQueryChange={setSearchQuery}
-        hasLegerData={Boolean(leger?.data || filteredStudents.length > 0)}
-        isLoadingLeger={isLoadingLeger}
-        totalStudents={filteredStudents.length}
-        isBatchPrinting={isBatchPrinting}
-        onBatchPrintRapor={handleBatchPrintRapor}
-        onPrintLeger={() => printLeger(selectedKelas, activeYear?.id, activeSemester?.id, currentKelasObj?.nama_kelas)}
-        onExportLeger={handleExportLeger}
-        isJenjangSmk={isJenjangSmk}
-        onBatchPrintRaporPkl={handleBatchPrintRaporPkl}
-        isBatchPklPrinting={isBatchPklPrinting}
-        isPureWaliKelas={isPureWaliKelas}
-        currentKelasNama={currentKelasObj?.nama_kelas}
-        kurikulumStrukturListLength={kurikulumStrukturList?.length}
-        kurikulumTotalJp={kurikulumTotalJp}
-        modeCetakRapor={modeCetakRapor}
-        onOpenMonitoringModal={() => setShowMonitoringModal(true)}
-        onNavigateInputNilai={() => {
-          if (onNavigateDetail) {
-            onNavigateDetail(selectedKelas);
-          } else {
-            navigate(
-              `/rapor/nilai?kelas_id=${selectedKelas || ''}&tahun_pelajaran_id=${selectedTahunPelajaran || ''}&semester_id=${selectedSemester || ''}`
-            );
-          }
-        }}
-      />
+      {isMobile ? (
+        <div className="bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
+          <div className="flex items-center gap-1.5 w-full">
+            <div className="relative flex-1 min-w-0">
+              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                id="search-siswa-mobile"
+                type="text"
+                placeholder="Cari siswa, NIS..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-xl text-xs font-medium pl-9 pr-7 py-2 h-9 text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-2xs"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+
+            {/* Shortcut Rincian Mapel di Mobile */}
+            <Button
+              variant="outline"
+              onClick={() => setShowMonitoringModal(true)}
+              className="border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-950/40 rounded-xl font-bold text-xs h-9 px-2.5 flex items-center gap-1 shrink-0 cursor-pointer"
+              title="Lihat Rincian Status Pengisian Nilai Mapel"
+            >
+              <BarChart3 className="w-3.5 h-3.5 text-indigo-500" />
+              <span className="text-[11px]">Mapel</span>
+            </Button>
+
+            {/* Shortcut Input Nilai di Mobile */}
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (onNavigateDetail) {
+                  onNavigateDetail(selectedKelas);
+                } else {
+                  navigate(
+                    `/rapor/nilai?kelas_id=${selectedKelas || ''}&tahun_pelajaran_id=${selectedTahunPelajaran || ''}&semester_id=${selectedSemester || ''}`
+                  );
+                }
+              }}
+              className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/80 rounded-xl font-bold text-xs h-9 px-2.5 flex items-center gap-1 shrink-0 cursor-pointer"
+              title="Beralih ke Lembar Penginputan Nilai"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
+              <span className="text-[11px]">Nilai</span>
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <CetakRaporHeaderCard
+          selectedKelas={selectedKelas}
+          onSelectKelas={setSelectedKelas}
+          activeRoleTab={activeRoleTab}
+          kelasOptions={kelasOptions}
+          isLoadingClasses={isLoadingClasses}
+          selectedTahunPelajaran={selectedTahunPelajaran}
+          selectedSemester={selectedSemester}
+          onTahunPelajaranChange={handleAcademicTpChange}
+          onSemesterChange={handleSemesterChange}
+          tpOptions={tpOptions}
+          semesterOptions={semesterOptions}
+          isLoadingTp={isLoadingTp}
+          isLoadingSem={isLoadingSem}
+          tabOptions={tabOptions}
+          onRoleTabChange={handleRoleTabChange}
+          searchQuery={searchQuery}
+          onSearchQueryChange={setSearchQuery}
+          hasLegerData={Boolean(leger?.data || filteredStudents.length > 0)}
+          isLoadingLeger={isLoadingLeger}
+          totalStudents={filteredStudents.length}
+          isBatchPrinting={isBatchPrinting}
+          onBatchPrintRapor={handleBatchPrintRapor}
+          onPrintLeger={() => printLeger(selectedKelas, activeYear?.id, activeSemester?.id, currentKelasObj?.nama_kelas)}
+          onExportLeger={handleExportLeger}
+          isJenjangSmk={isJenjangSmk}
+          onBatchPrintRaporPkl={handleBatchPrintRaporPkl}
+          isBatchPklPrinting={isBatchPklPrinting}
+          isPureWaliKelas={isPureWaliKelas}
+          currentKelasNama={currentKelasObj?.nama_kelas}
+          kurikulumStrukturListLength={kurikulumStrukturList?.length}
+          kurikulumTotalJp={kurikulumTotalJp}
+          modeCetakRapor={modeCetakRapor}
+          onOpenMonitoringModal={() => setShowMonitoringModal(true)}
+          onNavigateInputNilai={() => {
+            if (onNavigateDetail) {
+              onNavigateDetail(selectedKelas);
+            } else {
+              navigate(
+                `/rapor/nilai?kelas_id=${selectedKelas || ''}&tahun_pelajaran_id=${selectedTahunPelajaran || ''}&semester_id=${selectedSemester || ''}`
+              );
+            }
+          }}
+        />
+      )}
 
       {/* View Mode Switcher: Orkestrator Dokumen (Default) vs Buku Leger Nilai */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2 bg-slate-100/80 dark:bg-slate-850 rounded-2xl border border-slate-200/80 dark:border-slate-800">
@@ -746,8 +805,7 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
             )}
           >
             <Layers className="w-4 h-4" />
-            <span className="sm:hidden">Dokumen Rapor</span>
-            <span className="hidden sm:inline">Pusat Orkestrasi Dokumen Siswa</span>
+            <span>{isMobile ? 'Dokumen Rapor' : 'Pusat Orkestrasi Dokumen Siswa'}</span>
             <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold border border-indigo-200/60 dark:border-indigo-800/60">
               Utama
             </span>
@@ -763,8 +821,7 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
             )}
           >
             <GraduationCap className="w-4 h-4" />
-            <span className="sm:hidden">Buku Leger</span>
-            <span className="hidden sm:inline">Buku Leger Nilai &amp; Ranking</span>
+            <span>{isMobile ? 'Buku Leger' : 'Buku Leger Nilai & Ranking'}</span>
           </button>
         </div>
 

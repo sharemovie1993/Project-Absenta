@@ -15,6 +15,7 @@ import type { LegerStudent, SemesterDocumentOption } from '../../../types/cetakR
 import { SmartSemesterDropdown } from './SmartSemesterDropdown';
 import { toast } from 'sonner';
 import { cn } from '../../../lib/utils';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 
 export interface AcademicOrchestratorTableProps {
   students: LegerStudent[];
@@ -52,6 +53,7 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
   onOpenSummaryModal,
 }) => {
   const showSumatif = modeCetakRapor === 'SUMATIF_AND_CP' || modeCetakRapor === 'SUMATIF_ONLY';
+  const isMobile = useIsMobile();
 
   if (isLoading) {
     return (
@@ -85,17 +87,18 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
 
   return (
     <div className="w-full space-y-3">
-      {/* ── 1. Tampilan Mobile: Kartu Siswa Orquestrator (Shopee-Grade High-Density) ── */}
-      <div className="md:hidden space-y-2.5">
-        {students.map((student, index) => {
-          const elig = student.dokumen_eligibility;
-          const isPklRaporEligible = elig ? elig.rapor_pkl?.eligible ?? true : true;
-          const isPklSertifikatEligible = elig ? elig.sertifikat_pkl?.eligible ?? true : true;
-          const isUkkEligible = elig ? elig.sertifikat_ukk?.eligible ?? true : true;
-          const isSklEligible = elig ? elig.skl?.eligible ?? true : true;
-          const isTranskripEligible = elig ? elig.transkrip?.eligible ?? true : true;
+      {isMobile ? (
+        /* ── 1. Tampilan Mobile: Kartu Siswa Orquestrator (Shopee-Grade High-Density) ── */
+        <div className="space-y-2.5">
+          {students.map((student, index) => {
+            const elig = student.dokumen_eligibility;
+            const isPklRaporEligible = elig ? elig.rapor_pkl?.eligible ?? true : true;
+            const isPklSertifikatEligible = elig ? elig.sertifikat_pkl?.eligible ?? true : true;
+            const isUkkEligible = elig ? elig.sertifikat_ukk?.eligible ?? true : true;
+            const isSklEligible = elig ? elig.skl?.eligible ?? true : true;
+            const isTranskripEligible = elig ? elig.transkrip?.eligible ?? true : true;
 
-          return (
+            return (
             <div
               key={student.id}
               className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2.5"
@@ -293,9 +296,9 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
           );
         })}
       </div>
-
-      {/* ── 2. Tampilan Desktop: Tabel Lengkap 9 Kolom ── */}
-      <div className="hidden md:block w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
+    ) : (
+      /* ── 2. Tampilan Desktop: Tabel Lengkap 9 Kolom ── */
+      <div className="w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
         <div className="w-full overflow-x-auto no-scrollbar">
           <table className="w-full text-left border-collapse text-xs">
           <thead>
@@ -604,6 +607,7 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
         </table>
       </div>
     </div>
+    )}
   </div>
   );
 });
