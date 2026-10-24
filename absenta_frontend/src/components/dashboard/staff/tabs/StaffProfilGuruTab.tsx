@@ -15,7 +15,7 @@ import { TeacherAlertsGrid } from '../saya/TeacherAlertsGrid';
 import { TeacherPerformanceBento } from '../saya/TeacherPerformanceBento';
 import { TeacherScheduleSection } from '../saya/TeacherScheduleSection';
 import { TeacherAdminSection } from '../saya/TeacherAdminSection';
-import { PengajuanIzinGuruModal } from './PengajuanIzinGuruModal';
+import { PengajuanIzinGuruModal } from '../profil/PengajuanIzinGuruModal';
 import { StaffWeeklyScheduleWidget } from '../../widgets/StaffWeeklyScheduleWidget';
 import { getRekapBulananGuruMe } from '../../../../api/attendance/rekap.api';
 import { kurikulumApi } from '../../../../api/kurikulum.api';
