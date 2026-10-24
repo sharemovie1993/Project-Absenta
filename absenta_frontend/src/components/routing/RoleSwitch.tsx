@@ -28,16 +28,18 @@ export function RoleSwitch({ superadmin, admin, guru, siswa, fallback = null }: 
   }
 
   // Handle both object and string role formats
-  const roleName = typeof user?.role === 'string' 
-    ? user.role 
-    : user?.role?.name;
+  const roleName = (
+    typeof user?.role === 'string' 
+      ? user.role 
+      : user?.role?.name || (user as any)?.roleName || ''
+  ).toUpperCase();
   const tenantId = (user as any)?.tenant_id;
   const isSuper = isSystemSuperAdmin(roleName, tenantId);
 
   if (isSuper) return superadmin;
   if (roleName === 'ADMIN' && admin) return admin;
-  if (roleName === 'GURU' && guru) return guru;
-  if (roleName === 'SISWA' && siswa) return siswa;
+  if ((roleName === 'GURU' || Boolean((user as any)?.isTeacher) || Boolean(user?.guru_profile)) && guru) return guru;
+  if ((roleName === 'SISWA' || Boolean((user as any)?.isStudent)) && siswa) return siswa;
   return fallback;
 }
 

@@ -43,6 +43,7 @@ const OnboardingDashboard = lazy(() => import('./pages/dashboard/OnboardingDashb
 const SuspendedPage = lazy(() => import('./pages/system/SuspendedPage'));
 const CancelledPage = lazy(() => import('./pages/system/CancelledPage'));
 const DashboardOverview = lazy(() => import('./pages/dashboard/DashboardOverview'));
+const SiswaDashboard = lazy(() => import('./components/dashboard/roles/SiswaDashboard'));
 // UnifiedStaffDashboard — entry point utama untuk Admin & Guru
 const UnifiedStaffDashboardPage = lazy(() =>
   import('./components/dashboard/roles/UnifiedStaffDashboard').then(m => ({ default: m.UnifiedStaffDashboard }))
@@ -536,6 +537,7 @@ function App() {
                         superadmin={<PlatformIntelligencePage />}
                         admin={<UnifiedStaffDashboardPage />}
                         guru={<UnifiedStaffDashboardPage />}
+                        siswa={<SiswaDashboard />}
                         fallback={<DashboardOverview />}
                       />
                     } />
