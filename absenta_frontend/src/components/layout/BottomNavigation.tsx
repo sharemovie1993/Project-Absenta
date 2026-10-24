@@ -1494,96 +1494,89 @@ export const BottomNavigation: React.FC = React.memo(() => {
   };
   return (
     <>
-      {/* ── LIST MENU MELAYANG KE ATAS RATA KANAN (FLOATING SPEED-DIAL) ── */}
+      {/* ── MENU LANJUTAN MELAYANG BUSUR BULAN SABIT (TRANSPARENT CRESCENT ARC SPEED-DIAL) ── */}
       <AnimatePresence>
         {openFlyoutItem && openFlyoutItem.children && (
           <>
-            {/* Backdrop overlay transparan */}
+            {/* Backdrop overlay transparan dengan blur lembut */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
+              transition={{ duration: 0.18 }}
               onClick={() => setOpenFlyoutId(null)}
-              className="lg:hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-xs"
+              className="lg:hidden fixed inset-0 z-50 bg-black/45 backdrop-blur-xs cursor-pointer"
             />
 
-            {/* List Menu Melayang ke Atas Rata Kanan (Speed Dial Popover) */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.88, y: 18, transformOrigin: 'bottom right' }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.88, y: 18 }}
-              transition={{ type: 'spring', damping: 26, stiffness: 360 }}
-              className="lg:hidden fixed bottom-[calc(4.2rem+env(safe-area-inset-bottom))] right-2 sm:right-4 z-50 w-72 max-w-[85vw] bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl border border-white/50 dark:border-slate-700/60 rounded-3xl shadow-2xl overflow-hidden flex flex-col"
-            >
-              {/* Header List Melayang */}
-              <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-50/70 dark:bg-slate-800/60 border-b border-slate-200/50 dark:border-slate-700/50">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
-                    {openFlyoutItem.label}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setOpenFlyoutId(null)}
-                  className="w-6 h-6 rounded-full bg-slate-200/70 dark:bg-slate-700/70 hover:bg-slate-300 dark:hover:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-200 transition-colors"
-                >
-                  <X size={13} />
-                </button>
-              </div>
-
-              {/* Vertical List of Menu Items */}
-              <div className="max-h-[62vh] overflow-y-auto divide-y divide-slate-100/60 dark:divide-slate-800/60 overscroll-contain py-1">
-                {openFlyoutItem.children.map(sub => {
+            {/* Container Melayang Bebas Tanpa Kotak (100% Transparan) */}
+            <div className="lg:hidden fixed bottom-[calc(4.4rem+env(safe-area-inset-bottom))] right-3 sm:right-5 z-50 pointer-events-none flex flex-col items-end max-h-[calc(100vh-5.5rem)] overflow-y-auto no-scrollbar py-2">
+              <div className="flex flex-col-reverse items-end gap-2.5 sm:gap-3 pointer-events-auto pr-1">
+                {openFlyoutItem.children.map((sub, idx, arr) => {
                   const SubIcon = sub.icon;
                   const isSubActive = currentSubtab === sub.id;
-                  const colorClass = sub.color || 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400';
+                  const total = arr.length;
+                  // Perhitungan Lengkungan Busur / Bulan Sabit (Crescent Bow Curve)
+                  // Menghasilkan pergeseran melengkung cembung ke kiri di bagian tengah
+                  const normalizedT = total > 1 ? idx / (total - 1) : 0.5;
+                  const curveOffset = Math.round(Math.sin(normalizedT * Math.PI) * 44);
 
                   return (
-                    <button
+                    <motion.button
                       key={sub.id}
                       type="button"
                       onClick={() => handleSubItemClick(sub)}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-3.5 py-2.5 transition-all text-left cursor-pointer group select-none",
-                        isSubActive
-                          ? "bg-indigo-50/80 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold"
-                          : "hover:bg-slate-100/70 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-200"
-                      )}
+                      initial={{ opacity: 0, scale: 0.5, x: 30 }}
+                      animate={{ opacity: 1, scale: 1, x: 0 }}
+                      exit={{ opacity: 0, scale: 0.5, x: 30 }}
+                      transition={{
+                        type: 'spring',
+                        stiffness: 420,
+                        damping: 26,
+                        delay: idx * 0.025,
+                      }}
+                      style={{
+                        transform: `translateX(-${curveOffset}px)`,
+                      }}
+                      className="flex items-center justify-end gap-2.5 group select-none cursor-pointer focus:outline-hidden"
                     >
-                      {/* Squircle Icon */}
+                      {/* Label Teks Rata Kanan di Sebelah Kiri Icon */}
                       <div
                         className={cn(
-                          "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 shadow-xs border border-white/50 dark:border-slate-700/50",
-                          colorClass,
-                          isSubActive && "ring-2 ring-indigo-500 shadow-sm"
+                          "px-3 py-1.5 rounded-2xl shadow-lg border backdrop-blur-xl transition-all duration-150 flex items-center gap-1.5",
+                          isSubActive
+                            ? "bg-indigo-600 text-white border-indigo-400 font-bold shadow-indigo-600/30 scale-105"
+                            : "bg-white/90 dark:bg-slate-900/90 text-slate-800 dark:text-slate-100 border-white/60 dark:border-slate-700/60 font-semibold hover:bg-white dark:hover:bg-slate-800 group-hover:scale-102 shadow-black/15"
                         )}
                       >
-                        <SubIcon size={17} className="stroke-[2.2]" />
+                        {sub.badge && (
+                          <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-rose-500 text-white shrink-0 leading-none shadow-xs">
+                            {sub.badge}
+                          </span>
+                        )}
+                        <span className="text-xs text-right whitespace-nowrap leading-none tracking-tight">
+                          {sub.label}
+                        </span>
                       </div>
 
-                      {/* Label & Optional Badge */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-1.5">
-                          <span className={cn(
-                            "text-xs leading-tight truncate",
-                            isSubActive ? "font-bold text-indigo-600 dark:text-indigo-400" : "font-medium"
-                          )}>
-                            {sub.label}
-                          </span>
-                          {sub.badge && (
-                            <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-rose-500 text-white shrink-0 leading-none shadow-xs">
-                              {sub.badge}
-                            </span>
-                          )}
-                        </div>
+                      {/* Icon Bulat Melayang di Sebelah Kanan */}
+                      <div
+                        className={cn(
+                          "w-11 h-11 rounded-full flex items-center justify-center shrink-0 shadow-xl border backdrop-blur-xl transition-all duration-150 group-hover:scale-110",
+                          isSubActive
+                            ? "bg-indigo-600 text-white border-indigo-300 ring-2 ring-indigo-400/80 shadow-indigo-600/40"
+                            : cn(
+                                "bg-white/95 dark:bg-slate-900/95 border-white/80 dark:border-slate-700/80 shadow-black/20",
+                                sub.color || "text-indigo-600 dark:text-indigo-400"
+                              )
+                        )}
+                      >
+                        <SubIcon size={19} className="stroke-[2.2]" />
                       </div>
-                    </button>
+                    </motion.button>
                   );
                 })}
               </div>
-            </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>

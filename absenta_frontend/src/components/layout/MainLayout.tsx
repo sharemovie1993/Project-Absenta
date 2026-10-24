@@ -26,7 +26,7 @@ const CommandPalette = React.lazy(() => import('./CommandPalette').then(module =
 const InstructionPanel = React.lazy(() => import('@/components/dashboard/shared/InstructionPanel').then(module => ({ default: module.InstructionPanel })));
 import { getActiveApp } from '@/config/absentaAppsRegistry';
 
-import FloatingMessenger from '@/components/common/FloatingMessenger';
+
 
 export default function MainLayout() {
   return (
@@ -301,8 +301,8 @@ function MainLayoutContent() {
       {/* Navigasi Bawah Seluler Terpadu (Mobile Fixed Bottom Navigation) */}
       <BottomNavigation />
 
-      {/* Floating Support Messenger Widget */}
-      <FloatingMessenger />
+
+
     </div>
   );
 }

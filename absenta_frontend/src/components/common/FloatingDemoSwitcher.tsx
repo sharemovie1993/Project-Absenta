@@ -165,7 +165,7 @@ export const FloatingDemoSwitcher: React.FC = () => {
       {/* Floating Action Pill: Dinaikkan ke bottom-20 pada mobile agar tidak menghalangi Bottom Navigation */}
       <aside 
         aria-label="Demo Role Switcher" 
-        className="fixed bottom-20 right-3.5 md:bottom-5 md:right-5 z-[9990] flex items-center gap-2"
+        className="fixed bottom-20 right-3.5 md:bottom-5 md:right-5 z-30 flex items-center gap-2"
       >
         <motion.button
           type="button"
