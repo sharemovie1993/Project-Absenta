@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { useBottomNavTabs } from './bottom-nav/useBottomNavTabs';
 import { BottomNavTabItem } from './bottom-nav/BottomNavTabItem';
 import { BottomNavCrescentSpeedDial } from './bottom-nav/BottomNavCrescentSpeedDial';
+import { MobileAccountSheet } from './bottom-nav/MobileAccountSheet';
 import type { 
   MobileBottomSubItem, 
   MobileBottomTabItem, 
@@ -17,6 +18,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
   const location = useLocation();
   const navigate = useNavigate();
   const [openFlyoutId, setOpenFlyoutId] = useState<string | null>(null);
+  const [isAccountSheetOpen, setIsAccountSheetOpen] = useState(false);
 
   const {
     activeTabsList,
@@ -34,6 +36,14 @@ export const BottomNavigation: React.FC = React.memo(() => {
   }, [location.pathname, location.search]);
 
   const handleTabClick = useCallback((item: MobileBottomTabItem) => {
+    // 👤 Shopee-Style Tab "Saya" / Akun: Buka Mobile Account Sheet instan
+    const isProfileTab = item.id === 'saya' || item.id === 'base_profil' || item.id === 'profil' || item.id === 'admin_profil';
+    if (isProfileTab) {
+      setOpenFlyoutId(null);
+      setIsAccountSheetOpen(true);
+      return;
+    }
+
     if (item.children && item.children.length > 0) {
       if (openFlyoutId === item.id) {
         setOpenFlyoutId(null);
@@ -68,6 +78,10 @@ export const BottomNavigation: React.FC = React.memo(() => {
 
   const handleSubItemClick = useCallback((subItem: MobileBottomSubItem) => {
     setOpenFlyoutId(null);
+    if (subItem.id === 'profil' || subItem.id === 'saya') {
+      setIsAccountSheetOpen(true);
+      return;
+    }
     navigate(subItem.targetPath);
   }, [navigate]);
 
@@ -110,6 +124,12 @@ export const BottomNavigation: React.FC = React.memo(() => {
           </div>
         </nav>
       </div>
+
+      {/* ── SUBKOMPONEN 3: SHOPEE-GRADE MOBILE USER ACCOUNT SHEET (SAYA) ── */}
+      <MobileAccountSheet
+        isOpen={isAccountSheetOpen}
+        onClose={() => setIsAccountSheetOpen(false)}
+      />
     </>
   );
 });

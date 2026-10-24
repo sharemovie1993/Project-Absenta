@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Edit3, Key, User, Users, MapPin, Award, QrCode, Save, Loader2, Camera, Upload, X, RotateCcw, AlertCircle, Briefcase, Shield, BookOpen } from 'lucide-react';
+import { Check, Edit3, Key, User, Users, MapPin, Award, QrCode, Save, Loader2, Camera, Upload, X, RotateCcw, AlertCircle, Briefcase, Shield, BookOpen, LogOut, Moon, Sun } from 'lucide-react';
 import { Button, Modal, SearchableSelect, Input, Label, Textarea } from '../../../ui';
+import { ConfirmModal } from '../../../ui/Modal';
 import { toast } from 'react-hot-toast';
+import { useAuthStore } from '@/store/authStore';
+import { useTheme } from '@/hooks/useTheme';
 import { useGuruMe, useUpdateGuruMe } from '../../../../hooks/useGuruMe';
 import { useProvinsiOptions, useKabupatenOptions, useKecamatanOptions, useKelurahanOptions } from '../../../../hooks/useWilayahOptions';
 import { formatAlamatLengkap } from '../../../../lib/alamat.util';
@@ -226,6 +229,18 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
   const [email, setEmail] = useState('');
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+
+  // 2b. Session & Logout State
+  const { logout } = useAuthStore();
+  const { theme, toggle: toggleTheme } = useTheme();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  const handleLogout = useCallback(() => {
+    logout();
+    setShowLogoutConfirm(false);
+    navigate('/login');
+    toast.success('Berhasil keluar dari akun!');
+  }, [logout, navigate]);
 
   // 3. Edit Data Diri & Kepegawaian Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -648,15 +663,26 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
             </div>
           </div>
 
-          {/* Bottom Full-Width QR Card Digital Button */}
-          <Button
-            type="button"
-            onClick={() => toast('Membuka QR Card Digital Guru...', { icon: '💳' })}
-            className="w-full h-10 rounded-2xl text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white border-none flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-600/20"
-          >
-            <QrCode size={16} />
-            <span>Lihat QR Card Digital</span>
-          </Button>
+          {/* Bottom Action Buttons: QR Card & Logout */}
+          <div className="space-y-2 pt-2">
+            <Button
+              type="button"
+              onClick={() => toast('Membuka QR Card Digital Guru...', { icon: '💳' })}
+              className="w-full h-10 rounded-2xl text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white border-none flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-600/20"
+            >
+              <QrCode size={16} />
+              <span>Lihat QR Card Digital</span>
+            </Button>
+
+            <button
+              type="button"
+              onClick={() => setShowLogoutConfirm(true)}
+              className="w-full h-10 rounded-2xl text-xs font-black text-rose-600 hover:text-rose-700 bg-rose-50/80 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 border border-rose-200/80 dark:border-rose-900/60 flex items-center justify-center gap-2 cursor-pointer shadow-2xs transition-all active:scale-[0.98]"
+            >
+              <LogOut size={15} />
+              <span>Keluar Sesi (Logout)</span>
+            </button>
+          </div>
         </div>
 
         {/* Right Column (Pengaturan Akun & Ganti Password Card) - 8 cols on lg */}
@@ -737,6 +763,30 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
                     />
                   </div>
                 </div>
+              </div>
+
+              {/* Mode Tema Tampilan */}
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-indigo-950/60 text-amber-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                    {theme === 'dark-default' ? <Moon size={16} /> : <Sun size={16} />}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      Mode Tema Tampilan
+                    </p>
+                    <p className="text-[10px] text-slate-400">
+                      {theme === 'dark-default' ? 'Mode Gelap aktif' : 'Mode Terang aktif'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 shadow-2xs cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+                >
+                  {theme === 'dark-default' ? '🌙 Gelap' : '☀️ Terang'}
+                </button>
               </div>
 
               <div className="flex justify-end pt-2">
@@ -1407,6 +1457,18 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
           </div>
         </Modal>
       )}
+
+      {/* Modal Dialog Konfirmasi Logout */}
+      <ConfirmModal
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={handleLogout}
+        title="Konfirmasi Keluar Sesi"
+        message="Apakah Anda yakin ingin keluar dari akun Absenta? Anda harus masuk kembali untuk mengakses fitur sistem."
+        confirmText="Ya, Keluar"
+        cancelText="Batal"
+        variant="danger"
+      />
     </motion.div>
   );
 };

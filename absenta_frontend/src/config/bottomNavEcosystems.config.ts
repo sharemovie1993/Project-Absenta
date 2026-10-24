@@ -293,14 +293,6 @@ export function getKaprogTabs(kaprogJurusan: any, currentSubtab: string | null):
 export function getWalasTabs(waliKelasNama: string, currentSubtab: string | null): MobileBottomTabItem[] {
   return [
     {
-      id: 'portal_back',
-      label: 'Kembali ke Portal',
-      shortLabel: 'Kembali',
-      icon: ArrowLeft,
-      targetPath: '/dashboard?tab=ringkasan',
-      isActive: () => false,
-    },
-    {
       id: 'walas_beranda',
       label: 'Beranda Rombel Binaan',
       shortLabel: 'Beranda',
@@ -347,6 +339,14 @@ export function getWalasTabs(waliKelasNama: string, currentSubtab: string | null
         { id: 'rapor', label: 'Cetak Rapor Siswa', icon: Printer, targetPath: '/dashboard?tab=binaan&subtab=rapor', color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400' },
         { id: 'profil', label: 'Profil Saya & Akun', icon: User, targetPath: '/dashboard?tab=profil', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
       ],
+    },
+    {
+      id: 'saya',
+      label: 'Profil Saya & Akun',
+      shortLabel: 'Saya',
+      icon: User,
+      targetPath: '/dashboard?tab=profil',
+      isActive: (p, t) => t === 'profil' || p.startsWith('/profile'),
     },
   ];
 }
