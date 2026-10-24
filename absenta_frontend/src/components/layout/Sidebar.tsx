@@ -7,7 +7,8 @@ import {
   ShoppingCart, Shield, LayoutGrid, Clock, Settings,
   Award, LayoutDashboard, Users, UserCheck, MailOpen,
   Home, ClipboardList, Send, BarChart3, History, List,
-  ShieldAlert, BookOpen, LogOut, MessageSquare
+  ShieldAlert, BookOpen, LogOut, MessageSquare,
+  CalendarCheck, Trophy, Wrench, Printer, FileCheck2, FileSpreadsheet, Inbox, ArrowLeftRight, FileText
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -519,22 +520,64 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
         }
       }
 
-      // 2. Dynamic Ruang Wali Kelas (Wali Kelas Workspace)
-      else if (currentWs.id === 'WALIKELAS_WORKSPACE') {
-        mapped.forEach(root => {
-          const rName = root.label.toUpperCase();
-          if (rName.includes('RAPOR')) {
-            if (root.children) primaryItems.push(...root.children);
-            else primaryItems.push(root);
-          } else if (root.children) {
-            root.children.forEach(child => {
-              const cPath = (child.path || '').toLowerCase();
-              if (cPath.includes('/monitoring') || cPath.includes('/piket')) {
-                primaryItems.push(child);
-              }
-            });
-          }
-        });
+      // 2. Dynamic Ruang Wali Kelas (Wali Kelas Workspace Subtabs)
+      else if (currentWs.id === 'WALIKELAS_WORKSPACE' || (location.pathname === '/dashboard' && location.search.includes('tab=binaan'))) {
+        primaryItems = [
+          {
+            label: 'Ringkasan',
+            path: '/dashboard?tab=binaan&subtab=ringkasan',
+            icon: LayoutDashboard,
+            type: 'item',
+          },
+          {
+            label: 'Data Siswa',
+            path: '/dashboard?tab=binaan&subtab=siswa',
+            icon: Users,
+            type: 'item',
+          },
+          {
+            label: 'Presensi Rombel',
+            path: '/dashboard?tab=binaan&subtab=presensi',
+            icon: CalendarCheck,
+            type: 'item',
+          },
+          {
+            label: 'Jurnal Walas',
+            path: '/dashboard?tab=binaan&subtab=jurnal',
+            icon: BookOpen,
+            type: 'item',
+          },
+          {
+            label: 'Persetujuan Izin',
+            path: '/dashboard?tab=binaan&subtab=izin',
+            icon: FileCheck2,
+            type: 'item',
+          },
+          {
+            label: 'Pelanggaran Siswa',
+            path: '/dashboard?tab=binaan&subtab=disiplin',
+            icon: ShieldAlert,
+            type: 'item',
+          },
+          {
+            label: 'Prestasi Siswa',
+            path: '/dashboard?tab=binaan&subtab=prestasi',
+            icon: Award,
+            type: 'item',
+          },
+          {
+            label: 'Cetak & Rekap',
+            path: '/dashboard?tab=binaan&subtab=rekap',
+            icon: FileSpreadsheet,
+            type: 'item',
+          },
+          {
+            label: 'Cetak Rapor',
+            path: '/dashboard?tab=binaan&subtab=rapor',
+            icon: Printer,
+            type: 'item',
+          },
+        ];
       }
 
       // 3. Dynamic Ruang Kerja Guru (Teacher Workspace)
@@ -581,81 +624,131 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
           }
         });
       }
-      // 5. TU Keuangan Workspace
-      else if (currentWs.id === 'TU_KEUANGAN_WORKSPACE') {
-        allLeafItems.forEach(item => {
-          const p = (item.path || '').toLowerCase();
-          if (p === '/billing/invoices') {
-            primaryItems.push(item);
-          }
-        });
+
+      // 5. Dynamic Ruang Kerja Kaprog (Kaprog Workspace Subtabs)
+      else if (currentWs.id === 'KAPROG_WORKSPACE' || (location.pathname === '/dashboard' && location.search.includes('tab=kaprog'))) {
+        primaryItems = [
+          {
+            label: 'Ringkasan',
+            path: '/dashboard?tab=kaprog&subtab=beranda',
+            icon: LayoutDashboard,
+            type: 'item',
+          },
+          {
+            label: 'Data Siswa',
+            path: '/dashboard?tab=kaprog&subtab=siswa',
+            icon: GraduationCap,
+            type: 'item',
+          },
+          {
+            label: 'PKL & Industri',
+            path: '/dashboard?tab=kaprog&subtab=pkl',
+            icon: Briefcase,
+            type: 'item',
+          },
+          {
+            label: 'Presensi Rombel',
+            path: '/dashboard?tab=kaprog&subtab=kehadiran',
+            icon: CalendarCheck,
+            type: 'item',
+          },
+          {
+            label: 'Pelanggaran Siswa',
+            path: '/dashboard?tab=kaprog&subtab=pelanggaran',
+            icon: ShieldAlert,
+            type: 'item',
+          },
+          {
+            label: 'Prestasi Siswa',
+            path: '/dashboard?tab=kaprog&subtab=prestasi',
+            icon: Trophy,
+            type: 'item',
+          },
+          {
+            label: 'Guru Produktif',
+            path: '/dashboard?tab=kaprog&subtab=guru',
+            icon: Users,
+            type: 'item',
+          },
+          {
+            label: 'Sarana & Lab',
+            path: '/dashboard?tab=kaprog&subtab=sarana',
+            icon: Wrench,
+            type: 'item',
+          },
+          {
+            label: 'UKK & Sertifikasi',
+            path: '/dashboard?tab=kaprog&subtab=ukk',
+            icon: Award,
+            type: 'item',
+          },
+          {
+            label: 'Cetak Rapor',
+            path: '/dashboard?tab=kaprog&subtab=rapor',
+            icon: Printer,
+            type: 'item',
+          },
+        ];
       }
-      // 5.1 TU Koordinator & Persuratan Workspace
-      else if (currentWs.id === 'TU_KOORDINATOR_WORKSPACE' || currentWs.id === 'TU_PERSURATAN_WORKSPACE') {
-        allLeafItems.forEach(item => {
-          const p = (item.path || '').toLowerCase();
-          if (
-            p.startsWith('/correspondence') ||
-            p === '/dashboard' ||
-            p === '/academic/siswa' ||
-            p === '/academic/guru' ||
-            p === '/academic/buku-induk' ||
-            p === '/billing/invoices'
-          ) {
-            primaryItems.push(item);
-          }
-        });
-      }
-      // 5.2 Kaprog Workspace
-      else if (currentWs.id === 'KAPROG_WORKSPACE') {
-        allLeafItems.forEach(item => {
-          const p = (item.path || '').toLowerCase();
-          if (
-            p === '/dashboard' ||
-            p.startsWith('/hubin') ||
-            p.startsWith('/academic') ||
-            p.startsWith('/kurikulum') ||
-            p.startsWith('/kesiswaan') ||
-            p.startsWith('/sarpras') ||
-            p.startsWith('/rapor')
-          ) {
-            primaryItems.push(item);
-          }
-        });
-      }
-      else if (currentWs.id === 'TU_KEPEGAWAIAN_WORKSPACE') {
-        allLeafItems.forEach(item => {
-          const p = (item.path || '').toLowerCase();
-          if (
-            p === '/academic/siswa' || 
-            p === '/academic/guru' || 
-            p === '/documents/member-docs' || 
-            p === '/academic/ppdb-mapping' ||
-            p === '/academic/struktur-organisasi' ||
-            p === '/academic/transition' ||
-            p === '/academic/pleno' ||
-            p === '/academic/siswa-cards' ||
-            p === '/academic/staff-logs' ||
-            p === '/users' ||
-            p === '/settings' ||
-            p === '/academic/tahun-pelajaran' ||
-            p === '/academic/semester' ||
-            p === '/academic/jurusan' ||
-            p === '/academic/kelas' ||
-            p === '/academic/mapel'
-          ) {
-            primaryItems.push(item);
-          }
-        });
-      }
-      // 7. TU Sarpras Workspace
-      else if (currentWs.id === 'TU_SARPRAS_WORKSPACE') {
-        allLeafItems.forEach(item => {
-          const p = (item.path || '').toLowerCase();
-          if (p === '/sarpras/inventory' || p === '/sarpras/loans' || p === '/sarpras/maintenance') {
-            primaryItems.push(item);
-          }
-        });
+
+      // 6. Dynamic Ruang Tata Usaha (TU Subtabs for All TU Workspaces)
+      else if (currentWs.id.startsWith('TU_') || (location.pathname === '/dashboard' && location.search.includes('tab=kepegawaian'))) {
+        primaryItems = [
+          {
+            label: 'Ringkasan',
+            path: '/dashboard?tab=kepegawaian&subtab=beranda',
+            icon: LayoutDashboard,
+            type: 'item',
+          },
+          {
+            label: 'Surat Masuk & Disposisi',
+            path: '/dashboard?tab=kepegawaian&subtab=surat-masuk',
+            icon: Inbox,
+            type: 'item',
+          },
+          {
+            label: 'Surat Keluar & Dinas',
+            path: '/dashboard?tab=kepegawaian&subtab=surat-keluar',
+            icon: Send,
+            type: 'item',
+          },
+          {
+            label: 'Surat Keterangan',
+            path: '/dashboard?tab=kepegawaian&subtab=surat-keterangan',
+            icon: FileText,
+            type: 'item',
+          },
+          {
+            label: 'Mutasi Siswa',
+            path: '/dashboard?tab=kepegawaian&subtab=mutasi',
+            icon: ArrowLeftRight,
+            type: 'item',
+          },
+          {
+            label: 'Clearance & BAST',
+            path: '/dashboard?tab=kepegawaian&subtab=bast-ijazah',
+            icon: Award,
+            type: 'item',
+          },
+          {
+            label: 'DKN & Kelulusan',
+            path: '/dashboard?tab=kepegawaian&subtab=dkn',
+            icon: FileSpreadsheet,
+            type: 'item',
+          },
+          {
+            label: 'Data Siswa & Klapper',
+            path: '/dashboard?tab=kepegawaian&subtab=buku-induk',
+            icon: BookOpen,
+            type: 'item',
+          },
+          {
+            label: 'Kepegawaian PTK',
+            path: '/dashboard?tab=kepegawaian&subtab=kepegawaian',
+            icon: Users,
+            type: 'item',
+          },
+        ];
       }
       // 8. Student Workspace
       else if (currentWs.id === 'STUDENT_WORKSPACE' || String(user?.role?.name || '').toUpperCase() === 'SISWA') {
@@ -867,7 +960,15 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
 
       const itemPath = item.path || '';
       const currentPath = `${location.pathname}${location.search || ''}`;
-      const isActive = currentPath === itemPath || location.pathname === itemPath;
+      const searchParams = new URLSearchParams(location.search);
+      const isSubtabItem = itemPath.includes('subtab=');
+      const isActive = isSubtabItem
+        ? currentPath === itemPath || (
+            !searchParams.get('subtab') &&
+            (itemPath.endsWith('subtab=beranda') || itemPath.endsWith('subtab=ringkasan')) &&
+            itemPath.startsWith(`${location.pathname}?tab=${searchParams.get('tab') || ''}`)
+          )
+        : currentPath === itemPath || location.pathname === itemPath;
       const hasChildren = item.children && item.children.length > 0;
       const isSubmenuOpenState = isSubmenuOpen(itemPath);
       const hasActiveChild = hasChildren && item.children && isChildActive(item.children);
