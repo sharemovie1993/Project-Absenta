@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
+import { ShopeeQuickActionSlider } from '@/components/common/ShopeeQuickActionSlider';
 import type { TuTabId, TuStatsData } from '../types';
 
 interface TuBerandaTabProps {
@@ -111,75 +112,77 @@ export const TuBerandaTab: React.FC<TuBerandaTabProps> = React.memo(({
         </div>
 
         {/* Grid 7 Kolom (Desktop: 1 baris 7 ikon, Mobile: 2 baris 4+3 ikon) */}
-        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2.5 sm:gap-3">
-          {[
+        <ShopeeQuickActionSlider
+          items={[
             {
+              id: 'surat-keterangan',
               title: 'Surat Keterangan',
-              action: onOpenSuratKeterangan,
               icon: FileText,
               color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400',
+              onClick: () => {
+                if (onOpenSuratKeterangan) onOpenSuratKeterangan();
+                else if (onSelectTab) onSelectTab('surat-keterangan');
+              },
             },
             {
+              id: 'mutasi',
               title: 'Mutasi Siswa',
-              action: onOpenMutasi,
               icon: ArrowLeftRight,
               color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400',
+              onClick: () => {
+                if (onOpenMutasi) onOpenMutasi();
+                else if (onSelectTab) onSelectTab('mutasi');
+              },
             },
             {
+              id: 'bast',
               title: 'Clearance & BAST',
-              action: onOpenBastIjazah,
               icon: Award,
               color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
+              onClick: () => {
+                if (onOpenBastIjazah) onOpenBastIjazah();
+                else if (onSelectTab) onSelectTab('bast-ijazah');
+              },
             },
             {
+              id: 'dkn',
               title: 'Matriks DKN',
-              action: onOpenDknPrint,
               icon: FileSpreadsheet,
               color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
+              onClick: () => {
+                if (onOpenDknPrint) onOpenDknPrint();
+                else if (onSelectTab) onSelectTab('dkn');
+              },
             },
             {
+              id: 'buku-induk',
               title: 'Buku Induk',
-              tabId: 'buku-induk' as TuTabId,
               icon: BookOpen,
               color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
+              onClick: () => {
+                if (onSelectTab) onSelectTab('buku-induk');
+              },
             },
             {
+              id: 'surat-masuk',
               title: 'Surat Masuk',
-              tabId: 'surat-masuk' as TuTabId,
               icon: Inbox,
               color: 'bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400',
+              onClick: () => {
+                if (onSelectTab) onSelectTab('surat-masuk');
+              },
             },
             {
+              id: 'kepegawaian',
               title: 'Kepegawaian PTK',
-              tabId: 'kepegawaian' as TuTabId,
               icon: Users,
               color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400',
+              onClick: () => {
+                if (onSelectTab) onSelectTab('kepegawaian');
+              },
             },
-          ].map((item, idx) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => {
-                  if (item.action) {
-                    item.action();
-                  } else if (item.tabId && onSelectTab) {
-                    onSelectTab(item.tabId);
-                  }
-                }}
-                className="group flex flex-col items-center justify-start p-1.5 sm:p-2 rounded-2xl hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-all duration-150 cursor-pointer text-center w-full select-none"
-              >
-                <div className={`w-12 h-12 sm:w-13 sm:h-13 rounded-2xl ${item.color} flex items-center justify-center shadow-xs group-hover:scale-110 group-hover:shadow-md transition-all duration-150 border border-slate-200/50 dark:border-slate-800/50 mb-1.5`}>
-                  <Icon className="w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[2.2]" />
-                </div>
-                <span className="text-[11px] sm:text-xs font-medium text-slate-700 dark:text-slate-200 leading-tight line-clamp-2 text-center break-words group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                  {item.title}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+          ]}
+        />
       </div>
 
       {/* ─── 3. BOTTOM TWO COLUMNS (MATCHING KAPROGDASHBOARD EXACT LAYOUT) ─── */}

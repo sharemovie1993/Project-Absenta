@@ -20,6 +20,7 @@ import {
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
+import { ShopeeQuickActionSlider } from '@/components/common/ShopeeQuickActionSlider';
 import { cn } from '@/lib/utils';
 import type { KaprogTabId } from '../types';
 
@@ -140,84 +141,78 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
           </Button>
         </div>
 
-        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2.5 sm:gap-3">
-          {[
+        <ShopeeQuickActionSlider
+          items={[
             {
+              id: 'tp',
               title: 'Formulasi TP',
-              tabId: 'pkl' as KaprogTabId,
-              path: '/hubin/nilai-pkl?tab=deskripsi',
               icon: FileText,
               color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
+              onClick: () => {
+                if (onSelectTab) onSelectTab('pkl');
+                else navigate('/hubin/nilai-pkl?tab=deskripsi');
+              },
             },
             {
+              id: 'monitoring-pkl',
               title: 'Monitoring PKL',
-              action: onOpenMonitoringPkl,
-              path: '/hubin/absensi',
               icon: CalendarCheck,
               color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
+              onClick: () => {
+                if (onOpenMonitoringPkl) onOpenMonitoringPkl();
+                else navigate('/hubin/absensi');
+              },
             },
             {
+              id: 'rekap-nilai',
               title: 'Rekap Nilai PKL',
-              action: onOpenRekapNilai,
-              path: '/hubin/nilai-pkl?tab=dudi',
               icon: Award,
               color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400',
+              onClick: () => {
+                if (onOpenRekapNilai) onOpenRekapNilai();
+                else navigate('/hubin/nilai-pkl?tab=dudi');
+              },
             },
             {
+              id: 'penempatan',
               title: 'Penempatan Siswa',
-              action: onOpenPenempatan,
-              path: '/hubin/penempatan',
               icon: Briefcase,
               color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
+              onClick: () => {
+                if (onOpenPenempatan) onOpenPenempatan();
+                else navigate('/hubin/penempatan');
+              },
             },
             {
+              id: 'struktur-kelas',
               title: 'Struktur Kelas',
-              action: onOpenStrukturKelas,
-              tabId: 'siswa' as KaprogTabId,
-              path: '/academic/kelas',
               icon: Layers,
               color: 'bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400',
+              onClick: () => {
+                if (onOpenStrukturKelas) onOpenStrukturKelas();
+                else if (onSelectTab) onSelectTab('siswa');
+                else navigate('/academic/kelas');
+              },
             },
             {
+              id: 'ukk',
               title: 'Sertifikat UKK',
-              tabId: 'ukk' as KaprogTabId,
-              path: '/rapor',
               icon: Award,
               color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400',
+              onClick: () => {
+                if (onSelectTab) onSelectTab('ukk');
+                else navigate('/rapor');
+              },
             },
             {
+              id: 'tracer',
               title: 'Tracer Study',
-              path: '/hubin/tracer',
               icon: GraduationCap,
               color: 'bg-cyan-50 dark:bg-cyan-950/70 text-cyan-600 dark:text-cyan-400',
+              onClick: () => navigate('/hubin/tracer'),
             },
-          ].map((item, idx) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => {
-                  if (item.action) {
-                    item.action();
-                  } else if (item.tabId && onSelectTab) {
-                    onSelectTab(item.tabId);
-                  } else if (item.path) {
-                    navigate(item.path);
-                  }
-                }}
-                className="group flex flex-col items-center justify-start p-1.5 sm:p-2 rounded-2xl hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-all duration-150 cursor-pointer text-center w-full select-none"
-              >
-                <div className={`w-12 h-12 sm:w-13 sm:h-13 rounded-2xl ${item.color} flex items-center justify-center shadow-xs group-hover:scale-110 group-hover:shadow-md transition-all duration-150 border border-slate-200/50 dark:border-slate-800/50 mb-1.5`}>
-                  <Icon className="w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[2.2]" />
-                </div>
-                <span className="text-[11px] sm:text-xs font-medium text-slate-700 dark:text-slate-200 leading-tight line-clamp-2 text-center break-words group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                  {item.title}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+          ]}
+        />
       </Card>
 
       {/* 2-Column Bottom Section: Aktivitas & Log + Agenda Hari Ini */}

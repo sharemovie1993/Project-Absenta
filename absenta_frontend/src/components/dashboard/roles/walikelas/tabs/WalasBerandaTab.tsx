@@ -19,6 +19,7 @@ import {
 import { Card } from '@/components/ui/Card';
 import { Button, Badge } from '@/components/ui';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
+import { ShopeeQuickActionSlider } from '@/components/common/ShopeeQuickActionSlider';
 import { cn } from '@/lib/utils';
 import type { WaliKelasTabId, WalasDashboardData } from '../types';
 
@@ -207,70 +208,57 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
           </Button>
         </div>
 
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5 sm:gap-3">
-          {[
+        <ShopeeQuickActionSlider
+          items={[
             {
+              id: 'jurnal',
               title: 'Tulis Jurnal',
-              tabId: 'jurnal' as WaliKelasTabId,
-              action: onOpenJurnalModal,
               icon: BookOpen,
               color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
+              onClick: () => {
+                if (onOpenJurnalModal) onOpenJurnalModal();
+                else onSelectTab('jurnal');
+              },
             },
             {
+              id: 'izin',
               title: 'Persetujuan Izin',
-              tabId: 'izin' as WaliKelasTabId,
               icon: FileCheck2,
+              badge: izinPending > 0 ? izinPending : undefined,
               color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
+              onClick: () => onSelectTab('izin'),
             },
             {
+              id: 'disiplin',
               title: 'Rujukan Kasus BK',
-              tabId: 'disiplin' as WaliKelasTabId,
               icon: ShieldAlert,
+              badge: ewsAlerts.length > 0 ? ewsAlerts.length : undefined,
               color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400',
+              onClick: () => onSelectTab('disiplin'),
             },
             {
+              id: 'rekap',
               title: 'Cetak Rekap F-BK',
-              tabId: 'rekap' as WaliKelasTabId,
               icon: FileText,
               color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400',
+              onClick: () => onSelectTab('rekap'),
             },
             {
+              id: 'rapor',
               title: 'Cetak Rapor',
-              tabId: 'rapor' as WaliKelasTabId,
               icon: Award,
               color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
+              onClick: () => onSelectTab('rapor'),
             },
             {
+              id: 'siswa',
               title: 'Data Siswa & Kontak',
-              tabId: 'siswa' as WaliKelasTabId,
               icon: Users,
               color: 'bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400',
+              onClick: () => onSelectTab('siswa'),
             },
-          ].map((item, idx) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => {
-                  if (item.action) {
-                    item.action();
-                  } else if (item.tabId && onSelectTab) {
-                    onSelectTab(item.tabId);
-                  }
-                }}
-                className="group flex flex-col items-center justify-start p-1.5 sm:p-2 rounded-2xl hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-all duration-150 cursor-pointer text-center w-full select-none"
-              >
-                <div className={`w-12 h-12 sm:w-13 sm:h-13 rounded-2xl ${item.color} flex items-center justify-center shadow-xs group-hover:scale-110 group-hover:shadow-md transition-all duration-150 border border-slate-200/50 dark:border-slate-800/50 mb-1.5`}>
-                  <Icon className="w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[2.2]" />
-                </div>
-                <span className="text-[11px] sm:text-xs font-medium text-slate-700 dark:text-slate-200 leading-tight line-clamp-2 text-center break-words group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                  {item.title}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+          ]}
+        />
       </Card>
 
       {/* 3. DUA KOLOM BAWAH: AKTIVITAS & LOG TERBARU + AGENDA & KBM HARI INI */}
