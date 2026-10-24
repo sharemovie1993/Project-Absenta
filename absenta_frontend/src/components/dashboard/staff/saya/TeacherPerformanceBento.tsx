@@ -1,6 +1,6 @@
-import React from 'react';
-import { Target, Clock, CheckCircle2, Award, ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import React, { useMemo } from 'react';
+import { Target, Clock, Award, CheckCircle2 } from 'lucide-react';
+import { HubCard, HubBentoGrid, type HubBentoCell } from '@/components/ui/hub';
 
 interface TeacherPerformanceBentoProps {
   kehadiranPersen?: number;
@@ -29,94 +29,61 @@ export const TeacherPerformanceBento: React.FC<TeacherPerformanceBentoProps> = R
   onOpenBebanDetail,
   className,
 }) => {
-  return (
-    <div className={cn("space-y-2 w-full", className)}>
-      <div className="flex items-center justify-between px-0.5">
-        <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-          Performa &amp; Kehadiran Saya (Bulan Ini)
+  const cells: HubBentoCell[] = useMemo(() => [
+    {
+      id: 'perf-kehadiran',
+      title: 'Kehadiran',
+      value: `${kehadiranPersen}%`,
+      subtext: `${totalHadir} Hadir • ${totalIzin} Izin`,
+      icon: Target,
+      iconColorClass: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/50',
+      showChevron: true,
+      onClick: onOpenKehadiranDetail,
+    },
+    {
+      id: 'perf-disiplin',
+      title: 'Disiplin Waktu',
+      value: `${totalTerlambatMenit} Menit`,
+      subtext: `Rata-rata Tap ${avgTapTime}`,
+      icon: Clock,
+      iconColorClass: totalTerlambatMenit === 0 ? 'text-blue-500 bg-blue-50 dark:bg-blue-950/50' : 'text-amber-500 bg-amber-50 dark:bg-amber-950/50',
+    },
+    {
+      id: 'perf-beban',
+      title: 'Beban Mengajar',
+      value: (
+        <span>
+          {currentJp}
+          <span className="text-xs font-normal text-slate-400">/{targetJp} JP</span>
         </span>
-      </div>
+      ),
+      subtext: currentJp >= targetJp ? 'Memenuhi Syarat Sertifikasi' : 'Kurang Jam Mengajar',
+      icon: Award,
+      iconColorClass: currentJp >= targetJp ? 'text-purple-500 bg-purple-50 dark:bg-purple-950/50' : 'text-amber-500 bg-amber-50 dark:bg-amber-950/50',
+      showChevron: true,
+      onClick: onOpenBebanDetail,
+    },
+    {
+      id: 'perf-jurnal',
+      title: 'Jurnal Ajar',
+      value: `${jurnalPersen}%`,
+      subtext: jurnalPersen === 100 ? 'Dokumentasi Lengkap' : 'Ada Sesi Belum Diisi',
+      icon: CheckCircle2,
+      iconColorClass: jurnalPersen === 100 ? 'text-teal-500 bg-teal-50 dark:bg-teal-950/50' : 'text-rose-500 bg-rose-50 dark:bg-rose-950/50',
+    },
+  ], [kehadiranPersen, totalHadir, totalIzin, totalTerlambatMenit, avgTapTime, currentJp, targetJp, jurnalPersen, onOpenKehadiranDetail, onOpenBebanDetail]);
 
-      <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full">
-        {/* 1. Kehadiran Guru */}
-        <div 
-          onClick={onOpenKehadiranDetail}
-          className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs flex flex-col justify-between cursor-pointer hover:border-emerald-500/40 active:scale-95 transition-all group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Kehadiran
-            </span>
-            <Target size={14} className="text-emerald-500" />
-          </div>
-          <div className="pt-2">
-            <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight">
-              {kehadiranPersen}%
-            </div>
-            <p className="text-[10px] text-slate-400 font-medium truncate pt-0.5">
-              {totalHadir} Hadir • {totalIzin} Izin
-            </p>
-          </div>
-        </div>
-
-        {/* 2. Ketepatan Waktu */}
-        <div className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Disiplin Waktu
-            </span>
-            <Clock size={14} className="text-blue-500" />
-          </div>
-          <div className="pt-2">
-            <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight">
-              {totalTerlambatMenit === 0 ? '0 Mnt' : `${totalTerlambatMenit} Mnt`}
-            </div>
-            <p className="text-[10px] text-slate-400 font-medium truncate pt-0.5">
-              Rata-rata Tap {avgTapTime}
-            </p>
-          </div>
-        </div>
-
-        {/* 3. Beban JP Sertifikasi */}
-        <div 
-          onClick={onOpenBebanDetail}
-          className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs flex flex-col justify-between cursor-pointer hover:border-indigo-500/40 active:scale-95 transition-all group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Beban JP
-            </span>
-            <Award size={14} className="text-indigo-500" />
-          </div>
-          <div className="pt-2">
-            <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight">
-              {currentJp} / {targetJp} <span className="text-[10px] font-bold text-slate-400">JP</span>
-            </div>
-            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold truncate pt-0.5">
-              {currentJp >= targetJp ? 'Memenuhi Syarat' : 'Belum Tuntas'}
-            </p>
-          </div>
-        </div>
-
-        {/* 4. Kepatuhan Jurnal */}
-        <div className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Jurnal Ajar
-            </span>
-            <CheckCircle2 size={14} className="text-emerald-500" />
-          </div>
-          <div className="pt-2">
-            <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight">
-              {jurnalPersen}%
-            </div>
-            <p className="text-[10px] text-slate-400 font-medium truncate pt-0.5">
-              Dokumentasi Lengkap
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+  return (
+    <HubCard
+      title="Performa & Kehadiran Saya"
+      subtitle="(Bulan Ini)"
+      actionLabel="Detail"
+      onAction={onOpenKehadiranDetail}
+      className={className}
+      noPadding
+    >
+      <HubBentoGrid cells={cells} columns={2} />
+    </HubCard>
   );
 });
 

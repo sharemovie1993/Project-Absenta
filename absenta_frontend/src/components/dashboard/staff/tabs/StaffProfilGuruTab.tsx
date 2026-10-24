@@ -477,7 +477,7 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
 
       {/* ── SHOPEE-GRADE HIGH DENSITY PERSONAL HUB (SAYA) ── */}
-      <div className="space-y-4">
+      <div className="space-y-2.5 sm:space-y-3">
         {/* 1. Alerts & Peringatan Tugas */}
         <TeacherAlertsGrid
           unfilledJournalsCount={0}
