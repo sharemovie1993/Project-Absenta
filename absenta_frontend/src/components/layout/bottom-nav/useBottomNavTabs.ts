@@ -467,23 +467,23 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       case 'admin':
         return getAdminTabs(teacherDashboards);
       default: {
-        // STEP 1 (PORTAL BASE GURU - LANGSUNG EXPOSE PERAN)
+        // STEP 1 (PORTAL BASE GURU - KBM TERPADU DI BERANDA)
         const baseTabs: MobileBottomTabItem[] = [
           {
             id: 'base_home',
             label: 'Beranda Guru',
-            shortLabel: 'Guru',
+            shortLabel: 'Beranda',
             icon: Home,
             targetPath: '/dashboard?tab=ringkasan',
-            isActive: (p, t) => (p === '/dashboard' || p === '/dashboard/') && (!t || t === 'ringkasan'),
+            isActive: (p, t) => (p === '/dashboard' || p === '/dashboard/') && (!t || t === 'ringkasan' || t === 'jadwal'),
           },
           {
-            id: 'base_kbm',
-            label: 'KBM Guru',
-            shortLabel: 'KBM',
+            id: 'base_nilai',
+            label: 'Nilai & Mapel',
+            shortLabel: 'Nilai & CP',
             icon: BookOpen,
-            targetPath: '/dashboard?tab=jadwal',
-            isActive: (p, t) => t === 'jadwal' || p.startsWith('/attendance/my-attendance'),
+            targetPath: '/rapor/input-nilai',
+            isActive: (p) => p.startsWith('/rapor/input-nilai') || p.startsWith('/academic/grades'),
           },
         ];
 
@@ -534,7 +534,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         baseTabs.push({
           id: 'base_profil',
           label: 'Profil Saya',
-          shortLabel: 'Profil',
+          shortLabel: 'Saya',
           icon: User,
           targetPath: '/dashboard?tab=profil',
           isActive: (p, t) => t === 'profil' || p.startsWith('/profile'),

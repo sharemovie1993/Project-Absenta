@@ -317,7 +317,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   // Synchronize Active Tab with Query Param (?tab=...) atau Smart Default Tab (dengan guard akses)
   const rawRequestedTab = searchParams.get('tab');
-  const requestedTab = rawRequestedTab === 'walas' ? 'binaan' : rawRequestedTab;
+  const requestedTab = rawRequestedTab === 'walas' ? 'binaan' : rawRequestedTab === 'jadwal' ? 'ringkasan' : rawRequestedTab;
   const activeTab = (requestedTab === 'pembimbing_pkl' && !isPembimbingPkl)
     ? defaultTabId
     : (requestedTab || defaultTabId);
@@ -851,10 +851,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
       });
     }
 
-    // 2. KBM & Absen (hanya untuk Guru Pengajar Aktif atau Staf TU Pengganti Mengajar)
-    if (!isPureGerbangStaff && !isKepsek && (!isTuStaff || isKurikulum || hasTeachingDuty) && (!isAdminRole || isEffectivePendidik)) {
-      list.push({ id: 'jadwal', label: 'KBM & Absen', icon: BookOpen });
-    }
+    // 2. KBM & Absen telah terintegrasi langsung di Beranda Guru (Single Responsibility Core)
 
     // 3. Wali Kelas (Khusus Guru Wali Kelas Rombel Binaan)
     if ((isWaliKelas || Boolean(waliKelasId)) && !isKepsek) {
@@ -1065,12 +1062,9 @@ export const UnifiedStaffDashboard: React.FC = () => {
     <div className="space-y-4 sm:space-y-5 pb-24 lg:pb-8 text-slate-800 dark:text-slate-100">
       
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      {/* TOP INTEGRATED HERO BANNER CARD & TAB NAV (Desktop: Always | Mobile: Beranda only) */}
+      {/* TOP INTEGRATED HERO BANNER CARD & TAB NAV (Desktop: Always | Mobile: Hidden to conserve vertical space) */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className={cn(
-        "p-4 sm:p-6 rounded-3xl bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-700 text-white shadow-lg space-y-4 relative overflow-hidden",
-        activeTab !== 'ringkasan' && "hidden md:block"
-      )}>
+      <div className="hidden md:block p-4 sm:p-6 rounded-3xl bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-700 text-white shadow-lg space-y-4 relative overflow-hidden">
         {/* Header Row: Title, Jabatan, NIP & Presensi Kegiatan Action */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
@@ -1187,6 +1181,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
                 isPendidik={isEffectivePendidik}
                 timelineItems={timelineItems || []}
                 onNavigateTab={handleTabChange}
+                onOpenAttendance={(sesi) => setSelectedSesi(sesi)}
+                onOpenJournal={(sesi) => { setSessionForJournal(sesi); setJournalModalOpen(true); }}
               />
             )}
           </div>
