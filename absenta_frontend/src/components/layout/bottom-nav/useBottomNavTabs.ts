@@ -272,22 +272,20 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     if (isKaprog || isAdminRole) {
       list.push({
         id: 'dash-kaprog',
-        label: kaprogJurusan?.singkatan ? `Kaprog ${kaprogJurusan.singkatan}` : 'Kaprog',
+        label: 'Jurusan',
         icon: Award,
         targetPath: '/dashboard?tab=kaprog&subtab=beranda',
         color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
-        badge: kaprogJurusan?.singkatan || 'KAPROG',
       });
     }
 
     if (isWaliKelas || isAdminRole) {
       list.push({
         id: 'dash-walas',
-        label: waliKelasNama ? `Walas ${waliKelasNama}` : 'Wali Kelas',
+        label: 'Walas',
         icon: Users,
         targetPath: '/dashboard?tab=binaan&subtab=ringkasan',
         color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400',
-        badge: waliKelasNama || 'WALAS',
       });
     }
 

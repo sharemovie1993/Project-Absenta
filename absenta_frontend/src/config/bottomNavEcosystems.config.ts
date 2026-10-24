@@ -272,7 +272,6 @@ export function getKaprogTabs(kaprogJurusan: any, currentSubtab: string | null):
       label: `Menu ${kaprogJurusan?.nama || 'Jurusan'}`,
       shortLabel: 'Menu Jurusan',
       icon: LayoutGrid,
-      badge: kaprogJurusan?.singkatan || 'KAPROG',
       targetPath: '/dashboard?tab=kaprog',
       isActive: (p, t) => t === 'kaprog' && Boolean(currentSubtab && !['beranda', 'siswa', 'pkl', 'kehadiran', 'ukk'].includes(currentSubtab)),
       children: [
@@ -338,7 +337,6 @@ export function getWalasTabs(waliKelasNama: string, currentSubtab: string | null
       label: `Menu Kelas ${waliKelasNama || ''}`,
       shortLabel: 'Menu Walas',
       icon: LayoutGrid,
-      badge: waliKelasNama || 'WALAS',
       targetPath: '/dashboard?tab=binaan',
       isActive: (p, t) => t === 'binaan' && Boolean(currentSubtab && !['ringkasan', 'presensi', 'jurnal', 'izin', 'siswa'].includes(currentSubtab)),
       children: [
