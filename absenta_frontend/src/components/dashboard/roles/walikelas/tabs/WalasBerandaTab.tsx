@@ -255,7 +255,7 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
       </HubCard>
 
       {/* 2. PINTASAN AKSI OPERASIONAL (Shopee-Grade Headerless Quick Action Slider) */}
-      <HubCard bodyClassName="py-2 sm:py-2.5 px-1 sm:px-2">
+      <HubCard bodyClassName="py-2.5 sm:py-3 px-2 sm:px-3">
         <HubActionGrid items={actionItems} variant="slider" />
       </HubCard>
 

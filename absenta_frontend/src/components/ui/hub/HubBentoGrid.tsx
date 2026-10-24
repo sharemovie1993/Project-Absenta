@@ -22,8 +22,8 @@ export interface HubBentoGridProps {
 
 /**
  * HubBentoGrid - Grid Metrik Flat dengan Garis Rambut (Hairline Divider) Ala "Keuangan Shopee"
- * Menggantikan kartu-kartu bento tebal mengambang dengan struktur modular 1 kartu bergaris tipis,
- * menghemat 40% ruang vertikal dan membuat UI terasa sangat ringan.
+ * Menghadirkan proporsi padding vertikal & horizontal yang pas dan nyaman,
+ * tanpa tumpukan teks berlebih (maksimal 2 baris terfokus).
  */
 export const HubBentoGrid: React.FC<HubBentoGridProps> = React.memo(({
   cells,
@@ -35,7 +35,7 @@ export const HubBentoGrid: React.FC<HubBentoGridProps> = React.memo(({
   return (
     <div
       className={cn(
-        'grid w-full divide-x divide-y divide-slate-100 dark:divide-slate-800/80 -m-2.5 sm:-m-3 border-t border-slate-100 dark:border-slate-800/60',
+        'grid w-full divide-x divide-y divide-slate-100 dark:divide-slate-800/80',
         colClass,
         className
       )}
@@ -49,31 +49,31 @@ export const HubBentoGrid: React.FC<HubBentoGridProps> = React.memo(({
             key={cell.id}
             onClick={cell.onClick}
             className={cn(
-              'p-2.5 sm:p-3 flex items-start justify-between gap-2 transition-colors relative select-none',
+              'py-3.5 px-3.5 sm:py-4 sm:px-4 flex items-center justify-between gap-3 transition-colors relative select-none',
               isClickable && 'cursor-pointer hover:bg-slate-50/70 dark:hover:bg-slate-800/40 active:bg-slate-100 dark:active:bg-slate-800/80'
             )}
           >
-            <div className="flex items-start gap-2.5 min-w-0 flex-1">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
               {IconComponent && (
                 <div
                   className={cn(
-                    'w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5',
+                    'w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 shadow-[0_1px_2px_rgba(0,0,0,0.03)]',
                     cell.iconColorClass || 'text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800'
                   )}
                 >
-                  <IconComponent size={16} className="stroke-[1.75]" />
+                  <IconComponent size={18} className="stroke-[1.8]" />
                 </div>
               )}
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">
+                  <span className="text-[11px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 truncate">
                     {cell.title}
                   </span>
                   {cell.badge}
                 </div>
 
-                <div className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight mt-0.5 truncate">
+                <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-tight mt-0.5 truncate">
                   {cell.value}
                 </div>
 

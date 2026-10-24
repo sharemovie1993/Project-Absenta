@@ -207,7 +207,7 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
       {/* 1. Mobile Top Controls (< lg only: Compact Identity Strip + Collapsible Filter) */}
       <div className="flex lg:hidden flex-col gap-2">
         {/* Mobile Shopee-style Top Bar with Back Arrow */}
-        <div className="flex items-center justify-between gap-2 p-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <div className="flex items-center justify-between gap-2 py-2 px-3 sm:py-2.5 sm:px-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
           <div className="flex items-center gap-1.5 min-w-0">
             {/* Tombol Panah Kiri ala Shopee untuk Navigasi Balik */}
             <button
