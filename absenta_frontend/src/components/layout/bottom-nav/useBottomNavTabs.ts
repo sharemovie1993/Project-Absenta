@@ -138,7 +138,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       {
         id: 'beranda',
         label: 'Beranda Siswa',
-        shortLabel: '🏠 Siswa',
+        shortLabel: 'Siswa',
         icon: Home,
         targetPath: '/dashboard',
         isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan'),
@@ -472,7 +472,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
           {
             id: 'base_home',
             label: 'Beranda Guru',
-            shortLabel: '🏠 Guru',
+            shortLabel: 'Guru',
             icon: Home,
             targetPath: '/dashboard?tab=ringkasan',
             isActive: (p, t) => (p === '/dashboard' || p === '/dashboard/') && (!t || t === 'ringkasan'),
