@@ -148,6 +148,7 @@ Bila jumlah menu lebih dari 4 atau membutuhkan layout horizontal hemat ruang:
 3. **Content Peeking Affordance**: Lebar item dikunci pada `66px` sehingga pada layar ponsel rata-rata (360px-414px), item ke-5/6 sengaja terpotong sebagian di tepi kanan layar. Ini secara visual memberi tahu pengguna bahwa daftar dapat digeser tanpa membutuhkan teks instruksi.
 4. **Dynamic Capsule Scroll Indicator Bar**: Baris kapsul tipis di tengah bawah (`trackWidth: 36px`, `capsuleWidth: 14px`) yang bergeser mengikuti persentase scroll jari secara real-time.
 5. **Squircle Tile 44px Ringan**: Kotak ikon berupa squircle lembut dengan hairline border tipis dan line-art icon berwarna, menghindari latar blok tebal yang membuat UI terlihat gemuk.
+6. **Counter Stats Wajib di Pojok Kanan Atas Ikon**: Seluruh angka counter/status diletakkan murni sebagai badge di sudut kanan atas tile squircle (`absolute -top-1.5 -right-1.5 min-w-[17px] h-[17px] ring-2 ring-white dark:ring-slate-900`). DILARANG meletakkan teks angka/nilai di bawah label teks karena akan membuat baris bergelombang tidak seragam.
 
 ---
 

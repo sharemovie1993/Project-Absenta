@@ -167,7 +167,7 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
       label: 'Presensi Rombel',
       icon: Users,
       iconColorClass: 'text-indigo-600 dark:text-indigo-400',
-      value: `${hadir}/${totalSiswa}`,
+      badge: daftarTidakHadir.length > 0 ? daftarTidakHadir.length : undefined,
       onClick: () => onSelectTab('presensi'),
     },
     // Slot 3 (Harian): Jurnal Walas (Pengakuan Beban Kerja 2 JP)
@@ -176,7 +176,6 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
       label: 'Jurnal Walas',
       icon: BookOpen,
       iconColorClass: 'text-blue-600 dark:text-blue-400',
-      value: `${data?.totalJurnalWalasTercatat ?? 0} Log`,
       onClick: () => {
         if (onOpenJurnalModal) onOpenJurnalModal();
         else onSelectTab('jurnal');
@@ -221,7 +220,6 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
       label: 'Prestasi Siswa',
       icon: Award,
       iconColorClass: 'text-emerald-600 dark:text-emerald-400',
-      value: `${data?.totalPrestasiPeriodeIni ?? 0}`,
       onClick: () => onSelectTab('prestasi'),
     },
   ];

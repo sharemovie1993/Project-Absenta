@@ -103,9 +103,9 @@ export const HubActionSlider: React.FC<HubActionSliderProps> = React.memo(({
               >
                 <IconComponent size={21} className="stroke-[1.8] transition-transform group-hover:scale-105" />
 
-                {/* Red Counter Badge ala Shopee */}
+                {/* Counter Badge ala Shopee di Pojok Kanan Atas Ikon */}
                 {item.badge !== undefined && item.badge !== null && item.badge !== 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full text-[8.5px] font-black bg-rose-500 text-white shadow-xs flex items-center justify-center leading-none z-10 animate-in zoom-in-75">
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[17px] h-[17px] px-1 rounded-full text-[8.5px] font-black bg-rose-500 text-white shadow-xs flex items-center justify-center leading-none ring-2 ring-white dark:ring-slate-900 z-10 animate-in zoom-in-75">
                     {item.badge}
                   </span>
                 )}
@@ -115,13 +115,6 @@ export const HubActionSlider: React.FC<HubActionSliderProps> = React.memo(({
               <span className="text-[10px] sm:text-[10.5px] font-medium text-slate-700 dark:text-slate-300 leading-tight block text-center line-clamp-2 max-w-[64px] break-words group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
                 {item.label}
               </span>
-
-              {/* Nilai / Sub-label Bawah */}
-              {item.value && (
-                <span className="text-[9.5px] sm:text-[10px] font-bold text-slate-900 dark:text-slate-100 leading-tight block truncate mt-0.5 max-w-[64px]">
-                  {item.value}
-                </span>
-              )}
             </button>
           );
         })}
