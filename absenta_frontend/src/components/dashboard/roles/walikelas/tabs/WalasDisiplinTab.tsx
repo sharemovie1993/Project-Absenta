@@ -16,6 +16,7 @@ import {
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
+import { HubStatusStrip, type HubStatusItem } from '@/components/ui/hub';
 import { cn } from '@/lib/utils';
 import { kesiswaanApi } from '@/api/kesiswaan.api';
 import { bpbkApi } from '@/api/bpbk.api';
@@ -188,6 +189,32 @@ export const WalasDisiplinTab: React.FC<WalasDisiplinTabProps> = React.memo(({
     return { total, baru, proses, totalPoin, highAlertCount };
   }, [displayList]);
 
+  const miniStatusItems: HubStatusItem[] = useMemo(() => [
+    {
+      id: 'total',
+      title: `${stats.total} Kasus`,
+      subtitle: 'Total Catatan',
+    },
+    {
+      id: 'baru',
+      title: `${stats.baru} Baru`,
+      subtitle: 'Tindak Lanjut',
+      className: stats.baru > 0 ? 'text-rose-600 dark:text-rose-400 font-bold' : undefined,
+    },
+    {
+      id: 'proses',
+      title: `${stats.proses} Proses`,
+      subtitle: 'Bimbingan BK',
+      className: stats.proses > 0 ? 'text-blue-600 dark:text-blue-400 font-bold' : undefined,
+    },
+    {
+      id: 'poin',
+      title: `${stats.totalPoin} Poin`,
+      subtitle: stats.highAlertCount > 0 ? `${stats.highAlertCount} Kritis` : 'Total Sanksi',
+      className: stats.totalPoin > 0 ? 'text-amber-600 dark:text-amber-400 font-bold' : undefined,
+    },
+  ], [stats]);
+
   // Mutation Rujukan Kasus ke BP/BK
   const rujukanMutation = useMutation({
     mutationFn: (payload: {
@@ -244,9 +271,14 @@ export const WalasDisiplinTab: React.FC<WalasDisiplinTabProps> = React.memo(({
   };
 
   return (
-    <div className="space-y-6 w-full max-w-full min-w-0">
-      {/* 1. HEADER STAT CARDS (4 KOLOM PERSIS KAPROG) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+    <div className="space-y-4 w-full max-w-full min-w-0">
+      {/* 1. MINI ANALYTIC CARD (Mobile < lg: Shopee-Grade Hairline 1-Baris) */}
+      <div className="lg:hidden">
+        <HubStatusStrip items={miniStatusItems} />
+      </div>
+
+      {/* 1b. STAT CARDS (Desktop >= lg: 4 Kolom Penuh) */}
+      <div className="hidden lg:grid grid-cols-4 gap-3.5">
         <Card
           noPadding
           className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900"
@@ -340,65 +372,66 @@ export const WalasDisiplinTab: React.FC<WalasDisiplinTabProps> = React.memo(({
         </Card>
       </div>
 
-      {/* 2. MAIN TABLE CARD WITH TOOLBAR & FILTERS PERSIS KAPROG */}
-      <Card noPadding className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-4">
-        {/* Header Toolbar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 text-rose-500" />
-              <span>Daftar Pelanggaran &amp; Kedisiplinan Siswa</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40">
-                {kelasNama}
-              </span>
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Monitoring catatan tata tertib harian dan tindak lanjut konseling BK siswa rombel.
-            </p>
+      {/* 2. MAIN CARD WITH TOOLBAR & FILTERS */}
+      <Card noPadding className="p-3 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-3 sm:space-y-4">
+        {/* Header Toolbar (Shopee-Grade: Strictly Max 2 Words & Zero Box-in-Box Clutter) */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 shrink-0">
+              <ShieldAlert className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
+                Kasus Rombel
+              </h3>
+              <p className="hidden sm:block text-xs text-slate-500 dark:text-slate-400 truncate">
+                Monitoring tata tertib harian dan tindak lanjut konseling BK siswa rombel.
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0">
             <Button
               variant="outline"
               size="sm"
               onClick={() => refetch()}
               disabled={isFetching}
-              className="text-xs font-semibold rounded-xl cursor-pointer"
+              className="h-8 sm:h-9 px-2.5 text-xs font-semibold rounded-xl cursor-pointer"
               title="Refresh data pelanggaran"
             >
-              <RefreshCw className={cn('w-3.5 h-3.5 mr-1.5', isFetching && 'animate-spin')} />
-              Refresh
+              <RefreshCw className={cn('w-3.5 h-3.5', isFetching && 'animate-spin')} />
+              <span className="hidden sm:inline ml-1.5">Refresh</span>
             </Button>
             {!isHistorical && (
               <Button
                 variant="default"
                 size="sm"
                 onClick={() => handleOpenRujukan()}
-                className="text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
+                className="h-8 sm:h-9 px-3 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
               >
-                <Send className="w-3.5 h-3.5 mr-1.5" />
-                Rujuk ke BP/BK
+                <Send className="w-3.5 h-3.5 sm:mr-1.5" />
+                <span>Rujuk BK</span>
               </Button>
             )}
           </div>
         </div>
 
-        {/* Filter Controls Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2.5 pt-1">
+        {/* Filter Controls Bar (Search Input + Horizontal Scrollable Chips) */}
+        <div className="space-y-2">
           {/* Search Input */}
-          <div className="relative sm:col-span-2 lg:col-span-6">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <div className="relative w-full">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Cari nama siswa, NIS, atau jenis pelanggaran..."
+              placeholder="Cari siswa, NIS, atau pelanggaran..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
+              className="w-full pl-9 pr-3 h-9 text-xs rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-950 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
             />
           </div>
 
-          {/* Filter Status */}
-          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar sm:col-span-1 lg:col-span-3">
+          {/* Filter Pills: Status & Sumber */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 whitespace-nowrap text-xs">
             {[
               { id: 'ALL', label: 'Semua Status' },
               { id: 'BARU', label: 'Baru' },
@@ -410,7 +443,7 @@ export const WalasDisiplinTab: React.FC<WalasDisiplinTabProps> = React.memo(({
                 type="button"
                 onClick={() => setSelectedStatus(st.id)}
                 className={cn(
-                  'px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer',
+                  'px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all shrink-0 cursor-pointer',
                   selectedStatus === st.id
                     ? 'bg-indigo-600 text-white shadow-xs'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -419,12 +452,11 @@ export const WalasDisiplinTab: React.FC<WalasDisiplinTabProps> = React.memo(({
                 {st.label}
               </button>
             ))}
-          </div>
 
-          {/* Filter Sumber */}
-          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar sm:col-span-1 lg:col-span-3 justify-end">
+            <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 shrink-0 mx-0.5" />
+
             {[
-              { id: 'ALL', label: 'Semua Sumber' },
+              { id: 'ALL', label: 'Semua' },
               { id: 'TATIB', label: 'Tatib' },
               { id: 'BK', label: 'BK' },
             ].map((sm) => (
@@ -433,7 +465,7 @@ export const WalasDisiplinTab: React.FC<WalasDisiplinTabProps> = React.memo(({
                 type="button"
                 onClick={() => setSelectedSumber(sm.id)}
                 className={cn(
-                  'px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer',
+                  'px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all shrink-0 cursor-pointer',
                   selectedSumber === sm.id
                     ? 'bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 shadow-xs'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -445,8 +477,119 @@ export const WalasDisiplinTab: React.FC<WalasDisiplinTabProps> = React.memo(({
           </div>
         </div>
 
-        {/* Data Table */}
-        <div className="overflow-x-auto rounded-xl border border-slate-200/70 dark:border-slate-800">
+        {/* Mobile View (< lg): Shopee-Grade High-Density Violations Card List */}
+        <div className="lg:hidden space-y-2.5">
+          {filteredList.length === 0 ? (
+            <div className="py-10 text-center flex flex-col items-center justify-center gap-2">
+              <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                {searchTerm || selectedStatus !== 'ALL' || selectedSumber !== 'ALL'
+                  ? 'Tidak ada kasus sesuai filter.'
+                  : 'Rombel tertib, tidak ada kasus.'}
+              </p>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                Seluruh siswa terpantau kondusif.
+              </p>
+            </div>
+          ) : (
+            filteredList.map((p) => {
+              const isHighAlert = (p.poin || 0) >= 15;
+              const isBk = p.sumber === 'BK';
+
+              return (
+                <div
+                  key={p.id}
+                  className="p-3 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 shadow-2xs space-y-2"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
+                        {p.nama}
+                      </div>
+                      <div className="text-[10px] text-slate-400 font-mono">
+                        NIS {p.nis || '-'}
+                      </div>
+                    </div>
+                    <span
+                      className={cn(
+                        'px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0',
+                        isHighAlert
+                          ? 'bg-rose-100 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 ring-1 ring-rose-300 dark:ring-rose-800'
+                          : 'bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400'
+                      )}
+                    >
+                      +{p.poin} Poin
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300">
+                    <span
+                      className={cn(
+                        'px-1.5 py-0.5 rounded text-[9.5px] font-bold shrink-0',
+                        isBk
+                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300'
+                          : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                      )}
+                    >
+                      {isBk ? 'Konseling BK' : 'Tatib'}
+                    </span>
+                    <span className="font-medium truncate">{p.jenisPelanggaran}</span>
+                  </div>
+
+                  {p.keterangan && (
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
+                      {p.keterangan}
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[10.5px]">
+                    <span className="text-slate-400 font-mono">{p.tanggal}</span>
+
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={cn(
+                          'px-2 py-0.5 rounded-md text-[9.5px] font-bold uppercase tracking-wider',
+                          p.status === 'SELESAI'
+                            ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400'
+                            : p.status === 'PROSES' || p.status === 'RUJUKAN'
+                            ? 'bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400'
+                            : 'bg-rose-100 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400'
+                        )}
+                      >
+                        {p.status}
+                      </span>
+
+                      {!isHistorical && !isBk && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenRujukan(p)}
+                          className="px-2 py-1 text-[10.5px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 rounded-lg flex items-center gap-1 hover:bg-rose-100 transition-colors"
+                        >
+                          <Send className="w-3 h-3 text-rose-500" />
+                          <span>Rujuk BK</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => navigate(isBk ? '/bpbk/cases' : '/kesiswaan/pelanggaran')}
+                        className="px-2 py-1 text-[10.5px] font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg flex items-center gap-0.5 transition-colors"
+                      >
+                        <span>{isBk ? 'Kasus' : 'Detail'}</span>
+                        <ArrowUpRight className="w-3 h-3 text-indigo-400" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop View (>= lg): Data Table Penuh */}
+        <div className="hidden lg:block overflow-x-auto rounded-xl border border-slate-200/70 dark:border-slate-800">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200/70 dark:border-slate-800">
               <tr>
