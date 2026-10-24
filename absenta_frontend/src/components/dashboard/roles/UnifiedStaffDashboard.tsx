@@ -339,6 +339,20 @@ export const UnifiedStaffDashboard: React.FC = () => {
     setSearchParams({ tab: newTab }, { replace: true });
   }, [setSearchParams, navigate]);
 
+  // ⚡ Keep-Alive Lazy-Mount Tab Cache:
+  // Tab hanya di-mount ke DOM saat pertama kali dikunjungi (Lazy),
+  // dan dipertahankan di memori DOM saat beralih tab (Keep-Alive) agar state, form, & scroll position tidak hilang.
+  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(() => new Set([activeTab]));
+
+  useEffect(() => {
+    setVisitedTabs(prev => {
+      if (prev.has(activeTab)) return prev;
+      const next = new Set(prev);
+      next.add(activeTab);
+      return next;
+    });
+  }, [activeTab]);
+
   const { setActiveWorkspaceId } = useNavStore();
 
   // Sync NavStore activeWorkspaceId based on active tab
@@ -1145,152 +1159,216 @@ export const UnifiedStaffDashboard: React.FC = () => {
       </div>
 
       {/* ────────────────────────────────────────────────────────────────── */}
-      {/* TAB CONTENT AREA                                                   */}
+      {/* TAB CONTENT AREA (Keep-Alive Lazy-Mount Engine: 0ms Switch)       */}
       {/* ────────────────────────────────────────────────────────────────── */}
-      {/* ────────────────────────────────────────────────────────────────── */}
-      {/* TAB CONTENT AREA (Instant 0ms Scoped Render)                       */}
-      {/* ────────────────────────────────────────────────────────────────── */}
-      <motion.div
-        key={activeTab}
-        initial={{ opacity: 0, y: 3 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.12, ease: 'easeOut' }}
-        className="w-full min-w-0"
-      >
+      <div className="w-full min-w-0">
         {/* 📌 TAB 1: OVERVIEW EKSEKUTIF (KEPSEK) ATAU BERANDA GURU / STAF */}
-        {activeTab === 'ringkasan' && (
-          isKepsek ? (
-            <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
-              <KepalaSekolahDashboard />
-            </Suspense>
-          ) : (
-            <StaffBerandaTab
-              guruId={guruId}
-              guruNama={guruProfile?.nama_guru || user?.full_name}
-              waliKelasNama={waliKelasNama}
-              waliKelasId={waliKelasId}
-              isWaliKelas={isWaliKelas}
-              isPembimbingPkl={isPembimbingPkl}
-              isKaprog={isKaprog}
-              kaprogJurusan={kaprogJurusan}
-              hasGerbangDuty={hasGerbangDuty}
-              isPureGerbang={isPureGerbangStaff}
-              isPendidik={isEffectivePendidik}
-              timelineItems={timelineItems || []}
-              onNavigateTab={handleTabChange}
-            />
-          )
+        {visitedTabs.has('ringkasan') && (
+          <div 
+            key="tab-ringkasan"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'ringkasan'}
+            className={cn("w-full min-w-0", activeTab === 'ringkasan' ? "block" : "hidden")}
+          >
+            {isKepsek ? (
+              <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
+                <KepalaSekolahDashboard />
+              </Suspense>
+            ) : (
+              <StaffBerandaTab
+                guruId={guruId}
+                guruNama={guruProfile?.nama_guru || user?.full_name}
+                waliKelasNama={waliKelasNama}
+                waliKelasId={waliKelasId}
+                isWaliKelas={isWaliKelas}
+                isPembimbingPkl={isPembimbingPkl}
+                isKaprog={isKaprog}
+                kaprogJurusan={kaprogJurusan}
+                hasGerbangDuty={hasGerbangDuty}
+                isPureGerbang={isPureGerbangStaff}
+                isPendidik={isEffectivePendidik}
+                timelineItems={timelineItems || []}
+                onNavigateTab={handleTabChange}
+              />
+            )}
+          </div>
         )}
 
         {/* 🌐 TAB PORTAL: APP LAUNCHER PUSAT APLIKASI SEKOLAH */}
-        {activeTab === 'portal' && (
-          <StaffPortalTab 
-            onBackToBeranda={() => handleTabChange(isAdminRole && !isKepsek ? 'admin' : 'ringkasan')}
-            onNavigateTab={handleTabChange}
-          />
+        {visitedTabs.has('portal') && (
+          <div 
+            key="tab-portal"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'portal'}
+            className={cn("w-full min-w-0", activeTab === 'portal' ? "block" : "hidden")}
+          >
+            <StaffPortalTab 
+              onBackToBeranda={() => handleTabChange(isAdminRole && !isKepsek ? 'admin' : 'ringkasan')}
+              onNavigateTab={handleTabChange}
+            />
+          </div>
         )}
 
         {/* 🗓️ TAB 2: KBM & ABSEN */}
-        {activeTab === 'jadwal' && (
-          <StaffKbmAbsenTab
-            guruId={guruId}
-            guruNama={guruProfile?.nama_guru || user?.full_name}
-            timelineItems={timelineItems || []}
-            isLoadingTimeline={timelineLoading}
-            onRefreshTimeline={refetchTimeline}
-          />
+        {visitedTabs.has('jadwal') && (
+          <div 
+            key="tab-jadwal"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'jadwal'}
+            className={cn("w-full min-w-0", activeTab === 'jadwal' ? "block" : "hidden")}
+          >
+            <StaffKbmAbsenTab
+              guruId={guruId}
+              guruNama={guruProfile?.nama_guru || user?.full_name}
+              timelineItems={timelineItems || []}
+              isLoadingTimeline={timelineLoading}
+              onRefreshTimeline={refetchTimeline}
+            />
+          </div>
         )}
 
         {/* 👥 TAB 3: WALI KELAS — Role Dashboard Architecture */}
-        {activeTab === 'binaan' && (
-          <Suspense fallback={
-            <div className="w-full space-y-6 py-4">
-              <div className="h-20 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
-              <div className="h-96 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
-            </div>
-          }>
-            <WaliKelasDashboard
-              waliKelasNama={waliKelasNama}
-              kelasId={waliKelasId}
-              user={user}
-            />
-          </Suspense>
+        {visitedTabs.has('binaan') && (
+          <div 
+            key="tab-binaan"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'binaan'}
+            className={cn("w-full min-w-0", activeTab === 'binaan' ? "block" : "hidden")}
+          >
+            <Suspense fallback={
+              <div className="w-full space-y-6 py-4">
+                <div className="h-20 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                <div className="h-96 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+              </div>
+            }>
+              <WaliKelasDashboard
+                waliKelasNama={waliKelasNama}
+                kelasId={waliKelasId}
+                user={user}
+              />
+            </Suspense>
+          </div>
         )}
 
-
-
         {/* 💼 TAB 7.1: BIMBINGAN PKL DASHBOARD (KHUSUS GURU PEMBIMBING) */}
-        {activeTab === 'pembimbing_pkl' && (
-          <StaffPembimbingPklTab
-            guruId={guruId}
-            guruNama={guruProfile?.nama_guru || user?.full_name}
-          />
+        {visitedTabs.has('pembimbing_pkl') && (
+          <div 
+            key="tab-pembimbing_pkl"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'pembimbing_pkl'}
+            className={cn("w-full min-w-0", activeTab === 'pembimbing_pkl' ? "block" : "hidden")}
+          >
+            <StaffPembimbingPklTab
+              guruId={guruId}
+              guruNama={guruProfile?.nama_guru || user?.full_name}
+            />
+          </div>
         )}
 
         {/* 🏆 TAB KAPROG: DASHBOARD KETUA PROGRAM KEAHLIAN — New Design */}
-        {activeTab === 'kaprog' && (
-          <Suspense fallback={
-            <div className="w-full space-y-6 py-4">
-              <div className="h-20 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[1,2,3,4].map(i => <div key={i} className="h-28 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />)}
+        {visitedTabs.has('kaprog') && (
+          <div 
+            key="tab-kaprog"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'kaprog'}
+            className={cn("w-full min-w-0", activeTab === 'kaprog' ? "block" : "hidden")}
+          >
+            <Suspense fallback={
+              <div className="w-full space-y-6 py-4">
+                <div className="h-20 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[1,2,3,4].map(i => <div key={i} className="h-28 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />)}
+                </div>
+                <div className="h-80 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
               </div>
-              <div className="h-80 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
-            </div>
-          }>
-            <KaprogDashboard
-              user={user}
-              kaprogJurusan={kaprogJurusan}
-            />
-          </Suspense>
+            }>
+              <KaprogDashboard
+                user={user}
+                kaprogJurusan={kaprogJurusan}
+              />
+            </Suspense>
+          </div>
         )}
 
-
-
         {/* 🛡️ TAB ADMIN: DASHBOARD OPERASIONAL ADMIN/SUPERADMIN */}
-        {activeTab === 'admin' && (
-          <StaffAdminOverviewTab user={user} />
+        {visitedTabs.has('admin') && (
+          <div 
+            key="tab-admin"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'admin'}
+            className={cn("w-full min-w-0", activeTab === 'admin' ? "block" : "hidden")}
+          >
+            <StaffAdminOverviewTab user={user} />
+          </div>
         )}
 
         {/* 🧑‍💼 TAB 10: TATA USAHA TERPADU & KEPEGAWAIAN */}
-        {activeTab === 'kepegawaian' && (
-          <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
-            {isTUKepala || isTUPersuratan || isTU ? (
-              <TataUsahaDashboard user={user} />
-            ) : (
-              <KepegawaianDashboard user={user} />
-            )}
-          </Suspense>
+        {visitedTabs.has('kepegawaian') && (
+          <div 
+            key="tab-kepegawaian"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'kepegawaian'}
+            className={cn("w-full min-w-0", activeTab === 'kepegawaian' ? "block" : "hidden")}
+          >
+            <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
+              {isTUKepala || isTUPersuratan || isTU ? (
+                <TataUsahaDashboard user={user} />
+              ) : (
+                <KepegawaianDashboard user={user} />
+              )}
+            </Suspense>
+          </div>
         )}
 
         {/* 🔍 TAB INPUT MANUAL: FORM PENCARIAN SISWA/GURU LUPA KARTU */}
-        {activeTab === 'manual_presensi' && (
-          <StaffManualInputTab />
+        {visitedTabs.has('manual_presensi') && (
+          <div 
+            key="tab-manual_presensi"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'manual_presensi'}
+            className={cn("w-full min-w-0", activeTab === 'manual_presensi' ? "block" : "hidden")}
+          >
+            <StaffManualInputTab />
+          </div>
         )}
 
         {/* 📋 TAB 9: PIKET HARIAN & OPERASIONAL */}
-        {activeTab === 'kelola' && (
-          <StaffPiketOperasionalTab
-            dailyPermits={dailyPermitsRes?.data || dailyPermits || []}
-            refetchPermits={refetchPermits}
-            printedPermit={printedPermit}
-            setPrintedPermit={setPrintedPermit}
-            printPaperSize={printPaperSize}
-            setPrintPaperSize={setPrintPaperSize}
-            tenantInfo={tenantInfo}
-          />
+        {visitedTabs.has('kelola') && (
+          <div 
+            key="tab-kelola"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'kelola'}
+            className={cn("w-full min-w-0", activeTab === 'kelola' ? "block" : "hidden")}
+          >
+            <StaffPiketOperasionalTab
+              dailyPermits={dailyPermitsRes?.data || dailyPermits || []}
+              refetchPermits={refetchPermits}
+              printedPermit={printedPermit}
+              setPrintedPermit={setPrintedPermit}
+              printPaperSize={printPaperSize}
+              setPrintPaperSize={setPrintPaperSize}
+              tenantInfo={tenantInfo}
+            />
+          </div>
         )}
 
         {/* 👤 TAB 10: PROFIL GURU */}
-        {activeTab === 'profil' && (
-          <StaffProfilGuruTab
-            user={user}
-            teacherInitials={teacherInitials}
-            nipText={nipText}
-            waliKelasNama={waliKelasNama}
-          />
+        {visitedTabs.has('profil') && (
+          <div 
+            key="tab-profil"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'profil'}
+            className={cn("w-full min-w-0", activeTab === 'profil' ? "block" : "hidden")}
+          >
+            <StaffProfilGuruTab
+              user={user}
+              teacherInitials={teacherInitials}
+              nipText={nipText}
+              waliKelasNama={waliKelasNama}
+            />
+          </div>
         )}
-      </motion.div>
+      </div>
 
 
       {/* Modals */}
