@@ -40,7 +40,15 @@ export const BottomNavigation: React.FC = React.memo(() => {
       } else {
         setOpenFlyoutId(item.id);
         if (!item.isActive(location.pathname, currentTab)) {
-          navigate(item.targetPath);
+          try {
+            const targetUrl = new URL(item.targetPath, window.location.origin);
+            const targetTab = targetUrl.searchParams.get('tab');
+            if (!targetTab || targetTab !== currentTab) {
+              navigate(item.targetPath);
+            }
+          } catch {
+            navigate(item.targetPath);
+          }
         }
       }
       return;
