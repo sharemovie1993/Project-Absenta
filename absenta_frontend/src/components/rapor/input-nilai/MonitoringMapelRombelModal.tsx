@@ -10,13 +10,16 @@ import {
   User,
   Phone,
   Sparkles,
-  Layers
+  Layers,
+  Copy,
+  Check
 } from 'lucide-react';
 import { Badge } from '../../ui/Badge';
 import { SearchableSelect, SearchableSelectOption } from '../../ui/SearchableSelect';
 import { ClassSubjectProgressData, ClassSubjectItem } from '../cetak-rapor/ClassSubjectProgressCard';
 import { getShortSubjectName } from '../../../utils/mapelAbbreviator';
 import { useIsMobile } from '../../../hooks/useIsMobile';
+import { cn } from '../../../lib/utils';
 
 export interface MonitoringMapelRombelModalProps {
   isOpen: boolean;
@@ -48,6 +51,7 @@ export const MonitoringMapelRombelModal: React.FC<MonitoringMapelRombelModalProp
   const isMobile = useIsMobile(640);
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'partial' | 'empty'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isCopied, setIsCopied] = useState<boolean>(false);
 
   // Handle escape key
   useEffect(() => {
@@ -90,6 +94,28 @@ export const MonitoringMapelRombelModal: React.FC<MonitoringMapelRombelModalProp
   const mapelCompleted = data?.mapel_completed ?? subjects.filter(s => s.status === 'completed').length;
   const mapelPartial = data?.mapel_partial ?? subjects.filter(s => s.status === 'partial').length;
   const mapelEmpty = data?.mapel_empty ?? subjects.filter(s => s.status === 'empty').length;
+
+  const handleCopySummary = () => {
+    const lines = [
+      `📊 *STATUS PENGISIAN NILAI RAPOR*`,
+      `Kelas: *${currentClassName}*`,
+      `T.A: ${activeYearNama || 'TP Aktif'} (${activeSemesterNama || 'Semester Aktif'})`,
+      `Ketuntasan: *${percentage}%* (${mapelCompleted}/${totalMapel} Mapel Tuntas)`,
+      ``,
+      `*Daftar Status Pengisian Mapel:*`,
+      ...subjects.map((s, idx) => {
+        const icon = s.status === 'completed' ? '✅' : s.status === 'partial' ? '⏳' : '❌';
+        const label = s.status === 'completed' ? 'TUNTAS' : s.status === 'partial' ? 'PROSES' : 'BELUM';
+        return `${idx + 1}. ${icon} [${label}] *${s.nama_mapel}*\n   Guru: ${s.nama_guru || 'Belum diplot'} (${s.siswa_terisi}/${s.total_siswa} siswa)`;
+      }),
+      ``,
+      `_Diperbarui otomatis via Absenta.id_`
+    ];
+
+    navigator.clipboard.writeText(lines.join('\n'));
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2500);
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-200">
@@ -324,8 +350,8 @@ export const MonitoringMapelRombelModal: React.FC<MonitoringMapelRombelModalProp
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {filteredSubjects.map((s) => {
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs divide-y divide-slate-100 dark:divide-slate-800/80">
+              {filteredSubjects.map((s, idx) => {
                 const isComplete = s.status === 'completed';
                 const isPartial = s.status === 'partial';
                 const percent = s.total_siswa > 0 ? Math.round((s.siswa_terisi / s.total_siswa) * 100) : 0;
@@ -333,72 +359,79 @@ export const MonitoringMapelRombelModal: React.FC<MonitoringMapelRombelModalProp
                 return (
                   <div
                     key={s.mapel_id}
-                    className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between gap-3 ${
+                    onClick={() => {
+                      if (onSelectMapel) {
+                        onSelectMapel(s.mapel_id, selectedKelas);
+                        onClose();
+                      }
+                    }}
+                    className={cn(
+                      'flex items-center justify-between gap-2.5 p-2.5 sm:px-4 sm:py-3 transition-colors cursor-pointer group',
                       isComplete
-                        ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40'
+                        ? 'hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20'
                         : isPartial
-                        ? 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40'
-                        : 'bg-rose-50/40 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40'
-                    }`}
+                        ? 'hover:bg-amber-50/40 dark:hover:bg-amber-950/20'
+                        : 'hover:bg-rose-50/40 dark:hover:bg-rose-950/20'
+                    )}
                   >
-                    <div>
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <span className="font-bold text-slate-800 dark:text-slate-100 text-xs line-clamp-1" title={s.nama_mapel}>
-                          {s.nama_mapel}
-                        </span>
-                        <span
-                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase shrink-0 ${
-                            isComplete
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300'
-                              : isPartial
-                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300'
-                              : 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300'
-                          }`}
-                        >
-                          {isComplete ? 'Tuntas' : isPartial ? 'Sebagian' : 'Kosong'}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300 mb-2.5">
-                        <User size={12} className="shrink-0 text-slate-400" />
-                        <span className="truncate" title={s.nama_guru || 'Belum diplot guru'}>
-                          {s.nama_guru || <span className="italic text-slate-400">Belum diplot guru</span>}
-                        </span>
-                      </div>
-
-                      {/* Mini Bar Progress */}
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 font-mono">
-                          <span>Keterisian Siswa:</span>
-                          <span className="font-bold text-slate-700 dark:text-slate-200">
-                            {s.siswa_terisi} / {s.total_siswa} ({percent}%)
+                    {/* Left: Number + Mapel & Guru */}
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <span className="w-5 text-center text-xs font-black text-slate-400 dark:text-slate-500 shrink-0">
+                        {idx + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-800 dark:text-slate-100 text-xs sm:text-sm truncate">
+                            {s.nama_mapel}
                           </span>
                         </div>
-                        <div className="w-full bg-slate-200/80 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-300 ${
-                              isComplete ? 'bg-emerald-500' : isPartial ? 'bg-amber-500' : 'bg-rose-400'
-                            }`}
-                            style={{ width: `${percent}%` }}
-                          />
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                          <User size={11} className="shrink-0 text-slate-400" />
+                          <span className="truncate">{s.nama_guru || 'Belum diplot guru'}</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Action Button */}
-                    {onSelectMapel && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onSelectMapel(s.mapel_id, selectedKelas);
-                          onClose();
-                        }}
-                        className="w-full py-1.5 px-3 rounded-xl bg-white dark:bg-slate-800 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-slate-700 dark:text-slate-200 font-bold text-[11px] border border-slate-200 dark:border-slate-700 hover:border-transparent transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer group"
+                    {/* Right: Progress Indicator + Status Badge */}
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0 text-right">
+                      <div className="flex flex-col items-end">
+                        <span
+                          className={cn(
+                            'text-[11px] sm:text-xs font-bold font-mono',
+                            isComplete
+                              ? 'text-emerald-600 dark:text-emerald-400'
+                              : isPartial
+                              ? 'text-amber-600 dark:text-amber-400'
+                              : 'text-slate-400 dark:text-slate-500'
+                          )}
+                        >
+                          {s.siswa_terisi}/{s.total_siswa}
+                        </span>
+                        <span className="text-[9px] text-slate-400 hidden xs:inline font-medium">
+                          {percent}%
+                        </span>
+                      </div>
+
+                      <span
+                        className={cn(
+                          'text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider shrink-0 flex items-center gap-1',
+                          isComplete
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                            : isPartial
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                            : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                        )}
                       >
-                        <span>Buka Nilai</span>
-                        <ExternalLink size={12} className="text-slate-400 group-hover:text-white transition-colors" />
-                      </button>
-                    )}
+                        {isComplete ? '✓ Tuntas' : isPartial ? 'Proses' : 'Belum'}
+                      </span>
+
+                      {onSelectMapel && (
+                        <ExternalLink
+                          size={13}
+                          className="text-slate-300 dark:text-slate-600 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors shrink-0 hidden sm:block"
+                        />
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -407,14 +440,20 @@ export const MonitoringMapelRombelModal: React.FC<MonitoringMapelRombelModalProp
         </div>
 
         {/* Footer */}
-        <div className="p-3.5 sm:p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between text-xs shrink-0">
-          <div className="text-slate-400 text-[11px] hidden sm:block">
-            Klik <strong className="text-slate-600 dark:text-slate-300">Buka Nilai</strong> untuk langsung mengarahkan ke mapel terpilih.
-          </div>
+        <div className="p-3 sm:p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between text-xs shrink-0">
+          <button
+            type="button"
+            onClick={handleCopySummary}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-200 dark:border-indigo-800 transition-all cursor-pointer"
+            title="Salin ringkasan ke format WhatsApp"
+          >
+            {isCopied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+            <span>{isCopied ? 'Tersalin' : 'Salin Format WA'}</span>
+          </button>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-all ml-auto cursor-pointer"
+            className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-all cursor-pointer"
           >
             Tutup
           </button>
