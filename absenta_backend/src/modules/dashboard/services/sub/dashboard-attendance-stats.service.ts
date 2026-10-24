@@ -110,7 +110,7 @@ export class DashboardAttendanceStatsService {
     }
 
     if (scope) {
-      whereClause = applyDataScope(whereClause, scope, { classField: 'id' });
+      whereClause = applyDataScope(whereClause, scope, { classField: 'id', unitField: 'jurusan_id' });
     }
 
     // Ambil semua kelas

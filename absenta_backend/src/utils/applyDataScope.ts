@@ -26,7 +26,7 @@ export function applyDataScope(
 
   const { 
     classField = 'kelas_id', 
-    unitField = 'unit_id',
+    unitField = (options.unitField === null ? null : 'unit_id'),
     tenantField = 'tenant_id',
     userField = 'user_id'
   } = options;
@@ -65,7 +65,7 @@ export function applyDataScope(
       }
 
       // Filter by Unit IDs (Enterprise OU) if applicable
-      if (allowedUnits.length > 0) {
+      if (allowedUnits.length > 0 && unitField) {
         filters.push({ [unitField]: { in: allowedUnits } });
       }
 

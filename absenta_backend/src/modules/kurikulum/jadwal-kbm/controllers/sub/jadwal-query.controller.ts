@@ -220,8 +220,10 @@ export class JadwalQueryController {
     }
 
     // If it's a Guru, they might want their personal list OR if they are a Wali Kelas, the class list
-    // If dataScope is present and filtered by class, we assume they want the Class List (Wali Kelas context)
-    if (user?.roleName === RoleName.GURU && !isGlobalManager && (!dataScope || !dataScope.kelasIds)) {
+    // If request explicitly asks for a guru schedule (guru_id) or is a standard teacher without explicit class query:
+    const hasExplicitGuruId = Boolean(request.query?.guru_id);
+    const hasExplicitKelasId = Boolean(request.query?.kelas_id);
+    if (user?.roleName === RoleName.GURU && !isGlobalManager && (hasExplicitGuruId || !hasExplicitKelasId)) {
       return this.listGuru(request, reply);
     }
     
@@ -810,9 +812,12 @@ export class JadwalQueryController {
     if (guru_id) filters.guru_id = guru_id;
     if (hari) filters.hari = hari;
 
-    // Apply Scoping
+    // Apply Scoping (JadwalKBM isolates by class and tenant; unitField is null because model has no direct unit column)
     if (dataScope) {
-      filters = applyDataScope(filters, dataScope);
+      filters = applyDataScope(filters, dataScope, {
+        classField: 'kelas_id',
+        unitField: null,
+      });
     }
 
     const jadwal = await jadwalKBMDb.jadwalKBM.findMany({
