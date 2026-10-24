@@ -152,16 +152,22 @@ Bila jumlah menu lebih dari 4 atau membutuhkan layout horizontal hemat ruang:
 
 ---
 
-### 3. `HubBentoGrid` — Metrik 2x2 Garis Rambut (Ala "Keuangan Shopee")
+### 3. `HubBentoGrid` — Metrik 2x2 Garis Rambut (Ala "Keuangan Shopee" - STRICTLY MAX 2 LINES)
 Menggantikan kartu-kartu bento tebal mengambang dengan satu kartu bergaris sekat tipis:
+
+> [!IMPORTANT]
+> **Aturan 2 Baris Maksimal (Anti Tumpuk 3 Baris)**:
+> Di layar ponsel, setiap sel metrik **DILARANG** menumpuk 3 baris teks (Judul + Nilai + Subtext). Maksimal hanya **2 baris teks**:
+> • **Baris 1**: Label Kategori / Judul Metrik (`text-[10.5px] sm:text-xs text-slate-500`)
+> • **Baris 2**: Nilai Utama beserta info penting ringkas (`text-xs sm:text-sm font-bold text-slate-900 dark:text-white`)
+> Ini menjaga tinggi sel tetap ramping, bebas sesak, dan informasi terbaca seketika.
 
 ```tsx
 const bentoCells: HubBentoCell[] = [
   {
     id: 'kehadiran',
     title: 'Kehadiran',
-    value: '98%',
-    subtext: '22 Hadir • 0 Izin',
+    value: '98% (22 Hadir)',
     icon: Target,
     iconColorClass: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/50',
     showChevron: true,
@@ -170,14 +176,22 @@ const bentoCells: HubBentoCell[] = [
   {
     id: 'disiplin',
     title: 'Disiplin Waktu',
-    value: '0 Menit',
-    subtext: 'Rata-rata Tap 06:48 WIB',
+    value: 'Tepat Waktu (00:00)',
     icon: Clock,
   },
   {
     id: 'beban',
     title: 'Beban Mengajar',
-    value: '24/24 JP',
+    value: '24/24 JP (Lengkap)',
+    icon: Award,
+  },
+  {
+    id: 'jurnal',
+    title: 'Jurnal Ajar',
+    value: '100% Tuntas',
+    icon: CheckCircle2,
+  },
+];
     subtext: 'Memenuhi Syarat Sertifikasi',
     icon: Award,
     showChevron: true,

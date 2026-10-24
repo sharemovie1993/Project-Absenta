@@ -182,7 +182,9 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
   }, [location.pathname]);
 
   return (
-    <header className="topbar hidden lg:flex fixed top-0 left-0 right-0 z-30 h-16 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800/60 transition-all">
+    <>
+      {/* ── 1. Desktop Topbar (>= lg) ── */}
+      <header className="topbar hidden lg:flex fixed top-0 left-0 right-0 z-30 h-16 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800/60 transition-all">
         <div className="w-full h-full flex items-center px-4 transition-all duration-500">
 
         {/* Sisi Kiri: Branding & Nama Aplikasi Aktif */}
@@ -342,8 +344,29 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
           isOpen={locatorModalOpen}
           onClose={() => setLocatorModalOpen(false)}
         />
-      </div>
-    </header>
+      </header>
+
+      {/* ── 2. Mobile Shopee-Style Back Navigation Bar (< lg, Sub-halaman di luar dashboard utama) ── */}
+      {isNotDashboard && (
+        <header className="flex lg:hidden fixed top-0 left-0 right-0 z-30 h-12 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-100 dark:border-slate-800/80 items-center justify-between px-3 shadow-xs">
+          <button
+            type="button"
+            onClick={handleGoBack}
+            className="p-1.5 -ml-1 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition-all flex items-center gap-1 cursor-pointer"
+            aria-label="Kembali"
+          >
+            <ArrowLeft size={18} className="stroke-[2.2]" />
+            <span className="text-xs font-semibold">Kembali</span>
+          </button>
+
+          <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate max-w-[200px]">
+            {pageTitle}
+          </span>
+
+          <div className="w-8 shrink-0" />
+        </header>
+      )}
+    </>
   );
 });
 

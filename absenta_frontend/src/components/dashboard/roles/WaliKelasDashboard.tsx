@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard,
+  ArrowLeft,
   Users, 
   CalendarCheck, 
   BookOpen, 
@@ -44,6 +45,7 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
   user,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const subtabParam = searchParams.get('subtab') as WaliKelasTabId | null;
 
   const validTabs: WaliKelasTabId[] = [
@@ -204,12 +206,26 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
     <div className="w-full max-w-full min-w-0 space-y-5">
       {/* 1. Mobile Top Controls (< lg only: Compact Identity Strip + Collapsible Filter) */}
       <div className="flex lg:hidden flex-col gap-2">
-        {/* Mobile Compact Identity & Period Strip */}
-        <div className="flex items-center justify-between gap-2 p-2.5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-7 h-7 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0">
-              <GraduationCap className="w-4 h-4" />
-            </div>
+        {/* Mobile Shopee-style Top Bar with Back Arrow */}
+        <div className="flex items-center justify-between gap-2 p-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+          <div className="flex items-center gap-1.5 min-w-0">
+            {/* Tombol Panah Kiri ala Shopee untuk Navigasi Balik */}
+            <button
+              type="button"
+              onClick={() => {
+                if (window.history.state && window.history.state.idx > 0) {
+                  navigate(-1);
+                } else {
+                  navigate('/dashboard?tab=ringkasan');
+                }
+              }}
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition-all shrink-0 cursor-pointer"
+              title="Kembali ke Portal Guru"
+              aria-label="Kembali"
+            >
+              <ArrowLeft size={18} className="stroke-[2.2]" />
+            </button>
+
             <div className="min-w-0 flex items-center gap-1.5 flex-wrap">
               <h2 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
                 {activeKelasNama}

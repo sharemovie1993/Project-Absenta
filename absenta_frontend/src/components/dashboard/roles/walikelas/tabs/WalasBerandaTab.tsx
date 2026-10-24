@@ -109,13 +109,15 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
     }
   ];
 
-  // Bento Metrik Grid Cells (2x2 Flat dengan Hairline Divider)
+  // Bento Metrik Grid Cells (2x2 Flat dengan Hairline Divider - STRICTLY MAX 2 LINES)
+  const siswaL = data?.kelasInfo?.totalLaki ?? 0;
+  const siswaP = data?.kelasInfo?.totalPerempuan ?? 0;
+
   const bentoCells: HubBentoCell[] = [
     {
       id: 'siswa',
       title: 'Total Siswa',
-      value: `${totalSiswa} Siswa`,
-      subtext: `${data?.kelasInfo?.totalLaki ?? 0} L • ${data?.kelasInfo?.totalPerempuan ?? 0} P`,
+      value: totalSiswa > 0 ? `${totalSiswa} Siswa (${siswaL}L • ${siswaP}P)` : '0 Siswa',
       icon: Users,
       iconColorClass: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60',
       onClick: () => onSelectTab('siswa'),
@@ -123,8 +125,7 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
     {
       id: 'presensi',
       title: 'Presensi Hari Ini',
-      value: `${hadir} / ${totalSiswa}`,
-      subtext: `${rateKehadiran}% Hadir Tertib`,
+      value: totalSiswa > 0 ? `${hadir}/${totalSiswa} (${rateKehadiran}% Hadir)` : '0 / 0 Hadir',
       icon: UserCheck,
       iconColorClass: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60',
       onClick: () => onSelectTab('presensi'),
@@ -132,16 +133,16 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
     {
       id: 'kbm',
       title: 'KBM Rombel',
-      value: kbmAktif?.adaSesiAktif ? (kbmAktif.jadwalSaatIni?.mapel || 'KBM Aktif') : 'Selesai / Libur',
-      subtext: kbmAktif?.jadwalSaatIni?.namaGuru || 'Jadwal Reguler',
+      value: kbmAktif?.adaSesiAktif 
+        ? `${kbmAktif.jadwalSaatIni?.mapel || 'KBM Aktif'}` 
+        : 'Selesai / Libur',
       icon: BookOpen,
       iconColorClass: 'text-blue-600 bg-blue-50 dark:bg-blue-950/60',
     },
     {
       id: 'ews',
       title: 'Siswa At-Risk',
-      value: `${ewsAlerts.length} Siswa`,
-      subtext: ewsAlerts.length > 0 ? 'Perlu Tindakan BK' : 'Kondisi Aman',
+      value: ewsAlerts.length > 0 ? `${ewsAlerts.length} Perlu Tindakan BK` : 'Aman (0 Kasus)',
       icon: AlertTriangle,
       iconColorClass: ewsAlerts.length > 0
         ? 'text-amber-600 bg-amber-50 dark:bg-amber-950/60'
