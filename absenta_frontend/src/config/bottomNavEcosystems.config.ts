@@ -355,23 +355,6 @@ export function getWalasTabs(waliKelasNama: string, currentSubtab: string | null
     },
   ];
 }
-      badge: waliKelasNama || 'WALAS',
-      targetPath: '/dashboard?tab=binaan',
-      isActive: (p, t) => t === 'binaan' && Boolean(currentSubtab && !['ringkasan', 'presensi', 'jurnal', 'izin'].includes(currentSubtab)),
-      children: [
-        { id: 'ringkasan', label: 'Ringkasan Beranda', icon: Home, targetPath: '/dashboard?tab=binaan&subtab=ringkasan', color: 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400' },
-        { id: 'siswa', label: 'Data Siswa', icon: Users, targetPath: '/dashboard?tab=binaan&subtab=siswa', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
-        { id: 'presensi', label: 'Presensi Rombel', icon: CalendarCheck, targetPath: '/dashboard?tab=binaan&subtab=presensi', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
-        { id: 'jurnal', label: 'Jurnal Walas', icon: BookOpenCheck, targetPath: '/dashboard?tab=binaan&subtab=jurnal', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
-        { id: 'izin', label: 'Persetujuan Izin', icon: FileCheck2, targetPath: '/dashboard?tab=binaan&subtab=izin', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
-        { id: 'disiplin', label: 'Pelanggaran Siswa', icon: ShieldAlert, targetPath: '/dashboard?tab=binaan&subtab=disiplin', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
-        { id: 'prestasi', label: 'Prestasi Siswa', icon: Award, targetPath: '/dashboard?tab=binaan&subtab=prestasi', color: 'bg-yellow-50 dark:bg-yellow-950/70 text-yellow-600 dark:text-yellow-400' },
-        { id: 'rekap', label: 'Cetak & Rekap', icon: FileSpreadsheet, targetPath: '/dashboard?tab=binaan&subtab=rekap', color: 'bg-cyan-50 dark:bg-cyan-950/70 text-cyan-600 dark:text-cyan-400' },
-        { id: 'rapor', label: 'Cetak Rapor', icon: Printer, targetPath: '/dashboard?tab=binaan&subtab=rapor', color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400' },
-      ],
-    },
-  ];
-}
 
 export function getTuTabs(tuTabMeta: any, currentSubtab: string | null, isPendidik: boolean): MobileBottomTabItem[] {
   return [
