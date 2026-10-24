@@ -842,7 +842,7 @@ export default React.memo(function InputNilaiPage() {
             data={classProgressData}
             isLoading={isLoadingClassSubjects}
             selectedKelas={targetClassForSubjects}
-            kelasOptions={kelasOptions}
+            kelasOptions={activeRoleTab === 'wali_kelas' ? [] : kelasOptions}
             onSelectKelas={(kId) => {
               setSelectedKelas(kId);
               setSelectedMapel('');
@@ -857,6 +857,7 @@ export default React.memo(function InputNilaiPage() {
             activeYearNama={activeYear?.nama}
             activeSemesterNama={activeSemester?.nama}
             kelasNama={selectedKelasObj?.nama_kelas || undefined}
+            isWaliKelas={activeRoleTab === 'wali_kelas'}
           />
 
         </div>

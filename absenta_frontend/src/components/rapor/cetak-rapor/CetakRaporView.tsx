@@ -928,7 +928,7 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
           data={classProgressData}
           isLoading={isLoadingClassProgress}
           selectedKelas={selectedKelas}
-          kelasOptions={kelasOptions}
+          kelasOptions={isPureWaliKelas ? [] : kelasOptions}
           onSelectKelas={setSelectedKelas}
           onSelectMapel={(mId, kId) => {
             navigate(
@@ -938,6 +938,7 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
           activeYearNama={activeYear?.nama}
           activeSemesterNama={activeSemester?.nama}
           kelasNama={currentKelasObj?.nama_kelas || waliKelasNama}
+          isWaliKelas={isPureWaliKelas}
         />
       </Suspense>
 
