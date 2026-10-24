@@ -72,7 +72,8 @@ export const ShopeeQuickActionSlider: React.FC<ShopeeQuickActionSliderProps> = R
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex sm:grid sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-2.5 sm:gap-3 overflow-x-auto sm:overflow-x-visible no-scrollbar py-1 px-0.5 scroll-smooth"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        className="flex sm:grid sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-2.5 sm:gap-3 overflow-x-auto sm:overflow-x-visible no-scrollbar scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&::-webkit-scrollbar]:w-0 [&::-webkit-scrollbar]:h-0 py-1 px-0.5 scroll-smooth"
       >
         {items.map((item, idx) => {
           const Icon = item.icon;

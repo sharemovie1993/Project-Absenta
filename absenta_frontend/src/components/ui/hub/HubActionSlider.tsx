@@ -70,7 +70,8 @@ export const HubActionSlider: React.FC<HubActionSliderProps> = React.memo(({
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex sm:grid sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-2.5 overflow-x-auto sm:overflow-x-visible no-scrollbar py-1 px-0.5 scroll-smooth"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        className="flex sm:grid sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-2.5 overflow-x-auto sm:overflow-x-visible no-scrollbar scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&::-webkit-scrollbar]:w-0 [&::-webkit-scrollbar]:h-0 py-1 px-0.5 scroll-smooth"
       >
         {items.map((item) => {
           const IconComponent = item.icon;
