@@ -84,9 +84,220 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
   }
 
   return (
-    <div className="w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
-      <div className="w-full overflow-x-auto no-scrollbar">
-        <table className="w-full text-left border-collapse text-xs">
+    <div className="w-full space-y-3">
+      {/* ── 1. Tampilan Mobile: Kartu Siswa Orquestrator (Shopee-Grade High-Density) ── */}
+      <div className="md:hidden space-y-2.5">
+        {students.map((student, index) => {
+          const elig = student.dokumen_eligibility;
+          const isPklRaporEligible = elig ? elig.rapor_pkl?.eligible ?? true : true;
+          const isPklSertifikatEligible = elig ? elig.sertifikat_pkl?.eligible ?? true : true;
+          const isUkkEligible = elig ? elig.sertifikat_ukk?.eligible ?? true : true;
+          const isSklEligible = elig ? elig.skl?.eligible ?? true : true;
+          const isTranskripEligible = elig ? elig.transkrip?.eligible ?? true : true;
+
+          return (
+            <div
+              key={student.id}
+              className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2.5"
+            >
+              {/* Baris Atas: Avatar, Nama Siswa, NIS, Badge Pindahan & Dropdown Rapor Semester */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-400 flex items-center justify-center font-black text-xs shrink-0">
+                    {student.nama_siswa.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-slate-900 dark:text-slate-100 truncate text-xs">
+                        {student.nama_siswa}
+                      </span>
+                      {student.is_pindahan && (
+                        <span className="px-1.5 py-0.2 rounded-md bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 text-amber-700 dark:text-amber-400 text-[9px] font-bold shrink-0">
+                          Pindahan
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
+                      No. {index + 1} • NIS: {student.nis || '-'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Primary CTA: Smart Dropdown Rapor Semester */}
+                <div className="shrink-0">
+                  <SmartSemesterDropdown
+                    studentId={student.id}
+                    studentName={student.nama_siswa}
+                    documentType="RAPOR_SEMESTER"
+                    semesterList={student.riwayat_semester || []}
+                    onSelectSemester={(semOption: SemesterDocumentOption) => {
+                      onPrintRaporSemester(
+                        student.id,
+                        semOption.tahunPelajaranId,
+                        semOption.semesterId
+                      );
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Baris Bawah: Tombol Cepat Dokumen Lain (Horizontal Scroll Chip Bar) */}
+              <div className="flex items-center gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800/80 overflow-x-auto no-scrollbar">
+                {/* Biodata */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onPrintBiodata(student.id)}
+                  className="h-7 px-2 text-[10.5px] font-semibold border-indigo-200/80 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 shrink-0 rounded-lg cursor-pointer"
+                  title="Cetak Cover & Biodata Siswa"
+                >
+                  <UserCheck className="w-3 h-3 mr-1 text-indigo-600 dark:text-indigo-400" />
+                  <span>Biodata</span>
+                </Button>
+
+                {/* Sumatif (Jika Aktif) */}
+                {showSumatif && (
+                  <SmartSemesterDropdown
+                    studentId={student.id}
+                    studentName={student.nama_siswa}
+                    documentType="RAPOR_SUMATIF"
+                    semesterList={student.riwayat_semester || []}
+                    onSelectSemester={(semOption: SemesterDocumentOption) => {
+                      onPrintRaporSumatif(
+                        student.id,
+                        semOption.tahunPelajaranId,
+                        semOption.semesterId
+                      );
+                    }}
+                  />
+                )}
+
+                {/* P5 */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onPrintP5(student.id)}
+                  className="h-7 px-2 text-[10.5px] font-semibold border-amber-200/80 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 shrink-0 rounded-lg cursor-pointer"
+                  title="Cetak Rapor P5"
+                >
+                  <Sparkles className="w-3 h-3 mr-1 text-amber-500" />
+                  <span>P5</span>
+                </Button>
+
+                {/* PKL (Hanya SMK) */}
+                {isJenjangSmk && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (!isPklRaporEligible) {
+                          toast.warning(`Rapor PKL: ${elig?.rapor_pkl?.reason || 'Belum memenuhi syarat'}`);
+                          return;
+                        }
+                        onPrintRaporPkl?.(student);
+                      }}
+                      className={cn(
+                        'h-7 px-2 text-[10.5px] font-semibold shrink-0 rounded-lg cursor-pointer',
+                        isPklRaporEligible
+                          ? 'border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-50'
+                          : 'opacity-50 cursor-not-allowed'
+                      )}
+                      title={isPklRaporEligible ? 'Cetak Rapor PKL' : 'Belum Memenuhi Syarat'}
+                    >
+                      <Briefcase className="w-3 h-3 mr-1 text-purple-600 dark:text-purple-400" />
+                      <span>PKL</span>
+                      {!isPklRaporEligible && <Lock className="w-2.5 h-2.5 ml-0.5 text-amber-500 shrink-0" />}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (!isPklSertifikatEligible) {
+                          toast.warning(`Sertifikat PKL: ${elig?.sertifikat_pkl?.reason || 'Belum memenuhi syarat'}`);
+                          return;
+                        }
+                        onPrintSertifikatPkl?.(student);
+                      }}
+                      className={cn(
+                        'h-7 px-2 text-[10.5px] font-semibold shrink-0 rounded-lg cursor-pointer',
+                        isPklSertifikatEligible
+                          ? 'border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50'
+                          : 'opacity-50 cursor-not-allowed'
+                      )}
+                      title={isPklSertifikatEligible ? 'Cetak Sertifikat PKL' : 'Belum Memenuhi Syarat'}
+                    >
+                      <Award className="w-3 h-3 mr-1 text-amber-500" />
+                      <span>Sertifikat</span>
+                      {!isPklSertifikatEligible && <Lock className="w-2.5 h-2.5 ml-0.5 text-amber-500 shrink-0" />}
+                    </Button>
+                  </>
+                )}
+
+                {/* UKK (Hanya SMK) */}
+                {isJenjangSmk && isUkkEligible && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onPrintSertifikatUkk?.(student)}
+                    className="h-7 px-2 text-[10.5px] font-semibold border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400 hover:bg-orange-50 shrink-0 rounded-lg cursor-pointer"
+                    title="Cetak Sertifikat UKK"
+                  >
+                    <Award className="w-3 h-3 mr-1 text-orange-500" />
+                    <span>UKK</span>
+                  </Button>
+                )}
+
+                {/* SKL */}
+                {isSklEligible && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onPrintSkl?.(student.id)}
+                    className="h-7 px-2 text-[10.5px] font-semibold border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 hover:bg-rose-50 shrink-0 rounded-lg cursor-pointer"
+                    title="Cetak SKL"
+                  >
+                    <GraduationCap className="w-3 h-3 mr-1 text-rose-600 dark:text-rose-400" />
+                    <span>SKL</span>
+                  </Button>
+                )}
+
+                {/* Transkrip */}
+                {isTranskripEligible && onOpenTranskrip && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onOpenTranskrip(student)}
+                    className="h-7 px-2 text-[10.5px] font-semibold border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 shrink-0 rounded-lg cursor-pointer"
+                    title="Lihat Transkrip Nilai"
+                  >
+                    <Award className="w-3 h-3 mr-1 text-indigo-500" />
+                    <span>Transkrip</span>
+                  </Button>
+                )}
+
+                {/* Catatan / Summary Modal Walas */}
+                {onOpenSummaryModal && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onOpenSummaryModal(student)}
+                    className="h-7 px-2 text-[10.5px] font-semibold border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 shrink-0 rounded-lg cursor-pointer"
+                    title="Buka Catatan Walas, Ekstrakurikuler & Absensi"
+                  >
+                    <span>Catatan</span>
+                  </Button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── 2. Tampilan Desktop: Tabel Lengkap 9 Kolom ── */}
+      <div className="hidden md:block w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
+        <div className="w-full overflow-x-auto no-scrollbar">
+          <table className="w-full text-left border-collapse text-xs">
           <thead>
             <tr className="bg-slate-50/90 dark:bg-slate-850 border-b border-slate-200/80 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px]">
               <th className="py-2.5 px-2 w-9 text-center">No</th>
@@ -393,6 +604,7 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
         </table>
       </div>
     </div>
+  </div>
   );
 });
 

@@ -746,7 +746,8 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
             )}
           >
             <Layers className="w-4 h-4" />
-            <span>Pusat Orkestrasi Dokumen Siswa</span>
+            <span className="sm:hidden">Dokumen Rapor</span>
+            <span className="hidden sm:inline">Pusat Orkestrasi Dokumen Siswa</span>
             <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold border border-indigo-200/60 dark:border-indigo-800/60">
               Utama
             </span>
@@ -762,7 +763,8 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
             )}
           >
             <GraduationCap className="w-4 h-4" />
-            <span>Buku Leger Nilai &amp; Ranking</span>
+            <span className="sm:hidden">Buku Leger</span>
+            <span className="hidden sm:inline">Buku Leger Nilai &amp; Ranking</span>
           </button>
         </div>
 

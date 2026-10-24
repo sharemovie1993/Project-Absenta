@@ -16,6 +16,7 @@ import { Badge } from '../../ui/Badge';
 import { SearchableSelect, SearchableSelectOption } from '../../ui/SearchableSelect';
 import { AcademicFilterToolbar } from '../../common/academic-filter';
 import { TabSwitcher, TabOption } from '../../ui/TabSwitcher';
+import { cn } from '../../lib/utils';
 
 export interface CetakRaporHeaderCardProps {
   selectedKelas: string;
@@ -95,7 +96,10 @@ export const CetakRaporHeaderCard: React.FC<CetakRaporHeaderCardProps> = memo(({
     <Card className="p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 rounded-2xl w-full max-w-full min-w-0 space-y-3.5">
       {/* Baris 1: Konteks Akademik (TP & Semester) di kiri, Tab Persona & Pintasan Input Nilai di kanan */}
       {(onTahunPelajaranChange || tabOptions.length > 1 || onNavigateInputNilai) && (
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className={cn(
+          "flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800",
+          activeRoleTab === 'wali_kelas' && "hidden sm:flex"
+        )}>
           <div className="w-full md:w-auto">
             {onTahunPelajaranChange && onSemesterChange && (
               <AcademicFilterToolbar
@@ -165,7 +169,7 @@ export const CetakRaporHeaderCard: React.FC<CetakRaporHeaderCardProps> = memo(({
         <div className="flex flex-col sm:flex-row sm:items-end gap-3 flex-1 min-w-0">
           {/* Pilih Kelas Rombel / Identitas Kelas Binaan */}
           {activeRoleTab === 'wali_kelas' ? (
-            <div className="w-full sm:w-64 md:w-72 shrink-0">
+            <div className="hidden sm:block w-full sm:w-64 md:w-72 shrink-0">
               <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
                 <GraduationCap size={13} className="text-indigo-500" />
                 <span>Kelas Binaan:</span>
@@ -201,42 +205,70 @@ export const CetakRaporHeaderCard: React.FC<CetakRaporHeaderCardProps> = memo(({
             </div>
           )}
 
-          {/* Cari Siswa */}
+          {/* Cari Siswa & Shortcut Actions di Mobile */}
           <div className="w-full sm:flex-1 min-w-[200px] max-w-md">
             <label
               htmlFor="search-siswa"
-              className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1"
+              className="hidden sm:flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1"
             >
               <Search size={12} className="text-slate-400" />
               <span>Cari Siswa:</span>
             </label>
-            <div className="relative">
-              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              <input
-                id="search-siswa"
-                type="text"
-                placeholder="Ketik nama / NIS..."
-                value={searchQuery}
-                onChange={(e) => onSearchQueryChange(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-medium pl-9 pr-7 py-2 h-[38px] text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => onSearchQueryChange('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
-                  title="Hapus pencarian"
+            <div className="flex items-center gap-1.5 w-full">
+              <div className="relative flex-1 min-w-0">
+                <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  id="search-siswa"
+                  type="text"
+                  placeholder="Ketik nama / NIS..."
+                  value={searchQuery}
+                  onChange={(e) => onSearchQueryChange(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-medium pl-9 pr-7 py-2 h-[38px] text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => onSearchQueryChange('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+                    title="Hapus pencarian"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+
+              {/* Shortcut Rincian Mapel di Mobile */}
+              {onOpenMonitoringModal && (
+                <Button
+                  variant="outline"
+                  onClick={onOpenMonitoringModal}
+                  className="sm:hidden border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-950/40 rounded-xl font-bold text-xs h-[38px] px-2.5 flex items-center gap-1 shrink-0 cursor-pointer"
+                  title="Lihat Rincian Status Pengisian Nilai Mapel"
                 >
-                  <X size={12} />
-                </button>
+                  <BarChart3 className="w-3.5 h-3.5 text-indigo-500" />
+                  <span className="text-[11px]">Mapel</span>
+                </Button>
+              )}
+
+              {/* Shortcut Input Nilai di Mobile */}
+              {onNavigateInputNilai && (
+                <Button
+                  variant="outline"
+                  onClick={onNavigateInputNilai}
+                  className="sm:hidden border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/80 rounded-xl font-bold text-xs h-[38px] px-2.5 flex items-center gap-1 shrink-0 cursor-pointer"
+                  title="Beralih ke Lembar Penginputan Nilai"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
+                  <span className="text-[11px]">Nilai</span>
+                </Button>
               )}
             </div>
           </div>
         </div>
 
-        {/* Sisi Kanan: Rincian Mapel */}
+        {/* Sisi Kanan: Rincian Mapel di Layar Lebar */}
         {onOpenMonitoringModal && (
-          <div className="shrink-0 self-start sm:self-end">
+          <div className="hidden sm:block shrink-0 self-start sm:self-end">
             <Button
               variant="outline"
               onClick={onOpenMonitoringModal}
