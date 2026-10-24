@@ -305,7 +305,7 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
             })}
           </div>
         </HubCard>
-      ) : (
+      ) : totalSiswa > 0 && hadir > 0 ? (
         <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/50 shadow-xs">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-7 h-7 rounded-lg bg-emerald-500 text-white flex items-center justify-center shrink-0">
@@ -326,6 +326,29 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
             className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 hover:underline shrink-0 cursor-pointer"
           >
             Detail &gt;
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-500 flex items-center justify-center shrink-0">
+              <Clock size={16} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                Presensi KBM Hari Ini Belum Dimulai
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                Belum ada catatan presensi rombel untuk tanggal ini.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onSelectTab('presensi')}
+            className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline shrink-0 cursor-pointer"
+          >
+            Buka Presensi &gt;
           </button>
         </div>
       )}

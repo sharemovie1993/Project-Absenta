@@ -83,7 +83,6 @@ export class DashboardWalasStatsService {
         Kelas: {
           include: {
             Jurusan: { select: { nama: true, singkatan: true } },
-            TahunPelajaran: { select: { id: true, nama: true, is_active: true } },
             _count: { select: { Siswa: true } }
           }
         }
@@ -98,11 +97,11 @@ export class DashboardWalasStatsService {
         namaKelas: a.Kelas.nama_kelas,
         tingkat: a.Kelas.tingkat,
         jurusanNama: a.Kelas.Jurusan?.nama || 'Umum',
-        tahunPelajaranNama: a.Kelas.TahunPelajaran?.nama || tahunPelajaran?.nama || '-',
+        tahunPelajaranNama: tahunPelajaran?.nama || '-',
         semesterNama: semester?.nama || 'Semester 1',
-        tahunPelajaranId: a.Kelas.TahunPelajaran?.id || tahunPelajaran?.id || '',
+        tahunPelajaranId: tahunPelajaran?.id || '',
         semesterId: semester?.id || '',
-        isCurrentActive: Boolean(a.is_active && a.Kelas.TahunPelajaran?.is_active),
+        isCurrentActive: Boolean(a.is_active),
         totalSiswa: a.Kelas._count?.Siswa || 0,
       }));
 
@@ -113,7 +112,6 @@ export class DashboardWalasStatsService {
         const directClasses = await prisma.kelas.findMany({
           where: {
             tenant_id: tenantId,
-            ...(tahunPelajaran ? { tahun_pelajaran_id: tahunPelajaran.id } : {}),
             is_active: true
           },
           include: {
@@ -217,7 +215,7 @@ export class DashboardWalasStatsService {
         select: {
           siswa_id: true,
           status: true,
-          keterangan: true,
+          catatan: true,
           created_at: true
         }
       }) : Promise.resolve([]),
@@ -311,7 +309,7 @@ export class DashboardWalasStatsService {
           nis: s.nis,
           foto: s.foto,
           status: rec?.status === 'S' ? 'Sakit' : rec?.status === 'I' ? 'Izin' : rec?.status === 'A' ? 'Alfa' : 'Belum Absen',
-          alasan: rec?.keterangan || '-'
+          alasan: rec?.catatan || (rec as any)?.keterangan || '-'
         });
       }
     });
