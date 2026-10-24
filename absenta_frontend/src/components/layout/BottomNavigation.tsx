@@ -126,8 +126,12 @@ export const BottomNavigation: React.FC = React.memo(() => {
   );
   const isWaliKelas = isWaliKelasFromCaps || !!guruProfile?.wali_kelas_di?.id || !!(user?.guru_profile as any)?.wali_kelas_di?.id;
   const waliKelasNama = guruProfile?.wali_kelas_di?.nama_kelas || (user?.guru_profile as any)?.wali_kelas_di?.nama_kelas || '';
-  const currentTab = searchParams.get('tab');
-  const currentSubtab = searchParams.get('subtab');
+  const currentTab = useMemo(() => {
+    return searchParams.get('tab') || new URLSearchParams(location.search).get('tab');
+  }, [searchParams, location.search]);
+  const currentSubtab = useMemo(() => {
+    return searchParams.get('subtab') || new URLSearchParams(location.search).get('subtab');
+  }, [searchParams, location.search]);
 
   // Dynamic TU Tab Label & Badge
   const tuTabMeta = useMemo(() => {
@@ -464,8 +468,16 @@ export const BottomNavigation: React.FC = React.memo(() => {
     if (path.startsWith('/academic') || path.startsWith('/users')) return 'admin';
     if (path.startsWith('/dashboard')) {
       if (currentTab === 'kaprog') return 'kaprog';
-      if (currentTab === 'binaan') return 'walas';
-      if (currentTab === 'kepegawaian') return 'tu';
+      if (currentTab === 'binaan' || currentTab === 'walas') return 'walas';
+      if (currentTab === 'kepegawaian' || currentTab === 'tu') return 'tu';
+      if (currentTab === 'kurikulum') return 'kurikulum';
+      if (currentTab === 'kesiswaan') return 'kesiswaan';
+      if (currentTab === 'hubin') return 'hubin';
+      if (currentTab === 'bkk') return 'bkk';
+      if (currentTab === 'bk' || currentTab === 'bpbk') return 'bpbk';
+      if (currentTab === 'sarpras') return 'sarpras';
+      if (currentTab === 'koperasi') return 'koperasi';
+      if (currentTab === 'kelola' || currentTab === 'piket') return 'piket';
       if (currentTab === 'admin') return 'admin';
       if (isPureGerbangStaff && currentTab === 'kelola') return 'piket';
       if (isTuStaff && !isPendidik && (!currentTab || currentTab === 'ringkasan')) return 'tu';
@@ -1317,10 +1329,10 @@ export const BottomNavigation: React.FC = React.memo(() => {
   // ── LAYER THEME CONFIGURATION (LAYER 1 VS LAYER 2 ROLE WORKSPACE ECOSYSTEM) ──
   const currentTheme = useMemo(() => {
     // Layer 1: Portal Base Role (Siswa, Kepsek, atau Guru di Portal Utama /dashboard?tab=ringkasan)
-    if (isSiswa || isKepsek || activeEcosystem === 'portal') {
+    if (activeEcosystem === 'portal' || isSiswa || isKepsek) {
       return {
         isLayer2: false,
-        navBarClass: 'bg-white/95 dark:bg-slate-900/95 border-t border-slate-200/80 dark:border-slate-800',
+        navBarClass: 'bg-white/95 dark:bg-slate-900/95 border-t border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-100 shadow-2xl',
         activeTextClass: 'text-indigo-600 dark:text-indigo-400 font-bold',
         inactiveTextClass: 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-medium',
         activePillClass: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 shadow-xs',
@@ -1328,127 +1340,127 @@ export const BottomNavigation: React.FC = React.memo(() => {
       };
     }
 
-    // Layer 2: Masing-masing Ekosistem Role memiliki warna latar khas (Distinct Workspace Brand)
+    // Layer 2: Masing-masing Ekosistem Role memiliki warna solid/gradient yang sangat kontras dan jelas
     switch (activeEcosystem) {
       case 'kaprog':
         return {
           isLayer2: true,
-          navBarClass: 'bg-amber-50/98 dark:bg-[#1a140b]/98 border-t-2 border-amber-500 dark:border-amber-700 shadow-amber-900/15',
-          activeTextClass: 'text-amber-800 dark:text-amber-300 font-extrabold',
-          inactiveTextClass: 'text-amber-900/60 dark:text-amber-200/50 hover:text-amber-950 dark:hover:text-amber-100 font-medium',
-          activePillClass: 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 ring-1 ring-amber-400/50 shadow-xs',
-          dotColorClass: 'bg-amber-500 dark:bg-amber-400',
+          navBarClass: 'bg-gradient-to-r from-amber-600 via-amber-600 to-amber-700 text-white border-t-2 border-amber-300 shadow-2xl shadow-amber-950/40',
+          activeTextClass: 'text-white font-black',
+          inactiveTextClass: 'text-amber-100/75 hover:text-white font-medium',
+          activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
+          dotColorClass: 'bg-amber-200',
         };
       case 'walas':
         return {
           isLayer2: true,
-          navBarClass: 'bg-sky-50/98 dark:bg-[#0b1726]/98 border-t-2 border-sky-500 dark:border-sky-700 shadow-sky-900/15',
-          activeTextClass: 'text-sky-800 dark:text-sky-300 font-extrabold',
-          inactiveTextClass: 'text-sky-900/60 dark:text-sky-200/50 hover:text-sky-950 dark:hover:text-sky-100 font-medium',
-          activePillClass: 'bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-300 ring-1 ring-sky-400/50 shadow-xs',
-          dotColorClass: 'bg-sky-500 dark:bg-sky-400',
+          navBarClass: 'bg-gradient-to-r from-sky-600 via-sky-600 to-blue-700 text-white border-t-2 border-sky-300 shadow-2xl shadow-sky-950/40',
+          activeTextClass: 'text-white font-black',
+          inactiveTextClass: 'text-sky-100/75 hover:text-white font-medium',
+          activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
+          dotColorClass: 'bg-sky-200',
         };
       case 'tu':
         return {
           isLayer2: true,
-          navBarClass: 'bg-indigo-50/98 dark:bg-[#101226]/98 border-t-2 border-indigo-500 dark:border-indigo-700 shadow-indigo-900/15',
-          activeTextClass: 'text-indigo-800 dark:text-indigo-300 font-extrabold',
-          inactiveTextClass: 'text-indigo-900/60 dark:text-indigo-200/50 hover:text-indigo-950 dark:hover:text-indigo-100 font-medium',
-          activePillClass: 'bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300 ring-1 ring-indigo-400/50 shadow-xs',
-          dotColorClass: 'bg-indigo-500 dark:bg-indigo-400',
+          navBarClass: 'bg-gradient-to-r from-indigo-700 via-indigo-700 to-slate-800 text-white border-t-2 border-indigo-300 shadow-2xl shadow-indigo-950/40',
+          activeTextClass: 'text-white font-black',
+          inactiveTextClass: 'text-indigo-100/75 hover:text-white font-medium',
+          activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
+          dotColorClass: 'bg-indigo-200',
         };
       case 'kurikulum':
         return {
           isLayer2: true,
-          navBarClass: 'bg-emerald-50/98 dark:bg-[#0a1f14]/98 border-t-2 border-emerald-500 dark:border-emerald-700 shadow-emerald-900/15',
-          activeTextClass: 'text-emerald-800 dark:text-emerald-300 font-extrabold',
-          inactiveTextClass: 'text-emerald-900/60 dark:text-emerald-200/50 hover:text-emerald-950 dark:hover:text-emerald-100 font-medium',
-          activePillClass: 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 ring-1 ring-emerald-400/50 shadow-xs',
-          dotColorClass: 'bg-emerald-500 dark:bg-emerald-400',
+          navBarClass: 'bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-700 text-white border-t-2 border-emerald-300 shadow-2xl shadow-emerald-950/40',
+          activeTextClass: 'text-white font-black',
+          inactiveTextClass: 'text-emerald-100/75 hover:text-white font-medium',
+          activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
+          dotColorClass: 'bg-emerald-200',
         };
       case 'kesiswaan':
         return {
           isLayer2: true,
-          navBarClass: 'bg-rose-50/98 dark:bg-[#200c11]/98 border-t-2 border-rose-500 dark:border-rose-700 shadow-rose-900/15',
-          activeTextClass: 'text-rose-800 dark:text-rose-300 font-extrabold',
-          inactiveTextClass: 'text-rose-900/60 dark:text-rose-200/50 hover:text-rose-950 dark:hover:text-rose-100 font-medium',
-          activePillClass: 'bg-rose-100 dark:bg-rose-900/60 text-rose-800 dark:text-rose-300 ring-1 ring-rose-400/50 shadow-xs',
-          dotColorClass: 'bg-rose-500 dark:bg-rose-400',
+          navBarClass: 'bg-gradient-to-r from-rose-600 via-rose-600 to-red-700 text-white border-t-2 border-rose-300 shadow-2xl shadow-rose-950/40',
+          activeTextClass: 'text-white font-black',
+          inactiveTextClass: 'text-rose-100/75 hover:text-white font-medium',
+          activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
+          dotColorClass: 'bg-rose-200',
         };
       case 'hubin':
         return {
           isLayer2: true,
-          navBarClass: 'bg-orange-50/98 dark:bg-[#221207]/98 border-t-2 border-orange-500 dark:border-orange-700 shadow-orange-900/15',
-          activeTextClass: 'text-orange-800 dark:text-orange-300 font-extrabold',
-          inactiveTextClass: 'text-orange-900/60 dark:text-orange-200/50 hover:text-orange-950 dark:hover:text-orange-100 font-medium',
-          activePillClass: 'bg-orange-100 dark:bg-orange-900/60 text-orange-800 dark:text-orange-300 ring-1 ring-orange-400/50 shadow-xs',
-          dotColorClass: 'bg-orange-500 dark:bg-orange-400',
+          navBarClass: 'bg-gradient-to-r from-orange-600 via-orange-600 to-amber-700 text-white border-t-2 border-orange-300 shadow-2xl shadow-orange-950/40',
+          activeTextClass: 'text-white font-black',
+          inactiveTextClass: 'text-orange-100/75 hover:text-white font-medium',
+          activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
+          dotColorClass: 'bg-orange-200',
         };
       case 'bpbk':
         return {
           isLayer2: true,
-          navBarClass: 'bg-purple-50/98 dark:bg-[#1a0c24]/98 border-t-2 border-purple-500 dark:border-purple-700 shadow-purple-900/15',
-          activeTextClass: 'text-purple-800 dark:text-purple-300 font-extrabold',
-          inactiveTextClass: 'text-purple-900/60 dark:text-purple-200/50 hover:text-purple-950 dark:hover:text-purple-100 font-medium',
-          activePillClass: 'bg-purple-100 dark:bg-purple-900/60 text-purple-800 dark:text-purple-300 ring-1 ring-purple-400/50 shadow-xs',
-          dotColorClass: 'bg-purple-500 dark:bg-purple-400',
+          navBarClass: 'bg-gradient-to-r from-purple-600 via-purple-600 to-violet-800 text-white border-t-2 border-purple-300 shadow-2xl shadow-purple-950/40',
+          activeTextClass: 'text-white font-black',
+          inactiveTextClass: 'text-purple-100/75 hover:text-white font-medium',
+          activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
+          dotColorClass: 'bg-purple-200',
         };
       case 'bkk':
         return {
           isLayer2: true,
-          navBarClass: 'bg-cyan-50/98 dark:bg-[#081a20]/98 border-t-2 border-cyan-500 dark:border-cyan-700 shadow-cyan-900/15',
-          activeTextClass: 'text-cyan-800 dark:text-cyan-300 font-extrabold',
-          inactiveTextClass: 'text-cyan-900/60 dark:text-cyan-200/50 hover:text-cyan-950 dark:hover:text-cyan-100 font-medium',
-          activePillClass: 'bg-cyan-100 dark:bg-cyan-900/60 text-cyan-800 dark:text-cyan-300 ring-1 ring-cyan-400/50 shadow-xs',
-          dotColorClass: 'bg-cyan-500 dark:bg-cyan-400',
+          navBarClass: 'bg-gradient-to-r from-cyan-700 via-cyan-700 to-blue-800 text-white border-t-2 border-cyan-300 shadow-2xl shadow-cyan-950/40',
+          activeTextClass: 'text-white font-black',
+          inactiveTextClass: 'text-cyan-100/75 hover:text-white font-medium',
+          activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
+          dotColorClass: 'bg-cyan-200',
         };
       case 'sarpras':
         return {
           isLayer2: true,
-          navBarClass: 'bg-teal-50/98 dark:bg-[#091a18]/98 border-t-2 border-teal-500 dark:border-teal-700 shadow-teal-900/15',
-          activeTextClass: 'text-teal-800 dark:text-teal-300 font-extrabold',
-          inactiveTextClass: 'text-teal-900/60 dark:text-teal-200/50 hover:text-teal-950 dark:hover:text-teal-100 font-medium',
-          activePillClass: 'bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300 ring-1 ring-teal-400/50 shadow-xs',
-          dotColorClass: 'bg-teal-500 dark:bg-teal-400',
+          navBarClass: 'bg-gradient-to-r from-teal-700 via-teal-700 to-emerald-800 text-white border-t-2 border-teal-300 shadow-2xl shadow-teal-950/40',
+          activeTextClass: 'text-white font-black',
+          inactiveTextClass: 'text-teal-100/75 hover:text-white font-medium',
+          activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
+          dotColorClass: 'bg-teal-200',
         };
       case 'koperasi':
         return {
           isLayer2: true,
-          navBarClass: 'bg-emerald-50/98 dark:bg-[#081b11]/98 border-t-2 border-emerald-500 dark:border-emerald-700 shadow-emerald-900/15',
-          activeTextClass: 'text-emerald-800 dark:text-emerald-300 font-extrabold',
-          inactiveTextClass: 'text-emerald-900/60 dark:text-emerald-200/50 hover:text-emerald-950 dark:hover:text-emerald-100 font-medium',
-          activePillClass: 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 ring-1 ring-emerald-400/50 shadow-xs',
-          dotColorClass: 'bg-emerald-500 dark:bg-emerald-400',
+          navBarClass: 'bg-gradient-to-r from-emerald-700 via-emerald-700 to-green-800 text-white border-t-2 border-emerald-300 shadow-2xl shadow-emerald-950/40',
+          activeTextClass: 'text-white font-black',
+          inactiveTextClass: 'text-emerald-100/75 hover:text-white font-medium',
+          activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
+          dotColorClass: 'bg-emerald-200',
         };
       case 'piket':
         return {
           isLayer2: true,
-          navBarClass: 'bg-blue-50/98 dark:bg-[#0a1526]/98 border-t-2 border-blue-500 dark:border-blue-700 shadow-blue-900/15',
-          activeTextClass: 'text-blue-800 dark:text-blue-300 font-extrabold',
-          inactiveTextClass: 'text-blue-900/60 dark:text-blue-200/50 hover:text-blue-950 dark:hover:text-blue-100 font-medium',
-          activePillClass: 'bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300 ring-1 ring-blue-400/50 shadow-xs',
-          dotColorClass: 'bg-blue-500 dark:bg-blue-400',
+          navBarClass: 'bg-gradient-to-r from-blue-800 via-blue-800 to-slate-900 text-white border-t-2 border-blue-400 shadow-2xl shadow-blue-950/40',
+          activeTextClass: 'text-white font-black',
+          inactiveTextClass: 'text-blue-100/75 hover:text-white font-medium',
+          activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
+          dotColorClass: 'bg-blue-200',
         };
       case 'admin':
         return {
           isLayer2: true,
-          navBarClass: 'bg-slate-100/98 dark:bg-slate-950/98 border-t-2 border-slate-400 dark:border-slate-700 shadow-slate-900/15',
-          activeTextClass: 'text-slate-900 dark:text-white font-extrabold',
-          inactiveTextClass: 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium',
-          activePillClass: 'bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white ring-1 ring-slate-400/50 shadow-xs',
-          dotColorClass: 'bg-slate-500 dark:bg-slate-400',
+          navBarClass: 'bg-gradient-to-r from-slate-800 via-slate-800 to-slate-950 text-white border-t-2 border-slate-500 shadow-2xl shadow-slate-950/40',
+          activeTextClass: 'text-white font-black',
+          inactiveTextClass: 'text-slate-300 hover:text-white font-medium',
+          activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
+          dotColorClass: 'bg-slate-300',
         };
       default:
         return {
           isLayer2: false,
-          navBarClass: 'bg-white/95 dark:bg-slate-900/95 border-t border-slate-200/80 dark:border-slate-800',
+          navBarClass: 'bg-white/95 dark:bg-slate-900/95 border-t border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-100 shadow-2xl',
           activeTextClass: 'text-indigo-600 dark:text-indigo-400 font-bold',
           inactiveTextClass: 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-medium',
           activePillClass: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 shadow-xs',
           dotColorClass: 'bg-indigo-600 dark:bg-indigo-400',
         };
     }
-  }, [isSiswa, isKepsek, activeEcosystem]);
+  }, [activeEcosystem, isSiswa, isKepsek]);
 
   const activeTabsList = isSiswa ? siswaTabs : isKepsek ? kepsekTabs : staffTabs;
   const openFlyoutItem = activeTabsList.find(item => item.id === openFlyoutId);
@@ -1482,58 +1494,47 @@ export const BottomNavigation: React.FC = React.memo(() => {
   };
   return (
     <>
-      {/* ── APP LAUNCHER BOTTOM SHEET FOR TABS WITH CHILDREN (MOBILE ONLY) ── */}
+      {/* ── LIST MENU MELAYANG KE ATAS RATA KANAN (FLOATING SPEED-DIAL) ── */}
       <AnimatePresence>
         {openFlyoutItem && openFlyoutItem.children && (
           <>
-            {/* Backdrop overlay to dismiss on tap */}
+            {/* Backdrop overlay transparan */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
               onClick={() => setOpenFlyoutId(null)}
-              className="lg:hidden fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs"
+              className="lg:hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-xs"
             />
 
-            {/* Bottom Sheet App Launcher Container */}
+            {/* List Menu Melayang ke Atas Rata Kanan (Speed Dial Popover) */}
             <motion.div
-              initial={{ opacity: 0, y: '100%' }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-              className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/98 dark:bg-slate-900/98 backdrop-blur-2xl border-t border-slate-200/80 dark:border-slate-800 rounded-t-3xl p-4 sm:p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl max-w-lg mx-auto"
+              initial={{ opacity: 0, scale: 0.88, y: 18, transformOrigin: 'bottom right' }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.88, y: 18 }}
+              transition={{ type: 'spring', damping: 26, stiffness: 360 }}
+              className="lg:hidden fixed bottom-[calc(4.2rem+env(safe-area-inset-bottom))] right-2 sm:right-4 z-50 w-72 max-w-[85vw] bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl border border-white/50 dark:border-slate-700/60 rounded-3xl shadow-2xl overflow-hidden flex flex-col"
             >
-              {/* Drag Handle Bar */}
-              <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3" />
-
-              {/* Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-3.5">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                      {openFlyoutItem.label}
-                    </h3>
-                    {openFlyoutItem.badge && (
-                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/50 font-mono shrink-0">
-                        {openFlyoutItem.badge}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    Pilih menu tab untuk beralih tampilan
-                  </p>
+              {/* Header List Melayang */}
+              <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-50/70 dark:bg-slate-800/60 border-b border-slate-200/50 dark:border-slate-700/50">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                    {openFlyoutItem.label}
+                  </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setOpenFlyoutId(null)}
-                  className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 cursor-pointer shrink-0 ml-2"
+                  className="w-6 h-6 rounded-full bg-slate-200/70 dark:bg-slate-700/70 hover:bg-slate-300 dark:hover:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-200 transition-colors"
                 >
-                  <X size={16} />
+                  <X size={13} />
                 </button>
               </div>
 
-              {/* App Launcher Grid (4 columns squircle) */}
-              <div className="grid grid-cols-4 gap-2.5 sm:gap-3 py-1">
+              {/* Vertical List of Menu Items */}
+              <div className="max-h-[62vh] overflow-y-auto divide-y divide-slate-100/60 dark:divide-slate-800/60 overscroll-contain py-1">
                 {openFlyoutItem.children.map(sub => {
                   const SubIcon = sub.icon;
                   const isSubActive = currentSubtab === sub.id;
@@ -1544,34 +1545,40 @@ export const BottomNavigation: React.FC = React.memo(() => {
                       key={sub.id}
                       type="button"
                       onClick={() => handleSubItemClick(sub)}
-                      className="group flex flex-col items-center justify-start p-1.5 rounded-2xl hover:bg-slate-100/80 dark:hover:bg-slate-800/60 active:scale-95 transition-all duration-150 cursor-pointer text-center w-full select-none"
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3.5 py-2.5 transition-all text-left cursor-pointer group select-none",
+                        isSubActive
+                          ? "bg-indigo-50/80 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold"
+                          : "hover:bg-slate-100/70 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-200"
+                      )}
                     >
+                      {/* Squircle Icon */}
                       <div
                         className={cn(
-                          'w-12 h-12 rounded-2xl flex items-center justify-center shadow-xs transition-all duration-150 border mb-1.5 relative',
+                          "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 shadow-xs border border-white/50 dark:border-slate-700/50",
                           colorClass,
-                          isSubActive
-                            ? 'ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-900 border-indigo-500 shadow-md scale-105'
-                            : 'border-slate-200/50 dark:border-slate-800/50'
+                          isSubActive && "ring-2 ring-indigo-500 shadow-sm"
                         )}
                       >
-                        <SubIcon className="w-5 h-5 stroke-[2.2]" />
-                        {sub.badge && (
-                          <span className="absolute -top-1 -right-1 text-[8px] font-black px-1.5 py-0.5 rounded-full bg-rose-500 text-white shadow-xs leading-none">
-                            {sub.badge}
-                          </span>
-                        )}
+                        <SubIcon size={17} className="stroke-[2.2]" />
                       </div>
-                      <span
-                        className={cn(
-                          'text-[10px] sm:text-[11px] font-medium leading-tight line-clamp-2 text-center break-words transition-colors',
-                          isSubActive
-                            ? 'text-indigo-600 dark:text-indigo-400 font-bold'
-                            : 'text-slate-700 dark:text-slate-300'
-                        )}
-                      >
-                        {sub.label}
-                      </span>
+
+                      {/* Label & Optional Badge */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1.5">
+                          <span className={cn(
+                            "text-xs leading-tight truncate",
+                            isSubActive ? "font-bold text-indigo-600 dark:text-indigo-400" : "font-medium"
+                          )}>
+                            {sub.label}
+                          </span>
+                          {sub.badge && (
+                            <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-rose-500 text-white shrink-0 leading-none shadow-xs">
+                              {sub.badge}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </button>
                   );
                 })}
@@ -1635,7 +1642,6 @@ export const BottomNavigation: React.FC = React.memo(() => {
           </div>
         </nav>
       </div>
-    </>
     </>
   );
 });
