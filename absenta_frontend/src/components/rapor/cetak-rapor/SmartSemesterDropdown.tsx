@@ -81,7 +81,7 @@ export const SmartSemesterDropdown: React.FC<SmartSemesterDropdownProps> = React
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 sm:left-auto sm:right-0 z-50 mt-1.5 w-72 rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 py-2 focus:outline-none transform transition-all duration-150 animate-in fade-in slide-in-from-top-1 max-h-[80vh] overflow-y-auto">
+        <div className="absolute right-0 z-50 mt-1.5 w-72 max-w-[calc(100vw-32px)] rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 py-2 focus:outline-none transform transition-all duration-150 animate-in fade-in slide-in-from-top-1 max-h-[80vh] overflow-y-auto">
           {/* Header Popover */}
           <div className="px-3 py-1.5 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
             <div className="flex items-center justify-between gap-2">

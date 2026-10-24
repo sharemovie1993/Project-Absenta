@@ -792,41 +792,39 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
       )}
 
       {/* View Mode Switcher: Orkestrator Dokumen (Default) vs Buku Leger Nilai */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2 bg-slate-100/80 dark:bg-slate-850 rounded-2xl border border-slate-200/80 dark:border-slate-800">
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+      <div className="flex items-center justify-between gap-2 p-1.5 bg-slate-100/80 dark:bg-slate-850 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
           <button
             type="button"
             onClick={() => setViewMode('orchestrator')}
             className={cn(
-              'flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
               viewMode === 'orchestrator'
                 ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             )}
           >
-            <Layers className="w-4 h-4" />
-            <span>{isMobile ? 'Dokumen Rapor' : 'Pusat Orkestrasi Dokumen Siswa'}</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold border border-indigo-200/60 dark:border-indigo-800/60">
-              Utama
-            </span>
+            <Layers className="w-3.5 h-3.5" />
+            <span>Dokumen</span>
+            <span className="hidden sm:inline">Rapor</span>
           </button>
           <button
             type="button"
             onClick={() => setViewMode('leger')}
             className={cn(
-              'flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
               viewMode === 'leger'
                 ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             )}
           >
-            <GraduationCap className="w-4 h-4" />
-            <span>{isMobile ? 'Buku Leger' : 'Buku Leger Nilai & Ranking'}</span>
+            <GraduationCap className="w-3.5 h-3.5" />
+            <span>Buku Leger</span>
           </button>
         </div>
 
-        <div className="flex items-center gap-2 px-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
-          <span>Total: <b>{filteredStudents.length}</b> Siswa</span>
+        <div className="text-[11px] text-slate-500 dark:text-slate-400 font-bold px-2 shrink-0">
+          <span>{filteredStudents.length} Siswa</span>
         </div>
       </div>
 
