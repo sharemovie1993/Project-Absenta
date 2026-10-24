@@ -1,5 +1,4 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
   UserCheck, 
@@ -9,17 +8,19 @@ import {
   ShieldAlert, 
   Award, 
   Clock, 
-  ArrowRight, 
-  TrendingUp, 
   AlertTriangle, 
   GraduationCap,
-  Layers,
   FileText
 } from 'lucide-react';
-import { Card } from '@/components/ui/Card';
-import { Button, Badge } from '@/components/ui';
-import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
-import { ShopeeQuickActionSlider } from '@/components/common/ShopeeQuickActionSlider';
+import { Badge } from '@/components/ui';
+import { 
+  HubCard, 
+  HubBentoGrid, 
+  HubActionGrid, 
+  HubListRow, 
+  type HubBentoCell, 
+  type HubActionItem 
+} from '@/components/ui/hub';
 import { cn } from '@/lib/utils';
 import type { WaliKelasTabId, WalasDashboardData } from '../types';
 
@@ -36,7 +37,6 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
   onSelectTab,
   onOpenJurnalModal,
 }) => {
-  const navigate = useNavigate();
   const isHistorical = data?.academicContext?.isHistoricalPeriod ?? false;
   const kehadiran = data?.kehadiranStats;
   const totalSiswa = data?.kelasInfo?.totalSiswa ?? 0;
@@ -66,7 +66,7 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
     {
       id: 'log-kbm',
       title: kbmAktif?.adaSesiAktif 
-        ? `KBM Sedang Berlangsung: ${kbmAktif.jadwalSaatIni?.mapel || 'Mapel'}` 
+        ? `KBM Berlangsung: ${kbmAktif.jadwalSaatIni?.mapel || 'Mapel'}` 
         : 'Status Pembelajaran Hari Ini',
       desc: kbmAktif?.adaSesiAktif 
         ? `Guru: ${kbmAktif.jadwalSaatIni?.namaGuru || 'Pengajar'} (${kbmAktif.jadwalSaatIni?.jamKe || 'Jam KBM'})`
@@ -77,8 +77,8 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
     {
       id: 'log-jurnal',
       title: 'Beban Kerja Binaan Wali Kelas (2 JP)',
-      desc: `Total ${data?.jurnalSummary?.totalThisMonth || 0} kegiatan pembinaan tercatat bulan ini`,
-      time: 'Bulan Ini',
+      desc: `Total ${data?.totalJurnalWalasTercatat || 0} kegiatan pembinaan tercatat pada semester ini`,
+      time: 'Semester Ini',
       isWarning: false
     }
   ];
@@ -89,7 +89,7 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
       jam: '07:15 - 09:30',
       agenda: kbmAktif?.jadwalSaatIni?.mapel 
         ? `${kbmAktif.jadwalSaatIni.mapel} (${kbmAktif.jadwalSaatIni.namaGuru || 'Guru'})`
-        : 'Jam KBM 1 - 3 (Mata Pelajaran Umum / Kejuruan)',
+        : 'Jam KBM 1 - 3 (Mata Pelajaran Kejuruan / Teori)',
       tipe: 'KBM'
     },
     {
@@ -104,227 +104,295 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
     },
     {
       jam: '13:00 - 15:00',
-      agenda: 'Jam KBM 6 - 8 (Pendalaman Materi & Evaluasi Pembelajaran)',
+      agenda: 'Jam KBM 6 - 8 (Pendalaman Materi & Evaluasi)',
       tipe: 'KBM'
     }
   ];
 
+  // Bento Metrik Grid Cells (2x2 Flat dengan Hairline Divider)
+  const bentoCells: HubBentoCell[] = [
+    {
+      id: 'siswa',
+      title: 'Total Siswa',
+      value: `${totalSiswa} Siswa`,
+      subtext: `${data?.kelasInfo?.totalLaki ?? 0} L • ${data?.kelasInfo?.totalPerempuan ?? 0} P`,
+      icon: Users,
+      iconColorClass: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60',
+      onClick: () => onSelectTab('siswa'),
+    },
+    {
+      id: 'presensi',
+      title: 'Presensi Hari Ini',
+      value: `${hadir} / ${totalSiswa}`,
+      subtext: `${rateKehadiran}% Hadir Tertib`,
+      icon: UserCheck,
+      iconColorClass: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60',
+      onClick: () => onSelectTab('presensi'),
+    },
+    {
+      id: 'kbm',
+      title: 'KBM Rombel',
+      value: kbmAktif?.adaSesiAktif ? (kbmAktif.jadwalSaatIni?.mapel || 'KBM Aktif') : 'Selesai / Libur',
+      subtext: kbmAktif?.jadwalSaatIni?.namaGuru || 'Jadwal Reguler',
+      icon: BookOpen,
+      iconColorClass: 'text-blue-600 bg-blue-50 dark:bg-blue-950/60',
+    },
+    {
+      id: 'ews',
+      title: 'Siswa At-Risk',
+      value: `${ewsAlerts.length} Siswa`,
+      subtext: ewsAlerts.length > 0 ? 'Perlu Tindakan BK' : 'Kondisi Aman',
+      icon: AlertTriangle,
+      iconColorClass: ewsAlerts.length > 0
+        ? 'text-amber-600 bg-amber-50 dark:bg-amber-950/60'
+        : 'text-slate-500 bg-slate-100 dark:bg-slate-800',
+      onClick: () => onSelectTab('disiplin'),
+    },
+  ];
+
+  // Quick Action Items (Disusun berdasarkan Urutan Prioritas Operasional Harian Walas)
+  const actionItems: HubActionItem[] = [
+    // Slot 1 (Pagi 06:45): Validasi Surat Dokter / Izin Ortu
+    {
+      id: 'izin',
+      label: 'Setujui Izin',
+      icon: FileCheck2,
+      iconColorClass: 'text-amber-600 dark:text-amber-400',
+      badge: izinPending > 0 ? izinPending : undefined,
+      onClick: () => onSelectTab('izin'),
+    },
+    // Slot 2 (Pagi 07:15): Presensi Masuk Rombel
+    {
+      id: 'presensi',
+      label: 'Presensi Rombel',
+      icon: Users,
+      iconColorClass: 'text-indigo-600 dark:text-indigo-400',
+      value: `${hadir}/${totalSiswa}`,
+      onClick: () => onSelectTab('presensi'),
+    },
+    // Slot 3 (Harian): Jurnal Walas (Pengakuan Beban Kerja 2 JP)
+    {
+      id: 'jurnal',
+      label: 'Jurnal Walas',
+      icon: BookOpen,
+      iconColorClass: 'text-blue-600 dark:text-blue-400',
+      value: `${data?.totalJurnalWalasTercatat ?? 0} Log`,
+      onClick: () => {
+        if (onOpenJurnalModal) onOpenJurnalModal();
+        else onSelectTab('jurnal');
+      },
+    },
+    // Slot 4 (Disiplin): Rujukan Kasus & Early Warning BK
+    {
+      id: 'disiplin',
+      label: 'Rujukan BK',
+      icon: ShieldAlert,
+      iconColorClass: 'text-rose-600 dark:text-rose-400',
+      badge: ewsAlerts.length > 0 ? ewsAlerts.length : undefined,
+      onClick: () => onSelectTab('disiplin'),
+    },
+    // Slot 5: Data Siswa & Kontak Ortu
+    {
+      id: 'siswa',
+      label: 'Data Siswa',
+      icon: GraduationCap,
+      iconColorClass: 'text-sky-600 dark:text-sky-400',
+      onClick: () => onSelectTab('siswa'),
+    },
+    // Slot 6: Cetak Rekapitulasi F-BK
+    {
+      id: 'rekap',
+      label: 'Cetak Rekap',
+      icon: FileText,
+      iconColorClass: 'text-teal-600 dark:text-teal-400',
+      onClick: () => onSelectTab('rekap'),
+    },
+    // Slot 7: Cetak Rapor Akademik
+    {
+      id: 'rapor',
+      label: 'Cetak Rapor',
+      icon: Award,
+      iconColorClass: 'text-violet-600 dark:text-violet-400',
+      onClick: () => onSelectTab('rapor'),
+    },
+    // Slot 8: Catatan Prestasi Siswa
+    {
+      id: 'prestasi',
+      label: 'Prestasi Siswa',
+      icon: Award,
+      iconColorClass: 'text-emerald-600 dark:text-emerald-400',
+      value: `${data?.totalPrestasiPeriodeIni ?? 0}`,
+      onClick: () => onSelectTab('prestasi'),
+    },
+  ];
+
   return (
-    <div className="space-y-6 w-full max-w-full min-w-0">
+    <div className="space-y-4 w-full max-w-full min-w-0">
       {/* Historical Mode Alert (jika masa lampau) */}
       {isHistorical && (
-        <div className="rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 p-4 flex items-center justify-between gap-4 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400">
-              <Clock className="w-5 h-5" />
+        <div className="rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 p-3 flex items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="p-1.5 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
+              <Clock className="w-4 h-4" />
             </div>
-            <div>
-              <p className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-amber-800 dark:text-amber-300 truncate">
                 Mode Arsip Historis (Masa Lampau)
               </p>
-              <p className="text-xs text-amber-700 dark:text-amber-400">
-                Data rombel pada periode lampau ({data?.academicContext?.tahunPelajaranNama || 'TP'} - {data?.academicContext?.semesterNama || 'Sem'}). Seluruh formulir berstatus Read-Only.
+              <p className="text-[11px] text-amber-700 dark:text-amber-400 truncate">
+                Data rombel periode {data?.academicContext?.tahunPelajaranNama || 'TP'} - {data?.academicContext?.semesterNama || 'Sem'}. Seluruh formulir berstatus Read-Only.
               </p>
             </div>
           </div>
-          <Badge variant="outline" className="bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border-amber-300 shrink-0">
+          <Badge variant="outline" className="bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border-amber-300 shrink-0 text-[10px]">
             Read-Only
           </Badge>
         </div>
       )}
 
-      {/* 1. KPI 4 KOLOM BERSTANDAR KAPROG & PILAR 30 (Solid Gradient AnalyticsCards) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Siswa Rombel */}
-        <AnalyticsCard
-          variant="compact-premium"
-          mobileCompact={true}
-          title="Total Siswa Rombel"
-          value={totalSiswa}
-          icon={<Users className="w-5 h-5 text-indigo-500" />}
-          description={`${hadir} siswa hadir di kelas hari ini`}
-          gradient="from-indigo-500 to-indigo-600"
-        />
+      {/* 1. METRIK ROMBEL KELAS (Shopee-Grade Flat HubBentoGrid) */}
+      <HubCard noPadding>
+        <HubBentoGrid cells={bentoCells} columns={2} />
+      </HubCard>
 
-        {/* Card 2: Presensi Hari Ini */}
-        <AnalyticsCard
-          variant="compact-premium"
-          mobileCompact={true}
-          title="Presensi Rombel Hari Ini"
-          value={`${hadir} / ${totalSiswa}`}
-          icon={<UserCheck className="w-5 h-5 text-emerald-500" />}
-          description={`${rateKehadiran}% siswa hadir tertib di kelas`}
-          gradient="from-emerald-500 to-teal-600"
-        />
+      {/* 2. PINTASAN AKSI OPERASIONAL (Prioritas Harian Walas) */}
+      <HubCard 
+        title="Pintasan Aksi Operasional" 
+        subtitle="Prioritas alur kerja harian wali kelas"
+        actionLabel="Tulis Jurnal >"
+        onAction={() => {
+          if (onOpenJurnalModal) onOpenJurnalModal();
+          else onSelectTab('jurnal');
+        }}
+      >
+        <HubActionGrid items={actionItems} columns={4} />
+      </HubCard>
 
-        {/* Card 3: Guru KBM Hari Ini */}
-        <AnalyticsCard
-          variant="compact-premium"
-          mobileCompact={true}
-          title="KBM Kelas Hari Ini"
-          value={kbmAktif?.adaSesiAktif ? "KBM Aktif" : "Selesai / Libur"}
-          icon={<BookOpen className="w-5 h-5 text-blue-500" />}
-          description={kbmAktif?.jadwalSaatIni?.mapel ? `${kbmAktif.jadwalSaatIni.mapel}` : "Semua jam KBM rombel aktif"}
-          gradient="from-blue-500 to-cyan-600"
-        />
-
-        {/* Card 4: Izin & Perhatian EWS */}
-        <AnalyticsCard
-          variant="compact-premium"
-          mobileCompact={true}
-          title="Izin & Siswa At-Risk"
-          value={`${izinPending + ewsAlerts.length} Siswa`}
-          icon={<TrendingUp className="w-5 h-5 text-amber-500" />}
-          description={`${izinPending} izin pending, ${ewsAlerts.length} butuh bimbingan`}
-          gradient="from-amber-500 to-orange-600"
-        />
-      </div>
-
-      {/* 2. PINTASAN TUGAS WALI KELAS (App Launcher Style - Miller's Law 6 Items) */}
-      <Card noPadding className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-3.5">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
-              Pintasan Tugas Wali Kelas
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Akses cepat pencatatan jurnal, validasi perizinan, bimbingan konseling, dan rekapitulasi.
-            </p>
+      {/* 3. DAFTAR SISWA TIDAK HADIR HARI INI (Direct Actionable Feed) */}
+      {daftarTidakHadir.length > 0 ? (
+        <HubCard
+          title={`Siswa Tidak Hadir Hari Ini (${daftarTidakHadir.length})`}
+          subtitle="Verifikasi izin & tindak lanjut kehadiran rombel"
+          actionLabel="Lihat Presensi >"
+          onAction={() => onSelectTab('presensi')}
+          noPadding
+        >
+          <div className="divide-y divide-slate-100 dark:divide-slate-800/70">
+            {daftarTidakHadir.map((s) => {
+              const isAlfa = s.status === 'Alpha' || s.status === 'Alfa';
+              const isSakit = s.status === 'Sakit';
+              return (
+                <HubListRow
+                  key={s.siswaId}
+                  title={s.nama}
+                  subtitle={s.alasan || (isAlfa ? 'Tanpa keterangan resmi' : 'Menunggu surat dokter')}
+                  icon={isAlfa ? ShieldAlert : isSakit ? Clock : FileCheck2}
+                  iconColorClass={
+                    isAlfa 
+                      ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400' 
+                      : isSakit 
+                      ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400' 
+                      : 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400'
+                  }
+                  rightBadge={
+                    <span
+                      className={cn(
+                        'text-[10px] font-bold px-2 py-0.5 rounded-full leading-none',
+                        isAlfa
+                          ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
+                          : isSakit
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                          : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                      )}
+                    >
+                      {s.status}
+                    </span>
+                  }
+                  onClick={() => onSelectTab('presensi')}
+                />
+              );
+            })}
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              if (onOpenJurnalModal) {
-                onOpenJurnalModal();
-              } else {
-                onSelectTab('jurnal');
-              }
-            }}
-            className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 font-semibold gap-1 cursor-pointer"
+        </HubCard>
+      ) : (
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/50 shadow-xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-emerald-500 text-white flex items-center justify-center shrink-0">
+              <UserCheck size={16} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-emerald-900 dark:text-emerald-200">
+                Seluruh Siswa Hadir Lengkap
+              </p>
+              <p className="text-[11px] text-emerald-700 dark:text-emerald-400 truncate">
+                Tingkat kehadiran rombel 100% pada jam KBM hari ini.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onSelectTab('presensi')}
+            className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 hover:underline shrink-0 cursor-pointer"
           >
-            <span>Tulis Jurnal</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Button>
+            Detail &gt;
+          </button>
         </div>
+      )}
 
-        <ShopeeQuickActionSlider
-          items={[
-            {
-              id: 'jurnal',
-              title: 'Tulis Jurnal',
-              icon: BookOpen,
-              color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
-              onClick: () => {
-                if (onOpenJurnalModal) onOpenJurnalModal();
-                else onSelectTab('jurnal');
-              },
-            },
-            {
-              id: 'izin',
-              title: 'Persetujuan Izin',
-              icon: FileCheck2,
-              badge: izinPending > 0 ? izinPending : undefined,
-              color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
-              onClick: () => onSelectTab('izin'),
-            },
-            {
-              id: 'disiplin',
-              title: 'Rujukan Kasus BK',
-              icon: ShieldAlert,
-              badge: ewsAlerts.length > 0 ? ewsAlerts.length : undefined,
-              color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400',
-              onClick: () => onSelectTab('disiplin'),
-            },
-            {
-              id: 'rekap',
-              title: 'Cetak Rekap F-BK',
-              icon: FileText,
-              color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400',
-              onClick: () => onSelectTab('rekap'),
-            },
-            {
-              id: 'rapor',
-              title: 'Cetak Rapor',
-              icon: Award,
-              color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
-              onClick: () => onSelectTab('rapor'),
-            },
-            {
-              id: 'siswa',
-              title: 'Data Siswa & Kontak',
-              icon: Users,
-              color: 'bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400',
-              onClick: () => onSelectTab('siswa'),
-            },
-          ]}
-        />
-      </Card>
-
-      {/* 3. DUA KOLOM BAWAH: AKTIVITAS & LOG TERBARU + AGENDA & KBM HARI INI */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Kolom 1: Recent Activity Mini List */}
-        <Card noPadding className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-3">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-3">
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-slate-400" />
-              <span>Aktivitas & Log Terbaru Rombel</span>
-            </h3>
-            <span className="text-[11px] text-slate-400 font-medium">Realtime update</span>
-          </div>
-
-          <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+      {/* 4. DUA KOLOM BAWAH: AKTIVITAS & LOG TERBARU + AGENDA & KBM HARI INI */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+        {/* Kolom 1: Log Aktivitas Rombel */}
+        <HubCard
+          title="Aktivitas & Log Rombel"
+          subtitle="Pembaruan real-time"
+          noPadding
+        >
+          <div className="divide-y divide-slate-100 dark:divide-slate-800/70">
             {recentActivities.map((act) => (
-              <div key={act.id} className="py-2.5 first:pt-1 last:pb-1 flex items-start justify-between gap-3">
-                <div className="space-y-0.5 min-w-0">
-                  <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
-                    {act.title}
-                  </div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
-                    {act.desc}
-                  </div>
-                </div>
-                <span className={cn(
-                  "text-[10px] shrink-0 font-medium px-1.5 py-0.5 rounded mt-0.5",
-                  act.isWarning 
-                    ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400 font-bold" 
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
-                )}>
-                  {act.time}
-                </span>
-              </div>
+              <HubListRow
+                key={act.id}
+                title={act.title}
+                subtitle={act.desc}
+                rightBadge={
+                  <span
+                    className={cn(
+                      'text-[10px] font-semibold px-1.5 py-0.5 rounded',
+                      act.isWarning
+                        ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400 font-bold'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                    )}
+                  >
+                    {act.time}
+                  </span>
+                }
+              />
             ))}
           </div>
-        </Card>
+        </HubCard>
 
-        {/* Kolom 2: Agenda & KBM Hari Ini */}
-        <Card noPadding className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-3">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-3">
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <CalendarCheck className="w-4 h-4 text-indigo-500" />
-              <span>Agenda & KBM Hari Ini</span>
-            </h3>
-            <span className="w-2 h-2 rounded-full bg-emerald-500" title="Jadwal Aktif" />
-          </div>
-
-          <div className="space-y-2.5">
+        {/* Kolom 2: Agenda & Jadwal KBM Hari Ini */}
+        <HubCard
+          title="Agenda & KBM Hari Ini"
+          subtitle="Jadwal waktu nyata"
+          noPadding
+        >
+          <div className="divide-y divide-slate-100 dark:divide-slate-800/70">
             {agendaHariIni.map((ag, i) => (
-              <div key={i} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs space-y-0.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 font-bold">
-                    {ag.jam}
-                  </span>
-                  <span className="text-[9px] text-slate-500 dark:text-slate-400 font-medium bg-slate-200/60 dark:bg-slate-700/60 px-1.5 py-0.2 rounded">
+              <HubListRow
+                key={i}
+                title={ag.agenda}
+                subtitle={ag.jam}
+                icon={CalendarCheck}
+                iconColorClass="text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60"
+                rightBadge={
+                  <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
                     {ag.tipe}
                   </span>
-                </div>
-                <div className="font-medium text-slate-800 dark:text-slate-200">
-                  {ag.agenda}
-                </div>
-              </div>
+                }
+              />
             ))}
           </div>
-        </Card>
+        </HubCard>
       </div>
     </div>
   );

@@ -11,7 +11,8 @@ import {
   FileSpreadsheet,
   GraduationCap,
   Loader,
-  Printer
+  Printer,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { useWalasDashboardData } from './walikelas/useWalasDashboardData';
@@ -48,6 +49,9 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
   const validTabs: WaliKelasTabId[] = [
     'ringkasan', 'siswa', 'presensi', 'jurnal', 'izin', 'disiplin', 'prestasi', 'rekap', 'rapor'
   ];
+
+  // Mobile Filter Collapsible State
+  const [showMobileFilter, setShowMobileFilter] = useState(false);
 
   // Active Tab State
   const [activeTab, setActiveTab] = useState<WaliKelasTabId>(() => {
@@ -198,42 +202,66 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
 
   return (
     <div className="w-full max-w-full min-w-0 space-y-5">
-      {/* 1. Mobile Top Controls (< lg only: Identity + Filter + Tab Pills) */}
-      <div className="flex lg:hidden flex-col gap-3">
-        {/* Mobile Identity Bar */}
-        <div className="flex items-center justify-between gap-3 p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-xs tracking-wider shrink-0 overflow-hidden">
+      {/* 1. Mobile Top Controls (< lg only: Compact Identity Strip + Collapsible Filter) */}
+      <div className="flex lg:hidden flex-col gap-2">
+        {/* Mobile Compact Identity & Period Strip */}
+        <div className="flex items-center justify-between gap-2 p-2.5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0">
               <GraduationCap className="w-4 h-4" />
             </div>
-            <div className="min-w-0">
-              <h2 className="text-xs font-black text-slate-900 dark:text-slate-100 tracking-wider truncate uppercase">
+            <div className="min-w-0 flex items-center gap-1.5 flex-wrap">
+              <h2 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
                 {activeKelasNama}
               </h2>
+              <span className="text-[10.5px] text-slate-400 dark:text-slate-500 font-medium truncate">
+                • {academicFilter.selectedTahunPelajaranNama || '2026/2027'} {academicFilter.selectedSemesterNama || 'Ganjil'}
+              </span>
             </div>
           </div>
 
-          {kelasList.length > 1 && (
-            <select
-              value={activeKelasId || ''}
-              onChange={(e) => handleClassChange(e.target.value)}
-              className="text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 px-2 py-1"
+          <div className="flex items-center gap-1.5 shrink-0">
+            {kelasList.length > 1 && (
+              <select
+                value={activeKelasId || ''}
+                onChange={(e) => handleClassChange(e.target.value)}
+                className="text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 px-2 py-0.5"
+              >
+                {kelasList.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.nama}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowMobileFilter((prev) => !prev)}
+              className={cn(
+                "p-1.5 rounded-xl border text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer",
+                showMobileFilter
+                  ? "bg-indigo-50 text-indigo-600 border-indigo-200 dark:bg-indigo-950/50 dark:border-indigo-800"
+                  : "bg-slate-50 text-slate-500 border-slate-200/80 dark:bg-slate-800 dark:border-slate-700"
+              )}
+              title="Atur Periode Akademik"
             >
-              {kelasList.map((k) => (
-                <option key={k.id} value={k.id}>
-                  {k.nama}
-                </option>
-              ))}
-            </select>
-          )}
+              <SlidersHorizontal size={13} />
+              <span className="text-[10px] hidden sm:inline">Filter</span>
+            </button>
+          </div>
         </div>
 
-        {/* Mobile Academic Filter Toolbar */}
-        <AcademicFilterToolbar
-          {...academicFilter.toolbarProps}
-          variant="compact"
-          className="w-full"
-        />
+        {/* Collapsible Mobile Academic Filter Toolbar */}
+        {showMobileFilter && (
+          <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+            <AcademicFilterToolbar
+              {...academicFilter.toolbarProps}
+              variant="compact"
+              className="w-full"
+            />
+          </div>
+        )}
       </div>
 
       {/* 2. Desktop 2-Column Layout (>= lg: Left Sidebar Controls + Wide Main Content Canvas) */}
