@@ -231,8 +231,27 @@ export const SiswaView: React.FC<UniversalSiswaViewProps> = React.memo(({
     ? (isLoadingActive || isLoadingCalon || isLoadingAlumni)
     : (isLoadingAcStats || isLoadingActive || isLoadingCalon || isLoadingReg);
 
-  // Stat Cards: Scoped to Jurusan or Global
+  // Stat Cards: Scoped to Jurusan, Kelas, or Global
   const statCards = useMemo(() => {
+    if (effectiveKelasId) {
+      return [
+        {
+          title: "Siswa Terdaftar",
+          value: `${activeSiswaCount} Siswa`,
+          icon: <Users size={14} />,
+          gradient: "from-blue-600 to-indigo-600",
+          subtitle: `Rombel ${effectiveKelasNama || 'Kelas'}`
+        },
+        {
+          title: "Status Keaktifan",
+          value: `${activeSiswaCount} Aktif`,
+          icon: <UserCheck size={14} />,
+          gradient: "from-emerald-500 to-teal-600",
+          subtitle: "100% Aktif"
+        }
+      ];
+    }
+
     if (effectiveJurusanId) {
       return [
         {
@@ -302,6 +321,8 @@ export const SiswaView: React.FC<UniversalSiswaViewProps> = React.memo(({
       }
     ];
   }, [
+    effectiveKelasId,
+    effectiveKelasNama,
     effectiveJurusanId, 
     effectiveJurusanNama, 
     activeSiswaCount, 
@@ -808,30 +829,53 @@ export const SiswaView: React.FC<UniversalSiswaViewProps> = React.memo(({
   if (isModal || hideLayout) {
     return (
       <div className="space-y-5 w-full max-w-full min-w-0">
-        {!hideHeaderStats && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-2">
-            {statCards.map((card, idx) => (
-              <div 
-                key={idx} 
-                onClick={card.onClick}
-                className={`p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3 ${
-                  card.onClick ? 'cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-700 transition-all' : ''
-                }`}
-              >
-                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${card.gradient} text-white flex items-center justify-center shrink-0 shadow-2xs`}>
-                  {card.icon}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-lg font-black text-slate-900 dark:text-slate-100 leading-tight truncate">
-                    {card.value}
-                  </div>
-                  <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate">
+        {!hideHeaderStats && statCards.length > 0 && (
+          <>
+            {/* Mobile: 1 Baris Kartu Mini Metrik (Shopee-Grade Hairline Divider) */}
+            <div className="sm:hidden w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex items-stretch divide-x divide-slate-100 dark:divide-slate-800/80 overflow-hidden h-11 mb-2">
+              {statCards.map((card, idx) => (
+                <div 
+                  key={idx} 
+                  onClick={card.onClick} 
+                  className={`flex-1 flex flex-col items-center justify-center px-1 text-center min-w-0 ${
+                    card.onClick ? 'cursor-pointer active:bg-slate-50 dark:active:bg-slate-800' : ''
+                  }`}
+                >
+                  <span className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500 truncate w-full px-1">
                     {card.title}
+                  </span>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate w-full px-1">
+                    {card.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop: Grid Kartu Metrik Standar */}
+            <div className="hidden sm:grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-2">
+              {statCards.map((card, idx) => (
+                <div 
+                  key={idx} 
+                  onClick={card.onClick}
+                  className={`p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3 ${
+                    card.onClick ? 'cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-700 transition-all' : ''
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${card.gradient} text-white flex items-center justify-center shrink-0 shadow-2xs`}>
+                    {card.icon}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-lg font-black text-slate-900 dark:text-slate-100 leading-tight truncate">
+                      {card.value}
+                    </div>
+                    <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate">
+                      {card.title}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
         )}
         {content}
       </div>

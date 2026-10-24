@@ -1,7 +1,8 @@
 import React, { useState, Suspense, lazy } from 'react';
-import { Users, UserCheck, Shield, Sparkles, Briefcase } from 'lucide-react';
+import { Users, UserCheck, Shield, Sparkles, Briefcase, Eye, EyeOff } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge, Loader } from '@/components/ui';
+import { HubStatusStrip } from '@/components/ui/hub';
 import type { WalasDashboardData } from '../types';
 
 // Code-splitting heavy universal view to reduce initial tab bundle (Pilar 21B & TBT Optimization)
@@ -25,61 +26,117 @@ export const WalasSiswaTab: React.FC<WalasSiswaTabProps> = React.memo(({
   data,
 }) => {
   const [subView, setSubView] = useState<'roster' | 'struktur'>('roster');
+  const [showMiniStats, setShowMiniStats] = useState(true);
   const kelasInfo = data?.kelasInfo;
   const isSmkUpper = (kelasInfo?.tingkat || 10) >= 11;
 
   return (
-    <div className="space-y-6 w-full max-w-full min-w-0">
-      {/* 1. HEADER RINGKAS & SUB-SWITCHER */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
-            <Users className="w-5 h-5" />
+    <div className="space-y-4 w-full max-w-full min-w-0">
+      {/* 1. HEADER RINGKAS & SUB-SWITCHER (Shopee-Grade High-Density) */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+        <div className="flex items-center justify-between w-full sm:w-auto">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
+              <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+            <div>
+              <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                <span>Peserta Didik {kelasNama || kelasInfo?.nama_kelas || 'Rombel'}</span>
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {kelasInfo?.jurusan?.nama || 'Umum'} • {kelasInfo?.totalSiswa || 0} Siswa
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <span>Peserta Didik {kelasNama || kelasInfo?.nama_kelas || 'Rombel'}</span>
-              <Badge variant="outline" className="text-[10px] bg-slate-50 dark:bg-slate-800">
-                {kelasInfo?.totalSiswa || 0} Siswa Terdaftar
-              </Badge>
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {kelasInfo?.totalLaki || 0} Laki-laki • {kelasInfo?.totalPerempuan || 0} Perempuan • {kelasInfo?.jurusan?.nama || 'Umum'}
-            </p>
-          </div>
+
+          {/* Toggle Mini Card on Mobile */}
+          <button
+            type="button"
+            onClick={() => setShowMiniStats((prev) => !prev)}
+            aria-label="Toggle ringkasan metrik"
+            className="sm:hidden text-[10.5px] font-medium px-2 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/60 hover:bg-slate-100 transition-colors flex items-center gap-1"
+          >
+            {showMiniStats ? (
+              <>
+                <EyeOff className="w-3 h-3 text-slate-400" />
+                <span>Ringkasan</span>
+              </>
+            ) : (
+              <>
+                <Eye className="w-3 h-3 text-slate-400" />
+                <span>Ringkasan</span>
+              </>
+            )}
+          </button>
         </div>
 
-        <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 self-stretch sm:self-auto">
+        {/* Sub-View Switcher (Capitalize, Ramping Ala Shopee) */}
+        <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 w-full sm:w-auto">
           <button
+            type="button"
             onClick={() => setSubView('roster')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+            className={`flex-1 sm:flex-initial px-3 py-1.5 text-xs font-semibold rounded-lg transition-all text-center ${
               subView === 'roster'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
-            Roster & Biodata Siswa
+            Roster Siswa
           </button>
           <button
+            type="button"
             onClick={() => setSubView('struktur')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+            className={`flex-1 sm:flex-initial px-3 py-1.5 text-xs font-semibold rounded-lg transition-all text-center ${
               subView === 'struktur'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
-            Struktur & Regu Piket
+            Struktur & Piket
           </button>
         </div>
       </div>
 
-      {/* 2. KONTEN SUB-VIEW (Keep-Alive Sub-View Toggle) */}
+      {/* 2. MINI METRIK 1 BARIS KARTU (Shopee-Grade Hairline Strip) */}
+      {showMiniStats && subView === 'roster' && (
+        <HubStatusStrip
+          items={[
+            {
+              id: 'total',
+              title: `${kelasInfo?.totalSiswa || 0} Siswa`,
+              subtitle: 'Terdaftar',
+            },
+            {
+              id: 'laki',
+              title: `${kelasInfo?.totalLaki || 0} L`,
+              subtitle: 'Laki-laki',
+              className: 'text-indigo-600 dark:text-indigo-400',
+            },
+            {
+              id: 'perempuan',
+              title: `${kelasInfo?.totalPerempuan || 0} P`,
+              subtitle: 'Perempuan',
+              className: 'text-pink-600 dark:text-pink-400',
+            },
+            {
+              id: 'status',
+              title: '100% Aktif',
+              subtitle: 'Status Rombel',
+              className: 'text-emerald-600 dark:text-emerald-400',
+            },
+          ]}
+        />
+      )}
+
+      {/* 3. KONTEN SUB-VIEW (Keep-Alive Sub-View Toggle) */}
       <div className={subView === 'roster' ? 'block' : 'hidden'}>
         <div className="space-y-4">
           {/* Universal Role-Ready Siswa View Scoped to Kelas - Code-split Chunk */}
           <Suspense fallback={<div className="p-12 flex justify-center"><Loader size="lg" /></div>}>
             <SiswaView
               hideLayout
+              hideHeaderStats
+              hideScopeBanner
               kelasId={kelasId}
               kelasNama={kelasNama}
               tahunPelajaranId={tahunPelajaranId}
