@@ -90,15 +90,15 @@ export const TuBerandaTab: React.FC<TuBerandaTabProps> = React.memo(({
         />
       </div>
 
-      {/* ─── 2. PINTASAN OPERASIONAL TATA USAHA (EXACT CARD GRID MATCH) ─── */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
+      {/* ─── 2. PINTASAN OPERASIONAL TATA USAHA (App Launcher Style - Miller's Law 7 Items) ─── */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3.5">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
               Pintasan Operasional Tata Usaha
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Akses cepat ke modul instrumen persuratan, buku induk, mutasi, dan clearance.
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Akses cepat penerbitan surat keterangan, mutasi, clearance ijazah, dan arsip induk.
             </p>
           </div>
           <button
@@ -110,194 +110,75 @@ export const TuBerandaTab: React.FC<TuBerandaTabProps> = React.memo(({
           </button>
         </div>
 
-        {/* Grid 4 Kolom Sesuai Screenshot */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {/* Card 1: Surat Keterangan */}
-          <button
-            type="button"
-            onClick={onOpenSuratKeterangan}
-            className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-xs transition-all text-left group cursor-pointer"
-          >
-            <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-              <FileText className="w-4 h-4" />
-            </div>
-            <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400">
-              Surat Keterangan
-            </h4>
-            <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
-              Aktif sekolah & kelakuan baik
-            </p>
-          </button>
-
-          {/* Card 2: Mutasi Siswa */}
-          <button
-            type="button"
-            onClick={onOpenMutasi}
-            className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:border-purple-400 dark:hover:border-purple-600 hover:shadow-xs transition-all text-left group cursor-pointer"
-          >
-            <div className="w-9 h-9 rounded-lg bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-              <ArrowLeftRight className="w-4 h-4" />
-            </div>
-            <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400">
-              Mutasi Siswa
-            </h4>
-            <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
-              Surat pindah keluar & diterima
-            </p>
-          </button>
-
-          {/* Card 3: Clearance & BAST Ijazah */}
-          <button
-            type="button"
-            onClick={onOpenBastIjazah}
-            className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:border-emerald-400 dark:hover:border-emerald-600 hover:shadow-xs transition-all text-left group cursor-pointer"
-          >
-            <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-              <Award className="w-4 h-4" />
-            </div>
-            <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
-              Clearance & BAST
-            </h4>
-            <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
-              Verifikasi 5 pos & cap 3 jari
-            </p>
-          </button>
-
-          {/* Card 4: Matriks DKN Kelulusan */}
-          <button
-            type="button"
-            onClick={onOpenDknPrint}
-            className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:border-amber-400 dark:hover:border-amber-600 hover:shadow-xs transition-all text-left group cursor-pointer"
-          >
-            <div className="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-              <FileSpreadsheet className="w-4 h-4" />
-            </div>
-            <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400">
-              Matriks Nilai DKN
-            </h4>
-            <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
-              Arsip kelulusan & pengantar KCD
-            </p>
-          </button>
-
-          {/* Card 5: Buku Induk Siswa */}
-          <button
-            type="button"
-            onClick={() => onSelectTab?.('buku-induk')}
-            className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:border-indigo-400 dark:hover:border-indigo-600 hover:shadow-xs transition-all text-left group cursor-pointer"
-          >
-            <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-              <BookOpen className="w-4 h-4" />
-            </div>
-            <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
-              Buku Induk & Klapper
-            </h4>
-            <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
-              Rekam jejak 360° peserta didik
-            </p>
-          </button>
-
-          {/* Card 6: Buku Register Mutasi */}
-          <button
-            type="button"
-            onClick={() => onSelectTab?.('mutasi')}
-            className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:border-purple-400 dark:hover:border-purple-600 hover:shadow-xs transition-all text-left group cursor-pointer"
-          >
-            <div className="w-9 h-9 rounded-lg bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-              <FileCheck className="w-4 h-4" />
-            </div>
-            <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400">
-              Register Mutasi
-            </h4>
-            <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
-              Buku kendali akreditasi dinas
-            </p>
-          </button>
-
-          {/* Card 7: Buku Ekspedisi Ijazah */}
-          <button
-            type="button"
-            onClick={() => onSelectTab?.('bast-ijazah')}
-            className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:border-emerald-400 dark:hover:border-emerald-600 hover:shadow-xs transition-all text-left group cursor-pointer"
-          >
-            <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-            <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
-              Ekspedisi Ijazah
-            </h4>
-            <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
-              Kendali brankas & BAN-PDM
-            </p>
-          </button>
-
-          {/* Card 8: Surat Pengantar KCD */}
-          <button
-            type="button"
-            onClick={() => onSelectTab?.('dkn')}
-            className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-xs transition-all text-left group cursor-pointer"
-          >
-            <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-              <Send className="w-4 h-4" />
-            </div>
-            <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400">
-              Pengantar Dinas KCD
-            </h4>
-            <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
-              Laporan kelulusan resmi
-            </p>
-          </button>
-
-          {/* Card 9: Kepegawaian & Dapodik PTK */}
-          <button
-            type="button"
-            onClick={() => onSelectTab?.('kepegawaian')}
-            className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:border-violet-400 dark:hover:border-violet-600 hover:shadow-xs transition-all text-left group cursor-pointer"
-          >
-            <div className="w-9 h-9 rounded-lg bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-              <Users className="w-4 h-4" />
-            </div>
-            <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400">
-              Kepegawaian & PTK
-            </h4>
-            <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
-              Buku Induk PTK & Beban 24 JP
-            </p>
-          </button>
-
-          {/* Card 10: Surat Masuk & Disposisi */}
-          <button
-            type="button"
-            onClick={() => onSelectTab?.('surat-masuk')}
-            className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:border-sky-400 dark:hover:border-sky-600 hover:shadow-xs transition-all text-left group cursor-pointer"
-          >
-            <div className="w-9 h-9 rounded-lg bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-              <Inbox className="w-4 h-4" />
-            </div>
-            <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-400">
-              Surat Masuk
-            </h4>
-            <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
-              Agenda & lembar disposisi Kepsek
-            </p>
-          </button>
-
-          {/* Card 11: Surat Keluar & Naskah Dinas */}
-          <button
-            type="button"
-            onClick={() => onSelectTab?.('surat-keluar')}
-            className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:border-teal-400 dark:hover:border-teal-600 hover:shadow-xs transition-all text-left group cursor-pointer"
-          >
-            <div className="w-9 h-9 rounded-lg bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-              <Send className="w-4 h-4" />
-            </div>
-            <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400">
-              Surat Keluar & Dinas
-            </h4>
-            <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
-              Draft, penomoran & TTD digital
-            </p>
-          </button>
+        {/* Grid 7 Kolom (Desktop: 1 baris 7 ikon, Mobile: 2 baris 4+3 ikon) */}
+        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2.5 sm:gap-3">
+          {[
+            {
+              title: 'Surat Keterangan',
+              action: onOpenSuratKeterangan,
+              icon: FileText,
+              color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400',
+            },
+            {
+              title: 'Mutasi Siswa',
+              action: onOpenMutasi,
+              icon: ArrowLeftRight,
+              color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400',
+            },
+            {
+              title: 'Clearance & BAST',
+              action: onOpenBastIjazah,
+              icon: Award,
+              color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
+            },
+            {
+              title: 'Matriks DKN',
+              action: onOpenDknPrint,
+              icon: FileSpreadsheet,
+              color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
+            },
+            {
+              title: 'Buku Induk',
+              tabId: 'buku-induk' as TuTabId,
+              icon: BookOpen,
+              color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
+            },
+            {
+              title: 'Surat Masuk',
+              tabId: 'surat-masuk' as TuTabId,
+              icon: Inbox,
+              color: 'bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400',
+            },
+            {
+              title: 'Kepegawaian PTK',
+              tabId: 'kepegawaian' as TuTabId,
+              icon: Users,
+              color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400',
+            },
+          ].map((item, idx) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => {
+                  if (item.action) {
+                    item.action();
+                  } else if (item.tabId && onSelectTab) {
+                    onSelectTab(item.tabId);
+                  }
+                }}
+                className="group flex flex-col items-center justify-start p-1.5 sm:p-2 rounded-2xl hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-all duration-150 cursor-pointer text-center w-full select-none"
+              >
+                <div className={`w-12 h-12 sm:w-13 sm:h-13 rounded-2xl ${item.color} flex items-center justify-center shadow-xs group-hover:scale-110 group-hover:shadow-md transition-all duration-150 border border-slate-200/50 dark:border-slate-800/50 mb-1.5`}>
+                  <Icon className="w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[2.2]" />
+                </div>
+                <span className="text-[11px] sm:text-xs font-medium text-slate-700 dark:text-slate-200 leading-tight line-clamp-2 text-center break-words group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                  {item.title}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 

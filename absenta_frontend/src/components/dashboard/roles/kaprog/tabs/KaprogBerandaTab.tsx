@@ -112,15 +112,15 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
         />
       </div>
 
-      {/* Quick Links Grid (8 Modul Utama Jurusan) */}
-      <Card noPadding className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-4">
+      {/* Quick Links Grid (App Launcher Style) */}
+      <Card noPadding className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-3.5">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
               Pintasan Manajemen Kejuruan
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Akses cepat ke modul instrumen PKL, kurikulum merdeka, presensi, dan bengkel.
+              Akses cepat ke modul instrumen PKL, kurikulum, presensi, dan bengkel.
             </p>
           </div>
           <Button
@@ -140,86 +140,58 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
           </Button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2.5 sm:gap-3">
           {[
             {
-              title: 'Formulasi TP PKL',
-              desc: 'Rumuskan capaian per mitra',
+              title: 'Formulasi TP',
               tabId: 'pkl' as KaprogTabId,
               path: '/hubin/nilai-pkl?tab=deskripsi',
               icon: FileText,
-            },
-            {
-              title: 'Rekap Nilai PKL',
-              desc: 'Nilai industri & sidang',
-              action: onOpenRekapNilai,
-              path: '/hubin/nilai-pkl?tab=dudi',
-              icon: Award,
+              color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
             },
             {
               title: 'Monitoring PKL',
-              desc: 'Presensi & logbook siswa',
               action: onOpenMonitoringPkl,
               path: '/hubin/absensi',
               icon: CalendarCheck,
+              color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
+            },
+            {
+              title: 'Rekap Nilai PKL',
+              action: onOpenRekapNilai,
+              path: '/hubin/nilai-pkl?tab=dudi',
+              icon: Award,
+              color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400',
             },
             {
               title: 'Penempatan Siswa',
-              desc: 'Plotting mitra industri',
               action: onOpenPenempatan,
               path: '/hubin/penempatan',
               icon: Briefcase,
-            },
-            {
-              title: 'Guru Produktif',
-              desc: 'Jadwal & supervisi KBM',
-              tabId: 'guru' as KaprogTabId,
-              path: '/academic/guru',
-              icon: Users,
+              color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
             },
             {
               title: 'Struktur Kelas',
-              desc: 'Daftar rombel kejuruan',
               action: onOpenStrukturKelas,
               tabId: 'siswa' as KaprogTabId,
               path: '/academic/kelas',
               icon: Layers,
+              color: 'bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400',
             },
             {
-              title: 'Pelanggaran Siswa',
-              desc: 'Kedisiplinan & tatib',
-              tabId: 'pelanggaran' as KaprogTabId,
-              path: '/kesiswaan/pelanggaran',
-              icon: ShieldAlert,
-            },
-            {
-              title: 'Prestasi Siswa',
-              desc: 'LKS & kejuaraan jurusan',
-              tabId: 'prestasi' as KaprogTabId,
-              path: '/kesiswaan/prestasi',
-              icon: Trophy,
-            },
-            {
-              title: 'Sarana & Lab',
-              desc: 'Inventaris bengkel',
-              tabId: 'sarana' as KaprogTabId,
-              path: '/sarpras/inventaris',
-              icon: Wrench,
-            },
-            {
-              title: 'UKK & Sertifikasi',
-              desc: 'Uji kompetensi & sertifikat',
+              title: 'Sertifikat UKK',
               tabId: 'ukk' as KaprogTabId,
               path: '/rapor',
               icon: Award,
+              color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400',
             },
             {
               title: 'Tracer Study',
-              desc: 'Keterserapan alumni',
               path: '/hubin/tracer',
               icon: GraduationCap,
+              color: 'bg-cyan-50 dark:bg-cyan-950/70 text-cyan-600 dark:text-cyan-400',
             },
-          ]?.map((item, idx) => {
+          ].map((item, idx) => {
             const Icon = item.icon;
             return (
               <button
@@ -234,16 +206,13 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
                     navigate(item.path);
                   }
                 }}
-                className="flex flex-col text-left p-3.5 rounded-xl border border-slate-200/70 dark:border-slate-800/80 hover:border-indigo-300 dark:hover:border-indigo-800 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-all group cursor-pointer"
+                className="group flex flex-col items-center justify-start p-1.5 sm:p-2 rounded-2xl hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-all duration-150 cursor-pointer text-center w-full select-none"
               >
-                <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-colors mb-2.5">
-                  <Icon className="w-4 h-4" />
+                <div className={`w-12 h-12 sm:w-13 sm:h-13 rounded-2xl ${item.color} flex items-center justify-center shadow-xs group-hover:scale-110 group-hover:shadow-md transition-all duration-150 border border-slate-200/50 dark:border-slate-800/50 mb-1.5`}>
+                  <Icon className="w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[2.2]" />
                 </div>
-                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                <span className="text-[11px] sm:text-xs font-medium text-slate-700 dark:text-slate-200 leading-tight line-clamp-2 text-center break-words group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                   {item.title}
-                </span>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
-                  {item.desc}
                 </span>
               </button>
             );

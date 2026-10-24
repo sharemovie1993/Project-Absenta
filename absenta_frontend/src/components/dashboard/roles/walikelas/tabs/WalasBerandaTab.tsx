@@ -179,15 +179,15 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
         />
       </div>
 
-      {/* 2. PINTASAN MANAJEMEN ROMBEL (Quick Links Grid 8 Modul Berstandar Kaprog) */}
-      <Card noPadding className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-4">
+      {/* 2. PINTASAN TUGAS WALI KELAS (App Launcher Style - Miller's Law 6 Items) */}
+      <Card noPadding className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-3.5">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
               Pintasan Tugas Wali Kelas
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Akses cepat ke modul pembinaan, presensi, jurnal walas, dan bimbingan konseling.
+              Akses cepat pencatatan jurnal, validasi perizinan, bimbingan konseling, dan rekapitulasi.
             </p>
           </div>
           <Button
@@ -207,56 +207,44 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
           </Button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5 sm:gap-3">
           {[
             {
-              title: 'Roster & Siswa',
-              desc: 'Daftar & biodata rombel',
-              tabId: 'siswa' as WaliKelasTabId,
-              icon: Users,
-            },
-            {
-              title: 'Presensi Bulanan',
-              desc: 'Matriks kehadiran kelas',
-              tabId: 'presensi' as WaliKelasTabId,
-              icon: CalendarCheck,
-            },
-            {
-              title: 'Jurnal Walas',
-              desc: 'Catatan beban kerja 2 JP',
+              title: 'Tulis Jurnal',
               tabId: 'jurnal' as WaliKelasTabId,
               action: onOpenJurnalModal,
               icon: BookOpen,
+              color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
             },
             {
               title: 'Persetujuan Izin',
-              desc: 'Validasi surat sakit dokter',
               tabId: 'izin' as WaliKelasTabId,
               icon: FileCheck2,
+              color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
             },
             {
               title: 'Rujukan Kasus BK',
-              desc: 'Alih tangan masalah siswa',
               tabId: 'disiplin' as WaliKelasTabId,
               icon: ShieldAlert,
+              color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400',
             },
             {
-              title: 'Pelanggaran Siswa',
-              desc: 'Catatan tata tertib & poin',
-              tabId: 'disiplin' as WaliKelasTabId,
-              icon: AlertTriangle,
-            },
-            {
-              title: 'Prestasi Rombel',
-              desc: 'Portofolio lomba & reward',
-              tabId: 'prestasi' as WaliKelasTabId,
-              icon: Award,
-            },
-            {
-              title: 'Cetak Rekap & Ledger',
-              desc: 'Format F-BK-01 & ledger',
+              title: 'Cetak Rekap F-BK',
               tabId: 'rekap' as WaliKelasTabId,
               icon: FileText,
+              color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400',
+            },
+            {
+              title: 'Cetak Rapor',
+              tabId: 'rapor' as WaliKelasTabId,
+              icon: Award,
+              color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
+            },
+            {
+              title: 'Data Siswa & Kontak',
+              tabId: 'siswa' as WaliKelasTabId,
+              icon: Users,
+              color: 'bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400',
             },
           ].map((item, idx) => {
             const Icon = item.icon;
@@ -271,16 +259,13 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
                     onSelectTab(item.tabId);
                   }
                 }}
-                className="flex flex-col text-left p-3.5 rounded-xl border border-slate-200/70 dark:border-slate-800/80 hover:border-indigo-300 dark:hover:border-indigo-800 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-all group cursor-pointer"
+                className="group flex flex-col items-center justify-start p-1.5 sm:p-2 rounded-2xl hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-all duration-150 cursor-pointer text-center w-full select-none"
               >
-                <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-colors mb-2.5">
-                  <Icon className="w-4 h-4" />
+                <div className={`w-12 h-12 sm:w-13 sm:h-13 rounded-2xl ${item.color} flex items-center justify-center shadow-xs group-hover:scale-110 group-hover:shadow-md transition-all duration-150 border border-slate-200/50 dark:border-slate-800/50 mb-1.5`}>
+                  <Icon className="w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[2.2]" />
                 </div>
-                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                <span className="text-[11px] sm:text-xs font-medium text-slate-700 dark:text-slate-200 leading-tight line-clamp-2 text-center break-words group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                   {item.title}
-                </span>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
-                  {item.desc}
                 </span>
               </button>
             );
