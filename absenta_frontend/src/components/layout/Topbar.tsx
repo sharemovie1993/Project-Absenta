@@ -267,6 +267,7 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
             onOpenNotifications={() => setOpen(true)}
           />
         </div>
+      </div>
 
         {/* Notification Detail Modal */}
         <Modal
