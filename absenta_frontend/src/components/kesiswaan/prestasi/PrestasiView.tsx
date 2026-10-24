@@ -32,6 +32,7 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import { MobileAcademicList } from '@/components/academic/shared/MobileAcademicList';
 import { SiswaIdentityCell } from '@/components/common/SiswaIdentityCell';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
+import { HubStatusStrip, type HubStatusItem } from '@/components/ui/hub';
 import { kesiswaanApi, type PrestasiSiswa, kesiswaanQueryKeys } from '@/api/kesiswaan.api';
 import { exportDataToExcel } from '@/utils/export.utils';
 import { cn } from '@/lib/utils';
@@ -53,6 +54,7 @@ export interface UniversalPrestasiViewProps {
   // 2. Display Modifiers
   isModal?: boolean;
   hideLayout?: boolean;
+  hideScopeBanner?: boolean;
   readOnly?: boolean;
 
   // 3. Event Callbacks
@@ -96,6 +98,7 @@ export const PrestasiView: React.FC<UniversalPrestasiViewProps> = React.memo(({
   semesterId,
   isModal = false,
   hideLayout = false,
+  hideScopeBanner = false,
   readOnly = false,
   onClose,
 }) => {
@@ -236,6 +239,33 @@ export const PrestasiView: React.FC<UniversalPrestasiViewProps> = React.memo(({
     }).length;
     return { totalCount, totalPoin, uniqueStudents, topPrestasi };
   }, [rawList]);
+
+  // Mini Status Items untuk Mobile 1-Baris Hairline Strip (< lg)
+  const miniStatusItems: HubStatusItem[] = useMemo(() => [
+    {
+      id: 'total',
+      title: `${stats.totalCount} Prestasi`,
+      subtitle: 'Total Catatan',
+    },
+    {
+      id: 'poin',
+      title: `+${stats.totalPoin} Poin`,
+      subtitle: 'Apresiasi',
+      className: stats.totalPoin > 0 ? 'text-amber-600 dark:text-amber-400 font-bold' : undefined,
+    },
+    {
+      id: 'siswa',
+      title: `${stats.uniqueStudents} Siswa`,
+      subtitle: 'Peraih',
+      className: stats.uniqueStudents > 0 ? 'text-blue-600 dark:text-blue-400 font-bold' : undefined,
+    },
+    {
+      id: 'top',
+      title: `${stats.topPrestasi} Unggulan`,
+      subtitle: 'Skala Tinggi',
+      className: stats.topPrestasi > 0 ? 'text-purple-600 dark:text-purple-400 font-bold' : undefined,
+    },
+  ], [stats]);
 
   // Leaderboard Bintang Prestasi Siswa (Top 3)
   const leaderboard = useMemo(() => {
@@ -643,7 +673,7 @@ export const PrestasiView: React.FC<UniversalPrestasiViewProps> = React.memo(({
   ], [handleEdit, handleDelete, kelasId, kelasNama, readOnly]);
 
   return (
-    <div className={cn("space-y-6 w-full max-w-full min-w-0", isModal && "p-2 sm:p-4", hideLayout && "space-y-5")}>
+    <div className={cn("space-y-3 sm:space-y-4 w-full max-w-full min-w-0", isModal && "p-2 sm:p-4")}>
       {/* 1. Header hanya ditampilkan jika BUKAN tab dashboard */}
       {!hideLayout && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -670,9 +700,9 @@ export const PrestasiView: React.FC<UniversalPrestasiViewProps> = React.memo(({
         </div>
       )}
 
-      {/* 2. Scope Indicator Banner (Multi-Context Role Feedback) */}
-      {(kelasNama || jurusanNama) && (
-        <div className="p-3.5 bg-linear-to-r from-indigo-500/10 via-sky-500/5 to-transparent border border-indigo-200/80 dark:border-indigo-900/50 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* 2. Scope Indicator Banner (Desktop/Tablet Only & Hide when in Walas Tab) */}
+      {!hideScopeBanner && (kelasNama || jurusanNama) && (
+        <div className="hidden sm:flex p-3.5 bg-linear-to-r from-indigo-500/10 via-sky-500/5 to-transparent border border-indigo-200/80 dark:border-indigo-900/50 rounded-2xl flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
               {kelasNama ? <GraduationCap className="w-5 h-5" /> : <Building2 className="w-5 h-5" />}
@@ -713,8 +743,13 @@ export const PrestasiView: React.FC<UniversalPrestasiViewProps> = React.memo(({
         />
       )}
 
-      {/* 4. KPI Stat Cards (4 Kolom Standard Dashboard) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+      {/* 4a. MINI ANALYTIC CARD (Mobile < lg: Shopee-Grade Hairline 1-Baris) */}
+      <div className="lg:hidden">
+        <HubStatusStrip items={miniStatusItems} />
+      </div>
+
+      {/* 4b. KPI Stat Cards (Desktop >= lg: 4 Kolom Penuh) */}
+      <div className="hidden lg:grid grid-cols-4 gap-3.5">
         <Card noPadding className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Prestasi</span>
@@ -840,40 +875,42 @@ export const PrestasiView: React.FC<UniversalPrestasiViewProps> = React.memo(({
       )}
 
       {/* 6. Main Card dengan Multi-Filter & Table */}
-      <Card noPadding className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-4">
-        {/* Header Action Toolbar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-amber-500" />
-              <span>Daftar Portofolio Prestasi Siswa</span>
+      <Card noPadding className="p-3 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-3 sm:space-y-4">
+        {/* Header Action Toolbar (Shopee-Grade: Strictly Max 2 Words) */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5 truncate">
+              <Trophy className="w-4 h-4 text-amber-500 shrink-0" />
+              <span className="sm:hidden">Prestasi Siswa</span>
+              <span className="hidden sm:inline">Daftar Portofolio Prestasi</span>
               {(kelasNama || jurusanNama) && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40">
+                <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40">
                   {kelasNama || jurusanNama}
                 </span>
               )}
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="hidden sm:block text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Riwayat kejuaraan lomba, kompetisi kejuruan, olimpiade sains, dan apresiasi bakat minat.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 shrink-0">
             <Button
               variant="outline"
               size="sm"
               onClick={handleExportExcel}
-              className="text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              className="h-8 sm:h-9 px-2.5 sm:px-3 text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               title="Unduh format spreadsheet Excel"
             >
-              <Download className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
-              Ekspor Excel
+              <Download className="w-3.5 h-3.5 sm:mr-1.5 text-emerald-600" />
+              <span className="hidden sm:inline">Ekspor Excel</span>
+              <span className="sm:hidden">Ekspor</span>
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={handlePrint}
-              className="text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer hidden sm:inline-flex"
+              className="h-8 sm:h-9 px-3 text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer hidden sm:inline-flex"
               title="Cetak dokumen rekap"
             >
               <Printer className="w-3.5 h-3.5 mr-1.5 text-slate-600 dark:text-slate-300" />
@@ -884,10 +921,11 @@ export const PrestasiView: React.FC<UniversalPrestasiViewProps> = React.memo(({
                 variant="default"
                 size="sm"
                 onClick={() => { resetForm(); setModalOpen(true); }}
-                className="text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-xs"
+                className="h-8 sm:h-9 px-2.5 sm:px-3 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-xs"
               >
-                <Plus className="w-3.5 h-3.5 mr-1.5" />
-                Catat Prestasi
+                <Plus className="w-3.5 h-3.5 sm:mr-1.5" />
+                <span className="hidden sm:inline">Catat Prestasi</span>
+                <span className="sm:hidden">Catat</span>
               </Button>
             )}
           </div>
@@ -901,7 +939,7 @@ export const PrestasiView: React.FC<UniversalPrestasiViewProps> = React.memo(({
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Cari siswa, NIS, kejuaraan, atau penyelenggara..."
+                placeholder="Cari prestasi, siswa, kejuaraan..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
@@ -959,7 +997,7 @@ export const PrestasiView: React.FC<UniversalPrestasiViewProps> = React.memo(({
           </div>
         ) : isMobile ? (
           <MobileAcademicList
-            title="Daftar Prestasi Siswa"
+            title="Prestasi Siswa"
             data={filteredData}
             loading={loading}
             totalItems={totalItems}

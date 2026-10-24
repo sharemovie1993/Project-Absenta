@@ -24,6 +24,7 @@ export const WalasPrestasiTab: React.FC<WalasPrestasiTabProps> = React.memo(({
           kelasId={kelasId}
           kelasNama={kelasNama}
           hideLayout={true}
+          hideScopeBanner={true}
         />
       </Suspense>
     </div>
