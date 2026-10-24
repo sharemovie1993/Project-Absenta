@@ -11,10 +11,10 @@ import {
   Award, 
   FileSpreadsheet,
   GraduationCap,
-  Loader,
   Printer,
   SlidersHorizontal,
 } from 'lucide-react';
+import { WalasDashboardSkeleton } from './walikelas/WalasDashboardSkeleton';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { useWalasDashboardData } from './walikelas/useWalasDashboardData';
 import type { WaliKelasTabId } from './walikelas/types';
@@ -361,12 +361,7 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
         {/* Main Content Area */}
         <main className="min-w-0 space-y-4">
           {isLoading && !walasData ? (
-            <div className="py-20 flex flex-col items-center justify-center gap-3">
-              <Loader size="md" />
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                Memuat data operasional rombel...
-              </p>
-            </div>
+            <WalasDashboardSkeleton />
           ) : (
             <div className="relative w-full min-w-0">
               {/* Keep-Alive + Lazy-Mounted Tab Panes for True Instant Switching (<16ms, Zero DOM Destruction) */}
