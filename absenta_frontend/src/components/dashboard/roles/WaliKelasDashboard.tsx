@@ -67,6 +67,9 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
         return curr;
       });
       setVisitedTabs((prev) => (prev.has(subtabParam) ? prev : new Set(prev).add(subtabParam)));
+    } else if (!subtabParam) {
+      setActiveTab('ringkasan');
+      setVisitedTabs((prev) => (prev.has('ringkasan') ? prev : new Set(prev).add('ringkasan')));
     }
   }, [subtabParam]);
 

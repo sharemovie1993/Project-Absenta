@@ -98,6 +98,9 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
         return curr;
       });
       setVisitedTabs((prev) => (prev.has(subtabParam) ? prev : new Set(prev).add(subtabParam)));
+    } else if (!subtabParam) {
+      setActiveTab('beranda');
+      setVisitedTabs((prev) => (prev.has('beranda') ? prev : new Set(prev).add('beranda')));
     }
   }, [subtabParam]);
 

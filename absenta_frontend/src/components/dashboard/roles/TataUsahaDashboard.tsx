@@ -101,6 +101,9 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
     ) {
       setActiveTab((curr) => (curr !== subtabParam ? subtabParam : curr));
       setVisitedTabs((prev) => (prev.has(subtabParam) ? prev : new Set(prev).add(subtabParam)));
+    } else if (!subtabParam) {
+      setActiveTab('beranda');
+      setVisitedTabs((prev) => (prev.has('beranda') ? prev : new Set(prev).add('beranda')));
     }
   }, [subtabParam]);
 

@@ -31,6 +31,9 @@ import {
   ArrowLeftRight,
   FileSpreadsheet,
   Inbox,
+  Send,
+  Wrench,
+  Printer,
   X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -283,7 +286,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
           label: 'Beranda TU',
           shortLabel: 'Beranda',
           icon: Home,
-          targetPath: '/dashboard?tab=kepegawaian',
+          targetPath: '/dashboard?tab=kepegawaian&subtab=beranda',
           isActive: (pathname, tabParam) =>
             pathname.startsWith('/dashboard') && tabParam === 'kepegawaian' && (!currentSubtab || currentSubtab === 'beranda'),
         },
@@ -297,7 +300,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
         },
         {
           id: 'layanan_tu',
-          label: 'Layanan Tata Usaha',
+          label: 'Menu Tab Layanan TU',
           shortLabel: 'Layanan TU',
           icon: ClipboardList,
           badge: tuTabMeta.badge || 'TU',
@@ -305,6 +308,20 @@ export const BottomNavigation: React.FC = React.memo(() => {
           isActive: (pathname, tabParam) =>
             tabParam === 'kepegawaian' && Boolean(currentSubtab && currentSubtab !== 'beranda' && currentSubtab !== 'surat-masuk'),
           children: [
+            {
+              id: 'surat-masuk',
+              label: 'Surat Masuk',
+              icon: Inbox,
+              targetPath: '/dashboard?tab=kepegawaian&subtab=surat-masuk',
+              color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
+            },
+            {
+              id: 'surat-keluar',
+              label: 'Surat Keluar',
+              icon: Send,
+              targetPath: '/dashboard?tab=kepegawaian&subtab=surat-keluar',
+              color: 'bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400',
+            },
             {
               id: 'surat-keterangan',
               label: 'Surat Keterangan',
@@ -328,24 +345,17 @@ export const BottomNavigation: React.FC = React.memo(() => {
             },
             {
               id: 'dkn',
-              label: 'Matriks DKN',
+              label: 'DKN & Kelulusan',
               icon: FileSpreadsheet,
               targetPath: '/dashboard?tab=kepegawaian&subtab=dkn',
               color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
             },
             {
               id: 'buku-induk',
-              label: 'Buku Induk',
+              label: 'Data Siswa & Klapper',
               icon: BookOpen,
               targetPath: '/dashboard?tab=kepegawaian&subtab=buku-induk',
-              color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
-            },
-            {
-              id: 'surat-keluar',
-              label: 'Surat Keluar',
-              icon: Inbox,
-              targetPath: '/dashboard?tab=kepegawaian&subtab=surat-keluar',
-              color: 'bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400',
+              color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400',
             },
             {
               id: 'kepegawaian',
@@ -375,7 +385,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
           label: 'Beranda Kaprog',
           shortLabel: 'Beranda',
           icon: Home,
-          targetPath: '/dashboard?tab=kaprog',
+          targetPath: '/dashboard?tab=kaprog&subtab=beranda',
           isActive: (pathname, tabParam) =>
             pathname.startsWith('/dashboard') && tabParam === 'kaprog' && (!currentSubtab || currentSubtab === 'beranda'),
         },
@@ -389,7 +399,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
         },
         {
           id: 'modul_kaprog',
-          label: `Instrumen ${kaprogJurusan?.nama || 'Kejuruan'}`,
+          label: `Menu Tab ${kaprogJurusan?.nama || 'Kejuruan'}`,
           shortLabel: 'Modul Jurusan',
           icon: Award,
           badge: kaprogJurusan?.singkatan || 'KAPROG',
@@ -398,53 +408,67 @@ export const BottomNavigation: React.FC = React.memo(() => {
             tabParam === 'kaprog' && Boolean(currentSubtab && currentSubtab !== 'beranda'),
           children: [
             {
-              id: 'pkl',
-              label: 'Formulasi TP',
-              icon: FileText,
-              targetPath: '/dashboard?tab=kaprog&subtab=pkl',
+              id: 'siswa',
+              label: 'Data Siswa',
+              icon: GraduationCap,
+              targetPath: '/dashboard?tab=kaprog&subtab=siswa',
               color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
             },
             {
-              id: 'monitoring-pkl',
-              label: 'Monitoring PKL',
-              icon: CalendarCheck,
-              targetPath: '/hubin/absensi',
-              color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
-            },
-            {
-              id: 'rekap-pkl',
-              label: 'Rekap Nilai PKL',
-              icon: Award,
-              targetPath: '/hubin/nilai-pkl?tab=dudi',
-              color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400',
-            },
-            {
-              id: 'penempatan-pkl',
-              label: 'Penempatan DUDI',
+              id: 'pkl',
+              label: 'PKL & Industri',
               icon: Briefcase,
-              targetPath: '/hubin/penempatan',
+              targetPath: '/dashboard?tab=kaprog&subtab=pkl',
               color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
             },
             {
-              id: 'siswa',
-              label: 'Struktur Kelas',
-              icon: Layers,
-              targetPath: '/dashboard?tab=kaprog&subtab=siswa',
-              color: 'bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400',
+              id: 'kehadiran',
+              label: 'Presensi Rombel',
+              icon: CalendarCheck,
+              targetPath: '/dashboard?tab=kaprog&subtab=kehadiran',
+              color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
+            },
+            {
+              id: 'pelanggaran',
+              label: 'Pelanggaran Siswa',
+              icon: ShieldAlert,
+              targetPath: '/dashboard?tab=kaprog&subtab=pelanggaran',
+              color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400',
+            },
+            {
+              id: 'prestasi',
+              label: 'Prestasi Siswa',
+              icon: Trophy,
+              targetPath: '/dashboard?tab=kaprog&subtab=prestasi',
+              color: 'bg-yellow-50 dark:bg-yellow-950/70 text-yellow-600 dark:text-yellow-400',
+            },
+            {
+              id: 'guru',
+              label: 'Guru Produktif',
+              icon: Users,
+              targetPath: '/dashboard?tab=kaprog&subtab=guru',
+              color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400',
+            },
+            {
+              id: 'sarana',
+              label: 'Sarana & Lab',
+              icon: Wrench,
+              targetPath: '/dashboard?tab=kaprog&subtab=sarana',
+              color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400',
             },
             {
               id: 'ukk',
-              label: 'Sertifikasi UKK',
+              label: 'UKK Sertifikasi',
               icon: Award,
               targetPath: '/dashboard?tab=kaprog&subtab=ukk',
-              color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400',
+              color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400',
             },
             {
-              id: 'tracer',
-              label: 'Tracer Study',
-              icon: GraduationCap,
-              targetPath: '/hubin/tracer',
-              color: 'bg-cyan-50 dark:bg-cyan-950/70 text-cyan-600 dark:text-cyan-400',
+              id: 'rapor',
+              label: 'Cetak Rapor',
+              icon: Printer,
+              targetPath: '/dashboard?tab=kaprog&subtab=rapor',
+              color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400',
             },
           ],
         },
@@ -467,7 +491,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
           label: 'Beranda Kelas Binaan',
           shortLabel: 'Beranda',
           icon: Home,
-          targetPath: '/dashboard?tab=binaan',
+          targetPath: '/dashboard?tab=binaan&subtab=ringkasan',
           isActive: (pathname, tabParam) =>
             pathname.startsWith('/dashboard') && (!tabParam || tabParam === 'binaan') && (!currentSubtab || currentSubtab === 'ringkasan'),
         },
@@ -481,20 +505,34 @@ export const BottomNavigation: React.FC = React.memo(() => {
         },
         {
           id: 'modul_walas',
-          label: `Modul Wali Kelas ${waliKelasNama || ''}`,
+          label: `Menu Tab Kelas ${waliKelasNama || ''}`,
           shortLabel: 'Modul Walas',
           icon: Users,
           badge: waliKelasNama || 'WALAS',
           targetPath: '/dashboard?tab=binaan',
           isActive: (pathname, tabParam) =>
-            tabParam === 'binaan' && Boolean(currentSubtab && currentSubtab !== 'ringkasan'),
+            (tabParam === 'binaan' || !tabParam) && Boolean(currentSubtab && currentSubtab !== 'ringkasan'),
           children: [
             {
+              id: 'siswa',
+              label: 'Data Siswa',
+              icon: Users,
+              targetPath: '/dashboard?tab=binaan&subtab=siswa',
+              color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
+            },
+            {
+              id: 'presensi',
+              label: 'Presensi Rombel',
+              icon: CalendarCheck,
+              targetPath: '/dashboard?tab=binaan&subtab=presensi',
+              color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
+            },
+            {
               id: 'jurnal',
-              label: 'Tulis Jurnal',
+              label: 'Jurnal Walas',
               icon: BookOpen,
               targetPath: '/dashboard?tab=binaan&subtab=jurnal',
-              color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
+              color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400',
             },
             {
               id: 'izin',
@@ -505,31 +543,31 @@ export const BottomNavigation: React.FC = React.memo(() => {
             },
             {
               id: 'disiplin',
-              label: 'Rujukan Kasus BK',
+              label: 'Pelanggaran Siswa',
               icon: ShieldAlert,
               targetPath: '/dashboard?tab=binaan&subtab=disiplin',
               color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400',
             },
             {
+              id: 'prestasi',
+              label: 'Prestasi Siswa',
+              icon: Award,
+              targetPath: '/dashboard?tab=binaan&subtab=prestasi',
+              color: 'bg-yellow-50 dark:bg-yellow-950/70 text-yellow-600 dark:text-yellow-400',
+            },
+            {
               id: 'rekap',
-              label: 'Cetak Rekap F-BK',
-              icon: FileText,
+              label: 'Cetak & Rekap',
+              icon: FileSpreadsheet,
               targetPath: '/dashboard?tab=binaan&subtab=rekap',
-              color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400',
+              color: 'bg-cyan-50 dark:bg-cyan-950/70 text-cyan-600 dark:text-cyan-400',
             },
             {
               id: 'rapor',
-              label: 'Cetak Rapor Kelas',
-              icon: Award,
+              label: 'Cetak Rapor',
+              icon: Printer,
               targetPath: '/dashboard?tab=binaan&subtab=rapor',
-              color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
-            },
-            {
-              id: 'siswa',
-              label: 'Data Siswa & Ortu',
-              icon: Users,
-              targetPath: '/dashboard?tab=binaan&subtab=siswa',
-              color: 'bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400',
+              color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400',
             },
           ],
         },
@@ -702,7 +740,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
                     )}
                   </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    Pilih modul instrumen untuk berpindah secara instan
+                    Pilih menu tab untuk beralih tampilan
                   </p>
                 </div>
                 <button
@@ -718,9 +756,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
               <div className="grid grid-cols-4 gap-2.5 sm:gap-3 py-1">
                 {openFlyoutItem.children.map(sub => {
                   const SubIcon = sub.icon;
-                  const isSubActive =
-                    location.search.includes(`subtab=${sub.id}`) ||
-                    (!currentSubtab && sub.id === openFlyoutItem.children![0].id);
+                  const isSubActive = currentSubtab === sub.id;
                   const colorClass = sub.color || 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400';
 
                   return (
