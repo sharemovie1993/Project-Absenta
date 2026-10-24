@@ -1,6 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { LucideIcon } from 'lucide-react';
+import { HubActionSlider } from './HubActionSlider';
 
 export interface HubActionItem {
   id: string;
@@ -16,18 +17,25 @@ export interface HubActionItem {
 export interface HubActionGridProps {
   items: HubActionItem[];
   columns?: 4 | 5;
+  variant?: 'grid' | 'slider';
   className?: string;
 }
 
 /**
  * HubActionGrid - Grid Aksi Borderless Horizontal Ala Shopee ("Pesanan Saya" & "Menu Utama")
  * Item berdiri bebas tanpa kotak pembungkus individu, dengan ikon garis tipis dan tipografi Capitalize rapi.
+ * Mendukung mode 'slider' untuk tampilan 1-baris scrollable dengan peeking affordance & dynamic scroll indicator.
  */
 export const HubActionGrid: React.FC<HubActionGridProps> = React.memo(({
   items,
   columns = 4,
+  variant = 'grid',
   className,
 }) => {
+  if (variant === 'slider') {
+    return <HubActionSlider items={items} className={className} />;
+  }
+
   const colClass = columns === 5 ? 'grid-cols-5' : 'grid-cols-4';
 
   return (

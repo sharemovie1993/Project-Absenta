@@ -265,7 +265,7 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
           else onSelectTab('jurnal');
         }}
       >
-        <HubActionGrid items={actionItems} columns={4} />
+        <HubActionGrid items={actionItems} variant="slider" />
       </HubCard>
 
       {/* 3. DAFTAR SISWA TIDAK HADIR HARI INI (Direct Actionable Feed) */}

@@ -131,6 +131,24 @@ const actionItems: HubActionItem[] = [
 
 ---
 
+### 2b. `HubActionSlider` — Quick Action 1-Baris Horizontal dengan Peeking & Capsule Scroll Indicator (Shopee Core UX)
+Bila jumlah menu lebih dari 4 atau membutuhkan layout horizontal hemat ruang:
+
+```tsx
+<HubCard title="Pintasan Aksi Operasional" subtitle="Prioritas alur kerja harian">
+  <HubActionGrid items={actionItems} variant="slider" />
+  {/* atau langsung gunakan <HubActionSlider items={actionItems} /> */}
+</HubCard>
+```
+
+**Karakteristik Kunci Shopee Slider:**
+1. **1-Baris Penuh (Single Row)**: Seluruh aksi diletakkan dalam 1 jalur horizontal (`flex overflow-x-auto no-scrollbar scroll-smooth`).
+2. **Content Peeking Affordance**: Lebar item dikunci pada `66px` sehingga pada layar ponsel rata-rata (360px-414px), item ke-5/6 sengaja terpotong sebagian di tepi kanan layar. Ini secara visual memberi tahu pengguna bahwa daftar dapat digeser tanpa membutuhkan teks instruksi.
+3. **Dynamic Capsule Scroll Indicator Bar**: Baris kapsul tipis di tengah bawah (`trackWidth: 36px`, `capsuleWidth: 14px`) yang bergeser mengikuti persentase scroll jari secara real-time.
+4. **Squircle Tile 44px Ringan**: Kotak ikon berupa squircle lembut dengan hairline border tipis dan line-art icon berwarna, menghindari latar blok tebal yang membuat UI terlihat gemuk.
+
+---
+
 ### 3. `HubBentoGrid` — Metrik 2x2 Garis Rambut (Ala "Keuangan Shopee")
 Menggantikan kartu-kartu bento tebal mengambang dengan satu kartu bergaris sekat tipis:
 
