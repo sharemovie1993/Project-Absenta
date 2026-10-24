@@ -590,6 +590,39 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
           }
         });
       }
+      // 5.1 TU Koordinator & Persuratan Workspace
+      else if (currentWs.id === 'TU_KOORDINATOR_WORKSPACE' || currentWs.id === 'TU_PERSURATAN_WORKSPACE') {
+        allLeafItems.forEach(item => {
+          const p = (item.path || '').toLowerCase();
+          if (
+            p.startsWith('/correspondence') ||
+            p === '/dashboard' ||
+            p === '/academic/siswa' ||
+            p === '/academic/guru' ||
+            p === '/academic/buku-induk' ||
+            p === '/billing/invoices'
+          ) {
+            primaryItems.push(item);
+          }
+        });
+      }
+      // 5.2 Kaprog Workspace
+      else if (currentWs.id === 'KAPROG_WORKSPACE') {
+        allLeafItems.forEach(item => {
+          const p = (item.path || '').toLowerCase();
+          if (
+            p === '/dashboard' ||
+            p.startsWith('/hubin') ||
+            p.startsWith('/academic') ||
+            p.startsWith('/kurikulum') ||
+            p.startsWith('/kesiswaan') ||
+            p.startsWith('/sarpras') ||
+            p.startsWith('/rapor')
+          ) {
+            primaryItems.push(item);
+          }
+        });
+      }
       else if (currentWs.id === 'TU_KEPEGAWAIAN_WORKSPACE') {
         allLeafItems.forEach(item => {
           const p = (item.path || '').toLowerCase();
@@ -643,7 +676,7 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
         });
       }
 
-      if (primaryItems.length === 0 && !currentWs.id.startsWith('TU_') && currentWs.id !== 'STUDENT_WORKSPACE' && String(user?.role?.name || '').toUpperCase() !== 'SISWA') {
+      if (primaryItems.length === 0 && currentWs.id !== 'STUDENT_WORKSPACE' && String(user?.role?.name || '').toUpperCase() !== 'SISWA') {
         primaryItems = allLeafItems;
       }
 
