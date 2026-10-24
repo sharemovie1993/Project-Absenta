@@ -24,7 +24,7 @@ import {
 } from '@/api/correspondence/dkn.api';
 import { DknPrintModal } from './DknPrintModal';
 import { SuratPengantarModal } from './SuratPengantarModal';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 
 export interface UniversalDknViewProps {
   jurusanId?: string;
