@@ -309,13 +309,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
     return guruProfile?.wali_kelas_di?.nama_kelas || (user?.guru_profile as any)?.wali_kelas_di?.nama_kelas || 'Kelas Binaan';
   }, [waliKelasStrukturItem, guruProfile, user]);
 
-  // 🎯 SMART DEFAULT TAB RESOLUTION (Default Landing: Sesuai Peran Utama Guru/Staf)
+  // 🎯 DEFAULT TAB RESOLUTION (Posisi Netral: Apapun jabatannya, selalu mendarat di Beranda Dashboard)
   const defaultTabId = useMemo(() => {
-    if (isKaprog) return 'kaprog';
-    if (isWaliKelas || Boolean(waliKelasId)) return 'binaan';
-    if (isTUKepala || isTUPersuratan || isTUKepegawaian || isTU) return 'kepegawaian';
-    return 'portal';
-  }, [isKaprog, isWaliKelas, waliKelasId, isTUKepala, isTUPersuratan, isTUKepegawaian, isTU]);
+    if (isAdminRole && !isKepsek) return 'admin';
+    return 'ringkasan';
+  }, [isAdminRole, isKepsek]);
 
   // Synchronize Active Tab with Query Param (?tab=...) atau Smart Default Tab (dengan guard akses)
   const rawRequestedTab = searchParams.get('tab');
@@ -829,10 +827,10 @@ export const UnifiedStaffDashboard: React.FC = () => {
         label: 'Overview Eksekutif', 
         icon: Award,
       });
-    } else if ((isEffectivePendidik || isPureGerbangStaff) && !isAdminRole) {
+    } else if (!isAdminRole) {
       list.push({ 
         id: 'ringkasan', 
-        label: isPureGerbangStaff ? 'Scan Gerbang' : 'Beranda Guru', 
+        label: isPureGerbangStaff ? 'Scan Gerbang' : (isPendidik || isEffectivePendidik) ? 'Beranda Guru' : 'Beranda Staf', 
         icon: isPureGerbangStaff ? ShieldCheck : UserCheck 
       });
     }
