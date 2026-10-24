@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Edit3, Key, User, Users, MapPin, Award, QrCode, Save, Loader2, Camera, Upload, X, RotateCcw, AlertCircle, Briefcase, Shield, BookOpen } from 'lucide-react';
 import { Button, Modal, SearchableSelect, Input, Label, Textarea } from '../../../ui';
