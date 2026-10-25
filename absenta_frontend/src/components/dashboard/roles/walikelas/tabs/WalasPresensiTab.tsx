@@ -89,23 +89,25 @@ export const WalasPresensiTab: React.FC<WalasPresensiTabProps> = React.memo(({
   const isHistorical = data?.academicContext?.isHistoricalPeriod ?? false;
 
   return (
-    <div className="space-y-6 w-full max-w-full min-w-0">
-      {/* 1. EARLY WARNING SYSTEM (EWS): SISWA AT-RISK DENGAN TOMBOL TRACKING (STANDAR KAPROG) */}
+    <div className="space-y-4 sm:space-y-6 w-full max-w-full min-w-0 pb-28 sm:pb-8">
+      {/* 1. EARLY WARNING SYSTEM (EWS): SISWA AT-RISK DENGAN TOMBOL TRACKING (STANDAR KAPROG & SHOPEE-GRADE MOBILE) */}
       {atRiskStudents.length > 0 && (
-        <Card noPadding className="p-4 sm:p-5 rounded-2xl border border-rose-200/80 dark:border-rose-900/60 bg-white dark:bg-slate-900 shadow-xs space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-rose-100 dark:border-rose-950/60 pb-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/60 border border-rose-200/60 dark:border-rose-800/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+        <Card noPadding className="p-3.5 sm:p-5 rounded-2xl border border-rose-200/80 dark:border-rose-900/60 bg-white dark:bg-slate-900 shadow-xs space-y-3 sm:space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 border-b border-rose-100 dark:border-rose-950/60 pb-3">
+            <div className="flex items-start sm:items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/60 border border-rose-200/60 dark:border-rose-800/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
                 <ShieldAlert className="w-4 h-4" />
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <span>Deteksi Dini: Siswa Butuh Perhatian Khusus</span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
+                    Deteksi Dini: Siswa Butuh Perhatian Khusus
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 shrink-0">
                     {atRiskStudents.length} Siswa
                   </span>
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                </div>
+                <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
                   Daftar siswa dengan kehadiran di bawah batas minimum (85%) atau memiliki akumulasi alpa beruntun.
                 </p>
               </div>
@@ -116,7 +118,7 @@ export const WalasPresensiTab: React.FC<WalasPresensiTabProps> = React.memo(({
                 variant="outline"
                 size="sm"
                 onClick={() => onOpenRujukanModal(atRiskStudents[0])}
-                className="text-xs font-semibold text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/30 gap-1.5 self-start sm:self-auto cursor-pointer"
+                className="text-xs font-semibold text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/30 gap-1.5 self-start sm:self-auto cursor-pointer shrink-0"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>Rujuk ke BP/BK</span>
@@ -124,9 +126,87 @@ export const WalasPresensiTab: React.FC<WalasPresensiTabProps> = React.memo(({
             )}
           </div>
 
-          {/* Tabel At-Risk Siswa dengan Tombol Tracking */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          {/* ── TAMPILAN MOBILE: KARTU SISWA AT-RISK SHOPEE-GRADE (0 HORIZONTAL SCROLL) ── */}
+          <div className="block sm:hidden space-y-3">
+            {atRiskStudents.map((siswa) => (
+              <div
+                key={siswa.id}
+                className="p-3 rounded-xl border border-rose-100 dark:border-rose-900/40 bg-rose-50/25 dark:bg-rose-950/20 space-y-2.5 shadow-2xs"
+              >
+                {/* Header Siswa & Indikator */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <span className="font-bold text-xs text-slate-900 dark:text-slate-100 block truncate">
+                      {siswa.nama}
+                    </span>
+                    <span className="text-[10.5px] text-slate-500 dark:text-slate-400 font-mono block">
+                      NIS: {siswa.nis}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      className={cn(
+                        'px-2 py-0.5 rounded-md text-[10.5px] font-mono font-bold',
+                        siswa.persentase < 85
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-900/60'
+                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                      )}
+                    >
+                      {siswa.persentase}%
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md text-[10.5px] font-mono font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/80 dark:border-rose-900/60">
+                      {siswa.alfaCount} Alpa
+                    </span>
+                  </div>
+                </div>
+
+                {/* Box Rekomendasi */}
+                <div className="flex items-start gap-1.5 p-2 rounded-lg bg-white/90 dark:bg-slate-900/90 border border-rose-100 dark:border-rose-900/30 text-[11px] text-slate-700 dark:text-slate-300 leading-snug">
+                  <AlertTriangle className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <span className="font-semibold text-rose-700 dark:text-rose-400 block text-[10px]">
+                      Rekomendasi Tindak Lanjut:
+                    </span>
+                    <span>{siswa.rekomendasi}</span>
+                  </div>
+                </div>
+
+                {/* Tombol Aksi Grid 2 Kolom Ramah Sentuhan */}
+                <div className="grid grid-cols-2 gap-2 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setTrackingTarget({
+                        isOpen: true,
+                        siswaId: siswa.id,
+                        siswaNama: siswa.nama,
+                      })
+                    }
+                    className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200/80 dark:border-indigo-800/80 hover:bg-indigo-100 cursor-pointer active:scale-98 transition-all"
+                  >
+                    <Activity className="w-3.5 h-3.5" />
+                    <span>Tracking</span>
+                  </button>
+
+                  {onOpenRujukanModal && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenRujukanModal(siswa)}
+                      className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border border-rose-200/80 dark:border-rose-800/80 hover:bg-rose-100 cursor-pointer active:scale-98 transition-all"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Rujuk BP/BK</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* ── TAMPILAN DESKTOP: TABEL KOMPREHENSIF ── */}
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full text-left text-xs min-w-[620px]">
               <thead className="bg-slate-50/70 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-y border-slate-100 dark:border-slate-800">
                 <tr>
                   <th className="py-2.5 px-3">Nama Siswa</th>

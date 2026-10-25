@@ -210,7 +210,7 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
   };
 
   return (
-    <div className="w-full max-w-full min-w-0 space-y-5">
+    <div className="w-full max-w-full min-w-0 space-y-5 pb-28 sm:pb-8">
       {/* 1. Mobile Top Controls (< lg only: Compact Identity Strip + Collapsible Filter) */}
       <div className="flex lg:hidden flex-col gap-2">
         {/* Mobile Shopee-style Top Bar with Back Arrow */}

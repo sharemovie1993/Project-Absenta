@@ -372,36 +372,36 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
 
       {/* Ringkasan Metrik Cepat Kelas Terpilih */}
       {!hideHeaderStats && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-xs">
-            <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+          <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-xs">
+            <div className="text-[10.5px] sm:text-[11px] font-medium text-slate-500 dark:text-slate-400">
               Total Siswa Kelas
             </div>
-            <div className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100">
+            <div className="text-base sm:text-xl font-bold text-slate-800 dark:text-slate-100">
               {rows.length}
             </div>
           </div>
-          <div className="p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-900/40 shadow-xs">
-            <div className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+          <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-900/40 shadow-xs">
+            <div className="text-[10.5px] sm:text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
               Rata-rata Kehadiran
             </div>
-            <div className="text-lg sm:text-xl font-bold text-emerald-700 dark:text-emerald-300">
+            <div className="text-base sm:text-xl font-bold text-emerald-700 dark:text-emerald-300">
               {stats.avgHadir}%
             </div>
           </div>
-          <div className="p-3 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-900/40 shadow-xs">
-            <div className="text-[11px] font-medium text-blue-600 dark:text-blue-400">
+          <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-900/40 shadow-xs">
+            <div className="text-[10.5px] sm:text-[11px] font-medium text-blue-600 dark:text-blue-400">
               Sakit & Izin
             </div>
-            <div className="text-lg sm:text-xl font-bold text-blue-700 dark:text-blue-300">
+            <div className="text-base sm:text-xl font-bold text-blue-700 dark:text-blue-300">
               {stats.totalSakit + stats.totalIzin}
             </div>
           </div>
-          <div className="p-3 rounded-2xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200/60 dark:border-rose-900/40 shadow-xs">
-            <div className="text-[11px] font-medium text-rose-600 dark:text-rose-400">
+          <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200/60 dark:border-rose-900/40 shadow-xs">
+            <div className="text-[10.5px] sm:text-[11px] font-medium text-rose-600 dark:text-rose-400">
               Total Alpa
             </div>
-            <div className="text-lg sm:text-xl font-bold text-rose-700 dark:text-rose-300">
+            <div className="text-base sm:text-xl font-bold text-rose-700 dark:text-rose-300">
               {stats.totalAlpa}
             </div>
           </div>
@@ -492,87 +492,173 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
             )}
           </div>
         ) : viewMode === 'SUMMARY' ? (
-          /* TABEL SUMMARY / AKUMULASI (9 Kolom Proporsional) */
-          <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-slate-50 dark:bg-slate-800/90 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200/80 sticky top-0 z-10">
-              <tr>
-                <th className="py-2.5 px-3 w-12 text-center">No</th>
-                <th className="py-2.5 px-4 min-w-[180px]">Nama Siswa</th>
-                <th className="py-2.5 px-3 text-center whitespace-nowrap">NIS</th>
-                <th className="py-2.5 px-3 text-center">Hadir</th>
-                <th className="py-2.5 px-3 text-center">Izin</th>
-                <th className="py-2.5 px-3 text-center">Sakit</th>
-                <th className="py-2.5 px-3 text-center">Alpa</th>
-                <th className="py-2.5 px-3 text-center">Terlambat</th>
-                <th className="py-2.5 px-3 text-center">% Kehadiran</th>
-                <th className="py-2.5 px-3 text-center font-bold">Total Poin</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-              {filteredRows.length === 0 ? (
+          <>
+            {/* TABEL SUMMARY DESKTOP (9 Kolom Proporsional) */}
+            <table className="hidden sm:table w-full text-left text-xs border-collapse">
+              <thead className="bg-slate-50 dark:bg-slate-800/90 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200/80 sticky top-0 z-10">
                 <tr>
-                  <td colSpan={10} className="py-8 text-center text-slate-400">
-                    {searchQuery ? `Tidak ditemukan siswa yang cocok dengan "${searchQuery}"` : 'Tidak ada data siswa'}
-                  </td>
+                  <th className="py-2.5 px-3 w-12 text-center">No</th>
+                  <th className="py-2.5 px-4 min-w-[180px]">Nama Siswa</th>
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap">NIS</th>
+                  <th className="py-2.5 px-3 text-center">Hadir</th>
+                  <th className="py-2.5 px-3 text-center">Izin</th>
+                  <th className="py-2.5 px-3 text-center">Sakit</th>
+                  <th className="py-2.5 px-3 text-center">Alpa</th>
+                  <th className="py-2.5 px-3 text-center">Terlambat</th>
+                  <th className="py-2.5 px-3 text-center">% Kehadiran</th>
+                  <th className="py-2.5 px-3 text-center font-bold">Total Poin</th>
                 </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {filteredRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-8 text-center text-slate-400">
+                      {searchQuery ? `Tidak ditemukan siswa yang cocok dengan "${searchQuery}"` : 'Tidak ada data siswa'}
+                    </td>
+                  </tr>
+                ) : (
+                  pagedRows.map((r, idx) => {
+                    const rowNum = (page - 1) * limit + idx + 1;
+                    const totalDays = (r.HADIR ?? 0) + (r.IZIN ?? 0) + (r.SAKIT ?? 0) + (r.ALPA ?? 0) + (r.TERLAMBAT ?? 0);
+                    const pct = totalDays === 0 ? 0 : Math.round((((r.HADIR ?? 0) + (r.TERLAMBAT ?? 0)) / totalDays) * 100);
+                    return (
+                      <tr key={r.siswa_id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="py-2.5 px-3 text-center text-slate-400 font-mono text-[11px]">
+                          {rowNum}
+                        </td>
+                        <td className="py-2.5 px-4 font-semibold text-slate-800 dark:text-slate-100">
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${r.siswa_id}`)}
+                            className="text-left font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer truncate max-w-[240px] block"
+                            title={r.nama_siswa}
+                          >
+                            {r.nama_siswa}
+                          </button>
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap text-[11px]">
+                          {r.nis || '-'}
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-bold text-emerald-600 font-mono">
+                          {r.HADIR || 0}
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-bold text-blue-600 font-mono">
+                          {r.IZIN || 0}
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-bold text-amber-600 font-mono">
+                          {r.SAKIT || 0}
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-bold text-rose-600 font-mono">
+                          {r.ALPA || 0}
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-bold text-purple-600 font-mono">
+                          {r.TERLAMBAT || 0}
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-mono font-bold">
+                          <span className={pct >= 85 ? 'text-emerald-600' : pct >= 75 ? 'text-amber-600' : 'text-rose-600'}>
+                            {pct}%
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-bold text-slate-800 dark:text-slate-100 font-mono">
+                          {r.total_poin || 0}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+
+            {/* DAFTAR KARTU MOBILE (Shopee-Grade High-Density, 0 Horiz Scroll) */}
+            <div className="block sm:hidden divide-y divide-slate-100 dark:divide-slate-800">
+              {filteredRows.length === 0 ? (
+                <div className="py-8 text-center text-slate-400 text-xs">
+                  {searchQuery ? `Tidak ditemukan siswa yang cocok dengan "${searchQuery}"` : 'Tidak ada data siswa'}
+                </div>
               ) : (
                 pagedRows.map((r, idx) => {
                   const rowNum = (page - 1) * limit + idx + 1;
                   const totalDays = (r.HADIR ?? 0) + (r.IZIN ?? 0) + (r.SAKIT ?? 0) + (r.ALPA ?? 0) + (r.TERLAMBAT ?? 0);
                   const pct = totalDays === 0 ? 0 : Math.round((((r.HADIR ?? 0) + (r.TERLAMBAT ?? 0)) / totalDays) * 100);
                   return (
-                    <tr key={r.siswa_id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="py-2.5 px-3 text-center text-slate-400 font-mono text-[11px]">
-                        {rowNum}
-                      </td>
-                      <td className="py-2.5 px-4 font-semibold text-slate-800 dark:text-slate-100">
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${r.siswa_id}`)}
-                          className="text-left font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer truncate max-w-[240px] block"
-                          title={r.nama_siswa}
-                        >
-                          {r.nama_siswa}
-                        </button>
-                      </td>
-                      <td className="py-2.5 px-3 text-center font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap text-[11px]">
-                        {r.nis || '-'}
-                      </td>
-                      <td className="py-2.5 px-3 text-center font-bold text-emerald-600 font-mono">
-                        {r.HADIR || 0}
-                      </td>
-                      <td className="py-2.5 px-3 text-center font-bold text-blue-600 font-mono">
-                        {r.IZIN || 0}
-                      </td>
-                      <td className="py-2.5 px-3 text-center font-bold text-amber-600 font-mono">
-                        {r.SAKIT || 0}
-                      </td>
-                      <td className="py-2.5 px-3 text-center font-bold text-rose-600 font-mono">
-                        {r.ALPA || 0}
-                      </td>
-                      <td className="py-2.5 px-3 text-center font-bold text-purple-600 font-mono">
-                        {r.TERLAMBAT || 0}
-                      </td>
-                      <td className="py-2.5 px-3 text-center font-mono font-bold">
-                        <span className={pct >= 85 ? 'text-emerald-600' : pct >= 75 ? 'text-amber-600' : 'text-rose-600'}>
-                          {pct}%
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3 text-center font-bold text-slate-800 dark:text-slate-100 font-mono">
-                        {r.total_poin || 0}
-                      </td>
-                    </tr>
+                    <div
+                      key={r.siswa_id}
+                      className="p-3 space-y-2 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors"
+                    >
+                      {/* Baris 1: No, Nama Siswa, NIS & % Kehadiran */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2 min-w-0 flex-1">
+                          <span className="w-5 text-[11px] font-mono text-slate-400 font-bold shrink-0 mt-0.5">
+                            {rowNum}.
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${r.siswa_id}`)}
+                              className="text-left font-bold text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer block truncate"
+                            >
+                              {r.nama_siswa}
+                            </button>
+                            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 block">
+                              NIS: {r.nis || '-'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span
+                            className={cn(
+                              'px-2 py-0.5 rounded-md text-[10.5px] font-mono font-bold',
+                              pct >= 85
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                : pct >= 75
+                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                                : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+                            )}
+                          >
+                            {pct}%
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Baris 2: Strip Kehadiran H, I, S, A, T & Poin */}
+                      <div className="grid grid-cols-6 gap-1 text-center text-[10px] font-mono pt-0.5">
+                        <div className="p-1 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold">
+                          <span className="text-[8.5px] text-emerald-600/70 block">H</span>
+                          {r.HADIR || 0}
+                        </div>
+                        <div className="p-1 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold">
+                          <span className="text-[8.5px] text-blue-600/70 block">I</span>
+                          {r.IZIN || 0}
+                        </div>
+                        <div className="p-1 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-bold">
+                          <span className="text-[8.5px] text-amber-600/70 block">S</span>
+                          {r.SAKIT || 0}
+                        </div>
+                        <div className="p-1 rounded bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 font-bold">
+                          <span className="text-[8.5px] text-rose-600/70 block">A</span>
+                          {r.ALPA || 0}
+                        </div>
+                        <div className="p-1 rounded bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold">
+                          <span className="text-[8.5px] text-purple-600/70 block">T</span>
+                          {r.TERLAMBAT || 0}
+                        </div>
+                        <div className="p-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold">
+                          <span className="text-[8.5px] text-slate-500 block">POIN</span>
+                          {r.total_poin || 0}
+                        </div>
+                      </div>
+                    </div>
                   );
                 })
               )}
-            </tbody>
-          </table>
+            </div>
+          </>
         ) : (
           /* TABEL MATRIX / PER HARI (Ultra-Dense Zero Scroll: 1..31 + H, S, I, A, T, POIN Pas di Layar) */
           <table className="w-full text-left text-[11px] border-collapse">
             <thead className="bg-slate-50 dark:bg-slate-800/95 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200/80 sticky top-0 z-10 select-none">
               <tr>
-                <th className="py-2 px-2 whitespace-nowrap min-w-[110px] max-w-[150px]">Nama Siswa</th>
+                <th className="py-2 px-2 whitespace-nowrap min-w-[110px] max-w-[150px] sticky left-0 z-20 bg-slate-50 dark:bg-slate-800 shadow-[1px_0_3px_rgba(0,0,0,0.06)]">Nama Siswa</th>
                 <th className="py-2 px-1 text-center whitespace-nowrap font-mono text-[10px] w-14">NIS</th>
                 {dayNumbers.map((d) => (
                   <th
@@ -601,7 +687,15 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
               ) : (
                 pagedRows.map((r) => (
                   <tr key={r.siswa_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
-                    <td className="py-1 px-2 font-semibold text-slate-800 dark:text-slate-100 truncate max-w-[150px]" title={r.nama_siswa}>
+                    <td className="py-1 px-2 font-semibold text-slate-800 dark:text-slate-100 truncate max-w-[150px] sticky left-0 z-10 bg-white dark:bg-slate-900 shadow-[1px_0_3px_rgba(0,0,0,0.06)]" title={r.nama_siswa}>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${r.siswa_id}`)}
+                        className="text-left font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer truncate max-w-[140px] block"
+                      >
+                        {r.nama_siswa}
+                      </button>
+                    </td>
                       <button
                         type="button"
                         onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${r.siswa_id}`)}
