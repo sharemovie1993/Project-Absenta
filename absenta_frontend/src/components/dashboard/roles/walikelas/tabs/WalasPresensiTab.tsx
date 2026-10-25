@@ -1,19 +1,10 @@
 import React, { useState, useMemo, Suspense, lazy } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
-  Activity, 
-  ArrowUpRight, 
   ShieldAlert, 
-  UserCheck, 
-  AlertTriangle, 
-  CalendarCheck,
-  Send,
-  Sparkles
 } from 'lucide-react';
-import { Card } from '@/components/ui/Card';
-import { Button, Badge, Loader } from '@/components/ui';
+import { Button, Loader } from '@/components/ui';
 import { getEwsPerKelasList } from '@/api/kurikulum/waliKelas.api';
-import { cn } from '@/lib/utils';
 import type { WalasDashboardData } from '../types';
 
 // Code-splitting heavy components to reduce initial tab bundle (Pilar 21B & TBT Optimization)
@@ -29,13 +20,14 @@ export interface WalasPresensiTabProps {
   kelasNama?: string;
   data?: WalasDashboardData;
   onOpenRujukanModal?: (siswa: any) => void;
+  onNavigateToDeteksi?: () => void;
 }
 
 export const WalasPresensiTab: React.FC<WalasPresensiTabProps> = React.memo(({
   kelasId,
   kelasNama,
   data,
-  onOpenRujukanModal,
+  onNavigateToDeteksi,
 }) => {
   // Modal Tracking Siswa state
   const [trackingTarget, setTrackingTarget] = useState<{
@@ -90,187 +82,39 @@ export const WalasPresensiTab: React.FC<WalasPresensiTabProps> = React.memo(({
 
   return (
     <div className="space-y-4 sm:space-y-6 w-full max-w-full min-w-0 pb-28 sm:pb-8">
-      {/* 1. EARLY WARNING SYSTEM (EWS): SISWA AT-RISK DENGAN TOMBOL TRACKING (STANDAR KAPROG & SHOPEE-GRADE MOBILE) */}
-      {atRiskStudents.length > 0 && (
-        <Card noPadding className="p-3.5 sm:p-5 rounded-2xl border border-rose-200/80 dark:border-rose-900/60 bg-white dark:bg-slate-900 shadow-xs space-y-3 sm:space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 border-b border-rose-100 dark:border-rose-950/60 pb-3">
-            <div className="flex items-start sm:items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/60 border border-rose-200/60 dark:border-rose-800/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
-                <ShieldAlert className="w-4 h-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
-                    Deteksi Dini: Siswa Butuh Perhatian Khusus
-                  </h3>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 shrink-0">
-                    {atRiskStudents.length} Siswa
-                  </span>
-                </div>
-                <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
-                  Daftar siswa dengan kehadiran di bawah batas minimum (85%) atau memiliki akumulasi alpa beruntun.
-                </p>
-              </div>
+      {/* Shortcut Elegan ke Tab Deteksi Dini jika ada siswa at-risk */}
+      {atRiskStudents.length > 0 && onNavigateToDeteksi && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 sm:p-3.5 rounded-2xl border border-rose-200/80 dark:border-rose-900/60 bg-rose-50/70 dark:bg-rose-950/30 text-xs shadow-2xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+              <ShieldAlert className="w-4 h-4" />
             </div>
-
-            {onOpenRujukanModal && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onOpenRujukanModal(atRiskStudents[0])}
-                className="text-xs font-semibold text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/30 gap-1.5 self-start sm:self-auto cursor-pointer shrink-0"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>Rujuk ke BP/BK</span>
-              </Button>
-            )}
-          </div>
-
-          {/* ── TAMPILAN MOBILE: KARTU SISWA AT-RISK SHOPEE-GRADE (0 HORIZONTAL SCROLL) ── */}
-          <div className="block sm:hidden space-y-3">
-            {atRiskStudents.map((siswa) => (
-              <div
-                key={siswa.id}
-                className="p-3 rounded-xl border border-rose-100 dark:border-rose-900/40 bg-rose-50/25 dark:bg-rose-950/20 space-y-2.5 shadow-2xs"
-              >
-                {/* Header Siswa & Indikator */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <span className="font-bold text-xs text-slate-900 dark:text-slate-100 block truncate">
-                      {siswa.nama}
-                    </span>
-                    <span className="text-[10.5px] text-slate-500 dark:text-slate-400 font-mono block">
-                      NIS: {siswa.nis}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span
-                      className={cn(
-                        'px-2 py-0.5 rounded-md text-[10.5px] font-mono font-bold',
-                        siswa.persentase < 85
-                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-900/60'
-                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                      )}
-                    >
-                      {siswa.persentase}%
-                    </span>
-                    <span className="px-2 py-0.5 rounded-md text-[10.5px] font-mono font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/80 dark:border-rose-900/60">
-                      {siswa.alfaCount} Alpa
-                    </span>
-                  </div>
-                </div>
-
-                {/* Box Rekomendasi */}
-                <div className="flex items-start gap-1.5 p-2 rounded-lg bg-white/90 dark:bg-slate-900/90 border border-rose-100 dark:border-rose-900/30 text-[11px] text-slate-700 dark:text-slate-300 leading-snug">
-                  <AlertTriangle className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <span className="font-semibold text-rose-700 dark:text-rose-400 block text-[10px]">
-                      Rekomendasi Tindak Lanjut:
-                    </span>
-                    <span>{siswa.rekomendasi}</span>
-                  </div>
-                </div>
-
-                {/* Tombol Aksi Grid 2 Kolom Ramah Sentuhan */}
-                <div className="grid grid-cols-2 gap-2 pt-0.5">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setTrackingTarget({
-                        isOpen: true,
-                        siswaId: siswa.id,
-                        siswaNama: siswa.nama,
-                      })
-                    }
-                    className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200/80 dark:border-indigo-800/80 hover:bg-indigo-100 cursor-pointer active:scale-98 transition-all"
-                  >
-                    <Activity className="w-3.5 h-3.5" />
-                    <span>Tracking</span>
-                  </button>
-
-                  {onOpenRujukanModal && (
-                    <button
-                      type="button"
-                      onClick={() => onOpenRujukanModal(siswa)}
-                      className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border border-rose-200/80 dark:border-rose-800/80 hover:bg-rose-100 cursor-pointer active:scale-98 transition-all"
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                      <span>Rujuk BP/BK</span>
-                    </button>
-                  )}
-                </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-bold text-slate-900 dark:text-slate-100 text-xs">
+                  Deteksi Dini Rombel:
+                </span>
+                <span className="px-1.5 py-0.2 rounded-md text-[10px] font-bold bg-rose-200/80 text-rose-800 dark:bg-rose-900 dark:text-rose-200">
+                  {atRiskStudents.length} Siswa
+                </span>
               </div>
-            ))}
+              <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate mt-0.5">
+                Terdapat peserta didik dengan kehadiran &lt; 85% atau alpa beruntun yang memerlukan intervensi.
+              </p>
+            </div>
           </div>
-
-          {/* ── TAMPILAN DESKTOP: TABEL KOMPREHENSIF ── */}
-          <div className="hidden sm:block overflow-x-auto">
-            <table className="w-full text-left text-xs min-w-[620px]">
-              <thead className="bg-slate-50/70 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-y border-slate-100 dark:border-slate-800">
-                <tr>
-                  <th className="py-2.5 px-3">Nama Siswa</th>
-                  <th className="py-2.5 px-3 text-center">Tingkat Kehadiran</th>
-                  <th className="py-2.5 px-3 text-center">Akumulasi Alpa</th>
-                  <th className="py-2.5 px-3">Rekomendasi Tindak Lanjut</th>
-                  <th className="py-2.5 px-3 text-right">Aksi Penelusuran</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {atRiskStudents.map((siswa) => (
-                  <tr key={siswa.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
-                    <td className="py-2.5 px-3">
-                      <div className="font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">
-                        {siswa.nama}
-                      </div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-                        NIS: {siswa.nis}
-                      </div>
-                    </td>
-                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                      <span className={`font-mono font-bold text-xs ${siswa.persentase < 85 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                        {siswa.persentase}%
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800">
-                        {siswa.alfaCount} Alpa
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400 text-xs">
-                      {siswa.rekomendasi}
-                    </td>
-                    <td className="py-2.5 px-3 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-2">
-                        {/* Tombol Tracking Standar Kaprog */}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            setTrackingTarget({
-                              isOpen: true,
-                              siswaId: siswa.id,
-                              siswaNama: siswa.nama,
-                            })
-                          }
-                          className="h-7 px-2.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50/80 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 border border-indigo-200/60 dark:border-indigo-800/60 rounded-lg inline-flex items-center gap-1.5 transition-all duration-150 shadow-2xs hover:shadow-xs group cursor-pointer"
-                          title={`Lihat linimasa tracking presensi ${siswa.nama}`}
-                        >
-                          <Activity className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform" />
-                          <span>Tracking</span>
-                          <ArrowUpRight className="w-3 h-3 text-indigo-400 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onNavigateToDeteksi}
+            className="h-7.5 px-3 text-xs font-bold text-rose-600 dark:text-rose-300 border-rose-300 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40 shrink-0 self-end sm:self-auto cursor-pointer"
+          >
+            Lihat Deteksi Dini &gt;
+          </Button>
+        </div>
       )}
 
-      {/* 2. REKAPITULASI KOLEKTIF ROMBEL TERPADU (KOMPONEN REKAP KOLEKTIF VIEW DRY) - Code-split Chunk */}
+      {/* REKAPITULASI KOLEKTIF ROMBEL TERPADU (KOMPONEN REKAP KOLEKTIF VIEW DRY) - Code-split Chunk */}
       <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs p-4 sm:p-5">
         <Suspense fallback={<div className="p-12 flex justify-center"><Loader size="lg" /></div>}>
           <RekapKolektifView
@@ -286,7 +130,7 @@ export const WalasPresensiTab: React.FC<WalasPresensiTabProps> = React.memo(({
         </Suspense>
       </div>
 
-      {/* 3. MODAL TRACKING SISWA RESMI (STANDAR KAPROG & ABSENTA) - Lazy Mounted */}
+      {/* MODAL TRACKING SISWA RESMI (STANDAR KAPROG & ABSENTA) - Lazy Mounted */}
       {trackingTarget.isOpen && (
         <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>
           <TrackingSiswaModal

@@ -23,6 +23,7 @@ import { WalasBerandaTab } from './walikelas/tabs/WalasBerandaTab';
 import { WalasSiswaTab } from './walikelas/tabs/WalasSiswaTab';
 import { WalasStrukturTab } from './walikelas/tabs/WalasStrukturTab';
 import { WalasPresensiTab } from './walikelas/tabs/WalasPresensiTab';
+import { WalasDeteksiDiniTab } from './walikelas/tabs/WalasDeteksiDiniTab';
 import { WalasJurnalTab } from './walikelas/tabs/WalasJurnalTab';
 import { WalasIzinTab } from './walikelas/tabs/WalasIzinTab';
 import { WalasDisiplinTab } from './walikelas/tabs/WalasDisiplinTab';
@@ -51,7 +52,7 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
   const subtabParam = searchParams.get('subtab') as WaliKelasTabId | null;
 
   const validTabs: WaliKelasTabId[] = [
-    'ringkasan', 'siswa', 'struktur', 'presensi', 'jurnal', 'izin', 'disiplin', 'prestasi', 'rekap', 'rapor'
+    'ringkasan', 'siswa', 'struktur', 'presensi', 'deteksi', 'jurnal', 'izin', 'disiplin', 'prestasi', 'rekap', 'rapor'
   ];
 
   // Mobile Filter Collapsible State
@@ -174,7 +175,13 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
         id: 'presensi' as WaliKelasTabId, 
         label: 'Presensi Rombel', 
         icon: CalendarCheck, 
-        badge: presensiCounter,
+        badge: tidakHadirToday > 0 ? tidakHadirToday : undefined,
+      },
+      { 
+        id: 'deteksi' as WaliKelasTabId, 
+        label: 'Deteksi Dini', 
+        icon: ShieldAlert, 
+        badge: atRiskCount > 0 ? atRiskCount : undefined,
       },
       { 
         id: 'jurnal' as WaliKelasTabId, 
@@ -420,6 +427,21 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
                   className={cn('w-full', activeTab === 'presensi' ? 'block animate-in fade-in duration-100' : 'hidden')}
                 >
                   <WalasPresensiTab
+                    kelasId={activeKelasId}
+                    kelasNama={activeKelasNama}
+                    data={walasData}
+                    onOpenRujukanModal={() => handleTabSelect('disiplin')}
+                    onNavigateToDeteksi={() => handleTabSelect('deteksi')}
+                  />
+                </div>
+              )}
+
+              {visitedTabs.has('deteksi') && (
+                <div
+                  key="tab-deteksi"
+                  className={cn('w-full', activeTab === 'deteksi' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                >
+                  <WalasDeteksiDiniTab
                     kelasId={activeKelasId}
                     kelasNama={activeKelasNama}
                     data={walasData}

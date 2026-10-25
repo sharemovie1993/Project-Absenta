@@ -55,14 +55,16 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
       title: `${ewsAlerts.length} Siswa Perlu Perhatian Khusus`,
       desc: `Terdeteksi ${ewsAlerts[0]?.nama || 'siswa'} (${ewsAlerts[0]?.alfaCount || 3}x alfa). Rekomendasi: ${ewsAlerts[0]?.rekomendasi || 'Koordinasi BK'}`,
       time: 'Penting',
-      isWarning: true
+      isWarning: true,
+      onClick: () => onSelectTab('deteksi'),
     }] : []),
     ...(izinPending > 0 ? [{
       id: 'izin-1',
       title: `${izinPending} Permohonan Izin / Sakit Masuk`,
       desc: 'Menunggu peninjauan surat dokter dan persetujuan wali kelas',
       time: 'Terkini',
-      isWarning: false
+      isWarning: false,
+      onClick: () => onSelectTab('izin'),
     }] : []),
     {
       id: 'log-kbm',
@@ -180,13 +182,21 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
         else onSelectTab('jurnal');
       },
     },
-    // Slot 4 (Disiplin): Rujukan Kasus & Early Warning BK
+    // Slot 4 (Deteksi Dini): Early Warning System Siswa At-Risk
     {
-      id: 'disiplin',
-      label: 'Rujukan BK',
+      id: 'deteksi',
+      label: 'Deteksi Dini',
       icon: ShieldAlert,
       iconColorClass: 'text-rose-600 dark:text-rose-400',
       badge: ewsAlerts.length > 0 ? ewsAlerts.length : undefined,
+      onClick: () => onSelectTab('deteksi'),
+    },
+    // Slot 4b (Disiplin): Catatan Pelanggaran Siswa
+    {
+      id: 'disiplin',
+      label: 'Pelanggaran',
+      icon: AlertTriangle,
+      iconColorClass: 'text-amber-600 dark:text-amber-400',
       onClick: () => onSelectTab('disiplin'),
     },
     // Slot 5: Data Siswa & Kontak Ortu
@@ -386,6 +396,7 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
                 key={act.id}
                 title={act.title}
                 subtitle={act.desc}
+                onClick={act.onClick}
                 rightBadge={
                   <span
                     className={cn(
