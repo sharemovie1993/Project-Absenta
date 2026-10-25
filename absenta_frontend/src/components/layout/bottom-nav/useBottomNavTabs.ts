@@ -478,8 +478,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
           },
           {
             id: 'base_action_hub',
-            label: 'Pusat Tugas & Tindakan',
-            shortLabel: 'Action Hub',
+            label: 'Tugas & Tindakan Saya',
+            shortLabel: 'Tugas Saya',
             icon: CheckSquare,
             targetPath: '/dashboard?tab=action_hub',
             isActive: (p, t) => (p === '/dashboard' || p === '/dashboard/') && t === 'action_hub',

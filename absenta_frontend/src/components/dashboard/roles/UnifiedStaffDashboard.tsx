@@ -845,11 +845,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
       icon: LayoutGrid,
     });
 
-    // ⚡ Action Hub (Pusat Tugas & Tindakan Terpadu)
+    // ⚡ Tugas Saya (Pusat Tugas & Tindakan Terpadu Guru/Staf)
     if (!isKepsek) {
       list.push({
         id: 'action_hub',
-        label: 'Action Hub',
+        label: 'Tugas Saya',
         icon: CheckSquare,
       });
     }

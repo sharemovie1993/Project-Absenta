@@ -65,7 +65,7 @@ export const StaffActionHubTab: React.FC<StaffActionHubTabProps> = React.memo(({
                 <CheckSquare size={18} />
               </div>
               <h2 className="text-base sm:text-lg font-black uppercase tracking-tight text-white">
-                Pusat Tugas & Tindakan (Action Hub)
+                Tugas & Tindakan Saya
               </h2>
             </div>
             <p className="text-xs text-indigo-200/90 max-w-xl font-normal leading-relaxed">
