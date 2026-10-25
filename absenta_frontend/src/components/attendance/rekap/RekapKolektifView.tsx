@@ -13,8 +13,12 @@ import {
   ShieldCheck,
   Calendar,
   Printer,
-  FileText
+  FileText,
+  CheckCircle2,
+  Clock,
+  AlertCircle
 } from 'lucide-react';
+import { HubCard, HubBentoGrid, type HubBentoCell } from '@/components/ui/hub';
 import toast from 'react-hot-toast';
 
 import { Button } from '@/components/ui/Button';
@@ -110,7 +114,6 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
-  const [isStatsCollapsed, setIsStatsCollapsed] = useState(false);
 
   // PDF Preview State
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
@@ -291,6 +294,38 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
     setIsPrintModalOpen(true);
   }, [rows]);
 
+  // Metrik Shopee-Grade Hairline Bento Grid (Maksimal 2 Baris Teks per Sel)
+  const bentoCells: HubBentoCell[] = useMemo(() => [
+    {
+      id: 'total_siswa',
+      title: 'Total Siswa',
+      value: `${rows.length} Siswa`,
+      icon: Users,
+      iconColorClass: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60',
+    },
+    {
+      id: 'kehadiran',
+      title: 'Rata-rata Hadir',
+      value: `${stats.avgHadir}%`,
+      icon: CheckCircle2,
+      iconColorClass: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60',
+    },
+    {
+      id: 'sakit_izin',
+      title: 'Sakit & Izin',
+      value: `${stats.totalSakit + stats.totalIzin} Siswa`,
+      icon: Clock,
+      iconColorClass: 'text-blue-600 bg-blue-50 dark:bg-blue-950/60',
+    },
+    {
+      id: 'alpa',
+      title: 'Total Alpa',
+      value: `${stats.totalAlpa} Siswa`,
+      icon: AlertCircle,
+      iconColorClass: 'text-rose-600 bg-rose-50 dark:bg-rose-950/60',
+    },
+  ], [rows.length, stats.avgHadir, stats.totalSakit, stats.totalIzin, stats.totalAlpa]);
+
   const content = (
     <div className="space-y-4 w-full max-w-full min-w-0">
       {/* Scope Mode Banner */}
@@ -311,65 +346,48 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
         </div>
       )}
 
-      {/* Ringkasan Metrik Cepat Kelas Terpilih (Standar Varian Mini / Compact-Premium) */}
+      {/* Ringkasan Metrik (Shopee-Grade HubBentoGrid di HP, Compact-Premium di Desktop) */}
       {!hideHeaderStats && (
-        <div className="space-y-1.5">
-          {isMobile && (
-            <div className="flex items-center justify-between px-0.5">
-              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
-                Statistik Kehadiran
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsStatsCollapsed((prev) => !prev)}
-                className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
-              >
-                {isStatsCollapsed ? 'Tampilkan' : 'Sembunyikan'}
-              </button>
-            </div>
-          )}
-
-          {!isStatsCollapsed && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5 animate-in fade-in duration-150">
-              <AnalyticsCard
-                title="Total Siswa Kelas"
-                value={rows.length}
-                icon={<Users className="w-3.5 h-3.5" />}
-                gradient="from-slate-700 to-slate-900"
-                variant="compact-premium"
-                compact={true}
-                mobileCompact={true}
-              />
-              <AnalyticsCard
-                title="Rata-rata Hadir"
-                value={`${stats.avgHadir}%`}
-                icon={<ShieldCheck className="w-3.5 h-3.5" />}
-                gradient="from-emerald-500 to-emerald-600"
-                variant="compact-premium"
-                compact={true}
-                mobileCompact={true}
-              />
-              <AnalyticsCard
-                title="Sakit & Izin"
-                value={stats.totalSakit + stats.totalIzin}
-                icon={<Calendar className="w-3.5 h-3.5" />}
-                gradient="from-blue-500 to-blue-600"
-                variant="compact-premium"
-                compact={true}
-                mobileCompact={true}
-              />
-              <AnalyticsCard
-                title="Total Alpa"
-                value={stats.totalAlpa}
-                icon={<ArrowRight className="w-3.5 h-3.5" />}
-                gradient="from-rose-500 to-rose-600"
-                variant="compact-premium"
-                compact={true}
-                mobileCompact={true}
-              />
-            </div>
-          )}
-        </div>
+        isMobile ? (
+          <HubCard noPadding className="mb-2 shadow-2xs">
+            <HubBentoGrid cells={bentoCells} columns={2} />
+          </HubCard>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+            <AnalyticsCard
+              title="Total Siswa Kelas"
+              value={`${rows.length} Siswa`}
+              icon={<Users className="w-4 h-4" />}
+              gradient="from-slate-700 to-slate-900"
+              variant="compact-premium"
+              compact={true}
+            />
+            <AnalyticsCard
+              title="Rata-rata Hadir"
+              value={`${stats.avgHadir}%`}
+              icon={<CheckCircle2 className="w-4 h-4" />}
+              gradient="from-emerald-500 to-emerald-600"
+              variant="compact-premium"
+              compact={true}
+            />
+            <AnalyticsCard
+              title="Sakit & Izin"
+              value={`${stats.totalSakit + stats.totalIzin} Siswa`}
+              icon={<Clock className="w-4 h-4" />}
+              gradient="from-blue-500 to-blue-600"
+              variant="compact-premium"
+              compact={true}
+            />
+            <AnalyticsCard
+              title="Total Alpa"
+              value={`${stats.totalAlpa} Siswa`}
+              icon={<AlertCircle className="w-4 h-4" />}
+              gradient="from-rose-500 to-rose-600"
+              variant="compact-premium"
+              compact={true}
+            />
+          </div>
+        )
       )}
 
       {/* Toolbar Filter Terstandar (Engine Terpusat AcademicFilterToolbar) */}
