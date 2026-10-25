@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { 
   FileText, 
   Printer, 
@@ -23,9 +24,8 @@ const SuspenseFallback = () => (
 );
 
 // ── FLAG DEBUG IDENTIFIKASI MIGRASI (DEV MODE ONLY) ───────────
-// Otomatis aktif HANYA pada lingkungan development (import.meta.env.DEV).
-// Di production build (staging/production live), border dan badge ini otomatis 100% mati.
-const DEBUG_BORDER_ACADEMIC_FILTER = Boolean(import.meta.env.DEV);
+// Nonaktif secara default agar UI bersih di lingkungan pengujian
+const DEBUG_BORDER_ACADEMIC_FILTER = false;
 
 export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
   enableTp = true,
@@ -101,17 +101,20 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
   className,
   searchPlaceholder = 'Cari data...',
 }: AcademicFilterToolbarProps) {
+  const isMobile = useIsMobile(768);
+  const effectiveVariant = variant === 'card' && isMobile ? 'mini' : variant;
+
   const containerClasses = cn(
     'relative transition-all',
-    variant === 'card' &&
+    effectiveVariant === 'card' &&
       'p-3 sm:p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 shadow-2xs',
-    variant === 'compact' &&
+    effectiveVariant === 'compact' &&
       'p-2 sm:p-2.5 rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/30',
-    variant === 'sidebar' &&
+    effectiveVariant === 'sidebar' &&
       'p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs w-full',
-    variant === 'mini' &&
+    effectiveVariant === 'mini' &&
       'p-2 sm:p-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs w-full',
-    variant === 'plain' && '',
+    effectiveVariant === 'plain' && '',
     DEBUG_BORDER_ACADEMIC_FILTER &&
       '!border-2 !border-rose-500 shadow-md shadow-rose-500/10 ring-2 ring-rose-500/20',
     className
@@ -176,8 +179,8 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
           </div>
         )}
 
-        {/* Header Baris Mini jika variant === 'mini' */}
-        {variant === 'mini' && (
+        {/* Header Baris Mini jika effectiveVariant === 'mini' */}
+        {effectiveVariant === 'mini' && (
           <div className="flex items-center gap-1.5">
             {enableSearch && (
               <div className="relative flex-1 min-w-0">
@@ -229,16 +232,16 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
         )}
 
         {/* Baris Filter Dinamis */}
-        {(variant !== 'mini' || isMiniExpanded) && (
+        {(effectiveVariant !== 'mini' || isMiniExpanded) && (
           <div className={cn(
-            variant === 'sidebar'
+            effectiveVariant === 'sidebar'
               ? 'flex flex-col gap-3 w-full'
               : 'flex flex-wrap items-start gap-2.5 sm:gap-3.5',
-            variant === 'mini' && 'pt-2 border-t border-slate-100 dark:border-slate-800 animate-in fade-in duration-150'
+            effectiveVariant === 'mini' && 'pt-2 border-t border-slate-100 dark:border-slate-800 animate-in fade-in duration-150'
           )}>
           {/* 1. Tahun Pelajaran */}
           {enableTp && (
-            <div className={cn('space-y-1.5', variant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[140px] max-w-full sm:max-w-[240px]')}>
+            <div className={cn('space-y-1.5', effectiveVariant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[140px] max-w-full sm:max-w-[240px]')}>
               <label
                 htmlFor="filter-tp-select"
                 className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block"
@@ -262,7 +265,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
 
           {/* 2. Semester */}
           {enableSemester && (
-            <div className={cn('space-y-1.5', variant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[130px] max-w-full sm:max-w-[180px]')}>
+            <div className={cn('space-y-1.5', effectiveVariant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[130px] max-w-full sm:max-w-[180px]')}>
               <label
                 htmlFor="filter-sem-select"
                 className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block"
@@ -286,7 +289,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
 
           {/* 3. Tingkat */}
           {enableTingkat && (
-            <div className={cn('space-y-1.5', variant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[120px] max-w-full sm:max-w-[160px]')}>
+            <div className={cn('space-y-1.5', effectiveVariant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[120px] max-w-full sm:max-w-[160px]')}>
               <label
                 htmlFor="filter-tingkat-select"
                 className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block"
@@ -312,7 +315,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
 
           {/* 4. Pilih Kelas + Cohort Lineage Badges */}
           {enableKelas && (
-            <div className={cn('space-y-1.5', variant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[150px] max-w-full sm:max-w-[240px]')}>
+            <div className={cn('space-y-1.5', effectiveVariant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[150px] max-w-full sm:max-w-[240px]')}>
               <label
                 htmlFor="filter-kelas-select"
                 className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block"
@@ -376,7 +379,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
 
           {/* 4B. Mitra Industri (DUDI / Hubin) */}
           {enableMitra && (
-            <div className={cn('space-y-1.5', variant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[150px] max-w-full sm:max-w-[240px]')}>
+            <div className={cn('space-y-1.5', effectiveVariant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[150px] max-w-full sm:max-w-[240px]')}>
               <label
                 htmlFor="filter-mitra-select"
                 className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block"
@@ -400,7 +403,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
 
           {/* 4C. Mata Pelajaran */}
           {enableMapel && (
-            <div className={cn('space-y-1.5', variant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[160px] max-w-full sm:max-w-[240px]')}>
+            <div className={cn('space-y-1.5', effectiveVariant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[160px] max-w-full sm:max-w-[240px]')}>
               <label
                 htmlFor="filter-mapel-select"
                 className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block"
@@ -481,7 +484,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
 
           {/* 6B. Jenis Kelamin */}
           {enableGender && (
-            <div className={cn('space-y-1.5', variant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[120px] max-w-full sm:max-w-[170px]')}>
+            <div className={cn('space-y-1.5', effectiveVariant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[120px] max-w-full sm:max-w-[170px]')}>
               <label
                 htmlFor="filter-gender-select"
                 className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block"
@@ -505,7 +508,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
 
           {/* 6C. Status Siswa */}
           {enableStatusSiswa && (
-            <div className={cn('space-y-1.5', variant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[130px] max-w-full sm:max-w-[190px]')}>
+            <div className={cn('space-y-1.5', effectiveVariant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[130px] max-w-full sm:max-w-[190px]')}>
               <label
                 htmlFor="filter-status-siswa-select"
                 className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block"
@@ -603,7 +606,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
 
           {/* Reset Action Button */}
           {onReset && (
-            <div className={cn(variant === 'sidebar' ? 'pt-1 w-full' : 'pt-2 sm:pt-6')}>
+            <div className={cn(effectiveVariant === 'sidebar' ? 'pt-1 w-full' : 'pt-2 sm:pt-6')}>
               <Button
                 type="button"
                 variant="ghost"
@@ -611,7 +614,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
                 onClick={onReset}
                 className={cn(
                   'h-10 px-3 text-xs font-medium text-rose-600 dark:text-rose-400 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition-colors cursor-pointer',
-                  variant === 'sidebar' ? 'w-full justify-center' : 'shrink-0'
+                  effectiveVariant === 'sidebar' ? 'w-full justify-center' : 'shrink-0'
                 )}
                 title="Reset semua filter ke default"
               >
@@ -627,7 +630,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
           {/* Standar CRUD & Export Actions (Align Baseline di Desktop, Full-Width Flex di Mobile) */}
           {hasStandardActions && (
             <div className={cn(
-              variant === 'sidebar'
+              effectiveVariant === 'sidebar'
                 ? 'flex flex-col gap-2 w-full pt-1'
                 : 'flex flex-wrap items-center gap-2 w-full sm:w-auto sm:ml-auto pt-2 sm:pt-6'
             )}>

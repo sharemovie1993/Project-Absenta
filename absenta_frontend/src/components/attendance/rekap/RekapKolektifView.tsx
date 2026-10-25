@@ -25,6 +25,7 @@ import { exportDataToExcel } from '@/utils/export.utils';
 import { generateGenericPdf } from '@/utils/print/pdfGeneric';
 import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAcademicFilter, AcademicFilterToolbar } from '@/components/common';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { ViewModeSwitcher } from './RekapBulananKelasToolbar';
@@ -100,6 +101,7 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
   const effectiveKelasId = propKelasId || initialKelasId || (isWaliKelas && walikelasKelas?.id ? walikelasKelas.id : undefined);
   const effectiveKelasNama = propKelasNama || walikelasKelas?.nama_kelas || '';
 
+  const isMobile = useIsMobile(768);
   const [viewMode, setViewMode] = useState<ViewMode>('MATRIX');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
@@ -411,6 +413,7 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
       {/* Toolbar Filter Terstandar (Engine Terpusat AcademicFilterToolbar) */}
       <AcademicFilterToolbar
         {...academicFilter.toolbarProps}
+        variant={isMobile ? 'mini' : 'card'}
         searchPlaceholder="Cari siswa / NIS..."
         actionsLeft={
           <div className="flex items-center gap-2">
