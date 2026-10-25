@@ -790,7 +790,48 @@ export class SiswaRekapCalculator {
     // ─── Construct Mapel-Centric 30-Day Multi-Channel Matrix ───
     const mapelMap = new Map<string, { id: string; nama_mapel: string; kode_mapel?: string }>();
 
-    // 1. Gather mapels from student's attended sessions
+    // 1. Gather all official curriculum mapels for this class (JadwalKBM & GuruMapel)
+    if (siswa.kelas_id) {
+      try {
+        // From JadwalKBM
+        const jadwals = await prisma.jadwalKBM.findMany({
+          where: {
+            kelas_id: siswa.kelas_id,
+            tenant_id: tenantId,
+          },
+          select: {
+            mapel_id: true,
+            Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } }
+          }
+        });
+        jadwals.forEach(j => {
+          if (j.Mapel && j.Mapel.id) {
+            mapelMap.set(j.Mapel.id, { id: j.Mapel.id, nama_mapel: j.Mapel.nama_mapel, kode_mapel: j.Mapel.kode_mapel || undefined });
+          }
+        });
+
+        // From GuruMapel (Struktur Kurikulum & Penugasan Guru Kelas)
+        const guruMapels = await prisma.guruMapel.findMany({
+          where: {
+            kelas_id: siswa.kelas_id,
+            tenant_id: tenantId,
+          },
+          select: {
+            mapel_id: true,
+            Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } }
+          }
+        });
+        guruMapels.forEach(gm => {
+          if (gm.Mapel && gm.Mapel.id) {
+            mapelMap.set(gm.Mapel.id, { id: gm.Mapel.id, nama_mapel: gm.Mapel.nama_mapel, kode_mapel: gm.Mapel.kode_mapel || undefined });
+          }
+        });
+      } catch (err) {
+        console.error('[Rekap] Gagal mengambil master mapel kelas dari JadwalKBM/GuruMapel:', err);
+      }
+    }
+
+    // 2. Also gather mapels from student's attended sessions
     if (typeof absenSiswa !== 'undefined') {
       absenSiswa.forEach(a => {
         const m = a.SesiAbsensi?.Mapel;
@@ -800,7 +841,7 @@ export class SiswaRekapCalculator {
       });
     }
 
-    // 2. Also query all mapels taught in this class during the month
+    // 3. Also query all mapels taught in this class during the month
     if (siswa.kelas_id) {
       try {
         const classSessions = await prisma.sesiAbsensi.findMany({
