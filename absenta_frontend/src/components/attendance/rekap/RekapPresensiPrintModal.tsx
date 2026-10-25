@@ -296,48 +296,48 @@ export const RekapPresensiPrintModal: React.FC<RekapPresensiPrintModalProps> = (
       downloadPdfText={isExporting ? 'Memproses...' : 'Unduh PDF'}
       printButtonText="Cetak Dokumen"
       extraActions={
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
           {/* Segmented Controller: 1 Halaman vs 2 Halaman */}
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs shrink-0">
             <button
               type="button"
               onClick={() => setPageLayoutMode('1_page')}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all flex items-center gap-1 cursor-pointer ${
+              className={`px-2 sm:px-2.5 py-1 rounded-md text-[10.5px] sm:text-[11px] font-medium transition-all flex items-center gap-1 cursor-pointer ${
                 pageLayoutMode === '1_page'
                   ? 'bg-white dark:bg-slate-900 text-primary shadow-xs font-semibold'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
               title="Muat seluruh siswa dalam 1 halaman A4 ringkas"
             >
-              <FileText className="w-3.5 h-3.5" />
-              <span>1 Halaman</span>
+              <FileText className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
+              <span>1 Hal<span className="hidden sm:inline">aman</span></span>
             </button>
             <button
               type="button"
               onClick={() => setPageLayoutMode('2_pages')}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all flex items-center gap-1 cursor-pointer ${
+              className={`px-2 sm:px-2.5 py-1 rounded-md text-[10.5px] sm:text-[11px] font-medium transition-all flex items-center gap-1 cursor-pointer ${
                 pageLayoutMode === '2_pages'
                   ? 'bg-white dark:bg-slate-900 text-primary shadow-xs font-semibold'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
               title="Bagi rata data ke 2 halaman A4 dengan tata letak lebih lega"
             >
-              <Layers className="w-3.5 h-3.5" />
-              <span>2 Halaman</span>
+              <Layers className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
+              <span>2 Hal<span className="hidden sm:inline">aman</span></span>
             </button>
           </div>
 
           <button
             type="button"
             onClick={() => setShowTtdConfig((prev) => !prev)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border cursor-pointer ${
+            className={`inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10.5px] sm:text-xs font-semibold transition-all border cursor-pointer shrink-0 ${
               showTtdConfig
                 ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
                 : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-50'
             }`}
             title="Sesuaikan nama penandatangan (TTD) sebelum cetak"
           >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <SlidersHorizontal className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
             <span>{showTtdConfig ? 'Tutup TTD' : 'Pengaturan TTD'}</span>
           </button>
         </div>
@@ -346,7 +346,7 @@ export const RekapPresensiPrintModal: React.FC<RekapPresensiPrintModalProps> = (
     >
       {/* ── PANEL KONTROL PENGATURAN TTD (PRINT:HIDDEN) ── */}
       {showTtdConfig && (
-        <div className="print:hidden mb-4 p-4 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/30 text-xs space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="print:hidden mb-3 p-3 sm:p-4 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/30 text-xs space-y-2.5 sm:space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex items-center justify-between pb-2 border-b border-amber-200/80 dark:border-amber-900/40">
             <div className="flex items-center gap-2">
               <UserCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />

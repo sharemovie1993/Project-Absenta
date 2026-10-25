@@ -14,6 +14,7 @@ import {
   RotateCw,
   Loader2,
   LayoutTemplate,
+  ChevronDown,
 } from 'lucide-react';
 import { getMyTenant, type Tenant } from '@/api/tenants.api';
 import { sekolahApi, type Sekolah } from '@/api/academic/sekolah.api';
@@ -725,8 +726,8 @@ export const PrintDeskCanvas: React.FC<PrintDeskCanvasProps> = ({
       const containerWidth = deskRef.current.clientWidth;
       if (zoomMode === 'original') {
         setAutoScale(1);
-      } else if (containerWidth < baseWidth + 24) {
-        const calculated = Math.max(0.32, Math.min(1, (containerWidth - 24) / baseWidth));
+      } else if (containerWidth < baseWidth + 16) {
+        const calculated = Math.max(0.3, Math.min(1, (containerWidth - 16) / baseWidth));
         setAutoScale(calculated);
       } else {
         setAutoScale(1);
@@ -746,7 +747,7 @@ export const PrintDeskCanvas: React.FC<PrintDeskCanvasProps> = ({
     <div
       ref={deskRef}
       className={cn(
-        'overflow-y-auto overflow-x-auto max-h-[76vh] p-3 sm:p-8 bg-slate-200/70 dark:bg-slate-950/80 rounded-xl border border-slate-300 dark:border-slate-800 flex flex-col items-center gap-8 select-text',
+        'overflow-y-auto overflow-x-auto max-h-[76vh] p-2 sm:p-8 bg-slate-200/70 dark:bg-slate-950/80 rounded-xl border border-slate-300 dark:border-slate-800 flex flex-col items-center gap-4 sm:gap-8 select-text',
         className
       )}
     >
@@ -871,6 +872,7 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
   const activeLogoSekolah = externalShowLogoSekolah !== undefined ? externalShowLogoSekolah : internalLogoSekolah;
 
   const [zoomMode, setZoomMode] = useState<'fit' | 'original'>('fit');
+  const [showMobileOptions, setShowMobileOptions] = useState<boolean>(false);
   const deskRef = useRef<HTMLDivElement | null>(null);
 
   const handleToggleOrientation = () => {
@@ -899,11 +901,253 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size={size}>
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-3">
         {/* ========================================================================= */}
-        {/* ROW 1: PRIMARY ACTION TOOLBAR & BATCH NAVIGATOR                           */}
+        {/* MOBILE TOOLBAR (MD:HIDDEN) - HIGH DENSITY, COMPACT & INTUITIVE            */}
         {/* ========================================================================= */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-200 dark:border-slate-800">
+        <div className="md:hidden space-y-1.5 pb-2 border-b border-slate-200 dark:border-slate-800 print:hidden">
+          {/* Subtitle if available (Single-line truncated for mobile) */}
+          {subtitle && (
+            <div className="text-[10.5px] text-muted-foreground font-medium truncate px-0.5">
+              {subtitle}
+            </div>
+          )}
+
+          {/* Tier 1: Action Strip (Print, Download PDF, Zoom Toggle, Opsi Toggle) */}
+          <div className="flex items-center justify-between gap-1.5">
+            {/* Left: Quick Actions (Cetak & Unduh) */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Button
+                type="button"
+                size="sm"
+                onClick={handlePrint}
+                className="text-xs gap-1 bg-blue-600 hover:bg-blue-700 text-white h-7.5 px-2.5 font-semibold shadow-xs"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>{printButtonText}</span>
+              </Button>
+
+              {onDownloadPdf && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onDownloadPdf}
+                  className="text-xs gap-1 h-7.5 px-2"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>{downloadPdfText}</span>
+                </Button>
+              )}
+            </div>
+
+            {/* Right: Zoom Mini Segmented + Opsi Collapse Button */}
+            <div className="flex items-center gap-1 shrink-0">
+              {/* Zoom Mini Segmented */}
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setZoomMode('fit')}
+                  className={cn(
+                    'px-2 py-0.5 rounded font-medium transition-all flex items-center gap-0.5 cursor-pointer',
+                    zoomMode === 'fit'
+                      ? 'bg-white dark:bg-slate-900 text-primary shadow-xs font-bold'
+                      : 'text-muted-foreground'
+                  )}
+                  title="Pas Layar"
+                >
+                  <Smartphone className="w-3 h-3" />
+                  <span>Pas</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setZoomMode('original')}
+                  className={cn(
+                    'px-2 py-0.5 rounded font-medium transition-all flex items-center gap-0.5 cursor-pointer',
+                    zoomMode === 'original'
+                      ? 'bg-white dark:bg-slate-900 text-primary shadow-xs font-bold'
+                      : 'text-muted-foreground'
+                  )}
+                  title="100% Asli"
+                >
+                  <Maximize2 className="w-3 h-3" />
+                  <span>100%</span>
+                </button>
+              </div>
+
+              {/* Opsi / Pengaturan Button Toggle */}
+              {(allowLogoToggles || allowOrientationToggle || (templateOptions && templateOptions.length > 0) || (onDownloadBatchPdf && batchTotal > 1)) && (
+                <button
+                  type="button"
+                  onClick={() => setShowMobileOptions((prev) => !prev)}
+                  className={cn(
+                    'h-7.5 px-2 rounded-lg border text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer',
+                    showMobileOptions
+                      ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-100 dark:text-slate-900'
+                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                  )}
+                  title="Pengaturan Kop, Orientasi & Template"
+                >
+                  <SlidersHorizontal className="w-3 h-3" />
+                  <span>Opsi</span>
+                  <ChevronDown className={cn('w-3 h-3 transition-transform duration-200', showMobileOptions && 'rotate-180')} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Tier 2: Extra Actions & Batch Navigation (if any) */}
+          {(extraActions || batchTotal > 1) && (
+            <div className="flex flex-wrap items-center justify-between gap-1.5 pt-0.5">
+              {/* Batch Navigation */}
+              {batchTotal > 1 && (
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 shrink-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onPrevBatch}
+                    disabled={batchCurrentIndex === 0}
+                    className="h-6 w-6 p-0 rounded cursor-pointer disabled:opacity-30"
+                    title="Data Sebelumnya"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </Button>
+                  <span className="text-[10.5px] font-bold text-slate-700 dark:text-slate-300 px-1.5 min-w-[45px] text-center">
+                    {batchCurrentIndex + 1}/{batchTotal}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onNextBatch}
+                    disabled={batchCurrentIndex === batchTotal - 1}
+                    className="h-6 w-6 p-0 rounded cursor-pointer disabled:opacity-30"
+                    title="Data Berikutnya"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Batch Selector if any */}
+              {batchSelector && <div className="shrink-0">{batchSelector}</div>}
+
+              {/* Extra Actions Container */}
+              {extraActions && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {extraActions}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Collapsible Mobile Options Drawer */}
+          {showMobileOptions && (
+            <div className="p-2.5 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 text-xs space-y-2 animate-in fade-in slide-in-from-top-1 duration-150">
+              {/* Row A: Orientation & Template */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-slate-200/80 dark:border-slate-700/80">
+                {/* Orientation Toggle */}
+                {allowOrientationToggle && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-medium text-slate-500">Orientasi:</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleToggleOrientation}
+                      className="text-xs gap-1 h-6.5 px-2 capitalize font-semibold"
+                    >
+                      <RotateCw className="w-3 h-3" />
+                      <span>{activeOrientation}</span>
+                    </Button>
+                  </div>
+                )}
+
+                {/* Template Selector */}
+                {templateOptions && templateOptions.length > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-medium text-slate-500">{templateLabel}</span>
+                    <select
+                      value={selectedTemplate}
+                      onChange={(e) => onTemplateChange?.(e.target.value)}
+                      className="text-xs font-semibold py-0.5 px-2 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 cursor-pointer"
+                    >
+                      {templateOptions.map((opt) => (
+                        <option key={opt.id} value={opt.id}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Row B: Opsi Kop Checkboxes */}
+              {allowLogoToggles && (
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1 text-[11px]">
+                    <SlidersHorizontal className="w-3 h-3 text-primary" />
+                    Opsi Kop Surat:
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={activeLogoDaerah}
+                        onChange={(e) => handleToggleDaerah(e.target.checked)}
+                        className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 cursor-pointer"
+                      />
+                      <span className="text-slate-700 dark:text-slate-300 font-medium text-[11px]">
+                        Logo Pemda
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={activeLogoSekolah}
+                        onChange={(e) => handleToggleSekolah(e.target.checked)}
+                        className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 cursor-pointer"
+                      />
+                      <span className="text-slate-700 dark:text-slate-300 font-medium text-[11px]">
+                        Logo Sekolah
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* Row C: Batch PDF Download (if present) */}
+              {onDownloadBatchPdf && batchTotal > 1 && (
+                <div className="pt-1 border-t border-slate-200/80 dark:border-slate-700/80">
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    onClick={onDownloadBatchPdf}
+                    disabled={isBatchDownloading}
+                    className="w-full text-xs gap-1.5 h-7.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold cursor-pointer justify-center"
+                  >
+                    {isBatchDownloading ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Mengunduh Massal...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Users className="w-3.5 h-3.5" />
+                        <span>{batchDownloadButtonText || `Unduh Seluruh Dokumen (${batchTotal} Berkas)`}</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ========================================================================= */}
+        {/* ROW 1: PRIMARY ACTION TOOLBAR & BATCH NAVIGATOR (DESKTOP)                 */}
+        {/* ========================================================================= */}
+        <div className="hidden md:flex flex-row items-center justify-between gap-2.5 pb-2.5 border-b border-slate-200 dark:border-slate-800">
           {/* Left: Subtitle & Batch Switcher */}
           <div className="flex flex-wrap items-center gap-2.5">
             {batchTotal > 1 && (
@@ -949,7 +1193,7 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
 
           {/* Right: Zoom Controller, Batch Download & Single Actions */}
           <div className="flex flex-wrap items-center gap-2">
-            {/* Mobile / Responsive Zoom Controller */}
+            {/* Desktop Zoom Controller */}
             <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
               <button
                 type="button"
@@ -960,7 +1204,7 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
                     ? 'bg-white dark:bg-slate-900 text-primary shadow-sm font-semibold'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
-                title="Sesuaikan dokumen dengan lebar layar HP"
+                title="Sesuaikan dokumen dengan lebar layar"
               >
                 <Smartphone className="w-3 h-3" />
                 <span>Pas Layar</span>
@@ -974,7 +1218,7 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
                     ? 'bg-white dark:bg-slate-900 text-primary shadow-sm font-semibold'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
-                title="Lihat ukuran 100% standar A4 (dapat digeser)"
+                title="Lihat ukuran 100% standar A4"
               >
                 <Maximize2 className="w-3 h-3" />
                 <span>100% Asli</span>
@@ -992,7 +1236,7 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
                 title={`Ubah orientasi ke ${activeOrientation === 'portrait' ? 'Landscape' : 'Portrait'}`}
               >
                 <RotateCw className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline capitalize">{activeOrientation}</span>
+                <span className="capitalize">{activeOrientation}</span>
               </Button>
             )}
 
@@ -1042,7 +1286,7 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
               type="button"
               size="sm"
               onClick={handlePrint}
-              className="text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white h-8 px-2.5"
+              className="text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white h-8 px-2.5 font-semibold"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>{printButtonText}</span>
@@ -1051,10 +1295,10 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
         </div>
 
         {/* ========================================================================= */}
-        {/* ROW 2: OPSI KOP & PILIHAN TEMPLATE DOKUMEN                                */}
+        {/* ROW 2: OPSI KOP & PILIHAN TEMPLATE DOKUMEN (DESKTOP)                      */}
         {/* ========================================================================= */}
         {(allowLogoToggles || (templateOptions && templateOptions.length > 0)) && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs shrink-0">
+          <div className="hidden md:flex flex-row items-center justify-between gap-2.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs shrink-0">
             <div className="flex flex-wrap items-center gap-3 sm:gap-4">
               {/* Template Selector Dropdown */}
               {templateOptions && templateOptions.length > 0 && (
