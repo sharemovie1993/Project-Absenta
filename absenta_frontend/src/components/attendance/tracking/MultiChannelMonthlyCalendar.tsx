@@ -96,7 +96,7 @@ export const MultiChannelMonthlyCalendar: React.FC<MultiChannelMonthlyCalendarPr
   title = 'Kalender Visual Multi-Channel',
   className,
 }) => {
-  const { cells, year, monthIdx, monthName, hasPklActive } = useMemo(() => {
+  const { cells, year, monthIdx, monthName, statsCards } = useMemo(() => {
     const [yStr, mStr] = (bulan || '2026-10').split('-');
     const year = parseInt(yStr, 10) || 2026;
     const monthIdx = (parseInt(mStr, 10) || 10) - 1;
@@ -111,16 +111,13 @@ export const MultiChannelMonthlyCalendar: React.FC<MultiChannelMonthlyCalendarPr
 
     // Map details by date YYYY-MM-DD
     const detailMap = new Map<string, CalendarDayDetail>();
-    let hasPkl = false;
 
     if (Array.isArray(details)) {
       for (const d of details) {
-        const t = d?.tanggal || (d?.waktu ? d.waktu.slice(0, 10) : '');
+        const rawT = d?.tanggal || d?.waktu || '';
+        const t = typeof rawT === 'string' && rawT.length >= 10 ? rawT.slice(0, 10) : '';
         if (t) {
           detailMap.set(t, d);
-          if (d.channels?.pkl && d.channels.pkl.status !== 'NON_PKL') {
-            hasPkl = true;
-          }
         }
       }
     }
@@ -154,8 +151,41 @@ export const MultiChannelMonthlyCalendar: React.FC<MultiChannelMonthlyCalendarPr
       });
     }
 
-    return { cells, year, monthIdx, monthName, hasPklActive: hasPkl };
-  }, [bulan, details]);
+    const statsCards = [
+      {
+        label: 'Hadir',
+        value: statistik.HADIR ?? 0,
+        color: 'text-emerald-600 dark:text-emerald-400',
+        bg: 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-100 dark:border-emerald-900/50',
+      },
+      {
+        label: 'Terlambat',
+        value: statistik.TERLAMBAT ?? 0,
+        color: 'text-purple-600 dark:text-purple-400',
+        bg: 'bg-purple-50/80 dark:bg-purple-950/30 border-purple-100 dark:border-purple-900/50',
+      },
+      {
+        label: 'Izin',
+        value: statistik.IZIN ?? 0,
+        color: 'text-blue-600 dark:text-blue-400',
+        bg: 'bg-blue-50/80 dark:bg-blue-950/30 border-blue-100 dark:border-blue-900/50',
+      },
+      {
+        label: 'Sakit',
+        value: statistik.SAKIT ?? 0,
+        color: 'text-amber-600 dark:text-amber-400',
+        bg: 'bg-amber-50/80 dark:bg-amber-950/30 border-amber-100 dark:border-amber-900/50',
+      },
+      {
+        label: 'Alpa',
+        value: statistik.ALPA ?? 0,
+        color: 'text-rose-600 dark:text-rose-400',
+        bg: 'bg-rose-50/80 dark:bg-rose-950/30 border-rose-100 dark:border-rose-900/50',
+      },
+    ];
+
+    return { cells, year, monthIdx, monthName, statsCards };
+  }, [bulan, details, statistik]);
 
   const handlePrevMonth = () => {
     if (!onBulanChange) return;
@@ -185,15 +215,32 @@ export const MultiChannelMonthlyCalendar: React.FC<MultiChannelMonthlyCalendarPr
 
   return (
     <div className={cn('space-y-4 w-full min-w-0', className)}>
+      {/* 5 MACRO STATS BADGES */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        {statsCards.map((s, idx) => (
+          <div
+            key={idx}
+            className={`p-2.5 rounded-xl border ${s.bg} flex flex-col items-center justify-center transition-all hover:scale-[1.02]`}
+          >
+            <div className={`text-[9px] font-black uppercase tracking-widest ${s.color} mb-0.5 opacity-80`}>
+              {s.label}
+            </div>
+            <div className={`text-lg sm:text-xl font-black ${s.color} tracking-tight`}>
+              {s.value}
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* HEADER & MONTH SELECTOR */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-1">
         <div className="space-y-0.5">
           <h4 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400 flex items-center gap-2">
             <CalendarIcon size={14} className="text-primary" />
             <span>{title}</span>
           </h4>
           <p className="text-[10px] text-slate-500 dark:text-slate-400">
-            Visual strip 4 channel per hari. Tanggal merah/oranye menandakan adanya anomali absensi.
+            Klik kotak tanggal untuk memeriksa rincian log aktivitas dan sesi kelas hari tersebut.
           </p>
         </div>
 
@@ -258,7 +305,7 @@ export const MultiChannelMonthlyCalendar: React.FC<MultiChannelMonthlyCalendarPr
               return (
                 <div
                   key={`blank-${idx}`}
-                  className="h-16 sm:h-20 bg-slate-50/20 dark:bg-slate-900/10 pointer-events-none"
+                  className="min-h-[72px] sm:min-h-[86px] bg-slate-50/20 dark:bg-slate-900/10 pointer-events-none"
                 />
               );
             }
@@ -269,46 +316,13 @@ export const MultiChannelMonthlyCalendar: React.FC<MultiChannelMonthlyCalendarPr
             const isSelected = selectedDate === cell.dateKey;
             const isAnomali = Boolean(anomali?.is_anomali);
 
-            // Channel Status Colors
-            const gerbangColor =
-              channels?.gerbang?.status === 'HADIR'
-                ? 'bg-emerald-500'
-                : channels?.gerbang?.status === 'TERLAMBAT'
-                ? 'bg-amber-500'
-                : channels?.gerbang?.status === 'TIDAK_TAP'
-                ? 'bg-slate-200 dark:bg-slate-700'
-                : 'bg-rose-500';
-
-            const pembiasaanColor =
-              channels?.pembiasaan?.status === 'HADIR'
-                ? 'bg-emerald-500'
-                : channels?.pembiasaan?.status === 'ALPA'
-                ? 'bg-rose-500'
-                : 'bg-slate-100 dark:bg-slate-800';
-
-            const kbmColor =
-              channels?.kbm?.status === 'FULL'
-                ? 'bg-emerald-500'
-                : channels?.kbm?.status === 'PARTIAL'
-                ? 'bg-amber-500'
-                : channels?.kbm?.status === 'ALPA'
-                ? 'bg-rose-500'
-                : 'bg-slate-100 dark:bg-slate-800';
-
-            const pklColor =
-              channels?.pkl?.status === 'HADIR'
-                ? 'bg-purple-500'
-                : channels?.pkl?.status === 'ALPA'
-                ? 'bg-rose-500'
-                : 'bg-slate-100 dark:bg-slate-800';
-
             return (
               <button
                 key={cell.dateKey}
                 type="button"
                 onClick={() => onDateSelect?.(cell.dateKey)}
                 className={cn(
-                  'h-16 sm:h-20 p-1 sm:p-1.5 flex flex-col justify-between text-left transition-all relative cursor-pointer group',
+                  'min-h-[72px] sm:min-h-[86px] p-1.5 sm:p-2 flex flex-col justify-between text-left transition-all relative cursor-pointer group',
                   cell.isWeekend
                     ? 'bg-slate-50/40 dark:bg-slate-950/20 text-slate-400'
                     : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200',
@@ -316,16 +330,16 @@ export const MultiChannelMonthlyCalendar: React.FC<MultiChannelMonthlyCalendarPr
                     'ring-2 ring-primary ring-inset bg-primary/5 dark:bg-primary/10 shadow-xs z-10',
                   isAnomali &&
                     !isSelected &&
-                    'bg-rose-50/30 dark:bg-rose-950/20 hover:bg-rose-50/60'
+                    'bg-rose-50/40 dark:bg-rose-950/20 hover:bg-rose-50/70'
                 )}
               >
                 {/* Top Row: Date Number & Anomali Indicator */}
                 <div className="flex items-center justify-between w-full">
                   <span
                     className={cn(
-                      'text-[10px] sm:text-xs font-bold leading-none inline-flex items-center justify-center rounded-md px-1 py-0.5',
+                      'text-[10.5px] sm:text-xs font-bold leading-none inline-flex items-center justify-center rounded-md px-1 py-0.5',
                       isSelected
-                        ? 'bg-primary text-white'
+                        ? 'bg-primary text-white shadow-2xs'
                         : cell.isWeekend
                         ? 'text-rose-400'
                         : 'text-slate-800 dark:text-slate-200'
@@ -337,56 +351,92 @@ export const MultiChannelMonthlyCalendar: React.FC<MultiChannelMonthlyCalendarPr
                   {isAnomali && (
                     <span
                       title={anomali?.pesan || 'Memerlukan Perhatian'}
-                      className="flex items-center gap-0.5 text-[9px] font-bold text-rose-600 dark:text-rose-400 animate-pulse"
+                      className="flex items-center gap-0.5 text-[9px] font-bold text-rose-600 dark:text-rose-400"
                     >
-                      <AlertTriangle className="w-3 h-3 text-rose-500 shrink-0" />
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-500 shrink-0 animate-bounce" />
                     </span>
                   )}
                 </div>
 
-                {/* Bottom Row: Multi-Channel Strips */}
+                {/* Bottom Row: Detailed Channel Badges & Status */}
                 {detail ? (
-                  <div className="space-y-0.5 sm:space-y-1 w-full pt-1">
-                    {/* Strip 1: Gerbang */}
-                    <div className="flex items-center gap-1">
-                      <div
-                        className={cn('h-1 sm:h-1.5 flex-1 rounded-full', gerbangColor)}
-                        title={`Gerbang: ${channels?.gerbang?.status || '-'}`}
-                      />
+                  <div className="space-y-1 w-full pt-1">
+                    {/* Status Pill in cell */}
+                    <div className="flex items-center justify-between gap-1">
+                      <span
+                        className={cn(
+                          'text-[8.5px] sm:text-[9.5px] font-black uppercase px-1.5 py-0.5 rounded-md leading-tight truncate',
+                          detail.status === 'HADIR'
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-900'
+                            : detail.status === 'TERLAMBAT'
+                            ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border border-purple-200/60 dark:border-purple-900'
+                            : detail.status === 'SAKIT' || detail.status === 'IZIN'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-200/60 dark:border-blue-900'
+                            : 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-200/60 dark:border-rose-900'
+                        )}
+                      >
+                        {detail.status}
+                      </span>
+
+                      {channels?.gerbang?.waktu_masuk && (
+                        <span className="text-[8.5px] font-mono text-slate-500 dark:text-slate-400 hidden sm:inline">
+                          {channels.gerbang.waktu_masuk}
+                        </span>
+                      )}
                     </div>
 
-                    {/* Strip 2: Pembiasaan */}
-                    {channels?.pembiasaan?.status !== 'TIDAK_ADA' && (
-                      <div className="flex items-center gap-1">
-                        <div
-                          className={cn('h-1 sm:h-1.5 flex-1 rounded-full', pembiasaanColor)}
-                          title={`Pembiasaan: ${channels?.pembiasaan?.status || '-'}`}
-                        />
-                      </div>
-                    )}
+                    {/* Micro Tags Per Channel */}
+                    <div className="flex items-center gap-1 flex-wrap text-[8px] sm:text-[8.5px] leading-tight">
+                      {channels?.gerbang?.status === 'HADIR' && (
+                        <span
+                          className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-semibold"
+                          title={`Gerbang: Masuk ${channels.gerbang.waktu_masuk || ''}`}
+                        >
+                          <DoorOpen className="w-2.5 h-2.5" />
+                          <span>{channels.gerbang.waktu_masuk || 'Masuk'}</span>
+                        </span>
+                      )}
 
-                    {/* Strip 3: KBM */}
-                    {channels?.kbm?.status !== 'TIDAK_ADA' && (
-                      <div className="flex items-center gap-1">
-                        <div
-                          className={cn('h-1 sm:h-1.5 flex-1 rounded-full', kbmColor)}
-                          title={`KBM: ${channels?.kbm?.status || '-'}`}
-                        />
-                      </div>
-                    )}
+                      {channels?.pembiasaan?.status === 'HADIR' && (
+                        <span
+                          className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-semibold"
+                          title={`Pembiasaan: ${channels.pembiasaan.nama || 'Hadir'}`}
+                        >
+                          <BookOpen className="w-2.5 h-2.5" />
+                          <span>{channels.pembiasaan.nama ? channels.pembiasaan.nama.slice(0, 4) : 'Dhuha'}</span>
+                        </span>
+                      )}
 
-                    {/* Strip 4: PKL (if active) */}
-                    {hasPklActive && channels?.pkl?.status !== 'NON_PKL' && (
-                      <div className="flex items-center gap-1">
-                        <div
-                          className={cn('h-1 sm:h-1.5 flex-1 rounded-full', pklColor)}
-                          title={`PKL: ${channels?.pkl?.status || '-'}`}
-                        />
+                      {channels?.kbm?.status === 'FULL' && (
+                        <span
+                          className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-semibold"
+                          title={`KBM: ${channels.kbm.hadir_sesi} JP`}
+                        >
+                          <GraduationCap className="w-2.5 h-2.5" />
+                          <span>{channels.kbm.hadir_sesi} JP</span>
+                        </span>
+                      )}
+
+                      {channels?.pkl?.status === 'HADIR' && (
+                        <span
+                          className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-semibold"
+                          title={`PKL: ${channels.pkl.mitra || 'DU/DI'}`}
+                        >
+                          <Briefcase className="w-2.5 h-2.5" />
+                          <span>PKL</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Anomaly Flag Callout */}
+                    {isAnomali && (
+                      <div className="text-[7.5px] sm:text-[8px] font-bold text-rose-700 dark:text-rose-300 truncate bg-rose-100/70 dark:bg-rose-950/80 px-1 py-0.5 rounded border border-rose-200/80 dark:border-rose-900">
+                        ⚠️ {anomali?.tipe === 'TAP_GANTUNG' ? 'Belum Pulang' : anomali?.tipe === 'CABUT_KBM' ? 'Bolos KBM' : 'Anomali'}
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800/40 rounded-full" />
+                  <div className="h-1 w-full bg-slate-100 dark:bg-slate-800/40 rounded-full" />
                 )}
               </button>
             );
@@ -397,23 +447,23 @@ export const MultiChannelMonthlyCalendar: React.FC<MultiChannelMonthlyCalendarPr
       {/* STRIP LEGEND */}
       <div className="flex flex-wrap items-center gap-3 sm:gap-4 p-3 bg-slate-50/80 dark:bg-slate-900/60 rounded-xl border border-slate-200/60 dark:border-slate-800 text-[10px] text-slate-600 dark:text-slate-400">
         <span className="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-[9.5px]">
-          Panduan Strip Channel:
+          Keterangan Tag:
         </span>
         <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-          <span>Hadir Tepat</span>
+          <DoorOpen className="w-3 h-3 text-indigo-500" />
+          <span>Tap Gerbang</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-          <span>Terlambat / Sebagian KBM</span>
+          <BookOpen className="w-3 h-3 text-emerald-500" />
+          <span>Pembiasaan</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-          <span>Alpa / Bolos</span>
+          <GraduationCap className="w-3 h-3 text-amber-500" />
+          <span>Sesi KBM</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-purple-500" />
-          <span>Presensi PKL</span>
+          <Briefcase className="w-3 h-3 text-purple-500" />
+          <span>Presensi DU/DI (PKL)</span>
         </div>
         <div className="flex items-center gap-1.5">
           <AlertTriangle className="w-3 h-3 text-rose-500" />

@@ -308,6 +308,26 @@ export class SiswaRekapCalculator {
     };
     let total_poin = 0;
 
+    // Track Multi-Channel Aggregates
+    let totalGateHadir = 0;
+    let totalGateTerlambat = 0;
+    let totalGateTidakTap = 0;
+    let totalGateTapGantung = 0;
+
+    let totalPembiasaanHadir = 0;
+    let totalPembiasaanAlpa = 0;
+
+    let totalKbmSesi = 0;
+    let totalKbmHadir = 0;
+    let totalKbmAlpa = 0;
+
+    let totalPklHadir = 0;
+    let totalPklAlpa = 0;
+    let isPklActive = false;
+    let pklMitraName: string | undefined = undefined;
+
+    let anomaliCount = 0;
+
     let detail: Array<{
       id?: string;
       sesi_id?: string | null;
@@ -404,7 +424,7 @@ export class SiswaRekapCalculator {
 
       const absenGerbang = await prisma.absenGerbangSiswa.findMany({
         where: gateWhere,
-        select: { status: true, is_terlambat: true, poin_kehadiran: true, waktu_tap: true, arah: true, jenis: true },
+        select: { status: true, is_terlambat: true, poin_kehadiran: true, waktu_tap: true, arah: true },
         orderBy: { waktu_tap: 'asc' }
       });
 
@@ -424,25 +444,9 @@ export class SiswaRekapCalculator {
         }
       });
 
-      // Track Multi-Channel Aggregates
-      let totalGateHadir = 0;
-      let totalGateTerlambat = 0;
-      let totalGateTidakTap = 0;
-      let totalGateTapGantung = 0;
-
-      let totalPembiasaanHadir = 0;
-      let totalPembiasaanAlpa = 0;
-
-      let totalKbmSesi = 0;
-      let totalKbmHadir = 0;
-      let totalKbmAlpa = 0;
-
-      let totalPklHadir = 0;
-      let totalPklAlpa = 0;
-      let isPklActive = absenPkl.length > 0;
-      let pklMitraName: string | undefined = undefined;
-
-      let anomaliCount = 0;
+      if (absenPkl.length > 0) {
+        isPklActive = true;
+      }
 
       // 3. Group by Date
       const byDate = new Map<string, { class: any[], gate: any[], pkl: any | null }>();
@@ -532,8 +536,8 @@ export class SiswaRekapCalculator {
 
         // ─── Channel Breakdown Extraction ───
         // 1. Gerbang
-        const datangTap = gateTaps.find(t => t.arah === 'GERBANG_DATANG' || t.jenis === 'MASUK') || gateTaps[0];
-        const pulangTap = gateTaps.find(t => t.arah === 'GERBANG_PULANG' || t.jenis === 'PULANG');
+        const datangTap = gateTaps.find(t => t.arah === 'GERBANG_DATANG') || gateTaps[0];
+        const pulangTap = gateTaps.find(t => t.arah === 'GERBANG_PULANG');
         const isToday = date === todayDateKey;
         const hasGateTap = gateTaps.length > 0;
         const isTapGantung = Boolean(datangTap && !pulangTap && !isToday && gateTaps.length === 1);

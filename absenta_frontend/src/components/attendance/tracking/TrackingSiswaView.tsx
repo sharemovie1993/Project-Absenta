@@ -228,13 +228,14 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
     queryKey: ['rekap-bulanan-siswa-calendar', selectedSiswaId, bulan],
     queryFn: async () => {
       const res = await getRekapBulananSiswa(selectedSiswaId, { bulan });
-      return (res.data || null) as RekapBulananResponse;
+      return (res?.data || res || null) as RekapBulananResponse;
     },
     enabled: !!selectedSiswaId && !!bulan && !isLocked,
     staleTime: 5 * 60 * 1000,
   });
 
-  const monthData = monthlyRekapQuery.data || null;
+  const rawMonthData: any = monthlyRekapQuery.data || null;
+  const monthData: RekapBulananResponse | null = rawMonthData?.data || rawMonthData || null;
   const monthLoading = monthlyRekapQuery.isLoading;
   const channelSummary = monthData?.statistik?.channel_summary;
   const monthDetails = monthData?.detail || [];

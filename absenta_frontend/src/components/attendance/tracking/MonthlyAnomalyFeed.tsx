@@ -126,7 +126,8 @@ export const MonthlyAnomalyFeed: React.FC<MonthlyAnomalyFeedProps> = React.memo(
       ) : (
         <div className="space-y-3">
           {displayedList.map((item) => {
-            const dateStr = item.tanggal || (item.waktu ? item.waktu.slice(0, 10) : '');
+            const rawDate = item.tanggal || item.waktu || '';
+            const dateStr = typeof rawDate === 'string' && rawDate.length >= 10 ? rawDate.slice(0, 10) : '';
             const isSelected = selectedDate === dateStr;
             const anomali = item.anomali;
             const channels = item.channels;
