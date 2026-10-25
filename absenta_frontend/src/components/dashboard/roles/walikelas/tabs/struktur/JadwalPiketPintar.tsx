@@ -12,7 +12,8 @@ import {
   Clock, 
   Flame, 
   ShieldAlert,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Printer
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui';
@@ -20,6 +21,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { toast } from 'sonner';
+import { JadwalPiketPrintModal } from './JadwalPiketPrintModal';
 import type { Siswa } from '@/types/academic';
 import type { PiketDaySlot, PiketMember } from './strukturTypes';
 
@@ -58,6 +60,7 @@ export const JadwalPiketPintar: React.FC<JadwalPiketPintarProps> = React.memo(({
     return d === 0 || d === 6 ? 1 : d;
   });
   const [mobileViewAll, setMobileViewAll] = useState<boolean>(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false);
 
   // Algorithm pintar: Membagi rata seluruh siswa rombel ke 5 hari aktif
   const generateBalancedSlots = useCallback((students: Siswa[]): PiketDaySlot[] => {
@@ -409,6 +412,17 @@ export const JadwalPiketPintar: React.FC<JadwalPiketPintarProps> = React.memo(({
           <Button
             variant="outline"
             size="sm"
+            onClick={() => setIsPrintModalOpen(true)}
+            className="h-7 sm:h-8 px-2 sm:px-2.5 text-xs text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-900 rounded-xl flex items-center gap-1 cursor-pointer shadow-2xs"
+            title="Cetak Jadwal Piket Kebersihan (PDF/Kop Resmi)"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span className="text-[11px]">Cetak</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleCopyWhatsApp}
             className="h-7 sm:h-8 px-2 sm:px-2.5 text-xs text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-900 rounded-xl flex items-center gap-1"
             title="Salin untuk WhatsApp"
@@ -550,6 +564,17 @@ export const JadwalPiketPintar: React.FC<JadwalPiketPintarProps> = React.memo(({
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* ── MODAL CETAK JADWAL PIKET RESMI ── */}
+      {isPrintModalOpen && (
+        <JadwalPiketPrintModal
+          isOpen={isPrintModalOpen}
+          onClose={() => setIsPrintModalOpen(false)}
+          kelasNama={kelasNama}
+          slots={slots}
+          studentsList={studentsList}
+        />
       )}
     </div>
   );

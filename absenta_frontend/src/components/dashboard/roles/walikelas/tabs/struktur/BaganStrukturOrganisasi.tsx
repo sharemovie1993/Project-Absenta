@@ -14,7 +14,8 @@ import {
   Check, 
   Users,
   GitBranch,
-  ListTree
+  ListTree,
+  Printer
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui';
@@ -22,6 +23,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { toast } from 'sonner';
+import { StrukturOrganisasiPrintModal } from './StrukturOrganisasiPrintModal';
 import type { Siswa } from '@/types/academic';
 import type { PengurusPosition, StrukturOrganisasiKelas } from './strukturTypes';
 
@@ -143,6 +145,7 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
 
   // Mode Tampilan: Bagan Pohon Visual vs List Hierarki Vertikal
   const [viewMode, setViewMode] = useState<'visual_tree' | 'vertical_tree'>('visual_tree');
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false);
 
   // Modal edit state
   const [editingPosition, setEditingPosition] = useState<PengurusPosition | null>(null);
@@ -290,6 +293,17 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
               <span>Daftar Alur</span>
             </button>
           </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsPrintModalOpen(true)}
+            className="h-8 px-2.5 text-xs text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 bg-white dark:bg-slate-900 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            title="Cetak Struktur Organisasi Kelas (PDF/Kop Resmi)"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Cetak Dokumen</span>
+          </Button>
 
           <Button
             variant="outline"
@@ -744,6 +758,19 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* ── MODAL CETAK STRUKTUR ORGANISASI RESMI ── */}
+      {isPrintModalOpen && (
+        <StrukturOrganisasiPrintModal
+          isOpen={isPrintModalOpen}
+          onClose={() => setIsPrintModalOpen(false)}
+          kelasNama={kelasNama}
+          waliKelasNama={waliKelasNama}
+          waliKelasNip={waliKelasNip}
+          positions={positions}
+          studentsList={studentsList}
+        />
       )}
     </div>
   );
