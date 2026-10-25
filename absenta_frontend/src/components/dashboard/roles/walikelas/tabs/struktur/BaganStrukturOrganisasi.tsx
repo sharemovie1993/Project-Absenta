@@ -313,24 +313,24 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
 
       {/* ── TAMPILAN 1: BAGAN POHON VISUAL (TRUE ORG TREE) ── */}
       {viewMode === 'visual_tree' && (
-        <div className="w-full overflow-x-auto pb-6 pt-2 no-scrollbar">
-          <div className="min-w-[660px] flex flex-col items-center">
+        <div className="w-full overflow-x-auto pb-4 pt-1 no-scrollbar">
+          <div className="w-full max-w-full flex flex-col items-center">
             {/* LEVEL 1: WALI KELAS (PEMBINA TERTINGGI) */}
-            <div className="relative group">
-              <div className="w-72 bg-gradient-to-b from-indigo-50/90 to-white dark:from-indigo-950/40 dark:to-slate-900 border-2 border-indigo-400/80 dark:border-indigo-600/80 rounded-2xl p-3.5 shadow-md flex items-center gap-3 text-left">
-                <div className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                  <Crown className="w-6 h-6" />
+            <div className="relative group w-full flex flex-col items-center">
+              <div className="w-full max-w-[320px] sm:max-w-sm bg-gradient-to-b from-indigo-50/90 to-white dark:from-indigo-950/40 dark:to-slate-900 border-2 border-indigo-400/80 dark:border-indigo-600/80 rounded-2xl p-2.5 sm:p-3.5 shadow-sm flex items-center gap-2.5 sm:gap-3 text-left">
+                <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Crown className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
                       Pembina Rombel
                     </span>
                     <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-indigo-300 text-indigo-700 dark:text-indigo-300">
                       Wali Kelas
                     </Badge>
                   </div>
-                  <h5 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                  <h5 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate" title={waliKelasNama}>
                     {waliKelasNama}
                   </h5>
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
@@ -340,18 +340,18 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
               </div>
 
               {/* Vertical connector to KM */}
-              <div className="w-0.5 h-6 bg-indigo-300 dark:bg-indigo-700 mx-auto" />
+              <div className="w-0.5 h-4 sm:h-6 bg-indigo-300 dark:bg-indigo-700 mx-auto" />
             </div>
 
             {/* LEVEL 2: KETUA MURID (KM) */}
-            <div className="relative group">
-              <div className="w-72 bg-white dark:bg-slate-900 border-2 border-violet-400/80 dark:border-violet-600/80 rounded-2xl p-3.5 shadow-sm flex items-center gap-3 text-left hover:border-violet-500 transition-all">
-                <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 flex items-center justify-center shrink-0 font-black">
-                  <UserCheck className="w-5 h-5" />
+            <div className="relative group w-full flex flex-col items-center">
+              <div className="w-full max-w-[320px] sm:max-w-sm bg-white dark:bg-slate-900 border-2 border-violet-400/80 dark:border-violet-600/80 rounded-2xl p-2.5 sm:p-3.5 shadow-xs flex items-center gap-2.5 sm:gap-3 text-left hover:border-violet-500 transition-all">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 flex items-center justify-center shrink-0 font-black">
+                  <UserCheck className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-violet-600 dark:text-violet-400">
+                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-violet-600 dark:text-violet-400">
                       Ketua Murid (KM)
                     </span>
                     <button
@@ -363,7 +363,7 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
                       <Edit3 className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <h5 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                  <h5 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate" title={km?.assignedStudentNames[0]}>
                     {km?.assignedStudentNames[0] || '(Belum Ditentukan)'}
                   </h5>
                   <p className="text-[10px] text-slate-400 truncate">
@@ -373,18 +373,18 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
               </div>
 
               {/* Vertical connector to Wakil KM */}
-              <div className="w-0.5 h-6 bg-slate-300 dark:bg-slate-700 mx-auto" />
+              <div className="w-0.5 h-4 sm:h-6 bg-slate-300 dark:bg-slate-700 mx-auto" />
             </div>
 
             {/* LEVEL 3: WAKIL KETUA MURID */}
-            <div className="relative group">
-              <div className="w-72 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-3 shadow-xs flex items-center gap-3 text-left hover:border-violet-400 transition-all">
-                <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0 font-bold">
+            <div className="relative group w-full flex flex-col items-center">
+              <div className="w-full max-w-[320px] sm:max-w-sm bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-2.5 sm:p-3 shadow-xs flex items-center gap-2.5 sm:gap-3 text-left hover:border-violet-400 transition-all">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0 font-bold">
                   <Users className="w-4 h-4" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-slate-500">
                       Wakil Ketua Murid
                     </span>
                     <button
@@ -396,7 +396,7 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
                       <Edit3 className="w-3 h-3" />
                     </button>
                   </div>
-                  <h5 className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                  <h5 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate" title={wkm?.assignedStudentNames[0]}>
                     {wkm?.assignedStudentNames[0] || '(Belum Ditentukan)'}
                   </h5>
                   <p className="text-[10px] text-slate-400 truncate">
@@ -406,47 +406,47 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
               </div>
 
               {/* Vertical connector to horizontal branch */}
-              <div className="w-0.5 h-6 bg-slate-300 dark:bg-slate-700 mx-auto" />
+              <div className="w-0.5 h-4 sm:h-6 bg-slate-300 dark:bg-slate-700 mx-auto" />
             </div>
 
             {/* LEVEL 4: BRANCHING TO SEKRETARIS (LEFT) & BENDAHARA (RIGHT) */}
-            <div className="w-full max-w-[620px] relative">
+            <div className="w-full max-w-md sm:max-w-[620px] relative px-1">
               {/* Horizontal line connector */}
               <div className="absolute top-0 left-1/4 right-1/4 h-0.5 bg-slate-300 dark:bg-slate-700" />
               
-              <div className="grid grid-cols-2 gap-8 pt-6 relative">
+              <div className="grid grid-cols-2 gap-2 sm:gap-6 pt-4 sm:pt-6 relative">
                 {/* Connector drop left */}
-                <div className="absolute top-0 left-1/4 -translate-x-1/2 w-0.5 h-6 bg-slate-300 dark:bg-slate-700" />
+                <div className="absolute top-0 left-1/4 -translate-x-1/2 w-0.5 h-4 sm:h-6 bg-slate-300 dark:bg-slate-700" />
                 {/* Connector drop right */}
-                <div className="absolute top-0 right-1/4 translate-x-1/2 w-0.5 h-6 bg-slate-300 dark:bg-slate-700" />
+                <div className="absolute top-0 right-1/4 translate-x-1/2 w-0.5 h-4 sm:h-6 bg-slate-300 dark:bg-slate-700" />
 
                 {/* SEKRETARIS CARD */}
-                <div className="bg-sky-50/40 dark:bg-sky-950/20 border border-sky-200/80 dark:border-sky-800/60 rounded-2xl p-3 shadow-2xs">
-                  <div className="flex items-center justify-between pb-2 border-b border-sky-100 dark:border-sky-900/40 mb-2">
-                    <div className="flex items-center gap-1.5">
-                      <div className="p-1.5 rounded-lg bg-sky-100 dark:bg-sky-900/60 text-sky-600 dark:text-sky-400">
-                        <FileText className="w-3.5 h-3.5" />
+                <div className="bg-sky-50/40 dark:bg-sky-950/20 border border-sky-200/80 dark:border-sky-800/60 rounded-2xl p-2 sm:p-3 shadow-2xs">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-sky-100 dark:border-sky-900/40 mb-1.5">
+                    <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
+                      <div className="p-1 sm:p-1.5 rounded-lg bg-sky-100 dark:bg-sky-900/60 text-sky-600 dark:text-sky-400 shrink-0">
+                        <FileText className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                       </div>
-                      <span className="text-[11px] font-bold text-sky-800 dark:text-sky-300">
-                        Sekretaris 1 & 2
+                      <span className="text-[10px] sm:text-[11px] font-bold text-sky-800 dark:text-sky-300 truncate">
+                        Sekretaris
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={() => sekretaris && handleOpenEdit(sekretaris)}
-                      className="p-1 text-slate-400 hover:text-sky-600 rounded-md cursor-pointer"
+                      className="p-1 text-slate-400 hover:text-sky-600 rounded-md cursor-pointer shrink-0"
                       title="Edit Sekretaris"
                     >
                       <Edit3 className="w-3 h-3" />
                     </button>
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1 sm:space-y-1.5">
                     {sekretaris?.assignedStudentNames.map((name, i) => (
-                      <div key={i} className="flex items-center gap-2 p-1.5 bg-white dark:bg-slate-900 rounded-xl border border-sky-100 dark:border-sky-950 text-xs">
-                        <span className="w-5 h-5 rounded-md bg-sky-100 text-sky-700 text-[10px] font-bold flex items-center justify-center shrink-0">
+                      <div key={i} className="flex items-center gap-1.5 p-1 sm:p-1.5 bg-white dark:bg-slate-900 rounded-xl border border-sky-100 dark:border-sky-950 text-xs">
+                        <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-md bg-sky-100 text-sky-700 text-[9px] sm:text-[10px] font-bold flex items-center justify-center shrink-0">
                           {i + 1}
                         </span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                        <span className="font-semibold text-slate-800 dark:text-slate-200 text-[10px] sm:text-xs truncate block" title={name}>
                           {name}
                         </span>
                       </div>
@@ -455,32 +455,32 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
                 </div>
 
                 {/* BENDAHARA CARD */}
-                <div className="bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/60 rounded-2xl p-3 shadow-2xs">
-                  <div className="flex items-center justify-between pb-2 border-b border-emerald-100 dark:border-emerald-900/40 mb-2">
-                    <div className="flex items-center gap-1.5">
-                      <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400">
-                        <Wallet className="w-3.5 h-3.5" />
+                <div className="bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/60 rounded-2xl p-2 sm:p-3 shadow-2xs">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-emerald-100 dark:border-emerald-900/40 mb-1.5">
+                    <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
+                      <div className="p-1 sm:p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 shrink-0">
+                        <Wallet className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                       </div>
-                      <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300">
-                        Bendahara 1 & 2
+                      <span className="text-[10px] sm:text-[11px] font-bold text-emerald-800 dark:text-emerald-300 truncate">
+                        Bendahara
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={() => bendahara && handleOpenEdit(bendahara)}
-                      className="p-1 text-slate-400 hover:text-emerald-600 rounded-md cursor-pointer"
+                      className="p-1 text-slate-400 hover:text-emerald-600 rounded-md cursor-pointer shrink-0"
                       title="Edit Bendahara"
                     >
                       <Edit3 className="w-3 h-3" />
                     </button>
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1 sm:space-y-1.5">
                     {bendahara?.assignedStudentNames.map((name, i) => (
-                      <div key={i} className="flex items-center gap-2 p-1.5 bg-white dark:bg-slate-900 rounded-xl border border-emerald-100 dark:border-emerald-950 text-xs">
-                        <span className="w-5 h-5 rounded-md bg-emerald-100 text-emerald-700 text-[10px] font-bold flex items-center justify-center shrink-0">
+                      <div key={i} className="flex items-center gap-1.5 p-1 sm:p-1.5 bg-white dark:bg-slate-900 rounded-xl border border-emerald-100 dark:border-emerald-950 text-xs">
+                        <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-md bg-emerald-100 text-emerald-700 text-[9px] sm:text-[10px] font-bold flex items-center justify-center shrink-0">
                           {i + 1}
                         </span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                        <span className="font-semibold text-slate-800 dark:text-slate-200 text-[10px] sm:text-xs truncate block" title={name}>
                           {name}
                         </span>
                       </div>
@@ -490,27 +490,27 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
               </div>
 
               {/* Stem down to Seksi-Seksi */}
-              <div className="w-0.5 h-6 bg-slate-300 dark:bg-slate-700 mx-auto" />
+              <div className="w-0.5 h-4 sm:h-6 bg-slate-300 dark:bg-slate-700 mx-auto" />
             </div>
 
             {/* LEVEL 5: SEKSI-SEKSI BIDANG OPERASIONAL */}
-            <div className="w-full max-w-[660px]">
-              <div className="relative pt-2">
+            <div className="w-full max-w-md sm:max-w-[660px] px-1">
+              <div className="relative pt-1 sm:pt-2">
                 <div className="text-center mb-2">
-                  <span className="inline-block px-3 py-0.5 bg-slate-100 dark:bg-slate-800 text-[10px] font-bold uppercase tracking-wider text-slate-500 rounded-full border border-slate-200 dark:border-slate-700">
-                    Seksi - Seksi Bidang Operasional Rombel
+                  <span className="inline-block px-2.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 rounded-full border border-slate-200 dark:border-slate-700">
+                    Seksi - Seksi Bidang Rombel
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
                   {seksiList.map((seksi) => (
                     <div
                       key={seksi.id}
-                      className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-2.5 shadow-2xs hover:border-indigo-300 transition-all text-center flex flex-col justify-between"
+                      className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-2 sm:p-2.5 shadow-2xs hover:border-indigo-300 transition-all text-center flex flex-col justify-between"
                     >
                       <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-400 truncate">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[8px] sm:text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-400 truncate">
                             {seksi.roleCode.replace('SEKSI_', '')}
                           </span>
                           <button
@@ -522,13 +522,13 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
                             <Edit3 className="w-3 h-3" />
                           </button>
                         </div>
-                        <h6 className="text-[11px] font-bold text-slate-800 dark:text-slate-200 truncate">
+                        <h6 className="text-[10px] sm:text-[11px] font-bold text-slate-800 dark:text-slate-200 truncate" title={seksi.roleTitle}>
                           {seksi.roleTitle}
                         </h6>
                       </div>
 
-                      <div className="mt-2 pt-1.5 border-t border-slate-100 dark:border-slate-800">
-                        <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate">
+                      <div className="mt-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
+                        <p className="text-[10px] sm:text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate" title={seksi.assignedStudentNames[0]}>
                           {seksi.assignedStudentNames[0] || '(Belum Ada)'}
                         </p>
                       </div>

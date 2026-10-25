@@ -97,52 +97,52 @@ export const WalasStrukturTab: React.FC<WalasStrukturTabProps> = React.memo(({
           </div>
         </div>
 
-        {/* Section View Switcher */}
-        <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-850 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs ml-auto">
+        {/* Section View Switcher (Shopee-Grade Segmented Tabs) */}
+        <div className="grid grid-cols-3 sm:flex items-center p-1 bg-slate-100 dark:bg-slate-850 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs w-full sm:w-auto">
           <button
             type="button"
             onClick={() => setActiveSection('all')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
               activeSection === 'all'
                 ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Semua</span>
+            <span>Semua</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveSection('struktur')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
               activeSection === 'struktur'
                 ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             }`}
           >
             <GitBranch className="w-3.5 h-3.5" />
-            <span>Bagan Pohon</span>
+            <span>Bagan</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveSection('piket')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
               activeSection === 'piket'
                 ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             }`}
           >
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Jadwal Piket</span>
+            <span>Piket</span>
           </button>
         </div>
       </div>
 
       {/* ── 3. Content Sections ── */}
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* SECTION A: BAGAN STRUKTUR ORGANISASI KELAS (BAGAN POHON) */}
         {(activeSection === 'all' || activeSection === 'struktur') && (
-          <Card className="p-4 sm:p-5 rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-4">
+          <Card className="p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-3 sm:space-y-4">
             <BaganStrukturOrganisasi
               kelasId={effectiveKelasId}
               kelasNama={effectiveKelasNama}
@@ -156,7 +156,7 @@ export const WalasStrukturTab: React.FC<WalasStrukturTabProps> = React.memo(({
 
         {/* SECTION B: JADWAL PIKET PINTAR (MEMBAGI RATA KE JUMLAH SISWA) */}
         {(activeSection === 'all' || activeSection === 'piket') && (
-          <Card className="p-4 sm:p-5 rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-4">
+          <Card className="p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-3 sm:space-y-4">
             <JadwalPiketPintar
               kelasId={effectiveKelasId}
               kelasNama={effectiveKelasNama}
