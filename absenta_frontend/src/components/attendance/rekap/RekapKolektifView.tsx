@@ -16,7 +16,9 @@ import {
   FileText,
   CheckCircle2,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Compass,
+  ArrowUpRight
 } from 'lucide-react';
 import { HubStatusStrip, type HubStatusItem } from '@/components/ui/hub';
 import toast from 'react-hot-toast';
@@ -511,7 +513,17 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
           </div>
         ) : viewMode === 'SUMMARY' ? (
           <>
-            {/* TABEL SUMMARY DESKTOP (9 Kolom Proporsional) */}
+            {/* UX Helper Hint: Afodansi Klik Tracking Siswa */}
+            <div className="mb-2 p-2.5 px-3 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-xl border border-indigo-100 dark:border-indigo-900/40 text-xs flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-200">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <span className="font-medium text-[11px] sm:text-xs">
+                  <strong>Fitur Pelacakan:</strong> Klik nama siswa atau tombol <strong>Lacak</strong> untuk menganalisis jejak kehadiran 4 channel (Gerbang, Pembiasaan, KBM, PKL) secara individual.
+                </span>
+              </div>
+            </div>
+
+            {/* TABEL SUMMARY DESKTOP (11 Kolom Proporsional) */}
             <table className="hidden sm:table w-full text-left text-xs border-collapse">
               <thead className="bg-slate-50 dark:bg-slate-800/90 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200/80 sticky top-0 z-10">
                 <tr>
@@ -525,12 +537,13 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
                   <th className="py-2.5 px-3 text-center">Terlambat</th>
                   <th className="py-2.5 px-3 text-center">% Kehadiran</th>
                   <th className="py-2.5 px-3 text-center font-bold">Total Poin</th>
+                  <th className="py-2.5 px-3 text-center w-20">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {filteredRows.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-8 text-center text-slate-400">
+                    <td colSpan={11} className="py-8 text-center text-slate-400">
                       {searchQuery ? `Tidak ditemukan siswa yang cocok dengan "${searchQuery}"` : 'Tidak ada data siswa'}
                     </td>
                   </tr>
@@ -548,10 +561,11 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
                           <button
                             type="button"
                             onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${r.siswa_id}`)}
-                            className="text-left font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer truncate max-w-[240px] block"
-                            title={r.nama_siswa}
+                            className="group/name inline-flex items-center gap-1 font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline cursor-pointer truncate max-w-[240px] text-left"
+                            title={`Klik untuk Buka Tracking Presensi: ${r.nama_siswa}`}
                           >
-                            {r.nama_siswa}
+                            <span className="truncate">{r.nama_siswa}</span>
+                            <ArrowUpRight className="w-3.5 h-3.5 opacity-60 group-hover/name:opacity-100 group-hover/name:translate-x-0.5 group-hover/name:-translate-y-0.5 transition-all text-indigo-500 shrink-0" />
                           </button>
                         </td>
                         <td className="py-2.5 px-3 text-center font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap text-[11px]">
@@ -579,6 +593,17 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
                         </td>
                         <td className="py-2.5 px-3 text-center font-bold text-slate-800 dark:text-slate-100 font-mono">
                           {r.total_poin || 0}
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${r.siswa_id}`)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60 transition-all cursor-pointer shadow-2xs"
+                            title="Buka Matriks Tracking Multi-Channel Siswa"
+                          >
+                            <Compass className="w-3 h-3 text-indigo-500" />
+                            <span>Lacak</span>
+                          </button>
                         </td>
                       </tr>
                     );
@@ -613,9 +638,10 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
                             <button
                               type="button"
                               onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${r.siswa_id}`)}
-                              className="text-left font-bold text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer block truncate"
+                              className="group/name inline-flex items-center gap-1 text-left font-bold text-xs text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer truncate max-w-full"
                             >
-                              {r.nama_siswa}
+                              <span className="truncate">{r.nama_siswa}</span>
+                              <ArrowUpRight className="w-3 h-3 text-indigo-500 shrink-0" />
                             </button>
                             <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 block">
                               NIS: {r.nis || '-'}
@@ -665,6 +691,19 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
                           {r.total_poin || 0}
                         </div>
                       </div>
+
+                      {/* Baris 3: Quick Action Button Tracking */}
+                      <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800/80 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${r.siswa_id}`)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors cursor-pointer"
+                        >
+                          <Compass className="w-3.5 h-3.5 text-indigo-500" />
+                          <span>Detail Tracking Siswa</span>
+                          <ArrowUpRight className="w-3 h-3 text-indigo-500" />
+                        </button>
+                      </div>
                     </div>
                   );
                 })
@@ -693,12 +732,13 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
                 <th className="py-2 px-1 text-center font-extrabold text-rose-600 dark:text-rose-400 bg-rose-50/60 dark:bg-rose-950/30 text-[10px] sm:text-[11px] w-7">A</th>
                 <th className="py-2 px-1 text-center font-extrabold text-purple-600 dark:text-purple-400 bg-purple-50/60 dark:bg-purple-950/30 text-[10px] sm:text-[11px] w-7">T</th>
                 <th className="py-2 px-1.5 text-center font-black text-slate-900 dark:text-slate-100 bg-slate-100/80 dark:bg-slate-800/80 text-[10px] sm:text-[11px] min-w-[36px]">POIN</th>
+                <th className="py-2 px-1 text-center font-bold text-[10px] sm:text-[11px] w-12 sticky right-0 bg-slate-100 dark:bg-slate-800 z-10 shadow-[-1px_0_3px_rgba(0,0,0,0.06)]">Lacak</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
               {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={dayNumbers.length + 8} className="py-8 text-center text-slate-400">
+                  <td colSpan={dayNumbers.length + 9} className="py-8 text-center text-slate-400">
                     {searchQuery ? `Tidak ditemukan siswa yang cocok dengan "${searchQuery}"` : 'Tidak ada data siswa'}
                   </td>
                 </tr>
@@ -709,9 +749,11 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
                       <button
                         type="button"
                         onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${r.siswa_id}`)}
-                        className="text-left font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer truncate max-w-[140px] block"
+                        className="group/name inline-flex items-center gap-1 text-left font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline cursor-pointer truncate max-w-[140px]"
+                        title={`Klik untuk Buka Tracking: ${r.nama_siswa}`}
                       >
-                        {r.nama_siswa}
+                        <span className="truncate">{r.nama_siswa}</span>
+                        <ArrowUpRight className="w-3 h-3 text-indigo-500 shrink-0 opacity-70 group-hover/name:opacity-100 transition-opacity" />
                       </button>
                     </td>
                     <td className="py-1 px-1 text-center font-mono text-[9px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
@@ -754,6 +796,16 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
                     </td>
                     <td className="py-1 px-1.5 text-center font-mono font-black text-slate-800 dark:text-slate-200 bg-slate-100/50 dark:bg-slate-800/50 text-[10px] sm:text-[11px]">
                       {r.total_poin || 0}
+                    </td>
+                    <td className="py-1 px-1 text-center sticky right-0 bg-white dark:bg-slate-900 z-10 shadow-[-1px_0_3px_rgba(0,0,0,0.06)]">
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${r.siswa_id}`)}
+                        className="p-1 rounded-md hover:bg-indigo-50 dark:hover:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all cursor-pointer inline-flex items-center justify-center shadow-2xs"
+                        title={`Buka Tracking Multi-Channel: ${r.nama_siswa}`}
+                      >
+                        <Compass className="w-3.5 h-3.5" />
+                      </button>
                     </td>
                   </tr>
                 ))

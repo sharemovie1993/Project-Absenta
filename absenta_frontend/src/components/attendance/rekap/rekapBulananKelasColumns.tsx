@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowUpRight, Compass } from 'lucide-react';
 import type { RekapBulananKelasRow, ViewMode } from './types';
 
 // ─── Badge style resolver untuk status harian ────────────────────────────────
@@ -48,11 +49,25 @@ export function useRekapBulananKelasColumns(viewMode: ViewMode, dayNumbers: numb
 
   const NamaCell = (minW = '') => (v: unknown, row: RekapBulananKelasRow) => (
     <button
+      type="button"
       onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${row.siswa_id}`)}
-      className={`font-bold text-blue-600 dark:text-blue-400 hover:underline hover:text-blue-700 text-left transition-all ${minW}`}
-      title="Klik untuk Melacak Detail Aktivitas & Sesi Pembelajaran Siswa"
+      className={`group/name inline-flex items-center gap-1.5 font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline text-left transition-all cursor-pointer ${minW}`}
+      title="Klik untuk Melacak Matriks Presensi & Aktivitas Siswa"
     >
-      {String(v ?? '')}
+      <span className="truncate">{String(v ?? '')}</span>
+      <ArrowUpRight className="w-3.5 h-3.5 opacity-60 group-hover/name:opacity-100 group-hover/name:translate-x-0.5 group-hover/name:-translate-y-0.5 transition-all text-indigo-500 shrink-0" />
+    </button>
+  );
+
+  const AksiCell = (_: unknown, row: RekapBulananKelasRow) => (
+    <button
+      type="button"
+      onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${row.siswa_id}`)}
+      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60 transition-all cursor-pointer shadow-2xs"
+      title="Buka Matriks Tracking Multi-Channel Siswa"
+    >
+      <Compass className="w-3 h-3 text-indigo-500" />
+      <span>Lacak</span>
     </button>
   );
 
@@ -77,6 +92,7 @@ export function useRekapBulananKelasColumns(viewMode: ViewMode, dayNumbers: numb
       { label: 'Terlambat', key: 'TERLAMBAT', className: 'text-center', render: (v: unknown) => <span className="font-bold text-purple-600">{Number(v) || 0}</span> },
       { label: '% Kehadiran', key: 'persentase', className: 'text-center', render: PctCell },
       { label: 'Total Poin', key: 'total_poin', className: 'text-center', render: (v: unknown) => <span className="font-bold text-slate-700 dark:text-slate-300 text-xs font-mono">{Number(v) || 0}</span> },
+      { label: 'Aksi', key: 'aksi', className: 'text-center w-20', render: AksiCell },
     ];
   }
 
@@ -96,5 +112,6 @@ export function useRekapBulananKelasColumns(viewMode: ViewMode, dayNumbers: numb
     { label: 'A', key: 'ALPA', className: 'text-center', render: (v: unknown) => <span className="font-bold text-rose-600 text-xs">{Number(v) || 0}</span> },
     { label: 'T', key: 'TERLAMBAT', className: 'text-center', render: (v: unknown) => <span className="font-bold text-purple-600 text-xs">{Number(v) || 0}</span> },
     { label: 'POIN', key: 'total_poin', className: 'text-center', render: (v: unknown) => <span className="font-bold text-slate-700 dark:text-slate-300 text-xs font-mono">{Number(v) || 0}</span> },
+    { label: 'Lacak', key: 'aksi', className: 'text-center w-14', render: AksiCell },
   ];
 }
