@@ -196,6 +196,8 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
   waliKelasNama,
   onPhotoUpdate,
 }) => {
+  const navigate = useNavigate();
+
   // 1. Fetch live teacher profile via React Query Hook
   const { guruProfile, refetch: refetchGuruProfile } = useGuruMe();
   const updateGuruMeMutation = useUpdateGuruMe();
@@ -397,7 +399,6 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
   const activeNama = guruProfile?.nama_guru || user?.full_name || user?.name || 'Drs. Budi Santoso, M.Pd';
   const activeNip = guruProfile?.nip || nipText;
 
-  const navigate = useNavigate();
   const [showIzinModal, setShowIzinModal] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
 
