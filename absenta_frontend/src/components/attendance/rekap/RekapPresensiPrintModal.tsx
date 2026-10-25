@@ -8,7 +8,7 @@ import {
 import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
 import { toast } from 'sonner';
-import { SlidersHorizontal, UserCheck, RotateCcw, X } from 'lucide-react';
+import { SlidersHorizontal, UserCheck, RotateCcw, X, FileText, Layers } from 'lucide-react';
 import type { RekapBulananKelasRow, ViewMode } from './types';
 
 export interface RekapPresensiPrintModalProps {
@@ -46,6 +46,7 @@ export const RekapPresensiPrintModal: React.FC<RekapPresensiPrintModalProps> = (
   const [showLogoDaerah, setShowLogoDaerah] = useState<boolean>(true);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [showTtdConfig, setShowTtdConfig] = useState<boolean>(false);
+  const [pageLayoutMode, setPageLayoutMode] = useState<'1_page' | '2_pages'>('1_page');
 
   // Hook SSOT Kop Surat Dinas & Sekolah
   const { tenantInfo, rawSekolah } = usePrintHeaderData();
@@ -159,10 +160,21 @@ export const RekapPresensiPrintModal: React.FC<RekapPresensiPrintModalProps> = (
     return Array.from({ length: 30 }, (_, i) => i + 1);
   }, [dayNumbers]);
 
-  // Auto-density scaling: Berapapun jumlah siswanya (misal 46+ siswa), selalu muat dalam 1 Lembar A4!
-  const rowCount = rows.length;
-  const isUltraDense = rowCount > 34; // 35 - 50 siswa (e.g. 46 siswa)
-  const isDense = rowCount > 24 && rowCount <= 34; // 25 - 34 siswa
+  // Pages chunking berdasarkan mode tata letak halaman:
+  // - '1_page': Seluruh siswa dimuat dalam 1 halaman A4 utuh dengan auto-density scaling
+  // - '2_pages': Dibagi rata menjadi 2 halaman A4 dengan tata letak lebih lega
+  const pages = useMemo(() => {
+    if (pageLayoutMode === '1_page' || rows.length <= 1) {
+      return [rows];
+    }
+    const mid = Math.ceil(rows.length / 2);
+    return [rows.slice(0, mid), rows.slice(mid)];
+  }, [rows, pageLayoutMode]);
+
+  // Efektif baris per lembar untuk menentukan skala densitas otomatis
+  const effectiveRowsPerSheet = pageLayoutMode === '1_page' ? rows.length : Math.ceil(rows.length / 2);
+  const isUltraDense = effectiveRowsPerSheet > 34; // 35 - 50 siswa di 1 lembar
+  const isDense = effectiveRowsPerSheet > 24 && effectiveRowsPerSheet <= 34; // 25 - 34 siswa di 1 lembar
 
   // Dynamic sheet padding to maximize printable area when student count is high
   const sheetPaddingClass = isUltraDense
@@ -206,13 +218,15 @@ export const RekapPresensiPrintModal: React.FC<RekapPresensiPrintModalProps> = (
     window.print();
   };
 
-  // Handler Dual-Engine PDF Download (html2canvas-pro + jsPDF) - Garansi 1 Halaman Utuh
+  // Handler Dual-Engine PDF Download (html2canvas-pro + jsPDF) - Mendukung 1 Lembar atau 2 Lembar
   const handleDownloadPdf = async () => {
     setIsExporting(true);
-    const toastId = toast.loading('Sedang merender PDF Rekapitulasi Presensi (1 Lembar A4)...');
+    const toastId = toast.loading(
+      `Sedang merender PDF Rekapitulasi Presensi (${pageLayoutMode === '1_page' ? '1 Lembar' : '2 Lembar'})...`
+    );
     try {
-      const sheetElement = document.querySelector('.print-sheet') as HTMLElement;
-      if (!sheetElement) {
+      const sheetElements = document.querySelectorAll('.print-sheet');
+      if (!sheetElements || sheetElements.length === 0) {
         window.print();
         toast.dismiss(toastId);
         return;
@@ -228,21 +242,32 @@ export const RekapPresensiPrintModal: React.FC<RekapPresensiPrintModalProps> = (
       const pdfWidth = isLandscape ? 297 : 210;
       const pdfHeight = isLandscape ? 210 : 297;
 
-      const canvas = await html2canvas(sheetElement, {
-        scale: 2.5,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-      });
+      for (let i = 0; i < sheetElements.length; i++) {
+        if (i > 0) {
+          pdf.addPage('a4', isLandscape ? 'landscape' : 'portrait');
+        }
 
-      const imgData = canvas.toDataURL('image/png');
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        const sheet = sheetElements[i] as HTMLElement;
+        const canvas = await html2canvas(sheet, {
+          scale: 2.5,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+        });
 
-      const modeSlug = viewMode === 'MATRIX' ? 'Leger_Presensi_1Lembar' : 'Rekap_Presensi_1Lembar';
+        const imgData = canvas.toDataURL('image/png');
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      }
+
+      const modeSlug = viewMode === 'MATRIX' ? 'Leger_Presensi' : 'Rekap_Presensi';
+      const layoutSlug = pageLayoutMode === '1_page' ? '1_Lembar' : '2_Lembar';
       const safeKelas = kelasNama.replace(/[^a-zA-Z0-9]/g, '_');
-      pdf.save(`${modeSlug}_${safeKelas}_${bulan || 'Bulan'}.pdf`);
-      toast.success('PDF Rekap Presensi berhasil diunduh (1 Lembar A4)!', { id: toastId });
+      pdf.save(`${modeSlug}_${safeKelas}_${layoutSlug}_${bulan || 'Bulan'}.pdf`);
+      toast.success(
+        `PDF Rekap Presensi (${pageLayoutMode === '1_page' ? '1 Lembar' : '2 Lembar'}) berhasil diunduh!`,
+        { id: toastId }
+      );
     } catch (err) {
       console.error('[PDF Export Error]', err);
       toast.error('Gagal mengekspor canvas, membuka dialog cetak browser...', { id: toastId });
@@ -271,19 +296,51 @@ export const RekapPresensiPrintModal: React.FC<RekapPresensiPrintModalProps> = (
       downloadPdfText={isExporting ? 'Memproses...' : 'Unduh PDF'}
       printButtonText="Cetak Dokumen"
       extraActions={
-        <button
-          type="button"
-          onClick={() => setShowTtdConfig((prev) => !prev)}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border cursor-pointer ${
-            showTtdConfig
-              ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
-              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-50'
-          }`}
-          title="Sesuaikan nama penandatangan (TTD) sebelum cetak"
-        >
-          <SlidersHorizontal className="w-3.5 h-3.5" />
-          <span>{showTtdConfig ? 'Tutup Pengaturan TTD' : 'Pengaturan TTD'}</span>
-        </button>
+        <div className="flex items-center gap-1.5">
+          {/* Segmented Controller: 1 Halaman vs 2 Halaman */}
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
+            <button
+              type="button"
+              onClick={() => setPageLayoutMode('1_page')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all flex items-center gap-1 cursor-pointer ${
+                pageLayoutMode === '1_page'
+                  ? 'bg-white dark:bg-slate-900 text-primary shadow-xs font-semibold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+              title="Muat seluruh siswa dalam 1 halaman A4 ringkas"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>1 Halaman</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPageLayoutMode('2_pages')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all flex items-center gap-1 cursor-pointer ${
+                pageLayoutMode === '2_pages'
+                  ? 'bg-white dark:bg-slate-900 text-primary shadow-xs font-semibold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+              title="Bagi rata data ke 2 halaman A4 dengan tata letak lebih lega"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>2 Halaman</span>
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowTtdConfig((prev) => !prev)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border cursor-pointer ${
+              showTtdConfig
+                ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-50'
+            }`}
+            title="Sesuaikan nama penandatangan (TTD) sebelum cetak"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>{showTtdConfig ? 'Tutup TTD' : 'Pengaturan TTD'}</span>
+          </button>
+        </div>
       }
       size="5xl"
     >
@@ -411,307 +468,328 @@ export const RekapPresensiPrintModal: React.FC<RekapPresensiPrintModalProps> = (
         </div>
       )}
 
-      {/* ── RENDERING 1 LEMBAR UTUH A4 (TRUE WYSIWYG - NO OVERFLOW) ── */}
-      <PrintDocumentSheet
-        orientation={orientation}
-        pageNumber={1}
-        totalPages={1}
-        className={sheetPaddingClass}
-        footerText={`Laporan Presensi — ${kelasNama} — ${bulanFormatted} — Lembar Resmi Tunggal (1/1)`}
-      >
-        {/* KOP SURAT RESMI */}
-        <PrintHeader
-          variant={orientation}
-          tenantInfo={tenantInfo}
-          showLogoDaerah={showLogoDaerah}
-          showLogoSekolah={showLogoSekolah}
-          className={isUltraDense ? 'mb-1 pb-1' : 'mb-2 pb-1.5'}
-        />
+      {/* ── RENDERING LEMBAR DOKUMEN A4 (1 LEMBAR / 2 LEMBAR) ── */}
+      {pages.map((pageRows, pageIdx) => {
+        const isFirstPage = pageIdx === 0;
+        const isLastPage = pageIdx === pages.length - 1;
+        const startRowNum = pages.slice(0, pageIdx).reduce((acc, p) => acc + p.length, 0);
 
-        {/* JUDUL DOKUMEN & METADATA RESMI */}
-        <div className={isUltraDense ? 'text-center my-1 space-y-0.5' : 'text-center my-2 space-y-0.5'}>
-          <h3 className={`${isUltraDense ? 'text-xs' : 'text-sm'} font-bold uppercase tracking-wider text-black`}>
-            {viewMode === 'MATRIX'
-              ? 'LEGER REKAPITULASI PRESENSI HARIAN SISWA'
-              : 'LAPORAN REKAPITULASI PRESENSI BULANAN SISWA'}
-          </h3>
-          {!isUltraDense && (
-            <>
-              <h4 className="text-xs font-bold uppercase tracking-wide text-slate-800">
-                ROMBEL {kelasNama.toUpperCase()}
-              </h4>
-              <p className="text-[10px] italic text-slate-600">
-                Bulan: {bulanFormatted} — Tahun Pelajaran {tahunPelajaran || '2026/2027'}
-              </p>
-            </>
-          )}
-        </div>
+        return (
+          <PrintDocumentSheet
+            key={pageIdx}
+            orientation={orientation}
+            pageNumber={pageIdx + 1}
+            totalPages={pages.length}
+            className={sheetPaddingClass}
+            footerText={`Laporan Presensi — ${kelasNama} — ${bulanFormatted} — Halaman ${pageIdx + 1} dari ${pages.length}`}
+          >
+            {/* KOP SURAT RESMI (Halaman Pertama Lengkap) */}
+            {isFirstPage ? (
+              <PrintHeader
+                variant={orientation}
+                tenantInfo={tenantInfo}
+                showLogoDaerah={showLogoDaerah}
+                showLogoSekolah={showLogoSekolah}
+                className={isUltraDense ? 'mb-1 pb-1' : 'mb-2 pb-1.5'}
+              />
+            ) : (
+              <div className="border-b-2 border-black pb-1 mb-2 text-center text-[10px] font-bold text-slate-800">
+                Lanjutan Rekapitulasi Presensi Siswa — Kelas {kelasNama} — {bulanFormatted} (Halaman {pageIdx + 1} dari {pages.length})
+              </div>
+            )}
 
-        {/* TABEL INFORMASI KELAS (COMPACT BADGE STRIP) */}
-        <div
-          className={`border border-black/80 rounded-xs ${
-            isUltraDense ? 'px-2 py-0.5 my-1 text-[8px]' : 'p-2 my-2 text-[10px]'
-          } bg-slate-50/50`}
-        >
-          <div className="flex flex-wrap items-center justify-between gap-1 sm:gap-2">
-            <div>
-              <span className="font-semibold text-slate-600">Rombel: </span>
-              <span className="font-bold text-black">{kelasNama}</span>
-            </div>
-            <div>
-              <span className="font-semibold text-slate-600">Wali Kelas: </span>
-              <span className="font-bold text-black">{activeWaliKelasNama}</span>
-            </div>
-            <div>
-              <span className="font-semibold text-slate-600">Bulan: </span>
-              <span className="font-bold text-black">{bulanFormatted}</span>
-            </div>
-            <div>
-              <span className="font-semibold text-slate-600">Jumlah Siswa: </span>
-              <span className="font-bold text-black">{rows.length} Siswa (1 Lembar Penuh)</span>
-            </div>
-            <div>
-              <span className="font-semibold text-slate-600">Format: </span>
-              <span className="font-bold text-black">
-                {viewMode === 'MATRIX' ? 'Matriks Harian (1-31)' : 'Akumulasi Bulanan'}
-              </span>
-            </div>
-          </div>
-        </div>
+            {/* JUDUL DOKUMEN & METADATA RESMI (Halaman Pertama) */}
+            {isFirstPage && (
+              <>
+                <div className={isUltraDense ? 'text-center my-1 space-y-0.5' : 'text-center my-2 space-y-0.5'}>
+                  <h3 className={`${isUltraDense ? 'text-xs' : 'text-sm'} font-bold uppercase tracking-wider text-black`}>
+                    {viewMode === 'MATRIX'
+                      ? 'LEGER REKAPITULASI PRESENSI HARIAN SISWA'
+                      : 'LAPORAN REKAPITULASI PRESENSI BULANAN SISWA'}
+                  </h3>
+                  {!isUltraDense && (
+                    <>
+                      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-800">
+                        ROMBEL {kelasNama.toUpperCase()}
+                      </h4>
+                      <p className="text-[10px] italic text-slate-600">
+                        Bulan: {bulanFormatted} — Tahun Pelajaran {tahunPelajaran || '2026/2027'}
+                      </p>
+                    </>
+                  )}
+                </div>
 
-        {/* ── TABEL PRESENSI TRUE WYSIWYG ── */}
-        <div className={isUltraDense ? 'my-1' : 'my-2'}>
-          {viewMode === 'MATRIX' ? (
-            /* TABEL MATRIKS HARIAN (Landscape Mode 1..31 + H, S, I, A, T, POIN) */
-            <table className={`w-full border-collapse border-2 border-black text-left ${matrixTextClass}`}>
-              <thead>
-                <tr className="bg-slate-100 border-b-2 border-black">
-                  <th className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center w-5 font-bold`}>No</th>
-                  <th className={`${matrixCellPy} ${matrixCellPx} border-r border-black font-bold min-w-[120px] max-w-[160px]`}>
-                    Nama Siswa
-                  </th>
-                  <th className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-mono w-12 font-bold`}>
-                    NIS
-                  </th>
-                  {resolvedDays.map((d) => (
-                    <th
-                      key={d}
-                      className="p-0 border-r border-black text-center font-mono text-[7px] min-w-[13px]"
-                    >
-                      {d}
-                    </th>
-                  ))}
-                  <th className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold bg-emerald-50 text-emerald-800 w-5`}>
-                    H
-                  </th>
-                  <th className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold bg-amber-50 text-amber-800 w-5`}>
-                    S
-                  </th>
-                  <th className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold bg-blue-50 text-blue-800 w-5`}>
-                    I
-                  </th>
-                  <th className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold bg-rose-50 text-rose-800 w-5`}>
-                    A
-                  </th>
-                  <th className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold bg-purple-50 text-purple-800 w-5`}>
-                    T
-                  </th>
-                  <th className={`${matrixCellPy} ${matrixCellPx} text-center font-bold bg-slate-200 text-black w-7`}>POIN</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r, idx) => {
-                  const rowNum = idx + 1;
-                  return (
-                    <tr
-                      key={r.siswa_id || idx}
-                      className="border-b border-black/70 hover:bg-slate-50/50"
-                    >
-                      <td className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-mono`}>{rowNum}</td>
-                      <td className={`${matrixCellPy} ${matrixCellPx} border-r border-black font-medium truncate max-w-[160px]`}>
-                        {r.nama_siswa}
-                      </td>
-                      <td className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-mono text-[7px]`}>
-                        {r.nis || '-'}
-                      </td>
-                      {resolvedDays.map((d) => {
-                        const code = r.dailyMap?.[String(d)];
-                        return (
-                          <td
-                            key={d}
-                            className="p-0 border-r border-black text-center font-mono text-[7px] font-bold"
-                          >
-                            {code || '-'}
-                          </td>
-                        );
-                      })}
-                      <td className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold text-emerald-700 bg-emerald-50/40`}>
-                        {r.HADIR || 0}
-                      </td>
-                      <td className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold text-amber-700 bg-amber-50/40`}>
-                        {r.SAKIT || 0}
-                      </td>
-                      <td className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold text-blue-700 bg-blue-50/40`}>
-                        {r.IZIN || 0}
-                      </td>
-                      <td className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold text-rose-700 bg-rose-50/40`}>
-                        {r.ALPA || 0}
-                      </td>
-                      <td className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold text-purple-700 bg-purple-50/40`}>
-                        {r.TERLAMBAT || 0}
-                      </td>
-                      <td className={`${matrixCellPy} ${matrixCellPx} text-center font-bold bg-slate-100`}>{r.total_poin || 0}</td>
+                {/* TABEL INFORMASI KELAS (COMPACT BADGE STRIP) */}
+                <div
+                  className={`border border-black/80 rounded-xs ${
+                    isUltraDense ? 'px-2 py-0.5 my-1 text-[8px]' : 'p-2 my-2 text-[10px]'
+                  } bg-slate-50/50`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-1 sm:gap-2">
+                    <div>
+                      <span className="font-semibold text-slate-600">Rombel: </span>
+                      <span className="font-bold text-black">{kelasNama}</span>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-slate-600">Wali Kelas: </span>
+                      <span className="font-bold text-black">{activeWaliKelasNama}</span>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-slate-600">Bulan: </span>
+                      <span className="font-bold text-black">{bulanFormatted}</span>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-slate-600">Jumlah Siswa: </span>
+                      <span className="font-bold text-black">{rows.length} Siswa</span>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-slate-600">Tata Letak: </span>
+                      <span className="font-bold text-black">
+                        {pageLayoutMode === '1_page' ? '1 Lembar Ringkas' : `2 Lembar (Hal. ${pageIdx + 1})`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* ── TABEL PRESENSI TRUE WYSIWYG ── */}
+            <div className={isUltraDense ? 'my-1' : 'my-2'}>
+              {viewMode === 'MATRIX' ? (
+                /* TABEL MATRIKS HARIAN (Landscape Mode 1..31 + H, S, I, A, T, POIN) */
+                <table className={`w-full border-collapse border-2 border-black text-left ${matrixTextClass}`}>
+                  <thead>
+                    <tr className="bg-slate-100 border-b-2 border-black">
+                      <th className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center w-5 font-bold`}>No</th>
+                      <th className={`${matrixCellPy} ${matrixCellPx} border-r border-black font-bold min-w-[120px] max-w-[160px]`}>
+                        Nama Siswa
+                      </th>
+                      <th className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-mono w-12 font-bold`}>
+                        NIS
+                      </th>
+                      {resolvedDays.map((d) => (
+                        <th
+                          key={d}
+                          className="p-0 border-r border-black text-center font-mono text-[7px] min-w-[13px]"
+                        >
+                          {d}
+                        </th>
+                      ))}
+                      <th className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold bg-emerald-50 text-emerald-800 w-5`}>
+                        H
+                      </th>
+                      <th className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold bg-amber-50 text-amber-800 w-5`}>
+                        S
+                      </th>
+                      <th className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold bg-blue-50 text-blue-800 w-5`}>
+                        I
+                      </th>
+                      <th className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold bg-rose-50 text-rose-800 w-5`}>
+                        A
+                      </th>
+                      <th className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold bg-purple-50 text-purple-800 w-5`}>
+                        T
+                      </th>
+                      <th className={`${matrixCellPy} ${matrixCellPx} text-center font-bold bg-slate-200 text-black w-7`}>POIN</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          ) : (
-            /* TABEL AKUMULASI SUMMARY (Portrait Mode 10 Kolom) */
-            <table className={`w-full border-collapse border-2 border-black text-left ${summaryTextClass}`}>
-              <thead>
-                <tr className="bg-slate-100 border-b-2 border-black">
-                  <th className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center w-8 font-bold`}>No</th>
-                  <th className={`${summaryCellPy} ${summaryCellPx} border-r border-black font-bold`}>Nama Siswa</th>
-                  <th className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-mono w-20 font-bold`}>
-                    NIS
-                  </th>
-                  <th className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-bold text-emerald-800 bg-emerald-50 w-12`}>
-                    Hadir
-                  </th>
-                  <th className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-bold text-blue-800 bg-blue-50 w-12`}>
-                    Izin
-                  </th>
-                  <th className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-bold text-amber-800 bg-amber-50 w-12`}>
-                    Sakit
-                  </th>
-                  <th className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-bold text-rose-800 bg-rose-50 w-12`}>
-                    Alpa
-                  </th>
-                  <th className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-bold text-purple-800 bg-purple-50 w-14`}>
-                    Terlambat
-                  </th>
-                  <th className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-bold w-16`}>
-                    % Hadir
-                  </th>
-                  <th className={`${summaryCellPy} ${summaryCellPx} text-center font-bold bg-slate-200 w-14`}>Poin</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r, idx) => {
-                  const rowNum = idx + 1;
-                  const totalDays =
-                    (r.HADIR ?? 0) +
-                    (r.IZIN ?? 0) +
-                    (r.SAKIT ?? 0) +
-                    (r.ALPA ?? 0) +
-                    (r.TERLAMBAT ?? 0);
-                  const pct =
-                    totalDays === 0
+                  </thead>
+                  <tbody>
+                    {pageRows.map((r, idx) => {
+                      const rowNum = startRowNum + idx + 1;
+                      return (
+                        <tr
+                          key={r.siswa_id || idx}
+                          className="border-b border-black/70 hover:bg-slate-50/50"
+                        >
+                          <td className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-mono`}>{rowNum}</td>
+                          <td className={`${matrixCellPy} ${matrixCellPx} border-r border-black font-medium truncate max-w-[160px]`}>
+                            {r.nama_siswa}
+                          </td>
+                          <td className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-mono text-[7px]`}>
+                            {r.nis || '-'}
+                          </td>
+                          {resolvedDays.map((d) => {
+                            const code = r.dailyMap?.[String(d)];
+                            return (
+                              <td
+                                key={d}
+                                className="p-0 border-r border-black text-center font-mono text-[7px] font-bold"
+                              >
+                                {code || '-'}
+                              </td>
+                            );
+                          })}
+                          <td className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold text-emerald-700 bg-emerald-50/40`}>
+                            {r.HADIR || 0}
+                          </td>
+                          <td className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold text-amber-700 bg-amber-50/40`}>
+                            {r.SAKIT || 0}
+                          </td>
+                          <td className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold text-blue-700 bg-blue-50/40`}>
+                            {r.IZIN || 0}
+                          </td>
+                          <td className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold text-rose-700 bg-rose-50/40`}>
+                            {r.ALPA || 0}
+                          </td>
+                          <td className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold text-purple-700 bg-purple-50/40`}>
+                            {r.TERLAMBAT || 0}
+                          </td>
+                          <td className={`${matrixCellPy} ${matrixCellPx} text-center font-bold bg-slate-100`}>{r.total_poin || 0}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ) : (
+                /* TABEL AKUMULASI SUMMARY (Portrait Mode 10 Kolom) */
+                <table className={`w-full border-collapse border-2 border-black text-left ${summaryTextClass}`}>
+                  <thead>
+                    <tr className="bg-slate-100 border-b-2 border-black">
+                      <th className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center w-8 font-bold`}>No</th>
+                      <th className={`${summaryCellPy} ${summaryCellPx} border-r border-black font-bold`}>Nama Siswa</th>
+                      <th className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-mono w-20 font-bold`}>
+                        NIS
+                      </th>
+                      <th className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-bold text-emerald-800 bg-emerald-50 w-12`}>
+                        Hadir
+                      </th>
+                      <th className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-bold text-blue-800 bg-blue-50 w-12`}>
+                        Izin
+                      </th>
+                      <th className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-bold text-amber-800 bg-amber-50 w-12`}>
+                        Sakit
+                      </th>
+                      <th className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-bold text-rose-800 bg-rose-50 w-12`}>
+                        Alpa
+                      </th>
+                      <th className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-bold text-purple-800 bg-purple-50 w-14`}>
+                        Terlambat
+                      </th>
+                      <th className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-bold w-16`}>
+                        % Hadir
+                      </th>
+                      <th className={`${summaryCellPy} ${summaryCellPx} text-center font-bold bg-slate-200 w-14`}>Poin</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pageRows.map((r, idx) => {
+                      const rowNum = startRowNum + idx + 1;
+                      const totalDays =
+                        (r.HADIR ?? 0) +
+                        (r.IZIN ?? 0) +
+                        (r.SAKIT ?? 0) +
+                        (r.ALPA ?? 0) +
+                        (r.TERLAMBAT ?? 0);
+                      const pct =
+                        totalDays === 0
                       ? 0
                       : Math.round((((r.HADIR ?? 0) + (r.TERLAMBAT ?? 0)) / totalDays) * 100);
 
-                  return (
-                    <tr
-                      key={r.siswa_id || idx}
-                      className="border-b border-black/70 hover:bg-slate-50/50"
-                    >
-                      <td className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-mono`}>{rowNum}</td>
-                      <td className={`${summaryCellPy} ${summaryCellPx} border-r border-black font-medium`}>{r.nama_siswa}</td>
-                      <td className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-mono`}>
-                        {r.nis || '-'}
-                      </td>
-                      <td className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-bold text-emerald-700 bg-emerald-50/40 font-mono`}>
-                        {r.HADIR || 0}
-                      </td>
-                      <td className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-bold text-blue-700 bg-blue-50/40 font-mono`}>
-                        {r.IZIN || 0}
-                      </td>
-                      <td className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-bold text-amber-700 bg-amber-50/40 font-mono`}>
-                        {r.SAKIT || 0}
-                      </td>
-                      <td className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-bold text-rose-700 bg-rose-50/40 font-mono`}>
-                        {r.ALPA || 0}
-                      </td>
-                      <td className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-bold text-purple-700 bg-purple-50/40 font-mono`}>
-                        {r.TERLAMBAT || 0}
-                      </td>
-                      <td className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-mono font-bold`}>
-                        {pct}%
-                      </td>
-                      <td className={`${summaryCellPy} ${summaryCellPx} text-center font-bold bg-slate-100 font-mono`}>
-                        {r.total_poin || 0}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        {/* ── KETERANGAN & TANDA TANGAN RESMI (SEJAJAR 3 KOLOM) ── */}
-        <div className={`mt-2 ${isUltraDense ? 'pt-1' : 'pt-2'}`}>
-          {/* Keterangan Kode */}
-          <div
-            className={`${
-              isUltraDense ? 'mb-1.5 text-[7.5px] pt-0.5' : 'mb-2.5 text-[8.5px] pt-1'
-            } text-slate-600 flex items-center justify-between border-t border-slate-300`}
-          >
-            <div className="flex items-center gap-2 sm:gap-3">
-              <span className="font-bold">Keterangan:</span>
-              <span>H = Hadir</span>
-              <span>S = Sakit</span>
-              <span>I = Izin</span>
-              <span>A = Alpa</span>
-              <span>T = Terlambat</span>
-            </div>
-            <div className="italic text-[7.5px]">Dokumen Resmi Absenta Digital Platform — 1 Lembar Penuh</div>
-          </div>
-
-          {/* Penandatangan 3 Kolom Sejajar (Efisien Ruang Vertikal) */}
-          <div className="grid grid-cols-3 gap-2 text-center font-serif">
-            {/* Kolom 1: Perwakilan Siswa / KM */}
-            <div>
-              <p className={`${sigTextClass} mb-0.5`}>Mengetahui,</p>
-              <p className={`${sigTextClass} font-bold`}>{kmTitle}</p>
-              <div className={sigGapClass} />
-              <p className={`${sigNameClass} font-bold underline uppercase`}>
-                {activeKmNama ? activeKmNama : '( ........................................ )'}
-              </p>
-              <p className={`${sigSubClass} text-slate-600`}>Perwakilan Siswa</p>
+                      return (
+                        <tr
+                          key={r.siswa_id || idx}
+                          className="border-b border-black/70 hover:bg-slate-50/50"
+                        >
+                          <td className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-mono`}>{rowNum}</td>
+                          <td className={`${summaryCellPy} ${summaryCellPx} border-r border-black font-medium`}>{r.nama_siswa}</td>
+                          <td className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-mono`}>
+                            {r.nis || '-'}
+                          </td>
+                          <td className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-bold text-emerald-700 bg-emerald-50/40 font-mono`}>
+                            {r.HADIR || 0}
+                          </td>
+                          <td className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-bold text-blue-700 bg-blue-50/40 font-mono`}>
+                            {r.IZIN || 0}
+                          </td>
+                          <td className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-bold text-amber-700 bg-amber-50/40 font-mono`}>
+                            {r.SAKIT || 0}
+                          </td>
+                          <td className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-bold text-rose-700 bg-rose-50/40 font-mono`}>
+                            {r.ALPA || 0}
+                          </td>
+                          <td className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-bold text-purple-700 bg-purple-50/40 font-mono`}>
+                            {r.TERLAMBAT || 0}
+                          </td>
+                          <td className={`${summaryCellPy} ${summaryCellPx} border-r border-black text-center font-mono font-bold`}>
+                            {pct}%
+                          </td>
+                          <td className={`${summaryCellPy} ${summaryCellPx} text-center font-bold bg-slate-100 font-mono`}>
+                            {r.total_poin || 0}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
             </div>
 
-            {/* Kolom 2: Kepala Sekolah */}
-            <div>
-              <p className={`${sigTextClass} mb-0.5`}>Mengesahkan,</p>
-              <p className={`${sigTextClass} font-bold`}>Kepala Sekolah</p>
-              <div className={sigGapClass} />
-              <p className={`${sigNameClass} font-bold underline uppercase`}>
-                {activeKepsekNama}
-              </p>
-              <p className={`${sigSubClass} text-slate-700 font-mono`}>
-                {activeKepsekNip ? `NIP. ${activeKepsekNip}` : 'NIP. ........................................'}
-              </p>
-            </div>
+            {/* ── KETERANGAN & TANDA TANGAN RESMI (HANYA DI LEMBAR TERAKHIR) ── */}
+            {isLastPage && (
+              <div className={`mt-2 ${isUltraDense ? 'pt-1' : 'pt-2'}`}>
+                {/* Keterangan Kode */}
+                <div
+                  className={`${
+                    isUltraDense ? 'mb-1.5 text-[7.5px] pt-0.5' : 'mb-2.5 text-[8.5px] pt-1'
+                  } text-slate-600 flex items-center justify-between border-t border-slate-300`}
+                >
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <span className="font-bold">Keterangan:</span>
+                    <span>H = Hadir</span>
+                    <span>S = Sakit</span>
+                    <span>I = Izin</span>
+                    <span>A = Alpa</span>
+                    <span>T = Terlambat</span>
+                  </div>
+                  <div className="italic text-[7.5px]">Dokumen Resmi Absenta Digital Platform</div>
+                </div>
 
-            {/* Kolom 3: Wali Kelas */}
-            <div>
-              <p className={`${sigTextClass} mb-0.5`}>
-                {activeKota}, {activeTanggal}
-              </p>
-              <p className={`${sigTextClass} font-bold`}>Wali Kelas {kelasNama}</p>
-              <div className={sigGapClass} />
-              <p className={`${sigNameClass} font-bold underline uppercase`}>
-                {activeWaliKelasNama}
-              </p>
-              <p className={`${sigSubClass} text-slate-700 font-mono`}>
-                {activeWaliKelasNip ? `NIP. ${activeWaliKelasNip}` : 'NIP. ........................................'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </PrintDocumentSheet>
+                {/* Penandatangan 3 Kolom Sejajar (Efisien Ruang Vertikal) */}
+                <div className="grid grid-cols-3 gap-2 text-center font-serif">
+                  {/* Kolom 1: Perwakilan Siswa / KM */}
+                  <div>
+                    <p className={`${sigTextClass} mb-0.5`}>Mengetahui,</p>
+                    <p className={`${sigTextClass} font-bold`}>{kmTitle}</p>
+                    <div className={sigGapClass} />
+                    <p className={`${sigNameClass} font-bold underline uppercase`}>
+                      {activeKmNama ? activeKmNama : '( ........................................ )'}
+                    </p>
+                    <p className={`${sigSubClass} text-slate-600`}>Perwakilan Siswa</p>
+                  </div>
+
+                  {/* Kolom 2: Kepala Sekolah */}
+                  <div>
+                    <p className={`${sigTextClass} mb-0.5`}>Mengesahkan,</p>
+                    <p className={`${sigTextClass} font-bold`}>Kepala Sekolah</p>
+                    <div className={sigGapClass} />
+                    <p className={`${sigNameClass} font-bold underline uppercase`}>
+                      {activeKepsekNama}
+                    </p>
+                    <p className={`${sigSubClass} text-slate-700 font-mono`}>
+                      {activeKepsekNip ? `NIP. ${activeKepsekNip}` : 'NIP. ........................................'}
+                    </p>
+                  </div>
+
+                  {/* Kolom 3: Wali Kelas */}
+                  <div>
+                    <p className={`${sigTextClass} mb-0.5`}>
+                      {activeKota}, {activeTanggal}
+                    </p>
+                    <p className={`${sigTextClass} font-bold`}>Wali Kelas {kelasNama}</p>
+                    <div className={sigGapClass} />
+                    <p className={`${sigNameClass} font-bold underline uppercase`}>
+                      {activeWaliKelasNama}
+                    </p>
+                    <p className={`${sigSubClass} text-slate-700 font-mono`}>
+                      {activeWaliKelasNip ? `NIP. ${activeWaliKelasNip}` : 'NIP. ........................................'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </PrintDocumentSheet>
+        );
+      })}
     </UniversalDocumentModal>
   );
 };
