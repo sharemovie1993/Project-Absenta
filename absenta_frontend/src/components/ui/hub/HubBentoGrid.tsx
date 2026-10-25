@@ -18,6 +18,7 @@ export interface HubBentoGridProps {
   cells: HubBentoCell[];
   columns?: 2 | 3;
   className?: string;
+  cellClassName?: string;
 }
 
 /**
@@ -29,6 +30,7 @@ export const HubBentoGrid: React.FC<HubBentoGridProps> = React.memo(({
   cells,
   columns = 2,
   className,
+  cellClassName,
 }) => {
   const colClass = columns === 3 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2';
 
@@ -49,7 +51,8 @@ export const HubBentoGrid: React.FC<HubBentoGridProps> = React.memo(({
             key={cell.id}
             onClick={cell.onClick}
             className={cn(
-              'py-3.5 px-3.5 sm:py-4 sm:px-4 flex items-center justify-between gap-3 transition-colors relative select-none',
+              'py-2.5 px-3 sm:py-3.5 sm:px-4 flex items-center justify-between gap-2.5 transition-colors relative select-none',
+              cellClassName,
               isClickable && 'cursor-pointer hover:bg-slate-50/70 dark:hover:bg-slate-800/40 active:bg-slate-100 dark:active:bg-slate-800/80'
             )}
           >

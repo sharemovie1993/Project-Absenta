@@ -11,10 +11,13 @@ import {
   Building, 
   ClipboardList, 
   ShieldCheck, 
+  ShieldAlert,
+  Layers,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  Filter
 } from 'lucide-react';
-import { HubCard } from '@/components/ui/hub';
+import { HubCard, HubBentoGrid, type HubBentoCell } from '@/components/ui/hub';
 import { Badge, Button } from '@/components/ui';
 import type { UnifiedActionItem, ActionHubSummary } from '@/api/dashboard.api';
 
@@ -62,6 +65,94 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
     return actions;
   }, [actions, filter]);
 
+  // ── 1. Bento Analytics Grid 2x2 Ala Keuangan Shopee (Hairline Flat) ──
+  const bentoCells: HubBentoCell[] = useMemo(() => [
+    {
+      id: 'cell-total',
+      title: 'Total Tugas',
+      value: (
+        <span className={filter === 'ALL' ? 'text-indigo-600 dark:text-indigo-400 font-black' : ''}>
+          {summary?.total ?? actions.length}
+        </span>
+      ),
+      icon: Layers,
+      iconColorClass: filter === 'ALL'
+        ? 'bg-indigo-600 text-white'
+        : 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400',
+      badge: filter === 'ALL' ? (
+        <span className="text-[8.5px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950 px-1 py-0.2 rounded">
+          Aktif
+        </span>
+      ) : undefined,
+      onClick: () => setFilter('ALL'),
+    },
+    {
+      id: 'cell-critical',
+      title: 'Mendesak',
+      value: (
+        <span className={(summary?.critical ?? 0) > 0 ? 'text-rose-600 dark:text-rose-400 font-black' : 'text-slate-400'}>
+          {summary?.critical ?? 0}
+        </span>
+      ),
+      icon: ShieldAlert,
+      iconColorClass: filter === 'CRITICAL'
+        ? 'bg-rose-600 text-white'
+        : (summary?.critical ?? 0) > 0
+        ? 'bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-400'
+        : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500',
+      badge: filter === 'CRITICAL' ? (
+        <span className="text-[8.5px] font-bold text-rose-600 bg-rose-50 dark:bg-rose-950 px-1 py-0.2 rounded">
+          Aktif
+        </span>
+      ) : (summary?.critical ?? 0) > 0 ? (
+        <span className="text-[8.5px] font-bold text-rose-600 bg-rose-50 dark:bg-rose-950 px-1 py-0.2 rounded animate-pulse">
+          Segera
+        </span>
+      ) : undefined,
+      onClick: () => setFilter('CRITICAL'),
+    },
+    {
+      id: 'cell-today',
+      title: 'Hari Ini',
+      value: (
+        <span className={(summary?.today ?? 0) > 0 ? 'text-amber-600 dark:text-amber-400 font-black' : 'text-slate-400'}>
+          {summary?.today ?? 0}
+        </span>
+      ),
+      icon: Clock,
+      iconColorClass: filter === 'TODAY'
+        ? 'bg-amber-600 text-white'
+        : (summary?.today ?? 0) > 0
+        ? 'bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-400'
+        : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500',
+      badge: filter === 'TODAY' ? (
+        <span className="text-[8.5px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-950 px-1 py-0.2 rounded">
+          Aktif
+        </span>
+      ) : undefined,
+      onClick: () => setFilter('TODAY'),
+    },
+    {
+      id: 'cell-upcoming',
+      title: 'Mendatang',
+      value: (
+        <span className={filter === 'UPCOMING' ? 'text-sky-600 dark:text-sky-400 font-black' : ''}>
+          {summary?.upcoming ?? 0}
+        </span>
+      ),
+      icon: Calendar,
+      iconColorClass: filter === 'UPCOMING'
+        ? 'bg-sky-600 text-white'
+        : 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400',
+      badge: filter === 'UPCOMING' ? (
+        <span className="text-[8.5px] font-bold text-sky-600 bg-sky-50 dark:bg-sky-950 px-1 py-0.2 rounded">
+          Aktif
+        </span>
+      ) : undefined,
+      onClick: () => setFilter('UPCOMING'),
+    },
+  ], [summary, actions.length, filter]);
+
   const handleActionClick = (item: UnifiedActionItem) => {
     if (item.action.type === 'MODAL' && item.action.target === 'JURNAL_KBM_MODAL') {
       if (onOpenJournal) {
@@ -90,7 +181,7 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
       <HubCard className={className} noPadding>
         <div className="p-3.5 space-y-2">
           <div className="h-4 w-32 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
-          <div className="h-12 bg-slate-50 dark:bg-slate-800/60 rounded-xl animate-pulse" />
+          <div className="h-16 bg-slate-50 dark:bg-slate-800/60 rounded-xl animate-pulse" />
         </div>
       </HubCard>
     );
@@ -133,172 +224,140 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
     </div>
   );
 
-  if (!actions.length) {
-    return (
-      <HubCard title={headerNode} className={className} noPadding>
+  return (
+    <HubCard title={headerNode} className={className} noPadding>
+      {/* ─── 1. Bento Analytics Grid Ala Shopee (Hairline 2x2, Ramping & Bisa Diklik) ─── */}
+      <div className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/30 dark:bg-slate-900/40">
+        <HubBentoGrid 
+          cells={bentoCells} 
+          columns={2} 
+          cellClassName="py-2 px-2.5 sm:py-3 sm:px-3"
+        />
+      </div>
+
+      {/* ─── 2. Filter Status Strip Ringkas ─── */}
+      <div className="flex items-center justify-between px-3 py-1.5 bg-slate-50/60 dark:bg-slate-900/60 border-b border-slate-100 dark:border-slate-800/80 text-[10.5px]">
+        <div className="flex items-center gap-1.5 text-slate-500 font-medium">
+          <Filter size={11} className="text-slate-400" />
+          <span>
+            Filter:{' '}
+            <strong className="text-slate-800 dark:text-slate-200 font-semibold">
+              {filter === 'ALL' ? 'Semua' : filter === 'CRITICAL' ? 'Mendesak' : filter === 'TODAY' ? 'Hari Ini' : 'Mendatang'}
+            </strong>
+          </span>
+        </div>
+        <span className="text-[10px] text-slate-400">
+          {filteredActions.length} item
+        </span>
+      </div>
+
+      {/* ─── 3. Daftar Tugas Hairline (Shopee Flat List) ─── */}
+      {!filteredActions.length ? (
         <div className="p-3 sm:p-3.5 flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
             <Sparkles size={16} />
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-xs font-bold text-slate-800 dark:text-slate-100">
-              Semua Tugas Tuntas
+              {filter === 'ALL' ? 'Semua Tugas Tuntas' : 'Tidak Ada Tugas di Kategori Ini'}
             </div>
             <div className="text-[10.5px] text-slate-400 dark:text-slate-500 font-normal truncate mt-0.5">
-              Tidak ada kewajiban tertunda saat ini. Kerja luar biasa! 🎉
+              {filter === 'ALL' 
+                ? 'Tidak ada kewajiban tertunda saat ini. Kerja luar biasa! 🎉' 
+                : 'Pilih kategori "Semua" untuk melihat daftar lengkap.'}
             </div>
           </div>
-          <Badge variant="outline" className="text-[9.5px] font-bold text-emerald-600 border-emerald-300 dark:border-emerald-800 shrink-0">
-            Tertib
-          </Badge>
+          {filter === 'ALL' && (
+            <Badge variant="outline" className="text-[9.5px] font-bold text-emerald-600 border-emerald-300 dark:border-emerald-800 shrink-0">
+              Tertib
+            </Badge>
+          )}
         </div>
-      </HubCard>
-    );
-  }
+      ) : (
+        <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
+          {filteredActions.map((item) => {
+            const IconComp = DIVISION_ICON[item.division] || AlertCircle;
+            const isCritical = item.urgency === 'CRITICAL';
+            const isToday = item.urgency === 'TODAY';
 
-  return (
-    <HubCard title={headerNode} className={className} noPadding>
-      {/* ─── Filter Pills Ramping Ala Shopee (Hairline Flat) ─── */}
-      <div className="flex items-center gap-1.5 px-3 py-2 overflow-x-auto no-scrollbar border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/50">
-        <button
-          type="button"
-          onClick={() => setFilter('ALL')}
-          className={`px-2.5 py-1 rounded-full text-[10.5px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
-            filter === 'ALL'
-              ? 'bg-indigo-600 text-white shadow-2xs'
-              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700 hover:bg-slate-100'
-          }`}
-        >
-          Semua ({actions.length})
-        </button>
-
-        {summary?.critical > 0 && (
-          <button
-            type="button"
-            onClick={() => setFilter('CRITICAL')}
-            className={`px-2.5 py-1 rounded-full text-[10.5px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
-              filter === 'CRITICAL'
-                ? 'bg-rose-600 text-white shadow-2xs'
-                : 'bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 border border-rose-200/80 dark:border-rose-900/60 hover:bg-rose-50'
-            }`}
-          >
-            Mendesak ({summary.critical})
-          </button>
-        )}
-
-        {summary?.today > 0 && (
-          <button
-            type="button"
-            onClick={() => setFilter('TODAY')}
-            className={`px-2.5 py-1 rounded-full text-[10.5px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
-              filter === 'TODAY'
-                ? 'bg-amber-600 text-white shadow-2xs'
-                : 'bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 border border-amber-200/80 dark:border-amber-900/60 hover:bg-amber-50'
-            }`}
-          >
-            Hari Ini ({summary.today})
-          </button>
-        )}
-
-        {summary?.upcoming > 0 && (
-          <button
-            type="button"
-            onClick={() => setFilter('UPCOMING')}
-            className={`px-2.5 py-1 rounded-full text-[10.5px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
-              filter === 'UPCOMING'
-                ? 'bg-sky-600 text-white shadow-2xs'
-                : 'bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 border border-sky-200/80 dark:border-sky-900/60 hover:bg-sky-50'
-            }`}
-          >
-            Mendatang ({summary.upcoming})
-          </button>
-        )}
-      </div>
-
-      {/* ─── Daftar Tugas Hairline (Shopee Flat List) ─── */}
-      <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
-        {filteredActions.map((item) => {
-          const IconComp = DIVISION_ICON[item.division] || AlertCircle;
-          const isCritical = item.urgency === 'CRITICAL';
-          const isToday = item.urgency === 'TODAY';
-
-          return (
-            <div
-              key={item.id}
-              className={`p-2.5 sm:p-3 flex items-center justify-between gap-2.5 transition-colors ${
-                isCritical 
-                  ? 'bg-rose-50/25 dark:bg-rose-950/10' 
-                  : isToday 
-                  ? 'bg-amber-50/20 dark:bg-amber-950/10' 
-                  : 'hover:bg-slate-50/70 dark:hover:bg-slate-800/40'
-              }`}
-            >
-              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                {/* Squircle Icon 34px Ramping */}
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+            return (
+              <div
+                key={item.id}
+                className={`p-2.5 sm:p-3 flex items-center justify-between gap-2.5 transition-colors ${
                   isCritical 
-                    ? 'bg-rose-100/80 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
+                    ? 'bg-rose-50/25 dark:bg-rose-950/10' 
+                    : isToday 
+                    ? 'bg-amber-50/20 dark:bg-amber-950/10' 
+                    : 'hover:bg-slate-50/70 dark:hover:bg-slate-800/40'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  {/* Squircle Icon 32px Ramping */}
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                    isCritical 
+                      ? 'bg-rose-100/80 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
                     : isToday 
                     ? 'bg-amber-100/80 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'
                     : 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400'
-                }`}>
-                  <IconComp size={16} />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
-                      {item.title}
-                    </span>
-                    <span className={`text-[9px] font-semibold px-1.5 py-0.2 rounded ${
-                      isCritical
-                        ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
-                        : isToday
-                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
-                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                    }`}>
-                      {item.badgeText}
-                    </span>
+                  }`}>
+                    <IconComp size={16} />
                   </div>
 
-                  <p className="text-[10.5px] text-slate-400 dark:text-slate-500 font-normal truncate mt-0.5">
-                    {item.subtitle}
-                  </p>
-
-                  {/* Micro Progress Bar jika ada */}
-                  {item.progress && (
-                    <div className="pt-1 flex items-center gap-2 max-w-[180px]">
-                      <div className="h-1 flex-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-indigo-600 rounded-full transition-all"
-                          style={{ width: `${item.progress.percent}%` }}
-                        />
-                      </div>
-                      <span className="text-[9px] font-mono text-slate-400">
-                        {item.progress.label}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                        {item.title}
+                      </span>
+                      <span className={`text-[9px] font-semibold px-1.5 py-0.2 rounded ${
+                        isCritical
+                          ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
+                          : isToday
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                          : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                      }`}>
+                        {item.badgeText}
                       </span>
                     </div>
-                  )}
+
+                    <p className="text-[10.5px] text-slate-400 dark:text-slate-500 font-normal truncate mt-0.5">
+                      {item.subtitle}
+                    </p>
+
+                    {/* Micro Progress Bar jika ada */}
+                    {item.progress && (
+                      <div className="pt-1 flex items-center gap-2 max-w-[180px]">
+                        <div className="h-1 flex-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-indigo-600 rounded-full transition-all"
+                            style={{ width: `${item.progress.percent}%` }}
+                          />
+                        </div>
+                        <span className="text-[9px] font-mono text-slate-400">
+                          {item.progress.label}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Tombol Eksekusi Cepat Ala Shopee (Ramping & Ringan) */}
+                <div className="shrink-0">
+                  <Button
+                    size="sm"
+                    variant={isCritical ? 'destructive' : 'outline'}
+                    onClick={() => handleActionClick(item)}
+                    className={`h-6 sm:h-7 px-2.5 rounded-full text-[10px] font-bold shadow-none cursor-pointer ${
+                      !isCritical ? 'border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50' : ''
+                    }`}
+                  >
+                    <span>{item.action.label}</span>
+                  </Button>
                 </div>
               </div>
-
-              {/* Tombol Eksekusi Cepat Ala Shopee (Ramping & Ringan) */}
-              <div className="shrink-0">
-                <Button
-                  size="sm"
-                  variant={isCritical ? 'destructive' : 'outline'}
-                  onClick={() => handleActionClick(item)}
-                  className={`h-6 sm:h-7 px-2.5 rounded-full text-[10px] font-bold shadow-none cursor-pointer ${
-                    !isCritical ? 'border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50' : ''
-                  }`}
-                >
-                  <span>{item.action.label}</span>
-                </Button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </HubCard>
   );
 });
