@@ -44,6 +44,10 @@ import {
   type CalendarStatistik,
 } from './MultiChannelMonthlyCalendar';
 import { MonthlyAnomalyFeed } from './MonthlyAnomalyFeed';
+import {
+  MapelMultiChannelMatrixTable,
+  type MapelMatrixData,
+} from './MapelMultiChannelMatrixTable';
 
 const SearchableSelect = lazy(() =>
   import('@/components/ui/SearchableSelect').then((module) => ({
@@ -78,6 +82,7 @@ interface RekapBulananResponse {
   detail?: CalendarDayDetail[];
   statistik?: CalendarStatistik;
   persentase_kehadiran?: number;
+  mapel_matrix?: MapelMatrixData;
 }
 
 interface StudentActivityItem {
@@ -157,8 +162,8 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
     propSiswaId || paramSiswaId || ''
   );
 
-  // Tab View Mode: 'CALENDAR' or 'ANOMALY'
-  const [viewMode, setViewMode] = useState<'CALENDAR' | 'ANOMALY'>('CALENDAR');
+  // Tab View Mode: 'MATRIX' | 'CALENDAR' | 'ANOMALY'
+  const [viewMode, setViewMode] = useState<'MATRIX' | 'CALENDAR' | 'ANOMALY'>('MATRIX');
 
   // Sync prop changes
   useEffect(() => {
@@ -558,7 +563,21 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
           <SectionCard fullWidth className="p-3 sm:p-5">
             {/* View Mode Switcher Header */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0">
+              <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('MATRIX')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                    viewMode === 'MATRIX'
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                  )}
+                >
+                  <Layers className="w-3.5 h-3.5 text-primary" />
+                  <span>Matriks 30 Hari (Mapel)</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setViewMode('CALENDAR')}
@@ -588,14 +607,29 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
                 </button>
               </div>
 
-              <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                Bulan Aktif: <span className="font-bold text-slate-800 dark:text-slate-200">{bulan}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                  Bulan:
+                </span>
+                <input
+                  type="month"
+                  value={bulan}
+                  onChange={(e) => setBulan(e.target.value)}
+                  className="h-8 px-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
+                />
               </div>
             </div>
 
             {/* Content Based on View Mode */}
             <div className="pt-3">
-              {viewMode === 'CALENDAR' ? (
+              {viewMode === 'MATRIX' ? (
+                <MapelMultiChannelMatrixTable
+                  matrixData={monthData?.mapel_matrix}
+                  bulan={bulan}
+                  selectedDate={tanggal}
+                  onDateSelect={(newDate) => setTanggal(newDate)}
+                />
+              ) : viewMode === 'CALENDAR' ? (
                 <MultiChannelMonthlyCalendar
                   bulan={bulan}
                   selectedDate={tanggal}

@@ -90,6 +90,51 @@ export interface RekapBulananSiswaResponse {
       pesan?: string;
     };
   }>;
+  mapel_matrix?: {
+    mapel_list: Array<{ id: string; nama_mapel: string; kode_mapel?: string }>;
+    dates: string[];
+    records: Array<{
+      date: string;
+      day: number;
+      day_name: string;
+      is_weekend: boolean;
+      gerbang?: {
+        datang_waktu?: string | null;
+        datang_status?: string | null;
+        pulang_waktu?: string | null;
+        pulang_status?: string | null;
+        is_terlambat?: boolean;
+        is_tap_gantung?: boolean;
+      };
+      pembiasaan?: {
+        status?: string | null;
+        nama?: string | null;
+      };
+      mapel_sessions: Record<string, {
+        status: string;
+        waktu?: string | null;
+        guru?: string | null;
+        jp?: number;
+      } | null>;
+      pkl?: {
+        status?: string | null;
+        mitra?: string | null;
+      };
+      final_status: string;
+      anomali?: {
+        is_anomali: boolean;
+        tipe?: string;
+        pesan?: string;
+      };
+    }>;
+    summary_per_mapel: Record<string, {
+      nama_mapel: string;
+      total_sesi: number;
+      hadir: number;
+      alpa: number;
+      persentase: number;
+    }>;
+  };
 }
 
 export interface RekapKelasBulananData {
@@ -742,6 +787,173 @@ export class SiswaRekapCalculator {
       anomali_count: anomaliCount,
     };
 
+    // ─── Construct Mapel-Centric 30-Day Multi-Channel Matrix ───
+    const mapelMap = new Map<string, { id: string; nama_mapel: string; kode_mapel?: string }>();
+
+    // 1. Gather mapels from student's attended sessions
+    if (typeof absenSiswa !== 'undefined') {
+      absenSiswa.forEach(a => {
+        const m = a.SesiAbsensi?.Mapel;
+        if (m && m.id) {
+          mapelMap.set(m.id, { id: m.id, nama_mapel: m.nama_mapel, kode_mapel: m.kode_mapel || undefined });
+        }
+      });
+    }
+
+    // 2. Also query all mapels taught in this class during the month
+    if (siswa.kelas_id) {
+      try {
+        const classSessions = await prisma.sesiAbsensi.findMany({
+          where: {
+            kelas_id: siswa.kelas_id,
+            tenant_id: tenantId,
+            tanggal: { gte: startOfMonth, lte: endOfMonth }
+          },
+          select: {
+            mapel_id: true,
+            Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } }
+          }
+        });
+        classSessions.forEach(cs => {
+          if (cs.Mapel && cs.Mapel.id) {
+            mapelMap.set(cs.Mapel.id, { id: cs.Mapel.id, nama_mapel: cs.Mapel.nama_mapel, kode_mapel: cs.Mapel.kode_mapel || undefined });
+          }
+        });
+      } catch {}
+    }
+
+    const mapelList = Array.from(mapelMap.values()).sort((a, b) => a.nama_mapel.localeCompare(b.nama_mapel));
+
+    // Summary per mapel accumulators
+    const summaryPerMapel: Record<string, { nama_mapel: string; total_sesi: number; hadir: number; alpa: number; persentase: number }> = {};
+    mapelList.forEach(m => {
+      summaryPerMapel[m.id] = { nama_mapel: m.nama_mapel, total_sesi: 0, hadir: 0, alpa: 0, persentase: 100 };
+    });
+
+    const dates: string[] = [];
+    const matrixRecords: Array<{
+      date: string;
+      day: number;
+      day_name: string;
+      is_weekend: boolean;
+      gerbang?: {
+        datang_waktu?: string | null;
+        datang_status?: string | null;
+        pulang_waktu?: string | null;
+        pulang_status?: string | null;
+        is_terlambat?: boolean;
+        is_tap_gantung?: boolean;
+      };
+      pembiasaan?: {
+        status?: string | null;
+        nama?: string | null;
+      };
+      mapel_sessions: Record<string, {
+        status: string;
+        waktu?: string | null;
+        guru?: string | null;
+        jp?: number;
+      } | null>;
+      pkl?: {
+        status?: string | null;
+        mitra?: string | null;
+      };
+      final_status: string;
+      anomali?: {
+        is_anomali: boolean;
+        tipe?: string;
+        pesan?: string;
+      };
+    }> = [];
+
+    // Map existing detail by date
+    const detailByDate = new Map<string, any>();
+    detail.forEach(d => {
+      if (d.tanggal) detailByDate.set(d.tanggal, d);
+    });
+
+    // Populate every day from 1 to lastDay.getDate()
+    const totalDaysInMonth = lastDay.getDate();
+    for (let day = 1; day <= totalDaysInMonth; day++) {
+      const dayDate = new Date(year, month - 1, day);
+      const jsDay = dayDate.getDay();
+      const isWeekend = jsDay === 0 || jsDay === 6;
+      const dayName = new Intl.DateTimeFormat('id-ID', { weekday: 'short' }).format(dayDate);
+      const dayDateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      dates.push(dayDateKey);
+
+      const d = detailByDate.get(dayDateKey);
+      const channels = d?.channels;
+      const anomali = d?.anomali;
+
+      // Extract sessions per mapel for this day
+      const dayMapelSessions: Record<string, any> = {};
+      mapelList.forEach(m => {
+        dayMapelSessions[m.id] = null; // default null = non-jadwal (·)
+      });
+
+      if (channels?.kbm?.daftar_mapel && Array.isArray(channels.kbm.daftar_mapel)) {
+        channels.kbm.daftar_mapel.forEach((ms: any) => {
+          const matched = mapelList.find(m => m.nama_mapel.toLowerCase() === (ms.mapel || '').toLowerCase());
+          const mapelKey = matched ? matched.id : ms.mapel;
+          dayMapelSessions[mapelKey] = {
+            status: ms.status || 'HADIR',
+            waktu: ms.jam || null,
+            guru: ms.guru || null,
+          };
+
+          if (matched && summaryPerMapel[matched.id]) {
+            summaryPerMapel[matched.id].total_sesi++;
+            if (ms.status === 'HADIR' || ms.status === 'TERLAMBAT' || ms.status === 'TEPAT_WAKTU') {
+              summaryPerMapel[matched.id].hadir++;
+            } else if (ms.status === 'ALPA') {
+              summaryPerMapel[matched.id].alpa++;
+            }
+          }
+        });
+      }
+
+      matrixRecords.push({
+        date: dayDateKey,
+        day,
+        day_name: dayName,
+        is_weekend: isWeekend,
+        gerbang: channels?.gerbang ? {
+          datang_waktu: channels.gerbang.waktu_masuk,
+          datang_status: channels.gerbang.status,
+          pulang_waktu: channels.gerbang.waktu_pulang,
+          pulang_status: channels.gerbang.waktu_pulang ? 'HADIR' : (channels.gerbang.is_tap_gantung ? 'BELUM_TAP' : null),
+          is_terlambat: channels.gerbang.is_terlambat,
+          is_tap_gantung: channels.gerbang.is_tap_gantung,
+        } : undefined,
+        pembiasaan: channels?.pembiasaan?.status !== 'TIDAK_ADA' ? {
+          status: channels?.pembiasaan?.status,
+          nama: channels?.pembiasaan?.nama,
+        } : undefined,
+        mapel_sessions: dayMapelSessions,
+        pkl: channels?.pkl?.status !== 'NON_PKL' ? {
+          status: channels?.pkl?.status,
+          mitra: channels?.pkl?.mitra,
+        } : undefined,
+        final_status: d?.status || (isWeekend ? 'LIBUR' : 'TIDAK_ADA'),
+        anomali: anomali?.is_anomali ? anomali : undefined,
+      });
+    }
+
+    mapelList.forEach(m => {
+      const s = summaryPerMapel[m.id];
+      if (s) {
+        s.persentase = s.total_sesi > 0 ? Math.round((s.hadir / s.total_sesi) * 100) : 100;
+      }
+    });
+
+    const mapelMatrix = {
+      mapel_list: mapelList,
+      dates,
+      records: matrixRecords,
+      summary_per_mapel: summaryPerMapel,
+    };
+
     const result: RekapBulananSiswaResponse = {
       nama_siswa: siswa.nama_siswa,
       bulan,
@@ -753,7 +965,8 @@ export class SiswaRekapCalculator {
       total_alpa: statistik.ALPA,
       total_terlambat: statistik.TERLAMBAT,
       total_poin,
-      detail
+      detail,
+      mapel_matrix: mapelMatrix
     };
 
     await cacheService.set(cacheKey, result, 300);
