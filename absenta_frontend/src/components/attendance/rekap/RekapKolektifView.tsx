@@ -696,14 +696,6 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
                         {r.nama_siswa}
                       </button>
                     </td>
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${r.siswa_id}`)}
-                        className="text-left font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer truncate max-w-[140px] block"
-                      >
-                        {r.nama_siswa}
-                      </button>
-                    </td>
                     <td className="py-1 px-1 text-center font-mono text-[9px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
                       {r.nis || '-'}
                     </td>
