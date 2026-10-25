@@ -19,6 +19,7 @@ import toast from 'react-hot-toast';
 
 import { Button } from '@/components/ui/Button';
 import { Loader } from '@/components/ui/Loader';
+import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { getRekapBulananKelas } from '@/api/attendanceGerbang.api';
 import { sekolahApi } from '@/api/academic/sekolah.api';
 import { getTenantById } from '@/api/tenants.api';
@@ -109,6 +110,7 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isStatsCollapsed, setIsStatsCollapsed] = useState(false);
 
   // PDF Preview State
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
@@ -309,41 +311,64 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
         </div>
       )}
 
-      {/* Ringkasan Metrik Cepat Kelas Terpilih */}
+      {/* Ringkasan Metrik Cepat Kelas Terpilih (Standar Varian Mini / Compact-Premium) */}
       {!hideHeaderStats && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
-          <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-xs">
-            <div className="text-[10.5px] sm:text-[11px] font-medium text-slate-500 dark:text-slate-400">
-              Total Siswa Kelas
+        <div className="space-y-1.5">
+          {isMobile && (
+            <div className="flex items-center justify-between px-0.5">
+              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                Statistik Kehadiran
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsStatsCollapsed((prev) => !prev)}
+                className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+              >
+                {isStatsCollapsed ? 'Tampilkan' : 'Sembunyikan'}
+              </button>
             </div>
-            <div className="text-base sm:text-xl font-bold text-slate-800 dark:text-slate-100">
-              {rows.length}
+          )}
+
+          {!isStatsCollapsed && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5 animate-in fade-in duration-150">
+              <AnalyticsCard
+                title="Total Siswa Kelas"
+                value={rows.length}
+                icon={<Users className="w-3.5 h-3.5" />}
+                gradient="from-slate-700 to-slate-900"
+                variant="compact-premium"
+                compact={true}
+                mobileCompact={true}
+              />
+              <AnalyticsCard
+                title="Rata-rata Hadir"
+                value={`${stats.avgHadir}%`}
+                icon={<ShieldCheck className="w-3.5 h-3.5" />}
+                gradient="from-emerald-500 to-emerald-600"
+                variant="compact-premium"
+                compact={true}
+                mobileCompact={true}
+              />
+              <AnalyticsCard
+                title="Sakit & Izin"
+                value={stats.totalSakit + stats.totalIzin}
+                icon={<Calendar className="w-3.5 h-3.5" />}
+                gradient="from-blue-500 to-blue-600"
+                variant="compact-premium"
+                compact={true}
+                mobileCompact={true}
+              />
+              <AnalyticsCard
+                title="Total Alpa"
+                value={stats.totalAlpa}
+                icon={<ArrowRight className="w-3.5 h-3.5" />}
+                gradient="from-rose-500 to-rose-600"
+                variant="compact-premium"
+                compact={true}
+                mobileCompact={true}
+              />
             </div>
-          </div>
-          <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-900/40 shadow-xs">
-            <div className="text-[10.5px] sm:text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-              Rata-rata Kehadiran
-            </div>
-            <div className="text-base sm:text-xl font-bold text-emerald-700 dark:text-emerald-300">
-              {stats.avgHadir}%
-            </div>
-          </div>
-          <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-900/40 shadow-xs">
-            <div className="text-[10.5px] sm:text-[11px] font-medium text-blue-600 dark:text-blue-400">
-              Sakit & Izin
-            </div>
-            <div className="text-base sm:text-xl font-bold text-blue-700 dark:text-blue-300">
-              {stats.totalSakit + stats.totalIzin}
-            </div>
-          </div>
-          <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200/60 dark:border-rose-900/40 shadow-xs">
-            <div className="text-[10.5px] sm:text-[11px] font-medium text-rose-600 dark:text-rose-400">
-              Total Alpa
-            </div>
-            <div className="text-base sm:text-xl font-bold text-rose-700 dark:text-rose-300">
-              {stats.totalAlpa}
-            </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -366,40 +391,41 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
         onExportPdf={!isMobile ? handleExportPdf : undefined}
       />
 
-      {/* Mode HP: Action Strip di LUAR Kotak Filter (Cetak PDF, Export Excel, View Mode) */}
+      {/* Mode HP: Action Strip di LUAR Kotak Filter (Bebas Tumpang Tindih / 2 Baris Bersih) */}
       {isMobile && (
-        <div className="flex items-center justify-between gap-2 p-1.5 sm:p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 shrink-0">
-              Mode:
-            </span>
-            <ViewModeSwitcher viewMode={viewMode} setViewMode={setViewMode} compact />
-          </div>
+        <div className="p-2 sm:p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
+          {/* Baris 1: Mode Tampilan & Tombol Excel (Bersebelahan Lega, Zero-Overlap) */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-bold text-slate-500 shrink-0">
+                Mode:
+              </span>
+              <ViewModeSwitcher viewMode={viewMode} setViewMode={setViewMode} compact />
+            </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
             <Button
               type="button"
               onClick={handleExportExcel}
               variant="outline"
               size="sm"
-              className="h-8.5 px-2.5 rounded-lg text-xs font-semibold border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer shadow-2xs"
-              title="Unduh Excel"
+              className="h-8 px-2.5 rounded-xl text-xs font-semibold border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer shadow-2xs shrink-0"
+              title="Unduh file spreadsheet Excel"
             >
               <FileText className="w-3.5 h-3.5 mr-1" />
               <span>Excel</span>
             </Button>
-
-            <Button
-              type="button"
-              onClick={handleExportPdf}
-              size="sm"
-              className="h-8.5 px-3 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white cursor-pointer shadow-xs gap-1.5 active:scale-95 transition-transform"
-              title="Buka pratinjau cetak dan unduh PDF"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Cetak PDF</span>
-            </Button>
           </div>
+
+          {/* Baris 2: Tombol Cetak PDF Penuh & Mencolok (Mudah Ditekan Jempol, 100% Anti-Tabrakan) */}
+          <Button
+            type="button"
+            onClick={handleExportPdf}
+            className="w-full h-9 rounded-xl font-bold text-xs bg-rose-600 hover:bg-rose-700 active:scale-[0.98] text-white cursor-pointer shadow-xs flex items-center justify-center gap-2 transition-transform"
+            title="Buka pratinjau cetak dan unduh PDF 1 atau 2 lembar"
+          >
+            <Printer className="w-4 h-4" />
+            <span>Cetak Dokumen Rekap Presensi (PDF)</span>
+          </Button>
         </div>
       )}
 
