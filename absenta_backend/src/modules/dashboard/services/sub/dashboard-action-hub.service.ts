@@ -74,7 +74,7 @@ export class DashboardActionHubService {
     // 2. Query seluruh modul secara paralel (Promise.allSettled)
     const results = await Promise.allSettled([
       guruId ? this.detectKbmJournalDebts(tenantId, guruId, startOfDay, endOfDay) : Promise.resolve([]),
-      guruId ? this.detectTodayPiketDuty(tenantId, guruId) : Promise.resolve([]),
+      guruId ? this.detectPiketDuty(tenantId, guruId, dateStr, timeZone) : Promise.resolve([]),
       guruId ? this.detectUpacaraDuty(tenantId, guruId, startOfDay) : Promise.resolve([]),
       guruId ? this.detectPklTasks(tenantId, guruId) : Promise.resolve([]),
       this.detectRaporTasks(tenantId, userId, guruId),
@@ -176,47 +176,139 @@ export class DashboardActionHubService {
     }
   }
 
-  // --- DETECTOR 2: Piket KBM Hari Ini (Modul Kesiswaan/Piket) ---
-  private async detectTodayPiketDuty(tenantId: string, guruId: string): Promise<UnifiedActionItem[]> {
+  // --- DETECTOR 2: Piket KBM Harian & Mingguan (Modul Kesiswaan/Piket) ---
+  private async detectPiketDuty(
+    tenantId: string, 
+    guruId: string, 
+    dateStr: string, 
+    timeZone?: string
+  ): Promise<UnifiedActionItem[]> {
     try {
-      const dayNames: Hari[] = [
-        Hari.MINGGU,
-        Hari.SENIN,
-        Hari.SELASA,
-        Hari.RABU,
-        Hari.KAMIS,
-        Hari.JUMAT,
-        Hari.SABTU
-      ];
-      const todayHari = dayNames[new Date().getDay()];
+      // 1. Dapatkan periode Tahun Pelajaran & Semester aktif
+      const [activeTp, activeSem] = await Promise.all([
+        prisma.tahunPelajaran.findFirst({
+          where: { tenant_id: tenantId, is_active: true },
+          select: { id: true }
+        }),
+        prisma.semester.findFirst({
+          where: { tenant_id: tenantId, is_active: true },
+          select: { id: true }
+        })
+      ]);
 
-      const piket = await prisma.jadwalPiketGuru.findFirst({
-        where: {
-          tenant_id: tenantId,
-          guru_id: guruId,
-          hari: todayHari
-        }
+      const whereCondition: any = {
+        tenant_id: tenantId,
+        guru_id: guruId,
+      };
+      if (activeTp?.id) whereCondition.tahun_pelajaran_id = activeTp.id;
+      if (activeSem?.id) whereCondition.semester_id = activeSem.id;
+
+      let piketList = await prisma.jadwalPiketGuru.findMany({
+        where: whereCondition,
       });
 
-      if (!piket) return [];
+      // Fallback jika belum tersinkronisasi semester aktif
+      if (piketList.length === 0 && (activeTp?.id || activeSem?.id)) {
+        piketList = await prisma.jadwalPiketGuru.findMany({
+          where: {
+            tenant_id: tenantId,
+            guru_id: guruId,
+          }
+        });
+      }
 
-      return [{
-        id: `piket_duty_today_${piket.id}`,
-        division: 'PIKET',
-        urgency: 'TODAY',
-        title: 'Jadwal Piket KBM Hari Ini',
-        subtitle: `${piket.pos_piket || 'Pos Piket Utama'} • Slot ${piket.slot_mulai || 1} - ${piket.slot_selesai || 10}`,
-        badgeText: 'Hari Ini',
-        action: {
-          label: 'Buka Piket ➔',
-          type: 'NAVIGATE',
-          target: '/attendance/ops?tab=piket'
-        },
-        sourceModule: {
-          table: 'JadwalPiketGuru',
-          entityId: piket.id
+      if (!piketList || piketList.length === 0) return [];
+
+      const dayMap: Record<Hari, number> = {
+        [Hari.MINGGU]: 0,
+        [Hari.SENIN]: 1,
+        [Hari.SELASA]: 2,
+        [Hari.RABU]: 3,
+        [Hari.KAMIS]: 4,
+        [Hari.JUMAT]: 5,
+        [Hari.SABTU]: 6,
+      };
+
+      const dayDisplayNames: Record<Hari, string> = {
+        [Hari.MINGGU]: 'Minggu',
+        [Hari.SENIN]: 'Senin',
+        [Hari.SELASA]: 'Selasa',
+        [Hari.RABU]: 'Rabu',
+        [Hari.KAMIS]: 'Kamis',
+        [Hari.JUMAT]: 'Jumat',
+        [Hari.SABTU]: 'Sabtu',
+      };
+
+      // Hitung indeks hari saat ini sesuai tanggal operasional sekolah
+      const targetDate = new Date(`${dateStr}T12:00:00Z`);
+      const currentDayIndex = targetDate.getUTCDay();
+
+      const actionItems: UnifiedActionItem[] = [];
+
+      for (const piket of piketList) {
+        const piketDayIndex = dayMap[piket.hari];
+        if (piketDayIndex === undefined) continue;
+
+        // Jarak hari ke depan (0 = hari ini, 1 = besok, ..., 6 = 6 hari lagi)
+        const diffDays = (piketDayIndex - currentDayIndex + 7) % 7;
+        const hariLabel = dayDisplayNames[piket.hari] || piket.hari;
+        const slotText = piket.slot_mulai && piket.slot_selesai 
+          ? `Slot ${piket.slot_mulai} - ${piket.slot_selesai}`
+          : piket.jam_mulai && piket.jam_selesai
+          ? `${piket.jam_mulai} - ${piket.jam_selesai}`
+          : 'Sepanjang Hari';
+        const posText = piket.pos_piket || 'Pos Piket Utama';
+
+        if (diffDays === 0) {
+          // Bertugas Hari Ini (TODAY)
+          actionItems.push({
+            id: `piket_duty_today_${piket.id}`,
+            division: 'PIKET',
+            urgency: 'TODAY',
+            title: 'Jadwal Piket KBM Hari Ini',
+            subtitle: `${posText} • ${slotText}`,
+            badgeText: 'Hari Ini',
+            action: {
+              label: 'Buka Piket ➔',
+              type: 'NAVIGATE',
+              target: '/kesiswaan/piket'
+            },
+            sourceModule: {
+              table: 'JadwalPiketGuru',
+              entityId: piket.id
+            }
+          });
+        } else {
+          // Jadwal Bertugas Mendatang (UPCOMING)
+          const relativeText = diffDays === 1 ? 'Besok' : `${diffDays} hari lagi`;
+          actionItems.push({
+            id: `piket_duty_upcoming_${piket.id}`,
+            division: 'PIKET',
+            urgency: 'UPCOMING',
+            title: `Jadwal Piket: ${hariLabel}`,
+            subtitle: `${posText} • ${slotText}`,
+            badgeText: `${hariLabel} (${relativeText})`,
+            action: {
+              label: 'Buka Piket ➔',
+              type: 'NAVIGATE',
+              target: '/kesiswaan/piket'
+            },
+            sourceModule: {
+              table: 'JadwalPiketGuru',
+              entityId: piket.id
+            }
+          });
         }
-      }];
+      }
+
+      // Urutkan item piket: TODAY duluan, lalu UPCOMING terdekat
+      actionItems.sort((a, b) => {
+        if (a.urgency === 'TODAY' && b.urgency !== 'TODAY') return -1;
+        if (b.urgency === 'TODAY' && a.urgency !== 'TODAY') return 1;
+        return 0;
+      });
+
+      return actionItems;
     } catch (e) {
       return [];
     }

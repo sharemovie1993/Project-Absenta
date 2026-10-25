@@ -164,7 +164,7 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
     }
 
     if (item.action.type === 'NAVIGATE') {
-      if (item.action.target.includes('tab=piket') && onNavigateTab) {
+      if ((item.action.target.includes('tab=piket') || item.action.target.includes('/kesiswaan/piket')) && onNavigateTab) {
         onNavigateTab('kelola');
         return;
       }
