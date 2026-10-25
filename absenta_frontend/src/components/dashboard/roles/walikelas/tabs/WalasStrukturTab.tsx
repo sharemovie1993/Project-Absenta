@@ -31,13 +31,11 @@ export const WalasStrukturTab: React.FC<WalasStrukturTabProps> = React.memo(({
   const waliKelasNip = kelasInfo?.waliKelas?.nip;
 
   // Fetch real students from class for intelligent slot distribution
-  const { rawList: studentsList, query: studentsQuery } = useSiswaOptions({
+  const { rawList: studentsList, isLoading: isLoadingStudents } = useSiswaOptions({
     kelasId: effectiveKelasId,
     enabled: Boolean(effectiveKelasId),
     onlyActive: true,
   });
-
-  const isLoadingStudents = studentsQuery.isLoading;
 
   // Active view switcher: 'all' | 'struktur' | 'piket'
   const [activeSection, setActiveSection] = useState<'all' | 'struktur' | 'piket'>('all');
