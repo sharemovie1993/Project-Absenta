@@ -71,6 +71,7 @@ interface MapelMultiChannelMatrixTableProps {
   bulan: string;
   selectedDate?: string;
   onDateSelect?: (dateStr: string) => void;
+  isLoading?: boolean;
   className?: string;
 }
 
@@ -79,6 +80,7 @@ export const MapelMultiChannelMatrixTable: React.FC<MapelMultiChannelMatrixTable
   bulan,
   selectedDate,
   onDateSelect,
+  isLoading = false,
   className,
 }) => {
   const mapelList = matrixData?.mapel_list || [];
@@ -115,11 +117,26 @@ export const MapelMultiChannelMatrixTable: React.FC<MapelMultiChannelMatrixTable
     return { hadir, total, pct };
   }, [records]);
 
+  if (isLoading) {
+    return (
+      <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3">
+        <div className="w-8 h-8 mx-auto border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+          Memuat matriks multi-channel 30 hari...
+        </p>
+      </div>
+    );
+  }
+
   if (!matrixData || records.length === 0) {
     return (
-      <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800">
-        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-          Memuat matriks multi-channel 30 hari...
+      <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 space-y-2">
+        <Info className="w-8 h-8 mx-auto text-slate-400" />
+        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">
+          Matriks Presensi Belum Tersedia
+        </h4>
+        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+          Belum ada jadwal sesi pelajaran atau rekaman presensi pada bulan <span className="font-semibold">{bulan}</span> untuk siswa ini.
         </p>
       </div>
     );

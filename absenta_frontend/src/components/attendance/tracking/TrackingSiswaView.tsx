@@ -628,6 +628,7 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
                   bulan={bulan}
                   selectedDate={tanggal}
                   onDateSelect={(newDate) => setTanggal(newDate)}
+                  isLoading={monthLoading}
                 />
               ) : viewMode === 'CALENDAR' ? (
                 <MultiChannelMonthlyCalendar

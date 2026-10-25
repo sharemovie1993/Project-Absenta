@@ -106,6 +106,7 @@ export async function rekapRoutes(fastify: any) {
             message: { type: 'string' },
             data: {
               type: 'object',
+              additionalProperties: true,
               properties: {
                 nama_siswa: { type: 'string' },
                 bulan: { type: 'string' },
@@ -118,22 +119,17 @@ export async function rekapRoutes(fastify: any) {
                 total_poin: { type: 'number' },
                 statistik: {
                   type: 'object',
-                  properties: {
-                    HADIR: { type: 'number' },
-                    IZIN: { type: 'number' },
-                    SAKIT: { type: 'number' },
-                    ALPA: { type: 'number' },
-                    TERLAMBAT: { type: 'number' },
-                  },
+                  additionalProperties: true,
+                },
+                mapel_matrix: {
+                  type: 'object',
+                  additionalProperties: true,
                 },
                 detail: {
                   type: 'array',
                   items: {
                     type: 'object',
-                    properties: {
-                      tanggal: { type: 'string' },
-                      status: { type: 'string' },
-                    },
+                    additionalProperties: true,
                   },
                 },
               },
@@ -231,6 +227,7 @@ export async function rekapRoutes(fastify: any) {
             message: { type: 'string' },
             data: {
               type: 'object',
+              additionalProperties: true,
               properties: {
                 nama_siswa: { type: 'string' },
                 bulan: { type: 'string' },
@@ -243,22 +240,17 @@ export async function rekapRoutes(fastify: any) {
                 total_poin: { type: 'number' },
                 statistik: {
                   type: 'object',
-                  properties: {
-                    HADIR: { type: 'number' },
-                    IZIN: { type: 'number' },
-                    SAKIT: { type: 'number' },
-                    ALPA: { type: 'number' },
-                    TERLAMBAT: { type: 'number' },
-                  },
+                  additionalProperties: true,
+                },
+                mapel_matrix: {
+                  type: 'object',
+                  additionalProperties: true,
                 },
                 detail: {
                   type: 'array',
                   items: {
                     type: 'object',
-                    properties: {
-                      tanggal: { type: 'string' },
-                      status: { type: 'string' },
-                    },
+                    additionalProperties: true,
                   },
                 },
               },
