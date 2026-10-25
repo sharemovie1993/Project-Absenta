@@ -2,6 +2,7 @@
 import { prisma } from '@/utils/prisma';
 import { DashboardCommonHelper } from './dashboard-common.helper';
 import { Hari } from '@prisma/client';
+import { NilaiService } from '@/modules/rapor/services/nilai.service';
 
 export interface UnifiedActionItem {
   id: string;
@@ -47,7 +48,7 @@ interface CacheEntry {
 }
 
 const actionHubCache = new Map<string, CacheEntry>();
-const CACHE_TTL_MS = 60 * 1000; // 60 detik in-memory TTL
+const CACHE_TTL_MS = 10 * 1000; // 10 detik in-memory TTL
 
 export class DashboardActionHubService {
   private helper = new DashboardCommonHelper();
@@ -76,7 +77,7 @@ export class DashboardActionHubService {
       guruId ? this.detectTodayPiketDuty(tenantId, guruId) : Promise.resolve([]),
       guruId ? this.detectUpacaraDuty(tenantId, guruId, startOfDay) : Promise.resolve([]),
       guruId ? this.detectPklTasks(tenantId, guruId) : Promise.resolve([]),
-      guruId ? this.detectRaporTasks(tenantId, guruId) : Promise.resolve([]),
+      this.detectRaporTasks(tenantId, userId, guruId),
       this.detectSarprasLoanTasks(tenantId, userId, startOfDay)
     ]);
 
@@ -318,8 +319,53 @@ export class DashboardActionHubService {
   }
 
   // --- DETECTOR 5: Rapor & Penginputan Nilai (Modul Rapor) ---
-  private async detectRaporTasks(tenantId: string, guruId: string): Promise<UnifiedActionItem[]> {
+  private async detectRaporTasks(tenantId: string, userId: string, guruId?: string): Promise<UnifiedActionItem[]> {
     try {
+      // Panggil engine resmi yang sama persis dengan halaman /rapor/input-nilai
+      const progress = await NilaiService.getTeacherProgress(
+        tenantId,
+        { id: userId, roleName: 'GURU' },
+        {}
+      );
+
+      if (progress && progress.tasks && progress.total_tasks > 0) {
+        const tasks = progress.tasks;
+        const uniqueMapelNames = Array.from(new Set(tasks.map((t: any) => t.nama_mapel).filter(Boolean)));
+        const mapelLabel = uniqueMapelNames.length === 1 
+          ? uniqueMapelNames[0] 
+          : uniqueMapelNames.length > 1 
+          ? `${uniqueMapelNames.length} Mata Pelajaran`
+          : 'Akademik';
+
+        const uncompletedCount = (progress.empty_tasks || 0) + (progress.partial_tasks || 0);
+
+        return [{
+          id: `rapor_task_${userId}`,
+          division: 'RAPOR',
+          urgency: uncompletedCount > 0 ? 'UPCOMING' : 'INFO',
+          title: 'Penginputan Nilai Rapor & Formatif',
+          subtitle: `Mengampu ${progress.total_tasks} rombel kelas binaan (${mapelLabel})`,
+          badgeText: `${progress.total_tasks} Rombel`,
+          progress: {
+            current: progress.completed_tasks || 0,
+            total: progress.total_tasks,
+            percent: progress.percentage || 0,
+            label: `${progress.completed_tasks || 0}/${progress.total_tasks} Dinilai`
+          },
+          action: {
+            label: 'Input Nilai ➔',
+            type: 'NAVIGATE',
+            target: '/rapor/input-nilai'
+          },
+          sourceModule: {
+            table: 'NilaiSiswa',
+            entityId: userId
+          }
+        }];
+      }
+
+      // Fallback: Jika progress engine mengembalikan 0 (misal di luar TP aktif), gunakan GuruMapel TP aktif
+      if (!guruId) return [];
       const assignments = await prisma.guruMapel.findMany({
         where: { tenant_id: tenantId, guru_id: guruId },
         include: {
