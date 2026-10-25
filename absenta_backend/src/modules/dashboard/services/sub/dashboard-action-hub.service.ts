@@ -339,9 +339,9 @@ export class DashboardActionHubService {
         subtitle: `Mengampu ${assignments.length} rombel kelas binaan akademik`,
         badgeText: 'Capaian Nilai',
         action: {
-          label: 'Buka Manajemen Nilai ➔',
+          label: 'Input Nilai Rapor ➔',
           type: 'NAVIGATE',
-          target: '/rapor/penilaian'
+          target: '/rapor/input-nilai'
         },
         sourceModule: {
           table: 'GuruMapel',

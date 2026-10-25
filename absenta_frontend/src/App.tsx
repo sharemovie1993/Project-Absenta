@@ -1022,6 +1022,7 @@ function App() {
                     
                     {/* Rapor & CBT Routes */}
                     <Route path="/rapor/dashboard" element={<Navigate to="/rapor/input-nilai" replace />} />
+                    <Route path="/rapor/penilaian" element={<Navigate to="/rapor/input-nilai" replace />} />
                     <Route path="/rapor" element={<Navigate to="/rapor/input-nilai" replace />} />
                     <Route path="/rapor/cetak" element={
                       <ProtectedRoute requiredCapability={[

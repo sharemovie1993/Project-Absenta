@@ -172,6 +172,10 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
         onNavigateTab('pembimbing_pkl');
         return;
       }
+      if (item.action.target.includes('/rapor/penilaian')) {
+        navigate('/rapor/input-nilai');
+        return;
+      }
       navigate(item.action.target);
     }
   };
