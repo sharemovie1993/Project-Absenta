@@ -68,6 +68,7 @@ import { useNavStore } from '../../../store/navStore';
 // Staff Dashboard Modular Tabs
 import { StaffBerandaTab } from '../staff/tabs/StaffBerandaTab';
 import { StaffKbmAbsenTab } from '../staff/tabs/StaffKbmAbsenTab';
+const StaffRekapMapelTab = React.lazy(() => import('../staff/tabs/StaffRekapMapelTab').then(m => ({ default: m.StaffRekapMapelTab })));
 // Wali Kelas Dashboard — clean modular design (replaces legacy StaffWaliKelasTab)
 const WaliKelasDashboard = React.lazy(() => import('./WaliKelasDashboard').then(m => ({ default: m.WaliKelasDashboard })));
 import { StaffPiketOperasionalTab } from '../staff/tabs/StaffPiketOperasionalTab';
@@ -853,6 +854,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
     // 2. KBM & Absen telah terintegrasi langsung di Beranda Guru (Single Responsibility Core)
 
+    // 2.1 Rekap Mapel (Khusus Guru Pendidik yang mengampu mata pelajaran)
+    if ((isPendidik || isEffectivePendidik || hasTeachingDuty) && !isKepsek) {
+      list.push({ 
+        id: 'rekap_mapel', 
+        label: 'Rekap Mapel', 
+        icon: BookOpen 
+      });
+    }
+
     // 3. Wali Kelas (Khusus Guru Wali Kelas Rombel Binaan)
     if ((isWaliKelas || Boolean(waliKelasId)) && !isKepsek) {
       list.push({ 
@@ -993,8 +1003,17 @@ export const UnifiedStaffDashboard: React.FC = () => {
       color: 'blue'
     });
 
+    if (isPendidik || isEffectivePendidik || hasTeachingDuty) {
+      actions.push({
+        label: 'Rekap Mapel',
+        icon: FileText,
+        onClick: () => handleTabChange('rekap_mapel'),
+        color: 'emerald'
+      });
+    }
+
     return actions;
-  }, [timelineItems, navigate]);
+  }, [timelineItems, navigate, isPendidik, isEffectivePendidik, hasTeachingDuty]);
 
   // PORTAL MODE REDIRECT
   if (dashboardMode === 'portal') {
@@ -1218,6 +1237,25 @@ export const UnifiedStaffDashboard: React.FC = () => {
               isLoadingTimeline={timelineLoading}
               onRefreshTimeline={refetchTimeline}
             />
+          </div>
+        )}
+
+        {/* 📚 TAB REKAP MAPEL: REKAPITULASI PRESENSI PER MATA PELAJARAN */}
+        {visitedTabs.has('rekap_mapel') && (
+          <div 
+            key="tab-rekap_mapel"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'rekap_mapel'}
+            className={cn("w-full min-w-0", activeTab === 'rekap_mapel' ? "block" : "hidden")}
+          >
+            <Suspense fallback={
+              <div className="w-full space-y-4 py-4">
+                <div className="h-24 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                <div className="h-96 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+              </div>
+            }>
+              <StaffRekapMapelTab user={user} />
+            </Suspense>
           </div>
         )}
 

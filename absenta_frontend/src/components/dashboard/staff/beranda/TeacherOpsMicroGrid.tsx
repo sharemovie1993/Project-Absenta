@@ -13,6 +13,7 @@ interface TeacherOpsMicroGridProps {
   onOpenSchedule?: () => void;
   onOpenJournals?: () => void;
   onOpenBeban?: () => void;
+  onOpenRekapMapel?: () => void;
   className?: string;
 }
 
@@ -27,6 +28,7 @@ export const TeacherOpsMicroGrid: React.FC<TeacherOpsMicroGridProps> = React.mem
   onOpenSchedule,
   onOpenJournals,
   onOpenBeban,
+  onOpenRekapMapel,
   className,
 }) => {
   const items: HubActionItem[] = useMemo(() => [
@@ -44,16 +46,15 @@ export const TeacherOpsMicroGrid: React.FC<TeacherOpsMicroGridProps> = React.mem
     },
     {
       id: 'ops-siswa',
-      label: 'Siswa Hadir',
-      value: studentsPresentCount > 0 ? (
+      label: 'Rekap Mapel',
+      value: (
         <span>
-          {studentsPresentCount}
-          {studentsTotalCount > 0 && <span className="text-[10px] font-normal text-slate-400">/{studentsTotalCount}</span>}
+          Presensi
         </span>
-      ) : '-',
+      ),
       icon: Users,
       iconColorClass: 'text-emerald-500',
-      onClick: onOpenSchedule,
+      onClick: onOpenRekapMapel || onOpenSchedule,
     },
     {
       id: 'ops-jurnal',

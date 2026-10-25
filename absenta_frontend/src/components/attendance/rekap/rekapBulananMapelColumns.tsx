@@ -108,6 +108,7 @@ export function useRekapBulananMapelColumns(viewMode: ViewMode, dayNumbers: numb
     { label: 'I', key: 'IZIN', className: 'text-center', render: (v: unknown) => <span className="font-bold text-blue-600 text-xs">{Number(v) || 0}</span> },
     { label: 'A', key: 'ALPA', className: 'text-center', render: (v: unknown) => <span className="font-bold text-rose-600 text-xs">{Number(v) || 0}</span> },
     { label: 'T', key: 'TERLAMBAT', className: 'text-center', render: (v: unknown) => <span className="font-bold text-purple-600 text-xs">{Number(v) || 0}</span> },
+    { label: '%', key: 'persentase', className: 'text-center', render: PctCell },
     { label: 'POIN', key: 'total_poin', className: 'text-center', render: (v: unknown) => <span className="font-bold text-slate-700 dark:text-slate-300 text-xs font-mono">{Number(v) || 0}</span> },
     { label: 'Lacak', key: 'aksi', className: 'text-center w-14', render: AksiCell },
   ];

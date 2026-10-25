@@ -199,6 +199,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
           onOpenSchedule={() => {}}
           onOpenJournals={() => {}}
           onOpenBeban={() => onNavigateTab('profil')}
+          onOpenRekapMapel={() => onNavigateTab('rekap_mapel')}
         />
       )}
 

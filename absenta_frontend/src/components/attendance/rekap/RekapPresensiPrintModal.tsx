@@ -20,6 +20,9 @@ export interface RekapPresensiPrintModalProps {
   bulan?: string;
   waliKelasNama?: string;
   waliKelasNip?: string;
+  mapelNama?: string;
+  guruMapelNama?: string;
+  guruMapelNip?: string;
   viewMode?: ViewMode;
   rows: RekapBulananKelasRow[];
   dayNumbers?: number[];
@@ -34,6 +37,9 @@ export const RekapPresensiPrintModal: React.FC<RekapPresensiPrintModalProps> = (
   bulan,
   waliKelasNama = 'Wali Kelas',
   waliKelasNip = '',
+  mapelNama,
+  guruMapelNama,
+  guruMapelNip,
   viewMode = 'MATRIX',
   rows = [],
   dayNumbers = [],
@@ -503,14 +509,16 @@ export const RekapPresensiPrintModal: React.FC<RekapPresensiPrintModalProps> = (
               <>
                 <div className={isUltraDense ? 'text-center my-1 space-y-0.5' : 'text-center my-2 space-y-0.5'}>
                   <h3 className={`${isUltraDense ? 'text-xs' : 'text-sm'} font-bold uppercase tracking-wider text-black`}>
-                    {viewMode === 'MATRIX'
+                    {mapelNama
+                      ? `LAPORAN REKAPITULASI PRESENSI MAPEL ${mapelNama.toUpperCase()}`
+                      : viewMode === 'MATRIX'
                       ? 'LEGER REKAPITULASI PRESENSI HARIAN SISWA'
                       : 'LAPORAN REKAPITULASI PRESENSI BULANAN SISWA'}
                   </h3>
                   {!isUltraDense && (
                     <>
                       <h4 className="text-xs font-bold uppercase tracking-wide text-slate-800">
-                        ROMBEL {kelasNama.toUpperCase()}
+                        ROMBEL {kelasNama.toUpperCase()} {mapelNama ? `• MAPEL ${mapelNama.toUpperCase()}` : ''}
                       </h4>
                       <p className="text-[10px] italic text-slate-600">
                         Bulan: {bulanFormatted} — Tahun Pelajaran {tahunPelajaran || '2026/2027'}
@@ -530,9 +538,15 @@ export const RekapPresensiPrintModal: React.FC<RekapPresensiPrintModalProps> = (
                       <span className="font-semibold text-slate-600">Rombel: </span>
                       <span className="font-bold text-black">{kelasNama}</span>
                     </div>
+                    {mapelNama && (
+                      <div>
+                        <span className="font-semibold text-slate-600">Mata Pelajaran: </span>
+                        <span className="font-bold text-black">{mapelNama}</span>
+                      </div>
+                    )}
                     <div>
-                      <span className="font-semibold text-slate-600">Wali Kelas: </span>
-                      <span className="font-bold text-black">{activeWaliKelasNama}</span>
+                      <span className="font-semibold text-slate-600">{guruMapelNama ? 'Guru Pengampu: ' : 'Wali Kelas: '}</span>
+                      <span className="font-bold text-black">{guruMapelNama || activeWaliKelasNama}</span>
                     </div>
                     <div>
                       <span className="font-semibold text-slate-600">Bulan: </span>
@@ -770,18 +784,18 @@ export const RekapPresensiPrintModal: React.FC<RekapPresensiPrintModalProps> = (
                     </p>
                   </div>
 
-                  {/* Kolom 3: Wali Kelas */}
+                  {/* Kolom 3: Guru Mapel atau Wali Kelas */}
                   <div>
                     <p className={`${sigTextClass} mb-0.5`}>
                       {activeKota}, {activeTanggal}
                     </p>
-                    <p className={`${sigTextClass} font-bold`}>Wali Kelas {kelasNama}</p>
+                    <p className={`${sigTextClass} font-bold`}>{guruMapelNama ? 'Guru Mata Pelajaran' : `Wali Kelas ${kelasNama}`}</p>
                     <div className={sigGapClass} />
                     <p className={`${sigNameClass} font-bold underline uppercase`}>
-                      {activeWaliKelasNama}
+                      {guruMapelNama || activeWaliKelasNama}
                     </p>
                     <p className={`${sigSubClass} text-slate-700 font-mono`}>
-                      {activeWaliKelasNip ? `NIP. ${activeWaliKelasNip}` : 'NIP. ........................................'}
+                      {(guruMapelNip || activeWaliKelasNip) ? `NIP. ${guruMapelNip || activeWaliKelasNip}` : 'NIP. ........................................'}
                     </p>
                   </div>
                 </div>
