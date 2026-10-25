@@ -31,6 +31,13 @@ export interface RekapBulananSiswaResponse {
     ALPA: number;
     TERLAMBAT: number;
     DISPEN: number;
+    channel_summary?: {
+      gerbang: { total_hadir: number; total_terlambat: number; total_tidak_tap: number; total_tap_gantung: number };
+      pembiasaan: { total_hadir: number; total_alpa: number };
+      kbm: { total_sesi: number; hadir_sesi: number; alpa_sesi: number; persentase: number };
+      pkl: { is_active: boolean; total_hadir: number; total_alpa: number; mitra_nama?: string };
+      anomali_count: number;
+    };
   };
   persentase_kehadiran: number;
   total_hadir: number;
@@ -40,8 +47,48 @@ export interface RekapBulananSiswaResponse {
   total_terlambat: number;
   total_poin: number;
   detail: Array<{
+    id?: string;
+    sesi_id?: string | null;
+    sesi_absensi_id?: string | null;
     tanggal: string;
     status: string;
+    waktu_tap?: string | null;
+    waktu?: string | null;
+    jenis_kegiatan?: string;
+    sesi_nama?: string;
+    nama_mapel?: string | null;
+    nama_guru?: string | null;
+    channels?: {
+      gerbang?: {
+        status: string;
+        waktu_masuk?: string | null;
+        waktu_pulang?: string | null;
+        is_terlambat?: boolean;
+        is_tap_gantung?: boolean;
+      };
+      pembiasaan?: {
+        status: string;
+        nama?: string | null;
+      };
+      kbm?: {
+        status: string;
+        total_sesi: number;
+        hadir_sesi: number;
+        alpa_sesi: number;
+        daftar_mapel?: Array<{ mapel: string; status: string; jam?: string }>;
+      };
+      pkl?: {
+        status: string;
+        mitra?: string | null;
+        waktu_masuk?: string | null;
+        waktu_pulang?: string | null;
+      };
+    };
+    anomali?: {
+      is_anomali: boolean;
+      tipe?: string;
+      pesan?: string;
+    };
   }>;
 }
 
@@ -240,6 +287,17 @@ export class SiswaRekapCalculator {
       return `${year}-${month}-${day}`;
     };
 
+    const formatTime = (date: Date) => {
+      return new Intl.DateTimeFormat('id-ID', {
+        timeZone: timeZone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }).format(date).replace('.', ':');
+    };
+
+    const todayDateKey = formatDateKey(new Date());
+
     const statistik: any = {
       HADIR: 0,
       IZIN: 0,
@@ -346,7 +404,8 @@ export class SiswaRekapCalculator {
 
       const absenGerbang = await prisma.absenGerbangSiswa.findMany({
         where: gateWhere,
-        select: { status: true, is_terlambat: true, poin_kehadiran: true, waktu_tap: true }
+        select: { status: true, is_terlambat: true, poin_kehadiran: true, waktu_tap: true, arah: true, jenis: true },
+        orderBy: { waktu_tap: 'asc' }
       });
 
       // 2b. Fetch PKL Data
@@ -356,8 +415,34 @@ export class SiswaRekapCalculator {
           SiswaPkl: { siswa_id: siswaId },
           tanggal: { gte: startOfMonth, lte: endOfMonth },
         },
-        select: { status: true, tanggal: true }
+        include: {
+          SiswaPkl: {
+            select: {
+              Mitra: { select: { nama: true } }
+            }
+          }
+        }
       });
+
+      // Track Multi-Channel Aggregates
+      let totalGateHadir = 0;
+      let totalGateTerlambat = 0;
+      let totalGateTidakTap = 0;
+      let totalGateTapGantung = 0;
+
+      let totalPembiasaanHadir = 0;
+      let totalPembiasaanAlpa = 0;
+
+      let totalKbmSesi = 0;
+      let totalKbmHadir = 0;
+      let totalKbmAlpa = 0;
+
+      let totalPklHadir = 0;
+      let totalPklAlpa = 0;
+      let isPklActive = absenPkl.length > 0;
+      let pklMitraName: string | undefined = undefined;
+
+      let anomaliCount = 0;
 
       // 3. Group by Date
       const byDate = new Map<string, { class: any[], gate: any[], pkl: any | null }>();
@@ -387,6 +472,9 @@ export class SiswaRekapCalculator {
       absenPkl.forEach(absen => {
           const d = formatDateKey(absen.tanggal);
           getDayRecord(d).pkl = absen;
+          if (!pklMitraName && (absen as any)?.SiswaPkl?.Mitra?.nama) {
+            pklMitraName = (absen as any).SiswaPkl.Mitra.nama;
+          }
       });
 
       // 4. Calculate Daily Status & Points
@@ -442,6 +530,140 @@ export class SiswaRekapCalculator {
           statistik[calculatedStatus]++;
         }
 
+        // ─── Channel Breakdown Extraction ───
+        // 1. Gerbang
+        const datangTap = gateTaps.find(t => t.arah === 'GERBANG_DATANG' || t.jenis === 'MASUK') || gateTaps[0];
+        const pulangTap = gateTaps.find(t => t.arah === 'GERBANG_PULANG' || t.jenis === 'PULANG');
+        const isToday = date === todayDateKey;
+        const hasGateTap = gateTaps.length > 0;
+        const isTapGantung = Boolean(datangTap && !pulangTap && !isToday && gateTaps.length === 1);
+        
+        let gateChanStatus = 'TIDAK_TAP';
+        if (hasGateTap) {
+          if (gateLate) {
+            gateChanStatus = 'TERLAMBAT';
+            totalGateTerlambat++;
+          } else {
+            gateChanStatus = datangTap?.status || 'HADIR';
+            totalGateHadir++;
+          }
+          if (isTapGantung) {
+            totalGateTapGantung++;
+          }
+        } else {
+          totalGateTidakTap++;
+        }
+
+        const channelGerbang = {
+          status: gateChanStatus,
+          waktu_masuk: datangTap?.waktu_tap ? formatTime(datangTap.waktu_tap) : null,
+          waktu_pulang: pulangTap?.waktu_tap ? formatTime(pulangTap.waktu_tap) : null,
+          is_terlambat: gateLate,
+          is_tap_gantung: isTapGantung,
+        };
+
+        // 2. Pembiasaan
+        const pembiasaanItems = classTaps.filter(c => {
+          const jk = (c.SesiAbsensi?.jenis_kegiatan || '').toUpperCase();
+          const nm = (c.SesiAbsensi?.Mapel?.nama_mapel || '').toUpperCase();
+          return jk.includes('PEMBIASAAN') || jk.includes('DHUHA') || jk.includes('UPACARA') || jk.includes('APEL') || jk.includes('LITERASI') ||
+                 nm.includes('PEMBIASAAN') || nm.includes('DHUHA') || nm.includes('UPACARA') || nm.includes('APEL');
+        });
+
+        let channelPembiasaan: { status: string; nama?: string | null } = { status: 'TIDAK_ADA', nama: null };
+        if (pembiasaanItems.length > 0) {
+          const isHadir = pembiasaanItems.some(p => p.status === 'HADIR' || p.status === 'TEPAT_WAKTU');
+          const isAlpa = pembiasaanItems.some(p => p.status === 'ALPA');
+          const namaKegiatan = pembiasaanItems.map(p => p.SesiAbsensi?.Mapel?.nama_mapel || p.SesiAbsensi?.jenis_kegiatan || 'Pembiasaan').join(', ');
+          channelPembiasaan = {
+            status: isHadir ? 'HADIR' : (isAlpa ? 'ALPA' : (pembiasaanItems[0]?.status || 'HADIR')),
+            nama: namaKegiatan,
+          };
+          if (channelPembiasaan.status === 'HADIR') totalPembiasaanHadir++;
+          else if (channelPembiasaan.status === 'ALPA') totalPembiasaanAlpa++;
+        }
+
+        // 3. KBM (Multi Sesi Mapel)
+        const kbmItems = classTaps.filter(c => !pembiasaanItems.includes(c));
+        let channelKbm: {
+          status: string;
+          total_sesi: number;
+          hadir_sesi: number;
+          alpa_sesi: number;
+          daftar_mapel?: Array<{ mapel: string; status: string; jam?: string }>;
+        } = { status: 'TIDAK_ADA', total_sesi: 0, hadir_sesi: 0, alpa_sesi: 0 };
+
+        if (kbmItems.length > 0) {
+          const hadirCount = kbmItems.filter(k => k.status === 'HADIR' || k.status === 'TERLAMBAT' || k.status === 'TEPAT_WAKTU').length;
+          const alpaCount = kbmItems.filter(k => k.status === 'ALPA').length;
+          totalKbmSesi += kbmItems.length;
+          totalKbmHadir += hadirCount;
+          totalKbmAlpa += alpaCount;
+
+          channelKbm = {
+            status: alpaCount === 0 ? 'FULL' : (hadirCount > 0 ? 'PARTIAL' : 'ALPA'),
+            total_sesi: kbmItems.length,
+            hadir_sesi: hadirCount,
+            alpa_sesi: alpaCount,
+            daftar_mapel: kbmItems.map(k => ({
+              mapel: k.SesiAbsensi?.Mapel?.nama_mapel || 'Sesi Pelajaran',
+              status: k.status,
+              jam: k.SesiAbsensi?.waktu_mulai ? formatTime(k.SesiAbsensi.waktu_mulai) : undefined,
+            })),
+          };
+        }
+
+        // 4. PKL (DU/DI)
+        let channelPkl: {
+          status: string;
+          mitra?: string | null;
+          waktu_masuk?: string | null;
+          waktu_pulang?: string | null;
+        } = { status: 'NON_PKL', mitra: null };
+
+        if (data.pkl) {
+          const pklMitra = data.pkl.SiswaPkl?.Mitra?.nama || 'DU/DI';
+          channelPkl = {
+            status: data.pkl.status || 'HADIR',
+            mitra: pklMitra,
+            waktu_masuk: data.pkl.jam_masuk ? formatTime(data.pkl.jam_masuk) : null,
+            waktu_pulang: data.pkl.jam_pulang ? formatTime(data.pkl.jam_pulang) : null,
+          };
+          if (channelPkl.status === 'HADIR') totalPklHadir++;
+          else if (channelPkl.status === 'ALPA') totalPklAlpa++;
+        }
+
+        // 5. Anomali Detection
+        let isAnomali = false;
+        let anomaliTipe: string | undefined = undefined;
+        let anomaliPesan: string | undefined = undefined;
+
+        if (hasGateTap && channelKbm.alpa_sesi > 0) {
+          isAnomali = true;
+          anomaliTipe = 'CABUT_KBM';
+          anomaliPesan = `Tap gerbang (${channelGerbang.waktu_masuk || 'Pagi'}), tapi Alpa di ${channelKbm.alpa_sesi} sesi KBM`;
+        } else if (channelGerbang.is_terlambat) {
+          isAnomali = true;
+          anomaliTipe = 'TERLAMBAT_GERBANG';
+          anomaliPesan = `Terlambat tiba di gerbang sekolah (${channelGerbang.waktu_masuk})`;
+        } else if (channelGerbang.is_tap_gantung) {
+          isAnomali = true;
+          anomaliTipe = 'TAP_GANTUNG';
+          anomaliPesan = `Masuk gerbang (${channelGerbang.waktu_masuk}) tanpa rekam tap pulang`;
+        } else if (hasGateTap && channelPembiasaan.status === 'ALPA') {
+          isAnomali = true;
+          anomaliTipe = 'LEWAT_PEMBIASAAN';
+          anomaliPesan = `Hadir di sekolah tapi tidak mengikuti ${channelPembiasaan.nama || 'pembiasaan'}`;
+        } else if (calculatedStatus === 'ALPA' && (hasGateTap || kbmItems.length > 0)) {
+          isAnomali = true;
+          anomaliTipe = 'ALPA_TOTAL';
+          anomaliPesan = 'Tidak hadir di seluruh channel kegiatan belajar';
+        }
+
+        if (isAnomali) {
+          anomaliCount++;
+        }
+
         detail.push({
           id: sesiId || `rekap-${date}`,
           sesi_id: sesiId,
@@ -453,7 +675,18 @@ export class SiswaRekapCalculator {
           jenis_kegiatan: mapelName ? `KBM - ${mapelName}` : rawJenis,
           sesi_nama: mapelName ? `KBM - ${mapelName}` : rawJenis,
           nama_mapel: mapelName,
-          nama_guru: guruName
+          nama_guru: guruName,
+          channels: {
+            gerbang: channelGerbang,
+            pembiasaan: channelPembiasaan,
+            kbm: channelKbm,
+            pkl: channelPkl,
+          },
+          anomali: {
+            is_anomali: isAnomali,
+            tipe: anomaliTipe,
+            pesan: anomaliPesan,
+          },
         });
         
         // Calculate Poin
@@ -478,6 +711,32 @@ export class SiswaRekapCalculator {
     // Calculate overall statistics
     const totalEffectiveDays = statistik.HADIR + statistik.IZIN + statistik.SAKIT + statistik.ALPA + statistik.TERLAMBAT + statistik.DISPEN;
     const persentase_kehadiran = totalEffectiveDays > 0 ? Math.round(((statistik.HADIR + statistik.TERLAMBAT) / totalEffectiveDays) * 100) : 0;
+
+    statistik.channel_summary = {
+      gerbang: {
+        total_hadir: totalGateHadir,
+        total_terlambat: totalGateTerlambat,
+        total_tidak_tap: totalGateTidakTap,
+        total_tap_gantung: totalGateTapGantung,
+      },
+      pembiasaan: {
+        total_hadir: totalPembiasaanHadir,
+        total_alpa: totalPembiasaanAlpa,
+      },
+      kbm: {
+        total_sesi: totalKbmSesi,
+        hadir_sesi: totalKbmHadir,
+        alpa_sesi: totalKbmAlpa,
+        persentase: totalKbmSesi > 0 ? Math.round((totalKbmHadir / totalKbmSesi) * 100) : 100,
+      },
+      pkl: {
+        is_active: isPklActive,
+        total_hadir: totalPklHadir,
+        total_alpa: totalPklAlpa,
+        mitra_nama: pklMitraName,
+      },
+      anomali_count: anomaliCount,
+    };
 
     const result: RekapBulananSiswaResponse = {
       nama_siswa: siswa.nama_siswa,
@@ -636,14 +895,6 @@ export class SiswaRekapCalculator {
       }));
     }
 
-    // Sort by timestamp if available, otherwise keep order
-    kegiatan.sort((a, b) => {
-      if (!a.timestamp && !b.timestamp) return 0;
-      if (!a.timestamp) return 1;
-      if (!b.timestamp) return -1;
-      return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
-    });
-
     // Calculate final daily status
     let finalStatus = 'ALPA';
     let isLate = false;
@@ -665,15 +916,62 @@ export class SiswaRekapCalculator {
       classHasIzin = sessionTaps.some((c: any) => c.status === 'IZIN' || c.status === 'DISPEN');
     }
 
-    // PKL status
-    const pklAbsen = await prisma.absensiPkl.findFirst({
+    // 3. PKL status & activities
+    const pklAbsenList = await prisma.absensiPkl.findMany({
       where: {
         tenant_id: tenantId,
         SiswaPkl: { siswa_id: siswaId },
         tanggal: { gte: startOfDay, lte: endOfDay },
       },
-      select: { status: true }
+      include: {
+        SiswaPkl: {
+          select: {
+            Mitra: { select: { nama: true } }
+          }
+        }
+      }
     });
+
+    for (const pkl of pklAbsenList) {
+      const mitraNama = pkl.SiswaPkl?.Mitra?.nama || 'DU/DI';
+      if (pkl.jam_masuk) {
+        kegiatan.push({
+          waktu: formatTime(pkl.jam_masuk),
+          timestamp: pkl.jam_masuk,
+          jenis_kegiatan: `PKL Masuk - ${mitraNama}`,
+          status: pkl.status,
+          keterangan: pkl.kegiatan || (pkl.is_outside_radius ? 'Presensi di luar radius mitra' : null)
+        });
+      }
+      if (pkl.jam_pulang) {
+        kegiatan.push({
+          waktu: formatTime(pkl.jam_pulang),
+          timestamp: pkl.jam_pulang,
+          jenis_kegiatan: `PKL Pulang - ${mitraNama}`,
+          status: pkl.status,
+          keterangan: pkl.kegiatan || null
+        });
+      }
+      if (!pkl.jam_masuk && !pkl.jam_pulang) {
+        kegiatan.push({
+          waktu: '-',
+          timestamp: null,
+          jenis_kegiatan: `PKL - ${mitraNama}`,
+          status: pkl.status,
+          keterangan: pkl.kegiatan || null
+        });
+      }
+    }
+
+    // Sort by timestamp if available, otherwise keep order
+    kegiatan.sort((a, b) => {
+      if (!a.timestamp && !b.timestamp) return 0;
+      if (!a.timestamp) return 1;
+      if (!b.timestamp) return -1;
+      return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+    });
+
+    const pklAbsen = pklAbsenList[0] || null;
     const pklStatus = pklAbsen?.status;
 
     if (gateStatus === 'HADIR' || classHasHadir || pklStatus === 'HADIR') {

@@ -44,27 +44,27 @@ export const TrackingSiswaModal: React.FC<TrackingSiswaModalProps> = React.memo(
       className="w-[96vw] max-w-[1440px] max-h-[92vh] overflow-hidden flex flex-col"
       title={
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full pr-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
-              <Activity className="w-5 h-5" />
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 sm:p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 shrink-0">
+              <Activity className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 truncate">
                   Tracking Presensi Siswa
                 </h3>
                 {siswaNama && (
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40">
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40 truncate max-w-[120px] sm:max-w-none">
                     {siswaNama}
                   </span>
                 )}
                 {jurusanNama && (
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                  <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hidden sm:inline-block">
                     {jurusanNama}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
                 Visualisasi kalender presensi harian dan linimasa logbook aktivitas tap gerbang & sesi kelas.
               </p>
             </div>
@@ -90,7 +90,7 @@ export const TrackingSiswaModal: React.FC<TrackingSiswaModalProps> = React.memo(
         </div>
       }
     >
-      <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(92vh-100px)]">
+      <div className="p-2.5 sm:p-6 overflow-y-auto max-h-[calc(92vh-90px)]">
         <TrackingSiswaView
           hideLayout
           isModal

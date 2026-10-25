@@ -11,7 +11,13 @@ import {
   ChevronRight,
   ShieldCheck,
   Building2,
-  GraduationCap
+  GraduationCap,
+  DoorOpen,
+  BookOpen,
+  Briefcase,
+  AlertTriangle,
+  Clock,
+  Layers
 } from 'lucide-react';
 
 import {
@@ -31,8 +37,13 @@ import { toLocalDate, toLocalMonth } from '@/utils/attendance/time';
 import { cn } from '@/lib/utils';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
-import { SharedVisualAttendanceCalendar } from '../SharedVisualAttendanceCalendar';
 import { SharedAttendanceTimeline } from '../SharedAttendanceTimeline';
+import {
+  MultiChannelMonthlyCalendar,
+  type CalendarDayDetail,
+  type CalendarStatistik,
+} from './MultiChannelMonthlyCalendar';
+import { MonthlyAnomalyFeed } from './MonthlyAnomalyFeed';
 
 const SearchableSelect = lazy(() =>
   import('@/components/ui/SearchableSelect').then((module) => ({
@@ -42,10 +53,11 @@ const SearchableSelect = lazy(() =>
 
 const instructionData = {
   title: 'Panduan Tracking Siswa',
-  description: 'Lacak kehadiran dan aktivitas log siswa pada hari tertentu secara kronologis.',
+  description: 'Lacak kehadiran multi-channel (Gerbang, Pembiasaan, KBM, PKL) siswa secara kronologis.',
   items: [
-    { text: 'Pilih siswa dan masukkan tanggal untuk melacak aktivitas harian.' },
-    { text: 'Log aktivitas akan diurutkan secara kronologis berdasarkan waktu pencatatan.' },
+    { text: 'Pilih siswa dan bulan untuk menganalisis performa 4 channel kehadiran.' },
+    { text: 'Gunakan kalender multi-strip atau tab log anomali untuk mendeteksi siswa yang bolos di tengah jam.' },
+    { text: 'Klik tanggal mana pun untuk membedah linimasa menit-ke-menit pada hari tersebut.' },
   ],
 };
 
@@ -60,24 +72,12 @@ const calendarFilterSchema = z.object({
   bulan: z.string().regex(/^\d{4}-\d{2}$/, 'Format bulan tidak valid (YYYY-MM)'),
 });
 
-interface RekapDetailItem {
-  tanggal?: string;
-  waktu?: string;
-  status?: string;
-  keterangan?: string;
-}
-
-interface RekapStatistik {
-  HADIR?: number;
-  IZIN?: number;
-  SAKIT?: number;
-  ALPA?: number;
-  TERLAMBAT?: number;
-}
-
 interface RekapBulananResponse {
-  detail?: RekapDetailItem[];
-  statistik?: RekapStatistik;
+  nama_siswa?: string;
+  bulan?: string;
+  detail?: CalendarDayDetail[];
+  statistik?: CalendarStatistik;
+  persentase_kehadiran?: number;
 }
 
 interface StudentActivityItem {
@@ -100,62 +100,6 @@ interface StudentOptionResponse {
   id: string;
   nama_siswa: string;
   nis?: string;
-}
-
-// Subkomponen Kalender Visual Presensi Siswa
-function CalendarCard({
-  siswaId,
-  bulan,
-  selectedDate,
-  onBulanChange,
-  onDateSelect,
-  isLocked,
-}: {
-  siswaId: string;
-  bulan: string;
-  selectedDate?: string;
-  onBulanChange: (val: string) => void;
-  onDateSelect?: (dateStr: string) => void;
-  isLocked: boolean;
-}) {
-  const calendarQuery = useQuery({
-    queryKey: ['rekap-bulanan-siswa-calendar', siswaId, bulan],
-    queryFn: async () => {
-      const res = await getRekapBulananSiswa(siswaId, { bulan });
-      return (res.data || null) as RekapBulananResponse;
-    },
-    enabled: !!siswaId && !!bulan && !isLocked,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const data = calendarQuery.data || null;
-  const loading = calendarQuery.isLoading;
-
-  if (!data && !loading) {
-    return (
-      <div className="p-10 flex flex-col items-center justify-center text-center">
-        <div className="w-14 h-14 rounded-2xl bg-slate-50 dark:bg-slate-900 flex items-center justify-center text-slate-300 dark:text-slate-600 mb-3 border border-slate-100 dark:border-slate-800">
-          <Calendar size={28} />
-        </div>
-        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-          Pilih siswa untuk memuat kalender kehadiran
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <SharedVisualAttendanceCalendar
-      title="Kalender Visual Presensi Siswa"
-      bulan={bulan}
-      selectedDate={selectedDate}
-      onBulanChange={onBulanChange}
-      onDateSelect={onDateSelect}
-      details={data?.detail}
-      statistik={data?.statistik}
-      isLoading={loading}
-    />
-  );
 }
 
 export interface UniversalTrackingSiswaViewProps {
@@ -196,8 +140,8 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
   hideHeader = false,
   hideScopeBanner = false,
   readOnly = false,
-  title = 'Tracking Aktivitas Siswa',
-  description = 'Lihat jejak kehadiran dan aktivitas siswa secara kronologis.',
+  title = 'Tracking Multi-Channel Siswa',
+  description = 'Lacak jejak kehadiran multi-channel (Gerbang, Pembiasaan, KBM, PKL) secara kronologis.',
   onClose,
 }) => {
   const [searchParams] = useSearchParams();
@@ -212,6 +156,9 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
   const [selectedSiswaId, setSelectedSiswaId] = useState<string>(
     propSiswaId || paramSiswaId || ''
   );
+
+  // Tab View Mode: 'CALENDAR' or 'ANOMALY'
+  const [viewMode, setViewMode] = useState<'CALENDAR' | 'ANOMALY'>('CALENDAR');
 
   // Sync prop changes
   useEffect(() => {
@@ -265,7 +212,7 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
 
   const siswaOptions = siswaOptionsQuery.data || [];
 
-  // Jika selectedSiswaId belum ada di opsi dropdown (misal dari prop spesifik), ambil detailnya
+  // Jika selectedSiswaId belum ada di opsi dropdown, ambil detailnya
   const singleSiswaQuery = useQuery({
     queryKey: ['siswa-single-tracking', selectedSiswaId],
     queryFn: async () => {
@@ -276,7 +223,31 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
     staleTime: 5 * 60 * 1000,
   });
 
-  // Query Tracking Harian Siswa
+  // Query Rekap Bulanan Siswa (Multi-Channel Full-Spectrum)
+  const monthlyRekapQuery = useQuery({
+    queryKey: ['rekap-bulanan-siswa-calendar', selectedSiswaId, bulan],
+    queryFn: async () => {
+      const res = await getRekapBulananSiswa(selectedSiswaId, { bulan });
+      return (res.data || null) as RekapBulananResponse;
+    },
+    enabled: !!selectedSiswaId && !!bulan && !isLocked,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const monthData = monthlyRekapQuery.data || null;
+  const monthLoading = monthlyRekapQuery.isLoading;
+  const channelSummary = monthData?.statistik?.channel_summary;
+  const monthDetails = monthData?.detail || [];
+
+  // Hitung jumlah anomali bulan ini
+  const anomaliCount = useMemo(() => {
+    if (typeof channelSummary?.anomali_count === 'number') {
+      return channelSummary.anomali_count;
+    }
+    return monthDetails.filter((d) => d.anomali?.is_anomali).length;
+  }, [channelSummary, monthDetails]);
+
+  // Query Tracking Harian Siswa untuk tanggal terpilih
   const trackingQuery = useQuery({
     queryKey: ['tracking-harian-siswa', selectedSiswaId, tanggal],
     queryFn: async () => {
@@ -331,14 +302,14 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
     (singleSiswaQuery.data as { nis?: string })?.nis ||
     '-';
 
-  // Grid Konten Utama
+  // Konten Utama
   const contentBody = (
-    <div className="space-y-6">
-      {/* Scope Banner (bila dipanggil dari Dashboard Role dengan filter Jurusan/Kelas) */}
+    <div className="space-y-5 w-full max-w-full min-w-0 pb-16 sm:pb-6">
+      {/* ── 1. SCOPE BANNER ── */}
       {!hideScopeBanner && (propJurusanNama || propKelasNama) && (
-        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/40">
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/40">
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-xs">
+            <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-2xs">
               <Building2 className="w-4 h-4" />
             </div>
             <div>
@@ -352,7 +323,7 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="text-[10.5px] text-slate-500 dark:text-slate-400 hidden sm:block">
                 Data pelacakan presensi terfilter khusus untuk rombel binaan.
               </p>
             </div>
@@ -363,12 +334,84 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6">
-        {/* Kolom Kiri: Filter & Profil */}
-        <div className="space-y-6">
-          <SectionCard title="Filter & Profil" icon={User} fullWidth>
-            <div className="space-y-5">
-              <div className="space-y-2">
+      {/* ── 2. MULTI-CHANNEL PERFORMANCE STRIP (4 CARDS) ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        {/* Card 1: Gerbang */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <DoorOpen className="w-3.5 h-3.5 text-indigo-500" />
+              <span>Gerbang Masuk</span>
+            </span>
+          </div>
+          <div className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">
+            {channelSummary?.gerbang?.total_hadir ?? 0} Hadir
+          </div>
+          <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+            {channelSummary?.gerbang?.total_terlambat ?? 0} Terlambat • {channelSummary?.gerbang?.total_tap_gantung ?? 0} Gantung
+          </div>
+        </div>
+
+        {/* Card 2: Pembiasaan */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <BookOpen className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Pembiasaan</span>
+            </span>
+          </div>
+          <div className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">
+            {channelSummary?.pembiasaan?.total_hadir ?? 0} Sesi
+          </div>
+          <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+            {channelSummary?.pembiasaan?.total_alpa ?? 0} Terlewat (Alpa)
+          </div>
+        </div>
+
+        {/* Card 3: KBM */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <GraduationCap className="w-3.5 h-3.5 text-amber-500" />
+              <span>Sesi KBM</span>
+            </span>
+          </div>
+          <div className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">
+            {channelSummary?.kbm?.persentase ?? 100}% Hadir
+          </div>
+          <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+            {channelSummary?.kbm?.hadir_sesi ?? 0}/{channelSummary?.kbm?.total_sesi ?? 0} JP • {channelSummary?.kbm?.alpa_sesi ?? 0} Alpa JP
+          </div>
+        </div>
+
+        {/* Card 4: PKL */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <Briefcase className="w-3.5 h-3.5 text-purple-500" />
+              <span>DU/DI (PKL)</span>
+            </span>
+          </div>
+          <div className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">
+            {channelSummary?.pkl?.is_active
+              ? `${channelSummary.pkl.total_hadir} Hadir`
+              : 'Non-PKL'}
+          </div>
+          <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+            {channelSummary?.pkl?.is_active
+              ? (channelSummary.pkl.mitra_nama || 'DU/DI Terkait')
+              : 'KBM Sekolah Normal'}
+          </div>
+        </div>
+      </div>
+
+      {/* ── 3. DUA KOLOM: PROFIL/FILTER & KALENDER MULTI-CHANNEL ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-5">
+        {/* Kolom Kiri: Filter & Profil + Status Harian */}
+        <div className="space-y-5">
+          <SectionCard title="Filter & Profil Siswa" icon={User} fullWidth>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label
                     htmlFor="pilih-siswa-select"
@@ -391,15 +434,15 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
                     aria-label="Siswa sebelumnya"
                     onClick={handlePrevSiswa}
                     disabled={currentIndex <= 0}
-                    className="h-11 w-11 shrink-0 rounded-xl border-slate-200 dark:border-slate-800 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
+                    className="h-10 w-10 shrink-0 rounded-xl border-slate-200 dark:border-slate-800 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
                   >
-                    <ChevronLeft size={18} />
+                    <ChevronLeft size={16} />
                   </Button>
 
                   <div className="flex-1 min-w-0">
                     <Suspense
                       fallback={
-                        <div className="h-11 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                        <div className="h-10 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
                       }
                     >
                       <SearchableSelect
@@ -409,7 +452,7 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
                         onValueChange={(val) => setSelectedSiswaId(val)}
                         options={siswaOptions}
                         placeholder="Cari Nama Siswa..."
-                        triggerClassName="h-11 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-bold text-xs"
+                        triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-bold text-xs"
                       />
                     </Suspense>
                   </div>
@@ -421,19 +464,19 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
                     aria-label="Siswa berikutnya"
                     onClick={handleNextSiswa}
                     disabled={currentIndex === -1 || currentIndex >= siswaOptions.length - 1}
-                    className="h-11 w-11 shrink-0 rounded-xl border-slate-200 dark:border-slate-800 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
+                    className="h-10 w-10 shrink-0 rounded-xl border-slate-200 dark:border-slate-800 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
                   >
-                    <ChevronRight size={18} />
+                    <ChevronRight size={16} />
                   </Button>
                 </div>
               </div>
 
               {/* Student Profile Identity Card */}
               {selectedSiswaId && (
-                <div className="pt-4 border-t border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="flex items-center gap-3.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800">
-                    <div className="w-11 h-11 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-xs shrink-0">
-                      <GraduationCap size={22} />
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-2xs shrink-0 font-bold text-sm">
+                      {displayStudentName.slice(0, 2).toUpperCase()}
                     </div>
                     <div className="min-w-0 flex-1">
                       <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
@@ -449,34 +492,14 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
             </div>
           </SectionCard>
 
-          {/* Status Harian Siswa */}
-          <SectionCard title="Status Harian" icon={Activity} fullWidth>
+          {/* Status Harian Siswa untuk Tanggal Terpilih */}
+          <SectionCard title="Status Hari Terpilih" icon={Activity} fullWidth>
             {result ? (
-              <div className="flex flex-col items-center py-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div
-                  className={cn(
-                    'w-16 h-16 rounded-2xl flex items-center justify-center mb-3 border transition-all',
-                    result.status?.toUpperCase().includes('HADIR') &&
-                      !result.status?.toUpperCase().includes('BELUM')
-                      ? 'bg-emerald-50 border-emerald-100 text-emerald-600 dark:bg-emerald-950/20 dark:border-emerald-900/30'
-                      : result.status?.toUpperCase().includes('TERLAMBAT')
-                      ? 'bg-purple-50 border-purple-100 text-purple-600 dark:bg-purple-900/20 dark:border-purple-900/30'
-                      : result.status?.toUpperCase().includes('SAKIT') ||
-                        result.status?.toUpperCase().includes('IZIN') ||
-                        result.status?.toUpperCase().includes('DISPEN')
-                      ? 'bg-blue-50 border-blue-100 text-blue-600 dark:bg-blue-950/20 dark:border-blue-900/30'
-                      : result.status?.toUpperCase().includes('ALPA') ||
-                        result.status?.toUpperCase().includes('ALFA')
-                      ? 'bg-rose-50 border-rose-100 text-rose-600 dark:bg-rose-950/20 dark:border-rose-900/30'
-                      : 'bg-slate-50 border-slate-100 text-slate-400 dark:bg-slate-900 dark:border-slate-800'
-                  )}
-                >
-                  <Activity size={32} />
+              <div className="flex flex-col items-center py-2 space-y-2.5">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Tanggal: {tanggal}
                 </div>
 
-                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                  Keterangan Hari Ini
-                </div>
                 <Badge
                   variant={
                     result.status?.toUpperCase().includes('HADIR') &&
@@ -493,7 +516,7 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
                       ? 'info'
                       : 'secondary'
                   }
-                  className="h-9 px-6 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] border-none"
+                  className="h-8 px-4 rounded-xl text-[10.5px] font-black uppercase tracking-wider"
                 >
                   {result.status || 'BELUM ABSEN'}
                 </Badge>
@@ -501,25 +524,17 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
                 {/* Catatan / Keterangan Tambahan */}
                 {(() => {
                   const kegiatanArr = Array.isArray(result?.kegiatan) ? result.kegiatan : [];
-                  const catatanEntry =
-                    kegiatanArr.find(
-                      (k) =>
-                        k?.keterangan &&
-                        k.keterangan.trim() &&
-                        k.keterangan.toUpperCase() !== 'LOG TRANSAKSI' &&
-                        String(k?.status || '').toUpperCase() === (result?.status || '').toUpperCase()
-                    ) ||
-                    kegiatanArr.find(
-                      (k) =>
-                        k?.keterangan &&
-                        k.keterangan.trim() &&
-                        k.keterangan.toUpperCase() !== 'LOG TRANSAKSI'
-                    );
+                  const catatanEntry = kegiatanArr.find(
+                    (k) =>
+                      k?.keterangan &&
+                      k.keterangan.trim() &&
+                      k.keterangan.toUpperCase() !== 'LOG TRANSAKSI'
+                  );
                   return catatanEntry ? (
-                    <div className="mt-3.5 w-full">
-                      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl px-3.5 py-2.5">
+                    <div className="w-full">
+                      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl px-3 py-2">
                         <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
-                          Catatan
+                          Catatan Hari Ini
                         </div>
                         <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 italic leading-relaxed">
                           {catatanEntry.keterangan}
@@ -530,29 +545,79 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
                 })()}
               </div>
             ) : (
-              <p className="text-center py-6 text-[11px] font-bold text-slate-400 uppercase tracking-tight">
-                Pilih siswa untuk melihat status hari ini
+              <p className="text-center py-4 text-[11px] font-bold text-slate-400 uppercase tracking-tight">
+                Pilih siswa untuk melihat status
               </p>
             )}
           </SectionCard>
         </div>
 
-        {/* Kolom Kanan: Visualisasi Kalender & Timeline */}
-        <div className="space-y-6">
-          <SectionCard title="Visualisasi Kehadiran" icon={Calendar} fullWidth>
-            <CalendarCard
-              siswaId={selectedSiswaId}
-              bulan={bulan}
-              selectedDate={tanggal}
-              onBulanChange={setBulan}
-              onDateSelect={(newDate) => setTanggal(newDate)}
-              isLocked={isLocked}
-            />
+        {/* Kolom Kanan: Switcher Tab Kalender vs Log Anomali */}
+        <div className="space-y-5">
+          <SectionCard fullWidth className="p-3 sm:p-5">
+            {/* View Mode Switcher Header */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('CALENDAR')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                    viewMode === 'CALENDAR'
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                  )}
+                >
+                  <Calendar className="w-3.5 h-3.5 text-primary" />
+                  <span>Kalender Multi-Strip</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setViewMode('ANOMALY')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                    viewMode === 'ANOMALY'
+                      ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-rose-600'
+                  )}
+                >
+                  <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Log Anomali ({anomaliCount})</span>
+                </button>
+              </div>
+
+              <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                Bulan Aktif: <span className="font-bold text-slate-800 dark:text-slate-200">{bulan}</span>
+              </div>
+            </div>
+
+            {/* Content Based on View Mode */}
+            <div className="pt-3">
+              {viewMode === 'CALENDAR' ? (
+                <MultiChannelMonthlyCalendar
+                  bulan={bulan}
+                  selectedDate={tanggal}
+                  onBulanChange={setBulan}
+                  onDateSelect={(newDate) => setTanggal(newDate)}
+                  details={monthDetails}
+                  statistik={monthData?.statistik}
+                  isLoading={monthLoading}
+                />
+              ) : (
+                <MonthlyAnomalyFeed
+                  details={monthDetails}
+                  selectedDate={tanggal}
+                  onDateSelect={(newDate) => setTanggal(newDate)}
+                />
+              )}
+            </div>
           </SectionCard>
 
-          <SectionCard fullWidth className="p-5 flex flex-col w-full min-w-0">
+          {/* Detailed Timeline Sesi Jam Pelajaran Hari Terpilih */}
+          <SectionCard fullWidth className="p-3 sm:p-5 flex flex-col w-full min-w-0">
             <SharedAttendanceTimeline
-              title="Timeline Aktivitas Siswa"
+              title={`Linimasa Detail Kronologis: ${tanggal}`}
               selectedDate={tanggal}
               items={result?.kegiatan || []}
               isLoading={loading}
@@ -568,18 +633,18 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
     </div>
   );
 
-  // Jika hideLayout true (misal saat dipanggil di dalam Modal atau Tab Role Dashboard)
+  // Jika hideLayout true (saat dipanggil di dalam Modal atau Tab Role Dashboard)
   if (hideLayout) {
     return contentBody;
   }
 
-  // Jika standalone Page dengan AcademicPageLayout
+  // Standalone Page Mode dengan AcademicPageLayout
   return (
     <PremiumFeatureGate
       isLocked={isLocked}
       moduleName="ABSENSI"
-      featureName="Tracking Aktivitas Siswa"
-      description="Dapatkan laporan jejak aktivitas siswa secara kronologis, mulai dari gerbang kedatangan hingga setiap sesi pelajaran yang diikuti."
+      featureName="Tracking Multi-Channel Siswa"
+      description="Lacak kehadiran 4 channel (Gerbang, Pembiasaan, KBM, PKL) secara komprehensif dalam satu tampilan bulanan."
     >
       <AcademicPageLayout
         title={title}
@@ -590,7 +655,7 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
           !hideHeader
             ? [
                 { label: 'Presensi', path: '/attendance/rekap' },
-                { label: 'Tracking Aktivitas Siswa', active: true },
+                { label: 'Tracking Multi-Channel Siswa', active: true },
               ]
             : undefined
         }
@@ -598,11 +663,12 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
           !hideHeader && (
             <Button
               variant="toolbarOutline"
+              size="sm"
               onClick={() => navigate('/attendance/rekap')}
-              size="toolbar"
-              className="rounded-xl border-slate-200 dark:border-slate-800 font-bold text-[10px] uppercase tracking-widest h-10 px-4 cursor-pointer"
+              className="gap-2"
             >
-              <ArrowLeft className="w-3.5 h-3.5 mr-2" /> Kembali ke Rekap
+              <ArrowLeft size={16} />
+              <span>Kembali ke Rekap</span>
             </Button>
           )
         }
@@ -614,3 +680,4 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
 });
 
 TrackingSiswaView.displayName = 'TrackingSiswaView';
+export default TrackingSiswaView;
