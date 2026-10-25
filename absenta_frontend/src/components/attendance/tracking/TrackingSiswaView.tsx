@@ -340,7 +340,85 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
         </div>
       )}
 
-      {/* ── 2. MULTI-CHANNEL PERFORMANCE STRIP (4 CARDS) ── */}
+      {/* ── 2. TOP STUDENT NAVIGATION & IDENTITY BAR ── */}
+      <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          {/* Identity: Avatar, Name, NIS */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-xs shrink-0 font-bold text-sm sm:text-base">
+              {displayStudentName.slice(0, 2).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 truncate">
+                  {displayStudentName}
+                </h3>
+                {propKelasNama && (
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40">
+                    Kelas: {propKelasNama}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                NIS: {displayStudentNis}
+              </p>
+            </div>
+          </div>
+
+          {/* Selector: Prev, Dropdown, Next */}
+          <div className="flex items-center gap-2 w-full md:w-auto md:min-w-[380px] max-w-lg">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-label="Siswa sebelumnya"
+              onClick={handlePrevSiswa}
+              disabled={currentIndex <= 0}
+              className="h-9 w-9 shrink-0 rounded-xl border-slate-200 dark:border-slate-800 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
+            >
+              <ChevronLeft size={16} />
+            </Button>
+
+            <div className="flex-1 min-w-0">
+              <Suspense
+                fallback={
+                  <div className="h-9 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                }
+              >
+                <SearchableSelect
+                  id="pilih-siswa-select"
+                  aria-label="Pilih siswa untuk tracking aktivitas"
+                  value={selectedSiswaId}
+                  onValueChange={(val) => setSelectedSiswaId(val)}
+                  options={siswaOptions}
+                  placeholder="Cari Nama Siswa..."
+                  triggerClassName="h-9 rounded-xl bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-800 font-bold text-xs"
+                />
+              </Suspense>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-label="Siswa berikutnya"
+              onClick={handleNextSiswa}
+              disabled={currentIndex === -1 || currentIndex >= siswaOptions.length - 1}
+              className="h-9 w-9 shrink-0 rounded-xl border-slate-200 dark:border-slate-800 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
+            >
+              <ChevronRight size={16} />
+            </Button>
+
+            {siswaOptions.length > 0 && currentIndex !== -1 && (
+              <span className="text-[10.5px] font-bold text-slate-400 font-mono shrink-0 whitespace-nowrap hidden sm:inline-block">
+                {currentIndex + 1} / {siswaOptions.length}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── 3. MULTI-CHANNEL PERFORMANCE STRIP (4 CARDS) ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         {/* Card 1: Gerbang */}
         <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
@@ -411,261 +489,111 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
         </div>
       </div>
 
-      {/* ── 3. DUA KOLOM: PROFIL/FILTER & KALENDER MULTI-CHANNEL ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-5">
-        {/* Kolom Kiri: Filter & Profil + Status Harian */}
-        <div className="space-y-5">
-          <SectionCard title="Filter & Profil Siswa" icon={User} fullWidth>
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label
-                    htmlFor="pilih-siswa-select"
-                    className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1"
-                  >
-                    Pilih Siswa
-                  </label>
-                  {siswaOptions.length > 0 && currentIndex !== -1 && (
-                    <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 font-mono">
-                      {currentIndex + 1} / {siswaOptions.length} Siswa
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    aria-label="Siswa sebelumnya"
-                    onClick={handlePrevSiswa}
-                    disabled={currentIndex <= 0}
-                    className="h-10 w-10 shrink-0 rounded-xl border-slate-200 dark:border-slate-800 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
-                  >
-                    <ChevronLeft size={16} />
-                  </Button>
-
-                  <div className="flex-1 min-w-0">
-                    <Suspense
-                      fallback={
-                        <div className="h-10 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
-                      }
-                    >
-                      <SearchableSelect
-                        id="pilih-siswa-select"
-                        aria-label="Pilih siswa untuk tracking aktivitas"
-                        value={selectedSiswaId}
-                        onValueChange={(val) => setSelectedSiswaId(val)}
-                        options={siswaOptions}
-                        placeholder="Cari Nama Siswa..."
-                        triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-bold text-xs"
-                      />
-                    </Suspense>
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    aria-label="Siswa berikutnya"
-                    onClick={handleNextSiswa}
-                    disabled={currentIndex === -1 || currentIndex >= siswaOptions.length - 1}
-                    className="h-10 w-10 shrink-0 rounded-xl border-slate-200 dark:border-slate-800 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
-                  >
-                    <ChevronRight size={16} />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Student Profile Identity Card */}
-              {selectedSiswaId && (
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-2xs shrink-0 font-bold text-sm">
-                      {displayStudentName.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
-                        {displayStudentName}
-                      </h4>
-                      <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
-                        NIS: {displayStudentNis}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+      {/* ── 4. FULL-WIDTH VIEW: MATRIKS 30 HARI / KALENDER / LOG ANOMALI ── */}
+      <SectionCard fullWidth className="p-3 sm:p-5">
+        {/* View Mode Switcher Header */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setViewMode('MATRIX')}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                viewMode === 'MATRIX'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
               )}
-            </div>
-          </SectionCard>
+            >
+              <Layers className="w-3.5 h-3.5 text-primary" />
+              <span>Matriks 30 Hari (Mapel)</span>
+            </button>
 
-          {/* Status Harian Siswa untuk Tanggal Terpilih */}
-          <SectionCard title="Status Hari Terpilih" icon={Activity} fullWidth>
-            {result ? (
-              <div className="flex flex-col items-center py-2 space-y-2.5">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  Tanggal: {tanggal}
-                </div>
-
-                <Badge
-                  variant={
-                    result.status?.toUpperCase().includes('HADIR') &&
-                    !result.status?.toUpperCase().includes('BELUM')
-                      ? 'success'
-                      : result.status?.toUpperCase().includes('TERLAMBAT')
-                      ? 'warning'
-                      : result.status?.toUpperCase().includes('ALPA') ||
-                        result.status?.toUpperCase().includes('ALFA')
-                      ? 'error'
-                      : result.status?.toUpperCase().includes('SAKIT') ||
-                        result.status?.toUpperCase().includes('IZIN') ||
-                        result.status?.toUpperCase().includes('DISPEN')
-                      ? 'info'
-                      : 'secondary'
-                  }
-                  className="h-8 px-4 rounded-xl text-[10.5px] font-black uppercase tracking-wider"
-                >
-                  {result.status || 'BELUM ABSEN'}
-                </Badge>
-
-                {/* Catatan / Keterangan Tambahan */}
-                {(() => {
-                  const kegiatanArr = Array.isArray(result?.kegiatan) ? result.kegiatan : [];
-                  const catatanEntry = kegiatanArr.find(
-                    (k) =>
-                      k?.keterangan &&
-                      k.keterangan.trim() &&
-                      k.keterangan.toUpperCase() !== 'LOG TRANSAKSI'
-                  );
-                  return catatanEntry ? (
-                    <div className="w-full">
-                      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl px-3 py-2">
-                        <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
-                          Catatan Hari Ini
-                        </div>
-                        <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 italic leading-relaxed">
-                          {catatanEntry.keterangan}
-                        </p>
-                      </div>
-                    </div>
-                  ) : null;
-                })()}
-              </div>
-            ) : (
-              <p className="text-center py-4 text-[11px] font-bold text-slate-400 uppercase tracking-tight">
-                Pilih siswa untuk melihat status
-              </p>
-            )}
-          </SectionCard>
-        </div>
-
-        {/* Kolom Kanan: Switcher Tab Kalender vs Log Anomali */}
-        <div className="space-y-5">
-          <SectionCard fullWidth className="p-3 sm:p-5">
-            {/* View Mode Switcher Header */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('MATRIX')}
-                  className={cn(
-                    'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
-                    viewMode === 'MATRIX'
-                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-                  )}
-                >
-                  <Layers className="w-3.5 h-3.5 text-primary" />
-                  <span>Matriks 30 Hari (Mapel)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setViewMode('CALENDAR')}
-                  className={cn(
-                    'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
-                    viewMode === 'CALENDAR'
-                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-                  )}
-                >
-                  <Calendar className="w-3.5 h-3.5 text-primary" />
-                  <span>Kalender Multi-Strip</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setViewMode('ANOMALY')}
-                  className={cn(
-                    'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
-                    viewMode === 'ANOMALY'
-                      ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-2xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-rose-600'
-                  )}
-                >
-                  <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
-                  <span>Log Anomali ({anomaliCount})</span>
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                  Bulan:
-                </span>
-                <input
-                  type="month"
-                  value={bulan}
-                  onChange={(e) => setBulan(e.target.value)}
-                  className="h-8 px-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
-                />
-              </div>
-            </div>
-
-            {/* Content Based on View Mode */}
-            <div className="pt-3">
-              {viewMode === 'MATRIX' ? (
-                <MapelMultiChannelMatrixTable
-                  matrixData={monthData?.mapel_matrix}
-                  bulan={bulan}
-                  selectedDate={tanggal}
-                  onDateSelect={(newDate) => setTanggal(newDate)}
-                  isLoading={monthLoading}
-                />
-              ) : viewMode === 'CALENDAR' ? (
-                <MultiChannelMonthlyCalendar
-                  bulan={bulan}
-                  selectedDate={tanggal}
-                  onBulanChange={setBulan}
-                  onDateSelect={(newDate) => setTanggal(newDate)}
-                  details={monthDetails}
-                  statistik={monthData?.statistik}
-                  isLoading={monthLoading}
-                />
-              ) : (
-                <MonthlyAnomalyFeed
-                  details={monthDetails}
-                  selectedDate={tanggal}
-                  onDateSelect={(newDate) => setTanggal(newDate)}
-                />
+            <button
+              type="button"
+              onClick={() => setViewMode('CALENDAR')}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                viewMode === 'CALENDAR'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
               )}
-            </div>
-          </SectionCard>
+            >
+              <Calendar className="w-3.5 h-3.5 text-primary" />
+              <span>Kalender Multi-Strip</span>
+            </button>
 
-          {/* Detailed Timeline Sesi Jam Pelajaran Hari Terpilih */}
-          <SectionCard fullWidth className="p-3 sm:p-5 flex flex-col w-full min-w-0">
-            <SharedAttendanceTimeline
-              title={`Linimasa Detail Kronologis: ${tanggal}`}
-              selectedDate={tanggal}
-              items={result?.kegiatan || []}
-              isLoading={loading}
-              emptyDescription={
-                selectedSiswaId
-                  ? 'Tidak ada rincian aktivitas tercatat untuk tanggal ini.'
-                  : 'Pilih siswa untuk melihat timeline aktivitas.'
-              }
+            <button
+              type="button"
+              onClick={() => setViewMode('ANOMALY')}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                viewMode === 'ANOMALY'
+                  ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-rose-600'
+              )}
+            >
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+              <span>Log Anomali ({anomaliCount})</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+              Bulan:
+            </span>
+            <input
+              type="month"
+              value={bulan}
+              onChange={(e) => setBulan(e.target.value)}
+              className="h-8 px-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
             />
-          </SectionCard>
+          </div>
         </div>
-      </div>
+
+        {/* Content Based on View Mode */}
+        <div className="pt-3">
+          {viewMode === 'MATRIX' ? (
+            <MapelMultiChannelMatrixTable
+              matrixData={monthData?.mapel_matrix}
+              bulan={bulan}
+              selectedDate={tanggal}
+              onDateSelect={(newDate) => setTanggal(newDate)}
+              isLoading={monthLoading}
+            />
+          ) : viewMode === 'CALENDAR' ? (
+            <MultiChannelMonthlyCalendar
+              bulan={bulan}
+              selectedDate={tanggal}
+              onBulanChange={setBulan}
+              onDateSelect={(newDate) => setTanggal(newDate)}
+              details={monthDetails}
+              statistik={monthData?.statistik}
+              isLoading={monthLoading}
+            />
+          ) : (
+            <MonthlyAnomalyFeed
+              details={monthDetails}
+              selectedDate={tanggal}
+              onDateSelect={(newDate) => setTanggal(newDate)}
+            />
+          )}
+        </div>
+      </SectionCard>
+
+      {/* ── 5. DETAILED TIMELINE SESI JAM PELAJARAN HARI TERPILIH ── */}
+      <SectionCard fullWidth className="p-3 sm:p-5 flex flex-col w-full min-w-0">
+        <SharedAttendanceTimeline
+          title={`Linimasa Detail Kronologis: ${tanggal}`}
+          selectedDate={tanggal}
+          items={result?.kegiatan || []}
+          isLoading={loading}
+          emptyDescription={
+            selectedSiswaId
+              ? 'Tidak ada rincian aktivitas tercatat untuk tanggal ini.'
+              : 'Pilih siswa untuk melihat timeline aktivitas.'
+          }
+        />
+      </SectionCard>
     </div>
   );
 
