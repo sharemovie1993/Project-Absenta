@@ -95,28 +95,37 @@ export const WalasDeteksiDiniTab: React.FC<WalasDeteksiDiniTabProps> = React.mem
   const rawStudents: AtRiskStudentItem[] = useMemo(() => {
     const raw = Array.isArray(ewsData?.data) ? ewsData.data : (Array.isArray(ewsData) ? ewsData : []);
     if (raw.length > 0) {
-      return raw.map((item: any) => ({
-        id: item.siswa_id || item.id,
-        nama: item.nama_siswa || item.nama || 'Siswa',
-        nis: item.nis || '-',
-        persentase: item.persentase_kehadiran || item.persentase || 80,
-        alfaCount: item.total_alfa || item.alfaCount || 3,
-        statusHariIni: item.status_hari_ini || 'BELUM_ADA',
-        rekomendasi: item.rekomendasi_tindak_lanjut || 'Perlu bimbingan wali kelas & koordinasi BP/BK',
-        kategoriRisk: item.kategori_risk || item.kategoriRisk || 'TINGGI',
-      }));
+      return raw.map((item: any) => {
+        const alfa = Number(item.totalAlphaThisMonth ?? item.consecutiveDays ?? item.total_alfa ?? item.alfaCount ?? 0);
+        const persentase = item.persentase_kehadiran !== undefined 
+          ? Number(item.persentase_kehadiran) 
+          : item.persentase !== undefined 
+          ? Number(item.persentase) 
+          : Math.max(50, 100 - (alfa * 5));
+
+        return {
+          id: String(item.studentId || item.siswa_id || item.id || ''),
+          nama: String(item.studentName || item.nama_siswa || item.nama || 'Siswa'),
+          nis: String(item.nis || '-'),
+          persentase,
+          alfaCount: alfa,
+          statusHariIni: String(item.status_hari_ini || item.status || 'BELUM_ADA'),
+          rekomendasi: String(item.recommendation || item.rekomendasi_tindak_lanjut || item.atRiskReason || item.rekomendasi || 'Perlu bimbingan wali kelas & koordinasi BP/BK'),
+          kategoriRisk: String(item.riskCategory || item.kategori_risk || item.kategoriRisk || (alfa >= 3 ? 'Alpha Tinggi' : 'Waspada')),
+        };
+      });
     }
     // Fallback ke data agregator walas jika ada
     if (data?.earlyWarningAlerts && data.earlyWarningAlerts.length > 0) {
-      return data.earlyWarningAlerts.map((a) => ({
-        id: a.siswaId,
-        nama: a.nama,
-        nis: '-',
-        persentase: 75,
-        alfaCount: a.alfaCount,
+      return data.earlyWarningAlerts.map((a: any) => ({
+        id: String(a.siswaId || a.id || ''),
+        nama: String(a.nama || a.studentName || 'Siswa'),
+        nis: String(a.nis || '-'),
+        persentase: a.persentase !== undefined ? Number(a.persentase) : 75,
+        alfaCount: Number(a.alfaCount || 0),
         statusHariIni: 'BELUM_ADA',
-        rekomendasi: a.rekomendasi,
-        kategoriRisk: a.kategoriRisk || 'TINGGI',
+        rekomendasi: String(a.rekomendasi || a.recommendation || 'Perlu bimbingan wali kelas'),
+        kategoriRisk: String(a.kategoriRisk || a.riskCategory || 'TINGGI'),
       }));
     }
     return [];
@@ -484,7 +493,7 @@ export const WalasDeteksiDiniTab: React.FC<WalasDeteksiDiniTabProps> = React.mem
                   const isCritical = siswa.persentase < 75 || siswa.alfaCount >= 3;
                   return (
                     <tr
-                      key={siswa.id}
+                      key={siswa.id || siswa.nis || idx}
                       className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
                     >
                       <td className="py-3 px-3.5 text-center text-slate-400 font-mono text-[11px]">
@@ -494,9 +503,11 @@ export const WalasDeteksiDiniTab: React.FC<WalasDeteksiDiniTabProps> = React.mem
                         <span className="font-bold text-slate-900 dark:text-slate-100 block">
                           {siswa.nama}
                         </span>
-                        <span className="text-[10.5px] text-slate-400 font-mono">
-                          ID: {siswa.id.slice(0, 8)}...
-                        </span>
+                        {siswa.id ? (
+                          <span className="text-[10.5px] text-slate-400 font-mono">
+                            ID: {siswa.id.length > 8 ? `${siswa.id.slice(0, 8)}...` : siswa.id}
+                          </span>
+                        ) : null}
                       </td>
                       <td className="py-3 px-3 text-center font-mono text-slate-600 dark:text-slate-300">
                         {siswa.nis}

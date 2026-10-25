@@ -53,26 +53,35 @@ export const WalasPresensiTab: React.FC<WalasPresensiTabProps> = React.memo(({
   const atRiskStudents = useMemo(() => {
     const raw = Array.isArray(ewsData?.data) ? ewsData.data : (Array.isArray(ewsData) ? ewsData : []);
     if (raw.length > 0) {
-      return raw.map((item: any) => ({
-        id: item.siswa_id || item.id,
-        nama: item.nama_siswa || item.nama || 'Siswa',
-        nis: item.nis || '-',
-        persentase: item.persentase_kehadiran || item.persentase || 80,
-        alfaCount: item.total_alfa || item.alfaCount || 3,
-        statusHariIni: item.status_hari_ini || 'BELUM_ADA',
-        rekomendasi: item.rekomendasi_tindak_lanjut || 'Perlu bimbingan wali kelas',
-      }));
+      return raw.map((item: any) => {
+        const alfa = Number(item.totalAlphaThisMonth ?? item.consecutiveDays ?? item.total_alfa ?? item.alfaCount ?? 0);
+        const persentase = item.persentase_kehadiran !== undefined 
+          ? Number(item.persentase_kehadiran) 
+          : item.persentase !== undefined 
+          ? Number(item.persentase) 
+          : Math.max(50, 100 - (alfa * 5));
+
+        return {
+          id: String(item.studentId || item.siswa_id || item.id || ''),
+          nama: String(item.studentName || item.nama_siswa || item.nama || 'Siswa'),
+          nis: String(item.nis || '-'),
+          persentase,
+          alfaCount: alfa,
+          statusHariIni: String(item.status_hari_ini || item.status || 'BELUM_ADA'),
+          rekomendasi: String(item.recommendation || item.rekomendasi_tindak_lanjut || item.atRiskReason || 'Perlu bimbingan wali kelas'),
+        };
+      });
     }
     // Fallback ke data agregator walas jika ada
     if (data?.earlyWarningAlerts && data.earlyWarningAlerts.length > 0) {
-      return data.earlyWarningAlerts.map((a) => ({
-        id: a.siswaId,
-        nama: a.nama,
+      return data.earlyWarningAlerts.map((a: any) => ({
+        id: String(a.siswaId || a.id || ''),
+        nama: String(a.nama || a.studentName || 'Siswa'),
         nis: '-',
-        persentase: 75,
-        alfaCount: a.alfaCount,
+        persentase: a.persentase !== undefined ? Number(a.persentase) : 75,
+        alfaCount: Number(a.alfaCount || 0),
         statusHariIni: 'BELUM_ADA',
-        rekomendasi: a.rekomendasi,
+        rekomendasi: String(a.rekomendasi || 'Perlu bimbingan wali kelas'),
       }));
     }
     return [];
