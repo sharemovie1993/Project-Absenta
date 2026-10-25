@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge, Button } from '@/components/ui';
-import type { CalendarDayDetail } from './MultiChannelMonthlyCalendar';
+import type { CalendarDayDetail } from './trackingTypes';
 
 interface MonthlyAnomalyFeedProps {
   details?: CalendarDayDetail[];

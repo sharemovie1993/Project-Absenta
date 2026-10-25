@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import {
-  Calendar,
   User,
   Activity,
   ArrowLeft,
@@ -40,10 +39,9 @@ import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { SharedAttendanceTimeline } from '../SharedAttendanceTimeline';
 import {
-  MultiChannelMonthlyCalendar,
   type CalendarDayDetail,
   type CalendarStatistik,
-} from './MultiChannelMonthlyCalendar';
+} from './trackingTypes';
 import { MonthlyAnomalyFeed } from './MonthlyAnomalyFeed';
 import {
   MapelMultiChannelMatrixTable,
@@ -169,8 +167,8 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
     propSiswaId || paramSiswaId || ''
   );
 
-  // Tab View Mode: 'MATRIX' | 'CALENDAR' | 'ANOMALY'
-  const [viewMode, setViewMode] = useState<'MATRIX' | 'CALENDAR' | 'ANOMALY'>('MATRIX');
+  // Tab View Mode: 'MATRIX' | 'ANOMALY'
+  const [viewMode, setViewMode] = useState<'MATRIX' | 'ANOMALY'>('MATRIX');
   const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false);
 
   // Sync prop changes
@@ -518,20 +516,6 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
 
             <button
               type="button"
-              onClick={() => setViewMode('CALENDAR')}
-              className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
-                viewMode === 'CALENDAR'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-              )}
-            >
-              <Calendar className="w-3.5 h-3.5 text-primary" />
-              <span>Kalender Multi-Strip</span>
-            </button>
-
-            <button
-              type="button"
               onClick={() => setViewMode('ANOMALY')}
               className={cn(
                 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
@@ -580,16 +564,6 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
               bulan={bulan}
               selectedDate={tanggal}
               onDateSelect={(newDate) => setTanggal(newDate)}
-              isLoading={monthLoading}
-            />
-          ) : viewMode === 'CALENDAR' ? (
-            <MultiChannelMonthlyCalendar
-              bulan={bulan}
-              selectedDate={tanggal}
-              onBulanChange={setBulan}
-              onDateSelect={(newDate) => setTanggal(newDate)}
-              details={monthDetails}
-              statistik={monthData?.statistik}
               isLoading={monthLoading}
             />
           ) : (
