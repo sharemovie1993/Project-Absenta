@@ -11,7 +11,9 @@ import {
   Sparkles, 
   ArrowRight,
   ShieldCheck,
-  Calendar
+  Calendar,
+  Printer,
+  FileText
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -351,16 +353,55 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
         variant={isMobile ? 'mini' : 'card'}
         searchPlaceholder="Cari siswa / NIS..."
         actionsLeft={
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-              Tampilan
+          !isMobile ? (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                Tampilan
+              </span>
+              <ViewModeSwitcher viewMode={viewMode} setViewMode={setViewMode} compact />
+            </div>
+          ) : undefined
+        }
+        onExportExcel={!isMobile ? handleExportExcel : undefined}
+        onExportPdf={!isMobile ? handleExportPdf : undefined}
+      />
+
+      {/* Mode HP: Action Strip di LUAR Kotak Filter (Cetak PDF, Export Excel, View Mode) */}
+      {isMobile && (
+        <div className="flex items-center justify-between gap-2 p-1.5 sm:p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 shrink-0">
+              Mode:
             </span>
             <ViewModeSwitcher viewMode={viewMode} setViewMode={setViewMode} compact />
           </div>
-        }
-        onExportExcel={handleExportExcel}
-        onExportPdf={handleExportPdf}
-      />
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Button
+              type="button"
+              onClick={handleExportExcel}
+              variant="outline"
+              size="sm"
+              className="h-8.5 px-2.5 rounded-lg text-xs font-semibold border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer shadow-2xs"
+              title="Unduh Excel"
+            >
+              <FileText className="w-3.5 h-3.5 mr-1" />
+              <span>Excel</span>
+            </Button>
+
+            <Button
+              type="button"
+              onClick={handleExportPdf}
+              size="sm"
+              className="h-8.5 px-3 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white cursor-pointer shadow-xs gap-1.5 active:scale-95 transition-transform"
+              title="Buka pratinjau cetak dan unduh PDF"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Cetak PDF</span>
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* High-Density Zero-Scroll Table Viewport */}
       <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-x-auto max-h-[55vh] overflow-y-auto bg-white dark:bg-slate-900 shadow-xs">
