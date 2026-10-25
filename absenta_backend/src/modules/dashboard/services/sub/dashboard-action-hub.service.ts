@@ -325,19 +325,25 @@ export class DashboardActionHubService {
         include: {
           Kelas: { select: { nama_kelas: true } },
           Mapel: { select: { nama_mapel: true } }
-        },
-        take: 3
+        }
       });
 
       if (!assignments.length) return [];
+
+      const uniqueMapelNames = Array.from(new Set(assignments.map(a => a.Mapel?.nama_mapel).filter(Boolean)));
+      const mapelLabel = uniqueMapelNames.length === 1 
+        ? uniqueMapelNames[0] 
+        : uniqueMapelNames.length > 1 
+        ? `${uniqueMapelNames.length} Mata Pelajaran`
+        : 'Akademik';
 
       return [{
         id: `rapor_task_${guruId}`,
         division: 'RAPOR',
         urgency: 'UPCOMING',
         title: 'Penginputan Nilai Rapor & Formatif',
-        subtitle: `Mengampu ${assignments.length} rombel kelas binaan akademik`,
-        badgeText: 'Capaian Nilai',
+        subtitle: `Mengampu ${assignments.length} rombel kelas binaan (${mapelLabel})`,
+        badgeText: `${assignments.length} Rombel`,
         action: {
           label: 'Input Nilai ➔',
           type: 'NAVIGATE',
