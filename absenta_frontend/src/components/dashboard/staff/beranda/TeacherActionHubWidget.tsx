@@ -198,7 +198,7 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
         <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
           <CheckSquare size={14} />
         </div>
-        <h3 className="text-xs sm:text-[13px] font-bold text-slate-800 dark:text-slate-100 tracking-tight truncate">
+        <h3 className="text-xs sm:text-[13px] font-bold text-slate-800 dark:text-slate-100 tracking-tight whitespace-nowrap">
           {title}
         </h3>
         {summary?.critical > 0 ? (
@@ -287,7 +287,7 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
             return (
               <div
                 key={item.id}
-                className={`p-2.5 sm:p-3 flex items-center justify-between gap-2.5 transition-colors ${
+                className={`p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-colors ${
                   isCritical 
                     ? 'bg-rose-50/25 dark:bg-rose-950/10' 
                     : isToday 
@@ -295,24 +295,25 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
                     : 'hover:bg-slate-50/70 dark:hover:bg-slate-800/40'
                 }`}
               >
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  {/* Squircle Icon 32px Ramping */}
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                  {/* Squircle Icon 36px Ramping */}
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
                     isCritical 
                       ? 'bg-rose-100/80 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
-                    : isToday 
-                    ? 'bg-amber-100/80 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'
-                    : 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400'
+                      : isToday 
+                      ? 'bg-amber-100/80 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'
+                      : 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400'
                   }`}>
-                    <IconComp size={16} />
+                    <IconComp size={17} />
                   </div>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                  {/* Area Konten: Bebas Pruning & Penuh Ruang */}
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-xs sm:text-[13px] font-bold text-slate-800 dark:text-slate-100 leading-snug break-words">
                         {item.title}
-                      </span>
-                      <span className={`text-[9px] font-semibold px-1.5 py-0.2 rounded ${
+                      </h4>
+                      <span className={`text-[9.5px] font-semibold px-2 py-0.5 rounded-md ${
                         isCritical
                           ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
                           : isToday
@@ -323,20 +324,20 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
                       </span>
                     </div>
 
-                    <p className="text-[10.5px] text-slate-400 dark:text-slate-500 font-normal truncate mt-0.5">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal leading-relaxed break-words">
                       {item.subtitle}
                     </p>
 
                     {/* Micro Progress Bar jika ada */}
                     {item.progress && (
-                      <div className="pt-1 flex items-center gap-2 max-w-[180px]">
-                        <div className="h-1 flex-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div className="pt-1 flex items-center gap-2 max-w-[220px]">
+                        <div className="h-1.5 flex-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-indigo-600 rounded-full transition-all"
                             style={{ width: `${item.progress.percent}%` }}
                           />
                         </div>
-                        <span className="text-[9px] font-mono text-slate-400">
+                        <span className="text-[9.5px] font-mono text-slate-400">
                           {item.progress.label}
                         </span>
                       </div>
@@ -344,13 +345,13 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
                   </div>
                 </div>
 
-                {/* Tombol Eksekusi Cepat Ala Shopee (Ramping & Ringan) */}
-                <div className="shrink-0">
+                {/* Tombol Eksekusi Cepat Ala Shopee (Rata Kanan di Mobile, Sejajar di Desktop) */}
+                <div className="flex justify-end sm:justify-start shrink-0 pl-12 sm:pl-0 pt-0.5 sm:pt-0">
                   <Button
                     size="sm"
                     variant={isCritical ? 'destructive' : 'outline'}
                     onClick={() => handleActionClick(item)}
-                    className={`h-6 sm:h-7 px-2.5 rounded-full text-[10px] font-bold shadow-none cursor-pointer ${
+                    className={`h-7 px-3.5 rounded-full text-[11px] font-bold shadow-none cursor-pointer whitespace-nowrap ${
                       !isCritical ? 'border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50' : ''
                     }`}
                   >

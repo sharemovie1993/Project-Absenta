@@ -155,7 +155,7 @@ export class DashboardActionHubService {
         subtitle: `${sesi.Mapel?.nama_mapel || 'KBM'} • ${sesi.Kelas?.nama_kelas || 'Kelas'} (Slot ${sesi.slot_kbm || '-'})`,
         badgeText: 'Perlu Diisi',
         action: {
-          label: 'Isi Jurnal KBM ➔',
+          label: 'Isi Jurnal ➔',
           type: 'MODAL',
           target: 'JURNAL_KBM_MODAL',
           payload: {
@@ -207,7 +207,7 @@ export class DashboardActionHubService {
         subtitle: `${piket.pos_piket || 'Pos Piket Utama'} • Slot ${piket.slot_mulai || 1} - ${piket.slot_selesai || 10}`,
         badgeText: 'Hari Ini',
         action: {
-          label: 'Buka Lembar Piket ➔',
+          label: 'Buka Piket ➔',
           type: 'NAVIGATE',
           target: '/attendance/ops?tab=piket'
         },
@@ -303,7 +303,7 @@ export class DashboardActionHubService {
           label: `${activePklStudents.length - unassessedCount}/${activePklStudents.length} Dinilai`
         },
         action: {
-          label: 'Kelola Bimbingan PKL ➔',
+          label: 'Kelola PKL ➔',
           type: 'NAVIGATE',
           target: '/dashboard?tab=pembimbing_pkl'
         },
@@ -339,7 +339,7 @@ export class DashboardActionHubService {
         subtitle: `Mengampu ${assignments.length} rombel kelas binaan akademik`,
         badgeText: 'Capaian Nilai',
         action: {
-          label: 'Input Nilai Rapor ➔',
+          label: 'Input Nilai ➔',
           type: 'NAVIGATE',
           target: '/rapor/input-nilai'
         },
@@ -380,7 +380,7 @@ export class DashboardActionHubService {
           subtitle: `Aset: ${loan.Asset?.nama_barang || 'Barang Sekolah'} (${loan.Asset?.kode_barang || '-'})`,
           badgeText: isOverdue ? 'Terlambat' : 'Jatuh Tempo',
           action: {
-            label: 'Lihat Aset Pinjaman ➔',
+            label: 'Lihat Aset ➔',
             type: 'NAVIGATE',
             target: '/sarpras/inventory'
           },
