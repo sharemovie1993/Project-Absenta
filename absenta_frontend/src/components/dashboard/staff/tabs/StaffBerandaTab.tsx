@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { piketApi } from '../../../../api/piket.api';
 import { kurikulumApi } from '../../../../api/kurikulum.api';
 import { getRekapBulananGuruMe } from '../../../../api/attendance/rekap.api';
+import { getMyActionHub } from '../../../../api/dashboard.api';
 import { TimelineItem } from './StaffKbmAbsenTab';
 import { StaffWeeklyScheduleWidget } from '../../widgets/StaffWeeklyScheduleWidget';
 import { BebanMengajarWidget } from '../widgets/BebanMengajarWidget';
@@ -17,6 +18,7 @@ import { toLocalDate } from '../../../../utils/attendance/time';
 // Subkomponen High-Density Beranda
 import { TeacherDailyStatusStrip } from '../beranda/TeacherDailyStatusStrip';
 import { TeacherOpsMicroGrid } from '../beranda/TeacherOpsMicroGrid';
+import { TeacherActionHubWidget } from '../beranda/TeacherActionHubWidget';
 import { DirectKbmFeed } from '../beranda/DirectKbmFeed';
 
 // Lazy load GateInputModule untuk satpam
@@ -88,6 +90,17 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
     enabled: isActualTeachingStaff,
     staleTime: 5 * 60 * 1000,
   });
+
+  // Pusat Tindakan & Peringatan Terpadu Guru (Cross-Divisional Action Hub)
+  const { data: actionHubRes, isLoading: loadingActionHub } = useQuery({
+    queryKey: ['my-action-hub-dashboard'],
+    queryFn: () => getMyActionHub().catch(() => ({ success: true, data: { summary: { total: 0, critical: 0, today: 0, upcoming: 0 }, actions: [] } })),
+    enabled: isActualTeachingStaff,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
+
+  const actionHubData = actionHubRes?.data || { summary: { total: 0, critical: 0, today: 0, upcoming: 0 }, actions: [] };
 
   const teacherBeban = useMemo(() => {
     const list = Array.isArray(bebanGuruRes?.data)
@@ -200,6 +213,19 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
           onOpenJournals={() => {}}
           onOpenBeban={() => onNavigateTab('profil')}
           onOpenRekapMapel={() => onNavigateTab('rekap_mapel')}
+        />
+      )}
+
+      {/* ────────────────────────────────────────────────────────────────── */}
+      {/* 2.5 PUSAT TINDAKAN & PERINGATAN GURU (CROSS-DIVISIONAL ACTION HUB) */}
+      {/* ────────────────────────────────────────────────────────────────── */}
+      {isActualTeachingStaff && (
+        <TeacherActionHubWidget
+          actions={actionHubData.actions || []}
+          summary={actionHubData.summary || { total: 0, critical: 0, today: 0, upcoming: 0 }}
+          isLoading={loadingActionHub}
+          onOpenJournal={handleOpenJournal}
+          onNavigateTab={onNavigateTab}
         />
       )}
 

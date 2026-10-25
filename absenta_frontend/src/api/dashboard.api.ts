@@ -191,3 +191,52 @@ export async function getTuStats(params?: TuStatsParams): Promise<any> {
     headers: { 'X-Skip-403-Redirect': 'true' }
   });
 }
+
+// ⚡ Unified Action Hub (Cross-Divisional Smart Nudge) - GET /dashboard/my-action-hub
+export interface UnifiedActionItem {
+  id: string;
+  division: 'KURIKULUM' | 'RAPOR' | 'KESISWAAN' | 'PIKET' | 'HUBIN' | 'SARPRAS' | 'BPBK' | 'TU' | 'KOPERASI';
+  urgency: 'CRITICAL' | 'TODAY' | 'UPCOMING' | 'INFO';
+  title: string;
+  subtitle: string;
+  badgeText: string;
+  deadline?: string | null;
+  progress?: {
+    current: number;
+    total: number;
+    percent: number;
+    label: string;
+  };
+  action: {
+    label: string;
+    type: 'NAVIGATE' | 'MODAL';
+    target: string;
+    payload?: Record<string, any>;
+  };
+  sourceModule: {
+    table: string;
+    entityId: string;
+  };
+}
+
+export interface ActionHubSummary {
+  total: number;
+  critical: number;
+  today: number;
+  upcoming: number;
+}
+
+export interface ActionHubResponse {
+  success: boolean;
+  data: {
+    summary: ActionHubSummary;
+    actions: UnifiedActionItem[];
+  };
+}
+
+export async function getMyActionHub(): Promise<ActionHubResponse> {
+  return requestWithFallback<ActionHubResponse>('get', '/dashboard/my-action-hub', {
+    headers: { 'X-Skip-403-Redirect': 'true' }
+  });
+}
+

@@ -210,6 +210,17 @@ export async function dashboardOverviewRoutes(fastify: any) {
   }, dashboardController.getKurikulumMonitoringGlobal.bind(dashboardController));
 
   /**
+   * ⚡ Unified Action Hub (Cross-Divisional Smart Nudge)
+   * GET /dashboard/my-action-hub
+   */
+  fastify.get('/my-action-hub', {
+    schema: {
+      description: 'Get aggregated cross-divisional action items for logged in teacher/staff',
+      tags: ['Dashboard'],
+    }
+  }, dashboardController.getMyActionHub.bind(dashboardController));
+
+  /**
    * 2️⃣ Statistik Harian per Kelas
    * GET /dashboard/statistik/kelas/:tanggal
    */

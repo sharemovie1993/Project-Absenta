@@ -3,6 +3,7 @@ import { DashboardCommonHelper } from './sub/dashboard-common.helper';
 import { DashboardExecutiveService } from './sub/dashboard-executive.service';
 import { DashboardAttendanceStatsService } from './sub/dashboard-attendance-stats.service';
 import { DashboardRoleStatsService } from './sub/dashboard-role-stats.service';
+import { dashboardActionHubService } from './sub/dashboard-action-hub.service';
 
 export class DashboardService {
   private helper = new DashboardCommonHelper();
@@ -40,4 +41,8 @@ export class DashboardService {
   async getToolmanStats(...args: any[]) { return (this.role as any).getToolmanStats(...args); }
   async getKabengStats(...args: any[]) { return (this.role as any).getKabengStats(...args); }
   async getBkkStats(...args: any[]) { return (this.role as any).getBkkStats(...args); }
+
+  async getMyActionHub(tenantId: string, userId: string) {
+    return dashboardActionHubService.getMyActionHub(tenantId, userId);
+  }
 }

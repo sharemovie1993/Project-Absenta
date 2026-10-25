@@ -703,4 +703,22 @@ export class DashboardController {
       return reply.status(500).send({ success: false, message: error.message });
     }
   }
+
+  /**
+   * ⚡ Unified Action Hub (Cross-Divisional Smart Nudge)
+   * GET /dashboard/my-action-hub
+   */
+  async getMyActionHub(request: AuthenticatedRequest, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      const userId = (request.user as any).id || (request.user as any).userId;
+      if (!tenantId || !userId) {
+        return reply.status(401).send({ success: false, message: 'Authentication required' });
+      }
+      const data = await this.dashboardService.getMyActionHub(tenantId, userId);
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
 }
