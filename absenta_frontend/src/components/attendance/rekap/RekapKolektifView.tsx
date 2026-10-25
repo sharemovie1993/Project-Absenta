@@ -18,7 +18,7 @@ import {
   Clock,
   AlertCircle
 } from 'lucide-react';
-import { HubCard, HubBentoGrid, type HubBentoCell } from '@/components/ui/hub';
+import { HubStatusStrip, type HubStatusItem } from '@/components/ui/hub';
 import toast from 'react-hot-toast';
 
 import { Button } from '@/components/ui/Button';
@@ -294,35 +294,30 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
     setIsPrintModalOpen(true);
   }, [rows]);
 
-  // Metrik Shopee-Grade Hairline Bento Grid (Maksimal 2 Baris Teks per Sel)
-  const bentoCells: HubBentoCell[] = useMemo(() => [
+  // Mini Status Items untuk Mobile 1-Baris Hairline Strip (< sm / isMobile) ala Shopee-Grade (seperti di PrestasiView)
+  const miniStatusItems: HubStatusItem[] = useMemo(() => [
     {
-      id: 'total_siswa',
-      title: 'Total Siswa',
-      value: `${rows.length} Siswa`,
-      icon: Users,
-      iconColorClass: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60',
+      id: 'total',
+      title: `${rows.length} Siswa`,
+      subtitle: 'Total Siswa',
     },
     {
-      id: 'kehadiran',
-      title: 'Rata-rata Hadir',
-      value: `${stats.avgHadir}%`,
-      icon: CheckCircle2,
-      iconColorClass: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60',
+      id: 'hadir',
+      title: `${stats.avgHadir}%`,
+      subtitle: 'Rata-rata Hadir',
+      className: stats.avgHadir >= 80 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : undefined,
     },
     {
-      id: 'sakit_izin',
-      title: 'Sakit & Izin',
-      value: `${stats.totalSakit + stats.totalIzin} Siswa`,
-      icon: Clock,
-      iconColorClass: 'text-blue-600 bg-blue-50 dark:bg-blue-950/60',
+      id: 'izin',
+      title: `${stats.totalSakit + stats.totalIzin} Siswa`,
+      subtitle: 'Sakit & Izin',
+      className: stats.totalSakit + stats.totalIzin > 0 ? 'text-blue-600 dark:text-blue-400 font-bold' : undefined,
     },
     {
       id: 'alpa',
-      title: 'Total Alpa',
-      value: `${stats.totalAlpa} Siswa`,
-      icon: AlertCircle,
-      iconColorClass: 'text-rose-600 bg-rose-50 dark:bg-rose-950/60',
+      title: `${stats.totalAlpa} Siswa`,
+      subtitle: 'Total Alpa',
+      className: stats.totalAlpa > 0 ? 'text-rose-600 dark:text-rose-400 font-bold' : undefined,
     },
   ], [rows.length, stats.avgHadir, stats.totalSakit, stats.totalIzin, stats.totalAlpa]);
 
@@ -346,12 +341,12 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
         </div>
       )}
 
-      {/* Ringkasan Metrik (Shopee-Grade HubBentoGrid di HP, Compact-Premium di Desktop) */}
+      {/* Ringkasan Metrik (Shopee-Grade HubStatusStrip 1-Baris di HP, Compact-Premium di Desktop) */}
       {!hideHeaderStats && (
         isMobile ? (
-          <HubCard noPadding className="mb-2 shadow-2xs">
-            <HubBentoGrid cells={bentoCells} columns={2} />
-          </HubCard>
+          <div className="mb-2">
+            <HubStatusStrip items={miniStatusItems} />
+          </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
             <AnalyticsCard
