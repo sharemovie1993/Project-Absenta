@@ -17,7 +17,8 @@ import {
   GraduationCap, 
   Building2, 
   ScanLine, 
-  LayoutGrid 
+  LayoutGrid,
+  CheckSquare 
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
@@ -476,12 +477,12 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
             isActive: (p, t) => (p === '/dashboard' || p === '/dashboard/') && (!t || t === 'ringkasan' || t === 'jadwal'),
           },
           {
-            id: 'base_nilai',
-            label: 'Nilai & Mapel',
-            shortLabel: 'Nilai & CP',
-            icon: BookOpen,
-            targetPath: '/rapor/input-nilai',
-            isActive: (p) => p.startsWith('/rapor/input-nilai') || p.startsWith('/academic/grades'),
+            id: 'base_action_hub',
+            label: 'Pusat Tugas & Tindakan',
+            shortLabel: 'Action Hub',
+            icon: CheckSquare,
+            targetPath: '/dashboard?tab=action_hub',
+            isActive: (p, t) => (p === '/dashboard' || p === '/dashboard/') && t === 'action_hub',
           },
         ];
 

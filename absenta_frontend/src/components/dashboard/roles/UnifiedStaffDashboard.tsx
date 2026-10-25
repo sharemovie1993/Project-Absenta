@@ -47,7 +47,8 @@ import {
   QrCode,
   MapPin,
   Flag,
-  Zap
+  Zap,
+  CheckSquare
 } from 'lucide-react';
 
 // Components
@@ -68,6 +69,7 @@ import { useNavStore } from '../../../store/navStore';
 // Staff Dashboard Modular Tabs
 import { StaffBerandaTab } from '../staff/tabs/StaffBerandaTab';
 import { StaffKbmAbsenTab } from '../staff/tabs/StaffKbmAbsenTab';
+const StaffActionHubTab = React.lazy(() => import('../staff/tabs/StaffActionHubTab').then(m => ({ default: m.StaffActionHubTab })));
 const StaffRekapMapelTab = React.lazy(() => import('../staff/tabs/StaffRekapMapelTab').then(m => ({ default: m.StaffRekapMapelTab })));
 // Wali Kelas Dashboard — clean modular design (replaces legacy StaffWaliKelasTab)
 const WaliKelasDashboard = React.lazy(() => import('./WaliKelasDashboard').then(m => ({ default: m.WaliKelasDashboard })));
@@ -843,6 +845,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
       icon: LayoutGrid,
     });
 
+    // ⚡ Action Hub (Pusat Tugas & Tindakan Terpadu)
+    if (!isKepsek) {
+      list.push({
+        id: 'action_hub',
+        label: 'Action Hub',
+        icon: CheckSquare,
+      });
+    }
+
     // 1.1 Input Manual (Khusus Petugas Gerbang / Piket)
     if ((hasGerbangDuty || isGerbang || isPureGerbangStaff) && (!isAdminRole || isEffectivePendidik) && !isKepsek) {
       list.push({
@@ -1237,6 +1248,28 @@ export const UnifiedStaffDashboard: React.FC = () => {
               isLoadingTimeline={timelineLoading}
               onRefreshTimeline={refetchTimeline}
             />
+          </div>
+        )}
+
+        {/* ⚡ TAB ACTION HUB: PUSAT TUGAS & TINDAKAN TERPADU */}
+        {visitedTabs.has('action_hub') && (
+          <div 
+            key="tab-action_hub"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'action_hub'}
+            className={cn("w-full min-w-0", activeTab === 'action_hub' ? "block" : "hidden")}
+          >
+            <Suspense fallback={
+              <div className="w-full space-y-4 py-4">
+                <div className="h-24 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                <div className="h-96 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+              </div>
+            }>
+              <StaffActionHubTab 
+                onOpenJournal={(sesi) => { setSessionForJournal(sesi); setJournalModalOpen(true); }}
+                onNavigateTab={handleTabChange}
+              />
+            </Suspense>
           </div>
         )}
 
