@@ -70,6 +70,23 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
   const [page, setPage] = useState<number>(1);
   const [limit, setLimit] = useState<number>(25);
 
+  // Shopee Dynamic Scroll Indicator State
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const [scrollProgress, setScrollProgress] = useState<number>(0);
+  const [canScroll, setCanScroll] = useState<boolean>(false);
+
+  const checkScrollable = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (el) {
+      const isScrollable = el.scrollWidth > el.clientWidth + 4;
+      setCanScroll(isScrollable);
+      if (isScrollable) {
+        const maxScroll = el.scrollWidth - el.clientWidth;
+        setScrollProgress(maxScroll > 0 ? el.scrollLeft / maxScroll : 0);
+      }
+    }
+  }, []);
+
   // 1. Profil Guru Login
   const { data: myGuruData } = useQuery({
     queryKey: ['my-guru-profile-rekap-tab', user?.id],
@@ -158,6 +175,32 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
       }
     }
   }, [mapelCards, mapelId, kelasId]);
+
+  // Listener Scroll & Resize untuk Shopee Dynamic Scroll Indicator
+  useEffect(() => {
+    checkScrollable();
+    const timer = setTimeout(checkScrollable, 200);
+    window.addEventListener('resize', checkScrollable);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', checkScrollable);
+    };
+  }, [checkScrollable, mapelCards.length]);
+
+  const handleSliderScroll = () => {
+    const el = scrollContainerRef.current;
+    if (el) {
+      const maxScroll = el.scrollWidth - el.clientWidth;
+      if (maxScroll > 0) {
+        setScrollProgress(Math.min(1, Math.max(0, el.scrollLeft / maxScroll)));
+      }
+    }
+  };
+
+  const trackWidth = 36;
+  const capsuleWidth = 14;
+  const maxTranslate = Math.max(0, trackWidth - capsuleWidth);
+  const capsuleTranslateX = scrollProgress * maxTranslate;
 
   // 4. Fetch Data Rekap Presensi Mapel
   const rekapQuery = useQuery({
@@ -415,47 +458,97 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
           </div>
         </div>
 
-        {/* Quick Switcher Pills (Mapel & Rombel Anda) */}
-        <div>
-          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1.5">
-            PILIH KELAS & MAPEL YANG ANDA AMPU:
-          </span>
+        {/* Quick Switcher Shopee Action Slider (Mapel & Rombel Anda) */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+              PILIH KELAS & MAPEL YANG ANDA AMPU:
+            </span>
+            {canScroll && (
+              <span className="text-[9px] font-semibold text-slate-400 flex items-center gap-0.5 sm:hidden">
+                Geser <ChevronRight className="w-2.5 h-2.5 inline text-orange-500" />
+              </span>
+            )}
+          </div>
+
           {loadingAssignments ? (
-            <div className="h-10 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />
+            <div className="h-20 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />
           ) : mapelCards.length > 0 ? (
-            <div className="flex items-stretch gap-2 overflow-x-auto py-1 no-scrollbar">
-              {mapelCards.map(card => {
-                const isActive = card.mapelId === mapelId && card.kelasId === kelasId;
-                return (
-                  <button
-                    key={card.id}
-                    type="button"
-                    onClick={() => {
-                      setMapelId(card.mapelId);
-                      setKelasId(card.kelasId);
-                    }}
-                    className={`group shrink-0 flex items-center gap-2 py-2 px-3 rounded-xl border text-left transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm ring-2 ring-indigo-400/40'
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-800 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-1.5 rounded-lg transition-transform ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 group-hover:scale-105'
-                    }`}>
-                      <GraduationCap className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-black uppercase tracking-tight leading-tight">
+            <div className="relative w-full">
+              {/* Scrollable Track dengan Content Peeking Affordance */}
+              <div
+                ref={scrollContainerRef}
+                onScroll={handleSliderScroll}
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                className="flex items-start gap-2 sm:gap-3 overflow-x-auto no-scrollbar scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-1 px-0.5 scroll-smooth"
+              >
+                {mapelCards.map(card => {
+                  const isActive = card.mapelId === mapelId && card.kelasId === kelasId;
+                  return (
+                    <button
+                      key={card.id}
+                      type="button"
+                      onClick={() => {
+                        setMapelId(card.mapelId);
+                        setKelasId(card.kelasId);
+                      }}
+                      className="group flex flex-col items-center justify-start py-1 px-0.5 rounded-2xl transition-all duration-150 text-center shrink-0 cursor-pointer w-[72px] sm:w-[80px] active:scale-95"
+                    >
+                      {/* Squircle Tile Ala Shopee (44x44px) */}
+                      <div
+                        className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center transition-all duration-150 relative mb-1.5 ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400/50 scale-105'
+                            : 'bg-slate-50/90 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800/90 text-slate-700 dark:text-slate-200 shadow-[0_1px_2px_rgba(0,0,0,0.03)] group-hover:border-slate-200 dark:group-hover:border-slate-700 group-hover:scale-105'
+                        }`}
+                      >
+                        <GraduationCap size={22} className={`stroke-[1.8] ${isActive ? 'text-white' : 'text-indigo-600 dark:text-indigo-400'}`} />
+
+                        {/* Active Indicator Badge Ala Shopee di Pojok Kanan Atas */}
+                        {isActive && (
+                          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 text-white text-[9px] font-black flex items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-xs animate-in zoom-in-75">
+                            ✓
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Label Teks Shopee Style (Capitalize Ramping 1-baris) */}
+                      <span className={`text-[10px] sm:text-[10.5px] font-bold leading-tight block text-center line-clamp-1 max-w-[72px] sm:max-w-[80px] transition-colors ${
+                        isActive ? 'text-indigo-600 dark:text-indigo-400 font-extrabold' : 'text-slate-700 dark:text-slate-300'
+                      }`}>
                         {card.mapelName}
-                      </div>
-                      <div className={`text-[10.5px] font-bold mt-0.5 ${isActive ? 'text-indigo-100' : 'text-slate-400 dark:text-slate-500'}`}>
-                        Kelas: {card.kelasName}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
+                      </span>
+
+                      {/* Sub-label Kelas */}
+                      <span className={`text-[8.5px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded-md mt-0.5 leading-tight block text-center truncate max-w-[72px] sm:max-w-[80px] ${
+                        isActive
+                          ? 'bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-extrabold'
+                          : 'text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800/60'
+                      }`}>
+                        {card.kelasName}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* ── Shopee Dynamic Capsule Scroll Indicator Bar (Seperti Gambar 2) ── */}
+              {canScroll && (
+                <div className="flex justify-center items-center pt-2 pb-0.5">
+                  <div
+                    style={{ width: `${trackWidth}px` }}
+                    className="h-1 bg-slate-200 dark:bg-slate-700/80 rounded-full relative overflow-hidden"
+                  >
+                    <div
+                      style={{
+                        width: `${capsuleWidth}px`,
+                        transform: `translateX(${capsuleTranslateX}px)`,
+                      }}
+                      className="h-full rounded-full transition-transform duration-75 ease-out bg-orange-500 dark:bg-orange-400"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="py-2 px-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300 text-xs font-semibold">
