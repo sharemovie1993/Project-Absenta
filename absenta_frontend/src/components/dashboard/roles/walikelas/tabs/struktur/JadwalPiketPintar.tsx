@@ -28,6 +28,9 @@ import type { PiketDaySlot, PiketMember } from './strukturTypes';
 interface JadwalPiketPintarProps {
   kelasId?: string;
   kelasNama?: string;
+  waliKelasNama?: string;
+  waliKelasNip?: string;
+  tahunPelajaran?: string;
   studentsList: Siswa[];
   isLoadingStudents?: boolean;
 }
@@ -43,6 +46,9 @@ const DEFAULT_DAYS = [
 export const JadwalPiketPintar: React.FC<JadwalPiketPintarProps> = React.memo(({
   kelasId = 'default',
   kelasNama = 'Kelas',
+  waliKelasNama = 'Wali Kelas',
+  waliKelasNip,
+  tahunPelajaran,
   studentsList = [],
   isLoadingStudents = false,
 }) => {
@@ -571,7 +577,11 @@ export const JadwalPiketPintar: React.FC<JadwalPiketPintarProps> = React.memo(({
         <JadwalPiketPrintModal
           isOpen={isPrintModalOpen}
           onClose={() => setIsPrintModalOpen(false)}
+          kelasId={kelasId}
           kelasNama={kelasNama}
+          waliKelasNama={waliKelasNama}
+          waliKelasNip={waliKelasNip}
+          tahunPelajaran={tahunPelajaran}
           slots={slots}
           studentsList={studentsList}
         />

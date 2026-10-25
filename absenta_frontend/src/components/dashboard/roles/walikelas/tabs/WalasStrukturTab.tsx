@@ -9,6 +9,8 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui';
 import { HubStatusStrip } from '@/components/ui/hub';
 import { useSiswaOptions } from '@/hooks/useSiswaOptions';
+import { useAuthStore } from '@/store/authStore';
+import { useGuruMe } from '@/hooks/useGuruMe';
 import { BaganStrukturOrganisasi } from './struktur/BaganStrukturOrganisasi';
 import { JadwalPiketPintar } from './struktur/JadwalPiketPintar';
 import type { WalasDashboardData } from '../types';
@@ -24,11 +26,28 @@ export const WalasStrukturTab: React.FC<WalasStrukturTabProps> = React.memo(({
   kelasNama,
   data,
 }) => {
+  const { user } = useAuthStore();
+  const { guruProfile } = useGuruMe();
+
   const kelasInfo = data?.kelasInfo;
   const effectiveKelasId = kelasId || kelasInfo?.id;
   const effectiveKelasNama = kelasNama || kelasInfo?.nama_kelas || 'Kelas Binaan';
-  const waliKelasNama = kelasInfo?.waliKelas?.nama || 'Wali Kelas';
-  const waliKelasNip = kelasInfo?.waliKelas?.nip;
+  
+  const waliKelasNama =
+    kelasInfo?.waliKelas?.nama ||
+    guruProfile?.nama_lengkap ||
+    guruProfile?.nama ||
+    (user as any)?.name ||
+    'Wali Kelas';
+
+  const waliKelasNip =
+    kelasInfo?.waliKelas?.nip ||
+    guruProfile?.nip ||
+    (user as any)?.nip ||
+    (user as any)?.guru_profile?.nip ||
+    '';
+
+  const tahunPelajaran = data?.academicContext?.tahunPelajaranNama || '2025/2026';
 
   // Fetch real students from class for intelligent slot distribution
   const { rawList: studentsList, isLoading: isLoadingStudents } = useSiswaOptions({
@@ -148,6 +167,7 @@ export const WalasStrukturTab: React.FC<WalasStrukturTabProps> = React.memo(({
               kelasNama={effectiveKelasNama}
               waliKelasNama={waliKelasNama}
               waliKelasNip={waliKelasNip}
+              tahunPelajaran={tahunPelajaran}
               studentsList={studentsList}
               isLoadingStudents={isLoadingStudents}
             />
@@ -160,6 +180,9 @@ export const WalasStrukturTab: React.FC<WalasStrukturTabProps> = React.memo(({
             <JadwalPiketPintar
               kelasId={effectiveKelasId}
               kelasNama={effectiveKelasNama}
+              waliKelasNama={waliKelasNama}
+              waliKelasNip={waliKelasNip}
+              tahunPelajaran={tahunPelajaran}
               studentsList={studentsList}
               isLoadingStudents={isLoadingStudents}
             />

@@ -32,6 +32,7 @@ interface BaganStrukturOrganisasiProps {
   kelasNama?: string;
   waliKelasNama?: string;
   waliKelasNip?: string;
+  tahunPelajaran?: string;
   studentsList: Siswa[];
   isLoadingStudents?: boolean;
 }
@@ -124,6 +125,7 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
   kelasNama = 'Kelas',
   waliKelasNama = 'Wali Kelas',
   waliKelasNip,
+  tahunPelajaran,
   studentsList = [],
   isLoadingStudents = false,
 }) => {
@@ -765,9 +767,11 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
         <StrukturOrganisasiPrintModal
           isOpen={isPrintModalOpen}
           onClose={() => setIsPrintModalOpen(false)}
+          kelasId={kelasId}
           kelasNama={kelasNama}
           waliKelasNama={waliKelasNama}
           waliKelasNip={waliKelasNip}
+          tahunPelajaran={tahunPelajaran}
           positions={positions}
           studentsList={studentsList}
         />

@@ -1,20 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
   PrintHeader,
   usePrintHeaderData,
 } from '@/components/ui/PrintHeader';
-import { PrintSignature } from '@/components/ui/PrintSignature';
 import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
 import { toast } from 'sonner';
+import { SlidersHorizontal, UserCheck, RotateCcw, X } from 'lucide-react';
 import type { PengurusPosition } from './strukturTypes';
 import type { Siswa } from '@/types/academic';
 
 export interface StrukturOrganisasiPrintModalProps {
   isOpen: boolean;
   onClose: () => void;
+  kelasId?: string;
   kelasNama?: string;
   waliKelasNama?: string;
   waliKelasNip?: string;
@@ -28,7 +29,7 @@ export const StrukturOrganisasiPrintModal: React.FC<StrukturOrganisasiPrintModal
   onClose,
   kelasNama = 'Kelas',
   waliKelasNama = 'Wali Kelas',
-  waliKelasNip,
+  waliKelasNip = '',
   tahunPelajaran,
   positions,
   studentsList = [],
@@ -36,12 +37,99 @@ export const StrukturOrganisasiPrintModal: React.FC<StrukturOrganisasiPrintModal
   const [showLogoSekolah, setShowLogoSekolah] = useState<boolean>(true);
   const [showLogoDaerah, setShowLogoDaerah] = useState<boolean>(true);
   const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [showTtdConfig, setShowTtdConfig] = useState<boolean>(false);
 
   // Hook SSOT Kop Surat Dinas & Sekolah
   const { tenantInfo, rawSekolah } = usePrintHeaderData();
-  const kepalaSekolahNama = (rawSekolah as any)?.kepala_sekolah || (rawSekolah as any)?.nama_kepala_sekolah || 'Kepala Sekolah';
-  const nipKepalaSekolah = (rawSekolah as any)?.nip_kepala || (rawSekolah as any)?.nip_kepala_sekolah || '-';
-  const kotaSekolah = (rawSekolah as any)?.kota || (rawSekolah as any)?.kabupaten || 'Purwakarta';
+  const rawKepsekNama =
+    (rawSekolah as any)?.kepala_sekolah ||
+    (rawSekolah as any)?.nama_kepala_sekolah ||
+    (tenantInfo as any)?.nama_kepsek ||
+    'Kepala Sekolah';
+  const rawNipKepsek =
+    (rawSekolah as any)?.nip_kepala || (rawSekolah as any)?.nip_kepala_sekolah || '';
+  const rawKotaSekolah =
+    (rawSekolah as any)?.kota || (rawSekolah as any)?.kabupaten || 'Purwakarta';
+  const rawTanggal = new Date().toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  // Getters jabatan
+  const km = positions.find((p) => p.id === 'km');
+  const wkm = positions.find((p) => p.id === 'wkm');
+  const sekretaris = positions.find((p) => p.id === 'sekretaris');
+  const bendahara = positions.find((p) => p.id === 'bendahara');
+  const seksiList = positions.filter((p) => p.category === 'SEKSI');
+
+  // ── RESOLVE INITIAL KM SECARA PINTAR ──
+  const resolvedKmNama = useMemo(() => {
+    const rawKm = km?.assignedStudentNames?.[0];
+    if (rawKm && !rawKm.includes('Belum Ditentukan') && rawKm.trim() !== '') {
+      return rawKm;
+    }
+    const rawWkm = wkm?.assignedStudentNames?.[0];
+    if (rawWkm && !rawWkm.includes('Belum Ditentukan') && rawWkm.trim() !== '') {
+      return rawWkm;
+    }
+    if (studentsList && studentsList.length > 0 && studentsList[0]?.nama_siswa) {
+      return studentsList[0].nama_siswa;
+    }
+    return '';
+  }, [km, wkm, studentsList]);
+
+  // ── LIVE EDITABLE STATE UNTUK PENANDATANGAN (TTD) ──
+  const [kmTitle, setKmTitle] = useState<string>('Ketua Murid (KM)');
+  const [activeKmNama, setActiveKmNama] = useState<string>(resolvedKmNama);
+  const [activeWaliKelasNama, setActiveWaliKelasNama] = useState<string>(waliKelasNama || 'Wali Kelas');
+  const [activeWaliKelasNip, setActiveWaliKelasNip] = useState<string>(waliKelasNip || '');
+  const [activeKepsekNama, setActiveKepsekNama] = useState<string>(rawKepsekNama);
+  const [activeKepsekNip, setActiveKepsekNip] = useState<string>(
+    rawNipKepsek && rawNipKepsek !== '-' ? rawNipKepsek : ''
+  );
+  const [activeKota, setActiveKota] = useState<string>(rawKotaSekolah);
+  const [activeTanggal, setActiveTanggal] = useState<string>(rawTanggal);
+
+  // Sinkronisasi saat data profil atau props berubah
+  useEffect(() => {
+    if (resolvedKmNama && !activeKmNama) {
+      setActiveKmNama(resolvedKmNama);
+    }
+  }, [resolvedKmNama]);
+
+  useEffect(() => {
+    if (waliKelasNama && waliKelasNama !== 'Wali Kelas') {
+      setActiveWaliKelasNama(waliKelasNama);
+    }
+    if (waliKelasNip) {
+      setActiveWaliKelasNip(waliKelasNip);
+    }
+  }, [waliKelasNama, waliKelasNip]);
+
+  useEffect(() => {
+    if (rawKepsekNama && rawKepsekNama !== 'Kepala Sekolah') {
+      setActiveKepsekNama(rawKepsekNama);
+    }
+    if (rawNipKepsek && rawNipKepsek !== '-') {
+      setActiveKepsekNip(rawNipKepsek);
+    }
+    if (rawKotaSekolah) {
+      setActiveKota(rawKotaSekolah);
+    }
+  }, [rawKepsekNama, rawNipKepsek, rawKotaSekolah]);
+
+  const handleResetTtd = () => {
+    setKmTitle('Ketua Murid (KM)');
+    setActiveKmNama(resolvedKmNama);
+    setActiveWaliKelasNama(waliKelasNama || 'Wali Kelas');
+    setActiveWaliKelasNip(waliKelasNip || '');
+    setActiveKepsekNama(rawKepsekNama);
+    setActiveKepsekNip(rawNipKepsek && rawNipKepsek !== '-' ? rawNipKepsek : '');
+    setActiveKota(rawKotaSekolah);
+    setActiveTanggal(rawTanggal);
+    toast.info('Data penandatangan direset ke nilai default otomatis.');
+  };
 
   if (!isOpen) return null;
 
@@ -87,13 +175,6 @@ export const StrukturOrganisasiPrintModal: React.FC<StrukturOrganisasiPrintModal
     }
   };
 
-  // Getters jabatan
-  const km = positions.find((p) => p.id === 'km');
-  const wkm = positions.find((p) => p.id === 'wkm');
-  const sekretaris = positions.find((p) => p.id === 'sekretaris');
-  const bendahara = positions.find((p) => p.id === 'bendahara');
-  const seksiList = positions.filter((p) => p.category === 'SEKSI');
-
   return (
     <UniversalDocumentModal
       isOpen={isOpen}
@@ -110,8 +191,147 @@ export const StrukturOrganisasiPrintModal: React.FC<StrukturOrganisasiPrintModal
       onDownloadPdf={handleDownloadPdf}
       downloadPdfText={isExporting ? 'Memproses...' : 'Unduh PDF'}
       printButtonText="Cetak Dokumen"
+      extraActions={
+        <button
+          type="button"
+          onClick={() => setShowTtdConfig((prev) => !prev)}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border cursor-pointer ${
+            showTtdConfig
+              ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-50'
+          }`}
+          title="Sesuaikan nama penandatangan (TTD) sebelum cetak"
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          <span>{showTtdConfig ? 'Tutup Pengaturan TTD' : 'Pengaturan TTD'}</span>
+        </button>
+      }
       size="5xl"
     >
+      {/* ── PANEL KONTROL PENGATURAN TTD (PRINT:HIDDEN) ── */}
+      {showTtdConfig && (
+        <div className="print:hidden mb-4 p-4 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/30 text-xs space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center justify-between pb-2 border-b border-amber-200/80 dark:border-amber-900/40">
+            <div className="flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <span className="font-bold text-slate-900 dark:text-white uppercase tracking-wider text-[11px]">
+                Kustomisasi Penandatangan Dokumen (TTD)
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleResetTtd}
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-400 hover:underline cursor-pointer"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Reset Otomatis</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowTtdConfig(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Kolom 1: Ketua Murid */}
+            <div className="p-2.5 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-2">
+              <span className="font-bold text-slate-800 dark:text-slate-200 block text-[10.5px]">
+                1. Perwakilan Siswa (Kiri)
+              </span>
+              <div>
+                <label className="text-[10px] text-slate-500 block">Jabatan / Judul TTD:</label>
+                <input
+                  type="text"
+                  value={kmTitle}
+                  onChange={(e) => setKmTitle(e.target.value)}
+                  className="w-full px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                  placeholder="Ketua Murid (KM)"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-500 block">Nama Siswa KM:</label>
+                <input
+                  type="text"
+                  value={activeKmNama}
+                  onChange={(e) => setActiveKmNama(e.target.value)}
+                  className="w-full px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+                  placeholder="Nama Siswa KM..."
+                />
+              </div>
+            </div>
+
+            {/* Kolom 2: Wali Kelas */}
+            <div className="p-2.5 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-2">
+              <span className="font-bold text-slate-800 dark:text-slate-200 block text-[10.5px]">
+                2. Wali Kelas (Kanan)
+              </span>
+              <div>
+                <label className="text-[10px] text-slate-500 block">Nama Lengkap & Gelar:</label>
+                <input
+                  type="text"
+                  value={activeWaliKelasNama}
+                  onChange={(e) => setActiveWaliKelasNama(e.target.value)}
+                  className="w-full px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+                  placeholder="Nama Wali Kelas..."
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-500 block">NIP (Kosongkan jika bukan PNS):</label>
+                <input
+                  type="text"
+                  value={activeWaliKelasNip}
+                  onChange={(e) => setActiveWaliKelasNip(e.target.value)}
+                  className="w-full px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
+                  placeholder="19800101..."
+                />
+              </div>
+            </div>
+
+            {/* Kolom 3: Kepala Sekolah & Lokasi */}
+            <div className="p-2.5 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-2">
+              <span className="font-bold text-slate-800 dark:text-slate-200 block text-[10.5px]">
+                3. Kepala Sekolah & Titimangsa
+              </span>
+              <div>
+                <label className="text-[10px] text-slate-500 block">Nama Kepala Sekolah:</label>
+                <input
+                  type="text"
+                  value={activeKepsekNama}
+                  onChange={(e) => setActiveKepsekNama(e.target.value)}
+                  className="w-full px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+                  placeholder="Nama Kepala Sekolah..."
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <div>
+                  <label className="text-[10px] text-slate-500 block">Kota/Kab:</label>
+                  <input
+                    type="text"
+                    value={activeKota}
+                    onChange={(e) => setActiveKota(e.target.value)}
+                    className="w-full px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-500 block">Tanggal TTD:</label>
+                  <input
+                    type="text"
+                    value={activeTanggal}
+                    onChange={(e) => setActiveTanggal(e.target.value)}
+                    className="w-full px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <PrintDocumentSheet
         orientation="portrait"
         pageNumber={1}
@@ -139,79 +359,55 @@ export const StrukturOrganisasiPrintModal: React.FC<StrukturOrganisasiPrintModal
           </p>
         </div>
 
-        {/* TABEL INFORMASI KELAS */}
-        <div className="border border-black/80 rounded-sm p-2 my-2.5 bg-slate-50/50 text-[10.5px]">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-            <div>
-              <span className="font-semibold text-slate-600">Nama Rombel: </span>
-              <span className="font-bold text-black">{kelasNama}</span>
-            </div>
-            <div>
-              <span className="font-semibold text-slate-600">Wali Kelas: </span>
-              <span className="font-bold text-black">{waliKelasNama}</span>
-            </div>
-            <div>
-              <span className="font-semibold text-slate-600">Total Siswa Terdaftar: </span>
-              <span className="font-bold text-black">{studentsList.length || '-'} Siswa</span>
-            </div>
-            <div>
-              <span className="font-semibold text-slate-600">NIP Wali Kelas: </span>
-              <span className="font-mono text-black">{waliKelasNip || '-'}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* ── BAGAN POHON VERSI CETAK RESMI (HIGH-CONTRAST MONOCHROME/CLEAN INK) ── */}
-        <div className="my-3 py-1 flex flex-col items-center">
+        {/* ── BAGAN STRUKTUR POHON WYSIWYG ── */}
+        <div className="my-4 flex flex-col items-center select-none">
           {/* LEVEL 1: WALI KELAS */}
-          <div className="w-64 border-2 border-black rounded-lg p-2 text-center bg-slate-100/90 shadow-2xs">
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-700 block">
-              Pembina Rombel (Wali Kelas)
+          <div className="w-64 border-2 border-black rounded-lg p-2 text-center bg-slate-50">
+            <span className="text-[9px] font-bold uppercase text-slate-600 block">
+              Pembina / Wali Kelas
             </span>
-            <p className="text-[11.5px] font-black text-black uppercase mt-0.5">
-              {waliKelasNama}
-            </p>
-            {waliKelasNip && (
-              <p className="text-[9px] text-slate-600 font-mono">
-                NIP. {waliKelasNip}
-              </p>
+            <p className="text-xs font-bold text-black mt-0.5">{activeWaliKelasNama}</p>
+            {activeWaliKelasNip && (
+              <p className="text-[9px] font-mono text-slate-700">NIP. {activeWaliKelasNip}</p>
             )}
           </div>
-          <div className="w-0.5 h-3 bg-black mx-auto" />
 
-          {/* LEVEL 2: KETUA MURID */}
-          <div className="w-64 border-2 border-black rounded-lg p-2 text-center bg-white shadow-2xs">
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-700 block">
+          {/* Garis Penghubung Level 1 -> 2 */}
+          <div className="w-0.5 h-4 bg-black" />
+
+          {/* LEVEL 2: KETUA MURID (KM) */}
+          <div className="w-64 border-2 border-black rounded-lg p-2 text-center bg-slate-50">
+            <span className="text-[9px] font-bold uppercase text-slate-600 block">
               Ketua Murid (KM)
             </span>
-            <p className="text-[11.5px] font-black text-black mt-0.5">
-              {km?.assignedStudentNames[0] || '(Belum Ditentukan)'}
+            <p className="text-xs font-bold text-black mt-0.5">
+              {activeKmNama || km?.assignedStudentNames[0] || '(Belum Ditentukan)'}
             </p>
           </div>
-          <div className="w-0.5 h-3 bg-black mx-auto" />
+
+          {/* Garis Penghubung Level 2 -> 3 */}
+          <div className="w-0.5 h-4 bg-black" />
 
           {/* LEVEL 3: WAKIL KETUA MURID */}
-          <div className="w-64 border border-black rounded-lg p-1.5 text-center bg-white shadow-2xs">
-            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600 block">
+          <div className="w-60 border border-black rounded-lg p-1.5 text-center bg-white">
+            <span className="text-[8.5px] font-bold uppercase text-slate-600 block">
               Wakil Ketua Murid
             </span>
             <p className="text-[11px] font-bold text-black mt-0.5">
               {wkm?.assignedStudentNames[0] || '(Belum Ditentukan)'}
             </p>
           </div>
-          <div className="w-0.5 h-3 bg-black mx-auto" />
 
-          {/* LEVEL 4: BRANCHING TO SEKRETARIS & BENDAHARA */}
-          <div className="w-full max-w-[480px] relative">
-            <div className="absolute top-0 left-1/4 right-1/4 h-0.5 bg-black" />
-            <div className="grid grid-cols-2 gap-6 pt-3 relative">
-              <div className="absolute top-0 left-1/4 -translate-x-1/2 w-0.5 h-3 bg-black" />
-              <div className="absolute top-0 right-1/4 translate-x-1/2 w-0.5 h-3 bg-black" />
+          {/* Garis Penghubung Level 3 -> 4 */}
+          <div className="w-0.5 h-4 bg-black" />
 
-              {/* SEKRETARIS */}
-              <div className="border border-black rounded-lg p-2 text-center bg-slate-50">
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-800 block border-b border-black/40 pb-0.5 mb-1">
-                  Sekretaris
+          {/* LEVEL 4: SEKRETARIS & BENDAHARA */}
+          <div className="w-full max-w-[480px]">
+            <div className="grid grid-cols-2 gap-4">
+              {/* Sekretaris */}
+              <div className="border border-black rounded-lg p-2 text-center bg-white">
+                <span className="text-[9px] font-bold uppercase text-slate-600 block border-b border-slate-300 pb-1 mb-1">
+                  Sekretaris Kelas
                 </span>
                 <div className="text-[10px] space-y-0.5 text-black font-semibold">
                   {sekretaris?.assignedStudentNames.map((name, i) => (
@@ -222,10 +418,10 @@ export const StrukturOrganisasiPrintModal: React.FC<StrukturOrganisasiPrintModal
                 </div>
               </div>
 
-              {/* BENDAHARA */}
-              <div className="border border-black rounded-lg p-2 text-center bg-slate-50">
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-800 block border-b border-black/40 pb-0.5 mb-1">
-                  Bendahara
+              {/* Bendahara */}
+              <div className="border border-black rounded-lg p-2 text-center bg-white">
+                <span className="text-[9px] font-bold uppercase text-slate-600 block border-b border-slate-300 pb-1 mb-1">
+                  Bendahara Kelas
                 </span>
                 <div className="text-[10px] space-y-0.5 text-black font-semibold">
                   {bendahara?.assignedStudentNames.map((name, i) => (
@@ -265,23 +461,23 @@ export const StrukturOrganisasiPrintModal: React.FC<StrukturOrganisasiPrintModal
           <div className="flex justify-between items-start text-center">
             <div className="w-56 font-serif">
               <p className="text-[11px] mb-1">Mengetahui,</p>
-              <p className="text-[11px] font-bold mb-16">Ketua Murid (KM)</p>
+              <p className="text-[11px] font-bold mb-16">{kmTitle}</p>
               <p className="text-[11.5px] font-bold underline uppercase">
-                {km?.assignedStudentNames[0] || '........................................'}
+                {activeKmNama ? activeKmNama : '( ........................................ )'}
               </p>
               <p className="text-[10px] text-slate-600">Perwakilan Siswa</p>
             </div>
 
             <div className="w-56 font-serif">
               <p className="text-[11px] mb-1">
-                {kotaSekolah}, {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
+                {activeKota}, {activeTanggal}
               </p>
               <p className="text-[11px] font-bold mb-16">Wali Kelas {kelasNama}</p>
               <p className="text-[11.5px] font-bold underline uppercase">
-                {waliKelasNama}
+                {activeWaliKelasNama}
               </p>
               <p className="text-[10px] text-slate-700 font-mono">
-                {waliKelasNip ? `NIP. ${waliKelasNip}` : 'NIP. ........................................'}
+                {activeWaliKelasNip ? `NIP. ${activeWaliKelasNip}` : 'NIP. ........................................'}
               </p>
             </div>
           </div>
@@ -292,10 +488,10 @@ export const StrukturOrganisasiPrintModal: React.FC<StrukturOrganisasiPrintModal
               <p className="text-[11px] mb-1">Mengesahkan,</p>
               <p className="text-[11px] font-bold mb-16">Kepala Sekolah</p>
               <p className="text-[11.5px] font-bold underline uppercase">
-                {kepalaSekolahNama}
+                {activeKepsekNama}
               </p>
               <p className="text-[10px] text-slate-700 font-mono">
-                {nipKepalaSekolah ? `NIP. ${nipKepalaSekolah}` : 'NIP. ........................................'}
+                {activeKepsekNip ? `NIP. ${activeKepsekNip}` : 'NIP. ........................................'}
               </p>
             </div>
           </div>
