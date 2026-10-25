@@ -28,6 +28,7 @@ import { MobileAcademicList } from '../../../components/academic/shared/MobileAc
 // ─── Subkomponent yang diekstrak ──────────────────────────────────────────────
 import { RekapBulananKelasToolbar } from '../../../components/attendance/rekap/RekapBulananKelasToolbar';
 import { RekapBulananKelasPdfModal } from '../../../components/attendance/rekap/RekapBulananKelasPdfModal';
+import { RekapPresensiPrintModal } from '../../../components/attendance/rekap/RekapPresensiPrintModal';
 import { useRekapBulananKelasColumns } from '../../../components/attendance/rekap/rekapBulananKelasColumns';
 import type { RekapBulananKelasRow, ViewMode } from '../../../components/attendance/rekap/types';
 
@@ -100,6 +101,7 @@ export function RekapBulananKelasContent({ initialKelasId }: { initialKelasId?: 
   const [kelasId, setKelasId] = useState(initialKelasId || waliKelasId || '');
   const [bulan, setBulan] = useState<string>(toLocalMonth());
   const [viewMode, setViewMode] = useState<ViewMode>('MATRIX');
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [pdfFilename, setPdfFilename] = useState<string>('Laporan_Rekap_Presensi.pdf');
   const [isWaliKelasAutoFiltered, setIsWaliKelasAutoFiltered] = useState(false);
@@ -351,54 +353,11 @@ export function RekapBulananKelasContent({ initialKelasId }: { initialKelasId?: 
     }
   }, [rows, kelasOptions, kelasId, bulan, dayNumbers]);
 
-  // ─── Export PDF ──────────────────────────────────────────────────────────────
-  const handleExportPdf = useCallback(async () => {
+  // ─── Export PDF (True WYSIWYG Standar Skills) ──────────────────────────────
+  const handleExportPdf = useCallback(() => {
     if (!rows?.length) { toast.error('Tidak ada data untuk dicetak'); return; }
-    try {
-      toast.loading('Menyiapkan dokumen PDF...', { id: 'pdf-toast' });
-      const isMatrix = viewMode === 'MATRIX';
-      const namaKelas = (kelasOptions ?? []).find(k => k.value === kelasId)?.label ?? 'Kelas';
-      const blob = await generateGenericPdf({
-        module: 'attendance',
-        printType: isMatrix ? 'monthly_matrix' : 'monthly_recap',
-        selectedClassId: kelasId,
-        sekolah, tenantInfo, strukturList, logoDaerahBase64, logoSekolahBase64,
-        includeSchoolLogo: true,
-        eventDetails: { bulanRekap: bulan },
-        filterData: {
-          viewMode,
-          waliKelasName: waliKelasName || '________________________',
-          waliKelasNip: waliKelasNip || '',
-          classes: (kelasOptions ?? []).map(k => ({
-            id: k.value,
-            nama_kelas: (k as any).nama_kelas || k.label?.split(' - ')[0] || k.label,
-            jurusan_nama: (k as any).jurusan_nama,
-            Jurusan: (k as any).Jurusan || { nama: (k as any).jurusan_nama || '' }
-          })),
-          rekapList: (rows ?? []).map(r => ({
-            id: r.siswa_id,
-            nama_siswa: r.nama_siswa,
-            nis: r.nis,
-            dailyMap: r.dailyMap ?? {},
-            HADIR: r.HADIR ?? 0, SAKIT: r.SAKIT ?? 0, IZIN: r.IZIN ?? 0, ALPA: r.ALPA ?? 0, TERLAMBAT: r.TERLAMBAT ?? 0,
-            hadir: r.HADIR ?? 0, izin: r.IZIN ?? 0, sakit: r.SAKIT ?? 0, alpa: r.ALPA ?? 0, terlambat: r.TERLAMBAT ?? 0,
-            total_poin: r.total_poin ?? 0,
-            persentase: (() => {
-              const t = (r.HADIR ?? 0) + (r.IZIN ?? 0) + (r.SAKIT ?? 0) + (r.ALPA ?? 0) + (r.TERLAMBAT ?? 0);
-              return t === 0 ? 0 : Math.round((((r.HADIR ?? 0) + (r.TERLAMBAT ?? 0)) / t) * 100);
-            })(),
-          })),
-        },
-      });
-      const modeLabel = isMatrix ? 'Leger_Harian' : 'Rekap_Bulanan';
-      const filename = `${modeLabel}_${namaKelas.replace(/[^a-zA-Z0-9]/g, '_')}_${bulan}.pdf`;
-      setPdfFilename(filename);
-      setPdfPreviewUrl(URL.createObjectURL(blob));
-      toast.success(`Preview PDF ${isMatrix ? 'Landscape' : 'Portrait'} siap`, { id: 'pdf-toast' });
-    } catch {
-      toast.error('Gagal membuat preview PDF', { id: 'pdf-toast' });
-    }
-  }, [rows, kelasOptions, kelasId, bulan, viewMode, sekolah, tenantInfo, strukturList, logoDaerahBase64, logoSekolahBase64, waliKelasName, waliKelasNip]);
+    setIsPrintModalOpen(true);
+  }, [rows]);
 
   if (!canView) return <Alert variant="destructive" className="m-4"><AlertDescription>Akses Ditolak</AlertDescription></Alert>;
 
@@ -469,12 +428,20 @@ export function RekapBulananKelasContent({ initialKelasId }: { initialKelasId?: 
         )}
       </div>
 
-      {/* PDF PREVIEW MODAL */}
-      {pdfPreviewUrl && (
-        <RekapBulananKelasPdfModal
-          pdfPreviewUrl={pdfPreviewUrl}
-          pdfFilename={pdfFilename}
-          onClose={() => setPdfPreviewUrl(null)}
+      {/* MODAL CETAK PDF STANDAR UNIVERSAL DOCUMENT (TRUE WYSIWYG) */}
+      {isPrintModalOpen && (
+        <RekapPresensiPrintModal
+          isOpen={isPrintModalOpen}
+          onClose={() => setIsPrintModalOpen(false)}
+          kelasId={kelasId}
+          kelasNama={(kelasOptions ?? []).find(k => k.value === kelasId)?.label ?? 'Kelas'}
+          tahunPelajaran={tahunOptions.find(t => t.value === tahunPelajaranId)?.label}
+          bulan={bulan}
+          waliKelasNama={waliKelasName}
+          waliKelasNip={waliKelasNip}
+          viewMode={viewMode}
+          rows={rows}
+          dayNumbers={dayNumbers}
         />
       )}
     </SectionCard>

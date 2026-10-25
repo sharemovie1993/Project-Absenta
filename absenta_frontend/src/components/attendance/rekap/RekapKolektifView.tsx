@@ -30,6 +30,7 @@ import { useAcademicFilter, AcademicFilterToolbar } from '@/components/common';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { ViewModeSwitcher } from './RekapBulananKelasToolbar';
 import { RekapBulananKelasPdfModal } from './RekapBulananKelasPdfModal';
+import { RekapPresensiPrintModal } from './RekapPresensiPrintModal';
 import type { RekapBulananKelasRow, ViewMode } from './types';
 import { cn } from '@/lib/utils';
 
@@ -105,6 +106,7 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
   const [viewMode, setViewMode] = useState<ViewMode>('MATRIX');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   // PDF Preview State
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
@@ -267,90 +269,23 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
     }
   }, [filteredRows, rows, selectedKelasLabel, bulan, searchQuery]);
 
-  // Handler Export PDF
-  const handleExportPdf = useCallback(async () => {
+  // Selected Tahun Label untuk Header Dokumen
+  const selectedTahunLabel = useMemo(() => {
+    return (
+      tahunOptions.find((t) => t.value === tahunPelajaranId)?.label ||
+      activeTpYear?.tahun ||
+      '2026/2027'
+    );
+  }, [tahunOptions, tahunPelajaranId, activeTpYear]);
+
+  // Handler Export / Cetak PDF Standar Universal Document (True WYSIWYG)
+  const handleExportPdf = useCallback(() => {
     if (!rows || rows.length === 0) {
-      toast.error('Tidak ada data untuk dicetak');
+      toast.error('Tidak ada data presensi untuk dicetak');
       return;
     }
-    try {
-      toast.loading('Menyiapkan dokumen PDF...', { id: 'pdf-toast' });
-      const isMatrix = viewMode === 'MATRIX';
-      const namaKelas = selectedKelasLabel;
-      const waliKelasName = rekapData?.waliKelasName || '';
-      const waliKelasNip = rekapData?.waliKelasNip || '';
-      const selectedTahunLabel = tahunOptions.find((t) => t.value === tahunPelajaranId)?.label || '';
-
-      const blob = await generateGenericPdf({
-        module: 'attendance',
-        printType: isMatrix ? 'monthly_matrix' : 'monthly_recap',
-        selectedClassId: kelasId,
-        sekolah,
-        tenantInfo,
-        strukturList,
-        logoDaerahBase64: null,
-        logoSekolahBase64: null,
-        includeSchoolLogo: true,
-        checklistData: {
-          current_year: { tahun: selectedTahunLabel },
-        },
-        eventDetails: { 
-          bulanRekap: bulan,
-          tahunPelajaran: selectedTahunLabel,
-        },
-        filterData: {
-          viewMode,
-          waliKelasName: waliKelasName || '________________________',
-          waliKelasNip: waliKelasNip || '',
-          classes: (kelasOptions ?? []).map((k) => ({
-            id: k.value,
-            nama_kelas: (k as any).nama_kelas || k.label?.split(' - ')[0] || k.label,
-            jurusan_nama: (k as any).jurusan_nama || effectiveJurusanNama,
-            Jurusan: (k as any).Jurusan || { nama: (k as any).jurusan_nama || effectiveJurusanNama || '' },
-          })),
-          rekapList: (rows ?? []).map((r) => ({
-            id: r.siswa_id,
-            nama_siswa: r.nama_siswa,
-            nis: r.nis,
-            dailyMap: r.dailyMap ?? {},
-            HADIR: r.HADIR ?? 0,
-            SAKIT: r.SAKIT ?? 0,
-            IZIN: r.IZIN ?? 0,
-            ALPA: r.ALPA ?? 0,
-            TERLAMBAT: r.TERLAMBAT ?? 0,
-            hadir: r.HADIR ?? 0,
-            izin: r.IZIN ?? 0,
-            sakit: r.SAKIT ?? 0,
-            alpa: r.ALPA ?? 0,
-            terlambat: r.TERLAMBAT ?? 0,
-            total_poin: r.total_poin ?? 0,
-            persentase: (() => {
-              const t =
-                (r.HADIR ?? 0) +
-                (r.IZIN ?? 0) +
-                (r.SAKIT ?? 0) +
-                (r.ALPA ?? 0) +
-                (r.TERLAMBAT ?? 0);
-              return t === 0
-                ? 0
-                : Math.round((((r.HADIR ?? 0) + (r.TERLAMBAT ?? 0)) / t) * 100);
-            })(),
-          })),
-        },
-      });
-
-      const modeLabel = isMatrix ? 'Leger_Harian' : 'Rekap_Bulanan';
-      const filename = `${modeLabel}_${namaKelas.replace(/[^a-zA-Z0-9]/g, '_')}_${bulan}.pdf`;
-      setPdfFilename(filename);
-      setPdfPreviewUrl(URL.createObjectURL(blob));
-      toast.success(`Preview PDF ${isMatrix ? 'Landscape' : 'Portrait'} siap`, {
-        id: 'pdf-toast',
-      });
-    } catch (err) {
-      console.error('[PDF Export Error]:', err);
-      toast.error('Gagal membuat preview PDF', { id: 'pdf-toast' });
-    }
-  }, [rows, kelasOptions, kelasId, bulan, tahunPelajaranId, tahunOptions, viewMode, sekolah, tenantInfo, strukturList, selectedKelasLabel, rekapData, effectiveJurusanNama]);
+    setIsPrintModalOpen(true);
+  }, [rows]);
 
   const content = (
     <div className="space-y-4 w-full max-w-full min-w-0">
@@ -800,15 +735,20 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
         </div>
       )}
 
-      {/* Modal Preview & Unduh PDF Standar */}
-      {pdfPreviewUrl && (
-        <RekapBulananKelasPdfModal
-          pdfPreviewUrl={pdfPreviewUrl}
-          pdfFilename={pdfFilename}
-          onClose={() => {
-            if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
-            setPdfPreviewUrl(null);
-          }}
+      {/* Modal Preview & Cetak Dokumen PDF Standar Universal Document (True WYSIWYG) */}
+      {isPrintModalOpen && (
+        <RekapPresensiPrintModal
+          isOpen={isPrintModalOpen}
+          onClose={() => setIsPrintModalOpen(false)}
+          kelasId={kelasId}
+          kelasNama={selectedKelasLabel}
+          tahunPelajaran={selectedTahunLabel}
+          bulan={bulan}
+          waliKelasNama={rekapData?.waliKelasName}
+          waliKelasNip={rekapData?.waliKelasNip}
+          viewMode={viewMode}
+          rows={filteredRows.length > 0 ? filteredRows : rows}
+          dayNumbers={dayNumbers}
         />
       )}
     </div>
