@@ -333,7 +333,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const { can, isAdmin, isKesiswaan, isKurikulum, isKepalaSekolah, isHubin } = useCapabilities();
   const { tingkatList } = useJenjang();
   
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   // ── Wali Kelas Detection ──────────────────────────────────────────────────────
   // Deteksi apakah user yang login adalah Wali Kelas berdasarkan guru_profile

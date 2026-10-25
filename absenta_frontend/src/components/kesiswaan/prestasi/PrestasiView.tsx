@@ -131,7 +131,7 @@ export const PrestasiView: React.FC<UniversalPrestasiViewProps> = React.memo(({
   const [selectedTingkat, setSelectedTingkat] = useState<string>('ALL');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(15);
+  const [limit, setLimit] = useState(25);
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 

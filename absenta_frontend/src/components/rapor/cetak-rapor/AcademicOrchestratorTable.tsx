@@ -23,6 +23,7 @@ export interface AcademicOrchestratorTableProps {
   isJenjangSmk?: boolean;
   pdfLoading?: Record<string, boolean>;
   modeCetakRapor?: 'CP_ONLY' | 'SUMATIF_AND_CP' | 'SUMATIF_ONLY';
+  startIndex?: number;
   onPrintBiodata: (studentId: string) => void;
   onPrintRaporSemester: (studentId: string, customTpId?: string, customSemId?: string) => void;
   onPrintRaporSumatif: (studentId: string, customTpId?: string, customSemId?: string) => void;
@@ -38,6 +39,7 @@ export interface AcademicOrchestratorTableProps {
 export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps> = React.memo(({
   students,
   isLoading = false,
+  startIndex = 0,
   isJenjangSmk = true,
   pdfLoading = {},
   modeCetakRapor = 'CP_ONLY',
@@ -121,7 +123,7 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
                       )}
                     </div>
                     <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
-                      No. {index + 1} • NIS: {student.nis || '-'}
+                      No. {startIndex + index + 1} • NIS: {student.nis || '-'}
                     </div>
                   </div>
                 </div>
@@ -297,7 +299,7 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
         })}
       </div>
     ) : (
-      /* ── 2. Tampilan Desktop: Tabel Lengkap 9 Kolom ── */
+      /* ── 2. Tampilan Desktop: Tabel Lengkap 8 Slot Dokumen Digelar ── */
       <div className="w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
         <div className="w-full overflow-x-auto no-scrollbar">
           <table className="w-full text-left border-collapse text-xs">
@@ -305,16 +307,14 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
             <tr className="bg-slate-50/90 dark:bg-slate-850 border-b border-slate-200/80 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px]">
               <th className="py-2.5 px-2 w-9 text-center">No</th>
               <th className="py-2.5 px-3 min-w-[150px]">Siswa</th>
-              <th className="py-2.5 px-1.5 text-center whitespace-nowrap">Biodata</th>
-              <th className="py-2.5 px-1.5 text-center whitespace-nowrap">Rapor Semester</th>
-              {showSumatif && (
-                <th className="py-2.5 px-1.5 text-center whitespace-nowrap">Sumatif</th>
-              )}
-              <th className="py-2.5 px-1.5 text-center whitespace-nowrap">P5</th>
-              {isJenjangSmk && (
-                <th className="py-2.5 px-2 text-center whitespace-nowrap">Berkas PKL</th>
-              )}
-              <th className="py-2.5 px-2 text-center whitespace-nowrap">Berkas Kelulusan</th>
+              <th className="py-2.5 px-1.5 text-center whitespace-nowrap">1. Biodata</th>
+              <th className="py-2.5 px-1.5 text-center whitespace-nowrap">2. Rapor Sem</th>
+              <th className="py-2.5 px-1.5 text-center whitespace-nowrap">3. Sumatif</th>
+              <th className="py-2.5 px-1.5 text-center whitespace-nowrap">4. P5</th>
+              <th className="py-2.5 px-1.5 text-center whitespace-nowrap">5. Rapor PKL</th>
+              <th className="py-2.5 px-1.5 text-center whitespace-nowrap">6. Sertifikat PKL</th>
+              <th className="py-2.5 px-1.5 text-center whitespace-nowrap">7. UKK</th>
+              <th className="py-2.5 px-2 text-center whitespace-nowrap">8. SKL / Transkrip</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
@@ -333,7 +333,7 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
                 >
                   {/* 1. No */}
                   <td className="py-2 px-2 text-center font-bold text-slate-400 text-[11px]">
-                    {index + 1}
+                    {startIndex + index + 1}
                   </td>
 
                   {/* 2. Identitas Siswa */}
@@ -394,9 +394,9 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
                     />
                   </td>
 
-                  {/* 5. Rapor Sumatif Dropdown Smart */}
-                  {showSumatif && (
-                    <td className="py-2 px-1.5 text-center whitespace-nowrap">
+                  {/* Slot 3: Rapor Sumatif */}
+                  <td className="py-2 px-1.5 text-center whitespace-nowrap">
+                    {showSumatif ? (
                       <SmartSemesterDropdown
                         studentId={student.id}
                         studentName={student.nama_siswa}
@@ -410,10 +410,12 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
                           );
                         }}
                       />
-                    </td>
-                  )}
+                    ) : (
+                      <span className="text-[10px] text-slate-400 dark:text-slate-600 italic">-</span>
+                    )}
+                  </td>
 
-                  {/* 6. Rapor P5 */}
+                  {/* Slot 4: Rapor P5 */}
                   <td className="py-2 px-1.5 text-center whitespace-nowrap">
                     <Button
                       variant="outline"
@@ -427,114 +429,123 @@ export const AcademicOrchestratorTable: React.FC<AcademicOrchestratorTableProps>
                     </Button>
                   </td>
 
-                  {/* 7. Berkas PKL (Hanya SMK) */}
-                  {isJenjangSmk && (
-                    <td className="py-2 px-2 text-center whitespace-nowrap">
-                      <div className="inline-flex items-center gap-1 flex-nowrap">
-                        {/* Rapor PKL */}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            if (!isPklRaporEligible) {
-                              toast.warning(
-                                `Rapor PKL: ${elig?.rapor_pkl?.reason || 'Belum memenuhi syarat'}`
-                              );
-                              return;
-                            }
-                            onPrintRaporPkl?.(student);
-                          }}
-                          className={cn(
-                            'h-7 px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap rounded-lg',
-                            isPklRaporEligible
-                              ? 'border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/50 cursor-pointer'
-                              : 'opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-850 text-slate-400 border-slate-200 dark:border-slate-800'
-                          )}
-                          title={
-                            isPklRaporEligible
-                              ? 'Cetak Rapor PKL Resmi'
-                              : `🔒 Terkunci: ${elig?.rapor_pkl?.reason || 'Belum memenuhi syarat'}`
+                  {/* Slot 5: Rapor PKL */}
+                  <td className="py-2 px-1.5 text-center whitespace-nowrap">
+                    {isJenjangSmk ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (!isPklRaporEligible) {
+                            toast.warning(
+                              `Rapor PKL: ${elig?.rapor_pkl?.reason || 'Belum memenuhi syarat'}`
+                            );
+                            return;
                           }
-                        >
-                          <Briefcase className="w-3 h-3 mr-0.5 text-purple-600 dark:text-purple-400" />
-                          <span>Rapor</span>
-                          {!isPklRaporEligible && (
-                            <Lock className="w-2.5 h-2.5 ml-0.5 text-amber-500 shrink-0" />
-                          )}
-                        </Button>
+                          onPrintRaporPkl?.(student);
+                        }}
+                        className={cn(
+                          'h-7 px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap rounded-lg',
+                          isPklRaporEligible
+                            ? 'border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/50 cursor-pointer'
+                            : 'opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-850 text-slate-400 border-slate-200 dark:border-slate-800'
+                        )}
+                        title={
+                          isPklRaporEligible
+                            ? 'Cetak Rapor PKL Resmi'
+                            : `🔒 Terkunci: ${elig?.rapor_pkl?.reason || 'Belum memenuhi syarat'}`
+                        }
+                      >
+                        <Briefcase className="w-3 h-3 mr-0.5 text-purple-600 dark:text-purple-400" />
+                        <span>Rapor</span>
+                        {!isPklRaporEligible && (
+                          <Lock className="w-2.5 h-2.5 ml-0.5 text-amber-500 shrink-0" />
+                        )}
+                      </Button>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 dark:text-slate-600">-</span>
+                    )}
+                  </td>
 
-                        {/* Sertifikat PKL */}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            if (!isPklSertifikatEligible) {
-                              toast.warning(
-                                `Sertifikat PKL: ${elig?.sertifikat_pkl?.reason || 'Belum memenuhi syarat'}`
-                              );
-                              return;
-                            }
-                            onPrintSertifikatPkl?.(student);
-                          }}
-                          className={cn(
-                            'h-7 px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap rounded-lg',
-                            isPklSertifikatEligible
-                              ? 'border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50 cursor-pointer'
-                              : 'opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-850 text-slate-400 border-slate-200 dark:border-slate-800'
-                          )}
-                          title={
-                            isPklSertifikatEligible
-                              ? 'Cetak Sertifikat & Piagam PKL'
-                              : `🔒 Terkunci: ${elig?.sertifikat_pkl?.reason || 'Belum memenuhi syarat'}`
+                  {/* Slot 6: Sertifikat PKL */}
+                  <td className="py-2 px-1.5 text-center whitespace-nowrap">
+                    {isJenjangSmk ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (!isPklSertifikatEligible) {
+                            toast.warning(
+                              `Sertifikat PKL: ${elig?.sertifikat_pkl?.reason || 'Belum memenuhi syarat'}`
+                            );
+                            return;
                           }
-                        >
-                          <Award className="w-3 h-3 mr-0.5 text-amber-500" />
-                          <span>Sertifikat</span>
-                          {!isPklSertifikatEligible && (
-                            <Lock className="w-2.5 h-2.5 ml-0.5 text-amber-500 shrink-0" />
-                          )}
-                        </Button>
-                      </div>
-                    </td>
-                  )}
+                          onPrintSertifikatPkl?.(student);
+                        }}
+                        className={cn(
+                          'h-7 px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap rounded-lg',
+                          isPklSertifikatEligible
+                            ? 'border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50 cursor-pointer'
+                            : 'opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-850 text-slate-400 border-slate-200 dark:border-slate-800'
+                        )}
+                        title={
+                          isPklSertifikatEligible
+                            ? 'Cetak Sertifikat & Piagam PKL'
+                            : `🔒 Terkunci: ${elig?.sertifikat_pkl?.reason || 'Belum memenuhi syarat'}`
+                        }
+                      >
+                        <Award className="w-3 h-3 mr-0.5 text-amber-500" />
+                        <span>Sertifikat</span>
+                        {!isPklSertifikatEligible && (
+                          <Lock className="w-2.5 h-2.5 ml-0.5 text-amber-500 shrink-0" />
+                        )}
+                      </Button>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 dark:text-slate-600">-</span>
+                    )}
+                  </td>
 
-                  {/* 8. Berkas Kelulusan (UKK, SKL, Transkrip) */}
+                  {/* Slot 7: Sertifikat UKK */}
+                  <td className="py-2 px-1.5 text-center whitespace-nowrap">
+                    {isJenjangSmk ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (!isUkkEligible) {
+                            toast.warning(
+                              `Sertifikat UKK: ${elig?.sertifikat_ukk?.reason || 'Belum memenuhi syarat'}`
+                            );
+                            return;
+                          }
+                          onPrintSertifikatUkk?.(student);
+                        }}
+                        className={cn(
+                          'h-7 px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap rounded-lg',
+                          isUkkEligible
+                            ? 'border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/50 cursor-pointer'
+                            : 'opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-850 text-slate-400 border-slate-200 dark:border-slate-800'
+                        )}
+                        title={
+                          isUkkEligible
+                            ? 'Cetak Sertifikat Uji Kompetensi Keahlian'
+                            : `🔒 Terkunci: ${elig?.sertifikat_ukk?.reason || 'Belum memenuhi syarat'}`
+                        }
+                      >
+                        <Award className="w-3 h-3 mr-0.5 text-orange-600 dark:text-orange-400" />
+                        <span>UKK</span>
+                        {!isUkkEligible && (
+                          <Lock className="w-2.5 h-2.5 ml-0.5 text-amber-500 shrink-0" />
+                        )}
+                      </Button>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 dark:text-slate-600">-</span>
+                    )}
+                  </td>
+
+                  {/* Slot 8: Berkas Kelulusan (SKL & Transkrip) */}
                   <td className="py-2 px-2 text-center whitespace-nowrap">
                     <div className="inline-flex items-center gap-1 flex-nowrap">
-                      {/* Sertifikat UKK (Hanya SMK) */}
-                      {isJenjangSmk && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            if (!isUkkEligible) {
-                              toast.warning(
-                                `Sertifikat UKK: ${elig?.sertifikat_ukk?.reason || 'Belum memenuhi syarat'}`
-                              );
-                              return;
-                            }
-                            onPrintSertifikatUkk?.(student);
-                          }}
-                          className={cn(
-                            'h-7 px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap rounded-lg',
-                            isUkkEligible
-                              ? 'border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/50 cursor-pointer'
-                              : 'opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-850 text-slate-400 border-slate-200 dark:border-slate-800'
-                          )}
-                          title={
-                            isUkkEligible
-                              ? 'Cetak Sertifikat Uji Kompetensi Keahlian'
-                              : `🔒 Terkunci: ${elig?.sertifikat_ukk?.reason || 'Belum memenuhi syarat'}`
-                          }
-                        >
-                          <Award className="w-3 h-3 mr-0.5 text-orange-600 dark:text-orange-400" />
-                          <span>UKK</span>
-                          {!isUkkEligible && (
-                            <Lock className="w-2.5 h-2.5 ml-0.5 text-amber-500 shrink-0" />
-                          )}
-                        </Button>
-                      )}
-
                       {/* SKL */}
                       <Button
                         variant="outline"

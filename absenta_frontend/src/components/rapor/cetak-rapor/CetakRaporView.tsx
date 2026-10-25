@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback, useRef, useEffect, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { GraduationCap, Layers, X, Printer, Search, BarChart3, BookOpen } from 'lucide-react';
+import { GraduationCap, Layers, X, Printer, Search, BarChart3, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SectionCard } from '../../ui/SectionCard';
 import { Button } from '../../ui/Button';
 import { SearchableSelectOption } from '../../ui/SearchableSelect';
@@ -225,6 +225,15 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
   const [selectedUkkStudent, setSelectedUkkStudent] = useState<LegerStudent | null>(null);
   const [isUkkModalOpen, setIsUkkModalOpen] = useState(false);
   const [showMonitoringModal, setShowMonitoringModal] = useState(false);
+
+  // ── Pagination State (Default 25 item per halaman) ──
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  // Reset page when filter / rombel / search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedKelas, searchQuery, activeRoleTab]);
 
   // Tab Options (Disimplifikasi 1-2 kata agar kompak dan tidak overflow)
   const tabOptions: TabOption[] = useMemo(() => {
@@ -593,6 +602,16 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
       });
   }, [selectedKelas, studentList, leger, searchQuery]);
 
+  // ── Client-side Pagination Derived Data ──
+  const totalStudents = filteredStudents.length;
+  const totalPages = Math.max(1, Math.ceil(totalStudents / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+
+  const paginatedStudents = useMemo(() => {
+    return filteredStudents.slice(startIndex, startIndex + pageSize);
+  }, [filteredStudents, startIndex, pageSize]);
+
   const isGenap = useMemo(() => {
     const currentSemObj = semesterOptions?.find((s) => s.value === effectiveSemId)?.raw as Semester | undefined;
     const semName = (currentSemObj?.nama_semester || (currentSemObj as any)?.nama || academicActiveSemester?.nama_semester || academicActiveSemester?.nama || '').toLowerCase();
@@ -831,7 +850,8 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
       {/* Main View: Academic Document Orchestrator Table vs Leger Nilai Table */}
       {viewMode === 'orchestrator' ? (
         <AcademicOrchestratorTable
-          students={filteredStudents}
+          students={paginatedStudents}
+          startIndex={startIndex}
           isLoading={isLoadingLeger}
           isJenjangSmk={isJenjangSmk}
           pdfLoading={pdfLoading}
@@ -852,7 +872,7 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
         />
       ) : (
         <LegerStudentTable
-          students={filteredStudents}
+          students={paginatedStudents}
           isLoading={isLoadingLeger}
           isJenjangSmk={isJenjangSmk}
           pdfLoading={pdfLoading}
@@ -885,6 +905,73 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
           getPdfSklUrl={(sId) => raporApi.getPdfSklUrl(sId)}
           getPdfUkkUrl={(sId) => raporApi.getPdfUkkUrl(sId)}
         />
+      )}
+
+      {/* Baris Kontrol Paginasi Standar (Default 25 item per hal) */}
+      {filteredStudents.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-2xs">
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+            <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              Menampilkan{' '}
+              <span className="font-bold text-slate-700 dark:text-slate-200">
+                {filteredStudents.length === 0 ? 0 : startIndex + 1}
+              </span>
+              {' - '}
+              <span className="font-bold text-slate-700 dark:text-slate-200">
+                {Math.min(startIndex + pageSize, totalStudents)}
+              </span>{' '}
+              dari{' '}
+              <span className="font-bold text-slate-700 dark:text-slate-200">
+                {totalStudents}
+              </span>{' '}
+              siswa
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Per Hal:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+              >
+                {[10, 25, 50, 100].map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 self-end sm:self-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={safeCurrentPage <= 1}
+              className="h-8 px-2.5 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-800 disabled:opacity-40"
+            >
+              <ChevronLeft className="w-3.5 h-3.5 mr-1" />
+              <span>Sebelumnya</span>
+            </Button>
+            <div className="px-3 py-1 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/50 dark:border-indigo-800/50 rounded-xl text-xs font-black text-indigo-600 dark:text-indigo-400">
+              {safeCurrentPage} / {totalPages}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={safeCurrentPage >= totalPages}
+              className="h-8 px-2.5 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-800 disabled:opacity-40"
+            >
+              <span>Berikutnya</span>
+              <ChevronRight className="w-3.5 h-3.5 ml-1" />
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* Modal Universal Sertifikat UKK (Lazy-Loaded) */}
