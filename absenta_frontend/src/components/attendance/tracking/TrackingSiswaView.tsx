@@ -17,7 +17,8 @@ import {
   Briefcase,
   AlertTriangle,
   Clock,
-  Layers
+  Layers,
+  Printer
 } from 'lucide-react';
 
 import {
@@ -52,6 +53,12 @@ import {
 const SearchableSelect = lazy(() =>
   import('@/components/ui/SearchableSelect').then((module) => ({
     default: module.SearchableSelect,
+  }))
+);
+
+const TrackingSiswaPrintModal = lazy(() =>
+  import('./TrackingSiswaPrintModal').then((module) => ({
+    default: module.TrackingSiswaPrintModal,
   }))
 );
 
@@ -153,7 +160,7 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
   const paramSiswaId = searchParams.get('siswa_id') || '';
   const navigate = useNavigate();
 
-  const { subscription } = useAuthStore();
+  const { user, subscription } = useAuthStore();
   const { can } = useCapabilities();
 
   const [tanggal, setTanggal] = useState<string>(toLocalDate());
@@ -164,6 +171,7 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
 
   // Tab View Mode: 'MATRIX' | 'CALENDAR' | 'ANOMALY'
   const [viewMode, setViewMode] = useState<'MATRIX' | 'CALENDAR' | 'ANOMALY'>('MATRIX');
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false);
 
   // Sync prop changes
   useEffect(() => {
@@ -537,16 +545,30 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-              Bulan:
-            </span>
-            <input
-              type="month"
-              value={bulan}
-              onChange={(e) => setBulan(e.target.value)}
-              className="h-8 px-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
-            />
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                Bulan:
+              </span>
+              <input
+                type="month"
+                value={bulan}
+                onChange={(e) => setBulan(e.target.value)}
+                className="h-8 px-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
+              />
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsPrintModalOpen(true)}
+              disabled={!monthData?.mapel_matrix || monthLoading}
+              className="h-8 px-3 rounded-xl border-slate-200 dark:border-slate-800 text-xs font-bold gap-1.5 cursor-pointer shadow-2xs hover:bg-slate-100 dark:hover:bg-slate-800 text-indigo-600 dark:text-indigo-400 disabled:opacity-40"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Cetak Laporan</span>
+            </Button>
           </div>
         </div>
 
@@ -594,6 +616,24 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
           }
         />
       </SectionCard>
+
+      {/* ── 6. MODAL CETAK WYSIWYG & PDF EXPORT ── */}
+      {isPrintModalOpen && (
+        <Suspense fallback={null}>
+          <TrackingSiswaPrintModal
+            isOpen={isPrintModalOpen}
+            onClose={() => setIsPrintModalOpen(false)}
+            siswaNama={displayStudentName}
+            siswaNis={displayStudentNis}
+            kelasNama={propKelasNama || (singleSiswaQuery.data as any)?.Kelas?.nama_kelas || (singleSiswaQuery.data as any)?.kelas?.nama_kelas}
+            jurusanNama={propJurusanNama || (singleSiswaQuery.data as any)?.Jurusan?.nama_jurusan || (singleSiswaQuery.data as any)?.jurusan?.nama_jurusan}
+            bulan={bulan}
+            matrixData={monthData?.mapel_matrix}
+            channelSummary={channelSummary}
+            waliKelasNama={user?.nama || user?.name || 'Wali Kelas'}
+          />
+        </Suspense>
+      )}
     </div>
   );
 
