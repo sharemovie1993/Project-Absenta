@@ -14,6 +14,7 @@ import {
   Briefcase, 
   Award, 
   ShieldAlert, 
+  ShieldCheck,
   GraduationCap, 
   Building2, 
   ScanLine, 
