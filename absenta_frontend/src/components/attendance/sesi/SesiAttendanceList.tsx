@@ -8,7 +8,8 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getPresensiTerpaduSesi } from '../../../api/attendanceGerbang.api';
 import { requestWithFallback, formatErrorMessage } from '../../../api/apiUtils';
 import { toast } from 'react-hot-toast';
 import { cn } from '../../../lib/utils';
@@ -74,7 +75,8 @@ export interface SesiDetail {
 }
 
 type Props = {
-  records: SesiAttendanceRecord[];
+  records?: SesiAttendanceRecord[];
+  sesiId?: string;
   sesi?: SesiDetail;
   isReportMode?: boolean;
 };
@@ -277,8 +279,23 @@ const SesiAttendanceRow = React.memo(({
 
 SesiAttendanceRow.displayName = 'SesiAttendanceRow';
 
-export function SesiAttendanceList({ records, sesi, isReportMode = false }: Props) {
+export function SesiAttendanceList({ records, sesi, sesiId, isReportMode = false }: Props) {
   const queryClient = useQueryClient();
+  const effectiveSesiId = sesiId || sesi?.id;
+
+  // Auto-fetch jika records tidak di-passing langsung
+  const { data: fetchedRes, isLoading: isFetching } = useQuery({
+    queryKey: ['sesi-detail-attendance', effectiveSesiId],
+    queryFn: () => getPresensiTerpaduSesi(effectiveSesiId!),
+    enabled: Boolean(effectiveSesiId && (!records || !Array.isArray(records))),
+    staleTime: 10000,
+  });
+
+  const resolvedRecords: SesiAttendanceRecord[] = useMemo(() => {
+    if (Array.isArray(records)) return records;
+    const raw = fetchedRes?.data || fetchedRes;
+    return Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw) ? raw : []);
+  }, [records, fetchedRes]);
   const progres = sesi?.ProgresMateri;
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
@@ -288,7 +305,8 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
 
   // Stable & Immutable Teacher injection ensuring row never vanishes during refetch, query invalidation, or toast dismissal
   const preparedRecords = useMemo(() => {
-    const hasGuruInRecords = records.some(r => r.is_guru || Boolean(r.Guru) || Boolean(r.guru_id) || (r as any)._type === 'guru');
+    const safeRecords = Array.isArray(resolvedRecords) ? resolvedRecords : [];
+    const hasGuruInRecords = safeRecords.some(r => r.is_guru || Boolean(r.Guru) || Boolean(r.guru_id) || (r as any)._type === 'guru');
     
     // Resolve teacher detail fallback
     const guruDetail: GuruDetail = sesi?.Guru || sesi?.JamPelajaran?.Guru || {
@@ -305,7 +323,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
       if (stored) savedGuruData = JSON.parse(stored);
     } catch {}
 
-    let baseRecords = records;
+    let baseRecords = safeRecords;
 
     if (!hasGuruInRecords) {
       const teacherRec: SesiAttendanceRecord = {
@@ -320,7 +338,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
         catatan: savedGuruData?.catatan !== undefined ? savedGuruData.catatan : null
       };
 
-      baseRecords = [teacherRec, ...records];
+      baseRecords = [teacherRec, ...safeRecords];
     }
 
     return baseRecords.map(r => {
@@ -348,7 +366,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
         original_waktu_tap: origTap
       };
     });
-  }, [records, sesi]);
+  }, [resolvedRecords, sesi]);
 
   // Sync state with parent props for robust optimistic updates across all dashboards
   const [localRecords, setLocalRecords] = useState<SesiAttendanceRecord[]>(preparedRecords);
@@ -584,6 +602,15 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
     const { siswaAkademikId, status } = noteTarget;
     handleUpdateStatus(siswaAkademikId, status, catatan);
   };
+
+  if (isFetching && resolvedRecords.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 space-y-3">
+        <div className="w-7 h-7 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs font-semibold text-slate-500">Memuat rincian presensi sesi KBM...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 py-1">

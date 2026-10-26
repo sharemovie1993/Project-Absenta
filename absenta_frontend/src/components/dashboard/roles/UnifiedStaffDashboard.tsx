@@ -1071,7 +1071,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
         )}
         {selectedSesi && (
           <Modal isOpen={!!selectedSesi} onClose={() => setSelectedSesi(null)} title="Presensi Sesi KBM">
-            <SesiAttendanceList sesiId={selectedSesi.id} />
+            <SesiAttendanceList sesiId={selectedSesi.id} sesi={selectedSesi} />
           </Modal>
         )}
         {catatModalOpen && (
@@ -1446,7 +1446,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
       )}
       {selectedSesi && (
         <Modal isOpen={!!selectedSesi} onClose={() => setSelectedSesi(null)} title="Presensi Sesi KBM">
-          <SesiAttendanceList sesiId={selectedSesi.id} />
+          <SesiAttendanceList sesiId={selectedSesi.id} sesi={selectedSesi} />
         </Modal>
       )}
       {catatModalOpen && (
