@@ -39,6 +39,7 @@ import {
   MailOpen,
   Share2,
   ClipboardList,
+  Compass,
   LucideIcon
 } from 'lucide-react';
 
@@ -74,6 +75,7 @@ export type EcosystemType =
   | 'bkk' 
   | 'sarpras' 
   | 'toolman'
+  | 'ekskul'
   | 'koperasi' 
   | 'piket' 
   | 'admin' 
@@ -198,6 +200,15 @@ export function getEcosystemTheme(
         inactiveTextClass: 'text-amber-100/75 hover:text-white font-medium',
         activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
         dotColorClass: 'bg-amber-200',
+      };
+    case 'ekskul':
+      return {
+        isLayer2: true,
+        navBarClass: 'bg-gradient-to-r from-indigo-700 via-indigo-700 to-purple-800 text-white border-t-2 border-indigo-300 shadow-2xl shadow-indigo-950/40',
+        activeTextClass: 'text-white font-black',
+        inactiveTextClass: 'text-indigo-100/75 hover:text-white font-medium',
+        activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
+        dotColorClass: 'bg-indigo-200',
       };
     case 'koperasi':
       return {
@@ -790,6 +801,57 @@ export function getSarprasTabs(currentSubtab?: string): MobileBottomTabItem[] {
         { id: 'inventory-full', label: 'Halaman Penuh Inventaris', icon: Layers, targetPath: '/sarpras/inventory', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
         { id: 'loans-full', label: 'Halaman Penuh Peminjaman', icon: ArrowLeftRight, targetPath: '/sarpras/loans', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
         { id: 'maintenance-full', label: 'Halaman Penuh Servis', icon: Wrench, targetPath: '/sarpras/maintenance', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
+      ],
+    },
+  ];
+}
+
+export function getEkskulTabs(currentSubtab?: string): MobileBottomTabItem[] {
+  return [
+    {
+      id: 'portal_back',
+      label: 'Kembali ke Portal',
+      shortLabel: 'Kembali',
+      icon: ArrowLeft,
+      targetPath: '/dashboard?tab=ringkasan',
+      isActive: () => false,
+    },
+    {
+      id: 'ekskul_ringkasan',
+      label: 'Beranda Ekskul',
+      shortLabel: 'Beranda',
+      icon: Home,
+      targetPath: '/dashboard?tab=ekskul&subtab=ringkasan',
+      isActive: (p, t) => t === 'ekskul' && (!currentSubtab || currentSubtab === 'ringkasan'),
+    },
+    {
+      id: 'ekskul_anggota',
+      label: 'Anggota Siswa',
+      shortLabel: 'Anggota',
+      icon: Users,
+      targetPath: '/dashboard?tab=ekskul&subtab=anggota',
+      isActive: (p, t) => (t === 'ekskul' && currentSubtab === 'anggota') || p.startsWith('/attendance/anggota-eskul'),
+    },
+    {
+      id: 'ekskul_nilai',
+      label: 'Nilai Rapor',
+      shortLabel: 'Nilai Rapor',
+      icon: Award,
+      targetPath: '/dashboard?tab=ekskul&subtab=nilai',
+      isActive: (p, t) => (t === 'ekskul' && currentSubtab === 'nilai') || p.startsWith('/rapor/eskul'),
+    },
+    {
+      id: 'ekskul_menu',
+      label: 'Menu Ekstrakurikuler',
+      shortLabel: 'Menu Ekskul',
+      icon: LayoutGrid,
+      badge: 'EKSKUL',
+      targetPath: '/dashboard?tab=ekskul',
+      isActive: (p, t) => t === 'ekskul' && ['jadwal', 'rekap'].includes(currentSubtab || ''),
+      children: [
+        { id: 'jadwal', label: 'Jadwal & Pembina', icon: Calendar, targetPath: '/dashboard?tab=ekskul&subtab=jadwal', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
+        { id: 'rekap', label: 'Cetak Dokumen Resmi', icon: Printer, targetPath: '/dashboard?tab=ekskul&subtab=rekap', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
+        { id: 'matrix', label: 'Mode Matriks Peminatan', icon: Layers, targetPath: '/attendance/anggota-eskul/matrix', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
       ],
     },
   ];

@@ -19,7 +19,8 @@ import {
   ScanLine, 
   LayoutGrid,
   CheckSquare,
-  Wrench 
+  Wrench,
+  Compass 
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
@@ -40,6 +41,7 @@ import {
   getBkkTabs,
   getSarprasTabs,
   getToolmanTabs,
+  getEkskulTabs,
   getKoperasiTabs,
   getPiketTabs,
   getAdminTabs,
@@ -82,6 +84,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     isKepsek,
     isWaliKelas: isWaliKelasFromCaps,
     isKesiswaan,
+    isPembinaEskul,
     isKoperasi,
     isSiswa,
     can
@@ -381,6 +384,17 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       });
     }
 
+    if ((isPembinaEskul || isKesiswaan || isAdminRole || can('kesiswaan.view') || can('kesiswaan.manage')) && !isKepsek) {
+      list.push({
+        id: 'dash-ekskul',
+        label: 'Dashboard Ekstrakurikuler',
+        shortLabel: 'Dashboard Ekskul',
+        icon: Compass,
+        targetPath: '/dashboard?tab=ekskul',
+        color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
+      });
+    }
+
     if (isKoperasi || isAdminRole || can('coop.pos.access') || can('coop.manage')) {
       list.push({
         id: 'dash-koperasi',
@@ -438,6 +452,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     if (path.startsWith('/hubin')) return 'hubin';
     if (path.startsWith('/bpbk')) return 'bpbk';
     if (path.startsWith('/sarpras')) return 'sarpras';
+    if (path.startsWith('/attendance/anggota-eskul') || path.startsWith('/rapor/eskul')) return 'ekskul';
     if (path.startsWith('/cooperative')) return 'koperasi';
     if (path.startsWith('/attendance/gate') || path.startsWith('/attendance/terlambat') || path.startsWith('/attendance/dispensasi') || (isPureGerbangStaff && path.startsWith('/attendance'))) return 'piket';
     if (path.startsWith('/academic') || path.startsWith('/users')) return 'admin';
@@ -452,6 +467,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       if (currentTab === 'bk' || currentTab === 'bpbk') return 'bpbk';
       if (currentTab === 'sarpras') return 'sarpras';
       if (currentTab === 'toolman') return 'toolman';
+      if (currentTab === 'ekskul') return 'ekskul';
       if (currentTab === 'koperasi') return 'koperasi';
       if (currentTab === 'kelola' || currentTab === 'piket') return 'piket';
       if (currentTab === 'admin') return 'admin';
@@ -484,6 +500,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         return getSarprasTabs(currentSubtab);
       case 'toolman':
         return getToolmanTabs(currentSubtab);
+      case 'ekskul':
+        return getEkskulTabs(currentSubtab);
       case 'koperasi':
         return getKoperasiTabs(currentSubtab);
       case 'piket':

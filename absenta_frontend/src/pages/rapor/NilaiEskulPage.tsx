@@ -78,7 +78,11 @@ const PREDIKAT_OPTIONS: Array<{
   },
 ];
 
-export const NilaiEskulPage: React.FC = React.memo(() => {
+export interface NilaiEskulPageProps {
+  hideLayout?: boolean;
+}
+
+export const NilaiEskulPage: React.FC<NilaiEskulPageProps> = React.memo(({ hideLayout = false }) => {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { can, isWaliKelas, isKurikulum, isAdmin } = useCapabilities();
@@ -373,29 +377,11 @@ export const NilaiEskulPage: React.FC = React.memo(() => {
     []
   );
 
-  return (
-    <InfraErrorBoundary>
-      <AcademicPageLayout
-        title="Penilaian Ekstrakurikuler Rapor"
-        description="Pengisian predikat dan deskripsi capaian kualitatif kegiatan ekstrakurikuler siswa untuk Buku Leger dan lembar Rapor."
-        breadcrumbs={breadcrumbs}
-        hardeningModuleKey="nilai_eskul_page"
-        instruction={{
-          title: 'Panduan Penilaian Ekstrakurikuler Rapor',
-          description: 'Penilaian diberikan kepada seluruh siswa yang terdaftar sebagai anggota aktif ekstrakurikuler.',
-          items: [
-            { text: 'Pilih Ekstrakurikuler yang Anda bina dari daftar pilihan di atas.' },
-            { text: 'Daftar anggota aktif akan otomatis tampil lintas kelas sesuai data penugasan anggota di modul Kesiswaan.' },
-            { text: 'Gunakan tombol Set Semua A atau Set Semua B untuk pengisian cepat capaian satu eskul.' },
-            { text: 'Sesuaikan predikat per siswa dan lengkapi narasi deskripsi catatan capaian bila diperlukan.' },
-            { text: 'Klik Simpan Seluruh Nilai Ekstrakurikuler untuk menyimpan evaluasi ke Rapor dan Leger secara permanen.' },
-          ],
-        }}
-      >
-        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
-          <div className="space-y-4 pb-12 w-full min-w-0 max-w-full">
-            {/* Unified Control Toolbar Container (1 Frame Box Rapi & Hemat Ruang Vertikal) */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-xs space-y-3.5">
+  const bodyContent = (
+    <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+      <div className="space-y-4 pb-12 w-full min-w-0 max-w-full">
+        {/* Unified Control Toolbar Container (1 Frame Box Rapi & Hemat Ruang Vertikal) */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-xs space-y-3.5">
               {/* Hardening Guard Alert: Mode Terkunci / Hanya Baca */}
               {isReadOnly && (
                 <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-start sm:items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200 animate-in fade-in duration-200">
@@ -725,6 +711,32 @@ export const NilaiEskulPage: React.FC = React.memo(() => {
             )}
           </div>
         </SectionCard>
+  );
+
+  if (hideLayout) {
+    return <InfraErrorBoundary>{bodyContent}</InfraErrorBoundary>;
+  }
+
+  return (
+    <InfraErrorBoundary>
+      <AcademicPageLayout
+        title="Penilaian Ekstrakurikuler Rapor"
+        description="Pengisian predikat dan deskripsi capaian kualitatif kegiatan ekstrakurikuler siswa untuk Buku Leger dan lembar Rapor."
+        breadcrumbs={breadcrumbs}
+        hardeningModuleKey="nilai_eskul_page"
+        instruction={{
+          title: 'Panduan Penilaian Ekstrakurikuler Rapor',
+          description: 'Penilaian diberikan kepada seluruh siswa yang terdaftar sebagai anggota aktif ekstrakurikuler.',
+          items: [
+            { text: 'Pilih Ekstrakurikuler yang Anda bina dari daftar pilihan di atas.' },
+            { text: 'Daftar anggota aktif akan otomatis tampil lintas kelas sesuai data penugasan anggota di modul Kesiswaan.' },
+            { text: 'Gunakan tombol Set Semua A atau Set Semua B untuk pengisian cepat capaian satu eskul.' },
+            { text: 'Sesuaikan predikat per siswa dan lengkapi narasi deskripsi catatan capaian bila diperlukan.' },
+            { text: 'Klik Simpan Seluruh Nilai Ekstrakurikuler untuk menyimpan evaluasi ke Rapor dan Leger secara permanen.' },
+          ],
+        }}
+      >
+        {bodyContent}
       </AcademicPageLayout>
     </InfraErrorBoundary>
   );

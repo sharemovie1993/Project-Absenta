@@ -40,7 +40,11 @@ const eskulAssignmentSchema = z.object({
   guruId: z.string().min(1, 'Guru pembina wajib dipilih').optional(),
 });
 
-export default React.memo(function AnggotaKegiatanEskulPage() {
+export interface AnggotaKegiatanEskulPageProps {
+  hideLayout?: boolean;
+}
+
+export default React.memo(function AnggotaKegiatanEskulPage({ hideLayout = false }: AnggotaKegiatanEskulPageProps = {}) {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -373,53 +377,49 @@ export default React.memo(function AnggotaKegiatanEskulPage() {
     { id: 'PEMBINA', label: 'Daftar Pembina (Guru)', icon: UserCheck },
   ], []);
 
-  return (
-    <PremiumFeatureGate feature="attendance_ops">
-      <AcademicPageLayout
-        title="Anggota Eskul & Pembiasaan"
-        description="Kelola pemetaan penugasan anggota siswa dan guru pembina untuk kegiatan ekstrakurikuler serta pembiasaan karakter."
-        breadcrumbs={breadcrumbs}
-        hardeningModuleKey="attendance_anggota_eskul"
-        topSlot={
-          <div className="flex items-center justify-end gap-2">
-            <Button
-              variant="toolbarOutline"
-              size="toolbar"
-              onClick={() => navigate('/attendance/anggota-eskul/matrix')}
-              className="flex items-center gap-1.5 font-bold rounded-xl"
-            >
-              <Network className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              Mode Matriks
-            </Button>
-            <Button
-              variant="toolbarPrimary"
-              size="toolbar"
-              onClick={() => handleOpenMethodChoice(activeTab)}
-              className="flex items-center gap-1.5 font-bold rounded-xl shadow-md"
-            >
-              <Plus className="w-4 h-4" />
-              {activeTab === 'ANGGOTA' ? 'Tambah Anggota Siswa' : 'Tambah Pembina Guru'}
-            </Button>
-          </div>
-        }
-        instruction={{
-          title: "Panduan Pemetaan Ekstrakurikuler",
-          description: "Petakan siswa dan guru pembina ke dalam ekstrakurikuler atau kegiatan pembiasaan.",
-          items: [
-            { text: "Pilih tab Anggota Siswa atau Pembina Guru sesuai data yang ingin dikelola." },
-            { text: "Gunakan Mode Matriks untuk checklist visual seluruh siswa dan kegiatan sekaligus." },
-            { text: "Gunakan tombol Tambah untuk wizard penugasan cepat." }
-          ]
-        }}
+  const topToolbar = (
+    <div className="flex items-center justify-end gap-2">
+      <Button
+        variant="toolbarOutline"
+        size="toolbar"
+        onClick={() => navigate('/attendance/anggota-eskul/matrix')}
+        className="flex items-center gap-1.5 font-bold rounded-xl"
       >
-        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
-          <div className="space-y-6">
-            {/* Tab Navigation */}
+        <Network className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+        Mode Matriks
+      </Button>
+      <Button
+        variant="toolbarPrimary"
+        size="toolbar"
+        onClick={() => handleOpenMethodChoice(activeTab)}
+        className="flex items-center gap-1.5 font-bold rounded-xl shadow-md"
+      >
+        <Plus className="w-4 h-4" />
+        {activeTab === 'ANGGOTA' ? 'Tambah Anggota Siswa' : 'Tambah Pembina Guru'}
+      </Button>
+    </div>
+  );
+
+  const mainBody = (
+    <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+      <div className="space-y-6">
+        {hideLayout && (
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
             <TabSwitcher
               tabs={tabOptions}
               activeTab={activeTab}
               onChange={(id) => setActiveTab(id as 'ANGGOTA' | 'PEMBINA')}
             />
+            {topToolbar}
+          </div>
+        )}
+        {!hideLayout && (
+          <TabSwitcher
+            tabs={tabOptions}
+            activeTab={activeTab}
+            onChange={(id) => setActiveTab(id as 'ANGGOTA' | 'PEMBINA')}
+          />
+        )}
 
             {/* TAB CONTENT: ANGGOTA (SISWA) */}
             {activeTab === 'ANGGOTA' && (
@@ -748,6 +748,37 @@ export default React.memo(function AnggotaKegiatanEskulPage() {
             />
           )}
         </Suspense>
+      </div>
+    </SectionCard>
+  );
+
+  if (hideLayout) {
+    return (
+      <PremiumFeatureGate feature="attendance_ops">
+        {mainBody}
+      </PremiumFeatureGate>
+    );
+  }
+
+  return (
+    <PremiumFeatureGate feature="attendance_ops">
+      <AcademicPageLayout
+        title="Anggota Eskul & Pembiasaan"
+        description="Kelola pemetaan penugasan anggota siswa dan guru pembina untuk kegiatan ekstrakurikuler serta pembiasaan karakter."
+        breadcrumbs={breadcrumbs}
+        hardeningModuleKey="attendance_anggota_eskul"
+        topSlot={topToolbar}
+        instruction={{
+          title: "Panduan Pemetaan Ekstrakurikuler",
+          description: "Petakan siswa dan guru pembina ke dalam ekstrakurikuler atau kegiatan pembiasaan.",
+          items: [
+            { text: "Pilih tab Anggota Siswa atau Pembina Guru sesuai data yang ingin dikelola." },
+            { text: "Gunakan Mode Matriks untuk checklist visual seluruh siswa dan kegiatan sekaligus." },
+            { text: "Gunakan tombol Tambah untuk wizard penugasan cepat." }
+          ]
+        }}
+      >
+        {mainBody}
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );

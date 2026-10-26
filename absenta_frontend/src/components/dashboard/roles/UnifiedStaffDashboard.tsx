@@ -50,7 +50,8 @@ import {
   Flag,
   Zap,
   CheckSquare,
-  Wrench
+  Wrench,
+  Compass
 } from 'lucide-react';
 
 // Components
@@ -97,6 +98,8 @@ const BpbkDashboard = React.lazy(() => import('./BpbkDashboard').then(m => ({ de
 const BkkDashboard = React.lazy(() => import('./BkkDashboard').then(m => ({ default: m.BkkDashboard })));
 // Toolman Dashboard — clean role-patterned architecture
 const ToolmanDashboard = React.lazy(() => import('./ToolmanDashboard').then(m => ({ default: m.ToolmanDashboard })));
+// Ekskul Dashboard — clean role-patterned architecture
+const EkskulDashboard = React.lazy(() => import('./EkskulDashboard').then(m => ({ default: m.EkskulDashboard })));
 import { StaffPortalTab } from '../staff/tabs/StaffPortalTab';
 
 // Modular Dashboards are accessed via Google-style App Launcher & Portal tab
@@ -177,6 +180,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isKepsek,
     isWaliKelas: isWaliKelasFromCaps,
     isKesiswaan,
+    isPembinaEskul,
     isKoperasi,
     isKoperasiHead,
     isKoperasiFinance,
@@ -636,6 +640,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     else if (isKoperasi) parts.push('Pengelola Koperasi');
 
     if (isToolman)   parts.push('Toolman Lab');
+    if (isPembinaEskul) parts.push('Pembina Ekskul');
     if (isKaprog)    parts.push('Ketua Program');
     if (isKabeng)    parts.push('Kepala Bengkel');
     if (isBpbk)      parts.push('Guru BK');
@@ -654,7 +659,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     return isTuStaff ? 'Tenaga Kependidikan' : 'Guru Mata Pelajaran';
   }, [
     jabatan, isKepsek, isWaliKelas, waliKelasNama, isKurikulum, isKesiswaan, isSarpras,
-    isHubin, isPembimbingPkl, isToolman, isKaprog, isKabeng, isBpbk, isBkk, isGerbang,
+    isHubin, isPembimbingPkl, isToolman, isPembinaEskul, isKaprog, isKabeng, isBpbk, isBkk, isGerbang,
     isKoperasi, isKoperasiHead, isKoperasiFinance, isKoperasiSecretary, isKoperasiAuditor, isKoperasiStore,
     isTUKepala, isTUKepegawaian, isTUPersuratan, isTUKeuangan, isTUSarpras, isTU, isTuStaff
   ]);
@@ -760,6 +765,9 @@ export const UnifiedStaffDashboard: React.FC = () => {
     if (isToolman) {
       badges.push({ label: 'Toolman Lab', icon: Zap, color: 'bg-amber-500/25 text-amber-100 border-amber-400/30' });
     }
+    if (isPembinaEskul) {
+      badges.push({ label: 'Pembina Ekskul', icon: Compass, color: 'bg-indigo-500/25 text-indigo-100 border-indigo-400/30' });
+    }
     if (isBpbk) {
       badges.push({ label: 'Guru BK', icon: UserCheck, color: 'bg-emerald-500/25 text-emerald-100 border-emerald-400/30' });
     }
@@ -806,7 +814,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
   }, [
     isKepsek, isWaliKelas, waliKelasNama, isPembimbingPkl, isFasilitatorP5Actual, p5ProjectCount,
     isKoperasi, isKoperasiHead, isKoperasiFinance, isKoperasiSecretary, isKoperasiAuditor, isKoperasiStore,
-    isKurikulum, isKesiswaan, isSarpras, isHubin, isKaprog, isKabeng, isToolman, isBpbk, isBkk,
+    isKurikulum, isKesiswaan, isPembinaEskul, isSarpras, isHubin, isKaprog, isKabeng, isToolman, isBpbk, isBkk,
     isGerbang, isTUKepala, isTUKepegawaian, isTUPersuratan, isTUKeuangan, isTUSarpras, isTU,
     jabatan, isTuStaff,
   ]);
@@ -987,6 +995,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
       });
     }
 
+    // 4.10 Ekstrakurikuler (Pembina Ekskul & Kesiswaan)
+    if ((isPembinaEskul || isKesiswaan || (isAdminRole && !isKepsek) || can('kesiswaan.view') || can('kesiswaan.manage')) && !isKepsek) {
+      list.push({ 
+        id: 'ekskul', 
+        label: 'Dashboard Ekstrakurikuler', 
+        icon: Compass, 
+      });
+    }
+
     // 5. Fasilitator P5 (Khusus Guru Fasilitator Projek P5)
     if (isFasilitatorP5Actual && !isKepsek) {
       list.push({ id: 'p5_projek', label: 'Dashboard P5', icon: Sparkles });
@@ -1049,6 +1066,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isBkk,
     isToolman,
     isKabeng,
+    isPembinaEskul,
   ]);
 
   // Normalisasi tab aktif jika tab di URL tidak termasuk dalam daftar kapabilitas user
@@ -1637,6 +1655,29 @@ export const UnifiedStaffDashboard: React.FC = () => {
               </div>
             }>
               <ToolmanDashboard user={user} />
+            </Suspense>
+          </div>
+        )}
+
+        {/* 🧭 TAB EKSKUL: DASHBOARD PEMBINA EKSTRAKURIKULER */}
+        {visitedTabs.has('ekskul') && (
+          <div 
+            key="tab-ekskul"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'ekskul'}
+            className={cn("w-full min-w-0", activeTab === 'ekskul' ? "block" : "hidden")}
+          >
+            <Suspense fallback={
+              <div className="w-full space-y-4 py-4">
+                <div className="h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="h-24 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                  ))}
+                </div>
+              </div>
+            }>
+              <EkskulDashboard user={user} />
             </Suspense>
           </div>
         )}
