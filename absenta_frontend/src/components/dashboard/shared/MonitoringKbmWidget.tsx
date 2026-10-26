@@ -451,10 +451,10 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
               <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <h3 className="text-xs font-black uppercase tracking-[0.18em] text-slate-700 dark:text-slate-300">
+              <h3 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200">
                 Monitoring KBM — Live Hari Ini
               </h3>
-              <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-400/30">
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-400/30">
                 Live
               </span>
             </div>
@@ -472,112 +472,112 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-            <Card className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-5 sm:p-6 flex flex-col justify-between min-h-[160px] hover:shadow-md transition-all">
-              <div className="flex items-start justify-between">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+            <Card className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xs p-3 sm:p-4 flex flex-col justify-between min-h-[96px] sm:min-h-[136px] hover:shadow-sm transition-all">
+              <div className="flex items-start justify-between gap-1.5">
                 <div>
-                  <span className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+                  <span className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400">
                     Sesi Aktif
                   </span>
-                  <h4 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-2 leading-none">
-                    {stats.live} <span className="text-sm font-bold text-slate-500 dark:text-slate-400">Kelas Live</span>
+                  <h4 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1 leading-none">
+                    {stats.live} <span className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">Live</span>
                   </h4>
                 </div>
-                <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-2xl">
-                  <Activity size={20} className={cn(stats.live > 0 && "animate-pulse")} />
+                <div className="p-2 sm:p-2.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-xl shrink-0">
+                  <Activity size={16} className={cn(stats.live > 0 && "animate-pulse")} />
                 </div>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80">
-                {stats.finished} sesi selesai dari {stats.total} total jadwal hari ini
+              <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-medium mt-2 pt-1.5 border-t border-slate-100 dark:border-slate-800/80 truncate">
+                {stats.finished} dari {stats.total} Selesai
               </p>
             </Card>
 
             <Card className={cn(
-              "rounded-2xl border shadow-sm p-5 sm:p-6 flex flex-col justify-between min-h-[160px] hover:shadow-md transition-all",
+              "rounded-2xl border shadow-xs p-3 sm:p-4 flex flex-col justify-between min-h-[96px] sm:min-h-[136px] hover:shadow-sm transition-all",
               stats.teacherNotArrived > 0
                 ? "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-800/60"
                 : "bg-white dark:bg-slate-900/60 border-slate-100 dark:border-slate-800"
             )}>
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between gap-1.5">
                 <div>
-                  <span className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+                  <span className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400">
                     Belum Masuk
                   </span>
-                  <h4 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-2 leading-none">
-                    {stats.teacherNotArrived} <span className="text-sm font-bold text-slate-500 dark:text-slate-400">Sesi</span>
+                  <h4 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1 leading-none">
+                    {stats.teacherNotArrived} <span className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">Sesi</span>
                   </h4>
                 </div>
                 <div className={cn(
-                  "p-3 rounded-2xl",
+                  "p-2 sm:p-2.5 rounded-xl shrink-0",
                   stats.teacherNotArrived > 0
                     ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
                     : "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400"
                 )}>
                   {stats.teacherNotArrived > 0 ? (
-                    <Clock size={20} className="animate-pulse" />
+                    <Clock size={16} className="animate-pulse" />
                   ) : (
-                    <CheckCircle2 size={20} />
+                    <CheckCircle2 size={16} />
                   )}
                 </div>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80">
+              <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-medium mt-2 pt-1.5 border-t border-slate-100 dark:border-slate-800/80 truncate">
                 {stats.teacherNotArrived > 0
-                  ? 'Menunggu guru tap masuk / buka kelas'
-                  : 'Semua guru KBM aktif telah masuk kelas'}
+                  ? 'Menunggu Guru Masuk'
+                  : 'Semua Guru Masuk'}
               </p>
             </Card>
 
             <Card className={cn(
-              "rounded-2xl border shadow-sm p-5 sm:p-6 flex flex-col justify-between min-h-[160px] hover:shadow-md transition-all",
+              "rounded-2xl border shadow-xs p-3 sm:p-4 flex flex-col justify-between min-h-[96px] sm:min-h-[136px] hover:shadow-sm transition-all",
               stats.teacherAlpa > 0
                 ? "bg-rose-50/50 dark:bg-rose-950/20 border-rose-200/80 dark:border-rose-800/60"
                 : "bg-white dark:bg-slate-900/60 border-slate-100 dark:border-slate-800"
             )}>
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between gap-1.5">
                 <div>
-                  <span className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+                  <span className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400">
                     Kelas Kosong
                   </span>
-                  <h4 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-2 leading-none">
-                    {stats.teacherAlpa} <span className="text-sm font-bold text-slate-500 dark:text-slate-400">Sesi</span>
+                  <h4 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1 leading-none">
+                    {stats.teacherAlpa} <span className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">Sesi</span>
                   </h4>
                 </div>
                 <div className={cn(
-                  "p-3 rounded-2xl",
+                  "p-2 sm:p-2.5 rounded-xl shrink-0",
                   stats.teacherAlpa > 0
                     ? "bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400"
                     : "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400"
                 )}>
                   {stats.teacherAlpa > 0 ? (
-                    <ShieldAlert size={20} className="animate-bounce" />
+                    <ShieldAlert size={16} className="animate-bounce" />
                   ) : (
-                    <CheckCircle2 size={20} />
+                    <CheckCircle2 size={16} />
                   )}
                 </div>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80">
+              <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-medium mt-2 pt-1.5 border-t border-slate-100 dark:border-slate-800/80 truncate">
                 {stats.teacherAlpa > 0
-                  ? 'Memerlukan penugasan Guru Inval di Meja Piket'
-                  : 'Semua kelas terisi guru / tertangani dengan baik'}
+                  ? 'Perlu Inval Piket'
+                  : 'Semua Kelas Tertangani'}
               </p>
             </Card>
 
-            <Card className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-5 sm:p-6 flex flex-col justify-between min-h-[160px] hover:shadow-md transition-all">
-              <div className="flex items-start justify-between">
+            <Card className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xs p-3 sm:p-4 flex flex-col justify-between min-h-[96px] sm:min-h-[136px] hover:shadow-sm transition-all">
+              <div className="flex items-start justify-between gap-1.5">
                 <div>
-                  <span className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+                  <span className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400">
                     Jurnal Materi
                   </span>
-                  <h4 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-2 leading-none">
-                    {journalPct}% <span className="text-sm font-bold text-slate-500 dark:text-slate-400">Terisi</span>
+                  <h4 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1 leading-none">
+                    {journalPct}% <span className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">Terisi</span>
                   </h4>
                 </div>
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl">
-                  <BookOpen size={20} />
+                <div className="p-2 sm:p-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl shrink-0">
+                  <BookOpen size={16} />
                 </div>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80">
-                {stats.withJournal} jurnal materi KBM mandiri telah diinput guru
+              <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-medium mt-2 pt-1.5 border-t border-slate-100 dark:border-slate-800/80 truncate">
+                {stats.withJournal} Jurnal Terinput
               </p>
             </Card>
           </div>
