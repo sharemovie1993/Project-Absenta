@@ -310,7 +310,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         label: 'Dashboard Kurikulum',
         shortLabel: 'Dashboard Kurikulum',
         icon: BookOpen,
-        targetPath: '/kurikulum/jadwal',
+        targetPath: '/dashboard?tab=kurikulum',
         color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
       });
     }
@@ -459,7 +459,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       case 'tu':
         return getTuTabs(tuTabMeta, currentSubtab, isPendidik);
       case 'kurikulum':
-        return getKurikulumTabs();
+        return getKurikulumTabs(currentSubtab);
       case 'kesiswaan':
         return getKesiswaanTabs();
       case 'hubin':

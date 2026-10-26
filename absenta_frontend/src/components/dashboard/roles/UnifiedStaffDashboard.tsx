@@ -79,6 +79,8 @@ import { StaffManualInputTab } from '../staff/tabs/StaffManualInputTab';
 import { StaffPembimbingPklTab } from '../staff/tabs/StaffPembimbingPklTab';
 // Kaprog Dashboard — clean 3-zone design (replaced StaffKaprogTab)
 const KaprogDashboard = React.lazy(() => import('./KaprogDashboard').then(m => ({ default: m.KaprogDashboard })));
+// Kurikulum Dashboard — clean role-patterned architecture
+const KurikulumDashboard = React.lazy(() => import('./KurikulumDashboard').then(m => ({ default: m.KurikulumDashboard })));
 import { StaffPortalTab } from '../staff/tabs/StaffPortalTab';
 
 // Modular Dashboards are accessed via Google-style App Launcher & Portal tab
@@ -897,6 +899,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
       });
     }
 
+    // 4.2 Kurikulum (Khusus Waka / Staf Kurikulum / Admin)
+    if ((isKurikulum || (isAdminRole && !isKepsek) || can('curriculum.view') || can('curriculum.manage')) && !isKepsek) {
+      list.push({ 
+        id: 'kurikulum', 
+        label: 'Dashboard Kurikulum', 
+        icon: BookOpen, 
+      });
+    }
+
     // 5. Fasilitator P5 (Khusus Guru Fasilitator Projek P5)
     if (isFasilitatorP5Actual && !isKepsek) {
       list.push({ id: 'p5_projek', label: 'Dashboard P5', icon: Sparkles });
@@ -1351,6 +1362,29 @@ export const UnifiedStaffDashboard: React.FC = () => {
                 user={user}
                 kaprogJurusan={kaprogJurusan}
               />
+            </Suspense>
+          </div>
+        )}
+
+        {/* 📚 TAB KURIKULUM: DASHBOARD KURIKULUM */}
+        {visitedTabs.has('kurikulum') && (
+          <div 
+            key="tab-kurikulum"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'kurikulum'}
+            className={cn("w-full min-w-0", activeTab === 'kurikulum' ? "block" : "hidden")}
+          >
+            <Suspense fallback={
+              <div className="w-full space-y-4 py-4">
+                <div className="h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="h-24 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                  ))}
+                </div>
+              </div>
+            }>
+              <KurikulumDashboard user={user} />
             </Suspense>
           </div>
         )}

@@ -7,6 +7,7 @@ import {
   ShoppingCart, 
   User, 
   Calendar, 
+  Clock,
   Home, 
   HeartPulse, 
   HeartHandshake, 
@@ -419,7 +420,7 @@ export function getTuTabs(tuTabMeta: any, currentSubtab: string | null, isPendid
   ];
 }
 
-export function getKurikulumTabs(): MobileBottomTabItem[] {
+export function getKurikulumTabs(currentSubtab?: string | null): MobileBottomTabItem[] {
   return [
     {
       id: 'portal_back',
@@ -430,36 +431,44 @@ export function getKurikulumTabs(): MobileBottomTabItem[] {
       isActive: () => false,
     },
     {
+      id: 'kuri_ringkasan',
+      label: 'Beranda Kurikulum',
+      shortLabel: 'Beranda',
+      icon: Home,
+      targetPath: '/dashboard?tab=kurikulum&subtab=ringkasan',
+      isActive: (p, t) => t === 'kurikulum' && (!currentSubtab || currentSubtab === 'ringkasan'),
+    },
+    {
       id: 'kuri_jadwal',
       label: 'Jadwal Pelajaran',
       shortLabel: 'Jadwal KBM',
       icon: Calendar,
-      targetPath: '/kurikulum/jadwal',
-      isActive: (p) => p.startsWith('/kurikulum/jadwal'),
+      targetPath: '/dashboard?tab=kurikulum&subtab=jadwal',
+      isActive: (p, t) => (t === 'kurikulum' && currentSubtab === 'jadwal') || p.startsWith('/kurikulum/jadwal'),
     },
     {
       id: 'kuri_plotting',
       label: 'Plotting Guru & Mapel',
       shortLabel: 'Plotting',
       icon: Users,
-      targetPath: '/kurikulum/guru-mapel',
-      isActive: (p) => p.startsWith('/kurikulum/guru-mapel'),
+      targetPath: '/dashboard?tab=kurikulum&subtab=guru_mapel',
+      isActive: (p, t) => (t === 'kurikulum' && currentSubtab === 'guru_mapel') || p.startsWith('/kurikulum/guru-mapel'),
     },
     {
       id: 'kuri_perangkat',
       label: 'Perangkat & Modul Ajar',
       shortLabel: 'Perangkat',
       icon: FileText,
-      targetPath: '/kurikulum/perangkat',
-      isActive: (p) => p.startsWith('/kurikulum/perangkat'),
+      targetPath: '/dashboard?tab=kurikulum&subtab=perangkat',
+      isActive: (p, t) => (t === 'kurikulum' && currentSubtab === 'perangkat') || p.startsWith('/kurikulum/perangkat'),
     },
     {
       id: 'kuri_supervisi',
       label: 'Supervisi Akademik',
       shortLabel: 'Supervisi',
       icon: CheckCircle2,
-      targetPath: '/kurikulum/supervisi',
-      isActive: (p) => p.startsWith('/kurikulum/supervisi'),
+      targetPath: '/dashboard?tab=kurikulum&subtab=supervisi',
+      isActive: (p, t) => (t === 'kurikulum' && currentSubtab === 'supervisi') || p.startsWith('/kurikulum/supervisi'),
     },
     {
       id: 'kuri_menu',
@@ -467,15 +476,16 @@ export function getKurikulumTabs(): MobileBottomTabItem[] {
       shortLabel: 'Menu Kuri',
       icon: LayoutGrid,
       badge: 'KURI',
-      targetPath: '/kurikulum/jadwal',
-      isActive: (p) => p.startsWith('/kurikulum') && !['/kurikulum/jadwal', '/kurikulum/guru-mapel', '/kurikulum/perangkat', '/kurikulum/supervisi'].includes(p),
+      targetPath: '/dashboard?tab=kurikulum',
+      isActive: (p, t) => t === 'kurikulum' && ['struktur', 'piket', 'rapor'].includes(currentSubtab || ''),
       children: [
-        { id: 'jadwal', label: 'Jadwal KBM', icon: Calendar, targetPath: '/kurikulum/jadwal', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
-        { id: 'guru-mapel', label: 'Guru & Mapel', icon: Users, targetPath: '/kurikulum/guru-mapel', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
-        { id: 'perangkat', label: 'Perangkat Ajar', icon: FileText, targetPath: '/kurikulum/perangkat', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
-        { id: 'supervisi', label: 'Supervisi KBM', icon: CheckCircle2, targetPath: '/kurikulum/supervisi', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
-        { id: 'kalender', label: 'Kalender Pendidikan', icon: CalendarCheck, targetPath: '/kurikulum/kalender', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
-        { id: 'kosp', label: 'KOSP & Kurikulum', icon: BookOpen, targetPath: '/kurikulum/kosp', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
+        { id: 'struktur', label: 'Struktur Kurikulum', icon: Layers, targetPath: '/dashboard?tab=kurikulum&subtab=struktur', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
+        { id: 'piket', label: 'Jadwal Piket', icon: Clock, targetPath: '/dashboard?tab=kurikulum&subtab=piket', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
+        { id: 'rapor', label: 'Pleno Rapor', icon: Award, targetPath: '/dashboard?tab=kurikulum&subtab=rapor', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
+        { id: 'jadwal-page', label: 'Jadwal Builder', icon: Calendar, targetPath: '/kurikulum/jadwal', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
+        { id: 'guru-mapel-page', label: 'Kelola Guru Mapel', icon: Users, targetPath: '/kurikulum/guru-mapel', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
+        { id: 'perangkat-page', label: 'Kelola Perangkat', icon: FileText, targetPath: '/kurikulum/perangkat', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
+        { id: 'supervisi-page', label: 'Kelola Supervisi', icon: CheckCircle2, targetPath: '/kurikulum/supervisi', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
       ],
     },
   ];
