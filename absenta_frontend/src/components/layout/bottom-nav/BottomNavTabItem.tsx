@@ -34,7 +34,7 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
       type="button"
       onClick={() => onClick(item)}
       className={cn(
-        'flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-xl transition-all duration-150 select-none flex-1 cursor-pointer relative min-w-0',
+        'flex flex-col items-center justify-start gap-0.5 py-1 px-0.5 rounded-xl transition-all duration-150 select-none flex-1 cursor-pointer relative min-w-0 min-h-[48px]',
         isHighlighted
           ? theme.activeTextClass
           : theme.inactiveTextClass
@@ -85,7 +85,7 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
           <span className={cn("absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full animate-pulse", theme.dotColorClass)} />
         )}
       </div>
-      <span className="truncate max-w-[58px] text-center tracking-tight text-[9.5px] sm:text-[10px] leading-tight">
+      <span className="max-w-[62px] text-center tracking-tight text-[8.5px] sm:text-[9.5px] leading-[1.1] line-clamp-2 break-words">
         {item.shortLabel}
       </span>
     </button>

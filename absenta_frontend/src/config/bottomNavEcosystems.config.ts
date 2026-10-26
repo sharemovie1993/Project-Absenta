@@ -40,6 +40,7 @@ import {
 export interface MobileBottomSubItem {
   id: string;
   label: string;
+  shortLabel?: string;
   icon: LucideIcon | any;
   targetPath: string;
   badge?: string | number | null;

@@ -283,7 +283,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     if (isWaliKelas || isAdminRole) {
       list.push({
         id: 'dash-walas',
-        label: 'Walas',
+        label: 'Dashboard Walas',
+        shortLabel: 'Dashboard Walas',
         icon: Users,
         targetPath: '/dashboard?tab=binaan&subtab=ringkasan',
         color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400',
@@ -487,17 +488,26 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         ];
 
         if (teacherDashboards.length > 0) {
+          const isDashActive = (targetPath: string, p: string, t: string | null) => {
+            if (targetPath.startsWith('/dashboard')) {
+              const match = targetPath.match(/[?&]tab=([^&]+)/);
+              const targetTab = match ? match[1] : null;
+              return (p === '/dashboard' || p === '/dashboard/') && Boolean(t && targetTab && t === targetTab);
+            }
+            const basePath = targetPath.split('?')[0];
+            return p.startsWith(basePath);
+          };
+
           if (teacherDashboards.length <= 3) {
             teacherDashboards.forEach((dash) => {
               baseTabs.push({
                 id: dash.id,
                 label: dash.label,
-                shortLabel: dash.label,
+                shortLabel: dash.shortLabel || dash.label,
                 icon: dash.icon,
                 targetPath: dash.targetPath,
                 badge: dash.badge ? String(dash.badge) : undefined,
-                isActive: (p, t) =>
-                  dash.targetPath.includes(p) || (Boolean(t) && dash.targetPath.includes(t || '')),
+                isActive: (p, t) => isDashActive(dash.targetPath, p, t),
               });
             });
           } else {
@@ -508,12 +518,11 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
               baseTabs.push({
                 id: dash.id,
                 label: dash.label,
-                shortLabel: dash.label,
+                shortLabel: dash.shortLabel || dash.label,
                 icon: dash.icon,
                 targetPath: dash.targetPath,
                 badge: dash.badge ? String(dash.badge) : undefined,
-                isActive: (p, t) =>
-                  dash.targetPath.includes(p) || (Boolean(t) && dash.targetPath.includes(t || '')),
+                isActive: (p, t) => isDashActive(dash.targetPath, p, t),
               });
             });
 
