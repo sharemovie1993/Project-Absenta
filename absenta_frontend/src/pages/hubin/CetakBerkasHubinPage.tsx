@@ -27,7 +27,11 @@ interface PklPenempatanItem {
   };
 }
 
-export const CetakBerkasHubinPage: React.FC = React.memo(() => {
+export interface CetakBerkasHubinPageProps {
+  hideLayout?: boolean;
+}
+
+export const CetakBerkasHubinPage: React.FC<CetakBerkasHubinPageProps> = React.memo(({ hideLayout = false }) => {
   const docOptions = useMemo<DocOption[]>(() => [
     { value: 'pkl_intro', label: '1. SURAT PENGANTAR PRAKTIK KERJA LAPANGAN (PKL)', requireClass: true },
     { value: 'pkl_sertifikat', label: '2. SERTIFIKAT & DAFTAR NILAI PKL (DEPAN & BELAKANG)', requireClass: true },
@@ -158,6 +162,7 @@ export const CetakBerkasHubinPage: React.FC = React.memo(() => {
             breadcrumbs={breadcrumbs}
             instruction={instruction}
             showChecklist={false}
+            hideHeaderAndBreadcrumbs={hideLayout}
             defaultPrintType="pkl_intro"
             docFormRenderer={renderDocForm}
             pdfGenerator={handleGeneratePdf}

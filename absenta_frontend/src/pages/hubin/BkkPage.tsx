@@ -7,10 +7,22 @@ import { Briefcase } from 'lucide-react';
 
 const BkkSection = lazy(() => import('@/components/hubin/bkk/BkkSection').then(m => ({ default: m.BkkSection })));
 
-export const BkkPage: React.FC = React.memo(() => {
+export interface BkkPageProps {
+  hideLayout?: boolean;
+}
+
+export const BkkPage: React.FC<BkkPageProps> = React.memo(({ hideLayout = false }) => {
   const { user } = useAuthStore();
   const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name;
   const isStudent = useMemo(() => !!user?.isStudent || roleName === 'SISWA', [user, roleName]);
+
+  if (hideLayout) {
+    return (
+      <Suspense fallback={<div className="flex justify-center py-12"><Loader size="lg" /></div>}>
+        <BkkSection />
+      </Suspense>
+    );
+  }
 
   const title = useMemo(
     () => isStudent ? "Lowongan Kerja (BKK)" : "BKK & Lowongan Kerja",

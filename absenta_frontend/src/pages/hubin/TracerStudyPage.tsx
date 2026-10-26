@@ -8,10 +8,22 @@ import { Users } from 'lucide-react';
 
 const TracerStudySection = lazy(() => import('./components/TracerStudySection').then(m => ({ default: m.TracerStudySection })));
 
-export const TracerStudyPage: React.FC = React.memo(() => {
+export interface TracerStudyPageProps {
+  hideLayout?: boolean;
+}
+
+export const TracerStudyPage: React.FC<TracerStudyPageProps> = React.memo(({ hideLayout = false }) => {
   const { user } = useAuthStore();
   const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name;
   const isStudent = useMemo(() => !!user?.isStudent || roleName === 'SISWA', [user, roleName]);
+
+  if (hideLayout) {
+    return (
+      <Suspense fallback={<div className="text-center py-20 text-xs text-slate-400">Memuat modul Tracer Study...</div>}>
+        <TracerStudySection />
+      </Suspense>
+    );
+  }
 
   const title = useMemo(
     () => isStudent ? "Tracer Study Alumni" : "Tracer Study (Alumni)",

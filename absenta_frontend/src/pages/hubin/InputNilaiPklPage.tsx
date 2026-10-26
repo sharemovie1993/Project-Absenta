@@ -4,8 +4,18 @@ import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoun
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
 import { NilaiPklView, type UniversalNilaiPklViewProps } from '../../components/hubin/nilai-pkl/NilaiPklView';
 
-export const InputNilaiPklPage: React.FC<UniversalNilaiPklViewProps> = React.memo((props) => {
-  const { layoutMode = 'hubin' } = props;
+export interface InputNilaiPklPageProps extends UniversalNilaiPklViewProps {
+  hideLayout?: boolean;
+}
+
+export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo((props) => {
+  const { layoutMode = 'hubin', hideLayout = false } = props;
+
+  const content = <NilaiPklView {...props} isModal={false} hideHeaderStats={false} />;
+
+  if (hideLayout) {
+    return content;
+  }
 
   const breadcrumbs = useMemo(() => {
     if (layoutMode === 'rapor') {

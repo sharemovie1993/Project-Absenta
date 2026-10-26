@@ -85,6 +85,8 @@ const KurikulumDashboard = React.lazy(() => import('./KurikulumDashboard').then(
 const KesiswaanDashboard = React.lazy(() => import('./KesiswaanDashboard').then(m => ({ default: m.KesiswaanDashboard })));
 // Sarpras Dashboard — clean role-patterned architecture
 const SarprasDashboard = React.lazy(() => import('./SarprasDashboard').then(m => ({ default: m.SarprasDashboard })));
+// Hubin Dashboard — clean role-patterned architecture
+const HubinDashboard = React.lazy(() => import('./HubinDashboard').then(m => ({ default: m.HubinDashboard })));
 import { StaffPortalTab } from '../staff/tabs/StaffPortalTab';
 
 // Modular Dashboards are accessed via Google-style App Launcher & Portal tab
@@ -891,7 +893,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
     // 4. Bimbingan PKL (Khusus Guru Pembimbing PKL yang bukan Waka Hubin)
     if (isPembimbingPkl && !isKepsek) {
-      list.push({ id: 'pembimbing_pkl', label: 'Dashboard Hubin', icon: Briefcase });
+      list.push({ id: 'pembimbing_pkl', label: 'Bimbingan PKL', icon: Briefcase });
     }
 
     // 4.1 Kaprog (Khusus Ketua Program Keahlian / Jurusan)
@@ -927,6 +929,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
         id: 'sarpras', 
         label: 'Dashboard Sarpras', 
         icon: Package, 
+      });
+    }
+
+    // 4.5 Hubin (Khusus Pengelola Hubin / PKL / Admin)
+    if ((isHubin || (isAdminRole && !isKepsek) || can('hubin.view') || can('hubin.manage')) && !isKepsek) {
+      list.push({ 
+        id: 'hubin', 
+        label: 'Dashboard Hubin', 
+        icon: Briefcase, 
       });
     }
 
@@ -980,6 +991,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isTU,
     tuTabMeta,
     isPiketGuru,
+    isSarpras,
+    isHubin,
   ]);
 
   // Normalisasi tab aktif jika tab di URL tidak termasuk dalam daftar kapabilitas user
@@ -1453,6 +1466,29 @@ export const UnifiedStaffDashboard: React.FC = () => {
               </div>
             }>
               <SarprasDashboard user={user} />
+            </Suspense>
+          </div>
+        )}
+
+        {/* 💼 TAB HUBIN: DASHBOARD HUBIN */}
+        {visitedTabs.has('hubin') && (
+          <div 
+            key="tab-hubin"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'hubin'}
+            className={cn("w-full min-w-0", activeTab === 'hubin' ? "block" : "hidden")}
+          >
+            <Suspense fallback={
+              <div className="w-full space-y-4 py-4">
+                <div className="h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="h-24 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                  ))}
+                </div>
+              </div>
+            }>
+              <HubinDashboard user={user} />
             </Suspense>
           </div>
         )}

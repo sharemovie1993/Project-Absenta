@@ -18,7 +18,17 @@ const instructionData = {
   ]
 };
 
-export const PenempatanPklSection: React.FC<PenempatanPklViewProps> = React.memo((props) => {
+export interface PenempatanPklPageProps extends PenempatanPklViewProps {
+  hideLayout?: boolean;
+}
+
+export const PenempatanPklSection: React.FC<PenempatanPklPageProps> = React.memo(({ hideLayout = false, ...props }) => {
+  const content = <PenempatanPklView {...props} isModal={false} hideHeaderStats={false} />;
+
+  if (hideLayout) {
+    return content;
+  }
+
   return (
     <PremiumFeatureGate
       moduleName="HUBIN"
@@ -32,7 +42,7 @@ export const PenempatanPklSection: React.FC<PenempatanPklViewProps> = React.memo
         hardeningModuleKey="hubin_penempatan_pkl"
         instruction={instructionData}
       >
-        <PenempatanPklView {...props} isModal={false} hideHeaderStats={false} />
+        {content}
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
@@ -40,7 +50,7 @@ export const PenempatanPklSection: React.FC<PenempatanPklViewProps> = React.memo
 
 PenempatanPklSection.displayName = 'PenempatanPklSection';
 
-const PenempatanPklPage = React.memo(() => <PenempatanPklSection />);
+const PenempatanPklPage = React.memo<PenempatanPklPageProps>((props) => <PenempatanPklSection {...props} />);
 PenempatanPklPage.displayName = 'PenempatanPklPage';
 
 export default PenempatanPklPage;

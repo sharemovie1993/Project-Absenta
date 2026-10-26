@@ -1,31 +1,24 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
-import { SectionCard } from '@/components/ui/SectionCard';
-import { formatDate } from '@/utils/layoutUtils';
 import { 
-  Building2, Users, ClipboardList, Briefcase, GraduationCap, 
-  Activity, AlertTriangle, ArrowRight, TrendingUp, Clock, Award, ChevronDown
+  Building2, Users, Briefcase, GraduationCap
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useTvStore } from '@/store/tvStore';
-import { TvModeToggle } from '@/components/ui/TvModeToggle';
 import { hubinApi } from '@/api/hubin.api';
-import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { WorkspaceAppLauncherCard } from '@/components/common/WorkspaceAppLauncherCard';
 import { 
-  Divider, TracerStudyUraian, TopJurusanList, RecentPklTable, 
-  TopMitraGrid, ActivityLogTimeline, HubinQuickActionsBar, PklMonitoringCycleSection,
   type HubinStats, type HubinActivity 
 } from './components/HubinDashboardComponents';
-
-const HubinTvModeLayout = React.lazy(() => import('./components/HubinTvModeLayout').then(m => ({ default: m.HubinTvModeLayout })));
-
+import { HubinDashboard as HubinDashboardComponent } from '@/components/dashboard/roles/HubinDashboard';
+import { HubinDashboardSkeleton } from '@/components/dashboard/roles/hubin/HubinDashboardSkeleton';
 import { useQuery } from '@tanstack/react-query';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { useIsMobile } from '@/hooks/useIsMobile';
+
+const HubinTvModeLayout = React.lazy(() => import('./components/HubinTvModeLayout').then(m => ({ default: m.HubinTvModeLayout })));
 
 export const HubinDashboardPage: React.FC = React.memo(() => {
   const navigate = useNavigate();
@@ -44,36 +37,9 @@ export const HubinDashboardPage: React.FC = React.memo(() => {
   }, [canViewHubinDashboard, can, navigate]);
 
   const [currentScene, setCurrentScene] = useState(0);
-  const [isStatsCollapsed, setIsStatsCollapsed] = useState(false);
 
-  const isStudent = useMemo(() => !!user?.isStudent, [user]);
-
-  const title = useMemo(
-    () => isStudent ? "Portal Hubungan Industri (HUBIN)" : "Pusat Kendali Hubungan Industri (HUBIN)",
-    [isStudent]
-  );
-
-  const description = useMemo(
-    () => isStudent
-      ? "Akses presensi PKL, bursa kerja khusus, dan kuesioner tracer study"
-      : "Kelola kemitraan industri, program PKL, BKK lowongan kerja, tracer study alumni, dan teaching factory (TEFA).",
-    [isStudent]
-  );
-
-  const handleNavigateTab = useCallback((tabId: string) => {
-    if (tabId === 'nilai' || tabId === 'nilai-pkl') {
-      navigate('/hubin/nilai-pkl');
-      return;
-    }
-    if (tabId === 'pengaturan' || tabId === 'settings') {
-      navigate('/hubin/settings');
-      return;
-    }
-    navigate(`/hubin/${tabId}`);
-  }, [navigate]);
-
-  // React Query Data Fetching (Pilar 31)
-  const { data: statsRes, isLoading: loading, error: statsErr, dataUpdatedAt } = useQuery({
+  // React Query Data Fetching for TV Mode
+  const { data: statsRes, isLoading: loading, dataUpdatedAt } = useQuery({
     queryKey: ['hubin-dashboard-stats'],
     queryFn: () => hubinApi.getStats(),
     enabled: subscription !== undefined && canViewHubinDashboard,
@@ -81,7 +47,7 @@ export const HubinDashboardPage: React.FC = React.memo(() => {
     staleTime: 30_000,
   });
 
-  const { data: actRes, isLoading: activitiesLoading } = useQuery({
+  const { data: actRes } = useQuery({
     queryKey: ['hubin-recent-activities'],
     queryFn: () => hubinApi.getRecentActivity(),
     enabled: subscription !== undefined && canViewHubinDashboard,
@@ -89,9 +55,8 @@ export const HubinDashboardPage: React.FC = React.memo(() => {
     staleTime: 30_000,
   });
 
-  const stats = statsRes?.data || null;
-  const activities = actRes?.data || [];
-  const error = statsErr ? (statsErr as Error).message : (!statsRes?.success && statsRes ? 'Gagal memuat statistik HUBIN' : null);
+  const stats = (statsRes?.data as HubinStats) || null;
+  const activities = (actRes?.data as HubinActivity[]) || [];
   const lastRefresh = useMemo(() => new Date(dataUpdatedAt || Date.now()), [dataUpdatedAt]);
 
   // TV Mode Auto Rotation
@@ -181,7 +146,7 @@ export const HubinDashboardPage: React.FC = React.memo(() => {
     );
   }
 
-  if (loading) {
+  if (loading && !stats) {
     return (
       <PremiumFeatureGate
         moduleName="HUBIN"
@@ -189,16 +154,11 @@ export const HubinDashboardPage: React.FC = React.memo(() => {
         description="Pusat kolaborasi terpadu antara sekolah dengan dunia industri."
       >
         <AcademicPageLayout 
-          title={title}
-          description={description}
           hardeningModuleKey="hubin_dashboard"
           breadcrumbs={breadcrumbs}
           instruction={instruction}
         >
-          <div className="py-20 flex flex-col items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-4" />
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Memproses Dashboard Hubin...</p>
-          </div>
+          <HubinDashboardSkeleton />
         </AcademicPageLayout>
       </PremiumFeatureGate>
     );
@@ -211,157 +171,19 @@ export const HubinDashboardPage: React.FC = React.memo(() => {
       description="Pusat kolaborasi terpadu antara sekolah dengan dunia industri, mencakup pengelolaan mitra, MoU, program PKL, BKK lowongan kerja, Tracer Study alumni, dan Teaching Factory."
     >
       <AcademicPageLayout 
-        title={title}
-        description={description}
         hardeningModuleKey="hubin_dashboard"
         breadcrumbs={breadcrumbs}
         instruction={instruction}
         topSlot={!isMobile ? <WorkspaceAppLauncherCard workspaceId="HUBIN_WORKSPACE" /> : undefined}
-        {...{ ["tool" + "bar"]: !isMobile ? <TvModeToggle /> : undefined }}
       >
-        <SectionCard fullWidth className="flex flex-col w-full max-w-full min-w-0 border-0 bg-transparent shadow-none p-0">
-          <div className="space-y-5 sm:space-y-6 lg:space-y-8 pb-28 lg:pb-8 w-full max-w-full min-w-0">
-            {/* MoU Expiring Alert Banner */}
-            {stats && stats.mouExpiringCount > 0 && (
-              <div className="flex items-center justify-between p-3.5 sm:p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-2xl w-full max-w-full min-w-0">
-                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                  <div className="p-2 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-xl shrink-0">
-                    <AlertTriangle size={18} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">Perhatian: MoU Rekan Industri Expiring</p>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 hidden sm:block">Ada {stats.mouExpiringCount} mitra industri dengan MoU yang akan berakhir dalam 30 hari kedepan.</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => handleNavigateTab('mitra')} 
-                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors active:scale-[0.97] cursor-pointer shrink-0 ml-2"
-                >
-                  <span className="hidden sm:inline">Tinjau MoU</span>
-                  <span className="sm:hidden">Tinjau</span>
-                  <ArrowRight size={10} />
-                </button>
-              </div>
-            )}
-
-            {/* Pusat Pintasan Cepat Akses Modul Hubin Baru */}
-            <HubinQuickActionsBar onNavigateTab={handleNavigateTab} stats={stats} />
-
-            {/* Ringkasan Statistik & KPI Kemitraan (Collapsible & Compact di Layar Ponsel) */}
-            <div className="w-full max-w-full min-w-0 space-y-2">
-              <div className="flex items-center justify-between sm:hidden px-1">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  Ringkasan Kemitraan & Siswa
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setIsStatsCollapsed(prev => !prev)}
-                  className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 cursor-pointer"
-                >
-                  <span>{isStatsCollapsed ? 'Tampilkan' : 'Sembunyikan'}</span>
-                  <ChevronDown size={12} className={cn("transition-transform duration-200", !isStatsCollapsed && "rotate-180")} />
-                </button>
-              </div>
-
-              {!isStatsCollapsed && (
-                <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 lg:gap-6 w-full max-w-full min-w-0">
-                  {statCards?.map((card) => (
-                    <div key={card.label} className="w-full min-w-0 cursor-pointer" onClick={() => {
-                      if (card.label.includes('Mitra')) handleNavigateTab('mitra');
-                      if (card.label.includes('PKL') || card.label.includes('Selesai')) handleNavigateTab('penempatan');
-                      if (card.label.includes('Logbook')) handleNavigateTab('absensi');
-                      if (card.label.includes('BKK')) handleNavigateTab('bkk');
-                    }}>
-                      <AnalyticsCard
-                        title={card.label}
-                        value={card.value}
-                        isLoading={loading}
-                        icon={<card.icon size={20} />}
-                        gradient={
-                          card.color === 'indigo'
-                            ? 'from-indigo-500 to-indigo-600'
-                            : card.color === 'emerald'
-                            ? 'from-emerald-500 to-emerald-600'
-                            : card.color === 'purple'
-                            ? 'from-purple-500 to-indigo-600'
-                            : card.color === 'amber'
-                            ? 'from-amber-500 to-orange-500'
-                            : 'from-sky-500 to-sky-600'
-                        }
-                        subtitle={card.desc}
-                        variant="compact-premium"
-                        mobileCompact={true}
-                        className="w-full min-w-0"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Siklus Pelaksanaan & Evaluasi PKL (Presensi & Penilaian Terpadu) */}
-            <PklMonitoringCycleSection stats={stats} onNavigateTab={handleNavigateTab} />
-
-            {/* Serapan Tracer Study & Top Program Keahlian */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 w-full max-w-full min-w-0">
-              <AnalyticsCard
-                title="Coverage Tracer Study"
-                value={`${stats?.tracerCoverage?.toFixed(1) || 0}%`}
-                icon={<GraduationCap />}
-                gradient="from-indigo-500 to-indigo-600"
-                subtitle={`${stats?.totalAlumniTraced || 0} alumni terlacak`}
-                variant="compact-premium"
-                mobileCompact={true}
-                className="w-full min-w-0"
-              />
-              <AnalyticsCard
-                title="Serapan Kerja Alumni"
-                value={`${stats?.employmentRate?.toFixed(1) || 0}%`}
-                icon={<TrendingUp />}
-                gradient="from-emerald-500 to-emerald-600"
-                subtitle="Bekerja & Wirausaha"
-                variant="compact-premium"
-                mobileCompact={true}
-                className="w-full min-w-0"
-              />
-              <AnalyticsCard
-                title="Rekrutmen Sukses BKK"
-                value={`${stats?.totalRecruitmentSuccess || 0} siswa`}
-                icon={<Award />}
-                gradient="from-sky-500 to-sky-600"
-                subtitle="Diterima bekerja di industri"
-                variant="compact-premium"
-                mobileCompact={true}
-                className="w-full min-w-0"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full max-w-full min-w-0">
-              <div className="lg:col-span-1 min-w-0">
-                <TracerStudyUraian stats={stats} onNavigateTab={handleNavigateTab} />
-              </div>
-              <div className="lg:col-span-2 min-w-0">
-                <TopJurusanList stats={stats} />
-              </div>
-            </div>
-
-            {/* Aktivitas Penempatan Siswa PKL & Partner Teratas */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full max-w-full min-w-0">
-              <div className="lg:col-span-2 min-w-0">
-                <RecentPklTable stats={stats} onNavigateTab={handleNavigateTab} />
-              </div>
-              <div className="lg:col-span-1 min-w-0">
-                <TopMitraGrid stats={stats} />
-              </div>
-            </div>
-
-            {/* Log Aktivitas Hubin Terbaru (Audit Trail) */}
-            <ActivityLogTimeline activities={activities} activitiesLoading={activitiesLoading} />
-          </div>
-        </SectionCard>
+        <div className="pt-1">
+          <HubinDashboardComponent />
+        </div>
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
 });
+
+HubinDashboardPage.displayName = 'HubinDashboardPage';
 
 export default HubinDashboardPage;
