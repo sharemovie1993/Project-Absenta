@@ -21,8 +21,9 @@ export interface SiswaAkademikPickerItem {
   kelas_id: string;
 }
 
-export async function getAnggotaKegiatanEskul(jenisKegiatanId: string): Promise<AnggotaKegiatanEskulItem[]> {
-  const res = await requestWithFallback<{ success: boolean; data: AnggotaKegiatanEskulItem[] }>('get', `/attendance/anggota-kegiatan-eskul/${jenisKegiatanId}`);
+export async function getAnggotaKegiatanEskul(jenisKegiatanId: string = 'ALL'): Promise<AnggotaKegiatanEskulItem[]> {
+  const targetId = jenisKegiatanId || 'ALL';
+  const res = await requestWithFallback<{ success: boolean; data: AnggotaKegiatanEskulItem[] }>('get', `/attendance/anggota-kegiatan-eskul/${targetId}`);
   return res.data ?? [];
 }
 

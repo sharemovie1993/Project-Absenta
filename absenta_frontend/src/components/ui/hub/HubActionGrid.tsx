@@ -27,20 +27,22 @@ export interface HubActionGridProps {
  * Mendukung mode 'slider' untuk tampilan 1-baris scrollable dengan peeking affordance & dynamic scroll indicator.
  */
 export const HubActionGrid: React.FC<HubActionGridProps> = React.memo(({
-  items,
+  items = [],
   columns = 4,
   variant = 'grid',
   className,
 }) => {
+  const safeItems = Array.isArray(items) ? items : [];
+
   if (variant === 'slider') {
-    return <HubActionSlider items={items} className={className} />;
+    return <HubActionSlider items={safeItems} className={className} />;
   }
 
   const colClass = columns === 5 ? 'grid-cols-5' : 'grid-cols-4';
 
   return (
     <div className={cn('grid w-full gap-1 sm:gap-2', colClass, className)}>
-      {items.map((item) => {
+      {safeItems.map((item) => {
         const IconComponent = item.icon;
         const isInteractive = Boolean(item.onClick);
 

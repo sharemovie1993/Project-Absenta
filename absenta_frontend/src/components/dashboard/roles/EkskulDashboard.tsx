@@ -110,17 +110,17 @@ export const EkskulDashboard: React.FC<EkskulDashboardProps> = () => {
   // Data Queries
   const { data: eskulListRes, refetch: refetchEskulList } = useQuery({
     queryKey: ['jenis-kegiatan-master-all'],
-    queryFn: jenisKegiatanMasterApi.getAll,
+    queryFn: () => jenisKegiatanMasterApi.getAll(),
   });
 
   const { data: anggotaRes, refetch: refetchAnggota } = useQuery({
     queryKey: ['anggota-kegiatan-eskul-summary'],
-    queryFn: () => getAnggotaKegiatanEskul(),
+    queryFn: () => getAnggotaKegiatanEskul('ALL'),
   });
 
   const { data: pembinaRes, refetch: refetchPembina } = useQuery({
     queryKey: ['pembina-kegiatan-eskul-summary'],
-    queryFn: () => getPembinaKegiatanEskul(),
+    queryFn: () => getPembinaKegiatanEskul('ALL'),
   });
 
   const { data: jadwalRes, refetch: refetchJadwal } = useQuery({
@@ -147,10 +147,26 @@ export const EkskulDashboard: React.FC<EkskulDashboardProps> = () => {
 
   // Compute Stats
   const stats: EkskulStats = useMemo(() => {
-    const rawEskul = eskulListRes?.data || [];
-    const rawAnggota = anggotaRes?.data || [];
-    const rawPembina = pembinaRes?.data || [];
-    const rawJadwal = jadwalRes?.data || [];
+    const rawEskul = Array.isArray(eskulListRes?.data)
+      ? eskulListRes.data
+      : Array.isArray(eskulListRes)
+        ? (eskulListRes as any)
+        : [];
+    const rawAnggota = Array.isArray(anggotaRes)
+      ? anggotaRes
+      : Array.isArray((anggotaRes as any)?.data)
+        ? (anggotaRes as any).data
+        : [];
+    const rawPembina = Array.isArray(pembinaRes)
+      ? pembinaRes
+      : Array.isArray((pembinaRes as any)?.data)
+        ? (pembinaRes as any).data
+        : [];
+    const rawJadwal = Array.isArray(jadwalRes?.data)
+      ? jadwalRes.data
+      : Array.isArray(jadwalRes)
+        ? (jadwalRes as any)
+        : [];
 
     const kegiatanAktif: EkskulItemSummary[] = rawEskul.map((e: any) => {
       const anggotaCount = rawAnggota.filter((a: any) => a.jenis_kegiatan_id === e.id).length;

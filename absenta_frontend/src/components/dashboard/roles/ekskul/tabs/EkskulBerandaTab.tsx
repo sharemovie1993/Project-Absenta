@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Users,
   Compass,
@@ -12,7 +12,7 @@ import {
   Printer,
   Plus,
 } from 'lucide-react';
-import { HubCard, HubBentoGrid, HubActionGrid, type HubActionItem } from '@/components/ui/hub';
+import { HubBentoGrid, HubActionGrid, type HubBentoCell, type HubActionItem } from '@/components/ui/hub';
 import { cn } from '@/lib/utils';
 import type { EkskulTabId, EkskulStats } from '../types';
 
@@ -29,77 +29,101 @@ export const EkskulBerandaTab: React.FC<EkskulBerandaTabProps> = ({
   semesterNama,
   onSelectTab,
 }) => {
-  const quickActions: HubActionItem[] = [
-    {
-      id: 'act-anggota',
-      label: 'Kelola Anggota',
-      icon: Users,
-      colorVariant: 'teal',
-      onClick: () => onSelectTab('anggota'),
-    },
-    {
-      id: 'act-nilai',
-      label: 'Input Nilai Rapor',
-      icon: Award,
-      colorVariant: 'emerald',
-      onClick: () => onSelectTab('nilai'),
-    },
-    {
-      id: 'act-jadwal',
-      label: 'Jadwal Latihan',
-      icon: Calendar,
-      colorVariant: 'indigo',
-      onClick: () => onSelectTab('jadwal'),
-    },
-    {
-      id: 'act-rekap',
-      label: 'Cetak Rekap',
-      icon: Printer,
-      colorVariant: 'amber',
-      onClick: () => onSelectTab('rekap'),
-    },
-  ];
+  const bentoCells: HubBentoCell[] = useMemo(
+    () => [
+      {
+        id: 'totalEkskul',
+        title: 'Ekstrakurikuler Aktif',
+        value: `${stats.total_ekskul ?? 0} Unit`,
+        subtext: tpTahun ? `Periode ${tpTahun}` : 'Tercatat Resmi',
+        icon: Compass,
+        iconColorClass: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60',
+        badge: (stats.total_ekskul ?? 0) > 0 ? (
+          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-indigo-500 text-white">
+            Aktif
+          </span>
+        ) : undefined,
+        onClick: () => onSelectTab('anggota'),
+      },
+      {
+        id: 'totalAnggota',
+        title: 'Total Anggota Siswa',
+        value: `${stats.total_anggota ?? 0} Siswa`,
+        subtext: 'Siswa Peminatan',
+        icon: Users,
+        iconColorClass: 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/60',
+        onClick: () => onSelectTab('anggota'),
+      },
+      {
+        id: 'totalPembina',
+        title: 'Guru Pembina & Pelatih',
+        value: `${stats.total_pembina ?? 0} Staf`,
+        subtext: 'Penanggung Jawab',
+        icon: UserCheck,
+        iconColorClass: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60',
+        onClick: () => onSelectTab('jadwal'),
+      },
+      {
+        id: 'persentaseNilai',
+        title: 'Capaian Nilai Rapor',
+        value: `${stats.persentase_dinilai ?? 0}%`,
+        subtext: semesterNama || 'Semester Berjalan',
+        icon: Award,
+        iconColorClass: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60',
+        badge: (stats.persentase_dinilai ?? 0) >= 80 ? (
+          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500 text-white">
+            Lengkap
+          </span>
+        ) : undefined,
+        onClick: () => onSelectTab('nilai'),
+      },
+    ],
+    [stats, tpTahun, semesterNama, onSelectTab]
+  );
+
+  const quickActions: HubActionItem[] = useMemo(
+    () => [
+      {
+        id: 'act-anggota',
+        label: 'Kelola Anggota',
+        icon: Users,
+        iconColorClass: 'text-teal-600 dark:text-teal-400',
+        onClick: () => onSelectTab('anggota'),
+      },
+      {
+        id: 'act-nilai',
+        label: 'Input Nilai Rapor',
+        icon: Award,
+        iconColorClass: 'text-emerald-600 dark:text-emerald-400',
+        onClick: () => onSelectTab('nilai'),
+      },
+      {
+        id: 'act-jadwal',
+        label: 'Jadwal Latihan',
+        icon: Calendar,
+        iconColorClass: 'text-indigo-600 dark:text-indigo-400',
+        onClick: () => onSelectTab('jadwal'),
+      },
+      {
+        id: 'act-rekap',
+        label: 'Cetak Rekap',
+        icon: Printer,
+        iconColorClass: 'text-amber-600 dark:text-amber-400',
+        onClick: () => onSelectTab('rekap'),
+      },
+    ],
+    [onSelectTab]
+  );
 
   const kegiatanAktif = stats.kegiatan_aktif || [];
   const jadwalMingguan = stats.jadwal_mingguan || [];
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      {/* 1. Bento Grid 2x2 Metric Cards */}
-      <HubBentoGrid cols={4}>
-        <HubCard
-          title="Ekstrakurikuler Aktif"
-          value={stats.total_ekskul ?? 0}
-          subtitle={tpTahun ? `Periode ${tpTahun}` : 'Tercatat Resmi'}
-          icon={Compass}
-          colorVariant="indigo"
-          onClick={() => onSelectTab('anggota')}
-        />
-        <HubCard
-          title="Total Anggota Siswa"
-          value={stats.total_anggota ?? 0}
-          subtitle="Siswa Peminatan"
-          icon={Users}
-          colorVariant="teal"
-          onClick={() => onSelectTab('anggota')}
-        />
-        <HubCard
-          title="Guru Pembina & Pelatih"
-          value={stats.total_pembina ?? 0}
-          subtitle="Penanggung Jawab"
-          icon={UserCheck}
-          colorVariant="purple"
-          onClick={() => onSelectTab('jadwal')}
-        />
-        <HubCard
-          title="Capaian Nilai Rapor"
-          value={`${stats.persentase_dinilai ?? 0}%`}
-          subtitle={semesterNama || 'Semester Berjalan'}
-          icon={Award}
-          colorVariant="emerald"
-          onClick={() => onSelectTab('nilai')}
-        />
-      </HubBentoGrid>
+      {/* 1. Bento Grid Metrik Flat (Hairline Dividers Ala Shopee) */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
+        <HubBentoGrid cells={bentoCells} columns={4} />
+      </div>
 
       {/* 2. Quick Action Slider (Shopee-Grade Horizontal Track) */}
       <div className="space-y-2">
@@ -108,7 +132,9 @@ export const EkskulBerandaTab: React.FC<EkskulBerandaTabProps> = ({
             Aksi Cepat Pembina
           </span>
         </div>
-        <HubActionGrid actions={quickActions} variant="slider" />
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl py-3 px-2 shadow-xs">
+          <HubActionGrid items={quickActions} variant="slider" />
+        </div>
       </div>
 
       {/* 3. 2-Column Bento: Daftar Ekskul Aktif & Jadwal Latihan */}

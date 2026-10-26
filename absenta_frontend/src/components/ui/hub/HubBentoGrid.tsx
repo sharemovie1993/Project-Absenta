@@ -15,8 +15,8 @@ export interface HubBentoCell {
 }
 
 export interface HubBentoGridProps {
-  cells: HubBentoCell[];
-  columns?: 2 | 3;
+  cells?: HubBentoCell[];
+  columns?: 2 | 3 | 4;
   className?: string;
   cellClassName?: string;
 }
@@ -27,12 +27,17 @@ export interface HubBentoGridProps {
  * tanpa tumpukan teks berlebih (maksimal 2 baris terfokus).
  */
 export const HubBentoGrid: React.FC<HubBentoGridProps> = React.memo(({
-  cells,
+  cells = [],
   columns = 2,
   className,
   cellClassName,
 }) => {
-  const colClass = columns === 3 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2';
+  const safeCells = Array.isArray(cells) ? cells : [];
+  const colClass = columns === 4
+    ? 'grid-cols-2 lg:grid-cols-4'
+    : columns === 3
+      ? 'grid-cols-1 sm:grid-cols-3'
+      : 'grid-cols-2';
 
   return (
     <div
@@ -42,7 +47,7 @@ export const HubBentoGrid: React.FC<HubBentoGridProps> = React.memo(({
         className
       )}
     >
-      {cells.map((cell) => {
+      {safeCells.map((cell) => {
         const IconComponent = cell.icon;
         const isClickable = Boolean(cell.onClick);
 

@@ -16,8 +16,9 @@ export interface GuruPickerItem {
   nama_guru: string;
 }
 
-export async function getPembinaKegiatanEskul(jenisKegiatanId: string): Promise<PembinaKegiatanEskulItem[]> {
-  const res = await requestWithFallback<{ success: boolean; data: PembinaKegiatanEskulItem[] }>('get', `/attendance/pembina-kegiatan-eskul/${jenisKegiatanId}`);
+export async function getPembinaKegiatanEskul(jenisKegiatanId: string = 'ALL'): Promise<PembinaKegiatanEskulItem[]> {
+  const targetId = jenisKegiatanId || 'ALL';
+  const res = await requestWithFallback<{ success: boolean; data: PembinaKegiatanEskulItem[] }>('get', `/attendance/pembina-kegiatan-eskul/${targetId}`);
   return res.data ?? [];
 }
 
