@@ -462,11 +462,12 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               <span className="hidden sm:inline">Segarkan</span>
             </button>
 
+            {/* Tombol Toggle Filter Periode (Khusus Mobile) */}
             <button
               type="button"
               onClick={() => setShowMobileFilter((prev) => !prev)}
               className={cn(
-                'p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer',
+                'lg:hidden p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer',
                 showMobileFilter
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/60 dark:border-emerald-800 dark:text-emerald-300'
                   : 'bg-white dark:bg-slate-800 border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-200'
@@ -479,9 +480,9 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
           </div>
         </div>
 
-        {/* Collapsible Academic Filter Toolbar */}
+        {/* Collapsible Academic Filter Toolbar Mobile */}
         {showMobileFilter && (
-          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="lg:hidden mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2 duration-200">
             <AcademicFilterToolbar
               {...academicFilter.toolbarProps}
               variant="compact"
@@ -491,172 +492,212 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
         )}
       </div>
 
-      {/* 2. Horizontal Tab Navigation Bar (Shopee-Grade High-Density Scroll) */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-        {navTabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
+      {/* 2. Desktop 2-Column Layout (>= lg: Left Sidebar Controls + Wide Main Content Canvas) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-6 items-start">
+        {/* Left Column: Sidebar Controls (Desktop sticky) */}
+        <aside className="hidden lg:block sticky top-20 space-y-3">
+          {/* Identitas Kurikulum Ringkas & Minimalis */}
+          <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-xs tracking-wider shrink-0 overflow-hidden shadow-xs">
+                <BookOpen className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block leading-tight">
+                  Bidang Akademik
+                </span>
+                <h2 className="text-sm font-black text-slate-900 dark:text-slate-100 tracking-wider truncate uppercase">
+                  Kurikulum
+                </h2>
+              </div>
+            </div>
 
-          return (
-            <button
-              type="button"
-              key={tab.id}
-              onClick={() => handleTabSelect(tab.id)}
-              className={cn(
-                'group relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer',
-                isActive
-                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-xs'
-                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
-              )}
-            >
-              <Icon size={14} className={cn(isActive ? 'text-emerald-400 dark:text-emerald-600' : 'text-slate-400')} />
-              <span>{tab.label}</span>
-              {tab.badge && (
-                <span
+            {/* Badge Info Periode */}
+            <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+              <span className="font-medium">Periode Aktif</span>
+              <span className="font-bold text-slate-700 dark:text-slate-200 text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md truncate max-w-[120px]">
+                {tpTahun ? `TP ${tpTahun}` : 'Aktif'}
+              </span>
+            </div>
+          </div>
+
+          {/* Academic Filter Toolbar (Sidebar Variant SSOT) */}
+          <AcademicFilterToolbar
+            {...academicFilter.toolbarProps}
+            variant="sidebar"
+          />
+
+          {/* Navigasi Menu Vertikal Sidebar */}
+          <nav className="p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1">
+            {navTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => handleTabSelect(tab.id)}
                   className={cn(
-                    'px-1.5 py-0.2 rounded-full text-[9px] font-black',
-                    tab.badgeColor || (isActive ? 'bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-950' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300')
+                    'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left',
+                    isActive
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
                   )}
                 >
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+                  <div className="flex items-center gap-2.5">
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span>{tab.label}</span>
+                  </div>
+                  {tab.badge !== undefined && (
+                    <span
+                      className={cn(
+                        'px-2 py-0.5 rounded-full text-[11px] font-bold min-w-5 text-center transition-colors',
+                        isActive
+                          ? 'bg-white/20 text-white'
+                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
+                      )}
+                    >
+                      {tab.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+        </aside>
 
-      {/* 3. Keep-Alive Tab Panels (0ms Switch, Never Unmounted once visited) */}
-      <div className="w-full min-w-0">
-        {/* TAB 1: RINGKASAN / BERANDA */}
-        {visitedTabs.has('ringkasan') && (
-          <div
-            role="tabpanel"
-            aria-hidden={activeTab !== 'ringkasan'}
-            className={cn('w-full min-w-0', activeTab === 'ringkasan' ? 'block' : 'hidden')}
-          >
-            <KurikulumBerandaTab
-              semNama={semNama}
-              tpTahun={tpTahun}
-              totalGuru={totalGuru}
-              totalKelas={totalKelas}
-              totalMapel={totalMapel}
-              totalJpMinggu={totalJpMinggu}
-              distribusi={distribusi}
-              beban={beban}
-              teachersLoad={teachersLoad}
-              conflicts={conflicts}
-              perangkatStats={perangkatStats}
-              recentPerangkat={recentPerangkat}
-              supRows={supRows}
-              supPct={supPct}
-              pieData={pieData}
-              recentSup={recentSup}
-              loading={lStr || lSup || lPerangkat}
-              onTabSelect={handleTabSelect}
-            />
-          </div>
-        )}
+        {/* Right Column: Main Content Canvas */}
+        <main className="min-w-0 space-y-4">
+          {/* TAB 1: RINGKASAN / BERANDA */}
+          {visitedTabs.has('ringkasan') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'ringkasan'}
+              className={cn('w-full min-w-0', activeTab === 'ringkasan' ? 'block' : 'hidden')}
+            >
+              <KurikulumBerandaTab
+                semNama={semNama}
+                tpTahun={tpTahun}
+                totalGuru={totalGuru}
+                totalKelas={totalKelas}
+                totalMapel={totalMapel}
+                totalJpMinggu={totalJpMinggu}
+                distribusi={distribusi}
+                beban={beban}
+                teachersLoad={teachersLoad}
+                conflicts={conflicts}
+                perangkatStats={perangkatStats}
+                recentPerangkat={recentPerangkat}
+                supRows={supRows}
+                supPct={supPct}
+                pieData={pieData}
+                recentSup={recentSup}
+                loading={lStr || lSup || lPerangkat}
+                onTabSelect={handleTabSelect}
+              />
+            </div>
+          )}
 
-        {/* TAB 2: JADWAL KBM */}
-        {visitedTabs.has('jadwal') && (
-          <div
-            role="tabpanel"
-            aria-hidden={activeTab !== 'jadwal'}
-            className={cn('w-full min-w-0', activeTab === 'jadwal' ? 'block' : 'hidden')}
-          >
-            <KurikulumJadwalTab
-              semesterId={resolvedSemesterId}
-              tahunPelajaranId={resolvedTahunPelajaranId}
-            />
-          </div>
-        )}
+          {/* TAB 2: JADWAL KBM */}
+          {visitedTabs.has('jadwal') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'jadwal'}
+              className={cn('w-full min-w-0', activeTab === 'jadwal' ? 'block' : 'hidden')}
+            >
+              <KurikulumJadwalTab
+                semesterId={resolvedSemesterId}
+                tahunPelajaranId={resolvedTahunPelajaranId}
+              />
+            </div>
+          )}
 
-        {/* TAB 3: PLOTTING GURU & MAPEL */}
-        {visitedTabs.has('guru_mapel') && (
-          <div
-            role="tabpanel"
-            aria-hidden={activeTab !== 'guru_mapel'}
-            className={cn('w-full min-w-0', activeTab === 'guru_mapel' ? 'block' : 'hidden')}
-          >
-            <KurikulumGuruMapelTab
-              teachersLoad={teachersLoad}
-              loading={lGuru || lJw}
-            />
-          </div>
-        )}
+          {/* TAB 3: PLOTTING GURU & MAPEL */}
+          {visitedTabs.has('guru_mapel') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'guru_mapel'}
+              className={cn('w-full min-w-0', activeTab === 'guru_mapel' ? 'block' : 'hidden')}
+            >
+              <KurikulumGuruMapelTab
+                teachersLoad={teachersLoad}
+                loading={lGuru || lJw}
+              />
+            </div>
+          )}
 
-        {/* TAB 4: STRUKTUR KURIKULUM */}
-        {visitedTabs.has('struktur') && (
-          <div
-            role="tabpanel"
-            aria-hidden={activeTab !== 'struktur'}
-            className={cn('w-full min-w-0', activeTab === 'struktur' ? 'block' : 'hidden')}
-          >
-            <KurikulumStrukturTab
-              strRows={strRows}
-              kelompokOptions={kelompokOptions}
-              isVocational={isVocational}
-              loading={lStr}
-            />
-          </div>
-        )}
+          {/* TAB 4: STRUKTUR KURIKULUM */}
+          {visitedTabs.has('struktur') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'struktur'}
+              className={cn('w-full min-w-0', activeTab === 'struktur' ? 'block' : 'hidden')}
+            >
+              <KurikulumStrukturTab
+                strRows={strRows}
+                kelompokOptions={kelompokOptions}
+                isVocational={isVocational}
+                loading={lStr}
+              />
+            </div>
+          )}
 
-        {/* TAB 5: JADWAL PIKET */}
-        {visitedTabs.has('piket') && (
-          <div
-            role="tabpanel"
-            aria-hidden={activeTab !== 'piket'}
-            className={cn('w-full min-w-0', activeTab === 'piket' ? 'block' : 'hidden')}
-          >
-            <KurikulumPiketTab
-              tahunPelajaranId={resolvedTahunPelajaranId}
-              semesterId={resolvedSemesterId}
-            />
-          </div>
-        )}
+          {/* TAB 5: JADWAL PIKET */}
+          {visitedTabs.has('piket') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'piket'}
+              className={cn('w-full min-w-0', activeTab === 'piket' ? 'block' : 'hidden')}
+            >
+              <KurikulumPiketTab
+                tahunPelajaranId={resolvedTahunPelajaranId}
+                semesterId={resolvedSemesterId}
+              />
+            </div>
+          )}
 
-        {/* TAB 6: PERANGKAT AJAR */}
-        {visitedTabs.has('perangkat') && (
-          <div
-            role="tabpanel"
-            aria-hidden={activeTab !== 'perangkat'}
-            className={cn('w-full min-w-0', activeTab === 'perangkat' ? 'block' : 'hidden')}
-          >
-            <KurikulumPerangkatTab
-              perangkatStats={perangkatStats}
-              activeEducators={activeEducators}
-              perangkatList={safeArr(perangkatR)}
-              loading={lPerangkat}
-            />
-          </div>
-        )}
+          {/* TAB 6: PERANGKAT AJAR */}
+          {visitedTabs.has('perangkat') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'perangkat'}
+              className={cn('w-full min-w-0', activeTab === 'perangkat' ? 'block' : 'hidden')}
+            >
+              <KurikulumPerangkatTab
+                perangkatStats={perangkatStats}
+                activeEducators={activeEducators}
+                perangkatList={safeArr(perangkatR)}
+                loading={lPerangkat}
+              />
+            </div>
+          )}
 
-        {/* TAB 7: SUPERVISI */}
-        {visitedTabs.has('supervisi') && (
-          <div
-            role="tabpanel"
-            aria-hidden={activeTab !== 'supervisi'}
-            className={cn('w-full min-w-0', activeTab === 'supervisi' ? 'block' : 'hidden')}
-          >
-            <KurikulumSupervisiTab
-              supRows={supRows}
-              supPct={supPct}
-              loading={lSup}
-            />
-          </div>
-        )}
+          {/* TAB 7: SUPERVISI */}
+          {visitedTabs.has('supervisi') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'supervisi'}
+              className={cn('w-full min-w-0', activeTab === 'supervisi' ? 'block' : 'hidden')}
+            >
+              <KurikulumSupervisiTab
+                supRows={supRows}
+                supPct={supPct}
+                loading={lSup}
+              />
+            </div>
+          )}
 
-        {/* TAB 8: RAPOR */}
-        {visitedTabs.has('rapor') && (
-          <div
-            role="tabpanel"
-            aria-hidden={activeTab !== 'rapor'}
-            className={cn('w-full min-w-0', activeTab === 'rapor' ? 'block' : 'hidden')}
-          >
-            <KurikulumRaporTab />
-          </div>
-        )}
+          {/* TAB 8: RAPOR */}
+          {visitedTabs.has('rapor') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'rapor'}
+              className={cn('w-full min-w-0', activeTab === 'rapor' ? 'block' : 'hidden')}
+            >
+              <KurikulumRaporTab />
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );
