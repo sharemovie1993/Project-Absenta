@@ -202,58 +202,56 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     return tabs;
   }, [isPetugasKelas]);
 
-  // ── 2. KEPALA SEKOLAH (6 PILAR 360° + PROFIL) ──
+  // ── 2. KEPALA SEKOLAH (SHOPEE-GRADE 6-TOMBOL DENGAN LENSA PENGAWASAN + PROFIL) ──
   const { currentPillar, setPillar } = useExecutivePillarStore();
   const kepsekTabs = useMemo<MobileBottomTabItem[]>(() => {
     const isProfileTab = currentTab === 'profil';
     return [
       {
+        id: 'ringkasan',
+        label: 'Ringkasan 360°',
+        shortLabel: 'Overview',
+        icon: Award,
+        targetPath: '/dashboard?tab=ringkasan&subtab=ringkasan',
+        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'ringkasan' && !isProfileTab,
+      },
+      {
         id: 'kbm',
         label: 'KBM & Kurikulum',
         shortLabel: 'KBM',
         icon: BookOpen,
-        targetPath: '/dashboard',
-        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'kbm' && !isProfileTab
+        targetPath: '/dashboard?tab=ringkasan&subtab=kbm',
+        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'kbm' && !isProfileTab,
       },
       {
         id: 'kesiswaan',
         label: 'Kesiswaan & Disiplin',
         shortLabel: 'Kesiswaan',
         icon: Users,
-        targetPath: '/dashboard',
-        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'kesiswaan' && !isProfileTab
+        targetPath: '/dashboard?tab=ringkasan&subtab=kesiswaan',
+        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'kesiswaan' && !isProfileTab,
       },
       {
         id: 'bk',
         label: 'Bimbingan Konseling (EWS)',
         shortLabel: 'BP/BK',
         icon: HeartHandshake,
-        targetPath: '/dashboard',
-        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'bk' && !isProfileTab
+        targetPath: '/dashboard?tab=ringkasan&subtab=bk',
+        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'bk' && !isProfileTab,
       },
       {
-        id: 'sarpras',
-        label: 'Sarpras & Fasilitas',
-        shortLabel: 'Sarpras',
-        icon: Building,
-        targetPath: '/dashboard',
-        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'sarpras' && !isProfileTab
-      },
-      {
-        id: 'hubin',
-        label: 'Hubin & Kemitraan',
-        shortLabel: 'Hubin',
-        icon: Briefcase,
-        targetPath: '/dashboard',
-        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'hubin' && !isProfileTab
-      },
-      {
-        id: 'tu',
-        label: 'Tata Usaha & Surat',
-        shortLabel: 'TU',
-        icon: FileText,
-        targetPath: '/dashboard',
-        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'tu' && !isProfileTab
+        id: 'lensa_more',
+        label: 'Lensa Pengawasan',
+        shortLabel: 'Lensa Lain',
+        icon: LayoutGrid,
+        badge: '360°',
+        targetPath: '/dashboard?tab=ringkasan',
+        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && ['sarpras', 'hubin', 'tu'].includes(currentPillar) && !isProfileTab,
+        children: [
+          { id: 'sarpras', label: 'Sarpras & Fasilitas', icon: Building, targetPath: '/dashboard?tab=ringkasan&subtab=sarpras', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
+          { id: 'hubin', label: 'Hubin & Kemitraan', icon: Briefcase, targetPath: '/dashboard?tab=ringkasan&subtab=hubin', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
+          { id: 'tu', label: 'Tata Usaha & Surat', icon: FileText, targetPath: '/dashboard?tab=ringkasan&subtab=tu', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
+        ],
       },
       {
         id: 'profil',
@@ -261,8 +259,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         shortLabel: 'Profil',
         icon: User,
         targetPath: '/dashboard?tab=profil',
-        isActive: (pathname, tabParam) => tabParam === 'profil' || pathname.startsWith('/profile')
-      }
+        isActive: (pathname, tabParam) => tabParam === 'profil' || pathname.startsWith('/profile'),
+      },
     ];
   }, [currentPillar, currentTab]);
 

@@ -1,6 +1,6 @@
-﻿import { create } from 'zustand';
+import { create } from 'zustand';
 
-export type ExecutivePillar = 'kbm' | 'kesiswaan' | 'bk' | 'sarpras' | 'hubin' | 'tu';
+export type ExecutivePillar = 'ringkasan' | 'kbm' | 'kesiswaan' | 'bk' | 'sarpras' | 'hubin' | 'tu';
 
 interface ExecutivePillarState {
   currentPillar: ExecutivePillar;
@@ -8,6 +8,7 @@ interface ExecutivePillarState {
 }
 
 export const useExecutivePillarStore = create<ExecutivePillarState>((set) => ({
-  currentPillar: 'kbm',
+  currentPillar: 'ringkasan',
   setPillar: (pillar) => set({ currentPillar: pillar }),
 }));
+
