@@ -9,7 +9,7 @@ import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoun
 import { Card } from '../../components/ui/Card';
 import { formatDate } from '../../utils/layoutUtils';
 
-export const CetakBerkasBkPage: React.FC = React.memo(() => {
+export const CetakBerkasBkPage: React.FC<{ hideLayout?: boolean }> = React.memo(({ hideLayout = false }) => {
   const { isBpbk, isAdmin, can } = useCapabilities();
   const docOptions: DocOption[] = useMemo(() => [
     { value: 'bk_consult', label: '1. KARTU KONSULTASI & LAYANAN BK SISWA', requireClass: true },
@@ -33,6 +33,7 @@ export const CetakBerkasBkPage: React.FC = React.memo(() => {
       <InfraErrorBoundary>
         <Card className="border-none shadow-none bg-transparent">
           <CetakBerkasTemplate
+            hideHeaderAndBreadcrumbs={hideLayout}
             module="bpbk"
             title="Cetak Berkas BK"
             description="Buat dan cetak kartu layanan BK, laporan perkembangan, dan surat pemanggilan secara otomatis."

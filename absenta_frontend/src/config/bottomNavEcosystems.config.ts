@@ -36,6 +36,9 @@ import {
   AlertTriangle,
   HandCoins,
   Activity,
+  MailOpen,
+  Share2,
+  ClipboardList,
   LucideIcon
 } from 'lucide-react';
 
@@ -615,7 +618,7 @@ export function getHubinTabs(currentSubtab?: string): MobileBottomTabItem[] {
   ];
 }
 
-export function getBpbkTabs(): MobileBottomTabItem[] {
+export function getBpbkTabs(currentSubtab?: string): MobileBottomTabItem[] {
   return [
     {
       id: 'portal_back',
@@ -626,52 +629,44 @@ export function getBpbkTabs(): MobileBottomTabItem[] {
       isActive: () => false,
     },
     {
-      id: 'bk_dashboard',
-      label: 'Radar EWS Siswa',
-      shortLabel: 'Radar EWS',
-      icon: AlertTriangle,
-      targetPath: '/bpbk/dashboard',
-      isActive: (p) => p.startsWith('/bpbk/dashboard'),
-    },
-    {
-      id: 'bk_konseling',
-      label: 'Sesi Konseling Siswa',
-      shortLabel: 'Konseling',
-      icon: HeartHandshake,
-      targetPath: '/bpbk/konseling',
-      isActive: (p) => p.startsWith('/bpbk/konseling'),
+      id: 'bk_ringkasan',
+      label: 'Beranda Konseling',
+      shortLabel: 'Beranda',
+      icon: Home,
+      targetPath: '/dashboard?tab=bpbk&subtab=ringkasan',
+      isActive: (p, t) => t === 'bpbk' && (!currentSubtab || currentSubtab === 'ringkasan'),
     },
     {
       id: 'bk_cases',
-      label: 'Rekam Kasus Siswa',
-      shortLabel: 'Kasus Siswa',
+      label: 'Kasus Siswa',
+      shortLabel: 'Kasus',
       icon: ShieldAlert,
-      targetPath: '/bpbk/cases',
-      isActive: (p) => p.startsWith('/bpbk/cases'),
+      targetPath: '/dashboard?tab=bpbk&subtab=cases',
+      isActive: (p, t) => (t === 'bpbk' && currentSubtab === 'cases') || p.startsWith('/bpbk/cases'),
     },
     {
-      id: 'bk_rujukan',
-      label: 'Verifikasi Rujukan Guru',
-      shortLabel: 'Rujukan',
-      icon: Inbox,
-      targetPath: '/bpbk/rujukan',
-      isActive: (p) => p.startsWith('/bpbk/rujukan'),
+      id: 'bk_konseling',
+      label: 'Layanan Konseling',
+      shortLabel: 'Konseling',
+      icon: HeartHandshake,
+      targetPath: '/dashboard?tab=bpbk&subtab=konseling',
+      isActive: (p, t) => (t === 'bpbk' && currentSubtab === 'konseling') || p.startsWith('/bpbk/konseling'),
     },
     {
       id: 'bk_menu',
-      label: 'Menu Bimbingan Konseling',
+      label: 'Menu Konseling',
       shortLabel: 'Menu BK',
       icon: LayoutGrid,
       badge: 'BK',
-      targetPath: '/bpbk/dashboard',
-      isActive: (p) => p.startsWith('/bpbk') && !['/bpbk/dashboard', '/bpbk/konseling', '/bpbk/cases', '/bpbk/rujukan'].includes(p),
+      targetPath: '/dashboard?tab=bpbk',
+      isActive: (p, t) => t === 'bpbk' && ['pemanggilan', 'homevisit', 'rujukan', 'asesmen', 'rekap'].includes(currentSubtab || ''),
       children: [
-        { id: 'dashboard', label: 'Radar EWS', icon: AlertTriangle, targetPath: '/bpbk/dashboard', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
-        { id: 'konseling', label: 'Sesi Konseling', icon: HeartHandshake, targetPath: '/bpbk/konseling', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
-        { id: 'cases', label: 'Kasus Siswa', icon: ShieldAlert, targetPath: '/bpbk/cases', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
-        { id: 'rujukan', label: 'Verifikasi Rujukan', icon: Inbox, targetPath: '/bpbk/rujukan', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
-        { id: 'panggilan', label: 'Panggilan Ortu', icon: FileSpreadsheet, targetPath: '/bpbk/panggilan', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
-        { id: 'home-visit', label: 'Home Visit', icon: Home, targetPath: '/bpbk/home-visit', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
+        { id: 'pemanggilan', label: 'Panggilan Ortu', icon: MailOpen, targetPath: '/dashboard?tab=bpbk&subtab=pemanggilan', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
+        { id: 'homevisit', label: 'Home Visit', icon: Home, targetPath: '/dashboard?tab=bpbk&subtab=homevisit', color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400' },
+        { id: 'rujukan', label: 'Rujukan Kasus', icon: Share2, targetPath: '/dashboard?tab=bpbk&subtab=rujukan', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
+        { id: 'asesmen', label: 'Asesmen & Angket', icon: ClipboardList, targetPath: '/dashboard?tab=bpbk&subtab=asesmen', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
+        { id: 'rekap', label: 'Cetak Dokumen BK', icon: Printer, targetPath: '/dashboard?tab=bpbk&subtab=rekap', color: 'bg-slate-50 dark:bg-slate-950/70 text-slate-600 dark:text-slate-400' },
+        { id: 'tv-page', label: 'Layar TV Monitor BK', icon: Activity, targetPath: '/bpbk/dashboard', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
       ],
     },
   ];

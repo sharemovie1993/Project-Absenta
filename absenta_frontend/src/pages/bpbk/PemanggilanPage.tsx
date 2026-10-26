@@ -5,7 +5,7 @@ import { SectionCard } from '@/components/ui';
 
 const PemanggilanSection = lazy(() => import('./components/PemanggilanSection').then(m => ({ default: m.PemanggilanSection })));
 
-export default React.memo(function PemanggilanPage() {
+export default React.memo(function PemanggilanPage({ hideLayout = false }: { hideLayout?: boolean }) {
   return (
     <PremiumFeatureGate
       moduleName="BPBK"
@@ -13,6 +13,7 @@ export default React.memo(function PemanggilanPage() {
       description="Kelola administrasi pemanggilan orang tua/wali siswa, cetak surat panggilan, dan catat hasil pertemuan/kehadiran secara terstruktur."
     >
       <AcademicPageLayout
+        hideHeaderAndBreadcrumbs={hideLayout}
         title="Pemanggilan Orang Tua / Wali Siswa"
         breadcrumbs={[
           { label: 'Dashboard', path: '/dashboard' },

@@ -7,7 +7,7 @@ import { useCapabilities } from '../../hooks/useCapabilities';
 
 const AsesmenSection = lazy(() => import('./components/AsesmenSection').then(m => ({ default: m.AsesmenSection })));
 
-export default React.memo(function AsesmenPage() {
+export default React.memo(function AsesmenPage({ hideLayout = false }: { hideLayout?: boolean }) {
   const { isBpbk, isAdmin, can } = useCapabilities();
   return (
     <PremiumFeatureGate
@@ -16,6 +16,7 @@ export default React.memo(function AsesmenPage() {
       description="Kelola data angket pilihan, kuesioner psikologi BK, dan analisis diagnostik untuk pemetaan kebutuhan konseling siswa."
     >
       <AcademicPageLayout
+        hideHeaderAndBreadcrumbs={hideLayout}
         title="Asesmen & Angket Pilihan BK"
         breadcrumbs={[
           { label: 'Dashboard', path: '/dashboard' },

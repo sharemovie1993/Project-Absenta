@@ -5,7 +5,7 @@ import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { formatDate } from '../../utils/layoutUtils';
 
-export default React.memo(function HomeVisitPage() {
+export default React.memo(function HomeVisitPage({ hideLayout = false }: { hideLayout?: boolean }) {
   const { isBpbk, isAdmin, can } = useCapabilities();
 
   const breadcrumbs = useMemo(() => [
@@ -21,6 +21,7 @@ export default React.memo(function HomeVisitPage() {
       description="Dokumentasikan hasil kunjungan rumah guru BK ke kediaman orang tua siswa, lengkap dengan laporan hasil kunjungan dan foto dokumentasi."
     >
       <AcademicPageLayout
+        hideHeaderAndBreadcrumbs={hideLayout}
         title="Kunjungan Rumah (Home Visit)"
         breadcrumbs={breadcrumbs}
         hardeningModuleKey="bpbk_home_visit"

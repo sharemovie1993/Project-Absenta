@@ -1,39 +1,10 @@
-import React, { useState, useCallback, Suspense, lazy } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import React, { lazy, Suspense } from 'react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { WorkspaceAppLauncherCard } from '../../components/common/WorkspaceAppLauncherCard';
-import { DashboardSection } from './components/DashboardSection';
-import { Loader } from '../../components/ui/Loader';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
-import { useCapabilities } from '../../hooks/useCapabilities';
-import { formatDate } from '../../utils/layoutUtils';
-
-const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ default: m.Modal })));
-const SiswaForm = lazy(() => import('../../components/academic/siswa/SiswaForm').then(m => ({ default: m.SiswaForm })));
+import { BpbkDashboard as BpbkDashboardComponent } from '@/components/dashboard/roles/BpbkDashboard';
 
 export default React.memo(function DashboardPage() {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const { isBpbk, isAdmin, can } = useCapabilities();
-  const [selectedSiswaId, setSelectedSiswaId] = useState<string | null>(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-
-  const viewSiswaDetail = useCallback((id: string) => {
-    setSelectedSiswaId(id);
-    setIsDetailOpen(true);
-  }, []);
-
-  const handleCloseDetail = useCallback(() => {
-    setIsDetailOpen(false);
-  }, []);
-
-  const handleDetailSuccess = useCallback(() => {
-    setIsDetailOpen(false);
-    queryClient.invalidateQueries({ queryKey: ['bpbk-stats'] });
-    queryClient.invalidateQueries({ queryKey: ['bpbk-dashboard'] });
-  }, [queryClient]);
-
   return (
     <PremiumFeatureGate
       moduleName="BPBK"
@@ -41,6 +12,7 @@ export default React.memo(function DashboardPage() {
       description="Layanan Bimbingan Konseling terpadu sekolah untuk mengelola data kasus siswa, konseling klinis, pemanggilan orang tua, home visit, asesmen/angket, dan Early Warning System (EWS)."
     >
       <AcademicPageLayout
+        hideHeaderAndBreadcrumbs={true}
         title="Pusat Kendali Bimbingan Konseling (BP/BK)"
         breadcrumbs={[
           { label: 'Dashboard', path: '/dashboard' },
@@ -58,23 +30,8 @@ export default React.memo(function DashboardPage() {
         }}
       >
         <div className="w-full min-w-0">
-          <DashboardSection onViewSiswaDetail={viewSiswaDetail} onViewSiswa={() => navigate('/bpbk/siswa')} />
+          <BpbkDashboardComponent />
         </div>
-
-        <Suspense fallback={null}>
-          <Modal isOpen={isDetailOpen} onClose={handleCloseDetail} title="Profil Lengkap & Linimasa Siswa" size="4xl">
-            <Suspense fallback={<div className="p-12 flex justify-center"><Loader /></div>}>
-              {selectedSiswaId && (
-                <SiswaForm
-                  siswaId={selectedSiswaId}
-                  mode="view"
-                  onSuccess={handleDetailSuccess}
-                  onCancel={handleCloseDetail}
-                />
-              )}
-            </Suspense>
-          </Modal>
-        </Suspense>
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );

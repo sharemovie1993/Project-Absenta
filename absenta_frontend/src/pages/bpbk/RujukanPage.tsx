@@ -6,7 +6,7 @@ import { SectionCard } from '../../components/ui/SectionCard';
 const RujukanSection = lazy(() => import('./components/RujukanSection').then(m => ({ default: m.RujukanSection })));
 const PremiumFeatureGate = lazy(() => import('../../components/auth/PremiumFeatureGate'));
 
-export default React.memo(function RujukanPage() {
+export default React.memo(function RujukanPage({ hideLayout = false }: { hideLayout?: boolean }) {
   return (
     <InfraErrorBoundary>
       <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat modul...</div>}>
@@ -16,6 +16,7 @@ export default React.memo(function RujukanPage() {
           description="Catat dan pantau penanganan kasus siswa yang didelegasikan/dirujuk ke pihak eksternal seperti ahli medis, psikolog, psikiater, atau lembaga terkait."
         >
           <AcademicPageLayout
+            hideHeaderAndBreadcrumbs={hideLayout}
             title="Rujukan Kasus BK"
             breadcrumbs={[
               { label: 'Dashboard', path: '/dashboard' },

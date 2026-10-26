@@ -6,7 +6,7 @@ import { SectionCard } from '../../components/ui/SectionCard';
 const KonselingSection = lazy(() => import('./components/KonselingSection').then(m => ({ default: m.KonselingSection })));
 const PremiumFeatureGate = lazy(() => import('../../components/auth/PremiumFeatureGate'));
 
-export default React.memo(function KonselingPage() {
+export default React.memo(function KonselingPage({ hideLayout = false }: { hideLayout?: boolean }) {
   return (
     <InfraErrorBoundary>
       <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat modul...</div>}>
@@ -16,6 +16,7 @@ export default React.memo(function KonselingPage() {
           description="Kelola aktivitas bimbingan dan konseling langsung dengan siswa secara individual, kelompok, maupun klasikal."
         >
           <AcademicPageLayout
+            hideHeaderAndBreadcrumbs={hideLayout}
             title="Layanan Konseling Siswa"
             breadcrumbs={[
               { label: 'Dashboard', path: '/dashboard' },

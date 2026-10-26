@@ -6,7 +6,7 @@ import { SectionCard } from '../../components/ui/SectionCard';
 const CasesSection = lazy(() => import('./components/CasesSection').then(m => ({ default: m.CasesSection })));
 const PremiumFeatureGate = lazy(() => import('../../components/auth/PremiumFeatureGate'));
 
-export default React.memo(function CasesPage() {
+export default React.memo(function CasesPage({ hideLayout = false }: { hideLayout?: boolean }) {
   return (
     <InfraErrorBoundary>
       <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat fitur...</div>}>
@@ -16,6 +16,7 @@ export default React.memo(function CasesPage() {
           description="Catat, pantau, dan tindak lanjuti kasus atau isu klinis siswa secara sistematis dengan filter status komprehensif."
         >
           <AcademicPageLayout
+            hideHeaderAndBreadcrumbs={hideLayout}
             title="Kasus Bimbingan Konseling (BP/BK)"
             breadcrumbs={[
               { label: 'Dashboard', path: '/dashboard' },
