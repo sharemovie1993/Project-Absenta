@@ -25,7 +25,11 @@ const UnifiedCashierModal = lazy(() => import('../../components/cooperative/pos/
 
 export type { CoopMember, Voucher, SaleRecord, Product, CartItem, HeldCart, NonMemberCandidate, ProductCategory, SaleItem } from '../../components/cooperative/pos';
 
-const POS: React.FC = React.memo(() => {
+export interface POSProps {
+  hideLayout?: boolean;
+}
+
+const POS: React.FC<POSProps> = React.memo(({ hideLayout = false }) => {
   const isMobile = useIsMobile(1024);
   const { isKoperasiStore, isKoperasiHead, isAdmin, can } = useCapabilities();
   const {
@@ -160,32 +164,34 @@ const POS: React.FC = React.memo(() => {
       description="Kelola transaksi penjualan di kantin atau koperasi sekolah dengan sistem cashless yang terintegrasi."
     >
       <AcademicPageLayout
-        title={pageTitle}
-        description={pageDesc}
+        title={hideLayout ? undefined : pageTitle}
+        description={hideLayout ? undefined : pageDesc}
         hardeningModuleKey="coop_pos"
-        breadcrumbs={breadcrumbs}
+        breadcrumbs={hideLayout ? undefined : breadcrumbs}
         topSlot={
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
-            <CoopFiscalYearSelector />
-            {hasCashierAccess && (
-              <Button
-                type="button"
-                onClick={() => setShowUnifiedCashierModal(true)}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-sm px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition-all"
-                title="Buka Loket Kasir Terpadu untuk Setor Simpanan & Bayar Cicilan Pinjaman"
-              >
-                <Zap size={14} className="text-amber-300 fill-amber-300" />
-                <span>Loket Simpan Pinjam</span>
-                {selectedMember && (
-                  <span className="text-[10px] bg-indigo-500 text-white px-1.5 py-0.2 rounded font-bold uppercase tracking-wider">
-                    {selectedMember.name.split(' ')[0]}
-                  </span>
-                )}
-              </Button>
-            )}
-          </div>
+          hideLayout ? undefined : (
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+              <CoopFiscalYearSelector />
+              {hasCashierAccess && (
+                <Button
+                  type="button"
+                  onClick={() => setShowUnifiedCashierModal(true)}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-sm px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition-all"
+                  title="Buka Loket Kasir Terpadu untuk Setor Simpanan & Bayar Cicilan Pinjaman"
+                >
+                  <Zap size={14} className="text-amber-300 fill-amber-300" />
+                  <span>Loket Simpan Pinjam</span>
+                  {selectedMember && (
+                    <span className="text-[10px] bg-indigo-500 text-white px-1.5 py-0.2 rounded font-bold uppercase tracking-wider">
+                      {selectedMember.name.split(' ')[0]}
+                    </span>
+                  )}
+                </Button>
+              )}
+            </div>
+          )
         }
-        instruction={instruction}
+        instruction={hideLayout ? undefined : instruction}
       >
         {isMobile && hasCashierAccess ? (
           <MobilePOSView

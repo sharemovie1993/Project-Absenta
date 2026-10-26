@@ -31,6 +31,7 @@ const CoopManagementSection = lazy(() => import('@/components/cooperative/dashbo
 const CoopMemberSection = lazy(() => import('@/components/cooperative/dashboard/CoopMemberSection').then(m => ({ default: m.CoopMemberSection })));
 const CoopTvMode = lazy(() => import('./components/CoopTvMode').then(m => ({ default: m.CoopTvMode })));
 const ReceiptModal = lazy(() => import('./components/ReceiptModal').then(m => ({ default: m.ReceiptModal })));
+import { KoperasiDashboard as KoperasiDashboardComponent } from '@/components/dashboard/roles/KoperasiDashboard';
 
 const Dashboard: React.FC = React.memo(() => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -346,16 +347,7 @@ const Dashboard: React.FC = React.memo(() => {
 
             {/* Rendering View Sesuai Context Mode */}
             {activeTab === 'management' ? (
-              <Suspense fallback={<div className="p-8 text-center text-slate-500 font-medium text-xs">Memuat Dashboard Pengelola...</div>}>
-                <CoopManagementSection
-                  stats={stats}
-                  loadingStats={loadingStats}
-                  chartData={stats.monthlyTrend || emptyMonthlyTrend}
-                  announcements={announcements}
-                  criticalStock={criticalStock}
-                  criticalStockLoading={criticalStockLoading}
-                />
-              </Suspense>
+              <KoperasiDashboardComponent />
             ) : (
               <Suspense fallback={<div className="p-8 text-center text-slate-500 font-medium text-xs">Memuat Dashboard Anggota...</div>}>
                 <CoopMemberSection

@@ -800,7 +800,7 @@ export function getSarprasTabs(currentSubtab?: string): MobileBottomTabItem[] {
   ];
 }
 
-export function getKoperasiTabs(): MobileBottomTabItem[] {
+export function getKoperasiTabs(currentSubtab?: string): MobileBottomTabItem[] {
   return [
     {
       id: 'portal_back',
@@ -811,36 +811,36 @@ export function getKoperasiTabs(): MobileBottomTabItem[] {
       isActive: () => false,
     },
     {
+      id: 'coop_ringkasan',
+      label: 'Beranda Koperasi',
+      shortLabel: 'Beranda',
+      icon: Home,
+      targetPath: '/dashboard?tab=koperasi&subtab=ringkasan',
+      isActive: (p, t) => t === 'koperasi' && (!currentSubtab || currentSubtab === 'ringkasan'),
+    },
+    {
       id: 'coop_pos',
-      label: 'Kasir POS Belanja',
+      label: 'Kasir POS Toko',
       shortLabel: 'Kasir POS',
       icon: ShoppingCart,
-      targetPath: '/cooperative/pos',
-      isActive: (p) => p.startsWith('/cooperative/pos'),
+      targetPath: '/dashboard?tab=koperasi&subtab=pos',
+      isActive: (p, t) => (t === 'koperasi' && currentSubtab === 'pos') || p.startsWith('/cooperative/pos'),
     },
     {
       id: 'coop_savings',
       label: 'Simpanan Anggota',
       shortLabel: 'Simpanan',
       icon: PiggyBank,
-      targetPath: '/cooperative/savings',
-      isActive: (p) => p.startsWith('/cooperative/savings'),
+      targetPath: '/dashboard?tab=koperasi&subtab=simpanan',
+      isActive: (p, t) => (t === 'koperasi' && currentSubtab === 'simpanan') || p.startsWith('/cooperative/savings'),
     },
     {
       id: 'coop_loans',
-      label: 'Pinjaman & Angsuran',
+      label: 'Pinjaman & Kredit',
       shortLabel: 'Pinjaman',
       icon: HandCoins,
-      targetPath: '/cooperative/loans',
-      isActive: (p) => p.startsWith('/cooperative/loans'),
-    },
-    {
-      id: 'coop_products',
-      label: 'Stok Barang & Produk',
-      shortLabel: 'Stok Produk',
-      icon: Package,
-      targetPath: '/cooperative/products',
-      isActive: (p) => p.startsWith('/cooperative/products'),
+      targetPath: '/dashboard?tab=koperasi&subtab=pinjaman',
+      isActive: (p, t) => (t === 'koperasi' && currentSubtab === 'pinjaman') || p.startsWith('/cooperative/loans'),
     },
     {
       id: 'coop_menu',
@@ -848,15 +848,14 @@ export function getKoperasiTabs(): MobileBottomTabItem[] {
       shortLabel: 'Menu Koperasi',
       icon: LayoutGrid,
       badge: 'KOP',
-      targetPath: '/cooperative/pos',
-      isActive: (p) => p.startsWith('/cooperative') && !['/cooperative/pos', '/cooperative/savings', '/cooperative/loans', '/cooperative/products'].includes(p),
+      targetPath: '/dashboard?tab=koperasi',
+      isActive: (p, t) => t === 'koperasi' && ['anggota', 'produk', 'shu', 'akuntansi'].includes(currentSubtab || ''),
       children: [
-        { id: 'pos', label: 'Kasir POS', icon: ShoppingCart, targetPath: '/cooperative/pos', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
-        { id: 'savings', label: 'Simpanan Anggota', icon: PiggyBank, targetPath: '/cooperative/savings', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
-        { id: 'loans', label: 'Pinjaman Anggota', icon: HandCoins, targetPath: '/cooperative/loans', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
-        { id: 'products', label: 'Manajemen Produk', icon: Package, targetPath: '/cooperative/products', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
-        { id: 'members', label: 'Buku Anggota', icon: Users, targetPath: '/cooperative/members', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
-        { id: 'shu', label: 'Laporan SHU & RAT', icon: FileSpreadsheet, targetPath: '/cooperative/shu', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
+        { id: 'anggota', label: 'Buku Anggota', icon: Users, targetPath: '/dashboard?tab=koperasi&subtab=anggota', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
+        { id: 'produk', label: 'Katalog & Stok', icon: Package, targetPath: '/dashboard?tab=koperasi&subtab=produk', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
+        { id: 'shu', label: 'Sisa Hasil Usaha (SHU)', icon: FileSpreadsheet, targetPath: '/dashboard?tab=koperasi&subtab=shu', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
+        { id: 'akuntansi', label: 'Buku Akuntansi', icon: BookOpen, targetPath: '/dashboard?tab=koperasi&subtab=akuntansi', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
+        { id: 'tv-page', label: 'Layar TV Monitor Koperasi', icon: Activity, targetPath: '/cooperative/dashboard', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
       ],
     },
   ];

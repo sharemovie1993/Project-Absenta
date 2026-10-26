@@ -67,7 +67,11 @@ const accountingFilterSchema = z.object({
   year: z.number().min(2020)
 });
 
-const Accounting: React.FC = React.memo(() => {
+export interface AccountingProps {
+  hideLayout?: boolean;
+}
+
+const Accounting: React.FC<AccountingProps> = React.memo(({ hideLayout = false }) => {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
     const { subscription } = useAuthStore();
@@ -511,12 +515,12 @@ const Accounting: React.FC = React.memo(() => {
             featureName="Laporan Keuangan"
         >
             <AcademicPageLayout
-                title="Laporan Keuangan & Akuntansi"
-                description="Laporan keuangan, jurnal, neraca saldo, dan rekapitulasi potongan gaji koperasi"
+                title={hideLayout ? undefined : "Laporan Keuangan & Akuntansi"}
+                description={hideLayout ? undefined : "Laporan keuangan, jurnal, neraca saldo, dan rekapitulasi potongan gaji koperasi"}
                 hardeningModuleKey="coop_accounting"
-                breadcrumbs={breadcrumbs}
-                topSlot={<WorkspaceAppLauncherCard workspaceId="COOPERATIVE_WORKSPACE" />}
-                instruction={instruction}
+                breadcrumbs={hideLayout ? undefined : breadcrumbs}
+                topSlot={hideLayout ? undefined : <WorkspaceAppLauncherCard workspaceId="COOPERATIVE_WORKSPACE" />}
+                instruction={hideLayout ? undefined : instruction}
             >
             <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
             <div className="space-y-6 print:hidden w-full min-w-0 max-w-full">

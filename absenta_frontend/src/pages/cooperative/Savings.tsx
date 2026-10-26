@@ -30,7 +30,11 @@ const QuickTxConfirmModal = lazy(() => import('../../components/cooperative/savi
 const QuickTransactionPanel = lazy(() => import('../../components/cooperative/savings/QuickTransactionPanel').then(module => ({ default: module.QuickTransactionPanel })));
 const SavingsPassbookModal = lazy(() => import('../../components/cooperative/savings/SavingsPassbookModal').then(module => ({ default: module.SavingsPassbookModal })));
 
-const Savings: React.FC = React.memo(() => {
+export interface SavingsProps {
+  hideLayout?: boolean;
+}
+
+const Savings: React.FC<SavingsProps> = React.memo(({ hideLayout = false }) => {
   const { isKoperasiFinance, isKoperasiHead, isAdmin, can } = useCapabilities();
   const state = useSavingsState();
 
@@ -225,20 +229,22 @@ const Savings: React.FC = React.memo(() => {
       featureName="Manajemen Simpanan"
     >
       <AcademicPageLayout
-        title={isPersonalMode ? 'Tabungan Saya' : 'Kelola Simpanan Anggota'}
+        title={hideLayout ? undefined : (isPersonalMode ? 'Tabungan Saya' : 'Kelola Simpanan Anggota')}
         description={
-          isPersonalMode
+          hideLayout ? undefined : (isPersonalMode
             ? 'Pantau saldo simpanan pokok, wajib, dan sukarela tabungan pribadi'
-            : 'Kelola simpanan pokok, wajib, sukarela anggota dan proses transaksi setor/tarik'
+            : 'Kelola simpanan pokok, wajib, sukarela anggota dan proses transaksi setor/tarik')
         }
         hardeningModuleKey="coop_savings"
-        breadcrumbs={breadcrumbs}
+        breadcrumbs={hideLayout ? undefined : breadcrumbs}
         topSlot={
-          <div className="flex items-center justify-end w-full sm:w-auto">
-            <CoopFiscalYearSelector />
-          </div>
+          hideLayout ? undefined : (
+            <div className="flex items-center justify-end w-full sm:w-auto">
+              <CoopFiscalYearSelector />
+            </div>
+          )
         }
-        instruction={{
+        instruction={hideLayout ? undefined : {
           title: isPersonalMode ? 'Panduan Tabungan Saya' : 'Panduan Manajemen Simpanan',
           description: isPersonalMode
             ? 'Halaman ini digunakan untuk melihat saldo dan riwayat mutasi tabungan pribadi Anda.'

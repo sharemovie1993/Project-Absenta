@@ -41,7 +41,11 @@ interface ProductCategory {
   order: number;
 }
 
-const Products: React.FC = React.memo(() => {
+export interface ProductsProps {
+  hideLayout?: boolean;
+}
+
+const Products: React.FC<ProductsProps> = React.memo(({ hideLayout = false }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
@@ -159,13 +163,13 @@ const Products: React.FC = React.memo(() => {
       featureName="Manajemen Produk"
     >
       <AcademicPageLayout
-        title={isManagerial ? "Inventori & Barang Masuk Koperasi" : "Katalog Toko Koperasi"}
-        description={isManagerial 
+        title={hideLayout ? undefined : (isManagerial ? "Inventori & Barang Masuk Koperasi" : "Katalog Toko Koperasi")}
+        description={hideLayout ? undefined : (isManagerial 
           ? "Kelola inventori, harga modal, harga jual, stock opname, dan riwayat barang masuk."
-          : "Daftar produk, perlengkapan sekolah, alat tulis, dan kebutuhan yang tersedia di koperasi."}
+          : "Daftar produk, perlengkapan sekolah, alat tulis, dan kebutuhan yang tersedia di koperasi.")}
         hardeningModuleKey="coop_products"
-        breadcrumbs={breadcrumbs}
-        instruction={pageInstruction}
+        breadcrumbs={hideLayout ? undefined : breadcrumbs}
+        instruction={hideLayout ? undefined : pageInstruction}
       >
         <SectionCard fullWidth className="flex flex-col w-full min-w-0">
           <div className="space-y-4">

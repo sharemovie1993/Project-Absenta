@@ -102,7 +102,11 @@ const ShuRulesForm = lazy(() =>
   import('../../components/cooperative/shu/ShuRulesForm').then(module => ({ default: module.ShuRulesForm }))
 );
 
-const SHUPage: React.FC = React.memo(() => {
+export interface SHUPageProps {
+  hideLayout?: boolean;
+}
+
+const SHUPage: React.FC<SHUPageProps> = React.memo(({ hideLayout = false }) => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const { isKoperasiHead, isKoperasiFinance, isAdmin, can } = useCapabilities();
@@ -627,11 +631,11 @@ const SHUPage: React.FC = React.memo(() => {
   return (
     <PremiumFeatureGate moduleName="KOPERASI" featureName="Manajemen SHU">
       <AcademicPageLayout
-        title={layoutInfo.title}
-        description={layoutInfo.description}
+        title={hideLayout ? undefined : layoutInfo.title}
+        description={hideLayout ? undefined : layoutInfo.description}
         hardeningModuleKey={hardeningModuleKey}
-        breadcrumbs={layoutInfo.breadcrumbs}
-        instruction={layoutInfo.instruction}
+        breadcrumbs={hideLayout ? undefined : layoutInfo.breadcrumbs}
+        instruction={hideLayout ? undefined : layoutInfo.instruction}
       >
         <SectionCard fullWidth noPadding className="border-0 shadow-none bg-transparent p-0 flex flex-col w-full min-w-0 space-y-6">
           {/* Tab Switcher for Pengurus */}

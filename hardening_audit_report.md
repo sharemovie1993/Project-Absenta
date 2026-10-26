@@ -335,7 +335,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 969 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [Loans.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/Loans.tsx) (969 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 973 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [Loans.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/Loans.tsx) (973 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
 
 ---
 
@@ -371,7 +371,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 899 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [SHU.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/SHU.tsx) (899 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 903 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [SHU.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/SHU.tsx) (903 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
 
 ---
 

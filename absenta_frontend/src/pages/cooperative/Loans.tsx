@@ -45,7 +45,11 @@ const loanFilterSchema = z.object({
   status: z.string().optional(),
 });
 
-const Loans: React.FC = React.memo(() => {
+export interface LoansProps {
+  hideLayout?: boolean;
+}
+
+const Loans: React.FC<LoansProps> = React.memo(({ hideLayout = false }) => {
   const queryClient = useQueryClient();
   const { user, subscription } = useAuthStore();
   const { isKoperasiHead, isKoperasiFinance, isAdmin, can } = useCapabilities();
@@ -774,13 +778,13 @@ const Loans: React.FC = React.memo(() => {
       description="Ajukan pinjaman koperasi sekolah dengan bunga bersaing, kalkulasi cicilan otomatis, dan pelacakan pembayaran transparan."
     >
       <AcademicPageLayout
-        title={isStudent ? 'Pinjaman Saya' : 'Kelola Pinjaman Anggota'}
-        description={isStudent 
+        title={hideLayout ? undefined : (isStudent ? 'Pinjaman Saya' : 'Kelola Pinjaman Anggota')}
+        description={hideLayout ? undefined : (isStudent 
           ? 'Pantau status pengajuan pinjaman, jadwal cicilan, dan histori pembayaran angsuran pribadi Anda.' 
-          : 'Kelola verifikasi, persetujuan pengajuan pinjaman anggota, dan monitoring cicilan kredit koperasi.'}
-        breadcrumbs={breadcrumbs}
+          : 'Kelola verifikasi, persetujuan pengajuan pinjaman anggota, dan monitoring cicilan kredit koperasi.')}
+        breadcrumbs={hideLayout ? undefined : breadcrumbs}
         hardeningModuleKey="coop_loans"
-        instruction={{
+        instruction={hideLayout ? undefined : {
           title: isStudent ? "Panduan Pinjaman Saya" : "Panduan Manajemen Pinjaman Anggota",
           description: isStudent 
             ? "Gunakan halaman ini untuk memantau status pinjaman, jadwal cicilan, dan mengajukan pinjaman baru."

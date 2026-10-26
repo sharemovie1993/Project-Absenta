@@ -471,7 +471,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       case 'sarpras':
         return getSarprasTabs(currentSubtab);
       case 'koperasi':
-        return getKoperasiTabs();
+        return getKoperasiTabs(currentSubtab);
       case 'piket':
         return getPiketTabs();
       case 'admin':

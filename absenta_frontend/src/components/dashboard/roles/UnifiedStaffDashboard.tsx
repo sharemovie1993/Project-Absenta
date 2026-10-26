@@ -87,6 +87,8 @@ const KesiswaanDashboard = React.lazy(() => import('./KesiswaanDashboard').then(
 const SarprasDashboard = React.lazy(() => import('./SarprasDashboard').then(m => ({ default: m.SarprasDashboard })));
 // Hubin Dashboard — clean role-patterned architecture
 const HubinDashboard = React.lazy(() => import('./HubinDashboard').then(m => ({ default: m.HubinDashboard })));
+// Koperasi Dashboard — clean role-patterned architecture
+const KoperasiDashboard = React.lazy(() => import('./KoperasiDashboard').then(m => ({ default: m.KoperasiDashboard })));
 import { StaffPortalTab } from '../staff/tabs/StaffPortalTab';
 
 // Modular Dashboards are accessed via Google-style App Launcher & Portal tab
@@ -941,6 +943,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
       });
     }
 
+    // 4.6 Koperasi (Khusus Pengurus / Pengelola Koperasi / Admin)
+    if ((isKoperasi || isKoperasiHead || isKoperasiFinance || isKoperasiSecretary || isKoperasiAuditor || isKoperasiStore || (isAdminRole && !isKepsek) || can('coop.pos.access') || can('coop.manage')) && !isKepsek) {
+      list.push({ 
+        id: 'koperasi', 
+        label: 'Dashboard Koperasi', 
+        icon: ShoppingCart, 
+      });
+    }
+
     // 5. Fasilitator P5 (Khusus Guru Fasilitator Projek P5)
     if (isFasilitatorP5Actual && !isKepsek) {
       list.push({ id: 'p5_projek', label: 'Dashboard P5', icon: Sparkles });
@@ -993,6 +1004,12 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isPiketGuru,
     isSarpras,
     isHubin,
+    isKoperasi,
+    isKoperasiHead,
+    isKoperasiFinance,
+    isKoperasiSecretary,
+    isKoperasiAuditor,
+    isKoperasiStore,
   ]);
 
   // Normalisasi tab aktif jika tab di URL tidak termasuk dalam daftar kapabilitas user
@@ -1489,6 +1506,29 @@ export const UnifiedStaffDashboard: React.FC = () => {
               </div>
             }>
               <HubinDashboard user={user} />
+            </Suspense>
+          </div>
+        )}
+
+        {/* 🛒 TAB KOPERASI: DASHBOARD KOPERASI */}
+        {visitedTabs.has('koperasi') && (
+          <div 
+            key="tab-koperasi"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'koperasi'}
+            className={cn("w-full min-w-0", activeTab === 'koperasi' ? "block" : "hidden")}
+          >
+            <Suspense fallback={
+              <div className="w-full space-y-4 py-4">
+                <div className="h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="h-24 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                  ))}
+                </div>
+              </div>
+            }>
+              <KoperasiDashboard user={user} />
             </Suspense>
           </div>
         )}

@@ -34,7 +34,11 @@ const MemberModals = lazy(() =>
   }))
 );
 
-const Members: React.FC = React.memo(() => {
+export interface MembersProps {
+  hideLayout?: boolean;
+}
+
+const Members: React.FC<MembersProps> = React.memo(({ hideLayout = false }) => {
   const { subscription } = useAuthStore();
   const { isKoperasiHead, isKoperasiFinance, isKoperasiSecretary, isAdmin, can } = useCapabilities();
   const canUpdate = isAdmin || isKoperasiHead || isKoperasiSecretary || can('cooperative.members.update');
@@ -305,14 +309,14 @@ const Members: React.FC = React.memo(() => {
   return (
     <PremiumFeatureGate moduleName="KOPERASI" featureName="Manajemen Anggota">
       <AcademicPageLayout
-        title="Manajemen Anggota Koperasi"
-        description="Kelola data anggota koperasi"
+        title={hideLayout ? undefined : "Manajemen Anggota Koperasi"}
+        description={hideLayout ? undefined : "Kelola data anggota koperasi"}
         hardeningModuleKey="coop_members"
-        breadcrumbs={[
+        breadcrumbs={hideLayout ? undefined : [
           { label: 'Koperasi', path: '/cooperative' },
           { label: 'Anggota', path: '/cooperative/members' },
         ]}
-        instruction={{
+        instruction={hideLayout ? undefined : {
           title: 'Panduan Manajemen Anggota',
           description:
             'Kelola pendaftaran anggota, pencarian data induk, saldo simpanan riil, dan ekspor laporan terformat.',
