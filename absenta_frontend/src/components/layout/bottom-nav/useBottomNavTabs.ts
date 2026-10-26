@@ -143,7 +143,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         label: 'Beranda Siswa',
         shortLabel: 'Siswa',
         icon: Home,
-        targetPath: '/dashboard',
+        targetPath: '/dashboard?tab=ringkasan',
         isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan'),
       },
       {
@@ -151,24 +151,24 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         label: 'Presensi Siswa',
         shortLabel: 'Kehadiran',
         icon: Clock,
-        targetPath: '/attendance/my-attendance',
-        isActive: (pathname) => pathname.startsWith('/attendance/my-attendance') || pathname.startsWith('/my-attendance'),
+        targetPath: '/dashboard?tab=kehadiran',
+        isActive: (pathname, tabParam) => (pathname === '/dashboard' && tabParam === 'kehadiran') || pathname.startsWith('/attendance/my-attendance') || pathname.startsWith('/my-attendance'),
       },
       {
         id: 'catatan',
         label: 'Catatan Siswa',
         shortLabel: 'Catatan',
         icon: FileText,
-        targetPath: '/bpbk/konseling',
-        isActive: (pathname) => pathname.startsWith('/bpbk/konseling') || pathname.startsWith('/kesiswaan/pelanggaran'),
+        targetPath: '/dashboard?tab=catatan',
+        isActive: (pathname, tabParam) => (pathname === '/dashboard' && tabParam === 'catatan') || pathname.startsWith('/bpbk/konseling') || pathname.startsWith('/kesiswaan/pelanggaran'),
       },
       {
         id: 'berkas',
         label: 'Berkas Siswa',
         shortLabel: 'Berkas',
         icon: BookOpen,
-        targetPath: '/rapor/nilai',
-        isActive: (pathname) => pathname.startsWith('/rapor/nilai') || pathname.startsWith('/academic/student-records'),
+        targetPath: '/dashboard?tab=berkas',
+        isActive: (pathname, tabParam) => (pathname === '/dashboard' && tabParam === 'berkas') || pathname.startsWith('/rapor/nilai') || pathname.startsWith('/academic/student-records'),
       },
     ];
 
@@ -197,8 +197,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       label: 'Profil Siswa',
       shortLabel: 'Profil',
       icon: User,
-      targetPath: '/profile',
-      isActive: (pathname, tabParam) => tabParam === 'profil' || pathname.startsWith('/profile'),
+      targetPath: '/dashboard?tab=profil',
+      isActive: (pathname, tabParam) => (pathname === '/dashboard' && tabParam === 'profil') || pathname.startsWith('/profile'),
     });
 
     return tabs;

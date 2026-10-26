@@ -1,154 +1,76 @@
-import React, { useMemo, useState, useEffect, Suspense } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useAuthStore } from '../../../store/authStore';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Button, Badge, UnconnectedBadge, renderApiValue } from '../../../components/ui';
-import { StaffPortalTab } from '../staff/tabs/StaffPortalTab';
-import { resolveSmartDashboardMode } from '../../../helpers/dashboardModeHelper';
-import { useCapabilities } from '../../../hooks/useCapabilities';
-import { useSocket } from '../../../hooks/useSocket';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import QRCode from 'qrcode';
-import { 
-  getRekapBulananSiswaMe, 
-  getRekapHarianSiswaMe, 
-  getRekapBulananKelasMe,
-  getSesiAbsensiList 
-} from '../../../api/attendanceGerbang.api';
-import { normalizeFromSesiAbsensi, getSessionStatusMeta } from '../../../utils/kbm-normalizer';
-import { toLocalDate, toLocalMonth, formatLocalTimeFromISO, getTimezoneLabel } from '../../../utils/attendance/time';
-import { calculateStudentGamification } from '../../../utils/attendance/attendanceGamification.utils';
-import { 
-  CheckCircle2, 
-  User, 
-  QrCode, 
-  CreditCard,
-  Printer,
-  Users, 
-  Trophy, 
-  Award,
-  AlertTriangle, 
-  TrendingUp, 
-  ChevronRight, 
-  ChevronLeft,
-  LayoutList, 
-  Activity, 
-  Fingerprint, 
-  MessageCircle, 
-  FileText, 
-  RefreshCw,
-  Edit3,
-  Key,
-  ShieldCheck,
-  Shield,
-  Clock,
-  Calendar,
-  MapPin,
-  Heart,
-  X,
-  Check,
-  Sparkles,
-  AlertCircle,
-  ArrowRight,
-  FolderOpen,
-  Camera,
-  Loader,
-  Briefcase,
-  BookOpen,
-  Building2 as BuildingIcon,
-  ShoppingCart,
-  Compass,
-  LayoutGrid,
-} from 'lucide-react';
-import api from '../../../lib/axiosInstance';
-import { kesiswaanApi } from '../../../api/kesiswaan.api';
-import { hubinApi } from '../../../api/hubin.api';
-import { cn } from '../../../lib/utils';
-import { siswaApi } from '../../../api/academic.api';
-import { getSiswaList, getSiswaMe } from '../../../api/academic/siswa.api';
-import { sekolahApi } from '../../../api/academic/sekolah.api';
-import { studentCardConfigApi } from '../../../api/academic/student-card-config.api';
-import { changePassword } from '../../../api/auth.api';
-import { PreviewCard } from '../../../components/academic/student-card/PreviewCard';
-import { CardBackPreview } from '../../../components/academic/student-card/CardBackPreview';
-import { PrintableCard } from '../../../components/academic/student-card/PrintableCard';
-import { CardBackPrint } from '../../../components/academic/student-card/CardBackPrint';
-import { DEFAULT_CONFIG } from '../../../components/academic/student-card/constants';
-import { SiswaOnboardingModal, calculateProfileCompleteness, type SectionEditType } from '@/components/academic/siswa/SiswaOnboardingModal';
-import { useSiswaMe } from '@/hooks/useSiswaMe';
-import { useTenantSettings } from '@/hooks/useTenantSettings';
-import { formatAlamatLengkap } from '@/lib/alamat.util';
-import { resolveProfilePhotoUrl } from '@/lib/utils';
-import { listSiswaDocuments, getMemberDocPreviewUrl } from '@/api/memberDocs.api';
-import { SiswaDocsPanel } from '@/components/academic/siswa/SiswaDocsPanel';
-import { SelfMemberDocsSection } from '@/components/documents/SelfMemberDocsSection';
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { SiswaCardModal } from '../../academic/siswa/dashboard/SiswaCardModal';
-import { SiswaProfileTab } from '../../academic/siswa/dashboard/SiswaProfileTab';
-import { SiswaAttendanceTab } from '../../academic/siswa/dashboard/SiswaAttendanceTab';
-import { SiswaPointsTab } from '../../academic/siswa/dashboard/SiswaPointsTab';
-import { PendingSiswaModule } from '../../../pages/attendance/ops/components/PendingSiswaModule';
-import { useGerbangAttendanceData } from '../../../hooks/attendance/useGerbangAttendanceData';
-import { useTenant } from '../../../hooks/useTenant';
+import {
+  LayoutList,
+  LayoutGrid,
+  CheckCircle2,
+  FileText,
+  FolderOpen,
+  User,
+} from 'lucide-react';
+import { renderApiValue } from '@/components/ui';
+import { cn } from '@/lib/utils';
+import { changePassword } from '@/api/auth.api';
+import { DEFAULT_CONFIG } from '@/components/academic/student-card/constants';
+import { calculateProfileCompleteness, type SectionEditType } from '@/components/academic/siswa/SiswaOnboardingModal';
+import { useGerbangAttendanceData } from '@/hooks/attendance/useGerbangAttendanceData';
+
+// Types & Skeletons
+import type { SiswaTabId, SiswaNavTabItem } from './siswa/types';
+import { SiswaDashboardSkeleton } from './siswa/SiswaDashboardSkeleton';
+import { useSiswaDashboardData } from './siswa/useSiswaDashboardData';
+
+// Components
+import { SiswaHeaderBanner } from './siswa/components/SiswaHeaderBanner';
+
+// Subtabs
+import { SiswaRingkasanTab } from './siswa/tabs/SiswaRingkasanTab';
+import { SiswaKehadiranTab } from './siswa/tabs/SiswaKehadiranTab';
+import { SiswaCatatanTab } from './siswa/tabs/SiswaCatatanTab';
+import { SiswaBerkasTab } from './siswa/tabs/SiswaBerkasTab';
+import { SiswaPortalTab } from './siswa/tabs/SiswaPortalTab';
+import { SiswaProfilTab } from './siswa/tabs/SiswaProfilTab';
+
+// Modals
+import { SiswaChangePasswordModal } from './siswa/modals/SiswaChangePasswordModal';
+import { SiswaLeaderboardModal } from './siswa/modals/SiswaLeaderboardModal';
+import { SiswaPrestasiModal } from './siswa/modals/SiswaPrestasiModal';
+import { SiswaKehadiranModal } from './siswa/modals/SiswaKehadiranModal';
+import { SiswaBelumAbsenModal } from './siswa/modals/SiswaBelumAbsenModal';
+import { SiswaCardModal } from '../..//academic/siswa/dashboard/SiswaCardModal';
+
+const SiswaOnboardingModal = lazy(() =>
+  import('@/components/academic/siswa/SiswaOnboardingModal').then((m) => ({ default: m.SiswaOnboardingModal }))
+);
 
 export const SiswaDashboard: React.FC = () => {
-  const { user, tenantMode } = useAuthStore();
-  const { tenant: tenantSettings } = useTenantSettings();
-  const { can } = useCapabilities();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const isPetugasKelas = can('attendance.sessions.update.attendance');
+  const rawTab = searchParams.get('tab') as SiswaTabId | null;
+  const validTabs: SiswaTabId[] = ['ringkasan', 'portal', 'kehadiran', 'catatan', 'berkas', 'profil'];
+  const activeTab: SiswaTabId = rawTab && validTabs.includes(rawTab) ? rawTab : 'ringkasan';
 
-  // Synchronize Active Tab with URL Query Parameter (Default Landing: Portal Sekolah)
-  const activeTab = searchParams.get('tab') || 'portal';
-
-  const handleTabChange = (newTab: string) => {
-    setSearchParams({ tab: newTab });
-  };
-
-  const [dashboardMode, setDashboardMode] = useState<'portal' | 'desktop'>(() => {
-    return resolveSmartDashboardMode(user);
-  });
-
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
+  // Keep-Alive Tab Cache
+  const [visitedTabs, setVisitedTabs] = useState<Set<SiswaTabId>>(() => new Set([activeTab]));
 
   useEffect(() => {
-    if (user && !localStorage.getItem('absenta_dashboard_mode')) {
-      setDashboardMode(resolveSmartDashboardMode(user));
-    }
-  }, [user]);
-
-  useEffect(() => {
-    const handleModeChange = (e: Event) => {
-      const customEvent = e as CustomEvent;
-      if (customEvent.detail) {
-        setDashboardMode(customEvent.detail);
-      }
-    };
-    window.addEventListener('absenta-dashboard-mode-change', handleModeChange);
-    return () => window.removeEventListener('absenta-dashboard-mode-change', handleModeChange);
-  }, []);
-
-  const handleToggleMode = (newMode: 'portal' | 'desktop') => {
-    setDashboardMode(newMode);
-    localStorage.setItem('absenta_dashboard_mode', newMode);
-    window.dispatchEvent(new CustomEvent('absenta-dashboard-mode-change', { detail: newMode }));
-  };
-
-  const todayIso = useMemo(() => toLocalDate(), []);
-  const monthIso = useMemo(() => toLocalMonth(), []);
-  const todayFormattedDate = useMemo(() => {
-    return new Date().toLocaleDateString('id-ID', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
+    setVisitedTabs((prev) => {
+      if (prev.has(activeTab)) return prev;
+      const next = new Set(prev);
+      next.add(activeTab);
+      return next;
     });
-  }, []);
+  }, [activeTab]);
 
-  // Selected Month State for Attendance Tab (Format: YYYY-MM)
-  const [selectedMonth, setSelectedMonth] = useState<string>(monthIso);
-  const [catatanFilter, setCatatanFilter] = useState<'semua' | 'prestasi' | 'pelanggaran'>('semua');
+  const handleTabChange = useCallback(
+    (newTab: SiswaTabId | string) => {
+      setSearchParams({ tab: newTab });
+    },
+    [setSearchParams]
+  );
+
+  // Data hook
+  const data = useSiswaDashboardData();
 
   // Modals state
   const [showDigitalCardModal, setShowDigitalCardModal] = useState(false);
@@ -161,274 +83,17 @@ export const SiswaDashboard: React.FC = () => {
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [activeSection, setActiveSection] = useState<SectionEditType>('pribadi');
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<string>(todayIso);
 
-  const handleOpenEditSection = (section: SectionEditType) => {
-    setActiveSection(section);
-    setShowOnboardingModal(true);
-  };
-
-  // Form states for password change modal
+  // Password change state
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
 
-  // 1. Get Student Detailed Profile via Custom Hook
-  const { siswaProfile, isApiConnected, refetch: refetchProfile } = useSiswaMe();
-  const { subscribe, unsubscribe } = useSocket();
-
-  const { tenantId } = useTenant();
-  const {
-    notPresent: notPresentData = [],
-    notPresentLoading,
-    miniStats: miniStatsData = { masuk: 0, keluar: 0 },
-    fetchNotPresent: refetchNotPresent,
-    refreshStats: refetchMiniStats,
-    removePendingStudent,
-  } = useGerbangAttendanceData({
-    tenantId,
-    selectedKelasId: siswaProfile?.kelas_id || '',
-    enabled: showBelumAbsenModal,
-  });
-
-  // 1.1 Fetch Sekolah Profile Data (Dynamic School Name & Logo from Modul Siswa-Card / Backend)
-  const { data: sekolahProfileRes } = useQuery({
-    queryKey: ['sekolah-profile'],
-    queryFn: sekolahApi.getProfile,
-  });
-
-  const sekolahName = tenantSettings?.name || sekolahProfileRes?.nama || sekolahProfileRes?.nama_sekolah || (siswaProfile as any)?.Sekolah?.nama || (siswaProfile as any)?.sekolah?.nama || (user as any)?.nama_sekolah || (user as any)?.tenant_name || (user as any)?.sekolah_nama || (user as any)?.tenantName || 'Sekolah';
-  const sekolahLogo = tenantSettings?.logo_url || sekolahProfileRes?.logo_url || null;
-
-  // 1.15 Resolve Student Profile Photo (with resolveProfilePhotoUrl & MemberDocs FOTO fallback)
-  const { data: siswaDocsForPhoto } = useQuery({
-    queryKey: ['self-member-docs-foto', siswaProfile?.id],
-    queryFn: () => listSiswaDocuments(siswaProfile!.id),
-    enabled: !!siswaProfile?.id && !siswaProfile?.foto && !siswaProfile?.foto_url,
-  });
-
-  const studentPhotoDoc = useMemo(() => {
-    return siswaDocsForPhoto?.data?.find((d: any) => d.kategori === 'FOTO');
-  }, [siswaDocsForPhoto]);
-
-  const rawStudentPhoto = useMemo(() => {
-    if (siswaProfile?.foto) return siswaProfile.foto;
-    if (siswaProfile?.foto_url) return siswaProfile.foto_url;
-    if ((siswaProfile as any)?.foto_pas) return (siswaProfile as any).foto_pas;
-    if ((user as any)?.foto) return (user as any).foto;
-    if ((user as any)?.foto_url) return (user as any).foto_url;
-    if (studentPhotoDoc && siswaProfile?.id) {
-      return getMemberDocPreviewUrl('SISWA', siswaProfile.id, studentPhotoDoc.id);
-    }
-    return null;
-  }, [siswaProfile, user, studentPhotoDoc]);
-
-  const studentPhotoUrl = useMemo(() => {
-    return rawStudentPhoto ? resolveProfilePhotoUrl(rawStudentPhoto) : null;
-  }, [rawStudentPhoto]);
-
-  // 1.2 Fetch Active Student Card Configuration from Modul Siswa-Card (Tenant Setting Hook)
-  const { data: studentCardConfigRes } = useQuery({
-    queryKey: ['student-card-config-me'],
-    queryFn: studentCardConfigApi.getConfig,
-    enabled: true,
-  });
-
-  const activeCardConfig = studentCardConfigRes || null;
-
-  const completeness = useMemo(() => {
-    return calculateProfileCompleteness(siswaProfile);
-  }, [siswaProfile]);
-
-  useEffect(() => {
-    if (siswaProfile) {
-      const comp = calculateProfileCompleteness(siswaProfile);
-      const hasDismissed = sessionStorage.getItem(`onboarding_dismissed_${user?.siswa_id || user?.id}`);
-      if (!comp.isComplete && !hasDismissed) {
-        setShowOnboardingModal(true);
-      }
-    }
-  }, [siswaProfile, user?.siswa_id, user?.id]);
-
-  // 2. Attendance & Schedule Data
-  const studentKelasId = siswaProfile?.kelas_id || (user as any)?.kelas_id || (user as any)?.Siswa?.kelas_id;
-
-  const { data: dailyRecapRes, refetch: refetchDailyRecap } = useQuery({
-    queryKey: ['rekap-harian-siswa-me', selectedDate, user?.siswa_id],
-    queryFn: () => getRekapHarianSiswaMe({ tanggal: selectedDate }),
-    enabled: !!user && !!user?.siswa_id,
-  });
-
-  const { data: monthlyRecapRes, refetch: refetchMonthlyRecap } = useQuery({
-    queryKey: ['rekap-bulanan-siswa-me', selectedMonth, user?.siswa_id],
-    queryFn: () => getRekapBulananSiswaMe({ bulan: selectedMonth }),
-    enabled: !!user && !!user?.siswa_id,
-  });
-
-  const { data: scheduleRes, refetch: refetchSchedule, isLoading: isLoadingSchedule } = useQuery({
-    queryKey: ['jadwal-kbm-siswa-unified', selectedDate, studentKelasId],
-    queryFn: () => getSesiAbsensiList({ 
-      tanggal: selectedDate, 
-      kelas_id: studentKelasId || undefined, 
-      include_scheduled: true, 
-      summary: true, 
-      limit: 100 
-    } as any),
-    enabled: !!user && !!studentKelasId,
-    staleTime: 30000,
-  });
-
-  const { data: pelanggaranRes, refetch: refetchPelanggaran } = useQuery({
-    queryKey: ['pelanggaran-me', user?.siswa_id || user?.id],
-    queryFn: async () => {
-      try {
-        const axios = (await import('../../../lib/axiosInstance')).default;
-        const res = await axios.get('/kesiswaan/pelanggaran/me');
-        return res.data;
-      } catch (err) {
-        return null;
-      }
-    },
-    enabled: !!user,
-  });
-
-  const { data: prestasiRes } = useQuery({
-    queryKey: ['prestasi-me', user?.siswa_id || user?.id],
-    queryFn: async () => {
-      try {
-        const axios = (await import('../../../lib/axiosInstance')).default;
-        const res = await axios.get('/kesiswaan/prestasi/me');
-        return res.data;
-      } catch (err) {
-        return null;
-      }
-    },
-    enabled: !!user,
-  });
-
-  const { data: kelasLeaderboardRes } = useQuery({
-    queryKey: ['class-leaderboard-me-dashboard', selectedMonth],
-    queryFn: () => getRekapBulananKelasMe({ bulan: selectedMonth }),
-    enabled: !!user,
-  });
-
-  const myRank = useMemo(() => {
-    const students = kelasLeaderboardRes?.data?.students || [];
-    if (!students.length) return { rank: 0, totalStudents: 0 };
-    const myIdx = students.findIndex((s: any) => s.id === user?.siswa_id || s.id === user?.id || s.nama === user?.name || s.nama === siswaProfile?.nama);
-    return {
-      rank: myIdx !== -1 ? myIdx + 1 : 0,
-      totalStudents: students.length,
-    };
-  }, [kelasLeaderboardRes, user, siswaProfile]);
-
-  // ── PKL Siswa Queries ──────────────────────────────────────────────────────
-  const isPklStudent = can('hubin.self.pkl');
-
-  const { data: myPenempatanRaw } = useQuery({
-    queryKey: ['hubin-penempatan-me'],
-    queryFn: () => hubinApi.getMyPenempatan(),
-    enabled: isPklStudent,
-    staleTime: 5 * 60 * 1000, // 5 menit
-  });
-
-  const myPenempatan = useMemo(() => {
-    const raw = myPenempatanRaw;
-    return (raw as any)?.data || raw || null;
-  }, [myPenempatanRaw]);
-
-  // PKL dianggap aktif jika ada data penempatan DAN statusnya AKTIF
-  const isAktifPkl = useMemo(() => {
-    if (!isPklStudent || !myPenempatan) return false;
-    return (myPenempatan as any).status === 'AKTIF';
-  }, [isPklStudent, myPenempatan]);
-
-  const { data: pklAbsensiDashboardRaw } = useQuery({
-    queryKey: ['pkl-absensi-dashboard', (myPenempatan as any)?.id],
-    queryFn: () => hubinApi.getAbsensi((myPenempatan as any).id, { limit: 5 }),
-    enabled: isAktifPkl && !!(myPenempatan as any)?.id,
-    staleTime: 2 * 60 * 1000,
-  });
-
-  const pklAbsensiHistory = useMemo(() => {
-    const raw = pklAbsensiDashboardRaw;
-    return Array.isArray((raw as any)?.data) ? (raw as any).data : [];
-  }, [pklAbsensiDashboardRaw]);
-
-  const todayPklAbsensi = useMemo(() => {
-    const todayStr = todayIso;
-    return pklAbsensiHistory.find((a: any) => {
-      const rawTanggalStr = typeof a.tanggal === 'string' ? a.tanggal.substring(0, 10) : '';
-      const dateFromTanggal = a.tanggal ? toLocalDate(new Date(a.tanggal)) : '';
-      const dateFromJamMasuk = a.jam_masuk ? (typeof a.jam_masuk === 'string' ? a.jam_masuk.substring(0, 10) : toLocalDate(new Date(a.jam_masuk))) : '';
-      return rawTanggalStr === todayStr || dateFromTanggal === todayStr || dateFromJamMasuk === todayStr;
-    }) || null;
-  }, [pklAbsensiHistory, todayIso]);
-
-  const pklHadir = useMemo(() => pklAbsensiHistory.filter((a: any) => a.status === 'HADIR').length, [pklAbsensiHistory]);
-
-  const pklSisaHari = useMemo(() => {
-    const selesai = (myPenempatan as any)?.tanggal_selesai;
-    if (!selesai) return null;
-    const diff = Math.ceil((new Date(selesai).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-    return Math.max(0, diff);
-  }, [myPenempatan]);
-  // ──────────────────────────────────────────────────────────────────────────
-
-  const dailyRecap = dailyRecapRes?.data ?? null;
-  const monthlyRecap = monthlyRecapRes?.data ?? null;
-
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      await Promise.all([
-        refetchProfile(),
-        refetchDailyRecap(),
-        refetchMonthlyRecap(),
-        refetchSchedule(),
-        refetchPelanggaran(),
-      ]);
-      toast.success('Data dashboard berhasil diperbarui!');
-    } catch (e) {
-      toast.error('Gagal memperbarui data.');
-    } finally {
-      setIsRefreshing(false);
-    }
+  const handleOpenEditSection = (section: SectionEditType) => {
+    setActiveSection(section);
+    setShowOnboardingModal(true);
   };
-
-  // Socket updates
-  useEffect(() => {
-    if (!user) return;
-    const studentId = user.siswa_id || user.id;
-    const kelasId = siswaProfile?.kelas_id || (user as any)?.kelas_id;
-
-    const handleFeedUpdate = () => {
-      refetchDailyRecap();
-      refetchMonthlyRecap();
-      refetchSchedule();
-    };
-
-    subscribe(`attendance_feed_student:${studentId}`, handleFeedUpdate);
-    subscribe('attendance_feed_update', handleFeedUpdate);
-    subscribe('sesi_status_update', handleFeedUpdate);
-    if (kelasId) {
-      subscribe(`sesi:created:${kelasId}`, handleFeedUpdate);
-      subscribe(`sesi:updated:${kelasId}`, handleFeedUpdate);
-    }
-
-    return () => {
-      unsubscribe(`attendance_feed_student:${studentId}`, handleFeedUpdate);
-      unsubscribe('attendance_feed_update', handleFeedUpdate);
-      unsubscribe('sesi_status_update', handleFeedUpdate);
-      if (kelasId) {
-        unsubscribe(`sesi:created:${kelasId}`, handleFeedUpdate);
-        unsubscribe(`sesi:updated:${kelasId}`, handleFeedUpdate);
-      }
-    };
-  }, [user, siswaProfile, subscribe, unsubscribe, refetchDailyRecap, refetchMonthlyRecap, refetchSchedule]);
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -450,6 +115,7 @@ export const SiswaDashboard: React.FC = () => {
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      setShowChangePasswordModal(false);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err?.message || 'Gagal mengubah password');
     } finally {
@@ -457,2161 +123,299 @@ export const SiswaDashboard: React.FC = () => {
     }
   };
 
-  const gamification = useMemo(() => {
-    const detail = Array.isArray(monthlyRecapRes?.data?.detail)
-      ? monthlyRecapRes.data.detail
-      : Array.isArray(monthlyRecap?.detail)
-        ? monthlyRecap.detail
-        : [];
-
-    let attendanceRate = 0;
-    if (typeof monthlyRecapRes?.data?.persentase_kehadiran === 'number') {
-      attendanceRate = monthlyRecapRes.data.persentase_kehadiran;
-    } else if (typeof monthlyRecap?.persentase_kehadiran === 'number') {
-      attendanceRate = monthlyRecap.persentase_kehadiran;
-    } else {
-      const h = monthlyRecapRes?.data?.total_hadir ?? 0;
-      const i = monthlyRecapRes?.data?.total_izin ?? 0;
-      const s = monthlyRecapRes?.data?.total_sakit ?? 0;
-      const a = monthlyRecapRes?.data?.total_alpa ?? 0;
-      const tot = h + i + s + a;
-      attendanceRate = tot > 0 ? Math.round((h / tot) * 100) : 0;
-    }
-
-    const apiData = pelanggaranRes?.data;
-    const rawList = Array.isArray(apiData)
-      ? apiData
-      : Array.isArray(apiData?.list)
-        ? apiData.list
-        : [];
-    const totalPoinPelanggaran = rawList.reduce((acc: number, curr: any) => acc + (curr.poin || 0), 0);
-
-    return calculateStudentGamification(detail, attendanceRate, totalPoinPelanggaran);
-  }, [monthlyRecapRes, monthlyRecap, pelanggaranRes]);
-
-  const studentInitials = useMemo(() => {
-    const name = siswaProfile?.nama || (user as any)?.nama_siswa || user?.full_name || user?.name || 'S';
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
-    }
-    return name.slice(0, 2).toUpperCase();
-  }, [siswaProfile, user]);
-
-  const studentName = siswaProfile?.nama || siswaProfile?.nama_siswa || (user as any)?.nama_siswa || user?.full_name || user?.name || '-';
-  const currentClassName = siswaProfile?.Kelas?.nama_kelas || siswaProfile?.kelas?.nama_kelas || siswaProfile?.kelas_nama || (user as any)?.kelas_nama || (user as any)?.kelas || '-';
-  const currentNisn = (siswaProfile as any)?.nisn || (siswaProfile as any)?.nis || (user as any)?.nisn || (user as any)?.username || '-';
-  const currentNik = siswaProfile?.nik || (user as any)?.nik || (user as any)?.nik_siswa || '-';
-
-  useEffect(() => {
-    const rawNisn = currentNisn && currentNisn !== '-' ? currentNisn : (siswaProfile?.nisn || siswaProfile?.nis || user?.username || '1234567890');
-    QRCode.toDataURL(String(rawNisn), { errorCorrectionLevel: 'L', margin: 0, width: 300 })
-      .then(url => setQrCodeDataUrl(url))
-      .catch(err => console.error('Failed to generate QR code:', err));
-  }, [currentNisn, siswaProfile, user]);
-
-  const currentJurusan = siswaProfile?.Jurusan?.nama || siswaProfile?.jurusan?.nama || siswaProfile?.Kelas?.Jurusan?.nama || siswaProfile?.kelas?.Jurusan?.nama || siswaProfile?.jurusan?.nama_jurusan || siswaProfile?.Jurusan?.nama_jurusan || siswaProfile?.Kelas?.Jurusan?.nama_jurusan || siswaProfile?.Kelas?.jurusan?.nama_jurusan || siswaProfile?.kelas?.Jurusan?.nama_jurusan || siswaProfile?.kelas?.jurusan?.nama_jurusan || siswaProfile?.jurusan_nama || (user as any)?.jurusan_nama || (user as any)?.jurusan || '-';
-  const currentOrtu = siswaProfile?.nama_ayah || siswaProfile?.nama_ibu || siswaProfile?.nama_wali || (user as any)?.nama_ortu || '-';
-  const rawTitle = activeCardConfig?.card_title;
-  const dynamicCardTitle = (rawTitle && !rawTitle.toLowerCase().includes('pegawai'))
-    ? rawTitle
-    : 'KARTU TANDA PELAJAR DIGITAL';
-  const dynamicLogoUrl = activeCardConfig?.logo_url || sekolahLogo;
-  const dynamicRules = activeCardConfig?.back_rules || 'Gunakan QR Code ini untuk scan Tap Presensi Gerbang Sekolah & Akses Perpustakaan Digital.';
-
-  const renderValueOrUnconnectedBadge = (val: any, customConnectedText?: React.ReactNode) => {
-    return renderApiValue(val, customConnectedText, isApiConnected);
-  };
-
-  // ── Status Anggota Koperasi Siswa ──────────────────────────────────────────
-  const { data: coopMemberRes } = useQuery({
-    queryKey: ['koperasi-member-status-me'],
-    queryFn: async () => {
-      try {
-        const res = await api.get('/cooperative/members/me');
-        const data = res?.data?.data;
-        if (data && data.status === 'ACTIVE') {
-          return { status: 'member' as const, data };
-        }
-        return { status: 'non-member' as const, data: null };
-      } catch {
-        return { status: 'non-member' as const, data: null };
-      }
-    },
-    staleTime: 5 * 60 * 1000,
-    enabled: !!user,
+  // Gerbang data for Belum Absen modal
+  const {
+    notPresent: notPresentData = [],
+    notPresentLoading,
+    miniStats: miniStatsData = { masuk: 0, keluar: 0 },
+    fetchNotPresent: refetchNotPresent,
+    refreshStats: refetchMiniStats,
+    removePendingStudent,
+  } = useGerbangAttendanceData({
+    tenantId: data.tenantId,
+    selectedKelasId: data.siswaProfile?.kelas_id || '',
+    enabled: showBelumAbsenModal,
   });
 
-  const isCoopMember = coopMemberRes?.status === 'member' || Boolean((siswaProfile as any)?.is_anggota_koperasi);
-
-  // ── Multi-Badge Siswa (Single Source of Truth) ─────────────────────────────
-  const studentBadges = useMemo(() => {
-    const list: Array<{
-      key: string;
-      label: string;
-      icon?: any;
-      color: string;
-    }> = [];
-
-    // 1. Rombel / Kelas (Selalu Pertama)
-    if (currentClassName && currentClassName !== '-') {
-      list.push({
-        key: 'kelas',
-        label: `Kelas ${currentClassName}`,
-        color: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30 font-extrabold',
-      });
-    }
-
-    // 2. PKL Aktif (Hubin)
-    if (isAktifPkl) {
-      list.push({
-        key: 'pkl',
-        label: 'PKL Aktif',
-        icon: Briefcase,
-        color: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 font-black',
-      });
-    }
-
-    // 3. Petugas Presensi Kelas
-    if (isPetugasKelas) {
-      list.push({
-        key: 'petugas_kelas',
-        label: 'Petugas Kelas',
-        icon: Sparkles,
-        color: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 font-black',
-      });
-    }
-
-    // 4. Anggota Koperasi Sekolah
-    if (isCoopMember) {
-      list.push({
-        key: 'koperasi',
-        label: 'Anggota Koperasi',
-        icon: ShoppingCart,
-        color: 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 font-black',
-      });
-    }
-
-    // 5. Kepengurusan OSIS & MPK
-    if (siswaProfile?.is_osis) {
-      list.push({
-        key: 'osis',
-        label: 'Pengurus OSIS',
-        icon: Award,
-        color: 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 font-black',
-      });
-    }
-    if (siswaProfile?.is_mpk) {
-      list.push({
-        key: 'mpk',
-        label: 'Anggota MPK',
-        icon: ShieldCheck,
-        color: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30 font-black',
-      });
-    }
-
-    // 6. Ekstrakurikuler (Pramuka, PMR, Paskibra, dsb.)
-    const rawEskuls: string[] = [
-      ...(Array.isArray((siswaProfile as any)?.ekskuls) ? (siswaProfile as any).ekskuls : []),
-      siswaProfile?.ekskul_1,
-      siswaProfile?.ekskul_2,
-    ].filter((e): e is string => Boolean(e && typeof e === 'string' && e.trim().length > 0));
-
-    const uniqueEskuls = Array.from(new Set(rawEskuls));
-    uniqueEskuls.forEach((eskulName, idx) => {
-      const cleanName = eskulName.replace(/^(eskul|ekstrakurikuler)\s+/i, '').trim();
-      list.push({
-        key: `eskul-${idx}-${cleanName}`,
-        label: `Eskul ${cleanName}`,
-        icon: Compass,
-        color: 'bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-500/30 font-black',
-      });
-    });
-
-    return list;
-  }, [currentClassName, isAktifPkl, isPetugasKelas, isCoopMember, siswaProfile]);
-
-  // Helper for universal array extraction from backend payload
-  const extractListFromPayload = (payload: any): any[] => {
-    if (!payload) return [];
-    if (Array.isArray(payload)) return payload;
-    if (Array.isArray(payload?.data)) return payload.data;
-    
-    const target = payload?.data || payload;
-    if (Array.isArray(target)) return target;
-    if (Array.isArray(target?.list)) return target.list;
-    if (Array.isArray(target?.rows)) return target.rows;
-    if (Array.isArray(target?.items)) return target.items;
-    if (Array.isArray(target?.records)) return target.records;
-    if (Array.isArray(target?.pelanggaran)) return target.pelanggaran;
-    if (Array.isArray(target?.prestasi)) return target.prestasi;
-    if (Array.isArray(target?.data)) return target.data;
-    
-    if (target && typeof target === 'object') {
-      for (const key of Object.keys(target)) {
-        if (Array.isArray(target[key])) {
-          return target[key];
-        }
+  // Onboarding auto prompt
+  useEffect(() => {
+    if (data.siswaProfile) {
+      const comp = calculateProfileCompleteness(data.siswaProfile);
+      const hasDismissed = sessionStorage.getItem(`onboarding_dismissed_${data.user?.siswa_id || data.user?.id}`);
+      if (!comp.isComplete && !hasDismissed) {
+        setShowOnboardingModal(true);
       }
     }
-    return [];
+  }, [data.siswaProfile, data.user]);
+
+  // Tab items config
+  const navTabs: SiswaNavTabItem[] = useMemo(
+    () => [
+      { id: 'ringkasan', label: 'Ringkasan', icon: LayoutList },
+      { id: 'portal', label: 'Portal', icon: LayoutGrid },
+      { id: 'kehadiran', label: 'Kehadiran', icon: CheckCircle2 },
+      { id: 'catatan', label: 'Catatan', icon: FileText, badge: data.pelanggaranCount },
+      { id: 'berkas', label: 'Berkas Saya', icon: FolderOpen },
+      { id: 'profil', label: 'Profil', icon: User },
+    ],
+    [data.pelanggaranCount]
+  );
+
+  const renderValueOrUnconnectedBadge = (val: any, customConnectedText?: React.ReactNode) => {
+    return renderApiValue(val, customConnectedText, data.isApiConnected);
   };
-
-  // pelanggaran data list — handle all possible API payload shapes
-  const pelanggaranList = useMemo(() => {
-    console.log('🔍 [DEBUG PELANGGARAN LIST] pelanggaranRes:', pelanggaranRes);
-    const list = extractListFromPayload(pelanggaranRes);
-    console.log('✅ [DEBUG PELANGGARAN LIST] Parsed count:', list.length, list);
-    return list;
-  }, [pelanggaranRes]);
-
-  const prestasiList = useMemo(() => {
-    console.log('🔍 [DEBUG PRESTASI LIST] prestasiRes:', prestasiRes);
-    const list = extractListFromPayload(prestasiRes);
-    console.log('✅ [DEBUG PRESTASI LIST] Parsed count:', list.length, list);
-    return list;
-  }, [prestasiRes]);
-
-  const totalPoinPelanggaran = useMemo(() => {
-    return pelanggaranList.reduce((acc: number, curr: any) => acc + (curr.poin || 0), 0);
-  }, [pelanggaranList]);
-
-  const totalPoinPrestasi = useMemo(() => {
-    return prestasiList.reduce((acc: number, curr: any) => acc + (curr.poin || 0), 0);
-  }, [prestasiList]);
-
-  const netPoin = useMemo(() => totalPoinPrestasi - totalPoinPelanggaran, [totalPoinPrestasi, totalPoinPelanggaran]);
-
-  const disciplineHistory = useMemo(() => {
-    const combined = [];
-    if (pelanggaranList.length > 0) {
-      for (const p of pelanggaranList) {
-        combined.push({
-          id: p.id || p.tanggal || `pel-${Math.random()}`,
-          judul: p.nama_pelanggaran || p.kategori || p.keterangan || 'Catatan Pelanggaran',
-          kategori: p.kategori || 'Kedisiplinan',
-          tanggal: p.tanggal,
-          poin: -(p.poin || 5),
-          type: 'pelanggaran',
-        });
-      }
-    }
-    if (prestasiList.length > 0) {
-      for (const pr of prestasiList) {
-        combined.push({
-          id: pr.id || pr.tanggal || `pres-${Math.random()}`,
-          judul: pr.nama_prestasi || pr.kategori || pr.keterangan || 'Catatan Prestasi',
-          kategori: pr.kategori || 'Prestasi & Keahlian',
-          tanggal: pr.tanggal,
-          poin: +(pr.poin || 10),
-          type: 'prestasi',
-        });
-      }
-    }
-    combined.sort((a, b) => new Date(b.tanggal || 0).getTime() - new Date(a.tanggal || 0).getTime());
-    return combined;
-  }, [pelanggaranList, prestasiList]);
-
-  const currentDisciplineScore = useMemo(() => {
-    const baseScore = 100;
-    return Math.max(0, baseScore - totalPoinPelanggaran + totalPoinPrestasi);
-  }, [totalPoinPelanggaran, totalPoinPrestasi]);
-
-  // Attendance stats calculation for month (100% Real API data)
-  const monthStats = useMemo(() => {
-    return {
-      hadir: monthlyRecapRes?.data?.total_hadir ?? monthlyRecap?.statistik?.HADIR ?? 0,
-      sakit: monthlyRecapRes?.data?.total_sakit ?? monthlyRecap?.statistik?.SAKIT ?? 0,
-      izin: monthlyRecapRes?.data?.total_izin ?? monthlyRecap?.statistik?.IZIN ?? 0,
-      alpa: monthlyRecapRes?.data?.total_alpa ?? monthlyRecap?.statistik?.ALPA ?? 0,
-    };
-  }, [monthlyRecapRes, monthlyRecap]);
-
-  // Navigation Tabs definition
-  const tabs = [
-    { id: 'ringkasan', label: 'Ringkasan', icon: LayoutList },
-    { id: 'portal', label: 'Portal', icon: LayoutGrid },
-    { id: 'kehadiran', label: 'Kehadiran', icon: CheckCircle2 },
-    { id: 'catatan', label: 'Catatan', icon: FileText },
-    { id: 'berkas', label: 'Berkas Saya', icon: FolderOpen },
-    { id: 'profil', label: 'Profil', icon: User },
-  ];
-
-  // Month navigation helper
-  const handlePrevMonth = () => {
-    const [yearStr, monthStr] = selectedMonth.split('-');
-    let year = parseInt(yearStr, 10);
-    let month = parseInt(monthStr, 10) - 1;
-    if (month < 1) {
-      month = 12;
-      year -= 1;
-    }
-    setSelectedMonth(`${year}-${String(month).padStart(2, '0')}`);
-  };
-
-  const handleNextMonth = () => {
-    const [yearStr, monthStr] = selectedMonth.split('-');
-    let year = parseInt(yearStr, 10);
-    let month = parseInt(monthStr, 10) + 1;
-    if (month > 12) {
-      month = 1;
-      year += 1;
-    }
-    setSelectedMonth(`${year}-${String(month).padStart(2, '0')}`);
-  };
-
-  const selectedMonthFormatted = useMemo(() => {
-    const [y, m] = selectedMonth.split('-');
-    const date = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1);
-    return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-  }, [selectedMonth]);
-
-  // Calendar Grid Data Builder
-  const calendarGridData = useMemo(() => {
-    const [yearStr, monthStr] = selectedMonth.split('-');
-    const year = Number(yearStr) || new Date().getFullYear();
-    const month = Number(monthStr) || (new Date().getMonth() + 1);
-
-    const daysInMonth = new Date(year, month, 0).getDate();
-    const firstDayIndex = new Date(year, month - 1, 1).getDay();
-
-    const detail = Array.isArray(monthlyRecap?.detail) ? monthlyRecap.detail : [];
-    const statusMap = new Map<string, any>();
-    detail.forEach((item: any) => {
-      if (item.tanggal) {
-        statusMap.set(item.tanggal, item);
-      }
-    });
-
-    if (dailyRecap && selectedDate) {
-      const isDailyInMonth = selectedDate.startsWith(selectedMonth);
-      if (isDailyInMonth && !statusMap.has(selectedDate)) {
-        statusMap.set(selectedDate, {
-          tanggal: selectedDate,
-          status: dailyRecap.status || (dailyRecap.rincian?.length ? dailyRecap.rincian[0].status : null),
-        });
-      }
-    }
-
-    const days = [];
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateIso = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const rec = statusMap.get(dateIso);
-      days.push({
-        day: d,
-        dateIso,
-        status: rec?.status || null,
-        rec,
-      });
-    }
-
-    return {
-      year,
-      month,
-      daysInMonth,
-      firstDayIndex,
-      days,
-    };
-  }, [selectedMonth, monthlyRecap, dailyRecap, selectedDate]);
-
-  // Today KBM Schedule for Kehadiran Tab (Satu Kabel: Konsisten dengan Guru, Ops & Monitoring)
-  const todayKbmSchedule = useMemo(() => {
-    const rawList = scheduleRes?.data;
-    const list = Array.isArray(rawList)
-      ? rawList
-      : Array.isArray((rawList as any)?.data)
-        ? (rawList as any).data
-        : Array.isArray(scheduleRes?.items)
-          ? scheduleRes.items
-          : [];
-
-    if (list.length === 0) return [];
-
-    return list.map((item: any, idx: number) => {
-      const norm = normalizeFromSesiAbsensi(item);
-      const isOverdue = norm.status.isOverdue;
-      const isFinished = norm.status.isFinished;
-      const isLive = norm.status.isLive;
-      const isReadyToOpen = norm.status.isReadyToOpen;
-
-      const calcStatus = isOverdue 
-        ? 'Terlewat' 
-        : isFinished 
-        ? 'Selesai' 
-        : isLive 
-        ? 'Sedang Berlangsung' 
-        : isReadyToOpen
-        ? 'Siap Dimulai'
-        : 'Mendatang';
-
-      return {
-        id: norm.id || String(idx),
-        kode: item.Mapel?.kode_mapel || norm.mapel_nama,
-        mapel: norm.mapel_nama,
-        guru: norm.guru_nama,
-        guru_nama: norm.guru_nama,
-        guru_pengganti_nama: norm.guru_pengganti_nama || (item as any).guru_pengganti_nama || (item as any).GuruPelaksana?.nama_guru || (item as any).guru_inval_nama || null,
-        guru_pengampu_nama: norm.guru_pengampu_nama || norm.guru_nama || null,
-        lokasi: norm.kelas_nama,
-        jam: `${norm.jam_mulai} - ${norm.jam_selesai}`,
-        jamLabel: norm.jamLabel,
-        status: calcStatus,
-        _raw: norm,
-      };
-    });
-  }, [scheduleRes]);
-
-  // Historis Sesi Absensi & Tap for Kehadiran Tab Right Column
-  const sessionAttendanceHistory = useMemo(() => {
-    const formatWaktu = (raw: any) => {
-      if (!raw || raw === '-') return '-';
-      const str = String(raw).trim();
-      const tzLabel = getTimezoneLabel();
-      if (str.includes('T') || str.includes('Z')) {
-        const formatted = formatLocalTimeFromISO(str);
-        if (formatted) return `${formatted} ${tzLabel}`;
-      }
-      const clean = str.replace(/(WIB|WITA|WIT)/gi, '').trim();
-      return clean ? `${clean} ${tzLabel}` : '-';
-    };
-
-    let formattedDate = selectedDate;
-    if (selectedDate && selectedDate.includes('-')) {
-      try {
-        const [y, m, d] = selectedDate.split('-').map(Number);
-        const dt = new Date(y, m - 1, d);
-        formattedDate = dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-      } catch {}
-    }
-
-    const dailyData = dailyRecapRes?.data;
-    const rincianList = Array.isArray(dailyData?.rincian) ? dailyData.rincian : [];
-
-    // If today or selectedDate is today, build unified cards anchored directly on todayKbmSchedule!
-    if (selectedDate === todayIso || !selectedDate) {
-      const result: any[] = [];
-
-      // 1. Gate attendance if exists in rincianList
-      const gateItem = rincianList.find(
-        (r: any) => r.asal_gerbang || r.is_gerbang || r.jenis_kegiatan === 'Pintu Gerbang' || r.sesi_nama === 'Pintu Gerbang'
-      );
-      if (gateItem) {
-        const waktuRaw = gateItem.waktu_tap || gateItem.waktu || gateItem.waktu_masuk || gateItem.created_at || '-';
-        result.push({
-          id: gateItem.id || 'gate-entry',
-          sesi_id: gateItem.sesi_absensi_id || gateItem.sesi_id || 'gate',
-          date: formattedDate,
-          status: gateItem.status || 'HADIR',
-          metode: gateItem.metode_absen || gateItem.metode || 'RFID',
-          jamLabel: undefined,
-          waktu: formatWaktu(waktuRaw),
-          sesi: 'Presensi Pintu Gerbang',
-          nama_guru: 'Petugas Piket Gerbang',
-          status_guru: 'HADIR',
-          keterangan: gateItem.keterangan || 'Presensi Gerbang Masuk',
-        });
-      }
-
-      // 2. Map every KBM session from todayKbmSchedule (100% same source as Guru & Monitoring)
-      todayKbmSchedule.forEach((sch: any, idx: number) => {
-        // Match with student's tap in rincianList
-        const matchedTap = rincianList.find((r: any) => {
-          const rSesiId = r.sesi_absensi_id || r.sesi_id;
-          if (rSesiId && sch.id && rSesiId === sch.id) return true;
-          const rMapel = String(r.jenis_kegiatan || r.sesi_nama || r.nama_sesi || r.mapel || '').toLowerCase();
-          const schMapel = String(sch.mapel || sch.kode || '').toLowerCase();
-          return schMapel && rMapel && (rMapel.includes(schMapel) || schMapel.includes(rMapel));
-        });
-
-        const isTapped = matchedTap && (matchedTap.status === 'HADIR' || matchedTap.status === 'TEPAT_WAKTU' || matchedTap.status === 'TERLAMBAT' || matchedTap.status === 'SAKIT' || matchedTap.status === 'IZIN');
-        const tapWaktuRaw = matchedTap ? (matchedTap.waktu_tap || matchedTap.waktu || matchedTap.waktu_masuk || matchedTap.created_at) : null;
-        const tapWaktuStr = tapWaktuRaw ? formatWaktu(tapWaktuRaw) : null;
-        const rawStatusObj = sch._raw?.status || {
-          isLive: sch.status === 'Sedang Berlangsung' || sch.status === 'BERLANGSUNG',
-          isReadyToOpen: sch.status === 'Siap Dimulai' || sch.status === 'SIAP DIMULAI',
-          isFinished: sch.status === 'Selesai' || sch.status === 'SELESAI',
-          isOverdue: sch.status === 'Terlewat' || sch.status === 'TERLEWAT',
-          isUpcoming: sch.status === 'Mendatang' || sch.status === 'MENDATANG',
-        };
-        const sMeta = getSessionStatusMeta(rawStatusObj);
-
-        const rawTeacherStatus = sch._raw?.guru_status
-          || sch._raw?.status?.teacherStatus 
-          || sch._raw?._summary?.teacherStatus
-          || (sch._raw?.session?.waktu_tap ? (sch._raw?.session?.is_terlambat ? 'TERLAMBAT' : 'HADIR') : (sch._raw?.status?.isLive ? 'HADIR' : 'BELUM_TAP'));
-
-        result.push({
-          id: sch.id || `sch-${idx}`,
-          sesi_id: sch.id,
-          date: formattedDate,
-          status: rawStatusObj,
-          isLive: rawStatusObj.isLive,
-          isReadyToOpen: rawStatusObj.isReadyToOpen,
-          isFinished: rawStatusObj.isFinished,
-          isOverdue: rawStatusObj.isOverdue,
-          isUpcoming: rawStatusObj.isUpcoming,
-          metode: isTapped ? (matchedTap?.metode_absen || matchedTap?.metode || 'RFID') : 'Terjadwal',
-          jamLabel: sch.jamLabel,
-          waktu: sch.jam.includes('WIB') ? sch.jam : `${sch.jam} WIB`,
-          waktu_tap: tapWaktuStr,
-          sesi: `KBM - ${sch.mapel}`,
-          nama_guru: sch.guru || 'Guru Pengampu',
-          guru_nama: sch.guru || 'Guru Pengampu',
-          guru_pengganti_nama: sch.guru_pengganti_nama || sch._raw?.guru_pengganti_nama || null,
-          guru_pengampu_nama: sch.guru_pengampu_nama || sch._raw?.guru_pengampu_nama || sch.guru || null,
-          status_guru: rawTeacherStatus,
-          waktu_guru: sch._raw?.session?.waktu_tap || null,
-          keterangan: isTapped ? (matchedTap?.keterangan || 'Presensi KBM Tercatat') : 'Sesi Terjadwal Hari Ini',
-          _raw: sch._raw,
-        });
-      });
-
-      if (result.length > 0) return result;
-    }
-
-    // 3. Fallback for historical dates (monthlyRecap or dailyRecap)
-    if (rincianList.length > 0) {
-      return rincianList.map((item: any, idx: number) => {
-        const isHadir = item.status === 'HADIR' || item.status === 'TEPAT_WAKTU';
-        const waktuRaw = item.waktu_tap || item.waktu || item.waktu_masuk || item.created_at || '-';
-        const waktuStr = formatWaktu(waktuRaw);
-        const sesiNama = item.jenis_kegiatan || item.sesi_nama || item.nama_sesi || item.mapel || 'Sesi Presensi';
-
-        return {
-          id: item.id || `rincian-${idx}`,
-          sesi_id: item.sesi_absensi_id || item.sesi_id || item.id,
-          date: formattedDate,
-          status: item.status || 'BELUM_TAP',
-          metode: item.metode_absen || item.metode || (isHadir ? 'RFID' : 'Manual'),
-          jamLabel: item.jamLabel,
-          waktu: waktuStr,
-          sesi: sesiNama,
-          nama_guru: item.nama_guru || item.guru || item.Guru?.nama_guru || item.SesiAbsensi?.Guru?.nama_guru || null,
-          status_guru: item.status_guru || 'BELUM_HADIR',
-          keterangan: item.keterangan || '',
-        };
-      });
-    }
-
-    const detailList = Array.isArray(monthlyRecap?.detail) ? monthlyRecap.detail : [];
-    const targetDate = selectedDate || todayIso;
-    const listToMap = detailList.filter((item: any) => item.tanggal === targetDate);
-
-    if (listToMap.length > 0) {
-      return listToMap.map((item: any, idx: number) => {
-        const isHadir = item.status === 'HADIR' || item.status === 'TEPAT_WAKTU';
-        const waktuRaw = item.waktu_masuk || item.waktu || item.waktu_tap || '-';
-        const waktuStr = formatWaktu(waktuRaw);
-        const sesiNama = item.sesi_nama || item.nama_sesi || item.jenis_kegiatan || item.mapel || 'Sesi Presensi';
-
-        return {
-          id: item.id || item.tanggal || `session-${idx}`,
-          sesi_id: item.sesi_absensi_id || item.sesi_id || item.id,
-          date: formattedDate,
-          status: item.status || 'BELUM_TAP',
-          metode: item.metode_absen || item.metode || (isHadir ? 'RFID' : 'Manual'),
-          waktu: waktuStr,
-          sesi: sesiNama,
-          nama_guru: item.nama_guru || item.guru || item.Guru?.nama_guru || item.SesiAbsensi?.Guru?.nama_guru || null,
-          status_guru: item.status_guru || 'BELUM_HADIR',
-          keterangan: item.keterangan || '',
-        };
-      });
-    }
-    return [];
-  }, [dailyRecapRes, monthlyRecap, selectedDate, todayKbmSchedule, todayIso]);
-
-  // Buku Catatan Kedisiplinan & Prestasi for Catatan Poin Tab
-  const bukuCatatanList = useMemo(() => {
-    const rawPelanggaran: any[] = pelanggaranList;
-    const rawPrestasi: any[] = prestasiList;
-
-    const pelanggaranItems = rawPelanggaran.map((item: any) => ({
-      id: item.id || Math.random().toString(),
-      type: 'PELANGGARAN' as const,
-      tanggal: item.tanggal ? new Date(item.tanggal).toISOString().split('T')[0] : '-',
-      judul: item.nama_pelanggaran || item.jenis_pelanggaran || item.kategori || item.judul || 'Pelanggaran Kedisiplinan',
-      kategori: item.Jenis?.kategori || item.kategori || item.jenis_pelanggaran || 'Kedisiplinan',
-      pencatat: item.pencatat || item.guru_pencatat || 'Tim BK',
-      poin: -(item.poin || 0),
-      poinText: `-${item.poin || 0} Poin`,
-      status: item.status || 'Selesai',
-    }));
-
-    const prestasiItems = rawPrestasi.map((item: any) => ({
-      id: item.id || Math.random().toString(),
-      type: 'PRESTASI' as const,
-      tanggal: item.tanggal ? new Date(item.tanggal).toISOString().split('T')[0] : '-',
-      judul: item.nama_prestasi || item.judul || 'Prestasi Siswa',
-      kategori: item.Jenis?.kategori || item.kategori || 'Akademik & Keilmuan',
-      pencatat: item.pencatat || item.guru_pencatat || 'Wali Kelas',
-      poin: item.poin || 0,
-      poinText: `+${item.poin || 0} Poin`,
-      status: item.status || 'Disetujui',
-    }));
-
-    const combined = [...pelanggaranItems, ...prestasiItems];
-    // Sort by tanggal descending (terbaru dulu)
-    combined.sort((a, b) => {
-      const da = a.tanggal === '-' ? 0 : new Date(a.tanggal).getTime();
-      const db = b.tanggal === '-' ? 0 : new Date(b.tanggal).getTime();
-      return db - da;
-    });
-    return combined;
-  }, [pelanggaranList, prestasiList]);
-
-  // Filtered List based on catatanFilter state
-  const filteredBukuCatatan = useMemo(() => {
-    if (catatanFilter === 'prestasi') return bukuCatatanList.filter(item => item.type === 'PRESTASI');
-    if (catatanFilter === 'pelanggaran') return bukuCatatanList.filter(item => item.type === 'PELANGGARAN');
-    return bukuCatatanList;
-  }, [bukuCatatanList, catatanFilter]);
 
   return (
-    <div className="space-y-4 sm:space-y-5 pb-24 lg:pb-8 text-slate-800 dark:text-slate-100">
-      
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      {/* TOP INTEGRATED HERO & NAVIGATION CARD (Clean Light White Theme)    */}
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-6 text-slate-800 dark:text-slate-100 shadow-sm space-y-4 sm:space-y-5">
-        {/* Top Row: Identity & Quick Action */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5 sm:gap-4">
-            {/* Avatar Box with Student Photo */}
-            <div className="relative shrink-0">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800/80 flex items-center justify-center font-black text-xl sm:text-2xl shadow-xs overflow-hidden">
-                {studentPhotoUrl ? (
-                  <img
-                    src={studentPhotoUrl}
-                    alt={studentName}
-                    className="w-full h-full object-cover rounded-2xl"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = 'none';
-                    }}
-                  />
-                ) : (
-                  studentInitials
-                )}
-              </div>
-              <span className="absolute -bottom-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full flex items-center justify-center text-white" title="Status Aktif">
-                <Check size={10} strokeWidth={4} />
-              </span>
-            </div>
-
-            {/* Name, Class Badge, NISN & Jurusan */}
-            <div className="space-y-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                  {studentName}
-                </h1>
-                {studentBadges.map((b) => {
-                  const Icon = b.icon;
-                  return (
-                    <span
-                      key={b.key}
-                      className={cn(
-                        "px-2.5 py-0.5 rounded-full text-[11px] border inline-flex items-center gap-1 shadow-2xs select-none",
-                        b.color
-                      )}
-                    >
-                      {Icon && <Icon size={11} className="shrink-0" />}
-                      <span>{b.label}</span>
-                    </span>
-                  );
-                })}
-              </div>
-
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 font-mono flex items-center gap-1.5 flex-wrap">
-                <span>NISN: {currentNisn}</span>
-                {currentJurusan && currentJurusan !== '-' && (
-                  <>
-                    <span className="text-slate-300 dark:text-slate-600">•</span>
-                    <span>{currentJurusan}</span>
-                  </>
-                )}
-              </p>
-            </div>
-          </div>
-
-          {/* Quick Action Buttons on Right (Streamlined Row) */}
-          <div className="flex items-center gap-2 flex-wrap shrink-0 self-stretch sm:self-auto justify-start sm:justify-end">
-            {isPetugasKelas && (
-              <>
-                <Button
-                  size="sm"
-                  onClick={() => navigate('/attendance/ops?tab=sesi')}
-                  className="h-9 sm:h-10 px-3.5 rounded-xl text-xs font-extrabold bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center gap-1.5 shadow-md shadow-amber-500/20 border-none cursor-pointer"
-                  title={`Presensi Kelas Saya (${currentClassName})`}
-                >
-                  <CheckCircle2 size={15} />
-                  <span>Presensi Kelas</span>
-                </Button>
-
-                <Button
-                  size="sm"
-                  onClick={() => setShowBelumAbsenModal(true)}
-                  className="h-9 sm:h-10 px-3.5 rounded-xl text-xs font-extrabold bg-rose-600 hover:bg-rose-700 text-white border-none flex items-center gap-1.5 shadow-md shadow-rose-600/20 cursor-pointer"
-                  title={`Cek Siswa Belum Absen & Presensi Manual (${currentClassName})`}
-                >
-                  <AlertCircle size={15} />
-                  <span>Belum Absensi</span>
-                </Button>
-
-                <Button
-                  size="sm"
-                  onClick={() => navigate('/attendance/ops?tab=jurnal')}
-                  className="h-9 sm:h-10 px-3.5 rounded-xl text-xs font-extrabold bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white border border-slate-700/80 flex items-center gap-1.5 shadow-sm cursor-pointer"
-                  title="Input Jurnal KBM Kelas"
-                >
-                  <FileText size={15} />
-                  <span>Jurnal KBM</span>
-                </Button>
-              </>
-            )}
-
-            <Button
-              size="sm"
-              onClick={() => setShowDigitalCardModal(true)}
-              className="h-9 sm:h-10 px-3.5 rounded-xl text-xs font-extrabold bg-blue-600 hover:bg-blue-700 text-white border-none flex items-center gap-1.5 shadow-md shadow-blue-600/20 cursor-pointer"
-              title="Buka Kartu Pelajar Digital"
-            >
-              <QrCode size={15} />
-              <span>Kartu Digital</span>
-            </Button>
-          </div>
-        </div>
-
-        {/* Bottom Row: Integrated Navigation Tabs Bar Inset (Desktop / Tablet Only - Hidden on Mobile) */}
-        <div className="hidden md:flex p-1.5 rounded-2xl bg-slate-100/80 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800/80 items-center gap-1.5 sm:gap-2 overflow-x-auto custom-scrollbar">
-          {tabs.map((tab) => {
-            const TabIcon = tab.icon;
-            const isTabActive = activeTab === tab.id;
-            const badgeCount = tab.id === 'catatan' ? (pelanggaranRes?.data?.length || 0) : null;
-
-            return (
-              <button
-                key={tab.id}
-                onClick={() => handleTabChange(tab.id)}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 shrink-0 cursor-pointer select-none",
-                  isTabActive
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20 border border-blue-500 font-extrabold"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/50"
-                )}
-              >
-                <TabIcon size={16} />
-                <span>{tab.id === 'portal' ? 'Portal Apps' : tab.id === 'profil' ? 'Profil & Kartu' : tab.id === 'catatan' ? 'Catatan Poin' : tab.label}</span>
-                {badgeCount !== null && badgeCount > 0 && (
-                  <span className="px-1.5 py-0.2 text-[10px] font-black rounded-full bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-500/30">
-                    {badgeCount}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      {/* TODAY'S PRESENCE & DISCIPLINE SCORE BANNER                         */}
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      {activeTab === 'ringkasan' && (
-        isAktifPkl ? (
-          /* ── STATUS PKL HARI INI ── */
-          <div className={cn(
-            "relative overflow-hidden rounded-3xl p-5 sm:p-6 text-slate-800 dark:text-slate-100 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border transition-all",
-            todayPklAbsensi?.status === 'SAKIT'
-              ? "bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-amber-500/15 dark:from-slate-900 dark:via-amber-950/30 dark:to-slate-900 border-amber-500/30"
-              : todayPklAbsensi?.status === 'IZIN'
-              ? "bg-gradient-to-r from-blue-500/15 via-indigo-500/5 to-blue-500/15 dark:from-slate-900 dark:via-blue-950/30 dark:to-slate-900 border-blue-500/30"
-              : todayPklAbsensi?.jam_masuk || todayPklAbsensi?.status === 'HADIR'
-              ? "bg-gradient-to-r from-emerald-500/10 via-indigo-500/10 to-emerald-500/10 dark:from-slate-900 dark:via-emerald-950/40 dark:to-slate-900 border-emerald-500/20"
-              : "bg-gradient-to-r from-emerald-500/10 via-indigo-500/10 to-emerald-500/10 dark:from-slate-900 dark:via-emerald-950/40 dark:to-slate-900 border-emerald-500/20"
-          )}>
-            <div className="space-y-3 max-w-2xl min-w-0">
-              <div className="space-y-1.5">
-                <span className={cn(
-                  "inline-block px-3 py-1 rounded-full text-[10px] font-black tracking-wider border",
-                  todayPklAbsensi?.status === 'SAKIT'
-                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
-                    : todayPklAbsensi?.status === 'IZIN'
-                    ? "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30"
-                    : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
-                )}>
-                  STATUS PKL – {todayFormattedDate}
-                </span>
-                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2 flex-wrap">
-                  <span>Presensi PKL:</span>
-                  <span className={cn(
-                    "underline underline-offset-4 font-mono font-black",
-                    todayPklAbsensi?.status === 'SAKIT'
-                      ? "text-amber-600 dark:text-amber-400 decoration-amber-500"
-                      : todayPklAbsensi?.status === 'IZIN'
-                      ? "text-blue-600 dark:text-blue-400 decoration-blue-500"
-                      : todayPklAbsensi?.status === 'DISPEN' || todayPklAbsensi?.status === 'DISPENSASI'
-                      ? "text-purple-600 dark:text-purple-400 decoration-purple-500"
-                      : todayPklAbsensi?.status === 'LIBUR'
-                      ? "text-slate-600 dark:text-slate-400 decoration-slate-500"
-                      : todayPklAbsensi?.jam_pulang
-                      ? "text-emerald-600 dark:text-emerald-400 decoration-emerald-500"
-                      : todayPklAbsensi?.jam_masuk || todayPklAbsensi?.status === 'HADIR'
-                      ? "text-blue-600 dark:text-blue-400 decoration-blue-500"
-                      : "text-rose-600 dark:text-rose-400 decoration-rose-500"
-                  )}>
-                    {todayPklAbsensi?.status === 'SAKIT'
-                      ? `SAKIT${todayPklAbsensi.kegiatan ? ` (${todayPklAbsensi.kegiatan})` : ''}`
-                      : todayPklAbsensi?.status === 'IZIN'
-                      ? `IZIN${todayPklAbsensi.kegiatan ? ` (${todayPklAbsensi.kegiatan})` : ''}`
-                      : todayPklAbsensi?.status === 'DISPEN' || todayPklAbsensi?.status === 'DISPENSASI'
-                      ? `DISPENSASI${todayPklAbsensi.kegiatan ? ` (${todayPklAbsensi.kegiatan})` : ''}`
-                      : todayPklAbsensi?.status === 'LIBUR'
-                      ? `LIBUR${todayPklAbsensi.kegiatan ? ` (${todayPklAbsensi.kegiatan})` : ''}`
-                      : todayPklAbsensi?.status === 'ALPA'
-                      ? 'ALPA'
-                      : todayPklAbsensi?.jam_masuk || todayPklAbsensi?.status === 'HADIR'
-                      ? todayPklAbsensi?.jam_pulang
-                        ? `HADIR (${formatLocalTimeFromISO(todayPklAbsensi.jam_masuk)} – ${formatLocalTimeFromISO(todayPklAbsensi.jam_pulang)})`
-                        : `Sedang PKL (${formatLocalTimeFromISO(todayPklAbsensi.jam_masuk)} ${getTimezoneLabel()})`
-                      : 'Belum Check-In'
-                    }
-                  </span>
-                  {todayPklAbsensi && (todayPklAbsensi.jam_masuk || todayPklAbsensi.status === 'HADIR' || todayPklAbsensi.status === 'SAKIT' || todayPklAbsensi.status === 'IZIN' || todayPklAbsensi.status === 'DISPEN' || todayPklAbsensi.status === 'DISPENSASI') && (
-                    todayPklAbsensi?.is_verified ? (
-                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1 no-underline">
-                        <ShieldCheck size={12} />
-                        Diverifikasi Pembimbing
-                      </span>
-                    ) : (
-                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1 no-underline">
-                        <Clock size={12} />
-                        Menunggu Verifikasi
-                      </span>
-                    )
-                  )}
-                </h2>
-                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
-                  <BuildingIcon size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <span>{(myPenempatan as any)?.Mitra?.nama || 'Mitra PKL'}</span>
-                  {(myPenempatan as any)?.Pembimbing?.nama_guru && (
-                    <>
-                      <span>•</span>
-                      <span>Pembimbing: {(myPenempatan as any).Pembimbing.nama_guru}</span>
-                    </>
-                  )}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => navigate('/hubin/absensi')}
-              className={cn(
-                "shrink-0 px-5 py-2.5 rounded-2xl text-white text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer",
-                todayPklAbsensi?.status === 'SAKIT'
-                  ? "bg-amber-600 hover:bg-amber-700 shadow-amber-600/30"
-                  : todayPklAbsensi?.status === 'IZIN'
-                  ? "bg-blue-600 hover:bg-blue-700 shadow-blue-600/30"
-                  : "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/30"
-              )}
-            >
-              <Briefcase size={14} />
-              Buka Presensi PKL
-            </button>
-          </div>
-        ) : (
-          /* ── STATUS SEKOLAH: Presensi Gerbang ── */
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-blue-500/10 dark:from-slate-900 dark:via-blue-950/40 dark:to-slate-900 p-5 sm:p-6 text-slate-800 dark:text-slate-100 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border border-blue-500/20">
-            {/* Left Side: Gate Attendance & Mini Session Status */}
-            <div className="space-y-3 max-w-2xl min-w-0">
-              <div className="space-y-1.5">
-                <span className="inline-block px-3 py-1 rounded-full text-[10px] font-black tracking-wider bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
-                  STATUS HARI INI – {todayFormattedDate}
-                </span>
-
-                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2 flex-wrap">
-                  <span>Presensi Gerbang:</span>
-                  <span className="underline decoration-blue-500 underline-offset-4 font-mono font-black text-blue-600 dark:text-blue-400">
-                    {dailyRecapRes?.data?.status || (dailyRecapRes?.data?.rincian?.[0]?.status ?? 'HADIR')} (
-                    {dailyRecapRes?.data?.rincian?.[0]?.waktu_tap
-                      ? formatLocalTimeFromISO(dailyRecapRes.data.rincian[0].waktu_tap) + ' WIB'
-                      : (dailyRecapRes?.data?.waktu_masuk || 'Belum Tap')
-                    })
-                  </span>
-                </h2>
-
-                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
-                  <MapPin size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />
-                  <span>Gate 1 Utama</span>
-                  <span>•</span>
-                  <span>Sesi KBM Active</span>
-                </p>
-              </div>
-
-              {/* Mini Status Sesi KBM Hari Ini (Khusus Mode Multi-Sesi) */}
-              {todayKbmSchedule && todayKbmSchedule.length > 0 && (
-                <div className="pt-2.5 space-y-1.5 border-t border-blue-500/20">
-                  <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                    Progres Sesi KBM Hari Ini ({todayKbmSchedule.length} Sesi Terjadwal)
-                  </span>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {todayKbmSchedule.map((sesi: any, idx: number) => {
-                      const gateStatus = dailyRecapRes?.data?.status || dailyRecapRes?.data?.rincian?.[0]?.status;
-                      const isStudentAtSchool = gateStatus === 'HADIR' || gateStatus === 'TERLAMBAT' || gateStatus === 'TEPAT_WAKTU';
-
-                      const tapList = Array.isArray(dailyRecapRes?.data?.sessionTaps)
-                        ? dailyRecapRes.data.sessionTaps
-                        : Array.isArray((dailyRecapRes as any)?.data?.rincian)
-                          ? (dailyRecapRes as any).data.rincian
-                          : [];
-
-                      const tap = tapList.find(
-                        (t: any) =>
-                          t.sesi_id === sesi.id ||
-                          t.sesi_nama === sesi.nama_sesi ||
-                          (t.asal_gerbang && t.asal_gerbang === sesi.nama_sesi)
-                      );
-
-                      let displayStatusLabel = '';
-                      let badgeStyle = '';
-
-                      if (tap) {
-                        const s = tap.status;
-                        if (s === 'HADIR' || s === 'TEPAT_WAKTU') {
-                          displayStatusLabel = 'Hadir';
-                          badgeStyle = 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
-                        } else if (s === 'TERLAMBAT') {
-                          displayStatusLabel = 'Terlambat';
-                          badgeStyle = 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30';
-                        } else if (s === 'SAKIT' || s === 'IZIN' || s === 'DISPEN') {
-                          displayStatusLabel = s === 'SAKIT' ? 'Sakit' : s === 'IZIN' ? 'Izin' : 'Dispen';
-                          badgeStyle = 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30';
-                        } else if (s === 'ALPA') {
-                          displayStatusLabel = 'Alpa';
-                          badgeStyle = 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30';
-                        }
-                      } else {
-                        if (sesi.status === 'Sedang Berlangsung') {
-                          displayStatusLabel = isStudentAtSchool ? 'KBM' : 'Belum';
-                          badgeStyle = 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30 animate-pulse';
-                        } else if (sesi.status === 'Terlewat') {
-                          displayStatusLabel = 'Terlewat';
-                          badgeStyle = 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30';
-                        } else if (sesi.status === 'Mendatang') {
-                          displayStatusLabel = 'Jadwal';
-                          badgeStyle = 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700';
-                        } else if (sesi.status === 'Selesai') {
-                          if (isStudentAtSchool) {
-                            displayStatusLabel = 'Hadir';
-                            badgeStyle = 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
-                          } else {
-                            displayStatusLabel = 'Alpa';
-                            badgeStyle = 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30';
-                          }
-                        }
-                      }
-
-                      return (
-                        <span
-                          key={sesi.id || `sesi-mini-${idx}`}
-                          className={cn("px-2.5 py-1 rounded-xl text-[11px] font-bold border flex items-center gap-1.5 transition-all", badgeStyle)}
-                          title={`${sesi.nama_sesi || `Sesi ${idx+1}`}: ${sesi.mapel || 'Mata Pelajaran'} (${displayStatusLabel})`}
-                        >
-                          <span className="font-mono text-[10px] opacity-75">Sesi {idx + 1}</span>
-                          <span className="font-extrabold">{displayStatusLabel}</span>
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )
-      )}
-      {/* 4 SUMMARY STAT CARDS — conditional PKL vs Sekolah */}
-      {activeTab === 'ringkasan' && (
-        isAktifPkl ? (
-          /* ── STAT CARDS PKL ── */
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-            {/* PKL Card 1: Hari Hadir PKL */}
-            <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center shrink-0">
-                <CheckCircle2 size={18} className="sm:hidden" />
-                <CheckCircle2 size={20} className="hidden sm:block" />
-              </div>
-              <div className="space-y-0.5 min-w-0 w-full">
-                <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Hari Hadir PKL</span>
-                <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">{pklHadir} Hari</div>
-                <p className="text-[10px] sm:text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 truncate">
-                  {pklHadir > 0 ? 'Terus semangat!' : 'Belum ada absensi'}
-                </p>
-              </div>
-            </div>
-
-            {/* PKL Card 2: Sisa Hari */}
-            <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0">
-                <Clock size={18} className="sm:hidden" />
-                <Clock size={20} className="hidden sm:block" />
-              </div>
-              <div className="space-y-0.5 min-w-0 w-full">
-                <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Sisa Hari PKL</span>
-                <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-                  {pklSisaHari !== null ? `${pklSisaHari} Hari` : '–'}
-                </div>
-                <p className="text-[10px] sm:text-[11px] font-semibold text-blue-600 dark:text-blue-400 truncate">
-                  {pklSisaHari === 0 ? 'PKL berakhir hari ini' : pklSisaHari !== null ? 'Sebelum berakhir' : 'Tanpa batas waktu'}
-                </p>
-              </div>
-            </div>
-
-            {/* PKL Card 3: Saldo Poin Kedisiplinan */}
-            <div
-              onClick={() => handleTabChange('catatan')}
-              className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-amber-500/60 transition-all cursor-pointer hover:shadow-md active:scale-[0.98]"
-              title="Klik untuk membuka Tab Catatan & Buku Poin"
-            >
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                <Shield size={18} className="sm:hidden" />
-                <Shield size={20} className="hidden sm:block" />
-              </div>
-              <div className="space-y-0.5 min-w-0 w-full">
-                <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Saldo Poin</span>
-                <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-                  {netPoin >= 0 ? `+${netPoin}` : netPoin} Poin
-                </div>
-                <p className="text-[10px] sm:text-[11px] font-semibold text-blue-600 dark:text-blue-400 truncate">
-                  {netPoin >= 0 ? 'Aman (Positif)' : netPoin >= -20 ? 'Peringatan' : 'Kritis'}
-                </p>
-              </div>
-            </div>
-
-            {/* PKL Card 4: Lokasi / Mitra */}
-            <div
-              onClick={() => navigate('/hubin/absensi')}
-              className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-indigo-500/60 transition-all cursor-pointer hover:shadow-md active:scale-[0.98]"
-              title="Klik untuk membuka halaman PKL"
-            >
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-indigo-500/15 text-indigo-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                <BuildingIcon size={18} className="sm:hidden" />
-                <BuildingIcon size={20} className="hidden sm:block" />
-              </div>
-              <div className="space-y-0.5 min-w-0 w-full">
-                <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Lokasi PKL</span>
-                <div className="text-sm font-black text-slate-900 dark:text-white leading-tight truncate">
-                  {(myPenempatan as any)?.Mitra?.nama || 'Mitra PKL'}
-                </div>
-                <p className="text-[10px] sm:text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 truncate">
-                  Tap untuk buka detail →
-                </p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* ── STAT CARDS SEKOLAH (existing) ── */
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-            {/* Stat 1: Saldo Poin Kedisiplinan (Clickable to Catatan Tab) */}
-            <div
-              onClick={() => handleTabChange('catatan')}
-              className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-amber-500/60 transition-all cursor-pointer hover:shadow-md active:scale-[0.98]"
-              title="Klik untuk membuka Tab Catatan & Buku Poin"
-            >
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                <Shield size={18} className="sm:hidden" />
-                <Shield size={20} className="hidden sm:block" />
-              </div>
-              <div className="space-y-0.5 min-w-0 w-full">
-                <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Saldo Poin Kedisiplinan</span>
-                <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-                  {netPoin >= 0 ? `+${netPoin}` : netPoin} Poin
-                </div>
-                <p className="text-[10px] sm:text-[11px] font-semibold text-blue-600 dark:text-blue-400 truncate">
-                  {netPoin >= 0 ? 'Aman (Saldo Poin Positif)' : netPoin >= -20 ? 'Peringatan (Perlu Perhatian)' : 'Kritis (Perlu Pembinaan)'}
-                </p>
-              </div>
-            </div>
-
-            {/* Stat 2: Peringkat Kedisiplinan (Clickable Leaderboard) */}
-            <div
-              onClick={() => setShowLeaderboardModal(true)}
-              className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-blue-500/60 transition-all cursor-pointer hover:shadow-md active:scale-[0.98]"
-              title="Klik untuk melihat Klasemen Kedisiplinan Kelas"
-            >
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                <TrendingUp size={18} className="sm:hidden" />
-                <TrendingUp size={20} className="hidden sm:block" />
-              </div>
-              <div className="space-y-0.5 min-w-0 w-full">
-                <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Peringkat Kedisiplinan</span>
-                <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-                  {myRank.rank > 0 ? `#${myRank.rank}` : '-'}
-                </div>
-                <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
-                  {myRank.totalStudents > 0 ? `Dari ${myRank.totalStudents} Siswa ${currentClassName}` : `Kelas ${currentClassName}`}
-                </p>
-              </div>
-            </div>
-
-            {/* Stat 3: Kehadiran Bulanan (Clickable Modal) */}
-            <div
-              onClick={() => setShowKehadiranModal(true)}
-              className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-emerald-500/60 transition-all cursor-pointer hover:shadow-md active:scale-[0.98]"
-              title="Klik untuk melihat Rincian Kehadiran Bulanan"
-            >
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                <CheckCircle2 size={18} className="sm:hidden" />
-                <CheckCircle2 size={20} className="hidden sm:block" />
-              </div>
-              <div className="space-y-0.5 min-w-0 w-full">
-                <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Kehadiran Bulanan</span>
-                <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-                  {gamification.attendanceRate}%
-                </div>
-                <p className="text-[10px] sm:text-[11px] font-semibold text-blue-600 dark:text-blue-400 truncate">
-                  {gamification.attendanceRate >= 95 ? 'Sangat Baik' : gamification.attendanceRate >= 80 ? 'Cukup Baik' : 'Perlu Perhatian'}
-                </p>
-              </div>
-            </div>
-
-            {/* Stat 4: Total Prestasi (Clickable Modal) */}
-            <div
-              onClick={() => setShowPrestasiModal(true)}
-              className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-purple-500/60 transition-all cursor-pointer hover:shadow-md active:scale-[0.98]"
-              title="Klik untuk melihat Detail Catatan Prestasi & Penghargaan"
-            >
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-purple-500/15 text-purple-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                <Trophy size={18} className="sm:hidden" />
-                <Trophy size={20} className="hidden sm:block" />
-              </div>
-              <div className="space-y-0.5 min-w-0 w-full">
-                <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Total Prestasi</span>
-                <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-                  {prestasiList.length} Penghargaan
-                </div>
-                <p className="text-[10px] sm:text-[11px] font-semibold text-purple-600 dark:text-purple-400 truncate">
-                  +{totalPoinPrestasi} Poin Bonus
-                </p>
-              </div>
-            </div>
-          </div>
-        )
-      )}
-
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      {/* TAB CONTENT AREA                                                   */}
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <AnimatePresence mode="wait">
-        
-        {/* ðŸ“Œ TAB 1: RINGKASAN */}
-        {activeTab === 'ringkasan' && (
-          <motion.div
-            key="tab-ringkasan"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-5 sm:space-y-6"
-          >
-            {/* AKSI CEPAT — conditional PKL vs Sekolah */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight">
-                {isAktifPkl ? 'Aksi Cepat PKL' : 'Aksi Cepat Siswa'}
-              </h3>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {isAktifPkl ? (
-                  <>
-                    {/* PKL: Presensi PKL */}
-                    <button
-                      onClick={() => navigate('/hubin/absensi')}
-                      className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-emerald-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
-                    >
-                      <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <Briefcase size={20} />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Presensi PKL</h4>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Check-In / Check-Out</p>
-                      </div>
-                    </button>
-
-                    {/* PKL: Jurnal Harian */}
-                    <button
-                      onClick={() => navigate('/hubin/absensi')}
-                      className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
-                    >
-                      <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <BookOpen size={20} />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Jurnal Harian</h4>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Logbook Kegiatan PKL</p>
-                      </div>
-                    </button>
-
-                    {/* PKL: Kartu Digital */}
-                    <button
-                      onClick={() => setShowDigitalCardModal(true)}
-                      className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-blue-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
-                    >
-                      <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <QrCode size={20} />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Kartu Digital</h4>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Tampilkan QR / Barcode</p>
-                      </div>
-                    </button>
-
-                    {/* PKL: Profil Saya */}
-                    <button
-                      onClick={() => handleTabChange('profil')}
-                      className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-purple-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
-                    >
-                      <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <User size={20} />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Profil Saya</h4>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Profil &amp; Kartu Pelajar</p>
-                      </div>
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    {/* Sekolah: Kartu Digital */}
-                    <button
-                      onClick={() => setShowDigitalCardModal(true)}
-                      className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-blue-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
-                    >
-                      <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <QrCode size={20} />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Kartu Digital</h4>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Tampilkan QR / Barcode</p>
-                      </div>
-                    </button>
-
-                    {/* Sekolah: Jadwal KBM */}
-                    <button
-                      onClick={() => handleTabChange('kehadiran')}
-                      className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-sky-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
-                    >
-                      <div className="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <Calendar size={20} />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Jadwal KBM</h4>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Cek Presensi Kelas</p>
-                      </div>
-                    </button>
-
-                    {/* Sekolah: Buku Poin */}
-                    <button
-                      onClick={() => handleTabChange('catatan')}
-                      className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-amber-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
-                    >
-                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <Trophy size={20} />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Buku Poin</h4>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Pelanggaran &amp; Prestasi</p>
-                      </div>
-                    </button>
-
-                    {/* Sekolah: Profil Saya */}
-                    <button
-                      onClick={() => handleTabChange('profil')}
-                      className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
-                    >
-                      <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <User size={20} />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Profil Saya</h4>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Profil &amp; Kartu Pelajar</p>
-                      </div>
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* HISTORIS — conditional PKL vs Sekolah */}
-            {isAktifPkl ? (
-              /* ── RIWAYAT ABSENSI PKL TERBARU ── */
-              <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight">Riwayat Absensi PKL Terbaru</h3>
-                  <button onClick={() => navigate('/hubin/absensi')} className="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 flex items-center gap-1 cursor-pointer">
-                    <span>Lihat Semua</span>
-                    <ChevronRight size={14} />
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  {pklAbsensiHistory.length > 0 ? (
-                    pklAbsensiHistory.slice(0, 3).map((item: any) => {
-                      const st = (item.status || '').toUpperCase();
-                      const isHadir = st === 'HADIR' || (item.jam_masuk && st !== 'IZIN' && st !== 'SAKIT');
-                      const isIzin = st === 'IZIN';
-                      const isSakit = st === 'SAKIT';
-                      const isDispen = st === 'DISPEN' || st === 'DISPENSASI';
-                      const isLibur = st === 'LIBUR';
-                      const isAlpa = st === 'ALPA';
-
-                      let label = 'Hadir';
-                      let badgeStyle = 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
-                      let containerStyle = 'border-emerald-200/80 dark:border-emerald-900/40';
-                      let iconBoxStyle = 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30';
-                      let iconEl = <CheckCircle2 size={18} />;
-                      let detailText = item.jam_masuk 
-                        ? `Masuk: ${formatLocalTimeFromISO(item.jam_masuk)} ${getTimezoneLabel()}${item.jam_pulang ? ` • Pulang: ${formatLocalTimeFromISO(item.jam_pulang)} ${getTimezoneLabel()}` : ''}`
-                        : 'Hadir PKL';
-
-                      if (isIzin) {
-                        label = 'Izin';
-                        badgeStyle = 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30';
-                        containerStyle = 'border-blue-200/80 dark:border-blue-900/40';
-                        iconBoxStyle = 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30';
-                        iconEl = <FileText size={18} />;
-                        detailText = item.kegiatan ? `Alasan: ${item.kegiatan}` : 'Izin tidak masuk PKL';
-                      } else if (isSakit) {
-                        label = 'Sakit';
-                        badgeStyle = 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30';
-                        containerStyle = 'border-amber-200/80 dark:border-amber-900/40';
-                        iconBoxStyle = 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30';
-                        iconEl = <AlertCircle size={18} />;
-                        detailText = item.kegiatan ? `Keterangan: ${item.kegiatan}` : 'Surat keterangan sakit';
-                      } else if (isDispen) {
-                        label = 'Dispensasi';
-                        badgeStyle = 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30';
-                        containerStyle = 'border-purple-200/80 dark:border-purple-900/40';
-                        iconBoxStyle = 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30';
-                        iconEl = <Award size={18} />;
-                        detailText = item.kegiatan ? `Dispensasi: ${item.kegiatan}` : 'Dispensasi kegiatan sekolah';
-                      } else if (isLibur) {
-                        label = 'Libur';
-                        badgeStyle = 'bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/30';
-                        containerStyle = 'border-slate-200/80 dark:border-slate-800';
-                        iconBoxStyle = 'bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30';
-                        iconEl = <Calendar size={18} />;
-                        detailText = item.kegiatan || 'Hari libur / off';
-                      } else if (isAlpa) {
-                        label = 'Alpa';
-                        badgeStyle = 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30';
-                        containerStyle = 'border-rose-200/80 dark:border-rose-900/40';
-                        iconBoxStyle = 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30';
-                        iconEl = <AlertCircle size={18} />;
-                        detailText = 'Tanpa keterangan';
-                      } else if (!isHadir) {
-                        label = item.status || 'Belum Presensi';
-                        badgeStyle = 'bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/30';
-                        containerStyle = 'border-slate-200/80 dark:border-slate-800';
-                        iconBoxStyle = 'bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30';
-                        iconEl = <AlertCircle size={18} />;
-                        detailText = item.kegiatan || 'Belum check-in';
-                      }
-
-                      return (
-                        <div
-                          key={item.id}
-                          className={cn(
-                            "p-3.5 sm:p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-950/60 border flex items-center justify-between gap-3 transition-all",
-                            containerStyle
-                          )}
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className={cn(
-                              "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border",
-                              iconBoxStyle
-                            )}>
-                              {iconEl}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                                  {item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' }) : '-'}
-                                </h4>
-                                <span className={cn("px-1.5 py-0.2 rounded text-[9px] font-black uppercase border", badgeStyle)}>
-                                  {label}
-                                </span>
-                              </div>
-                              <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                                {detailText}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {item.is_verified ? (
-                              <span className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                                <ShieldCheck size={11} />
-                                Terverifikasi
-                              </span>
-                            ) : (
-                              <span className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                                <Clock size={11} />
-                                Menunggu
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="py-6 text-center space-y-1.5">
-                      <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
-                        <FileText size={18} />
-                      </div>
-                      <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Belum ada riwayat absensi PKL.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              /* ── HISTORIS POIN KEDISIPLINAN (existing) ── */
-              <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight">Historis Poin Kedisiplinan Terbaru</h3>
-                  <button onClick={() => handleTabChange('catatan')} className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 cursor-pointer">
-                    <span>Lihat Semua</span>
-                    <ChevronRight size={14} />
-                  </button>
-                </div>
-
-                <div className="space-y-3">
-                  {disciplineHistory.length > 0 ? (
-                    disciplineHistory.slice(0, 3).map((item) => {
-                      const isPositive = item.poin > 0;
-                      return (
-                        <div
-                          key={item.id}
-                          className={cn(
-                            "p-3.5 sm:p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-950/60 border flex items-center justify-between gap-3 transition-all",
-                            isPositive ? "border-emerald-200/80 dark:border-emerald-900/40 hover:border-emerald-500/40" : "border-rose-200/80 dark:border-rose-900/40 hover:border-rose-500/40"
-                          )}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className={cn(
-                              "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border",
-                              isPositive ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30" : "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30"
-                            )}>
-                              {isPositive ? <Award size={18} /> : <AlertCircle size={18} />}
-                            </div>
-                            <div>
-                              <h4 className="text-xs font-bold text-slate-900 dark:text-white">{item.judul}</h4>
-                              <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                                {item.kategori} • {item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
-                              </p>
-                            </div>
-                          </div>
-                          <span className={cn(
-                            "text-xs font-black shrink-0 font-mono",
-                            isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
-                          )}>
-                            {isPositive ? `+${item.poin} Poin` : `${item.poin} Poin`}
-                          </span>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="py-6 text-center space-y-1.5">
-                      <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
-                        <FileText size={18} />
-                      </div>
-                      <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Belum ada catatan poin kedisiplinan terbaru.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-          </motion.div>
-        )}
-
-        {/* 🌐 TAB PORTAL: APP LAUNCHER PUSAT APLIKASI SEKOLAH (SHARED PORTAL) */}
-        {activeTab === 'portal' && (
-          <motion.div
-            key="tab-portal"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-6"
-          >
-            <StaffPortalTab 
-              onBackToBeranda={() => handleTabChange('ringkasan')} 
-              onNavigateTab={handleTabChange}
-            />
-          </motion.div>
-        )}
-
-        {/* TAB 2: KEHADIRAN (Kalender & Historis Presensi Gerbang) */}
-        {activeTab === 'kehadiran' && (
-          <motion.div
-            key="tab-kehadiran"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-          >
-            <SiswaAttendanceTab
-              gamification={gamification}
-              handlePrevMonth={handlePrevMonth}
-              handleNextMonth={handleNextMonth}
-              selectedMonthFormatted={selectedMonthFormatted}
-              calendarGridData={calendarGridData}
-              todayIso={todayIso}
-              selectedDate={selectedDate}
-              onSelectDate={setSelectedDate}
-              sessionAttendanceHistory={sessionAttendanceHistory}
-              todayKbmSchedule={todayKbmSchedule}
-              isLoadingSchedule={isLoadingSchedule}
-              isApiConnected={isApiConnected}
-              kelasId={siswaProfile?.kelas_id || (user as any)?.kelas_id || ''}
-            />
-          </motion.div>
-        )}
-
-        {/* TAB 3: CATATAN POIN (Buku Catatan Kedisiplinan & Prestasi) */}
-        {activeTab === 'catatan' && (
-          <motion.div
-            key="tab-catatan"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-          >
-            <SiswaPointsTab
-              bukuCatatanList={bukuCatatanList}
-              catatanFilter={catatanFilter}
-              setCatatanFilter={setCatatanFilter}
-              filteredBukuCatatan={filteredBukuCatatan}
-              totalPoinPrestasi={totalPoinPrestasi}
-              totalPoinPelanggaran={totalPoinPelanggaran}
-              netPoin={netPoin}
-            />
-          </motion.div>
-        )}
-
-        {/* TAB 4: BERKAS SAYA (Slot Kategori Visual Berkas Siswa) */}
-        {activeTab === 'berkas' && (
-          <motion.div
-            key="tab-berkas"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-6"
-          >
-            {siswaProfile?.id ? (
-              <SiswaDocsPanel
-                siswaId={siswaProfile.id}
-                siswaName={siswaProfile.nama_siswa || user?.name || ''}
-                nis={siswaProfile.nis}
-                nisn={siswaProfile.nisn}
-                mode="full"
-                canManage={true}
-              />
-            ) : (
-              <div className="p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 text-center text-slate-400 font-semibold animate-pulse">
-                Memuat data berkas siswa...
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {/* TAB 5: PROFIL */}
-        {activeTab === 'profil' && (
-          <motion.div
-            key="tab-profil"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-          >
-            <SiswaProfileTab
-              siswaProfile={siswaProfile}
-              user={user}
-              studentPhotoUrl={studentPhotoUrl}
-              studentInitials={studentInitials}
-              currentClassName={currentClassName}
-              currentJurusan={currentJurusan}
-              currentNisn={currentNisn}
-              currentNik={currentNik}
-              currentOrtu={currentOrtu}
-              qrCodeDataUrl={qrCodeDataUrl}
-              renderValueOrUnconnectedBadge={renderValueOrUnconnectedBadge}
-              handleOpenEditSection={handleOpenEditSection}
-              setShowDigitalCardModal={setShowDigitalCardModal}
-              handlePasswordSubmit={handlePasswordSubmit}
-              oldPassword={oldPassword}
-              setOldPassword={setOldPassword}
-              newPassword={newPassword}
-              setNewPassword={setNewPassword}
-              confirmPassword={confirmPassword}
-              setConfirmPassword={setConfirmPassword}
-              passwordSubmitting={passwordSubmitting}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ──────────────────────────────────────────────────────────── */}
-      {/* MOBILE FIXED BOTTOM NAVIGATION BAR (Inspected: lg:hidden)           */}
-      {/* ──────────────────────────────────────────────────────────── */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200/80 dark:border-slate-800 px-2 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex justify-around items-center shadow-xl">
-        {tabs.map((tab) => {
-          const TabIcon = tab.icon;
-          const isTabActive = activeTab === tab.id;
-
-          return (
-            <button
-              key={tab.id}
-              onClick={() => handleTabChange(tab.id)}
-              className={cn(
-                "flex flex-col items-center justify-center gap-0.5 p-1 rounded-xl text-[10px] font-bold transition-all duration-200 select-none flex-1",
-                isTabActive
-                  ? "text-primary"
-                  : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-              )}
-            >
-              <div className={cn(
-                "p-1.5 rounded-xl transition-all",
-                isTabActive ? "bg-primary/15 text-primary" : "bg-transparent"
-              )}>
-                <TabIcon size={18} />
-              </div>
-              <span className="truncate">{tab.id === 'berkas' ? 'Berkas' : tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ──────────────────────────────────────────────────────────── */}
-      {/* MODAL GANTI PASSWORD                                              */}
-      {/* ──────────────────────────────────────────────────────────── */}
-      {showChangePasswordModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100">
-                  <Key size={20} />
-                </div>
-                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Ganti Password</h3>
-              </div>
-              <button onClick={() => setShowChangePasswordModal(false)} className="text-slate-400 hover:text-slate-600">
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handlePasswordSubmit} className="space-y-4 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">Password Lama</label>
-                <input
-                  type="password"
-                  value={oldPassword}
-                  onChange={(e) => setOldPassword(e.target.value)}
-                  placeholder="Masukkan password lama..."
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">Password Baru</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Masukkan password baru..."
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">Konfirmasi Password Baru</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Ulangi password baru..."
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowChangePasswordModal(false)}
-                  className="flex-1 h-10 rounded-xl text-xs font-extrabold"
-                >
-                  Batal
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={passwordSubmitting}
-                  className="flex-1 h-10 rounded-xl text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white border-none"
-                >
-                  {passwordSubmitting ? 'Saving...' : 'Simpan Password'}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Kartu Pelajar Digital Verified Fullscreen Modal */}
-      <SiswaCardModal
-        isOpen={showDigitalCardModal}
-        onClose={() => setShowDigitalCardModal(false)}
-        siswaProfile={siswaProfile}
-        user={user}
-        sekolahName={sekolahName}
-        dynamicLogoUrl={dynamicLogoUrl}
-        studentPhotoUrl={studentPhotoUrl}
-        studentInitials={studentInitials}
-        studentName={studentName}
-        currentClassName={currentClassName}
-        currentJurusan={currentJurusan}
-        currentNisn={currentNisn}
-        currentNik={currentNik}
-        studentCardConfigRes={studentCardConfigRes}
+    <div className="space-y-4 sm:space-y-5 pb-20">
+      {/* 1. Header Banner */}
+      <SiswaHeaderBanner
+        studentName={data.studentName}
+        studentInitials={data.studentInitials}
+        studentPhotoUrl={data.studentPhotoUrl}
+        currentNisn={data.currentNisn}
+        currentJurusan={data.currentJurusan}
+        currentClassName={data.currentClassName}
+        isPetugasKelas={data.isPetugasKelas}
+        studentBadges={data.studentBadges}
+        gamification={data.gamification}
+        tabs={navTabs}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        onOpenDigitalCard={() => setShowDigitalCardModal(true)}
+        onOpenBelumAbsen={() => setShowBelumAbsenModal(true)}
+        pelanggaranCount={data.pelanggaranCount}
       />
 
-      {/* Focused Per-Section Profile Edit Modal */}
-      {showOnboardingModal && (
-        <SiswaOnboardingModal
-          isOpen={showOnboardingModal}
-          onClose={() => setShowOnboardingModal(false)}
-          siswa={siswaProfile}
-          activeSection={activeSection}
-          onSuccess={() => {
-            refetchProfile();
-          }}
-        />
+      {/* 2. Modular Subtabs with Keep-Alive Cache */}
+      {visitedTabs.has('ringkasan') && (
+        <div
+          role="tabpanel"
+          aria-hidden={activeTab !== 'ringkasan'}
+          className={cn('w-full min-w-0', activeTab === 'ringkasan' ? 'block' : 'hidden')}
+        >
+          <SiswaRingkasanTab
+            isAktifPkl={data.isAktifPkl}
+            todayFormattedDate={data.todayFormattedDate}
+            todayIso={data.todayIso}
+            todayPklAbsensi={data.todayPklAbsensi}
+            pklHadir={data.pklHadir}
+            pklSisaHari={data.pklSisaHari}
+            dailyRecap={data.dailyRecap}
+            monthStats={data.monthStats}
+            gamification={data.gamification}
+            myRank={data.myRank}
+            kelasLeaderboardStudents={data.kelasLeaderboardStudents}
+            currentClassName={data.currentClassName}
+            currentUserId={data.user?.siswa_id || data.user?.id}
+            studentName={data.studentName}
+            onOpenLeaderboard={() => setShowLeaderboardModal(true)}
+            todayKbmSchedule={data.todayKbmSchedule}
+            isLoadingSchedule={data.isLoadingSchedule}
+            disciplineHistory={data.disciplineHistory}
+            totalPoinPrestasi={data.totalPoinPrestasi}
+            totalPoinPelanggaran={data.totalPoinPelanggaran}
+            currentDisciplineScore={data.currentDisciplineScore}
+            onOpenPrestasiModal={() => setShowPrestasiModal(true)}
+            onOpenKehadiranModal={() => setShowKehadiranModal(true)}
+            onNavigateTab={handleTabChange}
+          />
+        </div>
       )}
 
-      {/* MODAL KLASEMEN KEDISIPLINAN KELAS */}
-      <AnimatePresence>
-        {showLeaderboardModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
-            onClick={() => setShowLeaderboardModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 10 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 10 }}
-              className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[85vh]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header Modal */}
-              <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between bg-slate-50/60 dark:bg-slate-800/40">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0">
-                    <Trophy size={22} />
-                  </div>
-                  <div>
-                    <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                      Klasemen Kedisiplinan Kelas
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
-                      Kelas {currentClassName} • {selectedMonthFormatted}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowLeaderboardModal(false)}
-                  className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors"
-                >
-                  <X size={20} />
-                </button>
-              </div>
+      {visitedTabs.has('portal') && (
+        <div
+          role="tabpanel"
+          aria-hidden={activeTab !== 'portal'}
+          className={cn('w-full min-w-0', activeTab === 'portal' ? 'block' : 'hidden')}
+        >
+          <SiswaPortalTab
+            onBackToBeranda={() => handleTabChange('ringkasan')}
+            onNavigateTab={handleTabChange}
+          />
+        </div>
+      )}
 
-              {/* Leaderboard List Content */}
-              <div className="p-5 sm:p-6 overflow-y-auto space-y-2.5 divide-y divide-slate-100 dark:divide-slate-800/60">
-                {kelasLeaderboardRes?.data?.students && kelasLeaderboardRes.data.students.length > 0 ? (
-                  kelasLeaderboardRes.data.students.map((student: any, idx: number) => {
-                    const isMe = student.id === user?.siswa_id || student.id === user?.id || student.nama === user?.name || student.nama === siswaProfile?.nama;
-                    const rankNumber = idx + 1;
-                    const isGold = rankNumber === 1;
-                    const isSilver = rankNumber === 2;
-                    const isBronze = rankNumber === 3;
+      {visitedTabs.has('kehadiran') && (
+        <div
+          role="tabpanel"
+          aria-hidden={activeTab !== 'kehadiran'}
+          className={cn('w-full min-w-0', activeTab === 'kehadiran' ? 'block' : 'hidden')}
+        >
+          <SiswaKehadiranTab
+            gamification={data.gamification}
+            handlePrevMonth={data.handlePrevMonth}
+            handleNextMonth={data.handleNextMonth}
+            selectedMonthFormatted={data.selectedMonthFormatted}
+            calendarGridData={data.calendarGridData}
+            todayIso={data.todayIso}
+            selectedDate={data.selectedDate}
+            onSelectDate={data.setSelectedDate}
+            sessionAttendanceHistory={data.sessionAttendanceHistory}
+            todayKbmSchedule={data.todayKbmSchedule}
+            isLoadingSchedule={data.isLoadingSchedule}
+            isApiConnected={data.isApiConnected}
+            kelasId={data.siswaProfile?.kelas_id || ''}
+          />
+        </div>
+      )}
 
-                    return (
-                      <div
-                        key={student.id || `rank-item-${idx}`}
-                        className={cn(
-                          "pt-2.5 first:pt-0 p-3 rounded-2xl transition-all flex items-center justify-between gap-3 border",
-                          isMe
-                            ? "bg-blue-50/80 dark:bg-blue-950/40 border-blue-500/40 shadow-xs"
-                            : "bg-white dark:bg-slate-900/60 border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/40"
-                        )}
-                      >
-                        {/* Left Rank & Student Name */}
-                        <div className="flex items-center gap-3 min-w-0">
-                          {/* Rank Badge */}
-                          <div className={cn(
-                            "w-8 h-8 rounded-xl font-black font-mono text-xs flex items-center justify-center shrink-0 border",
-                            isGold ? "bg-amber-400/20 text-amber-600 border-amber-400/40" :
-                            isSilver ? "bg-slate-300/20 text-slate-600 border-slate-300/40" :
-                            isBronze ? "bg-amber-700/20 text-amber-800 border-amber-700/40" :
-                            "bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700"
-                          )}>
-                            #{rankNumber}
-                          </div>
+      {visitedTabs.has('catatan') && (
+        <div
+          role="tabpanel"
+          aria-hidden={activeTab !== 'catatan'}
+          className={cn('w-full min-w-0', activeTab === 'catatan' ? 'block' : 'hidden')}
+        >
+          <SiswaCatatanTab
+            bukuCatatanList={data.bukuCatatanList}
+            catatanFilter={data.catatanFilter}
+            setCatatanFilter={data.setCatatanFilter}
+            filteredBukuCatatan={data.filteredBukuCatatan}
+            totalPoinPrestasi={data.totalPoinPrestasi}
+            totalPoinPelanggaran={data.totalPoinPelanggaran}
+            netPoin={data.netPoin}
+          />
+        </div>
+      )}
 
-                          <div className="min-w-0 space-y-0.5">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className={cn(
-                                "text-sm font-bold truncate block",
-                                isMe ? "text-blue-700 dark:text-blue-300 font-extrabold" : "text-slate-900 dark:text-white"
-                              )}>
-                                {student.nama}
-                              </span>
-                              {isMe && (
-                                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-blue-600 text-white uppercase tracking-wider">
-                                  Anda
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-2">
-                              <span>Hadir: {student.hadir || 0}x</span>
-                              <span>•</span>
-                              <span>Persentase: {student.persentase || 0}%</span>
-                            </div>
-                          </div>
-                        </div>
+      {visitedTabs.has('berkas') && (
+        <div
+          role="tabpanel"
+          aria-hidden={activeTab !== 'berkas'}
+          className={cn('w-full min-w-0', activeTab === 'berkas' ? 'block' : 'hidden')}
+        >
+          <SiswaBerkasTab
+            siswaId={data.siswaProfile?.id}
+            siswaName={data.studentName}
+            nis={data.siswaProfile?.nis}
+            nisn={data.currentNisn}
+          />
+        </div>
+      )}
 
-                        {/* Right Points Badge */}
-                        <div className="text-right shrink-0">
-                          <span className="text-xs sm:text-sm font-black font-mono text-emerald-600 dark:text-emerald-400 block">
-                            {student.total_poin >= 0 ? `+${student.total_poin}` : student.total_poin} Poin
-                          </span>
-                          <span className="text-[10px] font-bold text-slate-400">Total Skor</span>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="py-10 text-center space-y-2">
-                    <Trophy className="mx-auto text-slate-300 dark:text-slate-700" size={40} />
-                    <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
-                      Belum ada data klasemen untuk bulan ini.
-                    </p>
-                  </div>
-                )}
-              </div>
+      {visitedTabs.has('profil') && (
+        <div
+          role="tabpanel"
+          aria-hidden={activeTab !== 'profil'}
+          className={cn('w-full min-w-0', activeTab === 'profil' ? 'block' : 'hidden')}
+        >
+          <SiswaProfilTab
+            siswaProfile={data.siswaProfile}
+            user={data.user}
+            studentPhotoUrl={data.studentPhotoUrl}
+            studentInitials={data.studentInitials}
+            currentClassName={data.currentClassName}
+            currentJurusan={data.currentJurusan}
+            currentNisn={data.currentNisn}
+            currentNik={data.currentNik}
+            currentOrtu={data.currentOrtu}
+            qrCodeDataUrl={data.qrCodeDataUrl}
+            renderValueOrUnconnectedBadge={renderValueOrUnconnectedBadge}
+            handleOpenEditSection={handleOpenEditSection}
+            setShowDigitalCardModal={setShowDigitalCardModal}
+            handlePasswordSubmit={handlePasswordSubmit}
+            oldPassword={oldPassword}
+            setOldPassword={setOldPassword}
+            newPassword={newPassword}
+            setNewPassword={setNewPassword}
+            confirmPassword={confirmPassword}
+            setConfirmPassword={setConfirmPassword}
+            passwordSubmitting={passwordSubmitting}
+          />
+        </div>
+      )}
 
-              {/* Footer */}
-              <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 text-center">
-                <button
-                  onClick={() => setShowLeaderboardModal(false)}
-                  className="w-full py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
-                >
-                  Tutup Klasemen
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
+      {/* 3. Modals */}
+      <SiswaChangePasswordModal
+        isOpen={showChangePasswordModal}
+        onClose={() => setShowChangePasswordModal(false)}
+        onSubmit={handlePasswordSubmit}
+        oldPassword={oldPassword}
+        setOldPassword={setOldPassword}
+        newPassword={newPassword}
+        setNewPassword={setNewPassword}
+        confirmPassword={confirmPassword}
+        setConfirmPassword={setConfirmPassword}
+        isSubmitting={passwordSubmitting}
+      />
+
+      <SiswaLeaderboardModal
+        isOpen={showLeaderboardModal}
+        onClose={() => setShowLeaderboardModal(false)}
+        students={data.kelasLeaderboardStudents}
+        currentClassName={data.currentClassName}
+        selectedMonthFormatted={data.selectedMonthFormatted}
+        currentUserId={data.user?.siswa_id || data.user?.id}
+        studentName={data.studentName}
+      />
+
+      <SiswaPrestasiModal
+        isOpen={showPrestasiModal}
+        onClose={() => setShowPrestasiModal(false)}
+        bukuCatatanList={data.bukuCatatanList}
+        totalPoinPrestasi={data.totalPoinPrestasi}
+        prestasiCount={data.prestasiCount}
+      />
+
+      <SiswaKehadiranModal
+        isOpen={showKehadiranModal}
+        onClose={() => setShowKehadiranModal(false)}
+        onNavigateToTab={handleTabChange}
+        selectedMonthFormatted={data.selectedMonthFormatted}
+        attendanceRate={data.gamification.attendanceRate}
+        monthStats={data.monthStats}
+      />
+
+      <SiswaBelumAbsenModal
+        isOpen={showBelumAbsenModal}
+        onClose={() => {
+          setShowBelumAbsenModal(false);
+          refetchMiniStats();
+          refetchNotPresent();
+        }}
+        currentClassName={data.currentClassName}
+        kelasId={data.siswaProfile?.kelas_id || ''}
+        notPresentData={notPresentData}
+        notPresentLoading={notPresentLoading}
+        miniStatsData={miniStatsData}
+        onRefreshData={async () => {
+          await refetchMiniStats();
+          await refetchNotPresent();
+        }}
+        onRemovePendingStudent={removePendingStudent}
+      />
+
+      <SiswaCardModal
+        showDigitalCardModal={showDigitalCardModal}
+        setShowDigitalCardModal={setShowDigitalCardModal}
+        cardSide={cardSide}
+        setCardSide={setCardSide}
+        activeCardConfig={data.activeCardConfig}
+        DEFAULT_CONFIG={DEFAULT_CONFIG}
+        dynamicLogoUrl={data.dynamicLogoUrl}
+        sekolahName={data.sekolahName}
+        dynamicCardTitle="KARTU TANDA PELAJAR DIGITAL"
+        studentPhotoUrl={data.studentPhotoUrl}
+        studentName={data.studentName}
+        currentNisn={data.currentNisn}
+        currentClassName={data.currentClassName}
+        currentJurusan={data.currentJurusan}
+        qrCodeDataUrl={data.qrCodeDataUrl}
+        dynamicRules="Gunakan QR Code ini untuk scan Tap Presensi Gerbang Sekolah & Akses Perpustakaan Digital."
+      />
+
+      <Suspense fallback={null}>
+        {showOnboardingModal && (
+          <SiswaOnboardingModal
+            isOpen={showOnboardingModal}
+            onClose={() => setShowOnboardingModal(false)}
+            initialSection={activeSection}
+            siswaId={data.siswaProfile?.id}
+            onSuccess={() => data.refetchProfile()}
+          />
         )}
-      </AnimatePresence>
-
-      {/* MODAL BUKU CATATAN PRESTASI & PENGHARGAAN SISWA */}
-      <AnimatePresence>
-        {showPrestasiModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
-            onClick={() => setShowPrestasiModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 10 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 10 }}
-              className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[85vh]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header Modal */}
-              <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between bg-purple-50/60 dark:bg-purple-950/20">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-                    <Trophy size={22} />
-                  </div>
-                  <div>
-                    <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                      Buku Catatan Prestasi & Penghargaan
-                    </h3>
-                    <p className="text-xs text-purple-600 dark:text-purple-400 font-bold">
-                      Total +{totalPoinPrestasi} Poin Bonus • {prestasiList.length} Penghargaan
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowPrestasiModal(false)}
-                  className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              {/* List Content */}
-              <div className="p-5 sm:p-6 overflow-y-auto space-y-3">
-                {bukuCatatanList.filter(item => item.type === 'PRESTASI').length > 0 ? (
-                  bukuCatatanList.filter(item => item.type === 'PRESTASI').map((item: any) => (
-                    <div
-                      key={item.id}
-                      className="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-500/20 flex items-start justify-between gap-3"
-                    >
-                      <div className="flex items-start gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
-                          <Award size={20} />
-                        </div>
-                        <div className="space-y-1 min-w-0">
-                          <h4 className="text-sm font-extrabold text-slate-900 dark:text-white leading-tight">
-                            {item.judul}
-                          </h4>
-                          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                            Kategori: <span className="font-semibold text-slate-700 dark:text-slate-300">{item.kategori}</span> • Pencatat: <span className="font-semibold text-slate-700 dark:text-slate-300">{item.pencatat}</span>
-                          </p>
-                          <p className="text-[10px] text-slate-400">
-                            Tanggal: {item.tanggal}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 inline-block font-mono">
-                          +{item.poin || 0} Poin
-                        </span>
-                        <span className="block text-[9px] font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                          {item.status}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="py-10 text-center space-y-2">
-                    <Trophy className="mx-auto text-slate-300 dark:text-slate-700" size={40} />
-                    <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
-                      Belum ada catatan prestasi atau penghargaan yang terdaftar.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Footer */}
-              <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 text-center">
-                <button
-                  onClick={() => setShowPrestasiModal(false)}
-                  className="w-full py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
-                >
-                  Tutup Buku Prestasi
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* MODAL RINCIAN KEHADIRAN BULANAN SISWA */}
-      <AnimatePresence>
-        {showKehadiranModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
-            onClick={() => setShowKehadiranModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 10 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 10 }}
-              className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[85vh]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header Modal */}
-              <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between bg-emerald-50/60 dark:bg-emerald-950/20">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                    <CheckCircle2 size={22} />
-                  </div>
-                  <div>
-                    <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                      Rincian Kehadiran Bulanan
-                    </h3>
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">
-                      {selectedMonthFormatted} • Presensi {gamification.attendanceRate}%
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowKehadiranModal(false)}
-                  className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              {/* Stats Grid Breakdown */}
-              <div className="p-5 sm:p-6 space-y-4 overflow-y-auto">
-                <div className="grid grid-cols-4 gap-2">
-                  <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-500/20 text-center">
-                    <span className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block">HADIR</span>
-                    <span className="text-lg font-black text-emerald-700 dark:text-emerald-300 font-mono">{monthStats.hadir}</span>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-500/20 text-center">
-                    <span className="text-[10px] font-extrabold text-amber-700 dark:text-amber-400 uppercase tracking-wider block">SAKIT</span>
-                    <span className="text-lg font-black text-amber-700 dark:text-amber-300 font-mono">{monthStats.sakit}</span>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-500/20 text-center">
-                    <span className="text-[10px] font-extrabold text-blue-700 dark:text-blue-400 uppercase tracking-wider block">IZIN</span>
-                    <span className="text-lg font-black text-blue-700 dark:text-blue-300 font-mono">{monthStats.izin}</span>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-500/20 text-center">
-                    <span className="text-[10px] font-extrabold text-rose-700 dark:text-rose-400 uppercase tracking-wider block">ALPA</span>
-                    <span className="text-lg font-black text-rose-700 dark:text-rose-300 font-mono">{monthStats.alpa}</span>
-                  </div>
-                </div>
-
-                {/* Progress Bar Visual */}
-                <div className="space-y-1.5 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
-                  <div className="flex justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-                    <span>Tingkat Kehadiran</span>
-                    <span>{gamification.attendanceRate}%</span>
-                  </div>
-                  <div className="w-full h-2.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden flex">
-                    <div style={{ width: `${gamification.attendanceRate}%` }} className="bg-emerald-500 h-full rounded-full transition-all duration-500" />
-                  </div>
-                </div>
-
-                {/* Quick Info & Action */}
-                <div className="p-4 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-500/20 flex items-center justify-between gap-3">
-                  <div className="text-xs text-blue-800 dark:text-blue-300 font-medium">
-                    Lihat riwayat kalender lengkap dan surat izin presensi di Tab Kehadiran.
-                  </div>
-                  <button
-                    onClick={() => {
-                      setShowKehadiranModal(false);
-                      handleTabChange('kehadiran');
-                    }}
-                    className="shrink-0 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors shadow-xs"
-                  >
-                    Buka Tab Kehadiran &rsaquo;
-                  </button>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 text-center">
-                <button
-                  onClick={() => setShowKehadiranModal(false)}
-                  className="w-full py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
-                >
-                  Tutup Rincian
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* MODAL CHECKLIST SISWA BELUM ABSENSI (PETUGAS KELAS - HYBRID MOBILE SHEET & DESKTOP CARD) */}
-      <AnimatePresence>
-        {showBelumAbsenModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/65 backdrop-blur-sm"
-            onClick={() => setShowBelumAbsenModal(false)}
-          >
-            <motion.div
-              initial={{ y: "100%", opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: "100%", opacity: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 280 }}
-              className="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Mobile Handle Pill */}
-              <div className="w-12 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700 mx-auto mt-2.5 mb-1 sm:hidden shrink-0" />
-
-              {/* Header Modal */}
-              <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between bg-rose-50/60 dark:bg-rose-950/20 shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-                    <AlertCircle size={22} />
-                  </div>
-                  <div>
-                    <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                      Daftar Siswa Belum Absensi
-                    </h3>
-                    <p className="text-xs text-rose-600 dark:text-rose-400 font-bold">
-                      Kelas {currentClassName} • Presensi Manual Petugas Kelas
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowBelumAbsenModal(false)}
-                  className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              {/* Modal Body: Responsive PendingSiswaModule */}
-              <div className="p-2 sm:p-6 overflow-y-auto space-y-4 flex-1">
-                <Suspense fallback={
-                  <div className="py-20 text-center space-y-3">
-                    <Loader className="animate-spin mx-auto text-rose-500" size={32} />
-                    <p className="text-xs font-bold text-slate-400">Memuat daftar siswa belum absen...</p>
-                  </div>
-                }>
-                  <PendingSiswaModule
-                    notPresent={notPresentData}
-                    notPresentLoading={notPresentLoading}
-                    miniStats={miniStatsData}
-                    selectedKelasId={siswaProfile?.kelas_id || ''}
-                    setSelectedKelasId={() => {}}
-                    kelasOptions={[]}
-                    isPetugasSiswa={true}
-                    userRole="PETUGAS_KELAS"
-                    socketConnected={true}
-                    refreshData={async () => { await refetchMiniStats(); await refetchNotPresent(); }}
-                    removePendingStudent={removePendingStudent}
-                  />
-                </Suspense>
-              </div>
-
-              {/* Footer Modal */}
-              <div className="p-3.5 sm:p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3 shrink-0">
-                <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium text-center sm:text-left">
-                  Presensi manual akan langsung tersinkron secara real-time.
-                </span>
-                <button
-                  onClick={() => {
-                    setShowBelumAbsenModal(false);
-                    refetchMiniStats();
-                    refetchNotPresent();
-                  }}
-                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors shrink-0"
-                >
-                  Selesai &amp; Tutup
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </Suspense>
     </div>
   );
 };
 
 export default SiswaDashboard;
-
