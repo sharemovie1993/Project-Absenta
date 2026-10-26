@@ -18,7 +18,8 @@ import {
   Building2, 
   ScanLine, 
   LayoutGrid,
-  CheckSquare 
+  CheckSquare,
+  Wrench 
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
@@ -38,6 +39,7 @@ import {
   getBpbkTabs,
   getBkkTabs,
   getSarprasTabs,
+  getToolmanTabs,
   getKoperasiTabs,
   getPiketTabs,
   getAdminTabs,
@@ -368,6 +370,17 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       });
     }
 
+    if ((isToolman || isKabeng || isAdminRole || can('sarpras.view') || can('sarpras.manage')) && !isKepsek) {
+      list.push({
+        id: 'dash-toolman',
+        label: 'Dashboard Toolman',
+        shortLabel: 'Dashboard Toolman',
+        icon: Wrench,
+        targetPath: '/dashboard?tab=toolman',
+        color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
+      });
+    }
+
     if (isKoperasi || isAdminRole || can('coop.pos.access') || can('coop.manage')) {
       list.push({
         id: 'dash-koperasi',
@@ -438,6 +451,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       if (currentTab === 'bkk') return 'bkk';
       if (currentTab === 'bk' || currentTab === 'bpbk') return 'bpbk';
       if (currentTab === 'sarpras') return 'sarpras';
+      if (currentTab === 'toolman') return 'toolman';
       if (currentTab === 'koperasi') return 'koperasi';
       if (currentTab === 'kelola' || currentTab === 'piket') return 'piket';
       if (currentTab === 'admin') return 'admin';
@@ -468,6 +482,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         return getBkkTabs(currentSubtab);
       case 'sarpras':
         return getSarprasTabs(currentSubtab);
+      case 'toolman':
+        return getToolmanTabs(currentSubtab);
       case 'koperasi':
         return getKoperasiTabs(currentSubtab);
       case 'piket':

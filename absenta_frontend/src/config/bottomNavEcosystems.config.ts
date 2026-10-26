@@ -73,6 +73,7 @@ export type EcosystemType =
   | 'bpbk' 
   | 'bkk' 
   | 'sarpras' 
+  | 'toolman'
   | 'koperasi' 
   | 'piket' 
   | 'admin' 
@@ -188,6 +189,15 @@ export function getEcosystemTheme(
         inactiveTextClass: 'text-teal-100/75 hover:text-white font-medium',
         activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
         dotColorClass: 'bg-teal-200',
+      };
+    case 'toolman':
+      return {
+        isLayer2: true,
+        navBarClass: 'bg-gradient-to-r from-amber-700 via-amber-700 to-orange-800 text-white border-t-2 border-amber-300 shadow-2xl shadow-amber-950/40',
+        activeTextClass: 'text-white font-black',
+        inactiveTextClass: 'text-amber-100/75 hover:text-white font-medium',
+        activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
+        dotColorClass: 'bg-amber-200',
       };
     case 'koperasi':
       return {
@@ -779,6 +789,58 @@ export function getSarprasTabs(currentSubtab?: string): MobileBottomTabItem[] {
         { id: 'monitor-tv', label: 'Layar TV Sarpras', icon: Activity, targetPath: '/sarpras/dashboard', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
         { id: 'inventory-full', label: 'Halaman Penuh Inventaris', icon: Layers, targetPath: '/sarpras/inventory', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
         { id: 'loans-full', label: 'Halaman Penuh Peminjaman', icon: ArrowLeftRight, targetPath: '/sarpras/loans', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
+        { id: 'maintenance-full', label: 'Halaman Penuh Servis', icon: Wrench, targetPath: '/sarpras/maintenance', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
+      ],
+    },
+  ];
+}
+
+export function getToolmanTabs(currentSubtab?: string): MobileBottomTabItem[] {
+  return [
+    {
+      id: 'portal_back',
+      label: 'Kembali ke Portal',
+      shortLabel: 'Kembali',
+      icon: ArrowLeft,
+      targetPath: '/dashboard?tab=ringkasan',
+      isActive: () => false,
+    },
+    {
+      id: 'toolman_ringkasan',
+      label: 'Beranda Bengkel',
+      shortLabel: 'Beranda',
+      icon: Home,
+      targetPath: '/dashboard?tab=toolman&subtab=ringkasan',
+      isActive: (p, t) => t === 'toolman' && (!currentSubtab || currentSubtab === 'ringkasan'),
+    },
+    {
+      id: 'toolman_pinjam',
+      label: 'Peminjaman Alat',
+      shortLabel: 'Pinjam Alat',
+      icon: ArrowLeftRight,
+      targetPath: '/dashboard?tab=toolman&subtab=pinjam',
+      isActive: (p, t) => t === 'toolman' && currentSubtab === 'pinjam',
+    },
+    {
+      id: 'toolman_servis',
+      label: 'Perbaikan & Servis',
+      shortLabel: 'Servis',
+      icon: Wrench,
+      targetPath: '/dashboard?tab=toolman&subtab=servis',
+      isActive: (p, t) => t === 'toolman' && currentSubtab === 'servis',
+    },
+    {
+      id: 'toolman_menu',
+      label: 'Menu Teknisi Bengkel',
+      shortLabel: 'Menu Bengkel',
+      icon: LayoutGrid,
+      badge: 'TOOL',
+      targetPath: '/dashboard?tab=toolman',
+      isActive: (p, t) => t === 'toolman' && ['alat', 'rekap'].includes(currentSubtab || ''),
+      children: [
+        { id: 'alat', label: 'Katalog Alat & Mesin', icon: Layers, targetPath: '/dashboard?tab=toolman&subtab=alat', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
+        { id: 'rekap', label: 'Cetak Dokumen & KIB', icon: Printer, targetPath: '/dashboard?tab=toolman&subtab=rekap', color: 'bg-slate-50 dark:bg-slate-950/70 text-slate-600 dark:text-slate-400' },
+        { id: 'loans-full', label: 'Halaman Penuh Sirkulasi', icon: ArrowLeftRight, targetPath: '/sarpras/loans', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
         { id: 'maintenance-full', label: 'Halaman Penuh Servis', icon: Wrench, targetPath: '/sarpras/maintenance', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
       ],
     },

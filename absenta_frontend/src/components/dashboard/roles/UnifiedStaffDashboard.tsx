@@ -49,7 +49,8 @@ import {
   MapPin,
   Flag,
   Zap,
-  CheckSquare
+  CheckSquare,
+  Wrench
 } from 'lucide-react';
 
 // Components
@@ -94,6 +95,8 @@ const KoperasiDashboard = React.lazy(() => import('./KoperasiDashboard').then(m 
 const BpbkDashboard = React.lazy(() => import('./BpbkDashboard').then(m => ({ default: m.BpbkDashboard })));
 // BKK Dashboard — clean role-patterned architecture
 const BkkDashboard = React.lazy(() => import('./BkkDashboard').then(m => ({ default: m.BkkDashboard })));
+// Toolman Dashboard — clean role-patterned architecture
+const ToolmanDashboard = React.lazy(() => import('./ToolmanDashboard').then(m => ({ default: m.ToolmanDashboard })));
 import { StaffPortalTab } from '../staff/tabs/StaffPortalTab';
 
 // Modular Dashboards are accessed via Google-style App Launcher & Portal tab
@@ -975,6 +978,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
       });
     }
 
+    // 4.9 Toolman (Teknisi Peralatan & Laboratorium / Bengkel)
+    if ((isToolman || isKabeng || (isAdminRole && !isKepsek) || can('sarpras.view') || can('sarpras.manage')) && !isKepsek) {
+      list.push({ 
+        id: 'toolman', 
+        label: 'Dashboard Toolman', 
+        icon: Wrench, 
+      });
+    }
+
     // 5. Fasilitator P5 (Khusus Guru Fasilitator Projek P5)
     if (isFasilitatorP5Actual && !isKepsek) {
       list.push({ id: 'p5_projek', label: 'Dashboard P5', icon: Sparkles });
@@ -1035,6 +1047,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isKoperasiStore,
     isBpbk,
     isBkk,
+    isToolman,
+    isKabeng,
   ]);
 
   // Normalisasi tab aktif jika tab di URL tidak termasuk dalam daftar kapabilitas user
@@ -1600,6 +1614,29 @@ export const UnifiedStaffDashboard: React.FC = () => {
               </div>
             }>
               <BkkDashboard user={user} />
+            </Suspense>
+          </div>
+        )}
+
+        {/* 🔧 TAB TOOLMAN: DASHBOARD TEKNISI BENGKEL / LAB */}
+        {visitedTabs.has('toolman') && (
+          <div 
+            key="tab-toolman"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'toolman'}
+            className={cn("w-full min-w-0", activeTab === 'toolman' ? "block" : "hidden")}
+          >
+            <Suspense fallback={
+              <div className="w-full space-y-4 py-4">
+                <div className="h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="h-24 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                  ))}
+                </div>
+              </div>
+            }>
+              <ToolmanDashboard user={user} />
             </Suspense>
           </div>
         )}
