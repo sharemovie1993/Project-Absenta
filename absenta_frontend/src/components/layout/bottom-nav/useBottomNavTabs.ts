@@ -42,6 +42,7 @@ import {
   getSarprasTabs,
   getToolmanTabs,
   getEkskulTabs,
+  getPklPembimbingTabs,
   getKoperasiTabs,
   getPiketTabs,
   getAdminTabs,
@@ -395,6 +396,17 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       });
     }
 
+    if ((isPembimbingPkl || (isAdminRole && !isKepsek) || can('hubin.guidance.manage')) && !isKepsek) {
+      list.push({
+        id: 'dash-pembimbing-pkl',
+        label: 'Dashboard Pembimbing PKL',
+        shortLabel: 'Pembimbing PKL',
+        icon: Briefcase,
+        targetPath: '/dashboard?tab=pembimbing_pkl',
+        color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400',
+      });
+    }
+
     if (isKoperasi || isAdminRole || can('coop.pos.access') || can('coop.manage')) {
       list.push({
         id: 'dash-koperasi',
@@ -468,6 +480,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       if (currentTab === 'sarpras') return 'sarpras';
       if (currentTab === 'toolman') return 'toolman';
       if (currentTab === 'ekskul') return 'ekskul';
+      if (currentTab === 'pembimbing_pkl') return 'pembimbing_pkl';
       if (currentTab === 'koperasi') return 'koperasi';
       if (currentTab === 'kelola' || currentTab === 'piket') return 'piket';
       if (currentTab === 'admin') return 'admin';
@@ -502,6 +515,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         return getToolmanTabs(currentSubtab);
       case 'ekskul':
         return getEkskulTabs(currentSubtab);
+      case 'pembimbing_pkl':
+        return getPklPembimbingTabs(currentSubtab);
       case 'koperasi':
         return getKoperasiTabs(currentSubtab);
       case 'piket':

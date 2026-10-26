@@ -76,6 +76,7 @@ export type EcosystemType =
   | 'sarpras' 
   | 'toolman'
   | 'ekskul'
+  | 'pembimbing_pkl'
   | 'koperasi' 
   | 'piket' 
   | 'admin' 
@@ -209,6 +210,15 @@ export function getEcosystemTheme(
         inactiveTextClass: 'text-indigo-100/75 hover:text-white font-medium',
         activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
         dotColorClass: 'bg-indigo-200',
+      };
+    case 'pembimbing_pkl':
+      return {
+        isLayer2: true,
+        navBarClass: 'bg-gradient-to-r from-teal-700 via-teal-700 to-indigo-800 text-white border-t-2 border-teal-300 shadow-2xl shadow-teal-950/40',
+        activeTextClass: 'text-white font-black',
+        inactiveTextClass: 'text-teal-100/75 hover:text-white font-medium',
+        activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
+        dotColorClass: 'bg-teal-200',
       };
     case 'koperasi':
       return {
@@ -852,6 +862,58 @@ export function getEkskulTabs(currentSubtab?: string): MobileBottomTabItem[] {
         { id: 'jadwal', label: 'Jadwal & Pembina', icon: Calendar, targetPath: '/dashboard?tab=ekskul&subtab=jadwal', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
         { id: 'rekap', label: 'Cetak Dokumen Resmi', icon: Printer, targetPath: '/dashboard?tab=ekskul&subtab=rekap', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
         { id: 'matrix', label: 'Mode Matriks Peminatan', icon: Layers, targetPath: '/attendance/anggota-eskul/matrix', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
+      ],
+    },
+  ];
+}
+
+export function getPklPembimbingTabs(currentSubtab?: string): MobileBottomTabItem[] {
+  return [
+    {
+      id: 'portal_back',
+      label: 'Kembali ke Portal',
+      shortLabel: 'Kembali',
+      icon: ArrowLeft,
+      targetPath: '/dashboard?tab=ringkasan',
+      isActive: () => false,
+    },
+    {
+      id: 'pkl_ringkasan',
+      label: 'Beranda Bimbingan',
+      shortLabel: 'Beranda',
+      icon: Home,
+      targetPath: '/dashboard?tab=pembimbing_pkl&subtab=ringkasan',
+      isActive: (p, t) => t === 'pembimbing_pkl' && (!currentSubtab || currentSubtab === 'ringkasan'),
+    },
+    {
+      id: 'pkl_bimbingan',
+      label: 'Siswa Bimbingan',
+      shortLabel: 'Bimbingan',
+      icon: Users,
+      targetPath: '/dashboard?tab=pembimbing_pkl&subtab=bimbingan',
+      isActive: (p, t) => t === 'pembimbing_pkl' && currentSubtab === 'bimbingan',
+    },
+    {
+      id: 'pkl_jurnal',
+      label: 'Verifikasi Jurnal',
+      shortLabel: 'Jurnal',
+      icon: Clock,
+      targetPath: '/dashboard?tab=pembimbing_pkl&subtab=jurnal',
+      isActive: (p, t) => t === 'pembimbing_pkl' && currentSubtab === 'jurnal',
+    },
+    {
+      id: 'pkl_menu',
+      label: 'Menu Bimbingan',
+      shortLabel: 'Menu PKL',
+      icon: LayoutGrid,
+      badge: 'PKL',
+      targetPath: '/dashboard?tab=pembimbing_pkl',
+      isActive: (p, t) => t === 'pembimbing_pkl' && ['monitoring', 'penilaian', 'rekap'].includes(currentSubtab || ''),
+      children: [
+        { id: 'monitoring', label: 'Supervisi DU/DI', icon: Calendar, targetPath: '/dashboard?tab=pembimbing_pkl&subtab=monitoring', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
+        { id: 'penilaian', label: 'Penilaian Magang', icon: Award, targetPath: '/dashboard?tab=pembimbing_pkl&subtab=penilaian', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
+        { id: 'rekap', label: 'Cetak Lembar PKL', icon: Printer, targetPath: '/dashboard?tab=pembimbing_pkl&subtab=rekap', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
+        { id: 'mitra-full', label: 'Katalog Mitra DU/DI', icon: Building2, targetPath: '/hubin/mitra', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
       ],
     },
   ];

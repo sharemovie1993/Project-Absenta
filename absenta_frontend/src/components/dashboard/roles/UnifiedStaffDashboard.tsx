@@ -100,6 +100,8 @@ const BkkDashboard = React.lazy(() => import('./BkkDashboard').then(m => ({ defa
 const ToolmanDashboard = React.lazy(() => import('./ToolmanDashboard').then(m => ({ default: m.ToolmanDashboard })));
 // Ekskul Dashboard — clean role-patterned architecture
 const EkskulDashboard = React.lazy(() => import('./EkskulDashboard').then(m => ({ default: m.EkskulDashboard })));
+// Pembimbing PKL Dashboard — clean role-patterned architecture
+const PembimbingPklDashboard = React.lazy(() => import('./PembimbingPklDashboard').then(m => ({ default: m.PembimbingPklDashboard })));
 import { StaffPortalTab } from '../staff/tabs/StaffPortalTab';
 
 // Modular Dashboards are accessed via Google-style App Launcher & Portal tab
@@ -1004,6 +1006,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
       });
     }
 
+    // 4.11 Pembimbing PKL (Guru Pendamping Siswa Magang Industri)
+    if ((isPembimbingPkl || (isAdminRole && !isKepsek) || can('hubin.guidance.manage')) && !isKepsek) {
+      list.push({ 
+        id: 'pembimbing_pkl', 
+        label: 'Dashboard Pembimbing PKL', 
+        icon: Briefcase, 
+      });
+    }
+
     // 5. Fasilitator P5 (Khusus Guru Fasilitator Projek P5)
     if (isFasilitatorP5Actual && !isKepsek) {
       list.push({ id: 'p5_projek', label: 'Dashboard P5', icon: Sparkles });
@@ -1678,6 +1689,29 @@ export const UnifiedStaffDashboard: React.FC = () => {
               </div>
             }>
               <EkskulDashboard user={user} />
+            </Suspense>
+          </div>
+        )}
+
+        {/* 🏭 TAB PEMBIMBING PKL: DASHBOARD GURU PEMBIMBING SISWA MAGANG */}
+        {visitedTabs.has('pembimbing_pkl') && (
+          <div 
+            key="tab-pembimbing_pkl"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'pembimbing_pkl'}
+            className={cn("w-full min-w-0", activeTab === 'pembimbing_pkl' ? "block" : "hidden")}
+          >
+            <Suspense fallback={
+              <div className="w-full space-y-4 py-4">
+                <div className="h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="h-24 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                  ))}
+                </div>
+              </div>
+            }>
+              <PembimbingPklDashboard user={user} />
             </Suspense>
           </div>
         )}
