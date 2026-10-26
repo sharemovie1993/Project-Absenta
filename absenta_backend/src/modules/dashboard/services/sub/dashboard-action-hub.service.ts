@@ -252,12 +252,28 @@ export class DashboardActionHubService {
         // Jarak hari ke depan (0 = hari ini, 1 = besok, ..., 6 = 6 hari lagi)
         const diffDays = (piketDayIndex - currentDayIndex + 7) % 7;
         const hariLabel = dayDisplayNames[piket.hari] || piket.hari;
-        const slotText = piket.slot_mulai && piket.slot_selesai 
+
+        // Susun format waktu operasional piket (Jam & Slot)
+        const timeStr = piket.jam_mulai && piket.jam_selesai 
+          ? `Pukul ${piket.jam_mulai} - ${piket.jam_selesai} WIB`
+          : piket.jam_mulai 
+          ? `Mulai ${piket.jam_mulai} WIB`
+          : null;
+        const slotStr = piket.slot_mulai && piket.slot_selesai
           ? `Slot ${piket.slot_mulai} - ${piket.slot_selesai}`
-          : piket.jam_mulai && piket.jam_selesai
-          ? `${piket.jam_mulai} - ${piket.jam_selesai}`
-          : 'Sepanjang Hari';
+          : null;
         const posText = piket.pos_piket || 'Pos Piket Utama';
+
+        let dutySubtitle = posText;
+        if (timeStr && slotStr) {
+          dutySubtitle += ` • ${timeStr} (${slotStr})`;
+        } else if (timeStr) {
+          dutySubtitle += ` • ${timeStr}`;
+        } else if (slotStr) {
+          dutySubtitle += ` • ${slotStr}`;
+        } else {
+          dutySubtitle += ' • Sepanjang Hari';
+        }
 
         if (diffDays === 0) {
           // Bertugas Hari Ini (TODAY)
@@ -266,8 +282,9 @@ export class DashboardActionHubService {
             division: 'PIKET',
             urgency: 'TODAY',
             title: 'Jadwal Piket KBM Hari Ini',
-            subtitle: `${posText} • ${slotText}`,
+            subtitle: dutySubtitle,
             badgeText: 'Hari Ini',
+            deadline: piket.jam_selesai ? `${piket.jam_selesai} WIB` : null,
             action: {
               label: 'Buka Piket ➔',
               type: 'NAVIGATE',
@@ -286,8 +303,9 @@ export class DashboardActionHubService {
             division: 'PIKET',
             urgency: 'UPCOMING',
             title: `Jadwal Piket: ${hariLabel}`,
-            subtitle: `${posText} • ${slotText}`,
+            subtitle: dutySubtitle,
             badgeText: `${hariLabel} (${relativeText})`,
+            deadline: piket.jam_mulai ? `${piket.jam_mulai} WIB` : null,
             action: {
               label: 'Buka Piket ➔',
               type: 'NAVIGATE',
