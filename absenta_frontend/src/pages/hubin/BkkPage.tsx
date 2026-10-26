@@ -9,9 +9,10 @@ const BkkSection = lazy(() => import('@/components/hubin/bkk/BkkSection').then(m
 
 export interface BkkPageProps {
   hideLayout?: boolean;
+  initialSubTab?: 'lowongan' | 'pelamar';
 }
 
-export const BkkPage: React.FC<BkkPageProps> = React.memo(({ hideLayout = false }) => {
+export const BkkPage: React.FC<BkkPageProps> = React.memo(({ hideLayout = false, initialSubTab = 'lowongan' }) => {
   const { user } = useAuthStore();
   const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name;
   const isStudent = useMemo(() => !!user?.isStudent || roleName === 'SISWA', [user, roleName]);
@@ -19,7 +20,7 @@ export const BkkPage: React.FC<BkkPageProps> = React.memo(({ hideLayout = false 
   if (hideLayout) {
     return (
       <Suspense fallback={<div className="flex justify-center py-12"><Loader size="lg" /></div>}>
-        <BkkSection />
+        <BkkSection initialSubTab={initialSubTab} />
       </Suspense>
     );
   }

@@ -45,13 +45,15 @@ const lowonganFormSchema = z.object({
 const applyJobFormSchema = z.object({ lowongan_id: z.string().min(1), cv_url: z.string().url('Tautan CV Digital / Portofolio harus berupa URL valid'), catatan: z.string().optional() });
 const scheduleInterviewFormSchema = z.object({ tanggal: z.string().min(1, 'Tanggal & waktu interview wajib diisi'), lokasi: z.string().optional(), link: z.string().optional(), pesan: z.string().optional(), narahubung: z.string().optional() });
 
-export const BkkSection: React.FC = React.memo(() => {
+export const BkkSection: React.FC<{ initialSubTab?: 'lowongan' | 'pelamar' }> = React.memo(({
+  initialSubTab = 'lowongan',
+}) => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const confirm = useConfirm();
 
-  const [activeSubTab, setActiveSubTab] = useState<'lowongan' | 'pelamar'>('lowongan');
+  const [activeSubTab, setActiveSubTab] = useState<'lowongan' | 'pelamar'>(initialSubTab);
   const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isApplyOpen, setIsApplyOpen] = useState(false);

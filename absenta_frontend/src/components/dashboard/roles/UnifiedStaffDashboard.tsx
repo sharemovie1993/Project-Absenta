@@ -92,6 +92,8 @@ const HubinDashboard = React.lazy(() => import('./HubinDashboard').then(m => ({ 
 const KoperasiDashboard = React.lazy(() => import('./KoperasiDashboard').then(m => ({ default: m.KoperasiDashboard })));
 // BPBK Dashboard — clean role-patterned architecture
 const BpbkDashboard = React.lazy(() => import('./BpbkDashboard').then(m => ({ default: m.BpbkDashboard })));
+// BKK Dashboard — clean role-patterned architecture
+const BkkDashboard = React.lazy(() => import('./BkkDashboard').then(m => ({ default: m.BkkDashboard })));
 import { StaffPortalTab } from '../staff/tabs/StaffPortalTab';
 
 // Modular Dashboards are accessed via Google-style App Launcher & Portal tab
@@ -964,6 +966,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
       });
     }
 
+    // 4.8 BKK (Bursa Kerja Khusus & Penyaluran Alumni)
+    if ((isBkk || (isAdminRole && !isKepsek) || can('hubin.view') || can('hubin.manage')) && !isKepsek) {
+      list.push({ 
+        id: 'bkk', 
+        label: 'Dashboard BKK', 
+        icon: Award, 
+      });
+    }
+
     // 5. Fasilitator P5 (Khusus Guru Fasilitator Projek P5)
     if (isFasilitatorP5Actual && !isKepsek) {
       list.push({ id: 'p5_projek', label: 'Dashboard P5', icon: Sparkles });
@@ -1023,6 +1034,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isKoperasiAuditor,
     isKoperasiStore,
     isBpbk,
+    isBkk,
   ]);
 
   // Normalisasi tab aktif jika tab di URL tidak termasuk dalam daftar kapabilitas user
@@ -1565,6 +1577,29 @@ export const UnifiedStaffDashboard: React.FC = () => {
               </div>
             }>
               <BpbkDashboard user={user} />
+            </Suspense>
+          </div>
+        )}
+
+        {/* 🎓 TAB BKK: DASHBOARD BURSA KERJA KHUSUS */}
+        {visitedTabs.has('bkk') && (
+          <div 
+            key="tab-bkk"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'bkk'}
+            className={cn("w-full min-w-0", activeTab === 'bkk' ? "block" : "hidden")}
+          >
+            <Suspense fallback={
+              <div className="w-full space-y-4 py-4">
+                <div className="h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="h-24 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                  ))}
+                </div>
+              </div>
+            }>
+              <BkkDashboard user={user} />
             </Suspense>
           </div>
         )}

@@ -465,7 +465,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       case 'bpbk':
         return getBpbkTabs(currentSubtab);
       case 'bkk':
-        return getBkkTabs(currentTab);
+        return getBkkTabs(currentSubtab);
       case 'sarpras':
         return getSarprasTabs(currentSubtab);
       case 'koperasi':

@@ -672,7 +672,7 @@ export function getBpbkTabs(currentSubtab?: string): MobileBottomTabItem[] {
   ];
 }
 
-export function getBkkTabs(tabQuery: string | null): MobileBottomTabItem[] {
+export function getBkkTabs(currentSubtab?: string): MobileBottomTabItem[] {
   return [
     {
       id: 'portal_back',
@@ -683,36 +683,28 @@ export function getBkkTabs(tabQuery: string | null): MobileBottomTabItem[] {
       isActive: () => false,
     },
     {
+      id: 'bkk_ringkasan',
+      label: 'Beranda BKK',
+      shortLabel: 'Beranda',
+      icon: Home,
+      targetPath: '/dashboard?tab=bkk&subtab=ringkasan',
+      isActive: (p, t) => t === 'bkk' && (!currentSubtab || currentSubtab === 'ringkasan'),
+    },
+    {
       id: 'bkk_loker',
-      label: 'Lowongan Kerja Mitra',
-      shortLabel: 'Loker Mitra',
+      label: 'Lowongan Kerja',
+      shortLabel: 'Lowongan',
       icon: Briefcase,
-      targetPath: '/hubin/bkk?tab=loker',
-      isActive: (p) => p.startsWith('/hubin/bkk') && (!tabQuery || tabQuery === 'loker'),
+      targetPath: '/dashboard?tab=bkk&subtab=loker',
+      isActive: (p, t) => (t === 'bkk' && currentSubtab === 'loker') || (p.startsWith('/hubin/bkk') && !p.includes('pelamar')),
     },
     {
       id: 'bkk_pelamar',
-      label: 'Pelamar Alumni',
+      label: 'Verifikasi Pelamar',
       shortLabel: 'Pelamar',
       icon: Users,
-      targetPath: '/hubin/bkk?tab=pelamar',
-      isActive: (p) => p.startsWith('/hubin/bkk') && tabQuery === 'pelamar',
-    },
-    {
-      id: 'bkk_tracer',
-      label: 'Tracer Study Alumni',
-      shortLabel: 'Tracer Study',
-      icon: GraduationCap,
-      targetPath: '/hubin/tracer',
-      isActive: (p) => p.startsWith('/hubin/tracer'),
-    },
-    {
-      id: 'bkk_mitra',
-      label: 'Mitra Penyalur Kerja',
-      shortLabel: 'Mitra Penyalur',
-      icon: Building2,
-      targetPath: '/hubin/bkk?tab=mitra',
-      isActive: (p) => p.startsWith('/hubin/bkk') && tabQuery === 'mitra',
+      targetPath: '/dashboard?tab=bkk&subtab=pelamar',
+      isActive: (p, t) => t === 'bkk' && currentSubtab === 'pelamar',
     },
     {
       id: 'bkk_menu',
@@ -720,14 +712,12 @@ export function getBkkTabs(tabQuery: string | null): MobileBottomTabItem[] {
       shortLabel: 'Menu BKK',
       icon: LayoutGrid,
       badge: 'BKK',
-      targetPath: '/hubin/bkk',
-      isActive: (p) => p.startsWith('/hubin/bkk') && Boolean(tabQuery && !['loker', 'pelamar', 'mitra'].includes(tabQuery || '')),
+      targetPath: '/dashboard?tab=bkk',
+      isActive: (p, t) => t === 'bkk' && ['tracer', 'mitra', 'rekap'].includes(currentSubtab || ''),
       children: [
-        { id: 'loker', label: 'Lowongan Aktif', icon: Briefcase, targetPath: '/hubin/bkk?tab=loker', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
-        { id: 'pelamar', label: 'Verifikasi Pelamar', icon: Users, targetPath: '/hubin/bkk?tab=pelamar', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
-        { id: 'tracer', label: 'Tracer Study Alumni', icon: GraduationCap, targetPath: '/hubin/tracer', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
-        { id: 'mitra', label: 'Mitra Rekanan', icon: Building2, targetPath: '/hubin/bkk?tab=mitra', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
-        { id: 'seleksi', label: 'Jadwal Tes Seleksi', icon: CalendarCheck, targetPath: '/hubin/bkk?tab=seleksi', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
+        { id: 'tracer', label: 'Tracer Study Alumni', icon: GraduationCap, targetPath: '/dashboard?tab=bkk&subtab=tracer', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
+        { id: 'mitra', label: 'Mitra DU/DI Rekanan', icon: Building2, targetPath: '/dashboard?tab=bkk&subtab=mitra', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
+        { id: 'rekap', label: 'Cetak Laporan BKK', icon: Printer, targetPath: '/dashboard?tab=bkk&subtab=rekap', color: 'bg-slate-50 dark:bg-slate-950/70 text-slate-600 dark:text-slate-400' },
       ],
     },
   ];
