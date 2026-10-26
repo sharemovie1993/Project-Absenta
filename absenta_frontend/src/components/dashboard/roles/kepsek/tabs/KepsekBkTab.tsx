@@ -1,5 +1,5 @@
 import React from 'react';
-import { KepalaSekolahBkDashboardWidget } from '../../widgets/KepalaSekolahBkDashboardWidget';
+import { KepalaSekolahBkDashboardWidget } from '@/components/dashboard/widgets/KepalaSekolahBkDashboardWidget';
 
 export const KepsekBkTab: React.FC = React.memo(() => {
   return (

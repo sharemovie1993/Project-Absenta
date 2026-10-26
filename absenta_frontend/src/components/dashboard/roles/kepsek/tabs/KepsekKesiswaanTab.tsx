@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldAlert, Scale, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
-import { CompactSectionCard } from '../../shared/CompactSectionCard';
+import { CompactSectionCard } from '@/components/dashboard/shared/CompactSectionCard';
 import { CareSpotlightSection, type CareStudentItem, type LeaderboardItem } from '@/components/kesiswaan/monitoring/CareSpotlightSection';
 import { UnifiedBlockMetrics } from '../components/UnifiedBlockMetrics';
 

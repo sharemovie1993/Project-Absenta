@@ -4,7 +4,7 @@ import { Users, CheckCircle, PlayCircle, Award, Activity, Trophy, ArrowUpRight }
 import { HubCard } from '@/components/ui/hub';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { MonitoringKbmWidget } from '../../shared/MonitoringKbmWidget';
+import { MonitoringKbmWidget } from '@/components/dashboard/shared/MonitoringKbmWidget';
 import { UnifiedBlockMetrics } from '../components/UnifiedBlockMetrics';
 
 export interface KepsekKbmTabProps {

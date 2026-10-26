@@ -26,8 +26,8 @@ import {
 } from '@/components/ui/hub';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { CompactSectionCard } from '../../shared/CompactSectionCard';
-import { MonitoringKbmWidget } from '../../shared/MonitoringKbmWidget';
+import { CompactSectionCard } from '@/components/dashboard/shared/CompactSectionCard';
+import { MonitoringKbmWidget } from '@/components/dashboard/shared/MonitoringKbmWidget';
 import type { KepsekTabId } from '../types';
 import {
   XAxis,
