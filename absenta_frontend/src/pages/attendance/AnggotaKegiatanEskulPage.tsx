@@ -401,7 +401,8 @@ export default React.memo(function AnggotaKegiatanEskulPage({ hideLayout = false
   );
 
   const mainBody = (
-    <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+    <>
+      <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
       <div className="space-y-6">
         {hideLayout && (
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -748,8 +749,7 @@ export default React.memo(function AnggotaKegiatanEskulPage({ hideLayout = false
             />
           )}
         </Suspense>
-      </div>
-    </SectionCard>
+    </>
   );
 
   if (hideLayout) {
