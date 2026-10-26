@@ -74,7 +74,11 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
   OVERDUE: { label: 'Terlambat', color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400', icon: <XCircle size={12} /> },
 };
 
-const SarprasLoansPage: React.FC = React.memo(() => {
+export interface SarprasLoansPageProps {
+  hideLayout?: boolean;
+}
+
+const SarprasLoansPage: React.FC<SarprasLoansPageProps> = React.memo(({ hideLayout = false }) => {
   const queryClient = useQueryClient();
   const { subscription, user } = useAuthStore();
   const { activeWorkspaceId } = useNavStore();
@@ -423,21 +427,9 @@ const SarprasLoansPage: React.FC = React.memo(() => {
     );
   }, [isPersonalTeacherMode]);
 
-  return (
-    <PremiumFeatureGate
-      moduleName="SARPRAS"
-      featureName="Peminjaman Aset & Inventaris"
-      description="Kelola sistem peminjaman barang praktikum secara digital. Mendukung peminjaman manual maupun cepat menggunakan barcode/QR scan."
-    >
-      <AcademicPageLayout
-        title={pageTitle}
-        description={pageDescription}
-        breadcrumbs={breadcrumbs}
-        instruction={instruction}
-        hardeningModuleKey="sarpras_loans"
-      >
-        <div className="space-y-8 animate-in fade-in duration-500">
-          {/* Stats */}
+  const mainBody = (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <AnalyticsCard
               title={isPersonalTeacherMode ? "Total Pinjaman Saya" : "Total Aset"}
@@ -577,6 +569,36 @@ const SarprasLoansPage: React.FC = React.memo(() => {
             />
           </Suspense>
         </div>
+  );
+
+  if (hideLayout) {
+    return (
+      <PremiumFeatureGate
+        moduleName="SARPRAS"
+        featureName="Peminjaman Aset & Inventaris"
+        description="Kelola sistem peminjaman barang praktikum secara digital. Mendukung peminjaman manual maupun cepat menggunakan barcode/QR scan."
+      >
+        <div className="space-y-4 w-full min-w-0">
+          {mainBody}
+        </div>
+      </PremiumFeatureGate>
+    );
+  }
+
+  return (
+    <PremiumFeatureGate
+      moduleName="SARPRAS"
+      featureName="Peminjaman Aset & Inventaris"
+      description="Kelola sistem peminjaman barang praktikum secara digital. Mendukung peminjaman manual maupun cepat menggunakan barcode/QR scan."
+    >
+      <AcademicPageLayout
+        title={pageTitle}
+        description={pageDescription}
+        breadcrumbs={breadcrumbs}
+        instruction={instruction}
+        hardeningModuleKey="sarpras_loans"
+      >
+        {mainBody}
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );

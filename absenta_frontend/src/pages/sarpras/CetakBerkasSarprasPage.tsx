@@ -55,7 +55,11 @@ interface AssetRecord {
   [key: string]: unknown;
 }
 
-export const CetakBerkasSarprasPage: React.FC = React.memo(() => {
+export interface CetakBerkasSarprasPageProps {
+  hideLayout?: boolean;
+}
+
+export const CetakBerkasSarprasPage: React.FC<CetakBerkasSarprasPageProps> = React.memo(({ hideLayout = false }) => {
   const renderDocForm = useCallback(({
     selectedPrintType,
     setSelectedPrintType,
@@ -170,6 +174,7 @@ export const CetakBerkasSarprasPage: React.FC = React.memo(() => {
               ]
             }}
             showChecklist={false}
+            hideHeaderAndBreadcrumbs={hideLayout}
             defaultPrintType="room_inventory"
             docFormRenderer={renderDocForm}
             pdfGenerator={generatePdf}

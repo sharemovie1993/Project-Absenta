@@ -469,7 +469,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       case 'bkk':
         return getBkkTabs(currentTab);
       case 'sarpras':
-        return getSarprasTabs();
+        return getSarprasTabs(currentSubtab);
       case 'koperasi':
         return getKoperasiTabs();
       case 'piket':

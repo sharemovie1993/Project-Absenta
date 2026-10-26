@@ -30,7 +30,11 @@ interface SubscriptionFeature {
   };
 }
 
-const SarprasInventoryPage: React.FC = React.memo(() => {
+export interface SarprasInventoryPageProps {
+  hideLayout?: boolean;
+}
+
+const SarprasInventoryPage: React.FC<SarprasInventoryPageProps> = React.memo(({ hideLayout = false }) => {
   const queryClient = useQueryClient();
   const { subscription } = useAuthStore();
   const [modalState, setModalState] = useState<{
@@ -106,6 +110,91 @@ const SarprasInventoryPage: React.FC = React.memo(() => {
   const handleCloseMasterModal = useCallback(() => setMasterDataModal(prev => ({ ...prev, isOpen: false })), []);
   const handleCloseImport = useCallback(() => setIsImportOpen(false), []);
 
+  const mainBody = (
+    <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+        <AnalyticsCard
+          title="Total Aset"
+          value={stats.totalAssets}
+          isLoading={isLoadingStats}
+          icon={<Package size={20} />}
+          gradient="from-indigo-600 to-blue-500"
+          subtitle="Aset terdaftar di sistem"
+        />
+        <AnalyticsCard
+          title="Dalam Peminjaman"
+          value={stats.totalLoaned}
+          isLoading={isLoadingStats}
+          icon={<ArrowUpRight size={20} />}
+          gradient="from-emerald-600 to-teal-500"
+          subtitle="Aset sedang digunakan"
+        />
+        <AnalyticsCard
+          title="Kondisi Rusak"
+          value={stats.totalBroken}
+          isLoading={isLoadingStats}
+          icon={<AlertTriangle size={20} />}
+          gradient="from-rose-600 to-orange-500"
+          subtitle="Membutuhkan perbaikan"
+        />
+      </div>
+
+      {/* Main Grid Section Wrapped in SectionCard */}
+      <SectionCard title="Daftar Inventaris" icon={Package} fullWidth>
+        <div className="p-3 sm:p-6">
+          <AssetGrid 
+            onEdit={handleEdit} 
+            onAdd={handleAdd}
+            refreshTrigger={refreshTrigger}
+          />
+        </div>
+      </SectionCard>
+
+      {/* Suspense wrapper for heavy forms and modals */}
+      <Suspense fallback={null}>
+        {/* Asset Form Modal */}
+        <Modal
+          isOpen={modalState.isOpen}
+          onClose={handleCloseModal}
+          title={modalState.mode === 'create' ? 'Tambah Aset Baru' : 'Perbarui Data Aset'}
+          className="!max-w-4xl"
+        >
+          <AssetForm 
+            assetId={modalState.assetId} 
+            onSuccess={handleSuccess}
+            onCancel={handleCloseModal}
+          />
+        </Modal>
+
+        {/* Category/Location Manager Modal */}
+        <CategoryLocationManager
+          type={masterDataModal.type}
+          isOpen={masterDataModal.isOpen}
+          onClose={handleCloseMasterModal}
+        />
+
+        <AssetImportModal 
+          isOpen={isImportOpen} 
+          onClose={handleCloseImport} 
+        />
+      </Suspense>
+    </div>
+  );
+
+  if (hideLayout) {
+    return (
+      <PremiumFeatureGate
+        moduleName="SARPRAS"
+        featureName="Manajemen Inventaris Aset"
+        description="Kelola seluruh aset, sarana, dan prasarana sekolah secara digital. Lacak lokasi barang, kategori, dan stok secara real-time."
+      >
+        <div className="space-y-4 w-full min-w-0">
+          {mainBody}
+        </div>
+      </PremiumFeatureGate>
+    );
+  }
+
   return (
     <PremiumFeatureGate
       moduleName="SARPRAS"
@@ -136,74 +225,7 @@ const SarprasInventoryPage: React.FC = React.memo(() => {
           </div>
         }
       >
-        <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-            <AnalyticsCard
-              title="Total Aset"
-              value={stats.totalAssets}
-              isLoading={isLoadingStats}
-              icon={<Package size={20} />}
-              gradient="from-indigo-600 to-blue-500"
-              subtitle="Aset terdaftar di sistem"
-            />
-            <AnalyticsCard
-              title="Dalam Peminjaman"
-              value={stats.totalLoaned}
-              isLoading={isLoadingStats}
-              icon={<ArrowUpRight size={20} />}
-              gradient="from-emerald-600 to-teal-500"
-              subtitle="Aset sedang digunakan"
-            />
-            <AnalyticsCard
-              title="Kondisi Rusak"
-              value={stats.totalBroken}
-              isLoading={isLoadingStats}
-              icon={<AlertTriangle size={20} />}
-              gradient="from-rose-600 to-orange-500"
-              subtitle="Membutuhkan perbaikan"
-            />
-          </div>
-
-          {/* Main Grid Section Wrapped in SectionCard */}
-          <SectionCard title="Daftar Inventaris" icon={Package} fullWidth>
-            <div className="p-3 sm:p-6">
-              <AssetGrid 
-                onEdit={handleEdit} 
-                onAdd={handleAdd}
-                refreshTrigger={refreshTrigger}
-              />
-            </div>
-          </SectionCard>
-
-          {/* Suspense wrapper for heavy forms and modals */}
-          <Suspense fallback={null}>
-            {/* Asset Form Modal */}
-            <Modal
-              isOpen={modalState.isOpen}
-              onClose={handleCloseModal}
-              title={modalState.mode === 'create' ? 'Tambah Aset Baru' : 'Perbarui Data Aset'}
-              className="!max-w-4xl"
-            >
-              <AssetForm 
-                assetId={modalState.assetId} 
-                onSuccess={handleSuccess}
-                onCancel={handleCloseModal}
-              />
-            </Modal>
-
-            {/* Category/Location Manager Modal */}
-            <CategoryLocationManager
-              type={masterDataModal.type}
-              isOpen={masterDataModal.isOpen}
-              onClose={handleCloseMasterModal}
-            />
-
-            <AssetImportModal 
-              isOpen={isImportOpen} 
-              onClose={handleCloseImport} 
-            />
-          </Suspense>
-        </div>
+        {mainBody}
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );

@@ -7777,7 +7777,7 @@
     "tablePagination": true,
     "standardToolbar": true,
     "standardFeedback": true,
-    "standardContainer": true,
+    "standardContainer": false,
     "advancedSelect": true,
     "tableToolbar": true,
     "breadcrumbNavigation": true,

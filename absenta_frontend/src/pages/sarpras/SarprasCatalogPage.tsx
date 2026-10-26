@@ -45,7 +45,11 @@ const CATEGORY_OPTIONS = [
   'Umum: Fasilitas & Kebersihan'
 ];
 
-export const SarprasCatalogPage: React.FC = React.memo(() => {
+export interface SarprasCatalogPageProps {
+  hideLayout?: boolean;
+}
+
+export const SarprasCatalogPage: React.FC<SarprasCatalogPageProps> = React.memo(({ hideLayout = false }) => {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const [search, setSearch] = useState('');
@@ -218,43 +222,8 @@ export const SarprasCatalogPage: React.FC = React.memo(() => {
     { value: 'CUSTOM', label: '+ Kategori Kustom Baru...' }
   ], []);
 
-  return (
-    <PremiumFeatureGate
-      moduleName="SARPRAS"
-      featureName="Katalog Sarpras"
-      description="Manajemen katalog master sarana & prasarana terstandarisasi untuk rekomendasi aset dan inventarisasi sekolah."
-    >
-      <InfraErrorBoundary>
-        <AcademicPageLayout
-          title="Katalog Standar Sarana & Prasarana"
-          description="Pusat master data katalog aset terstandarisasi untuk mempercepat pendataan dan pengelompokan barang inventaris."
-          breadcrumbs={breadcrumbs}
-          hardeningModuleKey="sarpras_catalog_page"
-          topSlot={
-            <div className="flex items-center justify-end gap-2">
-              <Button
-                type="button"
-                variant="toolbarPrimary"
-                size="toolbar"
-                onClick={handleOpenCreate}
-                className="flex items-center gap-1.5 font-bold rounded-xl shadow-md"
-              >
-                <Plus className="w-4 h-4" />
-                Tambah Item Baru
-              </Button>
-            </div>
-          }
-          instruction={{
-            title: "Panduan Katalog Sarpras",
-            description: "Modul ini digunakan untuk mendaftarkan dan memelihara template nama barang, merek, dan spesifikasi standar.",
-            items: [
-              { text: "Pilih tab kategori untuk menyaring daftar rekomendasi aset sarpras." },
-              { text: "Klik [Tambah Item Baru] untuk membuat template barang siap pakai." },
-              { text: "Item katalog mempermudah penambahan aset ruangan tanpa mengetik ulang deskripsi." }
-            ]
-          }}
-        >
-          <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+  const mainBody = (
+    <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
             <div className="space-y-6 w-full min-w-0 max-w-full">
               {/* Search Bar & TabSwitcher */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 w-full min-w-0 max-w-full">
@@ -365,6 +334,62 @@ export const SarprasCatalogPage: React.FC = React.memo(() => {
               />
             </Suspense>
           )}
+        </>
+  );
+
+  if (hideLayout) {
+    return (
+      <PremiumFeatureGate
+        moduleName="SARPRAS"
+        featureName="Katalog Sarpras"
+        description="Manajemen katalog master sarana & prasarana terstandarisasi untuk rekomendasi aset dan inventarisasi sekolah."
+      >
+        <InfraErrorBoundary>
+          <div className="space-y-4 w-full min-w-0">
+            {mainBody}
+          </div>
+        </InfraErrorBoundary>
+      </PremiumFeatureGate>
+    );
+  }
+
+  return (
+    <PremiumFeatureGate
+      moduleName="SARPRAS"
+      featureName="Katalog Sarpras"
+      description="Manajemen katalog master sarana & prasarana terstandarisasi untuk rekomendasi aset dan inventarisasi sekolah."
+    >
+      <InfraErrorBoundary>
+        <AcademicPageLayout
+          title="Katalog Standar Sarana & Prasarana"
+          description="Pusat master data katalog aset terstandarisasi untuk mempercepat pendataan dan pengelompokan barang inventaris."
+          breadcrumbs={breadcrumbs}
+          hardeningModuleKey="sarpras_catalog_page"
+          topSlot={
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="toolbarPrimary"
+                size="toolbar"
+                onClick={handleOpenCreate}
+                className="flex items-center gap-1.5 font-bold rounded-xl shadow-md"
+              >
+                <Plus className="w-4 h-4" />
+                Tambah Item Baru
+              </Button>
+            </div>
+          }
+          instruction={{
+            title: "Panduan Katalog Sarpras",
+            description: "Modul ini digunakan untuk mendaftarkan dan memelihara template nama barang, merek, dan spesifikasi standar.",
+            items: [
+              { text: "Pilih tab kategori untuk menyaring daftar rekomendasi aset sarpras." },
+              { text: "Klik [Tambah Item Baru] untuk membuat template barang siap pakai." },
+              { text: "Item katalog mempermudah penambahan aset ruangan tanpa mengetik ulang deskripsi." }
+            ]
+          }}
+        >
+          {mainBody}
         </AcademicPageLayout>
       </InfraErrorBoundary>
     </PremiumFeatureGate>

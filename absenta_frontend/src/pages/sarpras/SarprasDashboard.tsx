@@ -40,6 +40,7 @@ import {
   type RepairRecord
 } from '@/components/sarpras/dashboard/SarprasDashboardComponents';
 import { SarprasTvModeLayout } from '@/components/sarpras/dashboard/SarprasTvModeLayout';
+import { SarprasDashboard as SarprasDashboardComponent } from '@/components/dashboard/roles/SarprasDashboard';
 
 export interface AssetStats {
   total: number;
@@ -207,98 +208,8 @@ const SarprasDashboard: React.FC = React.memo(() => {
         hardeningModuleKey="sarpras_dashboard"
         topSlot={<WorkspaceAppLauncherCard workspaceId="SARPRAS_WORKSPACE" />}
       >
-        <div className="space-y-8">
-          {/* Ringkasan Aset & Kondisi Terkini */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {statCards?.map((card, i) => (
-              <motion.div
-                key={card.label}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="w-full"
-              >
-                <AnalyticsCard
-                  title={card.label}
-                  value={card.value}
-                  isLoading={isLoading}
-                  icon={<card.icon size={20} />}
-                  gradient={
-                    card.color === 'blue'
-                      ? 'from-blue-600 to-indigo-500'
-                      : card.color === 'emerald'
-                      ? 'from-emerald-600 to-teal-500'
-                      : card.color === 'amber'
-                      ? 'from-amber-500 to-orange-500'
-                      : 'from-rose-600 to-red-500'
-                  }
-                  subtitle={card.desc}
-                />
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Transaksi Peminjaman Terbaru & Aset Belum Kembali */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <RecentTransactionsList loans={loans} />
-            <UnreturnedLoansList loans={loans} />
-          </div>
-
-          {/* Peringatan Aset Rusak & Pemeliharaan */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
-              <MaintenanceAlertsList repairs={repairs} />
-            </div>
-            <div className="space-y-6">
-              <div className="bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-xl flex items-start gap-4">
-                <div className="bg-emerald-500 p-2 rounded-xl text-white">
-                  <CheckCircle2 size={20} />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-emerald-800">Sistem Online</h4>
-                  <p className="text-[11px] text-emerald-600 mt-1 leading-relaxed">Pencatatan dilakukan secara real-time. Laporkan jika ada kendala sistem.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Aksi Cepat Operasional Toolman */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Actions */}
-            <div className="lg:col-span-2">
-              <SectionCard title="Aktivitas Cepat" icon={TrendingUp} fullWidth>
-                <div className="p-8">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Button className="h-20 rounded-xl flex flex-col items-start gap-1 justify-center px-6 relative overflow-hidden group">
-                      <div className="absolute right-0 top-0 bottom-0 w-24 bg-white/5 skew-x-12 translate-x-12 group-hover:translate-x-8 transition-all" />
-                      <span className="text-sm font-bold">Pinjamkan Barang</span>
-                      <span className="text-[10px] opacity-70">Scan barcode atau pilih manual</span>
-                    </Button>
-                    <Button variant="outline" className="h-20 rounded-xl border-white/60 bg-white/40 flex flex-col items-start gap-1 justify-center px-6 hover:bg-white transition-all">
-                      <span className="text-sm font-bold">Data Pengembalian</span>
-                      <span className="text-[10px] text-muted-foreground">Lihat daftar barang dipinjam</span>
-                    </Button>
-                  </div>
-                </div>
-              </SectionCard>
-            </div>
-            {/* Sidebar Info */}
-            <div className="space-y-6">
-              <Card className="border-primary/20 shadow-2xl bg-primary shadow-primary/20 text-white rounded-xl overflow-hidden relative">
-                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
-                 <div className="p-8 space-y-6">
-                    <Package className="w-12 h-12 opacity-80" />
-                    <div>
-                      <h3 className="text-2xl font-black">Cek Inventaris</h3>
-                      <p className="text-sm opacity-80 mt-2">Pastikan semua barang di unit {stats?.jurisdiction?.name || ''} selalu dalam kondisi optimal untuk praktikum.</p>
-                    </div>
-                    <Button variant="toolbarOutline" className="w-full rounded-xl font-bold bg-white text-primary hover:bg-slate-100">
-                      Pergi ke Gudang
-                    </Button>
-                 </div>
-              </Card>
-            </div>
-          </div>
+        <div className="pt-1">
+          <SarprasDashboardComponent />
         </div>
       </AcademicPageLayout>
     </PremiumFeatureGate>

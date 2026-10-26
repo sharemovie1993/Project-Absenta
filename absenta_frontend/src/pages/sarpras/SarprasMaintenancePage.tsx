@@ -98,7 +98,11 @@ const maintenanceSchema = z.object({
   deskripsi: z.string().optional()
 });
 
-const SarprasMaintenancePage: React.FC = React.memo(() => {
+export interface SarprasMaintenancePageProps {
+  hideLayout?: boolean;
+}
+
+const SarprasMaintenancePage: React.FC<SarprasMaintenancePageProps> = React.memo(({ hideLayout = false }) => {
   const { subscription } = useAuthStore();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -472,21 +476,9 @@ const SarprasMaintenancePage: React.FC = React.memo(() => {
     );
   }, [formatCurrency, updateMutation, confirm]);
 
-  return (
-    <PremiumFeatureGate
-      moduleName="SARPRAS"
-      featureName="Pemeliharaan & Perbaikan Aset"
-      description="Kelola siklus hidup aset sekolah dengan fitur maintenance terpadu. Catat kerusakan, riwayat perbaikan, teknisi, hingga kalkulasi total biaya pemeliharaan."
-    >
-      <AcademicPageLayout
-        title="Perbaikan & Maintenance"
-        description="Pantau dan kelola perbaikan aset sekolah."
-        breadcrumbs={breadcrumbs}
-        instruction={instruction}
-        hardeningModuleKey="sarpras_maintenance"
-      >
-        <div className="space-y-8 animate-in fade-in duration-500">
-          {/* Stats */}
+  const mainBody = (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <AnalyticsCard
               title="Sedang Diperbaiki"
@@ -673,6 +665,36 @@ const SarprasMaintenancePage: React.FC = React.memo(() => {
             </Modal>
           </Suspense>
         </div>
+  );
+
+  if (hideLayout) {
+    return (
+      <PremiumFeatureGate
+        moduleName="SARPRAS"
+        featureName="Pemeliharaan & Perbaikan Aset"
+        description="Kelola siklus hidup aset sekolah dengan fitur maintenance terpadu. Catat kerusakan, riwayat perbaikan, teknisi, hingga kalkulasi total biaya pemeliharaan."
+      >
+        <div className="space-y-4 w-full min-w-0">
+          {mainBody}
+        </div>
+      </PremiumFeatureGate>
+    );
+  }
+
+  return (
+    <PremiumFeatureGate
+      moduleName="SARPRAS"
+      featureName="Pemeliharaan & Perbaikan Aset"
+      description="Kelola siklus hidup aset sekolah dengan fitur maintenance terpadu. Catat kerusakan, riwayat perbaikan, teknisi, hingga kalkulasi total biaya pemeliharaan."
+    >
+      <AcademicPageLayout
+        title="Perbaikan & Maintenance"
+        description="Pantau dan kelola perbaikan aset sekolah."
+        breadcrumbs={breadcrumbs}
+        instruction={instruction}
+        hardeningModuleKey="sarpras_maintenance"
+      >
+        {mainBody}
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );

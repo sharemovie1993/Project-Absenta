@@ -739,7 +739,7 @@ export function getBkkTabs(tabQuery: string | null): MobileBottomTabItem[] {
   ];
 }
 
-export function getSarprasTabs(): MobileBottomTabItem[] {
+export function getSarprasTabs(currentSubtab?: string): MobileBottomTabItem[] {
   return [
     {
       id: 'portal_back',
@@ -750,51 +750,52 @@ export function getSarprasTabs(): MobileBottomTabItem[] {
       isActive: () => false,
     },
     {
+      id: 'sarpras_ringkasan',
+      label: 'Beranda Sarpras',
+      shortLabel: 'Beranda',
+      icon: Home,
+      targetPath: '/dashboard?tab=sarpras&subtab=ringkasan',
+      isActive: (p, t) => t === 'sarpras' && (!currentSubtab || currentSubtab === 'ringkasan'),
+    },
+    {
       id: 'sarpras_inv',
-      label: 'Katalog Inventaris',
-      shortLabel: 'Katalog Aset',
+      label: 'Inventaris & Aset',
+      shortLabel: 'Inventaris',
       icon: Layers,
-      targetPath: '/sarpras/inventory',
-      isActive: (p) => p.startsWith('/sarpras/inventory'),
+      targetPath: '/dashboard?tab=sarpras&subtab=inventaris',
+      isActive: (p, t) => (t === 'sarpras' && currentSubtab === 'inventaris') || p.startsWith('/sarpras/inventory'),
     },
     {
       id: 'sarpras_loans',
-      label: 'Peminjaman Alat & Ruang',
+      label: 'Peminjaman Alat',
       shortLabel: 'Peminjaman',
       icon: ArrowLeftRight,
-      targetPath: '/sarpras/loans',
-      isActive: (p) => p.startsWith('/sarpras/loans'),
+      targetPath: '/dashboard?tab=sarpras&subtab=peminjaman',
+      isActive: (p, t) => (t === 'sarpras' && currentSubtab === 'peminjaman') || p.startsWith('/sarpras/loans'),
     },
     {
       id: 'sarpras_maint',
       label: 'Servis & Perawatan',
       shortLabel: 'Perawatan',
       icon: Wrench,
-      targetPath: '/sarpras/maintenance',
-      isActive: (p) => p.startsWith('/sarpras/maintenance'),
-    },
-    {
-      id: 'sarpras_ruangan',
-      label: 'Ruangan & Fasilitas',
-      shortLabel: 'Ruang & Lab',
-      icon: Building2,
-      targetPath: '/sarpras/ruangan',
-      isActive: (p) => p.startsWith('/sarpras/ruangan'),
+      targetPath: '/dashboard?tab=sarpras&subtab=perbaikan',
+      isActive: (p, t) => (t === 'sarpras' && currentSubtab === 'perbaikan') || p.startsWith('/sarpras/maintenance'),
     },
     {
       id: 'sarpras_menu',
-      label: 'Menu Sarana & Prasarana',
+      label: 'Menu Sarpras',
       shortLabel: 'Menu Sarpras',
       icon: LayoutGrid,
       badge: 'SARPRAS',
-      targetPath: '/sarpras/inventory',
-      isActive: (p) => p.startsWith('/sarpras') && !['/sarpras/inventory', '/sarpras/loans', '/sarpras/maintenance', '/sarpras/ruangan'].includes(p),
+      targetPath: '/dashboard?tab=sarpras',
+      isActive: (p, t) => t === 'sarpras' && ['katalog', 'rekap'].includes(currentSubtab || ''),
       children: [
-        { id: 'inventory', label: 'Inventaris & Barcode', icon: Layers, targetPath: '/sarpras/inventory', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
-        { id: 'loans', label: 'Peminjaman Aset', icon: ArrowLeftRight, targetPath: '/sarpras/loans', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
-        { id: 'maintenance', label: 'Servis & Kerusakan', icon: Wrench, targetPath: '/sarpras/maintenance', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
-        { id: 'ruangan', label: 'Fasilitas & Ruangan', icon: Building2, targetPath: '/sarpras/ruangan', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
-        { id: 'pengadaan', label: 'Usulan Pengadaan', icon: FileSpreadsheet, targetPath: '/sarpras/pengadaan', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
+        { id: 'katalog', label: 'Katalog Standar', icon: Package, targetPath: '/dashboard?tab=sarpras&subtab=katalog', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
+        { id: 'rekap', label: 'Cetak Berkas / DIR', icon: Printer, targetPath: '/dashboard?tab=sarpras&subtab=rekap', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
+        { id: 'monitor-tv', label: 'Layar TV Sarpras', icon: Activity, targetPath: '/sarpras/dashboard', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
+        { id: 'inventory-full', label: 'Halaman Penuh Inventaris', icon: Layers, targetPath: '/sarpras/inventory', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
+        { id: 'loans-full', label: 'Halaman Penuh Peminjaman', icon: ArrowLeftRight, targetPath: '/sarpras/loans', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
+        { id: 'maintenance-full', label: 'Halaman Penuh Servis', icon: Wrench, targetPath: '/sarpras/maintenance', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
       ],
     },
   ];
