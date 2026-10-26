@@ -40,6 +40,9 @@ import {
   Share2,
   ClipboardList,
   Compass,
+  Scan,
+  LogOut,
+  UserCheck,
   LucideIcon
 } from 'lucide-react';
 
@@ -77,6 +80,7 @@ export type EcosystemType =
   | 'toolman'
   | 'ekskul'
   | 'pembimbing_pkl'
+  | 'satpam'
   | 'koperasi' 
   | 'piket' 
   | 'admin' 
@@ -228,6 +232,15 @@ export function getEcosystemTheme(
         inactiveTextClass: 'text-emerald-100/75 hover:text-white font-medium',
         activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
         dotColorClass: 'bg-emerald-200',
+      };
+    case 'satpam':
+      return {
+        isLayer2: true,
+        navBarClass: 'bg-gradient-to-r from-slate-900 via-rose-950 to-slate-950 text-white border-t-2 border-rose-500 shadow-2xl shadow-rose-950/50',
+        activeTextClass: 'text-rose-400 font-black',
+        inactiveTextClass: 'text-slate-300 hover:text-white font-medium',
+        activePillClass: 'bg-white/20 text-white ring-1 ring-white/40 shadow-xs backdrop-blur-xs',
+        dotColorClass: 'bg-rose-400',
       };
     case 'piket':
       return {
@@ -914,6 +927,56 @@ export function getPklPembimbingTabs(currentSubtab?: string): MobileBottomTabIte
         { id: 'penilaian', label: 'Penilaian Magang', icon: Award, targetPath: '/dashboard?tab=pembimbing_pkl&subtab=penilaian', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
         { id: 'rekap', label: 'Cetak Lembar PKL', icon: Printer, targetPath: '/dashboard?tab=pembimbing_pkl&subtab=rekap', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
         { id: 'mitra-full', label: 'Katalog Mitra DU/DI', icon: Building2, targetPath: '/hubin/mitra', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
+      ],
+    },
+  ];
+}
+
+export function getSatpamTabs(currentSubtab?: string): MobileBottomTabItem[] {
+  return [
+    {
+      id: 'portal_back',
+      label: 'Kembali ke Portal',
+      shortLabel: 'Kembali',
+      icon: ArrowLeft,
+      targetPath: '/dashboard?tab=ringkasan',
+      isActive: () => false,
+    },
+    {
+      id: 'satpam_scan',
+      label: 'Terminal Scan Gerbang',
+      shortLabel: 'Scan',
+      icon: Scan,
+      targetPath: '/dashboard?tab=satpam&subtab=scan',
+      isActive: (p, t) => (t === 'satpam' || t === 'gerbang') && (!currentSubtab || currentSubtab === 'scan'),
+    },
+    {
+      id: 'satpam_tamu',
+      label: 'Buku Tamu Pos Satpam',
+      shortLabel: 'Tamu',
+      icon: UserCheck,
+      targetPath: '/dashboard?tab=satpam&subtab=buku_tamu',
+      isActive: (p, t) => (t === 'satpam' || t === 'gerbang') && currentSubtab === 'buku_tamu',
+    },
+    {
+      id: 'satpam_izin',
+      label: 'Verifikasi Izin Siswa Keluar',
+      shortLabel: 'Izin',
+      icon: LogOut,
+      targetPath: '/dashboard?tab=satpam&subtab=izin_keluar',
+      isActive: (p, t) => (t === 'satpam' || t === 'gerbang') && currentSubtab === 'izin_keluar',
+    },
+    {
+      id: 'satpam_ops',
+      label: 'Operasional Pos Keamanan',
+      shortLabel: 'Operasi',
+      icon: LayoutGrid,
+      badge: 'SATPAM',
+      targetPath: '/dashboard?tab=satpam',
+      isActive: (p, t) => (t === 'satpam' || t === 'gerbang') && ['pelanggaran', 'traffic'].includes(currentSubtab || ''),
+      children: [
+        { id: 'pelanggaran', label: 'Pelanggaran Gerbang', icon: AlertTriangle, targetPath: '/dashboard?tab=satpam&subtab=pelanggaran', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
+        { id: 'traffic', label: 'Trafik & Monitoring Gerbang', icon: Activity, targetPath: '/dashboard?tab=satpam&subtab=traffic', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
       ],
     },
   ];

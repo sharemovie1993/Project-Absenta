@@ -43,6 +43,7 @@ import {
   getToolmanTabs,
   getEkskulTabs,
   getPklPembimbingTabs,
+  getSatpamTabs,
   getKoperasiTabs,
   getPiketTabs,
   getAdminTabs,
@@ -418,6 +419,17 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       });
     }
 
+    if (hasGerbangDuty || isGerbang || isPureGerbangStaff || isAdminRole || can('attendance.gate.scan')) {
+      list.push({
+        id: 'dash-satpam',
+        label: 'Pos Satpam & Gerbang',
+        shortLabel: 'Pos Satpam',
+        icon: ShieldCheck,
+        targetPath: '/dashboard?tab=satpam',
+        color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400',
+      });
+    }
+
     if (isPiketGuru || hasGerbangDuty || isGerbang || isAdminRole || can('attendance.gate.scan')) {
       list.push({
         id: 'dash-piket',
@@ -466,7 +478,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     if (path.startsWith('/sarpras')) return 'sarpras';
     if (path.startsWith('/attendance/anggota-eskul') || path.startsWith('/rapor/eskul')) return 'ekskul';
     if (path.startsWith('/cooperative')) return 'koperasi';
-    if (path.startsWith('/attendance/gate') || path.startsWith('/attendance/terlambat') || path.startsWith('/attendance/dispensasi') || (isPureGerbangStaff && path.startsWith('/attendance'))) return 'piket';
+    if (path.startsWith('/attendance/gate') || (isPureGerbangStaff && path.startsWith('/attendance'))) return 'satpam';
+    if (path.startsWith('/attendance/terlambat') || path.startsWith('/attendance/dispensasi')) return 'piket';
     if (path.startsWith('/academic') || path.startsWith('/users')) return 'admin';
     if (path.startsWith('/dashboard')) {
       if (currentTab === 'kaprog') return 'kaprog';
@@ -481,10 +494,11 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       if (currentTab === 'toolman') return 'toolman';
       if (currentTab === 'ekskul') return 'ekskul';
       if (currentTab === 'pembimbing_pkl') return 'pembimbing_pkl';
+      if (currentTab === 'satpam' || currentTab === 'gerbang') return 'satpam';
       if (currentTab === 'koperasi') return 'koperasi';
       if (currentTab === 'kelola' || currentTab === 'piket') return 'piket';
       if (currentTab === 'admin') return 'admin';
-      if (isPureGerbangStaff && currentTab === 'kelola') return 'piket';
+      if (isPureGerbangStaff && (!currentTab || currentTab === 'ringkasan' || currentTab === 'kelola')) return 'satpam';
       if (isTuStaff && !isPendidik && (!currentTab || currentTab === 'ringkasan')) return 'tu';
     }
     return 'portal';
@@ -517,6 +531,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         return getEkskulTabs(currentSubtab);
       case 'pembimbing_pkl':
         return getPklPembimbingTabs(currentSubtab);
+      case 'satpam':
+        return getSatpamTabs(currentSubtab);
       case 'koperasi':
         return getKoperasiTabs(currentSubtab);
       case 'piket':

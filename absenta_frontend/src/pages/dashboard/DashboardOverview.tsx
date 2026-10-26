@@ -271,7 +271,7 @@ export default function DashboardOverview() {
 
     if (!isAdminOrSuperadmin && !isSiswa && isGerbangPosition) {
       if (!views.find(v => v.id === 'gerbang')) {
-        views.push({ id: 'gerbang', label: 'Petugas Gerbang', component: <GerbangDashboard /> });
+        views.push({ id: 'gerbang', label: 'Pos Satpam & Gerbang', component: <GerbangDashboard /> });
       }
     }
 

@@ -101,6 +101,8 @@ const ToolmanDashboard = React.lazy(() => import('./ToolmanDashboard').then(m =>
 const EkskulDashboard = React.lazy(() => import('./EkskulDashboard').then(m => ({ default: m.EkskulDashboard })));
 // Pembimbing PKL Dashboard — clean role-patterned architecture
 const PembimbingPklDashboard = React.lazy(() => import('./PembimbingPklDashboard').then(m => ({ default: m.PembimbingPklDashboard })));
+// Satpam / Gerbang Dashboard — clean role-patterned architecture
+const SatpamDashboard = React.lazy(() => import('./SatpamDashboard').then(m => ({ default: m.SatpamDashboard })));
 import { StaffPortalTab } from '../staff/tabs/StaffPortalTab';
 
 // Modular Dashboards are accessed via Google-style App Launcher & Portal tab
@@ -1007,6 +1009,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
       });
     }
 
+    // 4.12 Pos Satpam & Gerbang Keamanan
+    if ((isGerbang || isPureGerbangStaff || hasGerbangDuty || (isAdminRole && !isKepsek) || can('attendance.gate.scan')) && !isKepsek && !isPureGerbangStaff) {
+      list.push({ 
+        id: 'satpam', 
+        label: 'Pos Satpam & Gerbang', 
+        icon: ShieldCheck, 
+      });
+    }
+
     // 5. Fasilitator P5 (Khusus Guru Fasilitator Projek P5)
     if (isFasilitatorP5Actual && !isKepsek) {
       list.push({ id: 'p5_projek', label: 'Dashboard P5', icon: Sparkles });
@@ -1319,6 +1330,10 @@ export const UnifiedStaffDashboard: React.FC = () => {
             {isKepsek ? (
               <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
                 <KepalaSekolahDashboard />
+              </Suspense>
+            ) : isPureGerbangStaff ? (
+              <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
+                <SatpamDashboard />
               </Suspense>
             ) : (
               <StaffBerandaTab
@@ -1690,6 +1705,20 @@ export const UnifiedStaffDashboard: React.FC = () => {
               </div>
             }>
               <PembimbingPklDashboard user={user} />
+            </Suspense>
+          </div>
+        )}
+
+        {/* 🛡️ TAB: POS SATPAM & GERBANG KEAMANAN */}
+        {visitedTabs.has('satpam') && (
+          <div
+            key="tab-satpam"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'satpam'}
+            className={cn("w-full min-w-0", activeTab === 'satpam' ? "block" : "hidden")}
+          >
+            <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
+              <SatpamDashboard />
             </Suspense>
           </div>
         )}
