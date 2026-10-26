@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useMemo } from 'react';
 import {
   CalendarDays,
   Users,
@@ -12,25 +11,26 @@ import {
   AlertTriangle,
   Award,
   ChevronRight,
-  TrendingUp,
-  Activity,
-  Tv,
-  ArrowRight,
   Clock,
-  ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  HubCard,
+  HubBentoGrid,
+  HubActionGrid,
+  type HubBentoCell,
+  type HubActionItem,
+} from '@/components/ui/hub';
 import { MonitoringKbmWidget } from '@/components/dashboard/shared/MonitoringKbmWidget';
 import {
   DistribusiChart,
   SupervisiPanel,
   PerangkatPanel,
-  PALETTE,
   type PerangkatRecentItem,
   type SupervisiRecentItem,
   type ConflictResult,
 } from '@/components/kurikulum/dashboard/DashboardComponents';
-import type { KurikulumTabId, KurikulumQuickAction } from '../types';
+import type { KurikulumTabId } from '../types';
 
 export interface KurikulumBerandaTabProps {
   semNama: string;
@@ -61,7 +61,7 @@ export interface KurikulumBerandaTabProps {
   onOpenTvMode?: () => void;
 }
 
-export const KurikulumBerandaTab: React.FC<KurikulumBerandaTabProps> = ({
+export const KurikulumBerandaTab: React.FC<KurikulumBerandaTabProps> = React.memo(({
   semNama,
   tpTahun,
   totalGuru,
@@ -69,7 +69,6 @@ export const KurikulumBerandaTab: React.FC<KurikulumBerandaTabProps> = ({
   totalMapel,
   totalJpMinggu,
   distribusi,
-  beban,
   teachersLoad,
   conflicts,
   perangkatStats,
@@ -80,214 +79,139 @@ export const KurikulumBerandaTab: React.FC<KurikulumBerandaTabProps> = ({
   recentSup,
   loading,
   onTabSelect,
-  onOpenTvMode,
 }) => {
-  const navigate = useNavigate();
-  const [sliderIndex, setSliderIndex] = useState(0);
+  const overload = useMemo(() => teachersLoad.filter((t) => t.jp > 24), [teachersLoad]);
+  const underload = useMemo(() => teachersLoad.filter((t) => t.jp < 12), [teachersLoad]);
 
-  const overload = teachersLoad.filter((t) => t.jp > 24);
-  const underload = teachersLoad.filter((t) => t.jp < 12);
+  const supSelesai = useMemo(
+    () => supRows.filter((r) => r.status?.toUpperCase() === 'COMPLETED' || r.status?.toUpperCase() === 'SELESAI').length,
+    [supRows]
+  );
+  const supTerjadwal = useMemo(
+    () => supRows.filter((r) => r.status?.toUpperCase() === 'SCHEDULED' || r.status?.toUpperCase() === 'TERJADWAL').length,
+    [supRows]
+  );
+  const supBelum = Math.max(0, supRows.length - supSelesai - supTerjadwal);
 
-  const quickActions: KurikulumQuickAction[] = [
-    {
-      id: 'jadwal',
-      title: 'Jadwal KBM',
-      subtitle: 'Plotting & Jam KBM',
-      icon: Calendar,
-      color: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 ring-emerald-500/20',
-      tabTarget: 'jadwal',
-    },
-    {
-      id: 'guru_mapel',
-      title: 'Plotting Guru',
-      subtitle: `${totalGuru} Pendidik`,
-      icon: Users,
-      color: 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 ring-blue-500/20',
-      tabTarget: 'guru_mapel',
-    },
-    {
-      id: 'struktur',
-      title: 'Struktur Kurikulum',
-      subtitle: `${totalMapel} Mata Pelajaran`,
-      icon: Layers,
-      color: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 ring-indigo-500/20',
-      tabTarget: 'struktur',
-    },
-    {
-      id: 'piket',
-      title: 'Jadwal Piket',
-      subtitle: 'Tugas Harian Guru',
-      icon: Clock,
-      color: 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 ring-amber-500/20',
-      tabTarget: 'piket',
-    },
-    {
-      id: 'perangkat',
-      title: 'Perangkat Ajar',
-      subtitle: `${perangkatStats.pctCompleteness}% Lengkap`,
-      icon: FileText,
-      color: 'bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 ring-teal-500/20',
-      tabTarget: 'perangkat',
-      badge: perangkatStats.pending > 0 ? `${perangkatStats.pending} Menunggu` : undefined,
-    },
-    {
-      id: 'supervisi',
-      title: 'Supervisi Guru',
-      subtitle: `${supPct}% Selesai`,
-      icon: CheckCircle2,
-      color: 'bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 ring-purple-500/20',
-      tabTarget: 'supervisi',
-    },
-    {
-      id: 'rapor',
-      title: 'Pleno Rapor',
-      subtitle: 'Monitoring Nilai',
-      icon: Award,
-      color: 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 ring-rose-500/20',
-      tabTarget: 'rapor',
-    },
-  ];
+  // 1. Bento Grid 2x2 Metrik Utama (Shopee-Grade Hairline Dividers)
+  const bentoCells: HubBentoCell[] = useMemo(
+    () => [
+      {
+        id: 'semester',
+        title: 'Semester Aktif',
+        value: semNama || '—',
+        subtext: tpTahun ? `TP ${tpTahun}` : 'Tahun Pelajaran',
+        icon: CalendarDays,
+        iconColorClass: 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/60',
+        onClick: () => onTabSelect('struktur'),
+      },
+      {
+        id: 'guru',
+        title: 'Guru Pendidik',
+        value: totalGuru > 0 ? `${totalGuru} Pendidik` : '—',
+        subtext: overload.length > 0 ? `${overload.length} Overload JP` : 'Alokasi Optimal',
+        icon: Users,
+        iconColorClass: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60',
+        badge: overload.length > 0 ? (
+          <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-500 text-white">
+            {overload.length}
+          </span>
+        ) : undefined,
+        onClick: () => onTabSelect('guru_mapel'),
+      },
+      {
+        id: 'kelas',
+        title: 'Rombongan Belajar',
+        value: totalKelas > 0 ? `${totalKelas} Rombel` : '—',
+        subtext: 'Rombel Aktif Mengajar',
+        icon: LayoutGrid,
+        iconColorClass: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60',
+        onClick: () => onTabSelect('jadwal'),
+      },
+      {
+        id: 'mapel',
+        title: 'Mata Pelajaran',
+        value: totalMapel > 0 ? `${totalMapel} Mapel` : '—',
+        subtext: totalJpMinggu > 0 ? `${totalJpMinggu} JP / Minggu` : 'Struktur Kurikulum',
+        icon: BookOpen,
+        iconColorClass: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60',
+        onClick: () => onTabSelect('struktur'),
+      },
+    ],
+    [semNama, tpTahun, totalGuru, overload.length, totalKelas, totalMapel, totalJpMinggu, onTabSelect]
+  );
 
-  const metricsData = [
-    {
-      label: 'Semester Aktif',
-      value: semNama || '—',
-      sub: tpTahun ? `TP ${tpTahun}` : 'Tahun Pelajaran',
-      icon: CalendarDays,
-      color: 'teal',
-      onClick: () => onTabSelect('struktur'),
-    },
-    {
-      label: 'Guru Pendidik',
-      value: totalGuru > 0 ? `${totalGuru}` : '—',
-      sub: `${overload.length > 0 ? `${overload.length} overload` : 'Alokasi optimal'}`,
-      icon: Users,
-      color: 'blue',
-      onClick: () => onTabSelect('guru_mapel'),
-    },
-    {
-      label: 'Rombongan Belajar',
-      value: totalKelas > 0 ? `${totalKelas}` : '—',
-      sub: 'Rombel aktif mengajar',
-      icon: LayoutGrid,
-      color: 'purple',
-      onClick: () => onTabSelect('jadwal'),
-    },
-    {
-      label: 'Mata Pelajaran',
-      value: totalMapel > 0 ? `${totalMapel}` : '—',
-      sub: `${totalJpMinggu > 0 ? `${totalJpMinggu} JP/minggu` : 'Struktur kurikulum'}`,
-      icon: BookOpen,
-      color: 'amber',
-      onClick: () => onTabSelect('struktur'),
-    },
-  ];
+  // 2. Pintasan Aksi Operasional (Shopee-Grade Headerless Quick Action Slider)
+  const actionItems: HubActionItem[] = useMemo(
+    () => [
+      {
+        id: 'jadwal',
+        label: 'Jadwal KBM',
+        icon: Calendar,
+        iconColorClass: 'text-emerald-600 dark:text-emerald-400',
+        badge: conflicts.length > 0 ? conflicts.length : undefined,
+        onClick: () => onTabSelect('jadwal'),
+      },
+      {
+        id: 'guru_mapel',
+        label: 'Plotting Guru',
+        icon: Users,
+        iconColorClass: 'text-blue-600 dark:text-blue-400',
+        badge: overload.length > 0 ? overload.length : undefined,
+        onClick: () => onTabSelect('guru_mapel'),
+      },
+      {
+        id: 'struktur',
+        label: 'Struktur Mapel',
+        icon: Layers,
+        iconColorClass: 'text-indigo-600 dark:text-indigo-400',
+        onClick: () => onTabSelect('struktur'),
+      },
+      {
+        id: 'piket',
+        label: 'Jadwal Piket',
+        icon: Clock,
+        iconColorClass: 'text-amber-600 dark:text-amber-400',
+        onClick: () => onTabSelect('piket'),
+      },
+      {
+        id: 'perangkat',
+        label: 'Perangkat Ajar',
+        icon: FileText,
+        iconColorClass: 'text-teal-600 dark:text-teal-400',
+        badge: perangkatStats.pending > 0 ? perangkatStats.pending : undefined,
+        onClick: () => onTabSelect('perangkat'),
+      },
+      {
+        id: 'supervisi',
+        label: 'Supervisi Guru',
+        icon: CheckCircle2,
+        iconColorClass: 'text-purple-600 dark:text-purple-400',
+        badge: supBelum > 0 ? supBelum : undefined,
+        onClick: () => onTabSelect('supervisi'),
+      },
+      {
+        id: 'rapor',
+        label: 'Pleno Rapor',
+        icon: Award,
+        iconColorClass: 'text-rose-600 dark:text-rose-400',
+        onClick: () => onTabSelect('rapor'),
+      },
+    ],
+    [conflicts.length, overload.length, perangkatStats.pending, supBelum, onTabSelect]
+  );
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* 1. HERO BENTO METRIC CARDS (2x2 Mobile, 4x1 Desktop) */}
-      <div className="w-full rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs p-3 sm:p-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 divide-y sm:divide-y-0 divide-slate-100 dark:divide-slate-800/80">
-          {metricsData.map((m, idx) => {
-            const Icon = m.icon;
-            const colorStyles: Record<string, { bg: string; text: string; ring: string }> = {
-              teal: { bg: 'bg-teal-50 dark:bg-teal-950/40', text: 'text-teal-600 dark:text-teal-400', ring: 'ring-teal-500/20' },
-              blue: { bg: 'bg-blue-50 dark:bg-blue-950/40', text: 'text-blue-600 dark:text-blue-400', ring: 'ring-blue-500/20' },
-              purple: { bg: 'bg-purple-50 dark:bg-purple-950/40', text: 'text-purple-600 dark:text-purple-400', ring: 'ring-purple-500/20' },
-              amber: { bg: 'bg-amber-50 dark:bg-amber-950/40', text: 'text-amber-600 dark:text-amber-400', ring: 'ring-amber-500/20' },
-            };
-            const style = colorStyles[m.color] || colorStyles.teal;
+    <div className="space-y-4">
+      {/* 1. BENTO GRID 2x2 METRIK UTAMA (Shopee-Grade Hairline Dividers) */}
+      <HubCard noPadding>
+        <HubBentoGrid cells={bentoCells} columns={2} />
+      </HubCard>
 
-            return (
-              <button
-                type="button"
-                key={idx}
-                onClick={m.onClick}
-                className={cn(
-                  "text-left flex flex-col justify-between p-2.5 sm:p-3 rounded-xl sm:rounded-2xl transition-all group hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer",
-                  idx % 2 === 1 && "sm:pt-3",
-                  idx >= 2 && "pt-2.5 sm:pt-3"
-                )}
-              >
-                <div className="flex items-center justify-between gap-2 mb-1 sm:mb-2">
-                  <span className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 truncate">
-                    {m.label}
-                  </span>
-                  <div className={cn("p-1.5 sm:p-2 rounded-lg sm:rounded-xl ring-1 transition-transform group-hover:scale-105", style.bg, style.text, style.ring)}>
-                    <Icon size={15} />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                    {m.value}
-                  </div>
-                  <div className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 mt-0.5 truncate font-medium">
-                    {m.sub}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 2. SHOPEE-GRADE QUICK ACTION SLIDER */}
-      <div className="w-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-3 sm:p-4 shadow-xs">
-        <div className="flex items-center justify-between mb-3 px-1">
-          <div className="flex items-center gap-2">
-            <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
-              Pusat Tindakan Kurikulum
-            </span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-200/50 dark:border-emerald-800/40">
-              Cepat & Presisi
-            </span>
-          </div>
-          {onOpenTvMode && (
-            <button
-              type="button"
-              onClick={onOpenTvMode}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-            >
-              <Tv size={14} />
-              <span className="hidden sm:inline">Mode TV Display</span>
-            </button>
-          )}
-        </div>
-
-        {/* Horizontal Slider Scrollable */}
-        <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-1.5 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
-          {quickActions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <button
-                type="button"
-                key={action.id}
-                onClick={() => {
-                  if (action.tabTarget) onTabSelect(action.tabTarget);
-                  if (action.onClick) action.onClick();
-                }}
-                className="group relative flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-800/40 hover:bg-white dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-sm transition-all shrink-0 w-[84px] sm:w-[104px] text-center"
-              >
-                {action.badge && (
-                  <span className="absolute -top-1.5 right-1 px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-rose-500 text-white shadow-xs">
-                    {action.badge}
-                  </span>
-                )}
-                <div className={cn("p-2 sm:p-2.5 rounded-xl ring-1 mb-1.5 transition-transform group-hover:scale-110", action.color)}>
-                  <Icon size={18} />
-                </div>
-                <span className="text-[11px] sm:text-xs font-bold text-slate-800 dark:text-slate-200 line-clamp-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                  {action.title}
-                </span>
-                <span className="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 line-clamp-1 mt-0.5 font-medium">
-                  {action.subtitle}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      {/* 2. PINTASAN AKSI OPERASIONAL (Shopee-Grade Headerless Quick Action Slider) */}
+      <HubCard bodyClassName="py-2.5 sm:py-3 px-2 sm:px-3">
+        <HubActionGrid items={actionItems} variant="slider" />
+      </HubCard>
 
       {/* 3. CONFLICT ALERT BANNER (If Conflicts Detected) */}
       {conflicts.length > 0 && (
@@ -423,9 +347,9 @@ export const KurikulumBerandaTab: React.FC<KurikulumBerandaTabProps> = ({
         <SupervisiPanel
           pct={supPct}
           pieData={pieData}
-          selesai={supRows.filter(r => r.status?.toUpperCase() === 'COMPLETED' || r.status?.toUpperCase() === 'SELESAI').length}
-          terjadwal={supRows.filter(r => r.status?.toUpperCase() === 'SCHEDULED' || r.status?.toUpperCase() === 'TERJADWAL').length}
-          belum={Math.max(0, supRows.length - (supRows.filter(r => r.status?.toUpperCase() === 'COMPLETED' || r.status?.toUpperCase() === 'SELESAI').length) - (supRows.filter(r => r.status?.toUpperCase() === 'SCHEDULED' || r.status?.toUpperCase() === 'TERJADWAL').length))}
+          selesai={supSelesai}
+          terjadwal={supTerjadwal}
+          belum={supBelum}
           total={supRows.length}
           recent={recentSup}
           loading={loading}
@@ -434,4 +358,6 @@ export const KurikulumBerandaTab: React.FC<KurikulumBerandaTabProps> = ({
       </div>
     </div>
   );
-};
+});
+
+KurikulumBerandaTab.displayName = 'KurikulumBerandaTab';
