@@ -5,13 +5,12 @@ import {
   QrCode,
   AlertCircle,
   FileText,
-  User,
   Sparkles,
   Flame,
 } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import type { SiswaTabId, SiswaNavTabItem, StudentBadge, SiswaGamification } from '../types';
+import type { StudentBadge, SiswaGamification } from '../types';
 
 export interface SiswaHeaderBannerProps {
   studentName: string;
@@ -23,12 +22,8 @@ export interface SiswaHeaderBannerProps {
   isPetugasKelas: boolean;
   studentBadges: StudentBadge[];
   gamification: SiswaGamification;
-  tabs: SiswaNavTabItem[];
-  activeTab: SiswaTabId;
-  onTabChange: (tabId: SiswaTabId) => void;
   onOpenDigitalCard: () => void;
   onOpenBelumAbsen: () => void;
-  pelanggaranCount: number;
 }
 
 export const SiswaHeaderBanner: React.FC<SiswaHeaderBannerProps> = ({
@@ -41,18 +36,13 @@ export const SiswaHeaderBanner: React.FC<SiswaHeaderBannerProps> = ({
   isPetugasKelas,
   studentBadges,
   gamification,
-  tabs,
-  activeTab,
-  onTabChange,
   onOpenDigitalCard,
   onOpenBelumAbsen,
-  pelanggaranCount,
 }) => {
   const navigate = useNavigate();
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-4 sm:p-6 shadow-sm space-y-4">
-      {/* Top Row: Student Profile & Quick Actions */}
+    <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         {/* Student Identity Left */}
         <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
@@ -77,7 +67,7 @@ export const SiswaHeaderBanner: React.FC<SiswaHeaderBannerProps> = ({
 
           <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight truncate">
+              <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight truncate">
                 {studentName}
               </h1>
               {gamification.streakDays > 0 && (
@@ -165,44 +155,6 @@ export const SiswaHeaderBanner: React.FC<SiswaHeaderBannerProps> = ({
             <span>Kartu Digital</span>
           </Button>
         </div>
-      </div>
-
-      {/* Desktop / Tablet Integrated Navigation Tabs Bar */}
-      <div className="hidden md:flex p-1.5 rounded-2xl bg-slate-100/80 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800/80 items-center gap-1.5 sm:gap-2 overflow-x-auto custom-scrollbar">
-        {tabs.map((tab) => {
-          const TabIcon = tab.icon;
-          const isTabActive = activeTab === tab.id;
-          const badgeCount = tab.id === 'catatan' ? pelanggaranCount : null;
-
-          return (
-            <button
-              key={tab.id}
-              onClick={() => onTabChange(tab.id)}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 shrink-0 cursor-pointer select-none',
-                isTabActive
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20 border border-blue-500 font-extrabold'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/50'
-              )}
-            >
-              <TabIcon size={16} />
-              <span>
-                {tab.id === 'portal'
-                  ? 'Portal Apps'
-                  : tab.id === 'profil'
-                  ? 'Profil & Kartu'
-                  : tab.id === 'catatan'
-                  ? 'Catatan Poin'
-                  : tab.label}
-              </span>
-              {badgeCount !== null && badgeCount > 0 && (
-                <span className="px-1.5 py-0.2 text-[10px] font-black rounded-full bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-500/30">
-                  {badgeCount}
-                </span>
-              )}
-            </button>
-          );
-        })}
       </div>
     </div>
   );
