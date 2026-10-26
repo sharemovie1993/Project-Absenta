@@ -456,42 +456,8 @@ export class DashboardActionHubService {
         }];
       }
 
-      // Fallback: Jika progress engine mengembalikan 0 (misal di luar TP aktif), gunakan GuruMapel TP aktif
-      if (!guruId) return [];
-      const assignments = await prisma.guruMapel.findMany({
-        where: { tenant_id: tenantId, guru_id: guruId },
-        include: {
-          Kelas: { select: { nama_kelas: true } },
-          Mapel: { select: { nama_mapel: true } }
-        }
-      });
-
-      if (!assignments.length) return [];
-
-      const uniqueMapelNames = Array.from(new Set(assignments.map(a => a.Mapel?.nama_mapel).filter(Boolean)));
-      const mapelLabel = uniqueMapelNames.length === 1 
-        ? uniqueMapelNames[0] 
-        : uniqueMapelNames.length > 1 
-        ? `${uniqueMapelNames.length} Mata Pelajaran`
-        : 'Akademik';
-
-      return [{
-        id: `rapor_task_${guruId}`,
-        division: 'RAPOR',
-        urgency: 'UPCOMING',
-        title: 'Penginputan Nilai Rapor & Formatif',
-        subtitle: `Mengampu ${assignments.length} rombel kelas binaan (${mapelLabel})`,
-        badgeText: `${assignments.length} Rombel`,
-        action: {
-          label: 'Input Nilai ➔',
-          type: 'NAVIGATE',
-          target: '/rapor/input-nilai'
-        },
-        sourceModule: {
-          table: 'GuruMapel',
-          entityId: guruId
-        }
-      }];
+      // STRICT: Tidak menggunakan fallback. Jika tidak ada tugas aktif dari NilaiService, return empty.
+      return [];
     } catch (e) {
       return [];
     }
