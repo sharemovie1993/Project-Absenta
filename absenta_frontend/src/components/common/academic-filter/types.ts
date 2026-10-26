@@ -140,6 +140,9 @@ export interface UseAcademicFilterReturn {
 }
 
 export interface AcademicFilterToolbarProps {
+  // Direct filter hook support
+  filter?: UseAcademicFilterReturn;
+
   // Feature flags
   enableTp?: boolean;
   enableSemester?: boolean;
@@ -156,8 +159,8 @@ export interface AcademicFilterToolbarProps {
   enableGender?: boolean;
   enableStatusSiswa?: boolean;
 
-  // Values
-  values: AcademicFilterValues;
+  // Values (optional for resilience)
+  values?: AcademicFilterValues;
 
   // Setters
   setTahunPelajaranId?: (id: string) => void;

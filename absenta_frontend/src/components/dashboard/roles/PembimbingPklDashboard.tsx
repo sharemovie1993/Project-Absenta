@@ -120,7 +120,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
 
   const tpId = academicFilter.activeTpYear?.id;
   const tpTahun = academicFilter.activeTpYear?.tahun || '';
-  const semesterNama = academicFilter.activeSemester?.nama || '';
+  const semesterNama = (academicFilter.activeSemester as any)?.nama_semester || (academicFilter.activeSemester as any)?.nama || '';
 
   // Data Queries: Siswa Penempatan PKL untuk Pembimbing ini
   const guruId = user?.guru_profile?.id || user?.id;
@@ -298,7 +298,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
 
           {/* Academic Filter Toolbar */}
           <div className={cn('mt-3 pt-3 border-t border-slate-100 dark:border-slate-800', !showMobileFilter && 'hidden sm:block')}>
-            <AcademicFilterToolbar filter={academicFilter} compact={true} />
+            <AcademicFilterToolbar {...academicFilter.toolbarProps} variant="compact" />
           </div>
         </div>
 

@@ -27,80 +27,106 @@ const SuspenseFallback = () => (
 // Nonaktif secara default agar UI bersih di lingkungan pengujian
 const DEBUG_BORDER_ACADEMIC_FILTER = false;
 
-export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
-  enableTp = true,
-  enableSemester = false,
-  enableTingkat = false,
-  enableKelas = false,
-  enableMitra = false,
-  enableCohort = true,
-  enableMapel = false,
-  enableBulan = false,
-  enableTanggal = false,
-  enableGuru = false,
-  enableSiswa = false,
-  enableSearch = false,
-  enableGender = false,
-  enableStatusSiswa = false,
+const DEFAULT_FILTER_VALUES = {
+  tahunPelajaranId: '',
+  semesterId: '',
+  tingkat: '' as number | '',
+  kelasId: '',
+  mitraId: '',
+  mapelId: '',
+  bulan: '',
+  tanggal: '',
+  guruId: '',
+  siswaId: '',
+  searchQuery: '',
+  gender: '',
+  statusSiswa: '',
+};
 
-  values,
-  setTahunPelajaranId,
-  setSemesterId,
-  setTingkat,
-  setKelasId,
-  setMitraId,
-  setMapelId,
-  setBulan,
-  setTanggal,
-  setGuruId,
-  setSiswaId,
-  setSearchQuery,
-  setGender,
-  setStatusSiswa,
+export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar(rawProps: AcademicFilterToolbarProps) {
+  // Support either direct spreading or passing the hook result via filter={filter}
+  const effectiveProps = rawProps.filter
+    ? { ...rawProps.filter.toolbarProps, ...rawProps }
+    : rawProps;
 
-  tpOptions = [],
-  semesterOptions = [],
-  tingkatOptions = [],
-  kelasOptions = [],
-  mitraOptions = [],
-  mapelOptions = [],
-  guruOptions = [],
-  siswaOptions = [],
-  genderOptions = [],
-  statusSiswaOptions = [],
+  const {
+    enableTp = true,
+    enableSemester = false,
+    enableTingkat = false,
+    enableKelas = false,
+    enableMitra = false,
+    enableCohort = true,
+    enableMapel = false,
+    enableBulan = false,
+    enableTanggal = false,
+    enableGuru = false,
+    enableSiswa = false,
+    enableSearch = false,
+    enableGender = false,
+    enableStatusSiswa = false,
 
-  isLoadingTp = false,
-  isLoadingSem = false,
-  isLoadingKelas = false,
-  isLoadingMitra = false,
-  isLoadingMapel = false,
-  isLoadingGuru = false,
-  isLoadingSiswa = false,
-  isLoadingGender = false,
-  isLoadingStatusSiswa = false,
+    values: rawValues,
+    setTahunPelajaranId,
+    setSemesterId,
+    setTingkat,
+    setKelasId,
+    setMitraId,
+    setMapelId,
+    setBulan,
+    setTanggal,
+    setGuruId,
+    setSiswaId,
+    setSearchQuery,
+    setGender,
+    setStatusSiswa,
 
-  isKelasDisabled = false,
+    tpOptions = [],
+    semesterOptions = [],
+    tingkatOptions = [],
+    kelasOptions = [],
+    mitraOptions = [],
+    mapelOptions = [],
+    guruOptions = [],
+    siswaOptions = [],
+    genderOptions = [],
+    statusSiswaOptions = [],
 
-  cohortStages = [],
-  onJumpCohortStage,
+    isLoadingTp = false,
+    isLoadingSem = false,
+    isLoadingKelas = false,
+    isLoadingMitra = false,
+    isLoadingMapel = false,
+    isLoadingGuru = false,
+    isLoadingSiswa = false,
+    isLoadingGender = false,
+    isLoadingStatusSiswa = false,
 
-  onReset,
-  onAdd,
-  addLabel = 'Tambah Data',
-  onImport,
-  importLabel = 'Import',
-  onExportExcel,
-  onExportPdf,
+    isKelasDisabled = false,
 
-  actionsLeft,
-  actionsRight,
-  bottomContent,
-  children,
+    cohortStages = [],
+    onJumpCohortStage,
 
-  variant = 'card',
-  className,
-  searchPlaceholder = 'Cari data...',
-}: AcademicFilterToolbarProps) {
+    onReset,
+    onAdd,
+    addLabel = 'Tambah Data',
+    onImport,
+    importLabel = 'Import',
+    onExportExcel,
+    onExportPdf,
+
+    actionsLeft,
+    actionsRight,
+    bottomContent,
+    children,
+
+    variant = 'card',
+    className,
+    searchPlaceholder = 'Cari data...',
+  } = effectiveProps;
+
+  const values = React.useMemo(() => {
+    return rawValues ? { ...DEFAULT_FILTER_VALUES, ...rawValues } : DEFAULT_FILTER_VALUES;
+  }, [rawValues]);
   const isMobile = useIsMobile(768);
   const effectiveVariant = variant === 'card' && isMobile ? 'mini' : variant;
 
@@ -146,16 +172,16 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
 
   const activeCount = React.useMemo(() => {
     let c = 0;
-    if (enableTp && values.tahunPelajaranId) c++;
-    if (enableSemester && values.semesterId) c++;
-    if (enableTingkat && values.tingkat) c++;
-    if (enableKelas && values.kelasId) c++;
-    if (enableMapel && values.mapelId) c++;
-    if (enableGuru && values.guruId) c++;
-    if (enableSiswa && values.siswaId) c++;
-    if (enableMitra && values.mitraId) c++;
-    if (enableGender && values.gender) c++;
-    if (enableStatusSiswa && values.statusSiswa) c++;
+    if (enableTp && values?.tahunPelajaranId) c++;
+    if (enableSemester && values?.semesterId) c++;
+    if (enableTingkat && values?.tingkat) c++;
+    if (enableKelas && values?.kelasId) c++;
+    if (enableMapel && values?.mapelId) c++;
+    if (enableGuru && values?.guruId) c++;
+    if (enableSiswa && values?.siswaId) c++;
+    if (enableMitra && values?.mitraId) c++;
+    if (enableGender && values?.gender) c++;
+    if (enableStatusSiswa && values?.statusSiswa) c++;
     return c;
   }, [
     enableTp, enableSemester, enableTingkat, enableKelas, enableMapel,
