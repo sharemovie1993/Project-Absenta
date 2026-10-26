@@ -88,7 +88,11 @@ const pelanggaranSchema = z.object({
   status: z.string().min(1, 'Status wajib dipilih')
 });
 
-export default React.memo(function PelanggaranPage() {
+export interface PelanggaranPageProps {
+  hideLayout?: boolean;
+}
+
+export default React.memo(function PelanggaranPage({ hideLayout = false }: PelanggaranPageProps) {
   const isMobile = useIsMobile();
   const { user } = useAuthStore();
   const guruProfile = (user as { guru_profile?: GuruProfileType } | null)?.guru_profile;
@@ -622,25 +626,8 @@ export default React.memo(function PelanggaranPage() {
     { label: 'Kasus Pelanggaran', path: '/kesiswaan/pelanggaran' }
   ], [isWaliKelas]);
 
-  return (
-    <AcademicPageLayout
-      title={isWaliKelas ? `Kasus Pelanggaran Siswa ${waliKelasNama ? `(${waliKelasNama})` : ''}` : "Manajemen Kasus Pelanggaran Siswa"}
-      description={isWaliKelas 
-        ? `Pantauan khusus catatan kedisiplinan dan pembinaan karakter siswa kelas ${waliKelasNama || 'bimbingan Anda'}.`
-        : "Pusat pemantauan & penanganan kedisiplinan siswa seluruh sekolah."}
-      breadcrumbs={breadcrumbs}
-      stats={pageStats}
-      hardeningModuleKey="kesiswaan_pelanggaran"
-      instruction={{
-        title: "Panduan Catatan",
-        description: "Kelola riwayat perkembangan dan kedisiplinan siswa.",
-        items: [
-          { text: "Gunakan 'Tambah Catatan' untuk merekam kejadian baru." },
-          { text: "Pilih siswa menggunakan scanner RFID atau pencarian nama." },
-          { text: "Update tahapan penyelesaian melalui tombol Edit." }
-        ]
-      }}
-    >
+  const mainBody = (
+    <>
       <Card className="rounded-2xl border-none shadow-sm overflow-hidden mb-6">
         {isMobile ? (
           <div className="p-4 space-y-4">
@@ -821,6 +808,37 @@ export default React.memo(function PelanggaranPage() {
           </form>
         </Modal>
       </Suspense>
+    </>
+  );
+
+  if (hideLayout) {
+    return (
+      <div className="space-y-4 w-full min-w-0">
+        {mainBody}
+      </div>
+    );
+  }
+
+  return (
+    <AcademicPageLayout
+      title={isWaliKelas ? `Kasus Pelanggaran Siswa ${waliKelasNama ? `(${waliKelasNama})` : ''}` : "Manajemen Kasus Pelanggaran Siswa"}
+      description={isWaliKelas 
+        ? `Pantauan khusus catatan kedisiplinan dan pembinaan karakter siswa kelas ${waliKelasNama || 'bimbingan Anda'}.`
+        : "Pusat pemantauan & penanganan kedisiplinan siswa seluruh sekolah."}
+      breadcrumbs={breadcrumbs}
+      stats={pageStats}
+      hardeningModuleKey="kesiswaan_pelanggaran"
+      instruction={{
+        title: "Panduan Catatan",
+        description: "Kelola riwayat perkembangan dan kedisiplinan siswa.",
+        items: [
+          { text: "Gunakan 'Tambah Catatan' untuk merekam kejadian baru." },
+          { text: "Pilih siswa menggunakan scanner RFID atau pencarian nama." },
+          { text: "Update tahapan penyelesaian melalui tombol Edit." }
+        ]
+      }}
+    >
+      {mainBody}
     </AcademicPageLayout>
   );
 });

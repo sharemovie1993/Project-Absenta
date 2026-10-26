@@ -461,7 +461,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       case 'kurikulum':
         return getKurikulumTabs(currentSubtab);
       case 'kesiswaan':
-        return getKesiswaanTabs();
+        return getKesiswaanTabs(currentSubtab);
       case 'hubin':
         return getHubinTabs();
       case 'bpbk':

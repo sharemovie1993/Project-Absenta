@@ -35,6 +35,7 @@ import {
   ScanLine,
   AlertTriangle,
   HandCoins,
+  Activity,
   LucideIcon
 } from 'lucide-react';
 
@@ -491,7 +492,7 @@ export function getKurikulumTabs(currentSubtab?: string | null): MobileBottomTab
   ];
 }
 
-export function getKesiswaanTabs(): MobileBottomTabItem[] {
+export function getKesiswaanTabs(currentSubtab?: string): MobileBottomTabItem[] {
   return [
     {
       id: 'portal_back',
@@ -502,36 +503,36 @@ export function getKesiswaanTabs(): MobileBottomTabItem[] {
       isActive: () => false,
     },
     {
+      id: 'kesis_ringkasan',
+      label: 'Beranda Kesiswaan',
+      shortLabel: 'Beranda',
+      icon: Home,
+      targetPath: '/dashboard?tab=kesiswaan&subtab=ringkasan',
+      isActive: (p, t) => t === 'kesiswaan' && (!currentSubtab || currentSubtab === 'ringkasan'),
+    },
+    {
       id: 'kesis_pelanggaran',
       label: 'Pelanggaran & Disiplin',
       shortLabel: 'Pelanggaran',
       icon: ShieldAlert,
-      targetPath: '/kesiswaan/pelanggaran',
-      isActive: (p) => p.startsWith('/kesiswaan/pelanggaran'),
+      targetPath: '/dashboard?tab=kesiswaan&subtab=pelanggaran',
+      isActive: (p, t) => (t === 'kesiswaan' && currentSubtab === 'pelanggaran') || p.startsWith('/kesiswaan/pelanggaran'),
     },
     {
       id: 'kesis_prestasi',
       label: 'Prestasi Siswa',
       shortLabel: 'Prestasi',
       icon: Trophy,
-      targetPath: '/kesiswaan/prestasi',
-      isActive: (p) => p.startsWith('/kesiswaan/prestasi'),
+      targetPath: '/dashboard?tab=kesiswaan&subtab=prestasi',
+      isActive: (p, t) => (t === 'kesiswaan' && currentSubtab === 'prestasi') || p.startsWith('/kesiswaan/prestasi'),
     },
     {
       id: 'kesis_dhuha',
       label: 'Pembiasaan & Dhuha',
       shortLabel: 'Pembiasaan',
       icon: HeartPulse,
-      targetPath: '/kesiswaan/dhuha',
-      isActive: (p) => p.startsWith('/kesiswaan/dhuha'),
-    },
-    {
-      id: 'kesis_taruna',
-      label: 'Ketarunaan & Ekskul',
-      shortLabel: 'Ekskul',
-      icon: Award,
-      targetPath: '/kesiswaan/ketarunaan',
-      isActive: (p) => p.startsWith('/kesiswaan/ketarunaan'),
+      targetPath: '/dashboard?tab=kesiswaan&subtab=dhuha',
+      isActive: (p, t) => (t === 'kesiswaan' && currentSubtab === 'dhuha') || p.startsWith('/kesiswaan/dhuha'),
     },
     {
       id: 'kesis_menu',
@@ -539,15 +540,15 @@ export function getKesiswaanTabs(): MobileBottomTabItem[] {
       shortLabel: 'Menu Kesis',
       icon: LayoutGrid,
       badge: 'KESIS',
-      targetPath: '/kesiswaan/pelanggaran',
-      isActive: (p) => p.startsWith('/kesiswaan') && !['/kesiswaan/pelanggaran', '/kesiswaan/prestasi', '/kesiswaan/dhuha', '/kesiswaan/ketarunaan'].includes(p),
+      targetPath: '/dashboard?tab=kesiswaan',
+      isActive: (p, t) => t === 'kesiswaan' && ['ketarunaan', 'tatib', 'rekap'].includes(currentSubtab || ''),
       children: [
-        { id: 'pelanggaran', label: 'Pelanggaran Siswa', icon: ShieldAlert, targetPath: '/kesiswaan/pelanggaran', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
-        { id: 'prestasi', label: 'Prestasi Siswa', icon: Trophy, targetPath: '/kesiswaan/prestasi', color: 'bg-yellow-50 dark:bg-yellow-950/70 text-yellow-600 dark:text-yellow-400' },
-        { id: 'dhuha', label: 'Monitoring Dhuha', icon: HeartPulse, targetPath: '/kesiswaan/dhuha', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
-        { id: 'ketarunaan', label: 'Taruna & Ekskul', icon: Award, targetPath: '/kesiswaan/ketarunaan', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
-        { id: 'tatib', label: 'Master Tata Tertib', icon: FileSpreadsheet, targetPath: '/kesiswaan/tatib', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
-        { id: 'rekap', label: 'Rekap & Laporan', icon: Printer, targetPath: '/kesiswaan/rekap', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
+        { id: 'ketarunaan', label: 'Ketarunaan & Ekskul', icon: Award, targetPath: '/dashboard?tab=kesiswaan&subtab=ketarunaan', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
+        { id: 'tatib', label: 'Master Tata Tertib', icon: FileSpreadsheet, targetPath: '/dashboard?tab=kesiswaan&subtab=tatib', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
+        { id: 'rekap', label: 'Rekap & Laporan', icon: Printer, targetPath: '/dashboard?tab=kesiswaan&subtab=rekap', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
+        { id: 'monitoring-page', label: 'Layar TV Monitoring', icon: Activity, targetPath: '/kesiswaan/monitoring', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
+        { id: 'pelanggaran-page', label: 'Halaman Penuh Pelanggaran', icon: ShieldAlert, targetPath: '/kesiswaan/pelanggaran', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
+        { id: 'prestasi-page', label: 'Halaman Penuh Prestasi', icon: Trophy, targetPath: '/kesiswaan/prestasi', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
       ],
     },
   ];

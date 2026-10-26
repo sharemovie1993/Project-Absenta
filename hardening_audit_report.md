@@ -9,8 +9,8 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 | Metrik Evaluasi | Hasil Peminidaian | Persentase | Status |
 |---|---|---|---|
 | **Total Halaman Utama** | **224 Halaman** | 100% | - |
-| **✅ Lolos Sempurna (Hardened)** | **157 Halaman** | 70% | **Sangat Baik** |
-| **⚠️ Sebagian Terstandar (Partial)** | **63 Halaman** | 28% | **Butuh Sentuhan Ringan** |
+| **✅ Lolos Sempurna (Hardened)** | **158 Halaman** | 71% | **Sangat Baik** |
+| **⚠️ Sebagian Terstandar (Partial)** | **62 Halaman** | 28% | **Butuh Sentuhan Ringan** |
 | **❌ Belum Terstandar (Non-Compliant)** | **4 Halaman** | 2% | **Prioritas Utama Refaktor** |
 
 ---
@@ -484,19 +484,11 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `MonitoringKesiswaanPage.tsx`
-* **Lokasi File:** [MonitoringKesiswaanPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/MonitoringKesiswaanPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 926 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [MonitoringKesiswaanPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/MonitoringKesiswaanPage.tsx) (534 baris), [MonitoringKesiswaanComponents.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/components/MonitoringKesiswaanComponents.tsx) (392 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
-
----
-
 ### 📄 Halaman: `PelanggaranPage.tsx`
 * **Lokasi File:** [PelanggaranPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/PelanggaranPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 827 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [PelanggaranPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/PelanggaranPage.tsx) (827 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 845 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [PelanggaranPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/PelanggaranPage.tsx) (845 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
 
 ---
 
@@ -1239,6 +1231,13 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `JenisPelanggaranPage.tsx`
 * **Lokasi File:** [JenisPelanggaranPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/JenisPelanggaranPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `MonitoringKesiswaanPage.tsx`
+* **Lokasi File:** [MonitoringKesiswaanPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/MonitoringKesiswaanPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 

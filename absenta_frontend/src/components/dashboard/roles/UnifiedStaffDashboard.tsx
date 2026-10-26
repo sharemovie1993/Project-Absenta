@@ -81,6 +81,8 @@ import { StaffPembimbingPklTab } from '../staff/tabs/StaffPembimbingPklTab';
 const KaprogDashboard = React.lazy(() => import('./KaprogDashboard').then(m => ({ default: m.KaprogDashboard })));
 // Kurikulum Dashboard — clean role-patterned architecture
 const KurikulumDashboard = React.lazy(() => import('./KurikulumDashboard').then(m => ({ default: m.KurikulumDashboard })));
+// Kesiswaan Dashboard — clean role-patterned architecture
+const KesiswaanDashboard = React.lazy(() => import('./KesiswaanDashboard').then(m => ({ default: m.KesiswaanDashboard })));
 import { StaffPortalTab } from '../staff/tabs/StaffPortalTab';
 
 // Modular Dashboards are accessed via Google-style App Launcher & Portal tab
@@ -908,6 +910,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
       });
     }
 
+    // 4.3 Kesiswaan (Khusus Waka / Staf Kesiswaan / Admin)
+    if ((isKesiswaan || (isAdminRole && !isKepsek) || can('kesiswaan.view') || can('kesiswaan.manage')) && !isKepsek) {
+      list.push({ 
+        id: 'kesiswaan', 
+        label: 'Dashboard Kesiswaan', 
+        icon: ShieldAlert, 
+      });
+    }
+
     // 5. Fasilitator P5 (Khusus Guru Fasilitator Projek P5)
     if (isFasilitatorP5Actual && !isKepsek) {
       list.push({ id: 'p5_projek', label: 'Dashboard P5', icon: Sparkles });
@@ -1385,6 +1396,29 @@ export const UnifiedStaffDashboard: React.FC = () => {
               </div>
             }>
               <KurikulumDashboard user={user} />
+            </Suspense>
+          </div>
+        )}
+
+        {/* 🛡️ TAB KESISWAAN: DASHBOARD KESISWAAN */}
+        {visitedTabs.has('kesiswaan') && (
+          <div 
+            key="tab-kesiswaan"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'kesiswaan'}
+            className={cn("w-full min-w-0", activeTab === 'kesiswaan' ? "block" : "hidden")}
+          >
+            <Suspense fallback={
+              <div className="w-full space-y-4 py-4">
+                <div className="h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="h-24 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                  ))}
+                </div>
+              </div>
+            }>
+              <KesiswaanDashboard user={user} />
             </Suspense>
           </div>
         )}

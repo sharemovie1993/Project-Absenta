@@ -21,7 +21,11 @@ const CetakFormGeneric = lazy(() => import('../../components/academic/CetakFormG
 // Stamp Registry Key
 const hardeningModuleKey = 'cetak_berkas_kesiswaan';
 
-export const CetakBerkasKesiswaanPage: React.FC = React.memo(() => {
+export interface CetakBerkasKesiswaanPageProps {
+  hideLayout?: boolean;
+}
+
+export const CetakBerkasKesiswaanPage: React.FC<CetakBerkasKesiswaanPageProps> = React.memo(({ hideLayout = false }) => {
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = React.useState(false);
 
@@ -229,6 +233,7 @@ export const CetakBerkasKesiswaanPage: React.FC = React.memo(() => {
             ]
           }}
           showChecklist={false}
+          hideHeaderAndBreadcrumbs={hideLayout}
           defaultPrintType="letter_summons"
           docFormRenderer={renderDocForm}
           pdfGenerator={handleGeneratePdf}

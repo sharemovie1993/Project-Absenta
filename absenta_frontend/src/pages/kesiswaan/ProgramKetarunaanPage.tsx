@@ -92,7 +92,11 @@ const TAB_OPTIONS = [
 
 // ─── PAGE COMPONENT ────────────────────────────────────────────────────────────
 
-const ProgramKetarunaanPage: React.FC = () => {
+export interface ProgramKetarunaanPageProps {
+  hideLayout?: boolean;
+}
+
+const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayout = false }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('statistik');
   const { isKesiswaan, isAdmin, can } = useCapabilities();
@@ -213,40 +217,10 @@ const ProgramKetarunaanPage: React.FC = () => {
 
   const canView = isAdmin || isKesiswaan || can('attendance.sessions.view.list') || can('dashboard.view.kesiswaan');
 
-  return (
-    <InfraErrorBoundary>
-      <AcademicPageLayout
-        title="Program Ketarunaan"
-        description="Pusat laporan perkembangan kedisiplinan taruna, evaluasi peleton rombel, dan kepanitiaan Ketarunaan."
-        breadcrumbs={breadcrumbs}
-        stats={statCards}
-        isLoadingStats={isGuardLoading || isStatsLoading || isSesiLoading}
-        hardeningModuleKey="program_ketarunaan"
-        canView={canView}
-        permissionMessage="Anda tidak memiliki izin untuk mengakses modul Program Ketarunaan."
-        instruction={{
-          title: 'Panduan Operasional Program Ketarunaan',
-          description: (
-            <div className="space-y-2 text-sm">
-              <p>
-                Modul ini mengelola seluruh ekosistem <strong>Program Ketarunaan Sekolah</strong>, mulai dari kehadiran pembina, monitoring kehadiran peleton/siswa, hingga cetak arsip fisik.
-              </p>
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500 dark:text-slate-400">
-                <p><strong>Fungsi:</strong> Presensi terintegrasi jam KBM dan rekap komprehensif pendamping serta siswa.</p>
-                <p><strong>Waktu Penggunaan:</strong> Sebelum dan selama sesi kegiatan Ketarunaan berlangsung setiap minggunya.</p>
-              </div>
-            </div>
-          ),
-          items: [
-            { text: 'Buka tab Performa Perkembangan untuk melihat tren disiplin kehadiran taruna dalam rentang waktu.' },
-            { text: 'Gunakan tab Laporan Per Rombel & Laporan Pendamping untuk arsip dan cetak fisik.' },
-            { text: 'Akses tab Terminal Presensi & POS saat jam kegiatan berlangsung untuk scan RFID atau presensi pembina.' },
-          ],
-        }}
-      >
-        <div className="space-y-6">
-          {/* Status strip info: Ringkas & Bersih */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl px-4 py-3 shadow-sm">
+  const mainContent = (
+    <div className="space-y-6">
+      {/* Status strip info: Ringkas & Bersih */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl px-4 py-3 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
                 <Medal className="w-4 h-4" />
@@ -344,6 +318,44 @@ const ProgramKetarunaanPage: React.FC = () => {
             </div>
           </SectionCard>
         </div>
+  );
+
+  if (hideLayout) {
+    return <InfraErrorBoundary>{mainContent}</InfraErrorBoundary>;
+  }
+
+  return (
+    <InfraErrorBoundary>
+      <AcademicPageLayout
+        title="Program Ketarunaan"
+        description="Pusat laporan perkembangan kedisiplinan taruna, evaluasi peleton rombel, dan kepanitiaan Ketarunaan."
+        breadcrumbs={breadcrumbs}
+        stats={statCards}
+        isLoadingStats={isGuardLoading || isStatsLoading || isSesiLoading}
+        hardeningModuleKey="program_ketarunaan"
+        canView={canView}
+        permissionMessage="Anda tidak memiliki izin untuk mengakses modul Program Ketarunaan."
+        instruction={{
+          title: 'Panduan Operasional Program Ketarunaan',
+          description: (
+            <div className="space-y-2 text-sm">
+              <p>
+                Modul ini mengelola seluruh ekosistem <strong>Program Ketarunaan Sekolah</strong>, mulai dari kehadiran pembina, monitoring kehadiran peleton/siswa, hingga cetak arsip fisik.
+              </p>
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500 dark:text-slate-400">
+                <p><strong>Fungsi:</strong> Presensi terintegrasi jam KBM dan rekap komprehensif pendamping serta siswa.</p>
+                <p><strong>Waktu Penggunaan:</strong> Sebelum dan selama sesi kegiatan Ketarunaan berlangsung setiap minggunya.</p>
+              </div>
+            </div>
+          ),
+          items: [
+            { text: 'Buka tab Performa Perkembangan untuk melihat tren disiplin kehadiran taruna dalam rentang waktu.' },
+            { text: 'Gunakan tab Laporan Per Rombel & Laporan Pendamping untuk arsip dan cetak fisik.' },
+            { text: 'Akses tab Terminal Presensi & POS saat jam kegiatan berlangsung untuk scan RFID atau presensi pembina.' },
+          ],
+        }}
+      >
+        {mainContent}
       </AcademicPageLayout>
     </InfraErrorBoundary>
   );

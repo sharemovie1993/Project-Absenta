@@ -30,7 +30,11 @@ const jenisPelanggaranSchema = z.object({
   poin: z.number().min(0, 'Bobot poin minimal 0')
 });
 
-export default React.memo(function JenisPelanggaranPage() {
+export interface JenisPelanggaranPageProps {
+  hideLayout?: boolean;
+}
+
+export default React.memo(function JenisPelanggaranPage({ hideLayout = false }: JenisPelanggaranPageProps) {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -240,26 +244,8 @@ export default React.memo(function JenisPelanggaranPage() {
     }
   ], [handleEdit, handleDelete]);
 
-  return (
-    <AcademicPageLayout
-      title="Jenis Pelanggaran"
-      description="Kelola referensi kategori dan jenis pelanggaran beserta poin sanksinya."
-      breadcrumbs={[
-        { label: 'Dashboard', path: '/dashboard' },
-        { label: 'Kesiswaan', path: '/kesiswaan' },
-        { label: 'Jenis Pelanggaran', path: '/kesiswaan/jenis-pelanggaran' }
-      ]}
-      hardeningModuleKey="kesiswaan_jenis_pelanggaran"
-      instruction={{
-        title: "Panduan Master Pelanggaran",
-        description: "Kelola daftar kategori dan bobot poin pelanggaran siswa.",
-        items: [
-          { text: "Gunakan tombol '+ Tambah Data' untuk menambah kategori baru." },
-          { text: "Klik ikon pensil untuk mengubah nama atau bobot poin pelanggaran." },
-          { text: "Data ini akan digunakan sebagai referensi saat mencatat pelanggaran siswa." }
-        ]
-      }}
-    >
+  const mainContent = (
+    <>
       <Card className="rounded-2xl border-none shadow-sm overflow-hidden">
         {isMobile ? (
           <div className="p-4 space-y-4">
@@ -381,6 +367,34 @@ export default React.memo(function JenisPelanggaranPage() {
           </form>
         </Modal>
       </Suspense>
+    </>
+  );
+
+  if (hideLayout) {
+    return <div className="space-y-4">{mainContent}</div>;
+  }
+
+  return (
+    <AcademicPageLayout
+      title="Jenis Pelanggaran"
+      description="Kelola referensi kategori dan jenis pelanggaran beserta poin sanksinya."
+      breadcrumbs={[
+        { label: 'Dashboard', path: '/dashboard' },
+        { label: 'Kesiswaan', path: '/kesiswaan' },
+        { label: 'Jenis Pelanggaran', path: '/kesiswaan/jenis-pelanggaran' }
+      ]}
+      hardeningModuleKey="kesiswaan_jenis_pelanggaran"
+      instruction={{
+        title: "Panduan Master Pelanggaran",
+        description: "Kelola daftar kategori dan bobot poin pelanggaran siswa.",
+        items: [
+          { text: "Gunakan tombol '+ Tambah Data' untuk menambah kategori baru." },
+          { text: "Klik ikon pensil untuk mengubah nama atau bobot poin pelanggaran." },
+          { text: "Data ini akan digunakan sebagai referensi saat mencatat pelanggaran siswa." }
+        ]
+      }}
+    >
+      {mainContent}
     </AcademicPageLayout>
   );
 });

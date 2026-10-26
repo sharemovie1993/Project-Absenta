@@ -92,7 +92,11 @@ const TAB_OPTIONS = [
 
 // ─── PAGE COMPONENT ────────────────────────────────────────────────────────────
 
-const PembiasaanDhuhaPage: React.FC = () => {
+export interface PembiasaanDhuhaPageProps {
+  hideLayout?: boolean;
+}
+
+const PembiasaanDhuhaPage: React.FC<PembiasaanDhuhaPageProps> = ({ hideLayout = false }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('statistik');
   const { isKesiswaan, isAdmin, can } = useCapabilities();
@@ -210,40 +214,10 @@ const PembiasaanDhuhaPage: React.FC = () => {
 
   const canView = isAdmin || isKesiswaan || can('attendance.sessions.view.list') || can('dashboard.view.kesiswaan');
 
-  return (
-    <InfraErrorBoundary>
-      <AcademicPageLayout
-        title="Pembiasaan Dhuha"
-        description="Pusat laporan perkembangan, evaluasi performa jamaah per rombel, dan presensi terpadu Pembiasaan Sholat Dhuha."
-        breadcrumbs={breadcrumbs}
-        stats={statCards}
-        isLoadingStats={isGuardLoading || isStatsLoading || isSesiLoading}
-        hardeningModuleKey="pembiasaan_dhuha"
-        canView={canView}
-        permissionMessage="Anda tidak memiliki izin untuk mengakses modul Pembiasaan Dhuha."
-        instruction={{
-          title: 'Panduan Operasional Pembiasaan Dhuha',
-          description: (
-            <div className="space-y-2 text-sm">
-              <p>
-                Modul ini mengelola seluruh kegiatan <strong>Pembiasaan Dhuha Bersama</strong> di sekolah, mencakup kehadiran pembina rohis, monitoring jamaah per rombel, dan cetak arsip berkas fisik.
-              </p>
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500 dark:text-slate-400">
-                <p><strong>Fungsi:</strong> Presensi terintegrasi jam KBM dan rekap komprehensif pendamping serta jamaah siswa.</p>
-                <p><strong>Waktu Penggunaan:</strong> Sebelum dan selama sesi Pembiasaan Dhuha berlangsung di masjid / lapangan sekolah.</p>
-              </div>
-            </div>
-          ),
-          items: [
-            { text: 'Buka tab Performa Perkembangan untuk melihat tren partisipasi siswa dalam rentang waktu.' },
-            { text: 'Gunakan tab Laporan Per Rombel & Laporan Pendamping untuk arsip dan cetak fisik.' },
-            { text: 'Akses tab Terminal Presensi & POS saat jam kegiatan berlangsung untuk scan RFID atau presensi guru mapel.' },
-          ],
-        }}
-      >
-        <div className="space-y-6">
-          {/* Status strip info: Ringkas & Bersih */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl px-4 py-3 shadow-sm">
+  const mainContent = (
+    <div className="space-y-6">
+      {/* Status strip info: Ringkas & Bersih */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl px-4 py-3 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                 <Moon className="w-4 h-4" />
@@ -341,6 +315,44 @@ const PembiasaanDhuhaPage: React.FC = () => {
             </div>
           </SectionCard>
         </div>
+  );
+
+  if (hideLayout) {
+    return <InfraErrorBoundary>{mainContent}</InfraErrorBoundary>;
+  }
+
+  return (
+    <InfraErrorBoundary>
+      <AcademicPageLayout
+        title="Pembiasaan Dhuha"
+        description="Pusat laporan perkembangan, evaluasi performa jamaah per rombel, dan presensi terpadu Pembiasaan Sholat Dhuha."
+        breadcrumbs={breadcrumbs}
+        stats={statCards}
+        isLoadingStats={isGuardLoading || isStatsLoading || isSesiLoading}
+        hardeningModuleKey="pembiasaan_dhuha"
+        canView={canView}
+        permissionMessage="Anda tidak memiliki izin untuk mengakses modul Pembiasaan Dhuha."
+        instruction={{
+          title: 'Panduan Operasional Pembiasaan Dhuha',
+          description: (
+            <div className="space-y-2 text-sm">
+              <p>
+                Modul ini mengelola seluruh kegiatan <strong>Pembiasaan Dhuha Bersama</strong> di sekolah, mencakup kehadiran pembina rohis, monitoring jamaah per rombel, dan cetak arsip berkas fisik.
+              </p>
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500 dark:text-slate-400">
+                <p><strong>Fungsi:</strong> Presensi terintegrasi jam KBM dan rekap komprehensif pendamping serta jamaah siswa.</p>
+                <p><strong>Waktu Penggunaan:</strong> Sebelum dan selama sesi Pembiasaan Dhuha berlangsung di masjid / lapangan sekolah.</p>
+              </div>
+            </div>
+          ),
+          items: [
+            { text: 'Buka tab Performa Perkembangan untuk melihat tren partisipasi siswa dalam rentang waktu.' },
+            { text: 'Gunakan tab Laporan Per Rombel & Laporan Pendamping untuk arsip dan cetak fisik.' },
+            { text: 'Akses tab Terminal Presensi & POS saat jam kegiatan berlangsung untuk scan RFID atau presensi guru mapel.' },
+          ],
+        }}
+      >
+        {mainContent}
       </AcademicPageLayout>
     </InfraErrorBoundary>
   );
