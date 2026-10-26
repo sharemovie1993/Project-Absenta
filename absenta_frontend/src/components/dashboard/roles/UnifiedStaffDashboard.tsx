@@ -885,7 +885,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
     // 4. Bimbingan PKL (Khusus Guru Pembimbing PKL yang bukan Waka Hubin)
     if (isPembimbingPkl && !isKepsek) {
-      list.push({ id: 'pembimbing_pkl', label: 'Bimbingan PKL', icon: Briefcase });
+      list.push({ id: 'pembimbing_pkl', label: 'Dashboard Hubin', icon: Briefcase });
     }
 
     // 4.1 Kaprog (Khusus Ketua Program Keahlian / Jurusan)
@@ -899,12 +899,12 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
     // 5. Fasilitator P5 (Khusus Guru Fasilitator Projek P5)
     if (isFasilitatorP5Actual && !isKepsek) {
-      list.push({ id: 'p5_projek', label: 'Projek P5', icon: Sparkles });
+      list.push({ id: 'p5_projek', label: 'Dashboard P5', icon: Sparkles });
     }
 
     // 10. Tab Tata Usaha Sesuai Spesialisasi Fungsional
     if ((isTUKepegawaian || isTU || isTUKepala || isTUPersuratan || (isAdminRole && !isKepsek)) && !isKepsek) {
-      list.push({ id: 'kepegawaian', label: isTUKepala || isTUPersuratan ? 'Dashboard TU' : tuTabMeta.label, icon: Building });
+      list.push({ id: 'kepegawaian', label: 'Dashboard TU', icon: Building });
     }
 
     // 11. Piket & Gerbang (Tugas piket harian, gerbang, kesiswaan, kurikulum, dan seluruh guru pendidik)
@@ -912,7 +912,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     if (canAccessPiket && (!isAdminRole || isPendidik) && !isKepsek) {
       list.push({ 
         id: 'kelola', 
-        label: isPureGerbangStaff ? 'Pos Keamanan' : hasGerbangDuty ? 'Piket & Gerbang' : 'Piket Harian', 
+        label: isPureGerbangStaff ? 'Pos Keamanan' : 'Dashboard Piket', 
         icon: isPureGerbangStaff ? ShieldCheck : ClipboardList,
       });
     }

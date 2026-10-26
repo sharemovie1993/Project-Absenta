@@ -273,7 +273,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     if (isKaprog || isAdminRole) {
       list.push({
         id: 'dash-kaprog',
-        label: 'Jurusan',
+        label: 'Dashboard Jurusan',
+        shortLabel: 'Dashboard Jurusan',
         icon: Award,
         targetPath: '/dashboard?tab=kaprog&subtab=beranda',
         color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
@@ -294,7 +295,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     if (isTuStaff || isTU || isAdminRole) {
       list.push({
         id: 'dash-tu',
-        label: tuTabMeta.shortLabel || 'Tata Usaha',
+        label: 'Dashboard TU',
+        shortLabel: 'Dashboard TU',
         icon: FileText,
         targetPath: '/dashboard?tab=kepegawaian&subtab=beranda',
         color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
@@ -305,7 +307,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     if (isKurikulum || isAdminRole || can('curriculum.view') || can('curriculum.manage')) {
       list.push({
         id: 'dash-kurikulum',
-        label: 'Kurikulum',
+        label: 'Dashboard Kurikulum',
+        shortLabel: 'Dashboard Kurikulum',
         icon: BookOpen,
         targetPath: '/kurikulum/jadwal',
         color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
@@ -315,7 +318,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     if (isKesiswaan || isAdminRole || can('kesiswaan.view') || can('kesiswaan.manage')) {
       list.push({
         id: 'dash-kesiswaan',
-        label: 'Kesiswaan',
+        label: 'Dashboard Kesiswaan',
+        shortLabel: 'Dashboard Kesiswaan',
         icon: ShieldAlert,
         targetPath: '/kesiswaan/pelanggaran',
         color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400',
@@ -325,7 +329,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     if (isHubin || isPembimbingPkl || isAdminRole || can('hubin.view') || can('hubin.manage')) {
       list.push({
         id: 'dash-hubin',
-        label: 'Hubin & PKL',
+        label: 'Dashboard Hubin',
+        shortLabel: 'Dashboard Hubin',
         icon: Briefcase,
         targetPath: '/hubin/absensi',
         color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
@@ -335,7 +340,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     if (isBpbk || isAdminRole || can('bpbk.view') || can('bpbk.manage')) {
       list.push({
         id: 'dash-bk',
-        label: 'Konseling BK',
+        label: 'Dashboard BK',
+        shortLabel: 'Dashboard BK',
         icon: HeartHandshake,
         targetPath: '/bpbk/dashboard',
         color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400',
@@ -345,7 +351,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     if (isBkk || isHubin || isAdminRole || can('bkk.view') || can('bkk.manage')) {
       list.push({
         id: 'dash-bkk',
-        label: 'BKK Alumni',
+        label: 'Dashboard BKK',
+        shortLabel: 'Dashboard BKK',
         icon: GraduationCap,
         targetPath: '/hubin/bkk?tab=loker',
         color: 'bg-cyan-50 dark:bg-cyan-950/70 text-cyan-600 dark:text-cyan-400',
@@ -355,7 +362,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     if (isSarpras || isKabeng || isToolman || isAdminRole || can('sarpras.view') || can('sarpras.manage')) {
       list.push({
         id: 'dash-sarpras',
-        label: 'Sarpras',
+        label: 'Dashboard Sarpras',
+        shortLabel: 'Dashboard Sarpras',
         icon: Building2,
         targetPath: '/sarpras/inventory',
         color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400',
@@ -365,7 +373,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     if (isKoperasi || isAdminRole || can('coop.pos.access') || can('coop.manage')) {
       list.push({
         id: 'dash-koperasi',
-        label: 'Koperasi',
+        label: 'Dashboard Koperasi',
+        shortLabel: 'Dashboard Koperasi',
         icon: PiggyBank,
         targetPath: '/cooperative/pos',
         color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
@@ -375,7 +384,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     if (isPiketGuru || hasGerbangDuty || isGerbang || isAdminRole || can('attendance.gate.scan')) {
       list.push({
         id: 'dash-piket',
-        label: 'Piket & Gerbang',
+        label: 'Dashboard Piket',
+        shortLabel: 'Dashboard Piket',
         icon: ScanLine,
         targetPath: '/attendance/gate-scanner',
         color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400',
