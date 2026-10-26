@@ -79,7 +79,6 @@ const WaliKelasDashboard = React.lazy(() => import('./WaliKelasDashboard').then(
 import { StaffPiketOperasionalTab } from '../staff/tabs/StaffPiketOperasionalTab';
 import { StaffProfilGuruTab } from '../staff/tabs/StaffProfilGuruTab';
 import { StaffManualInputTab } from '../staff/tabs/StaffManualInputTab';
-import { StaffPembimbingPklTab } from '../staff/tabs/StaffPembimbingPklTab';
 // Kaprog Dashboard — clean 3-zone design (replaced StaffKaprogTab)
 const KaprogDashboard = React.lazy(() => import('./KaprogDashboard').then(m => ({ default: m.KaprogDashboard })));
 // Kurikulum Dashboard — clean role-patterned architecture
@@ -345,9 +344,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
   // Synchronize Active Tab with Query Param (?tab=...) atau Smart Default Tab (dengan guard akses)
   const rawRequestedTab = searchParams.get('tab');
   const requestedTab = rawRequestedTab === 'walas' ? 'binaan' : rawRequestedTab === 'jadwal' ? 'ringkasan' : rawRequestedTab;
-  const activeTab = (requestedTab === 'pembimbing_pkl' && !isPembimbingPkl)
-    ? defaultTabId
-    : (requestedTab || defaultTabId);
+  const activeTab = requestedTab || defaultTabId;
 
   // Sinkronisasi query param otomatis saat akses /dashboard polosan
   useEffect(() => {
@@ -911,11 +908,6 @@ export const UnifiedStaffDashboard: React.FC = () => {
       });
     }
 
-    // 4. Bimbingan PKL (Khusus Guru Pembimbing PKL yang bukan Waka Hubin)
-    if (isPembimbingPkl && !isKepsek) {
-      list.push({ id: 'pembimbing_pkl', label: 'Bimbingan PKL', icon: Briefcase });
-    }
-
     // 4.1 Kaprog (Khusus Ketua Program Keahlian / Jurusan)
     if (isKaprog && !isKepsek) {
       list.push({ 
@@ -1086,6 +1078,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     if (activeTab === 'binaan' && (isWaliKelas || Boolean(waliKelasId))) return;
     if (activeTab === 'kaprog' && isKaprog) return;
     if (activeTab === 'kepegawaian' && (isTUKepala || isTUPersuratan || isTUKepegawaian || isTU)) return;
+    if (activeTab === 'pembimbing_pkl' && (isPembimbingPkl || isAdminRole || can('hubin.guidance.manage'))) return;
 
     // Tunggu sampai tabs siap sebelum melakukan fallback
     if (tabs.length === 0) return;
@@ -1443,21 +1436,6 @@ export const UnifiedStaffDashboard: React.FC = () => {
                 user={user}
               />
             </Suspense>
-          </div>
-        )}
-
-        {/* 💼 TAB 7.1: BIMBINGAN PKL DASHBOARD (KHUSUS GURU PEMBIMBING) */}
-        {visitedTabs.has('pembimbing_pkl') && (
-          <div 
-            key="tab-pembimbing_pkl"
-            role="tabpanel"
-            aria-hidden={activeTab !== 'pembimbing_pkl'}
-            className={cn("w-full min-w-0", activeTab === 'pembimbing_pkl' ? "block" : "hidden")}
-          >
-            <StaffPembimbingPklTab
-              guruId={guruId}
-              guruNama={guruProfile?.nama_guru || user?.full_name}
-            />
           </div>
         )}
 
