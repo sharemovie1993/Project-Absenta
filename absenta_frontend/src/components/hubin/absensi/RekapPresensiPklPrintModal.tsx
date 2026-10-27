@@ -309,16 +309,18 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
       onClose={onClose}
       title="Pratinjau Cetak & PDF Rekapitulasi Presensi PKL"
       size="5xl"
+      orientation={orientation}
+      allowOrientationToggle={true}
+      onOrientationChange={(newOrient) => setOrientation(newOrient)}
       allowLogoToggles={true}
       showLogoSekolah={showLogoSekolah}
       showLogoDaerah={showLogoDaerah}
-      onToggleLogoSekolah={() => setShowLogoSekolah(!showLogoSekolah)}
-      onToggleLogoDaerah={() => setShowLogoDaerah(!showLogoDaerah)}
-      orientation={orientation}
-      onToggleOrientation={() => setOrientation(orientation === 'landscape' ? 'portrait' : 'landscape')}
+      onToggleLogoSekolah={setShowLogoSekolah}
+      onToggleLogoDaerah={setShowLogoDaerah}
       onPrint={handleBrowserPrint}
-      onDownload={handleDownloadPdf}
-      isDownloading={isExporting}
+      onDownloadPdf={handleDownloadPdf}
+      downloadPdfText={isExporting ? 'Mengunduh...' : 'Unduh PDF'}
+      printButtonText="Cetak Dokumen"
       extraActions={
         <button
           type="button"
@@ -335,6 +337,19 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
         </button>
       }
     >
+      {/* Dynamic CSS untuk Browser Print Page Break Presisi */}
+      <style>{`
+        @media print {
+          @page {
+            size: a4 ${orientation};
+            margin: 0;
+          }
+          body {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
+        }
+      `}</style>
       <div className="space-y-6">
         {/* Drawer Konfigurasi TTD */}
         {showTtdConfig && (
