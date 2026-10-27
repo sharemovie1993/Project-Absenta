@@ -77,6 +77,7 @@ interface HubinStudentViewProps {
   generateCustomFileName: (suffix: string) => string;
   onPrint: () => void;
   isPklAktif?: boolean;
+  onlyAttendanceCards?: boolean;
 }
 
 export const HubinStudentView: React.FC<HubinStudentViewProps> = React.memo(({
@@ -103,6 +104,7 @@ export const HubinStudentView: React.FC<HubinStudentViewProps> = React.memo(({
   generateCustomFileName,
   onPrint,
   isPklAktif = true,
+  onlyAttendanceCards = false,
 }) => {
   const [isIzinModalOpen, setIsIzinModalOpen] = React.useState(false);
 
@@ -135,6 +137,59 @@ export const HubinStudentView: React.FC<HubinStudentViewProps> = React.memo(({
   }
 
   const isCompleteToday = !!(todayAbsensi?.jam_masuk && todayAbsensi?.jam_pulang);
+
+  if (onlyAttendanceCards) {
+    return (
+      <div className="w-full max-w-xl mx-auto space-y-3">
+        {/* Banner: PKL sudah berakhir */}
+        {!isPklAktif && (
+          <div className="mb-3 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl flex gap-2.5 text-amber-700 dark:text-amber-400">
+            <AlertCircle className="shrink-0 mt-0.5" size={16} />
+            <div className="text-xs">
+              <p className="font-black uppercase tracking-tight">PKL Telah Berakhir</p>
+              <p className="font-medium mt-0.5">Masa PKL Anda sudah selesai. Anda hanya dapat melihat riwayat absensi.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Banner: Fake GPS */}
+        {isMockLocation && (
+          <div className="mb-3 p-3 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50 rounded-xl flex gap-2.5 text-rose-600 dark:text-rose-400 animate-pulse">
+            <AlertTriangle className="shrink-0" size={16} />
+            <div className="text-xs">
+              <p className="font-black uppercase tracking-tight">Security Alert: Fake GPS</p>
+              <p className="font-medium">Sistem mendeteksi penggunaan lokasi palsu. Presensi dinonaktifkan demi keamanan.</p>
+            </div>
+          </div>
+        )}
+
+        <HubinTodayPresensiCards
+          todayAbsensi={todayAbsensi}
+          studentPkl={studentPkl}
+          location={location}
+          isMockLocation={isMockLocation}
+          kegiatan={kegiatan}
+          checkInMutation={checkInMutation}
+          checkOutMutation={checkOutMutation}
+          studentName={user?.full_name}
+          onRefreshLocation={onRefreshLocation}
+          isPklAktif={isPklAktif}
+          onOpenIzinModal={() => setIsIzinModalOpen(true)}
+        />
+
+        {studentPkl?.id && (
+          <HubinIzinSakitModal
+            isOpen={isIzinModalOpen}
+            onClose={() => setIsIzinModalOpen(false)}
+            siswaPklId={studentPkl.id}
+            studentName={user?.full_name}
+            studentEmail={user?.email}
+            studentClassName={studentPkl?.Siswa?.Kelas?.nama_kelas || studentPkl?.Siswa?.Kelas?.nama}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <>

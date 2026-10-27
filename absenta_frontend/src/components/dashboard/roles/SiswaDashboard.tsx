@@ -598,21 +598,22 @@ export const SiswaDashboard: React.FC = () => {
             data.refetchPklAbsensi();
             data.refetchProfile();
           }}
-          title="Presensi & Jurnal PKL Siswa"
-          size="6xl"
+          title="Presensi Masuk & Pulang PKL"
+          size="2xl"
         >
-          <div className="p-1 sm:p-2 max-h-[82vh] overflow-y-auto w-full min-w-0">
+          <div className="p-1 sm:p-2 max-h-[85vh] overflow-y-auto w-full min-w-0">
             <Suspense
               fallback={
                 <div className="flex flex-col items-center justify-center p-12 gap-3">
                   <RefreshCw className="animate-spin text-indigo-500" size={28} />
-                  <span className="text-xs font-bold text-slate-400">Memuat Modul Presensi PKL...</span>
+                  <span className="text-xs font-bold text-slate-400">Memuat Kartu Presensi PKL...</span>
                 </div>
               }
             >
               <AbsensiPklView
                 isModal={true}
                 hideLayout={true}
+                onlyAttendanceCards={true}
                 onClose={() => {
                   setShowPklModal(false);
                   data.refetchPklAbsensi();

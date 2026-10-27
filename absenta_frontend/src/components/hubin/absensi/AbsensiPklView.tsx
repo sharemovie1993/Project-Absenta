@@ -85,6 +85,7 @@ export interface UniversalAbsensiPklViewProps {
   forcedSubTab?: 'HARIAN' | 'REKAP_BULANAN';
   hideSubTabSwitcher?: boolean;
   attendanceVerificationOnly?: boolean;
+  onlyAttendanceCards?: boolean;
 
   // Initial Context
   initialTpId?: string;
@@ -108,6 +109,7 @@ export const AbsensiPklView: React.FC<UniversalAbsensiPklViewProps> = React.memo
   forcedSubTab,
   hideSubTabSwitcher = false,
   attendanceVerificationOnly = false,
+  onlyAttendanceCards = false,
   initialTpId,
   onClose,
 }) => {
@@ -611,7 +613,7 @@ export const AbsensiPklView: React.FC<UniversalAbsensiPklViewProps> = React.memo
   const content = (
     <>
       {/* If embedded in tab and is student, show placement info at top */}
-      {(hideLayout || isModal) && isStudent && studentPkl && (
+      {(hideLayout || isModal) && isStudent && studentPkl && !onlyAttendanceCards && (
         <div className="flex flex-wrap items-center gap-3 bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 shadow-xs mb-4 w-full max-w-full min-w-0">
           <div className="flex-1 min-w-[140px] max-w-full">
             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Mitra PKL Anda</span>
@@ -632,7 +634,44 @@ export const AbsensiPklView: React.FC<UniversalAbsensiPklViewProps> = React.memo
 
       <div className="w-full max-w-full min-w-0 print:hidden">
         {isStudent ? (
-          <SectionCard title="Presensi & Jurnal Kegiatan" icon={ClipIcon} fullWidth noPadding className="w-full max-w-full min-w-0">
+          onlyAttendanceCards ? (
+            isLoading ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <RefreshCw className="animate-spin text-indigo-500" size={28} />
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Memuat Kartu Presensi PKL...</p>
+              </div>
+            ) : (
+              <Suspense fallback={<div className="flex justify-center p-8"><Loader size="lg" /></div>}>
+                <HubinStudentView
+                  user={user}
+                  studentPkl={studentPkl}
+                  todayAbsensi={todayAbsensi}
+                  location={location}
+                  isMockLocation={isSpoofedLocation}
+                  kegiatan={kegiatan}
+                  setKegiatan={setKegiatan}
+                  fotoUrl={fotoUrl}
+                  setFotoUrl={setFotoUrl}
+                  checkInMutation={checkInMutation}
+                  checkOutMutation={checkOutMutation}
+                  onRefreshLocation={refreshLocation}
+                  rawAbsensiHistory={rawAbsensiHistory}
+                  parsedTimeline={parsedTimeline}
+                  onDeleteActivity={() => {}}
+                  onOpenAddModal={() => {}}
+                  jurnalUrl={jurnalUrl}
+                  setJurnalUrl={setJurnalUrl}
+                  submitJurnalMutation={submitJurnalMutation}
+                  stats={stats}
+                  generateCustomFileName={generateCustomFileName}
+                  onPrint={handlePrint}
+                  isPklAktif={isPklAktif}
+                  onlyAttendanceCards={true}
+                />
+              </Suspense>
+            )
+          ) : (
+            <SectionCard title="Presensi & Jurnal Kegiatan" icon={ClipIcon} fullWidth noPadding className="w-full max-w-full min-w-0">
             <div className="p-3 sm:p-5 w-full max-w-full min-w-0">
               <Tabs defaultValue="record">
                 {visibleTabsCount > 1 && (
