@@ -45,8 +45,12 @@ import { SiswaLeaderboardModal } from './siswa/modals/SiswaLeaderboardModal';
 import { SiswaPrestasiModal } from './siswa/modals/SiswaPrestasiModal';
 import { SiswaKehadiranModal } from './siswa/modals/SiswaKehadiranModal';
 import { SiswaBelumAbsenModal } from './siswa/modals/SiswaBelumAbsenModal';
-import { SiswaPklAbsensiModal, type PklModalMode } from './siswa/modals/SiswaPklAbsensiModal';
 import { SiswaCardModal } from '../../academic/siswa/dashboard/SiswaCardModal';
+import Modal from '@/components/ui/Modal';
+
+const AbsensiPklView = lazy(() =>
+  import('../../hubin/absensi/AbsensiPklView').then((m) => ({ default: m.AbsensiPklView }))
+);
 
 const SiswaOnboardingModal = lazy(() =>
   import('@/components/academic/siswa/SiswaOnboardingModal').then((m) => ({ default: m.SiswaOnboardingModal }))
@@ -88,8 +92,7 @@ export const SiswaDashboard: React.FC = () => {
   const [showPrestasiModal, setShowPrestasiModal] = useState(false);
   const [showKehadiranModal, setShowKehadiranModal] = useState(false);
   const [showBelumAbsenModal, setShowBelumAbsenModal] = useState(false);
-  const [showPklAbsensiModal, setShowPklAbsensiModal] = useState(false);
-  const [pklModalMode, setPklModalMode] = useState<PklModalMode>('CHECK_IN');
+  const [showPklModal, setShowPklModal] = useState(false);
   const [cardSide, setCardSide] = useState<'front' | 'back'>('front');
 
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
@@ -107,9 +110,8 @@ export const SiswaDashboard: React.FC = () => {
     setShowOnboardingModal(true);
   };
 
-  const handleOpenPklModal = useCallback((mode: PklModalMode) => {
-    setPklModalMode(mode);
-    setShowPklAbsensiModal(true);
+  const handleOpenPklModal = useCallback(() => {
+    setShowPklModal(true);
   }, []);
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -588,17 +590,39 @@ export const SiswaDashboard: React.FC = () => {
         onRemovePendingStudent={removePendingStudent}
       />
 
-      <SiswaPklAbsensiModal
-        isOpen={showPklAbsensiModal}
-        onClose={() => setShowPklAbsensiModal(false)}
-        mode={pklModalMode}
-        myPenempatan={data.myPenempatan}
-        todayPklAbsensi={data.todayPklAbsensi}
-        onSuccess={() => {
-          data.refetchPklAbsensi();
-          data.refetchProfile();
-        }}
-      />
+      {showPklModal && (
+        <Modal
+          isOpen={showPklModal}
+          onClose={() => {
+            setShowPklModal(false);
+            data.refetchPklAbsensi();
+            data.refetchProfile();
+          }}
+          title="Presensi & Jurnal PKL Siswa"
+          size="6xl"
+        >
+          <div className="p-1 sm:p-2 max-h-[82vh] overflow-y-auto w-full min-w-0">
+            <Suspense
+              fallback={
+                <div className="flex flex-col items-center justify-center p-12 gap-3">
+                  <RefreshCw className="animate-spin text-indigo-500" size={28} />
+                  <span className="text-xs font-bold text-slate-400">Memuat Modul Presensi PKL...</span>
+                </div>
+              }
+            >
+              <AbsensiPklView
+                isModal={true}
+                hideLayout={true}
+                onClose={() => {
+                  setShowPklModal(false);
+                  data.refetchPklAbsensi();
+                  data.refetchProfile();
+                }}
+              />
+            </Suspense>
+          </div>
+        </Modal>
+      )}
 
       <SiswaCardModal
         showDigitalCardModal={showDigitalCardModal}

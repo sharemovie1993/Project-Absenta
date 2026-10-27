@@ -46,7 +46,7 @@ export interface SiswaRingkasanTabProps {
   currentDisciplineScore: number;
   onOpenPrestasiModal: () => void;
   onOpenKehadiranModal: () => void;
-  onOpenPklModal?: (mode: 'CHECK_IN' | 'CHECK_OUT' | 'LOGBOOK' | 'IZIN_SAKIT') => void;
+  onOpenPklModal?: () => void;
   onNavigateTab: (tabId: string) => void;
 }
 
@@ -150,7 +150,7 @@ export const SiswaRingkasanTab: React.FC<SiswaRingkasanTabProps> = ({
                 <>
                   <button
                     type="button"
-                    onClick={() => onOpenPklModal('CHECK_IN')}
+                    onClick={onOpenPklModal}
                     className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs flex items-center gap-2 cursor-pointer transition-all"
                   >
                     <LogIn size={15} />
@@ -158,7 +158,7 @@ export const SiswaRingkasanTab: React.FC<SiswaRingkasanTabProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => onOpenPklModal('IZIN_SAKIT')}
+                    onClick={onOpenPklModal}
                     className="px-3.5 py-2.5 rounded-2xl bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700/60 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-all"
                   >
                     <Calendar size={14} />
@@ -169,7 +169,7 @@ export const SiswaRingkasanTab: React.FC<SiswaRingkasanTabProps> = ({
                 <>
                   <button
                     type="button"
-                    onClick={() => onOpenPklModal('CHECK_OUT')}
+                    onClick={onOpenPklModal}
                     className="px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-xs flex items-center gap-2 cursor-pointer transition-all"
                   >
                     <LogOut size={15} />
@@ -177,7 +177,7 @@ export const SiswaRingkasanTab: React.FC<SiswaRingkasanTabProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => onOpenPklModal('LOGBOOK')}
+                    onClick={onOpenPklModal}
                     className="px-3.5 py-2.5 rounded-2xl bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-700/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-all"
                   >
                     <FileText size={14} />
@@ -187,11 +187,11 @@ export const SiswaRingkasanTab: React.FC<SiswaRingkasanTabProps> = ({
               ) : (
                 <button
                   type="button"
-                  onClick={() => onOpenPklModal('LOGBOOK')}
+                  onClick={onOpenPklModal}
                   className="px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700/80 text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-all"
                 >
                   <CheckCircle2 size={14} className="text-emerald-500" />
-                  <span>Lihat / Perbarui Jurnal</span>
+                  <span>Buka Modul Presensi & Jurnal</span>
                 </button>
               )}
             </div>
