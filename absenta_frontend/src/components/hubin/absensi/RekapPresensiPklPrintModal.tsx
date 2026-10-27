@@ -534,68 +534,94 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
               </table>
             </div>
 
-            {/* Standar Penandatangan Dokumen (2-Tier Signatures - Live Connected) */}
+            {/* Standar Penandatangan Dokumen (2-Tier Signatures - Simetris Sempurna) */}
             {pageIdx === pages.length - 1 && (
               <div className="pt-2 text-[10px] text-black break-inside-avoid">
-                {/* Baris 1: Kiri Waka Hubin (HUBIN), Kanan Titimangsa & Guru Pembimbing */}
-                <div className="grid grid-cols-2 gap-8 mb-6">
-                  <div>
-                    <p className="font-semibold mb-12">Mengetahui,</p>
-                    {activeHubinNama ? (
-                      <>
-                        <p className="font-bold underline uppercase">{activeHubinNama}</p>
-                        <p className="text-[9px] text-slate-700">{hubinTitle}</p>
-                        <p className="text-[9px] text-slate-700">
-                          {activeHubinNip ? `NIP. ${activeHubinNip}` : 'NIP. -'}
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="font-bold underline uppercase tracking-widest">( ............................................................ )</p>
-                        <p className="text-[9px] text-slate-700">{hubinTitle}</p>
-                        <p className="text-[9px] text-slate-700">NIP. ........................................</p>
-                      </>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <p className="mb-0.5">
-                      {activeKota ? `${activeKota}, ` : ''}{activeTanggal}
-                    </p>
-                    <p className="font-semibold mb-12">{pembimbingTitle}</p>
-                    {activePembimbingNama ? (
-                      <>
-                        <p className="font-bold underline uppercase">{activePembimbingNama}</p>
-                        <p className="text-[9px] text-slate-700">
-                          {activePembimbingNip ? `NIP. ${activePembimbingNip}` : 'NIP. -'}
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="font-bold underline uppercase tracking-widest">( ............................................................ )</p>
-                        <p className="text-[9px] text-slate-700">NIP. ........................................</p>
-                      </>
-                    )}
+                {/* Baris Titimangsa di Kanan (Tepat di atas kolom Guru Pembimbing) */}
+                <div className="flex justify-end mb-1 text-[10px] text-black">
+                  <div className="w-1/2 text-center">
+                    {activeKota ? `${activeKota}, ` : ''}{activeTanggal}
                   </div>
                 </div>
 
-                {/* Baris 2: Tengah Kepala Sekolah */}
-                <div className="text-center">
-                  <p className="font-semibold mb-12">Menyetujui,</p>
-                  {activeKepsekNama ? (
-                    <>
-                      <p className="font-bold underline uppercase">{activeKepsekNama}</p>
-                      <p className="text-[9px] text-slate-700">Kepala Sekolah</p>
-                      <p className="text-[9px] text-slate-700">
-                        {activeKepsekNip ? `NIP. ${activeKepsekNip}` : 'NIP. -'}
+                {/* Baris 1: Grid 2 Kolom Sejajar & Simetris Sempurna */}
+                <div className="grid grid-cols-2 gap-8 text-[10px]">
+                  {/* Kolom Kiri: Waka Hubin (HUBIN) */}
+                  <div className="flex flex-col justify-between h-[125px] text-center">
+                    <div>
+                      <p className="font-semibold text-slate-800">Mengetahui,</p>
+                      <p className="font-bold text-black min-h-[24px] flex items-center justify-center leading-snug">
+                        {hubinTitle || 'Waka. Bidang Hubungan Industri'}
                       </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="font-bold underline uppercase tracking-widest">( ............................................................ )</p>
-                      <p className="text-[9px] text-slate-700">Kepala Sekolah</p>
-                      <p className="text-[9px] text-slate-700">NIP. ........................................</p>
-                    </>
-                  )}
+                    </div>
+                    <div>
+                      {activeHubinNama ? (
+                        <>
+                          <p className="font-bold underline uppercase text-black text-[10px]">{activeHubinNama}</p>
+                          <p className="text-[9px] text-slate-700">
+                            {activeHubinNip ? `NIP. ${activeHubinNip}` : 'NIP. -'}
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-bold underline uppercase tracking-widest text-black text-[10px]">( ............................................................ )</p>
+                          <p className="text-[9px] text-slate-700">NIP. ........................................</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Kolom Kanan: Guru Pembimbing PKL */}
+                  <div className="flex flex-col justify-between h-[125px] text-center">
+                    <div>
+                      <p className="font-semibold text-slate-800">Mengetahui,</p>
+                      <p className="font-bold text-black min-h-[24px] flex items-center justify-center leading-snug">
+                        {pembimbingTitle || 'Guru Pembimbing PKL'}
+                      </p>
+                    </div>
+                    <div>
+                      {activePembimbingNama ? (
+                        <>
+                          <p className="font-bold underline uppercase text-black text-[10px]">{activePembimbingNama}</p>
+                          <p className="text-[9px] text-slate-700">
+                            {activePembimbingNip ? `NIP. ${activePembimbingNip}` : 'NIP. -'}
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-bold underline uppercase tracking-widest text-black text-[10px]">( ............................................................ )</p>
+                          <p className="text-[9px] text-slate-700">NIP. ........................................</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Baris 2: Pengesahan Kepala Sekolah (Tengah Bawah) */}
+                <div className="mt-4 flex justify-center text-center text-[10px]">
+                  <div className="w-80 flex flex-col justify-between h-[115px] text-center">
+                    <div>
+                      <p className="font-semibold text-slate-800">Menyetujui,</p>
+                      <p className="font-bold text-black min-h-[24px] flex items-center justify-center leading-snug">
+                        Kepala Sekolah
+                      </p>
+                    </div>
+                    <div>
+                      {activeKepsekNama ? (
+                        <>
+                          <p className="font-bold underline uppercase text-black text-[10px]">{activeKepsekNama}</p>
+                          <p className="text-[9px] text-slate-700">
+                            {activeKepsekNip ? `NIP. ${activeKepsekNip}` : 'NIP. -'}
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-bold underline uppercase tracking-widest text-black text-[10px]">( ............................................................ )</p>
+                          <p className="text-[9px] text-slate-700">NIP. ........................................</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
