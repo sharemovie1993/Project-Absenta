@@ -414,6 +414,9 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                 {visitedTabs.has('bimbingan') && (
                   <div className={cn(activeTab === 'bimbingan' ? 'block' : 'hidden')}>
                     <PklBimbinganTab
+                      guruId={guruId}
+                      tahunPelajaranId={tpId}
+                      semesterId={academicFilter.values.semesterId}
                       siswaList={siswaList}
                       onOpenSiswaDetail={(s) => setSelectedDetailSiswa(s)}
                       onOpenKunjunganModal={() => handleTabSelect('monitoring')}

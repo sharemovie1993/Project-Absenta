@@ -48,29 +48,54 @@ import type {
   KunjunganPayload
 } from '@/pages/hubin/types/penempatan.types';
 
-export interface PenempatanPklViewProps {
+export interface UniversalPenempatanPklViewProps {
+  // 1. Context & Scope Injections (Diinjeksi oleh Dashboard Role atau null untuk global)
   jurusanId?: string;
   jurusanNama?: string;
-  isModal?: boolean;
-  readOnly?: boolean;
-  hideHeaderStats?: boolean;
-  hideScopeBanner?: boolean;
+  kelasId?: string;
+  kelasNama?: string;
+  guruId?: string;
+  tahunPelajaranId?: string;
+  tahunAjaran?: string;
+  semesterId?: string;
+  initialTab?: 'ALL' | 'MY_GUIDANCE';
   initialKelasId?: string;
   initialTpId?: string;
-  onClose?: () => void;
+
+  // 2. Display Modifiers
+  isModal?: boolean;       // True jika dirender dalam Modal dialog
+  hideLayout?: boolean;    // True jika dirender dalam Tab (sembunyikan Topbar / Page Header duplikat)
+  hideHeaderStats?: boolean;
+  hideScopeBanner?: boolean;
+  readOnly?: boolean;      // True jika user hanya memiliki hak pantau (misal: Kepsek / Pengawas)
+
+  // 3. Event Callbacks
+  onClose?: () => void;    // Callback penutup jika dipanggil dalam modal
+  onNavigateDetail?: (id: string) => void;
   className?: string;
 }
 
-export const PenempatanPklView: React.FC<PenempatanPklViewProps> = React.memo(({
+export type PenempatanPklViewProps = UniversalPenempatanPklViewProps;
+
+export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = React.memo(({
   jurusanId: propJurusanId,
   jurusanNama: propJurusanNama,
+  kelasId: propKelasId,
+  kelasNama: propKelasNama,
+  guruId: propGuruId,
+  tahunPelajaranId: propTpId,
+  tahunAjaran: propTahunAjaran,
+  semesterId: propSemesterId,
+  initialTab,
   isModal = false,
+  hideLayout = false,
   readOnly = false,
   hideHeaderStats = false,
   hideScopeBanner = false,
   initialKelasId,
   initialTpId,
   onClose,
+  onNavigateDetail,
   className
 }) => {
   const { subscription, user } = useAuthStore();
@@ -96,7 +121,9 @@ export const PenempatanPklView: React.FC<PenempatanPklViewProps> = React.memo(({
     return isAdmin || isHubin || isKaprog || can('hubin.partners.manage') || can('hubin.pkl.manage');
   }, [readOnly, isAdmin, isHubin, isKaprog, can]);
 
-  const [activeTab, setActiveTab] = useState<'ALL' | 'MY_GUIDANCE'>((canManage || isWaliKelas) ? 'ALL' : 'MY_GUIDANCE');
+  const [activeTab, setActiveTab] = useState<'ALL' | 'MY_GUIDANCE'>(
+    initialTab || (propGuruId ? 'MY_GUIDANCE' : (canManage || isWaliKelas) ? 'ALL' : 'MY_GUIDANCE')
+  );
   
   const isEnabled = subscription !== undefined;
 
@@ -112,7 +139,7 @@ export const PenempatanPklView: React.FC<PenempatanPklViewProps> = React.memo(({
   // Standarisasi Academic Filter Engine (Pilar 21 & Pilar 31 SSOT)
   const academicFilter = useAcademicFilter({
     enableTp: true,
-    enableKelas: true,
+    enableKelas: !propKelasId,
     allowAllKelas: true,
     enableMitra: true,
     allowAllMitra: true,
@@ -120,9 +147,9 @@ export const PenempatanPklView: React.FC<PenempatanPklViewProps> = React.memo(({
     enableCohort: false,
     searchPlaceholder: 'Cari siswa atau mitra...',
     jurusanId: effectiveJurusanId,
-    initialTpId: initialTpId || '',
-    initialKelasId: isWaliKelasRestricted ? walikelasKelas!.id : (initialKelasId || ''),
-    isKelasDisabled: isWaliKelasRestricted,
+    initialTpId: propTpId || initialTpId || '',
+    initialKelasId: isWaliKelasRestricted ? walikelasKelas!.id : (propKelasId || initialKelasId || ''),
+    isKelasDisabled: isWaliKelasRestricted || Boolean(propKelasId),
   });
 
   const selectedTpFilter = academicFilter.values.tahunPelajaranId;
@@ -147,14 +174,15 @@ export const PenempatanPklView: React.FC<PenempatanPklViewProps> = React.memo(({
   const rawGuru = useMemo(() => (guruOptions ?? [])?.map(g => (g.raw || {}) as PembimbingData), [guruOptions]);
 
   const activeGuruId = useMemo(() => {
+    if (propGuruId) return propGuruId;
     if (capActiveGuruId) return capActiveGuruId;
     if (user?.guru_profile?.id) return user.guru_profile.id;
     const matchedGuru = rawGuru.find((g: PembimbingData) => g.user_id === user?.id);
     return matchedGuru?.id || null;
-  }, [capActiveGuruId, rawGuru, user]);
+  }, [propGuruId, capActiveGuruId, rawGuru, user]);
 
   const effectiveKelasFilter = activeTab === 'MY_GUIDANCE' ? undefined : (selectedKelasFilter || undefined);
-  const effectivePembimbingFilter = activeTab === 'MY_GUIDANCE' && activeGuruId ? activeGuruId : undefined;
+  const effectivePembimbingFilter = (activeTab === 'MY_GUIDANCE' || propGuruId) && activeGuruId ? activeGuruId : undefined;
 
   const { data: penempatanData, isLoading } = useQuery({
     queryKey: ['penempatan-pkl', { 
@@ -241,13 +269,13 @@ export const PenempatanPklView: React.FC<PenempatanPklViewProps> = React.memo(({
   const isActuallyPembimbing = useMemo(() => {
     if (!activeGuruId) return false;
     const list = allActiveList.length > 0 ? allActiveList : (rawPenempatan || []);
-    return list.some((p: SiswaPkl) => p.pembimbing_id === activeGuruId);
+    return list.some((p: SiswaPkl) => (p.pembimbing_id || p.Pembimbing?.id) === activeGuruId);
   }, [allActiveList, rawPenempatan, activeGuruId]);
 
   const myGuidanceCount = useMemo(() => {
     if (!activeGuruId) return 0;
     const list = allActiveList.length > 0 ? allActiveList : (rawPenempatan || []);
-    return list.filter((p: SiswaPkl) => p.pembimbing_id === activeGuruId).length;
+    return list.filter((p: SiswaPkl) => (p.pembimbing_id || p.Pembimbing?.id) === activeGuruId).length;
   }, [allActiveList, rawPenempatan, activeGuruId]);
 
   const allCount = useMemo(() => {
@@ -262,19 +290,26 @@ export const PenempatanPklView: React.FC<PenempatanPklViewProps> = React.memo(({
   }, [allActiveList, rawPenempatan, isWaliKelas, walikelasKelas, isAdmin, isHubin, isKaprog, propJurusanId]);
 
   const showTabs = useMemo(() => {
+    if (propGuruId) return false;
     return (canManage || isWaliKelas) && isActuallyPembimbing;
-  }, [canManage, isWaliKelas, isActuallyPembimbing]);
+  }, [canManage, isWaliKelas, isActuallyPembimbing, propGuruId]);
 
-  // Sync activeTab if tabs are hidden
+  // Sync activeTab if tabs are hidden or propGuruId is injected
   useEffect(() => {
+    if (propGuruId) {
+      setActiveTab('MY_GUIDANCE');
+      return;
+    }
     if (!showTabs) {
       setActiveTab((canManage || isWaliKelas) ? 'ALL' : 'MY_GUIDANCE');
     }
-  }, [showTabs, canManage, isWaliKelas]);
+  }, [showTabs, canManage, isWaliKelas, propGuruId]);
 
   const filteredData = useMemo(() => {
     let result = rawPenempatan || [];
-    if (activeTab === 'MY_GUIDANCE') {
+    if (activeTab === 'MY_GUIDANCE' || propGuruId) {
+      result = result.filter((p: SiswaPkl) => (p.pembimbing_id || p.Pembimbing?.id) === activeGuruId);
+    }
       result = result.filter((p: SiswaPkl) => p.pembimbing_id === activeGuruId);
     }
     if (selectedMitraFilter) {
@@ -584,6 +619,19 @@ export const PenempatanPklView: React.FC<PenempatanPklViewProps> = React.memo(({
 
   return (
     <div className={cn('space-y-4', className)}>
+      {/* 0. Modal Header jika dipanggil dalam dialog Modal */}
+      {isModal && onClose && (
+        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              Data Penempatan PKL Siswa {effectiveJurusanNama && isJurusanScoped ? `• ${effectiveJurusanNama}` : ''}
+            </h3>
+            <p className="text-xs text-slate-500">Pratinjau cepat penempatan &amp; pembimbing industri</p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose} className="rounded-xl">Tutup</Button>
+        </div>
+      )}
+
       {/* 1. Header KPI Stats Cards (Bisa disembunyikan via props) */}
       {!hideHeaderStats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -609,11 +657,11 @@ export const PenempatanPklView: React.FC<PenempatanPklViewProps> = React.memo(({
 
       {/* 2. Main Section Card Konten Plotting PKL */}
       <SectionCard 
-        title={isModal ? undefined : "Data Penempatan PKL Siswa"} 
-        icon={isModal ? undefined : ClipboardList} 
+        title={isModal || hideLayout ? undefined : "Data Penempatan PKL Siswa"} 
+        icon={isModal || hideLayout ? undefined : ClipboardList} 
         fullWidth 
         noPadding
-        className={cn(isModal && "!border-0 !shadow-none !bg-transparent")}
+        className={cn((isModal || hideLayout) && "!border-0 !shadow-none !bg-transparent")}
       >
         {/* Banner Khusus Kaprog: Unit Terkunci (Hanya pada halaman mandiri Hubin, bukan di modal/dashboard) */}
         {isJurusanScoped && !isModal && !hideScopeBanner && (

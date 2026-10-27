@@ -57,7 +57,7 @@ export default PenempatanPklPage;
 
 // Re-export View and types for backward compatibility
 export { PenempatanPklView };
-export type { PenempatanPklViewProps };
+export type { PenempatanPklViewProps, UniversalPenempatanPklViewProps };
 export type { 
   SiswaData, 
   MitraData, 
