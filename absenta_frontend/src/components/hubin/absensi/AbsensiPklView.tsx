@@ -752,7 +752,7 @@ export const AbsensiPklView: React.FC<UniversalAbsensiPklViewProps> = React.memo
               </Tabs>
             </div>
           </SectionCard>
-        ) : (
+        )) : (
           <div className="space-y-4">
             {/* Dual Sub-Tab Switcher for Management */}
             {!hideSubTabSwitcher && !forcedSubTab && (
