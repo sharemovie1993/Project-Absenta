@@ -98,7 +98,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
   const canEditScheme = !readOnly && (can('hubin.partners.manage') || user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN');
   const canViewScheme = canEditScheme || can('hubin.guidance.manage') || Boolean(activeGuruId) || isKaprog || isWaliKelas || isHubin;
   
-  const [guidanceScope, setGuidanceScope] = useState<'ALL' | 'MY_GUIDANCE'>(canManageAll ? 'ALL' : 'MY_GUIDANCE');
+  const [guidanceScope, setGuidanceScope] = useState<'ALL' | 'MY_GUIDANCE'>(propGuruId ? 'MY_GUIDANCE' : canManageAll ? 'ALL' : 'MY_GUIDANCE');
   const [statusFilter, setStatusFilter] = useState<'ELIGIBLE' | 'AKTIF' | 'SELESAI' | 'ALL'>('ELIGIBLE');
 
   useEffect(() => {
@@ -108,10 +108,12 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
   }, [isMobile]);
 
   useEffect(() => {
-    if (!canManageAll) {
+    if (propGuruId) {
+      setGuidanceScope('MY_GUIDANCE');
+    } else if (!canManageAll) {
       setGuidanceScope('MY_GUIDANCE');
     }
-  }, [canManageAll]);
+  }, [canManageAll, propGuruId]);
 
   // Academic Context Terpusat
   const academicFilter = useAcademicFilter({
@@ -238,7 +240,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
         nomor_sertifikat: item.nomor_sertifikat || '',
         deskripsi_tp: item.deskripsi_tp || '',
         status: item.status || 'AKTIF',
-        pembimbing_id: item.Pembimbing?.id,
+        pembimbing_id: item.Pembimbing?.id || item.pembimbing_id,
       })));
     }
   }, [rawList]);
@@ -253,7 +255,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
         return kId === walikelasKelas.id;
       });
     } else if (guidanceScope === 'MY_GUIDANCE' && activeGuruId) {
-      itemsForOptions = rawList.filter((item) => item.Pembimbing?.id === activeGuruId);
+      itemsForOptions = rawList.filter((item) => (item.Pembimbing?.id || item.pembimbing_id) === activeGuruId);
     } else if (isJurusanScoped) {
       const jIdTarget = effectiveJurusanId;
       const jSingkatan = (kaprogJurusan?.singkatan || '').toLowerCase();
@@ -333,7 +335,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
   const myGuidanceCountNilai = useMemo(() => {
     if (!activeGuruId) return 0;
     return rawList.filter((item: RawPklItem) => {
-      const pId = item.Pembimbing?.id;
+      const pId = item.Pembimbing?.id || item.pembimbing_id;
       return pId === activeGuruId;
     }).length;
   }, [rawList, activeGuruId]);

@@ -438,7 +438,12 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                 {/* 5. Penilaian Magang Tab */}
                 {visitedTabs.has('penilaian') && (
                   <div className={cn(activeTab === 'penilaian' ? 'block' : 'hidden')}>
-                    <PklPenilaianTab siswaList={siswaList} />
+                    <PklPenilaianTab
+                      guruId={guruId}
+                      tahunPelajaranId={tpId}
+                      semesterId={academicFilter.values.semesterId}
+                      siswaList={siswaList}
+                    />
                   </div>
                 )}
 
