@@ -61,7 +61,7 @@ const SiswaOnboardingModal = lazy(() =>
 export const SiswaDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab') as SiswaTabId | null;
-  const validTabs: SiswaTabId[] = ['ringkasan', 'portal', 'kehadiran', 'catatan', 'berkas', 'profil'];
+  const validTabs: SiswaTabId[] = ['ringkasan', 'pkl', 'portal', 'kehadiran', 'catatan', 'berkas', 'profil'];
   const activeTab: SiswaTabId = rawTab && validTabs.includes(rawTab) ? rawTab : 'ringkasan';
 
   const [isRefreshing, setIsRefreshing] = useState(false);

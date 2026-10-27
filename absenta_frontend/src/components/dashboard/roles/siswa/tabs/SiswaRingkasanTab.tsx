@@ -143,7 +143,7 @@ export const SiswaRingkasanTab: React.FC<SiswaRingkasanTabProps> = ({
             </div>
           </div>
 
-          {onOpenPklModal && (
+          {onNavigateTab && (
             <div className="flex items-center gap-2 flex-wrap shrink-0">
               {!todayPklAbsensi?.jam_masuk &&
               todayPklAbsensi?.status !== 'SAKIT' &&
@@ -178,7 +178,7 @@ export const SiswaRingkasanTab: React.FC<SiswaRingkasanTabProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={onOpenPklModal}
+                    onClick={() => onNavigateTab('pkl')}
                     className="px-3.5 py-2.5 rounded-2xl bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-700/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-all"
                   >
                     <FileText size={14} />
@@ -186,29 +186,27 @@ export const SiswaRingkasanTab: React.FC<SiswaRingkasanTabProps> = ({
                   </button>
                 </>
               ) : (
-                <>
-                  {todayPklAbsensi?.jam_pulang && (
-                    <button
-                      type="button"
-                      onClick={onOpenPklModal}
-                      className="px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700/80 text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-all"
-                    >
-                      <CheckCircle2 size={14} className="text-emerald-500" />
-                      <span>Lihat Presensi Hari Ini</span>
-                    </button>
-                  )}
-
+                todayPklAbsensi?.jam_pulang && (
                   <button
                     type="button"
-                    onClick={() => onNavigateTab('pkl')}
-                    className="px-3.5 py-2.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-all"
-                    title="Buka Ruang Kerja & Dashboard PKL Siswa"
+                    onClick={onOpenPklModal}
+                    className="px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700/80 text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-all"
                   >
-                    <Briefcase size={14} />
-                    <span>Ruang PKL ↗</span>
+                    <CheckCircle2 size={14} className="text-emerald-500" />
+                    <span>Lihat Presensi Hari Ini</span>
                   </button>
-                </>
+                )
               )}
+
+              <button
+                type="button"
+                onClick={() => onNavigateTab('pkl')}
+                className="px-3.5 py-2.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-all"
+                title="Buka Ruang Kerja & Dashboard PKL Siswa"
+              >
+                <Briefcase size={14} />
+                <span>Ruang PKL ↗</span>
+              </button>
             </div>
           )}
         </div>
