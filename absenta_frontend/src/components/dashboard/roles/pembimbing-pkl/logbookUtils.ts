@@ -40,7 +40,7 @@ export function extractLogbooksFromPenempatan(rawList: SiswaPkl[]): LogbookItem[
     const absList: AbsensiPkl[] = (p as any).AbsensiPkl || [];
 
     absList.forEach((a) => {
-      if (!a.kegiatan && !a.image_url) return;
+      if (!a.kegiatan) return;
 
       let kegiatanText = '';
       let parsedActivities: any[] = [];
@@ -58,6 +58,12 @@ export function extractLogbooksFromPenempatan(rawList: SiswaPkl[]): LogbookItem[
       } catch {
         kegiatanText = a.kegiatan || '';
       }
+
+      const cleanKegiatan = kegiatanText.trim();
+      const textWithoutAlasan = cleanKegiatan.replace(/^\[Alasan Presensi:[^\]]+\]\s*/i, '').trim();
+
+      // Jurnal HANYA muncul di Verifikasi Jurnal jika siswa sudah mengisi catatan kegiatan magang
+      if (!textWithoutAlasan || textWithoutAlasan === '[]') return;
 
       const feedbackAct = parsedActivities.find(
         (act: any) => act.type === 'FEEDBACK' || act.text?.startsWith('[Feedback Pembimbing]')
@@ -85,7 +91,7 @@ export function extractLogbooksFromPenempatan(rawList: SiswaPkl[]): LogbookItem[
         tanggal: tglFormatted,
         jam_masuk: a.jam_masuk,
         jam_pulang: a.jam_pulang,
-        kegiatan: kegiatanText || 'Siswa telah melakukan presensi di lokasi PKL.',
+        kegiatan: cleanKegiatan,
         image_url: a.image_url,
         status_verifikasi: statusVerifikasi,
         catatan_pembimbing: catatanPembimbing,
