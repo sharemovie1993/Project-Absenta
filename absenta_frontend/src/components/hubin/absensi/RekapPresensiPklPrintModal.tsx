@@ -255,6 +255,15 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
   const handleDownloadPdf = async () => {
     setIsExporting(true);
     toast.loading('Sedang merender PDF True WYSIWYG...', { id: 'pdf-render' });
+
+    // 1. Simpan nilai zoom asli & matikan zoom sementara pada DOM sebelum capture
+    // Menghilangkan anomali html2canvas di mana CSS zoom membuat teks/karakter saling bertumpuk (kerning collapse)
+    const deskCanvas = document.getElementById('print-desk-canvas-area');
+    const prevZoom = deskCanvas ? deskCanvas.style.zoom : '';
+    if (deskCanvas) {
+      deskCanvas.style.zoom = '1';
+    }
+
     try {
       const sheetElements = document.querySelectorAll('.print-sheet');
       if (!sheetElements || sheetElements.length === 0) {
@@ -286,22 +295,39 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
           allowTaint: true,
           backgroundColor: '#ffffff',
           logging: false,
+          windowWidth: 1250,
+          onclone: (clonedDoc) => {
+            const clonedDesk = clonedDoc.getElementById('print-desk-canvas-area');
+            if (clonedDesk) {
+              clonedDesk.style.zoom = '1';
+              (clonedDesk.style as any).transform = 'none';
+            }
+            const allSheets = clonedDoc.querySelectorAll('.print-sheet');
+            allSheets.forEach((s: any) => {
+              s.style.zoom = '1';
+              s.style.transform = 'none';
+              s.style.letterSpacing = 'normal';
+            });
+          },
         });
 
-        // Optimasi: Gunakan JPEG 0.85 dengan kompresi aktif
-        // Memangkas ukuran PDF dari ~12MB menjadi ~200-300KB (reduksi 97%) dengan teks tetap tajam
-        const imgData = canvas.toDataURL('image/jpeg', 0.85);
+        // Optimasi True WYSIWYG: JPEG 0.90 tajam dengan ukuran berkas ringan (~250KB)
+        const imgData = canvas.toDataURL('image/jpeg', 0.90);
         pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
       }
 
       const safeTitle = `Rekap_Presensi_PKL_${bulanFormatted.replace(/\s+/g, '_')}`;
       pdf.save(`${safeTitle}.pdf`);
-      toast.success('PDF Rekap Presensi PKL berhasil diunduh!', { id: 'pdf-render' });
+      toast.success('PDF Rekap Presensi PKL berhasil diunduh (True WYSIWYG)!', { id: 'pdf-render' });
     } catch (err) {
       console.error('[PDF Export Error]', err);
       toast.error('Gagal mengekspor canvas, membuka dialog cetak browser...', { id: 'pdf-render' });
       window.print();
     } finally {
+      // 2. Kembalikan zoom asli setelah proses render selesai
+      if (deskCanvas) {
+        deskCanvas.style.zoom = prevZoom;
+      }
       setIsExporting(false);
     }
   };
@@ -449,7 +475,7 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
             orientation={orientation}
             pageNumber={pageIdx + 1}
             totalPages={pages.length}
-            className="print-sheet !p-6 sm:!p-8 font-serif"
+            className="print-sheet !p-6 sm:!p-8 !font-sans tracking-normal"
           >
             {/* Kop Surat Resmi */}
             <PrintHeader
@@ -461,7 +487,7 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
 
             {/* Judul & Metadata */}
             <div className="text-center mb-4">
-              <h2 className="text-sm sm:text-base font-extrabold uppercase tracking-wide text-black">
+              <h2 className="text-sm sm:text-base font-extrabold uppercase tracking-normal text-black">
                 LAPORAN REKAPITULASI PRESENSI PRAKTIK KERJA LAPANGAN (PKL)
               </h2>
               <p className="text-xs font-semibold text-slate-800 mt-0.5">
