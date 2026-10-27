@@ -1,6 +1,6 @@
 import { LucideIcon } from 'lucide-react';
 
-export type PklTabId = 'ringkasan' | 'bimbingan' | 'jurnal' | 'monitoring' | 'penilaian' | 'rekap';
+export type PklTabId = 'ringkasan' | 'bimbingan' | 'absensi' | 'jurnal' | 'monitoring' | 'penilaian' | 'rekap';
 
 export interface PklNavTabItem {
   id: PklTabId;

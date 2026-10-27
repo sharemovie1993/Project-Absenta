@@ -23,6 +23,22 @@ export class HubinAbsensiController {
     return !!authResult.allowed;
   }
 
+  async getRekapBulananPkl(request: any, reply: any) {
+    try {
+      const { bulan, kelas_id, pembimbing_id, jurusan_id, mitra_id, tahun_pelajaran_id, semester_id, search } = request.query || {};
+      const data = await this.hubinService.getRekapBulananPkl(
+        request.tenantId!,
+        { bulan, kelas_id, pembimbing_id, jurusan_id, mitra_id, tahun_pelajaran_id, semester_id, search },
+        request.user?.id,
+        request.organizationalScope
+      );
+      return reply.send({ success: true, ...data });
+    } catch (error: any) {
+      appLogger.error(`[HubinAbsensiController] getRekapBulananPkl error: ${error.message}`);
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
   async getAbsensiSiswa(request: AuthenticatedRequest, reply: any) {
     try {
       const { siswaPklId } = request.params;

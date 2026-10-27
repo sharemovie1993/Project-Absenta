@@ -39,6 +39,7 @@ export async function hubinRoutes(fastify: any) {
   fastify.delete('/penempatan/:id', { preHandler: [requireCapability('hubin.pkl.manage'), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.deletePenempatan(req, reply));
 
   // --- ABSENSI ---
+  fastify.get('/absensi/rekap/bulanan', { preHandler: [requireCapability(['hubin.pkl.view.list', 'hubin.guidance.manage', 'hubin.absensi.view.history']), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.getRekapBulananPkl(req, reply));
   fastify.get('/absensi/:siswaPklId', { preHandler: [requireCapability(['hubin.self.pkl', 'hubin.absensi.view.history', 'hubin.pkl.view.list', 'hubin.guidance.manage']), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.getAbsensiSiswa(req, reply));
   fastify.post('/absensi/check-in', { preHandler: [requireCapability('hubin.self.pkl'), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.checkIn(req, reply));
   fastify.post('/absensi/check-out', { preHandler: [requireCapability('hubin.self.pkl'), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.checkOut(req, reply));

@@ -6,6 +6,7 @@ import {
   Users,
   Clock,
   Calendar,
+  CalendarCheck,
   Award,
   Printer,
   ArrowLeft,
@@ -35,6 +36,12 @@ import { PklMonitoringTab } from './pembimbing-pkl/tabs/PklMonitoringTab';
 import { PklPenilaianTab } from './pembimbing-pkl/tabs/PklPenilaianTab';
 import { PklRekapTab } from './pembimbing-pkl/tabs/PklRekapTab';
 
+const RekapAbsensiPklView = lazy(() =>
+  import('@/components/hubin/absensi/RekapAbsensiPklView').then((m) => ({
+    default: m.RekapAbsensiPklView,
+  }))
+);
+
 const SiswaBimbinganDetailModal = lazy(() =>
   import('@/components/hubin/SiswaBimbinganDetailModal').then((m) => ({
     default: m.SiswaBimbinganDetailModal,
@@ -60,7 +67,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
   const [searchParams, setSearchParams] = useSearchParams();
   const subtabParam = searchParams.get('subtab') as PklTabId | null;
 
-  const validTabs: PklTabId[] = ['ringkasan', 'bimbingan', 'jurnal', 'monitoring', 'penilaian', 'rekap'];
+  const validTabs: PklTabId[] = ['ringkasan', 'bimbingan', 'absensi', 'jurnal', 'monitoring', 'penilaian', 'rekap'];
 
   // Mobile Filter Collapsible State
   const [showMobileFilter, setShowMobileFilter] = useState(false);
@@ -228,6 +235,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
     () => [
       { id: 'ringkasan', label: 'Ringkasan Beranda', shortLabel: 'Beranda', icon: Briefcase },
       { id: 'bimbingan', label: 'Siswa Bimbingan', shortLabel: 'Bimbingan', icon: Users, badge: stats.total_siswa_bimbingan },
+      { id: 'absensi', label: 'Rekap Presensi', shortLabel: 'Presensi', icon: CalendarCheck },
       { id: 'jurnal', label: 'Verifikasi Jurnal', shortLabel: 'Jurnal', icon: Clock, badge: stats.jurnal_pending_review },
       { id: 'monitoring', label: 'Supervisi DU/DI', shortLabel: 'Supervisi', icon: Calendar },
       { id: 'penilaian', label: 'Penilaian Magang', shortLabel: 'Nilai', icon: Award },
@@ -421,6 +429,22 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                       onOpenSiswaDetail={(s) => setSelectedDetailSiswa(s)}
                       onOpenKunjunganModal={() => handleTabSelect('monitoring')}
                     />
+                  </div>
+                )}
+
+                {/* 2b. Rekap Matriks Presensi PKL Tab */}
+                {visitedTabs.has('absensi') && (
+                  <div className={cn(activeTab === 'absensi' ? 'block' : 'hidden')}>
+                    <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400">Memuat matriks presensi bimbingan...</div>}>
+                      <RekapAbsensiPklView
+                        guruId={guruId}
+                        guruNama={user?.name}
+                        tahunPelajaranId={tpId}
+                        semesterId={academicFilter.values.semesterId}
+                        hideLayout={true}
+                        className="w-full"
+                      />
+                    </Suspense>
                   </div>
                 )}
 

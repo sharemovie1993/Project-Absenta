@@ -38,6 +38,7 @@ export class HubinController {
   async bulkUpdateStatus(...args: any[]) { return (this.penempatan as any).bulkUpdateStatus(...args); }
 
   // Absensi & Logbook
+  async getRekapBulananPkl(...args: any[]) { return (this.absensi as any).getRekapBulananPkl(...args); }
   async getAbsensiSiswa(...args: any[]) { return (this.absensi as any).getAbsensiSiswa(...args); }
   async checkIn(...args: any[]) { return (this.absensi as any).checkIn(...args); }
   async checkOut(...args: any[]) { return (this.absensi as any).checkOut(...args); }

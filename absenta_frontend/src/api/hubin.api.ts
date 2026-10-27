@@ -207,6 +207,27 @@ export interface AbsensiPkl {
 }
 
 
+export interface RekapBulananPklRow {
+  siswa_id: string;
+  siswa_pkl_id: string;
+  nama_siswa: string;
+  nis?: string | null;
+  kelas_id?: string;
+  nama_kelas?: string;
+  mitra_id?: string;
+  nama_mitra?: string;
+  pembimbing_id?: string | null;
+  nama_pembimbing?: string;
+  HADIR: number;
+  SAKIT: number;
+  IZIN: number;
+  ALPA: number;
+  TERLAMBAT: number;
+  total_poin: number;
+  persentase: number;
+  dailyMap?: Record<string, string>;
+}
+
 export const hubinApi = {
   // Mitra
   getMitra: (params?: { search?: string; page?: number; limit?: number; mou_status?: string }) => 
@@ -270,6 +291,16 @@ export const hubinApi = {
   getSertifikatPklData: (id: string) => requestWithFallback<any>('get', `/hubin/sertifikat/${id}`),
 
   // Absensi
+  getRekapBulananPkl: (params?: { 
+    bulan?: string; 
+    kelas_id?: string; 
+    pembimbing_id?: string; 
+    jurusan_id?: string; 
+    mitra_id?: string; 
+    tahun_pelajaran_id?: string; 
+    semester_id?: string; 
+    search?: string; 
+  }) => requestWithFallback<{ success: boolean; bulan: string; total_siswa: number; data: RekapBulananPklRow[] }>('get', '/hubin/absensi/rekap/bulanan', { params }),
   getAbsensi: (siswaPklId: string, params?: { page?: number; limit?: number }) => 
     requestWithFallback<any>('get', `/hubin/absensi/${siswaPklId}`, { params }),
   checkIn: (data: { siswaPklId: string; latitude: number; longitude: number; kegiatan?: string; image_url?: string }) => 

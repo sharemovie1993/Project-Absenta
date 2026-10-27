@@ -36,6 +36,7 @@ const MenuTabs = UI.TabsList;
 // Lazy Loaded Hubin Components
 const HubinStudentView = lazy(() => import('../HubinStudentView').then(m => ({ default: m.HubinStudentView })));
 const HubinManagementView = lazy(() => import('../HubinManagementView').then(m => ({ default: m.HubinManagementView })));
+const RekapAbsensiPklView = lazy(() => import('./RekapAbsensiPklView').then(m => ({ default: m.RekapAbsensiPklView })));
 const HubinLogbookEditModal = lazy(() => import('../HubinLogbookEditModal').then(m => ({ default: m.HubinLogbookEditModal })));
 const HubinPrintJurnalPkl = lazy(() => import('../HubinPrintJurnalPkl').then(m => ({ default: m.HubinPrintJurnalPkl })));
 
@@ -150,6 +151,7 @@ export const AbsensiPklView: React.FC<UniversalAbsensiPklViewProps> = React.memo
   }, [activeTahunPelajaran, selectedTpFilter]);
 
   // -- Local State --
+  const [adminSubTab, setAdminSubTab] = useState<'HARIAN' | 'REKAP_BULANAN'>('HARIAN');
   const [location, setLocation] = useState<{ lat: number; lng: number; accuracy?: number } | null>(null);
   const [isSpoofedLocation, setIsSpoofedLocation] = useState(false);
   const [kegiatan, setKegiatan] = useState('');
@@ -681,39 +683,85 @@ export const AbsensiPklView: React.FC<UniversalAbsensiPklViewProps> = React.memo
             </div>
           </SectionCard>
         ) : (
-          <Suspense fallback={<div className="flex justify-center p-8"><Loader size="lg" /></div>}>
-            <HubinManagementView
-              rawPenempatan={rawPenempatan}
-              isLoading={isLoading}
-              onVerify={readOnly ? () => {} : verifyMutation.mutate}
-              onQuickAddForId={(abs: AbsensiPkl, text: string) => {
-                if (readOnly) return;
-                let parsed: ActivityItem[] = [];
-                try { 
-                  parsed = JSON.parse(abs.kegiatan || '[]') as ActivityItem[]; 
-                } catch (e) { 
-                  console.error('Failed to parse kegiatan:', e);
-                }
-                const updated = [...(Array.isArray(parsed) ? parsed : []), { time: format(new Date(), 'HH:mm'), text: text.trim() }].sort((a, b) => a.time.localeCompare(b.time));
-                updateLogbookMutation.mutate({ keg: JSON.stringify(updated), absensiId: abs.id });
-              }}
-              onEditLogbook={readOnly ? () => {} : setEditingAbsensi}
-              quickAddTexts={quickAddTexts}
-              setQuickAddTexts={setQuickAddTexts}
-              renderActivityText={renderActivityText}
-              getDriveThumbnailUrl={getDriveThumbnailUrl}
-              isGlobalHubin={isGlobalHubin && !effectiveJurusanId && !effectiveKelasId}
-              isKaprog={isEffectiveKaprog}
-              kaprogJurusan={effectiveKaprogJurusan}
-              isWaliKelas={isEffectiveWaliKelas}
-              walikelasKelas={effectiveWalikelasKelas}
-              activeGuruId={effectiveGuruId}
-              selectedTp={selectedTpFilter}
-              onTpChange={setSelectedTpFilter}
-              tpOptions={tpOptions}
-              hideScopeBanner={isModal || hideScopeBanner}
-            />
-          </Suspense>
+          <div className="space-y-4">
+            {/* Dual Sub-Tab Switcher for Management */}
+            <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-2 shadow-xs">
+              <div className="inline-flex items-center p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setAdminSubTab('HARIAN')}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                    adminSubTab === 'HARIAN'
+                      ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <Clock size={14} />
+                  <span>Verifikasi Harian</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAdminSubTab('REKAP_BULANAN')}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                    adminSubTab === 'REKAP_BULANAN'
+                      ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <Calendar size={14} />
+                  <span>Rekap Bulanan (Matriks)</span>
+                </button>
+              </div>
+            </div>
+
+            {adminSubTab === 'HARIAN' ? (
+              <Suspense fallback={<div className="flex justify-center p-8"><Loader size="lg" /></div>}>
+                <HubinManagementView
+                  rawPenempatan={rawPenempatan}
+                  isLoading={isLoading}
+                  onVerify={readOnly ? () => {} : verifyMutation.mutate}
+                  onQuickAddForId={(abs: AbsensiPkl, text: string) => {
+                    if (readOnly) return;
+                    let parsed: ActivityItem[] = [];
+                    try { 
+                      parsed = JSON.parse(abs.kegiatan || '[]') as ActivityItem[]; 
+                    } catch (e) { 
+                      console.error('Failed to parse kegiatan:', e);
+                    }
+                    const updated = [...(Array.isArray(parsed) ? parsed : []), { time: format(new Date(), 'HH:mm'), text: text.trim() }].sort((a, b) => a.time.localeCompare(b.time));
+                    updateLogbookMutation.mutate({ keg: JSON.stringify(updated), absensiId: abs.id });
+                  }}
+                  onEditLogbook={readOnly ? () => {} : setEditingAbsensi}
+                  quickAddTexts={quickAddTexts}
+                  setQuickAddTexts={setQuickAddTexts}
+                  renderActivityText={renderActivityText}
+                  getDriveThumbnailUrl={getDriveThumbnailUrl}
+                  isGlobalHubin={isGlobalHubin && !effectiveJurusanId && !effectiveKelasId}
+                  isKaprog={isEffectiveKaprog}
+                  kaprogJurusan={effectiveKaprogJurusan}
+                  isWaliKelas={isEffectiveWaliKelas}
+                  walikelasKelas={effectiveWalikelasKelas}
+                  activeGuruId={effectiveGuruId}
+                  selectedTp={selectedTpFilter}
+                  onTpChange={setSelectedTpFilter}
+                  tpOptions={tpOptions}
+                  hideScopeBanner={isModal || hideScopeBanner}
+                />
+              </Suspense>
+            ) : (
+              <Suspense fallback={<div className="flex justify-center p-8"><Loader size="lg" /></div>}>
+                <RekapAbsensiPklView
+                  guruId={effectiveGuruId || undefined}
+                  guruNama={propGuruNama}
+                  kelasId={effectiveKelasId}
+                  jurusanId={effectiveJurusanId}
+                  tahunPelajaranId={selectedTpFilter}
+                  hideLayout={true}
+                  className="w-full"
+                />
+              </Suspense>
+            )}
+          </div>
         )}
       </div>
 

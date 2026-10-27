@@ -710,4 +710,206 @@ export class HubinAbsensiService extends HubinCommonHelper {
     return res;
   }
 
+  /**
+   * ⚡ GET REKAP BULANAN PKL (MATRIX KALENDER HARIAN 1-31)
+   */
+  async getRekapBulananPkl(
+    tenantId: string,
+    params?: {
+      bulan?: string;
+      kelas_id?: string;
+      pembimbing_id?: string;
+      jurusan_id?: string;
+      mitra_id?: string;
+      tahun_pelajaran_id?: string;
+      semester_id?: string;
+      search?: string;
+    },
+    userId?: string,
+    org?: any
+  ) {
+    const rawBulan = params?.bulan || new Date().toISOString().substring(0, 7);
+    const [yearStr, monthStr] = rawBulan.split('-');
+    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr, 10);
+    const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0));
+    const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+
+    const cacheKey = `hubin:${tenantId}:pkl_rekap_bulanan:${rawBulan}:${params?.pembimbing_id || 'all'}:${params?.kelas_id || 'all'}:${params?.mitra_id || 'all'}:${params?.search || 'all'}`;
+
+    return await cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const where: any = {
+          tenant_id: tenantId,
+          status: { in: ['AKTIF', 'SELESAI'] }
+        };
+
+        const andConditions: any[] = [];
+
+        if (params?.pembimbing_id) {
+          where.pembimbing_id = params.pembimbing_id;
+        } else if (org && org.tenant_wide !== true) {
+          const user = userId ? await prisma.user.findUnique({
+            where: { id: userId },
+            include: { Guru: true }
+          }) : null;
+
+          if (org.is_unit_restricted === true && Array.isArray(org.unit_ids) && org.unit_ids.length > 0) {
+            const scopeOr: any[] = [
+              { Siswa: { OR: [{ jurusan_id: { in: org.unit_ids } }, { Kelas: { jurusan_id: { in: org.unit_ids } } }] } }
+            ];
+            if (user?.Guru?.id) {
+              scopeOr.push({ pembimbing_id: user.Guru.id });
+            }
+            andConditions.push({ OR: scopeOr });
+          } else if (Array.isArray(org.kelas_ids) && org.kelas_ids.length > 0) {
+            const scopeOr: any[] = [
+              { Siswa: { kelas_id: { in: org.kelas_ids } } }
+            ];
+            if (user?.Guru?.id) {
+              scopeOr.push({ pembimbing_id: user.Guru.id });
+            }
+            andConditions.push({ OR: scopeOr });
+          }
+        }
+
+        if (params?.kelas_id) {
+          where.Siswa = { ...where.Siswa, kelas_id: params.kelas_id };
+        }
+        if (params?.mitra_id) {
+          where.mitra_id = params.mitra_id;
+        }
+        if (params?.search) {
+          where.Siswa = {
+            ...where.Siswa,
+            nama_siswa: { contains: params.search, mode: 'insensitive' }
+          };
+        }
+
+        if (params?.tahun_pelajaran_id || params?.semester_id) {
+          const academicCondition: any = {};
+          if (params.tahun_pelajaran_id) academicCondition.tahun_pelajaran_id = params.tahun_pelajaran_id;
+          if (params.semester_id) academicCondition.semester_id = params.semester_id;
+
+          andConditions.push({
+            OR: [
+              { SiswaAkademik: academicCondition },
+              {
+                AND: [
+                  { siswa_akademik_id: null },
+                  { Siswa: academicCondition }
+                ]
+              }
+            ]
+          });
+        }
+
+        if (andConditions.length > 0) {
+          where.AND = andConditions;
+        }
+
+        const pklList = await prisma.siswaPkl.findMany({
+          where,
+          include: {
+            Siswa: {
+              select: {
+                id: true,
+                nama_siswa: true,
+                nis: true,
+                nisn: true,
+                kelas_id: true,
+                Kelas: { select: { id: true, nama_kelas: true } }
+              }
+            },
+            Mitra: {
+              select: { id: true, nama: true }
+            },
+            Pembimbing: {
+              select: { id: true, nama_guru: true, nip: true }
+            },
+            AbsensiPkl: {
+              where: {
+                tanggal: {
+                  gte: startDate,
+                  lte: endDate
+                }
+              },
+              orderBy: { tanggal: 'asc' }
+            }
+          },
+          orderBy: [
+            { Siswa: { nama_siswa: 'asc' } }
+          ]
+        });
+
+        const rows = pklList.map(p => {
+          const dailyMap: Record<string, string> = {};
+          let HADIR = 0;
+          let SAKIT = 0;
+          let IZIN = 0;
+          let ALPA = 0;
+          let TERLAMBAT = 0;
+
+          (p.AbsensiPkl || []).forEach(abs => {
+            const dateObj = new Date(abs.tanggal);
+            const d = dateObj.getUTCDate();
+            let code = 'H';
+            const statusUpper = (abs.status || 'HADIR').toUpperCase();
+
+            if (statusUpper === 'HADIR') {
+              code = abs.is_outside_radius ? 'D' : 'H';
+              HADIR++;
+            } else if (statusUpper === 'SAKIT') {
+              code = 'S';
+              SAKIT++;
+            } else if (statusUpper === 'IZIN') {
+              code = 'I';
+              IZIN++;
+            } else if (statusUpper === 'ALPA') {
+              code = 'A';
+              ALPA++;
+            } else if (statusUpper === 'TERLAMBAT') {
+              code = 'T';
+              TERLAMBAT++;
+            } else {
+              code = statusUpper.charAt(0);
+            }
+            dailyMap[String(d)] = code;
+          });
+
+          const totalRecorded = HADIR + SAKIT + IZIN + ALPA + TERLAMBAT;
+          const persentase = totalRecorded > 0 ? Math.round(((HADIR + TERLAMBAT) / totalRecorded) * 100) : 0;
+
+          return {
+            siswa_id: p.siswa_id,
+            siswa_pkl_id: p.id,
+            nama_siswa: p.Siswa?.nama_siswa || 'Siswa PKL',
+            nis: p.Siswa?.nis || '-',
+            kelas_id: p.Siswa?.kelas_id,
+            nama_kelas: p.Siswa?.Kelas?.nama_kelas || '-',
+            mitra_id: p.mitra_id,
+            nama_mitra: p.Mitra?.nama || '-',
+            pembimbing_id: p.pembimbing_id,
+            nama_pembimbing: p.Pembimbing?.nama_guru || '-',
+            HADIR,
+            SAKIT,
+            IZIN,
+            ALPA,
+            TERLAMBAT,
+            total_poin: 0,
+            persentase,
+            dailyMap
+          };
+        });
+
+        return {
+          bulan: rawBulan,
+          total_siswa: rows.length,
+          data: rows
+        };
+      },
+      300
+    );
+  }
 }

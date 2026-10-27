@@ -5,6 +5,7 @@ import {
   Clock,
   CheckCircle2,
   Calendar,
+  CalendarCheck,
   Award,
   Printer,
   ChevronRight,
@@ -93,6 +94,13 @@ export const PklRingkasanTab: React.FC<PklRingkasanTabProps> = ({
         icon: Users,
         iconColorClass: 'text-teal-600 dark:text-teal-400',
         onClick: () => onSelectTab('bimbingan'),
+      },
+      {
+        id: 'act-absensi',
+        label: 'Rekap Presensi',
+        icon: CalendarCheck,
+        iconColorClass: 'text-emerald-600 dark:text-emerald-400',
+        onClick: () => onSelectTab('absensi'),
       },
       {
         id: 'act-jurnal',
