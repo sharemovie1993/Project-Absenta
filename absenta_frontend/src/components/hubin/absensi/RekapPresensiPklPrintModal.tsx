@@ -109,22 +109,26 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
       resolvedKepsekNip = (tenantInfo as any).nip_kepsek || '';
     }
 
-    // B. Koordinator Hubin / Pokja PKL
-    let resolvedHubinTitle = 'Koordinator Hubin / Pokja PKL';
+    // B. Waka Hubin (Struktur Kode: HUBIN)
+    let resolvedHubinTitle = 'Waka. Bidang Hubungan Industri';
     let resolvedHubinNama = '';
     let resolvedHubinNip = '';
 
-    const hubinPos = rawPositions.find(
-      (p) =>
-        p.code === 'HUBIN' ||
-        p.code === 'WAKA_HUBIN' ||
-        p.code === 'KOORDINATOR_HUBIN' ||
-        p.code === 'POKJA_PKL' ||
-        p.code?.includes('HUBIN') ||
-        p.name?.toLowerCase().includes('hubin')
-    );
+    const hubinPos =
+      rawPositions.find((p) => p.code === 'HUBIN') ||
+      rawPositions.find(
+        (p) =>
+          p.code === 'WAKA_HUBIN' ||
+          p.code?.includes('HUBIN') ||
+          p.name?.toLowerCase().includes('waka hubin') ||
+          p.name?.toLowerCase().includes('hubin')
+      );
     if (hubinPos) {
-      resolvedHubinTitle = hubinPos.name || 'Koordinator Hubin';
+      if (hubinPos.name && !hubinPos.name.includes('& Staf')) {
+        resolvedHubinTitle = hubinPos.name;
+      } else {
+        resolvedHubinTitle = 'Waka. Bidang Hubungan Industri';
+      }
       const activeHubinAssign = hubinPos.organizationalAssigns?.find((a: any) => a.is_active);
       if (activeHubinAssign?.User) {
         resolvedHubinNama = activeHubinAssign.User.Guru?.nama_guru || activeHubinAssign.User.name || '';
@@ -374,7 +378,7 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                  Koordinator Hubin (Sisi Kiri)
+                  Waka Hubin (Sisi Kiri - HUBIN)
                 </label>
                 <input
                   type="text"
@@ -546,7 +550,7 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
             {/* Standar Penandatangan Dokumen (2-Tier Signatures - Live Connected) */}
             {pageIdx === pages.length - 1 && (
               <div className="pt-2 text-[10px] text-black break-inside-avoid">
-                {/* Baris 1: Kiri Koordinator Hubin, Kanan Titimangsa & Guru Pembimbing */}
+                {/* Baris 1: Kiri Waka Hubin (HUBIN), Kanan Titimangsa & Guru Pembimbing */}
                 <div className="grid grid-cols-2 gap-8 mb-6">
                   <div>
                     <p className="font-semibold mb-12">Mengetahui,</p>
