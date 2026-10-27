@@ -311,6 +311,15 @@ export const hubinApi = {
     requestWithFallback<any>('put', `/hubin/absensi/${siswaPklId}/logbook`, { data: { kegiatan, absensiId, image_url } }),
   submitIzinSakitPkl: (data: { siswaPklId: string; status: 'SAKIT' | 'IZIN'; tanggal_mulai: string; tanggal_selesai?: string; keterangan: string; image_url?: string }) =>
     requestWithFallback<any>('post', '/hubin/absensi/izin-sakit', { data }),
+  uploadPklPhoto: async (file: File): Promise<string> => {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await requestWithFallback<any>('post', '/upload/file', {
+      data: fd,
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res?.data?.url || res?.url || '';
+  },
   verifyAbsensi: (id: string) => requestWithFallback<any>('put', `/hubin/absensi/${id}/verify`),
 
   // Stats

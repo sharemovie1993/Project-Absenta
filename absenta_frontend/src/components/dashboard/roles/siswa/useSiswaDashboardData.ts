@@ -247,7 +247,7 @@ export function useSiswaDashboardData() {
     return (myPenempatan as any).status === 'AKTIF';
   }, [isPklStudent, myPenempatan]);
 
-  const { data: pklAbsensiDashboardRaw } = useQuery({
+  const { data: pklAbsensiDashboardRaw, refetch: refetchPklAbsensi } = useQuery({
     queryKey: ['pkl-absensi-dashboard', (myPenempatan as any)?.id],
     queryFn: () => hubinApi.getAbsensi((myPenempatan as any).id, { limit: 5 }),
     enabled: isAktifPkl && !!(myPenempatan as any)?.id,
@@ -797,7 +797,9 @@ export function useSiswaDashboardData() {
     currentJurusan,
     currentOrtu,
     isAktifPkl,
+    myPenempatan,
     todayPklAbsensi,
+    refetchPklAbsensi,
     pklHadir,
     pklSisaHari,
     dailyRecap,

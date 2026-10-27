@@ -45,6 +45,7 @@ import { SiswaLeaderboardModal } from './siswa/modals/SiswaLeaderboardModal';
 import { SiswaPrestasiModal } from './siswa/modals/SiswaPrestasiModal';
 import { SiswaKehadiranModal } from './siswa/modals/SiswaKehadiranModal';
 import { SiswaBelumAbsenModal } from './siswa/modals/SiswaBelumAbsenModal';
+import { SiswaPklAbsensiModal, type PklModalMode } from './siswa/modals/SiswaPklAbsensiModal';
 import { SiswaCardModal } from '../../academic/siswa/dashboard/SiswaCardModal';
 
 const SiswaOnboardingModal = lazy(() =>
@@ -87,6 +88,8 @@ export const SiswaDashboard: React.FC = () => {
   const [showPrestasiModal, setShowPrestasiModal] = useState(false);
   const [showKehadiranModal, setShowKehadiranModal] = useState(false);
   const [showBelumAbsenModal, setShowBelumAbsenModal] = useState(false);
+  const [showPklAbsensiModal, setShowPklAbsensiModal] = useState(false);
+  const [pklModalMode, setPklModalMode] = useState<PklModalMode>('CHECK_IN');
   const [cardSide, setCardSide] = useState<'front' | 'back'>('front');
 
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
@@ -103,6 +106,11 @@ export const SiswaDashboard: React.FC = () => {
     setActiveSection(section);
     setShowOnboardingModal(true);
   };
+
+  const handleOpenPklModal = useCallback((mode: PklModalMode) => {
+    setPklModalMode(mode);
+    setShowPklAbsensiModal(true);
+  }, []);
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -410,6 +418,7 @@ export const SiswaDashboard: React.FC = () => {
                 currentDisciplineScore={data.currentDisciplineScore}
                 onOpenPrestasiModal={() => setShowPrestasiModal(true)}
                 onOpenKehadiranModal={() => setShowKehadiranModal(true)}
+                onOpenPklModal={handleOpenPklModal}
                 onNavigateTab={handleTabChange}
               />
             </div>
@@ -577,6 +586,18 @@ export const SiswaDashboard: React.FC = () => {
           await refetchNotPresent();
         }}
         onRemovePendingStudent={removePendingStudent}
+      />
+
+      <SiswaPklAbsensiModal
+        isOpen={showPklAbsensiModal}
+        onClose={() => setShowPklAbsensiModal(false)}
+        mode={pklModalMode}
+        myPenempatan={data.myPenempatan}
+        todayPklAbsensi={data.todayPklAbsensi}
+        onSuccess={() => {
+          data.refetchPklAbsensi();
+          data.refetchProfile();
+        }}
       />
 
       <SiswaCardModal
