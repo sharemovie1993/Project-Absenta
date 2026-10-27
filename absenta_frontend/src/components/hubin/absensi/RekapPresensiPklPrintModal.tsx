@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
@@ -10,6 +11,8 @@ import { jsPDF } from 'jspdf';
 import { toast } from 'react-hot-toast';
 import { SlidersHorizontal, UserCheck, RotateCcw, X } from 'lucide-react';
 import type { RekapBulananPklRow } from '@/api/hubin.api';
+import { getStrukturTree } from '@/api/academic/strukturOrganisasi.api';
+import { guruApi } from '@/api/academic.api';
 import type { ViewMode } from './rekapPklColumns';
 
 export interface RekapPresensiPklPrintModalProps {
@@ -17,6 +20,7 @@ export interface RekapPresensiPklPrintModalProps {
   onClose: () => void;
   bulan?: string;
   tahunPelajaran?: string;
+  pembimbingId?: string;
   pembimbingNama?: string;
   pembimbingNip?: string;
   jurusanNama?: string;
@@ -32,8 +36,9 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
   onClose,
   bulan,
   tahunPelajaran,
-  pembimbingNama = 'Guru Pembimbing',
-  pembimbingNip = '',
+  pembimbingId,
+  pembimbingNama: propPembimbingNama,
+  pembimbingNip: propPembimbingNip,
   jurusanNama,
   kelasNama,
   mitraNama,
@@ -47,36 +52,181 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [showTtdConfig, setShowTtdConfig] = useState<boolean>(false);
 
-  // Hook SSOT Kop Surat Dinas & Sekolah
+  // 1. Hook SSOT Kop Surat Dinas & Sekolah
   const { tenantInfo, rawSekolah } = usePrintHeaderData();
-  const rawKepsekNama =
-    (rawSekolah as any)?.kepala_sekolah ||
-    (rawSekolah as any)?.nama_kepala_sekolah ||
-    (tenantInfo as any)?.nama_kepsek ||
-    'Kepala Sekolah';
-  const rawNipKepsek =
-    (rawSekolah as any)?.nip_kepala || (rawSekolah as any)?.nip_kepala_sekolah || '';
-  const rawKotaSekolah =
-    (rawSekolah as any)?.kota || (rawSekolah as any)?.kabupaten || 'Purwakarta';
-  const rawTanggal = new Date().toLocaleDateString('id-ID', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
+
+  // 2. Query Live Struktur Organisasi Tree
+  const { data: treeRes } = useQuery({
+    queryKey: ['struktur-organisasi-tree-print-live'],
+    queryFn: () => getStrukturTree().catch(() => null),
+    staleTime: 10 * 60 * 1000,
+    enabled: isOpen,
   });
 
-  // Penandatangan States
-  const [hubinTitle, setHubinTitle] = useState('Koordinator Hubin / Pokja PKL');
-  const [activeHubinNama, setActiveHubinNama] = useState('Koordinator Hubin & PKL');
+  // 3. Query Live Guru List untuk sinkronisasi NIP
+  const { data: guruListRes } = useQuery({
+    queryKey: ['guru-list-for-ttd-print'],
+    queryFn: () => guruApi.getAll({ limit: 200 }).catch(() => null),
+    staleTime: 10 * 60 * 1000,
+    enabled: isOpen,
+  });
+
+  const rawPositions: any[] = useMemo(() => {
+    const d = treeRes?.data;
+    if (Array.isArray(d)) return d;
+    if (d && typeof d === 'object') {
+      const all: any[] = [];
+      Object.values(d).forEach((v) => {
+        if (Array.isArray(v)) all.push(...v);
+      });
+      return all;
+    }
+    return [];
+  }, [treeRes]);
+
+  const guruList: any[] = useMemo(() => {
+    return guruListRes?.data || [];
+  }, [guruListRes]);
+
+  // Resolving Penandatangan Otomatis dari Database Riil (Tanpa Mock/Fallback Dummy)
+  const resolvedSigners = useMemo(() => {
+    // A. Kepala Sekolah
+    let resolvedKepsekNama = '';
+    let resolvedKepsekNip = '';
+
+    const kepsekPos = rawPositions.find(
+      (p) => p.code === 'KEPALA_SEKOLAH' || p.name?.toLowerCase().includes('kepala sekolah')
+    );
+    const activeKepsekAssign = kepsekPos?.organizationalAssigns?.find((a: any) => a.is_active);
+    if (activeKepsekAssign?.User) {
+      resolvedKepsekNama = activeKepsekAssign.User.Guru?.nama_guru || activeKepsekAssign.User.name || '';
+      resolvedKepsekNip = activeKepsekAssign.User.Guru?.nip || '';
+    } else if (rawSekolah?.kepala_sekolah) {
+      resolvedKepsekNama = rawSekolah.kepala_sekolah;
+      resolvedKepsekNip = (rawSekolah as any).nip_kepala || (rawSekolah as any).nip_kepala_sekolah || '';
+    } else if ((tenantInfo as any)?.nama_kepsek || (tenantInfo as any)?.kepala_sekolah) {
+      resolvedKepsekNama = (tenantInfo as any).nama_kepsek || (tenantInfo as any).kepala_sekolah || '';
+      resolvedKepsekNip = (tenantInfo as any).nip_kepsek || '';
+    }
+
+    // B. Koordinator Hubin / Pokja PKL
+    let resolvedHubinTitle = 'Koordinator Hubin / Pokja PKL';
+    let resolvedHubinNama = '';
+    let resolvedHubinNip = '';
+
+    const hubinPos = rawPositions.find(
+      (p) =>
+        p.code === 'HUBIN' ||
+        p.code === 'WAKA_HUBIN' ||
+        p.code === 'KOORDINATOR_HUBIN' ||
+        p.code === 'POKJA_PKL' ||
+        p.code?.includes('HUBIN') ||
+        p.name?.toLowerCase().includes('hubin')
+    );
+    if (hubinPos) {
+      resolvedHubinTitle = hubinPos.name || 'Koordinator Hubin';
+      const activeHubinAssign = hubinPos.organizationalAssigns?.find((a: any) => a.is_active);
+      if (activeHubinAssign?.User) {
+        resolvedHubinNama = activeHubinAssign.User.Guru?.nama_guru || activeHubinAssign.User.name || '';
+        resolvedHubinNip = activeHubinAssign.User.Guru?.nip || '';
+      }
+    }
+
+    // C. Guru Pembimbing PKL
+    let resolvedPembimbingNama = propPembimbingNama || '';
+    let resolvedPembimbingNip = propPembimbingNip || '';
+
+    // Cek dari rows jika belum ada dari props
+    if (!resolvedPembimbingNama && rows.length > 0) {
+      const firstWithTeacher = rows.find((r) => r.nama_pembimbing && r.nama_pembimbing !== '-');
+      if (firstWithTeacher) {
+        resolvedPembimbingNama = firstWithTeacher.nama_pembimbing || '';
+      }
+    }
+
+    // Cari NIP guru pembimbing dari guruList
+    const targetGuruId = pembimbingId || rows.find((r) => r.pembimbing_id)?.pembimbing_id;
+    if (targetGuruId) {
+      const matchGuru = guruList.find((g) => g.id === targetGuruId);
+      if (matchGuru) {
+        if (!resolvedPembimbingNama) resolvedPembimbingNama = matchGuru.nama_guru || matchGuru.nama || '';
+        if (!resolvedPembimbingNip) resolvedPembimbingNip = matchGuru.nip || '';
+      }
+    } else if (resolvedPembimbingNama && !resolvedPembimbingNip) {
+      const matchByName = guruList.find(
+        (g) => (g.nama_guru || g.nama || '').toLowerCase() === resolvedPembimbingNama.toLowerCase()
+      );
+      if (matchByName?.nip) {
+        resolvedPembimbingNip = matchByName.nip;
+      }
+    }
+
+    // D. Kota Sekolah
+    const resolvedKota =
+      rawSekolah?.kota ||
+      (rawSekolah as any)?.kabupaten_kota ||
+      (tenantInfo as any)?.kota ||
+      (tenantInfo as any)?.kabupaten ||
+      '';
+
+    const resolvedTanggal = new Date().toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+
+    return {
+      kepsekNama: resolvedKepsekNama,
+      kepsekNip: resolvedKepsekNip,
+      hubinTitle: resolvedHubinTitle,
+      hubinNama: resolvedHubinNama,
+      hubinNip: resolvedHubinNip,
+      pembimbingNama: resolvedPembimbingNama,
+      pembimbingNip: resolvedPembimbingNip,
+      kota: resolvedKota,
+      tanggal: resolvedTanggal,
+    };
+  }, [rawPositions, guruList, rawSekolah, tenantInfo, propPembimbingNama, propPembimbingNip, pembimbingId, rows]);
+
+  // Form State Penandatangan (Dapat disesuaikan sementara oleh pengguna via drawer)
+  const [hubinTitle, setHubinTitle] = useState('');
+  const [activeHubinNama, setActiveHubinNama] = useState('');
   const [activeHubinNip, setActiveHubinNip] = useState('');
 
   const [pembimbingTitle, setPembimbingTitle] = useState('Guru Pembimbing PKL');
-  const [activePembimbingNama, setActivePembimbingNama] = useState(pembimbingNama || 'Guru Pembimbing');
-  const [activePembimbingNip, setActivePembimbingNip] = useState(pembimbingNip || '');
+  const [activePembimbingNama, setActivePembimbingNama] = useState('');
+  const [activePembimbingNip, setActivePembimbingNip] = useState('');
 
-  const [activeKepsekNama, setActiveKepsekNama] = useState(rawKepsekNama);
-  const [activeKepsekNip, setActiveKepsekNip] = useState(rawNipKepsek && rawNipKepsek !== '-' ? rawNipKepsek : '');
-  const [activeKota, setActiveKota] = useState(rawKotaSekolah);
-  const [activeTanggal, setActiveTanggal] = useState(rawTanggal);
+  const [activeKepsekNama, setActiveKepsekNama] = useState('');
+  const [activeKepsekNip, setActiveKepsekNip] = useState('');
+  const [activeKota, setActiveKota] = useState('');
+  const [activeTanggal, setActiveTanggal] = useState('');
+
+  // Sinkronisasi otomatis saat resolvedSigners siap
+  useEffect(() => {
+    setHubinTitle(resolvedSigners.hubinTitle);
+    setActiveHubinNama(resolvedSigners.hubinNama);
+    setActiveHubinNip(resolvedSigners.hubinNip);
+    setActivePembimbingNama(resolvedSigners.pembimbingNama);
+    setActivePembimbingNip(resolvedSigners.pembimbingNip);
+    setActiveKepsekNama(resolvedSigners.kepsekNama);
+    setActiveKepsekNip(resolvedSigners.kepsekNip);
+    setActiveKota(resolvedSigners.kota);
+    setActiveTanggal(resolvedSigners.tanggal);
+  }, [resolvedSigners]);
+
+  const handleResetStruktur = useCallback(() => {
+    setHubinTitle(resolvedSigners.hubinTitle);
+    setActiveHubinNama(resolvedSigners.hubinNama);
+    setActiveHubinNip(resolvedSigners.hubinNip);
+    setActivePembimbingNama(resolvedSigners.pembimbingNama);
+    setActivePembimbingNip(resolvedSigners.pembimbingNip);
+    setActiveKepsekNama(resolvedSigners.kepsekNama);
+    setActiveKepsekNip(resolvedSigners.kepsekNip);
+    setActiveKota(resolvedSigners.kota);
+    setActiveTanggal(resolvedSigners.tanggal);
+    toast.success('Penandatangan berhasil direset sesuai hierarki struktur riil database.');
+  }, [resolvedSigners]);
 
   // Format Bulan Indonesia
   const bulanFormatted = useMemo(() => {
@@ -94,7 +244,7 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
     return Array.from({ length: 30 }, (_, i) => i + 1);
   }, [dayNumbers]);
 
-  // Pagination chunking: Max 25 rows per landscape sheet
+  // Pagination chunking: Max 24 baris per lembar landscape
   const pages = useMemo(() => {
     const chunkSize = orientation === 'landscape' ? 24 : 30;
     if (rows.length <= chunkSize) return [rows];
@@ -201,42 +351,56 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
             <div className="flex items-center justify-between font-bold text-slate-800 dark:text-slate-200 border-b pb-2">
               <span className="flex items-center gap-2">
                 <UserCheck className="w-4 h-4 text-indigo-600" />
-                Konfigurasi Penandatangan Resmi (2-Tier Signatures)
+                Konfigurasi Penandatangan Terhubung Riil (2-Tier Signatures)
               </span>
-              <button
-                type="button"
-                onClick={() => setShowTtdConfig(false)}
-                className="text-slate-400 hover:text-slate-600 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleResetStruktur}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Reset Struktur</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowTtdConfig(false)}
+                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">Koordinator Hubin</label>
+                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                  Koordinator Hubin (Sisi Kiri)
+                </label>
                 <input
                   type="text"
                   value={activeHubinNama}
                   onChange={(e) => setActiveHubinNama(e.target.value)}
                   className="w-full p-2 border rounded-md dark:bg-slate-900"
-                  placeholder="Nama Koordinator"
+                  placeholder="Nama Lengkap & Gelar"
                 />
                 <input
                   type="text"
                   value={activeHubinNip}
                   onChange={(e) => setActiveHubinNip(e.target.value)}
                   className="w-full p-2 border rounded-md mt-1 dark:bg-slate-900"
-                  placeholder="NIP (opsional)"
+                  placeholder="NIP (kosongkan jika belum ada)"
                 />
               </div>
               <div>
-                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">Guru Pembimbing</label>
+                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                  Guru Pembimbing (Sisi Kanan)
+                </label>
                 <input
                   type="text"
                   value={activePembimbingNama}
                   onChange={(e) => setActivePembimbingNama(e.target.value)}
                   className="w-full p-2 border rounded-md dark:bg-slate-900"
-                  placeholder="Nama Pembimbing"
+                  placeholder="Nama Lengkap & Gelar"
                 />
                 <input
                   type="text"
@@ -247,7 +411,9 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
                 />
               </div>
               <div>
-                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">Kepala Sekolah</label>
+                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                  Kepala Sekolah (Tengah Bawah)
+                </label>
                 <input
                   type="text"
                   value={activeKepsekNama}
@@ -292,7 +458,7 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
               <p className="text-xs font-semibold text-slate-800 mt-0.5">
                 Periode: {bulanFormatted} {tahunPelajaran ? `• Tahun Pelajaran ${tahunPelajaran}` : ''}
               </p>
-              {pembimbingNama && (
+              {activePembimbingNama && (
                 <p className="text-[11px] text-slate-700 mt-0.5">
                   Guru Pembimbing: <span className="font-bold">{activePembimbingNama}</span>
                   {activePembimbingNip ? ` (NIP. ${activePembimbingNip})` : ''}
@@ -377,25 +543,46 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
               </table>
             </div>
 
-            {/* Standar Penandatangan Dokumen (2-Tier Signatures) */}
+            {/* Standar Penandatangan Dokumen (2-Tier Signatures - Live Connected) */}
             {pageIdx === pages.length - 1 && (
               <div className="pt-2 text-[10px] text-black break-inside-avoid">
-                {/* Baris 1: Kiri Verifikator / Pokja PKL, Kanan Guru Pembimbing */}
+                {/* Baris 1: Kiri Koordinator Hubin, Kanan Titimangsa & Guru Pembimbing */}
                 <div className="grid grid-cols-2 gap-8 mb-6">
                   <div>
                     <p className="font-semibold mb-12">Mengetahui,</p>
-                    <p className="font-bold underline uppercase">{activeHubinNama}</p>
-                    <p className="text-[9px] text-slate-700">{hubinTitle}</p>
-                    {activeHubinNip && <p className="text-[9px] text-slate-700">NIP. {activeHubinNip}</p>}
+                    {activeHubinNama ? (
+                      <>
+                        <p className="font-bold underline uppercase">{activeHubinNama}</p>
+                        <p className="text-[9px] text-slate-700">{hubinTitle}</p>
+                        <p className="text-[9px] text-slate-700">
+                          {activeHubinNip ? `NIP. ${activeHubinNip}` : 'NIP. -'}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-bold underline uppercase tracking-widest">( ............................................................ )</p>
+                        <p className="text-[9px] text-slate-700">{hubinTitle}</p>
+                        <p className="text-[9px] text-slate-700">NIP. ........................................</p>
+                      </>
+                    )}
                   </div>
                   <div className="text-right">
-                    <p className="mb-0.5">{activeKota}, {activeTanggal}</p>
+                    <p className="mb-0.5">
+                      {activeKota ? `${activeKota}, ` : ''}{activeTanggal}
+                    </p>
                     <p className="font-semibold mb-12">{pembimbingTitle}</p>
-                    <p className="font-bold underline uppercase">{activePembimbingNama}</p>
-                    {activePembimbingNip ? (
-                      <p className="text-[9px] text-slate-700">NIP. {activePembimbingNip}</p>
+                    {activePembimbingNama ? (
+                      <>
+                        <p className="font-bold underline uppercase">{activePembimbingNama}</p>
+                        <p className="text-[9px] text-slate-700">
+                          {activePembimbingNip ? `NIP. ${activePembimbingNip}` : 'NIP. -'}
+                        </p>
+                      </>
                     ) : (
-                      <p className="text-[9px] text-slate-500">Guru Pembimbing Lapangan</p>
+                      <>
+                        <p className="font-bold underline uppercase tracking-widest">( ............................................................ )</p>
+                        <p className="text-[9px] text-slate-700">NIP. ........................................</p>
+                      </>
                     )}
                   </div>
                 </div>
@@ -403,9 +590,21 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
                 {/* Baris 2: Tengah Kepala Sekolah */}
                 <div className="text-center">
                   <p className="font-semibold mb-12">Menyetujui,</p>
-                  <p className="font-bold underline uppercase">{activeKepsekNama}</p>
-                  <p className="text-[9px] text-slate-700">Kepala Sekolah</p>
-                  {activeKepsekNip && <p className="text-[9px] text-slate-700">NIP. {activeKepsekNip}</p>}
+                  {activeKepsekNama ? (
+                    <>
+                      <p className="font-bold underline uppercase">{activeKepsekNama}</p>
+                      <p className="text-[9px] text-slate-700">Kepala Sekolah</p>
+                      <p className="text-[9px] text-slate-700">
+                        {activeKepsekNip ? `NIP. ${activeKepsekNip}` : 'NIP. -'}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-bold underline uppercase tracking-widest">( ............................................................ )</p>
+                      <p className="text-[9px] text-slate-700">Kepala Sekolah</p>
+                      <p className="text-[9px] text-slate-700">NIP. ........................................</p>
+                    </>
+                  )}
                 </div>
               </div>
             )}

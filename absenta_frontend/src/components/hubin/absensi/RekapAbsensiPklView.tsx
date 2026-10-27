@@ -403,6 +403,7 @@ export const RekapAbsensiPklView: React.FC<UniversalRekapAbsensiPklViewProps> = 
             onClose={() => setIsPrintModalOpen(false)}
             bulan={bulan}
             tahunPelajaran={propTpId}
+            pembimbingId={propGuruId}
             pembimbingNama={propGuruNama}
             viewMode={viewMode}
             rows={filteredRows}
