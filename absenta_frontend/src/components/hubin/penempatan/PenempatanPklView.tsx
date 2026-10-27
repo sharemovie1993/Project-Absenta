@@ -310,8 +310,6 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
     if (activeTab === 'MY_GUIDANCE' || propGuruId) {
       result = result.filter((p: SiswaPkl) => (p.pembimbing_id || p.Pembimbing?.id) === activeGuruId);
     }
-      result = result.filter((p: SiswaPkl) => p.pembimbing_id === activeGuruId);
-    }
     if (selectedMitraFilter) {
       result = result.filter((p: SiswaPkl) => p.mitra_id === selectedMitraFilter);
     }
@@ -325,7 +323,7 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
       p.Siswa?.nama_siswa?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.Mitra?.nama?.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [rawPenempatan, searchTerm, activeTab, activeGuruId, selectedMitraFilter, selectedKelasFilter]);
+  }, [rawPenempatan, searchTerm, activeTab, activeGuruId, selectedMitraFilter, selectedKelasFilter, propGuruId]);
 
   // Overdue Students calculation
   const overdueStudents = useMemo(() => {
