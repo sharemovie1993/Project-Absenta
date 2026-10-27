@@ -132,7 +132,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
   };
 
   // Compute Stats & Data Model
-  const { stats, siswaList, kunjunganList } = useMemo(() => {
+  const { stats, siswaList, logbookList, kunjunganList } = useMemo(() => {
     const rawList: SiswaPkl[] = Array.isArray(penempatanRes) ? penempatanRes : (penempatanRes as any)?.data || [];
 
     const mappedSiswa = mapSiswaBimbingan(rawList);
