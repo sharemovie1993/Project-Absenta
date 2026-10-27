@@ -72,6 +72,7 @@ interface HubinManagementViewProps {
   onTpChange?: (tpId: string) => void;
   tpOptions?: Array<{ value: string; label: string }>;
   hideScopeBanner?: boolean;
+  hideHeaderStats?: boolean;
   defaultScopeFilter?: 'ALL' | 'MY_GUIDANCE';
 }
 
@@ -95,6 +96,7 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
   onTpChange,
   tpOptions,
   hideScopeBanner = false,
+  hideHeaderStats = false,
   defaultScopeFilter,
 }) => {
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
@@ -301,7 +303,8 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
       )}
 
       {/* Analytics Cards - Compact Premium Mobile & Desktop Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6 w-full max-w-full min-w-0">
+      {!hideHeaderStats && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6 w-full max-w-full min-w-0">
         <AnalyticsCard 
           title={<><span className="hidden sm:inline">Total </span>Siswa</>}
           value={filteredPenempatan.length}
@@ -353,13 +356,14 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
           )}
         />
       </div>
+      )}
 
       <SectionCard 
         fullWidth
         noPadding
       >
         {/* Toggle Scope: Semua Siswa Jurusan vs Bimbingan Saya (Khusus jika user adalah guru pembimbing/pejabat) */}
-        {activeGuruId && (
+        {activeGuruId && !hideScopeBanner && (
           <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-4 pb-2 border-b border-gray-100 dark:border-gray-800 bg-slate-50/40 dark:bg-slate-900/20">
             <div className="flex items-center gap-1.5 p-1 bg-slate-200/70 dark:bg-slate-800 rounded-xl text-xs font-semibold">
               <button
@@ -375,7 +379,7 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
                     : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
                 )}
               >
-                {isKaprog ? '🏢 Semua Siswa Jurusan' : (isWaliKelas ? `🏫 Semua Siswa ${walikelasKelas?.nama_kelas || 'Kelas'}` : '📋 Semua Penempatan')} ({homeroomCount})
+                {isKaprog ? '🏢 Semua Siswa Jurusan' : (isWaliKelas && walikelasKelas?.nama_kelas ? `🏫 Semua Siswa ${walikelasKelas.nama_kelas}` : '📋 Semua Penempatan')} ({homeroomCount})
               </button>
               <button
                 type="button"

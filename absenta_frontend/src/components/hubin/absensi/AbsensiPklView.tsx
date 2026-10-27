@@ -126,23 +126,27 @@ export const AbsensiPklView: React.FC<UniversalAbsensiPklViewProps> = React.memo
 
   const isStudent = isCapStudent || !!user?.isStudent;
 
-  // Role Scope Resolution (Explicit Prop overrides Session Capability)
-  const effectiveJurusanId = propJurusanId || (isKaprog && kaprogJurusan?.id ? kaprogJurusan.id : undefined);
-  const effectiveJurusanNama = propJurusanNama || kaprogJurusan?.nama || 'Kejuruan';
-  const effectiveKelasId = propKelasId || (isWaliKelas && walikelasKelas?.id ? walikelasKelas.id : undefined);
-  const effectiveKelasNama = propKelasNama || walikelasKelas?.nama_kelas || '';
-  const effectiveGuruId = propGuruId || capGuruId || authUser?.guru_profile?.id || authUser?.guru_id || authUser?.Guru?.id || null;
+  // Universal Role-Ready Scope Resolution (DRY)
+  // When an explicit role prop is passed (e.g., guruId from Pembimbing Dashboard, or kelasId from Walas),
+  // do NOT cross-contaminate with conflicting session capabilities of the user.
+  const hasExplicitRoleScope = Boolean(propJurusanId || propKelasId || propGuruId);
 
-  const isEffectiveKaprog = isKaprog || Boolean(propJurusanId);
-  const isEffectiveWaliKelas = isWaliKelas || Boolean(propKelasId);
+  const effectiveJurusanId = propJurusanId || (!hasExplicitRoleScope && !hideLayout && isKaprog && kaprogJurusan?.id ? kaprogJurusan.id : undefined);
+  const effectiveJurusanNama = propJurusanNama || kaprogJurusan?.nama || 'Kejuruan';
+  const effectiveKelasId = propKelasId || (!hasExplicitRoleScope && !hideLayout && isWaliKelas && walikelasKelas?.id ? walikelasKelas.id : undefined);
+  const effectiveKelasNama = propKelasNama || walikelasKelas?.nama_kelas || '';
+  const effectiveGuruId = propGuruId || (!hasExplicitRoleScope && !hideLayout ? (capGuruId || authUser?.guru_profile?.id || authUser?.guru_id || authUser?.Guru?.id || null) : null);
+
+  const isEffectiveKaprog = Boolean(propJurusanId) || (!hasExplicitRoleScope && !hideLayout && isKaprog);
+  const isEffectiveWaliKelas = Boolean(propKelasId) || (!hasExplicitRoleScope && !hideLayout && isWaliKelas);
 
   const effectiveKaprogJurusan = effectiveJurusanId
     ? { id: effectiveJurusanId, nama: effectiveJurusanNama, singkatan: null }
-    : kaprogJurusan;
+    : (isEffectiveKaprog ? kaprogJurusan : null);
 
   const effectiveWalikelasKelas = effectiveKelasId
     ? { id: effectiveKelasId, nama_kelas: effectiveKelasNama, tingkat: null }
-    : walikelasKelas;
+    : (isEffectiveWaliKelas ? walikelasKelas : null);
 
   // Context Tahun Pelajaran
   const { options: tpOptions, activeTahunPelajaran } = useTahunPelajaranOptions();
@@ -212,13 +216,27 @@ export const AbsensiPklView: React.FC<UniversalAbsensiPklViewProps> = React.memo
   // -- React Query Hooks --
   const { data: penempatanData, isLoading: isLoadingAll } = useQuery({
     queryKey: ['penempatan-pkl', { limit: 150, tahun_pelajaran_id: selectedTpFilter, pembimbing_id: propGuruId, kelas_id: effectiveKelasId, jurusan_id: effectiveJurusanId }],
-    queryFn: () => hubinApi.getPenempatan({
-      limit: 150,
-      tahun_pelajaran_id: selectedTpFilter || undefined,
-      pembimbing_id: propGuruId || undefined,
-      kelas_id: effectiveKelasId || undefined,
-      jurusan_id: effectiveJurusanId || undefined,
-    }),
+    queryFn: async () => {
+      try {
+        const res = await hubinApi.getPenempatan({
+          limit: 150,
+          tahun_pelajaran_id: selectedTpFilter || undefined,
+          pembimbing_id: propGuruId || undefined,
+          kelas_id: effectiveKelasId || undefined,
+          jurusan_id: effectiveJurusanId || undefined,
+        });
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) return res;
+      } catch (err) {
+        console.error('Error fetching penempatan in AbsensiPklView:', err);
+      }
+      if (propGuruId) {
+        try {
+          const myRes = await hubinApi.getMyPenempatan();
+          if (myRes?.data && Array.isArray(myRes.data) && myRes.data.length > 0) return myRes;
+        } catch { /* fallback */ }
+      }
+      return { data: [] };
+    },
     enabled: isEnabled && !isStudent
   });
 
@@ -759,6 +777,7 @@ export const AbsensiPklView: React.FC<UniversalAbsensiPklViewProps> = React.memo
                   onTpChange={setSelectedTpFilter}
                   tpOptions={tpOptions}
                   hideScopeBanner={isModal || hideScopeBanner}
+                  hideHeaderStats={hideHeaderStats}
                   defaultScopeFilter={propGuruId ? 'MY_GUIDANCE' : undefined}
                 />
               </Suspense>
