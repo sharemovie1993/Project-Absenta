@@ -22,6 +22,9 @@ import { SectionCard, Button, Input, Badge, Loader } from '@/components/ui';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
 const Table = lazy(() => import('@/components/ui/Table').then(m => ({ default: m.Table })));
+const RekapPresensiPklPrintModal = lazy(() =>
+  import('./RekapPresensiPklPrintModal').then(m => ({ default: m.RekapPresensiPklPrintModal }))
+);
 
 export interface UniversalRekapAbsensiPklViewProps {
   guruId?: string;
@@ -60,6 +63,7 @@ export const RekapAbsensiPklView: React.FC<UniversalRekapAbsensiPklViewProps> = 
   const [bulan, setBulan] = useState<string>(initialBulan || toLocalMonth());
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [viewMode, setViewMode] = useState<ViewMode>('MATRIX');
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false);
 
   // Days in month calculation
   const daysInMonth = useMemo(() => {
@@ -207,10 +211,7 @@ export const RekapAbsensiPklView: React.FC<UniversalRekapAbsensiPklViewProps> = 
       toast.error('Tidak ada data untuk dicetak');
       return;
     }
-    toast.success('Membuka jendela cetak...');
-    setTimeout(() => {
-      window.print();
-    }, 500);
+    setIsPrintModalOpen(true);
   }, [filteredRows]);
 
   const content = (
@@ -393,6 +394,22 @@ export const RekapAbsensiPklView: React.FC<UniversalRekapAbsensiPklViewProps> = 
           </div>
         )}
       </div>
+
+      {/* Official Skill Document Modal (True WYSIWYG & Browser Print) */}
+      {isPrintModalOpen && (
+        <Suspense fallback={null}>
+          <RekapPresensiPklPrintModal
+            isOpen={isPrintModalOpen}
+            onClose={() => setIsPrintModalOpen(false)}
+            bulan={bulan}
+            tahunPelajaran={propTpId}
+            pembimbingNama={propGuruNama}
+            viewMode={viewMode}
+            rows={filteredRows}
+            dayNumbers={dayNumbers}
+          />
+        </Suspense>
+      )}
     </div>
   );
 
