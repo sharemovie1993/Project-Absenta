@@ -62,6 +62,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedDetailSiswa, setSelectedDetailSiswa] = useState<SiswaBimbinganItem | null>(null);
+  const [modalInitialTab, setModalInitialTab] = useState<'presensi' | 'logbook'>('presensi');
 
   // Active Tab State
   const [activeTab, setActiveTab] = useState<PklTabId>(() => (subtabParam && validTabs.includes(subtabParam) ? subtabParam : 'ringkasan'));
@@ -174,6 +175,28 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
 
     return { stats: computedStats, siswaList: mappedSiswa, logbookList: realLogbooks, kunjunganList: dummyVisits };
   }, [penempatanRes]);
+
+  const selectedRawSiswa = useMemo(() => {
+    if (!selectedDetailSiswa) return null;
+    const rawList: SiswaPkl[] = Array.isArray(penempatanRes) ? penempatanRes : (penempatanRes as any)?.data || [];
+    const found = rawList.find((r) => r.id === selectedDetailSiswa.id);
+    if (found) return found;
+    return {
+      id: selectedDetailSiswa.id,
+      siswa_id: selectedDetailSiswa.siswa_id,
+      Siswa: {
+        id: selectedDetailSiswa.siswa_id,
+        nama_siswa: selectedDetailSiswa.nama_siswa,
+        nis: selectedDetailSiswa.nis,
+        foto: (selectedDetailSiswa as any)?.foto,
+        Kelas: { nama_kelas: selectedDetailSiswa.kelas },
+      },
+      Mitra: {
+        id: selectedDetailSiswa.mitra_id,
+        nama: selectedDetailSiswa.nama_mitra,
+      },
+    };
+  }, [selectedDetailSiswa, penempatanRes]);
 
   // Navigation Items
   const navTabs: PklNavTabItem[] = useMemo(
@@ -362,7 +385,10 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                       tpTahun={tpTahun}
                       semesterNama={semesterNama}
                       onSelectTab={handleTabSelect}
-                      onOpenSiswaDetail={(s) => setSelectedDetailSiswa(s)}
+                      onOpenSiswaDetail={(s) => {
+                        setModalInitialTab('presensi');
+                        setSelectedDetailSiswa(s);
+                      }}
                     />
                   </div>
                 )}
@@ -375,7 +401,10 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                       tahunPelajaranId={tpId}
                       semesterId={academicFilter.values.semesterId}
                       siswaList={siswaList}
-                      onOpenSiswaDetail={(s) => setSelectedDetailSiswa(s)}
+                      onOpenSiswaDetail={(s) => {
+                        setModalInitialTab('presensi');
+                        setSelectedDetailSiswa(s);
+                      }}
                       onOpenKunjunganModal={() => handleTabSelect('monitoring')}
                     />
                   </div>
@@ -427,7 +456,10 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                       onRejectLogbook={handleRejectLogbook}
                       onOpenSiswaDetail={(pId) => {
                         const target = siswaList.find((s) => s.id === pId);
-                        if (target) setSelectedDetailSiswa(target);
+                        if (target) {
+                          setModalInitialTab('logbook');
+                          setSelectedDetailSiswa(target);
+                        }
                       }}
                     />
                   </div>
@@ -469,13 +501,13 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
         </div>
 
         {/* Modal Drill-Down Detail Siswa */}
-        {selectedDetailSiswa && (
+        {selectedDetailSiswa && selectedRawSiswa && (
           <Suspense fallback={null}>
             <SiswaBimbinganDetailModal
               isOpen={Boolean(selectedDetailSiswa)}
               onClose={() => setSelectedDetailSiswa(null)}
-              siswaPklId={selectedDetailSiswa.id}
-              canEdit={true}
+              siswaPkl={selectedRawSiswa}
+              initialTab={modalInitialTab}
             />
           </Suspense>
         )}
