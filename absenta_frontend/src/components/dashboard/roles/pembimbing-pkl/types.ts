@@ -1,6 +1,14 @@
 import { LucideIcon } from 'lucide-react';
 
-export type PklTabId = 'ringkasan' | 'bimbingan' | 'absensi' | 'jurnal' | 'monitoring' | 'penilaian' | 'rekap';
+export type PklTabId =
+  | 'ringkasan'
+  | 'bimbingan'
+  | 'verifikasi_absensi'
+  | 'absensi'
+  | 'jurnal'
+  | 'monitoring'
+  | 'penilaian'
+  | 'rekap';
 
 export interface PklNavTabItem {
   id: PklTabId;
@@ -48,6 +56,7 @@ export interface PklDashboardStats {
   siswa_aktif: number;
   siswa_selesai: number;
   total_mitra_industri: number;
+  absensi_pending_verification?: number;
   jurnal_pending_review: number;
   total_kunjungan_terlaksana: number;
   persentase_dinilai: number;

@@ -82,6 +82,8 @@ export interface UniversalAbsensiPklViewProps {
   hideHeaderStats?: boolean;
   hideScopeBanner?: boolean;
   readOnly?: boolean;
+  forcedSubTab?: 'HARIAN' | 'REKAP_BULANAN';
+  hideSubTabSwitcher?: boolean;
 
   // Initial Context
   initialTpId?: string;
@@ -102,6 +104,8 @@ export const AbsensiPklView: React.FC<UniversalAbsensiPklViewProps> = React.memo
   hideHeaderStats = false,
   hideScopeBanner = false,
   readOnly = false,
+  forcedSubTab,
+  hideSubTabSwitcher = false,
   initialTpId,
   onClose,
 }) => {
@@ -152,6 +156,7 @@ export const AbsensiPklView: React.FC<UniversalAbsensiPklViewProps> = React.memo
 
   // -- Local State --
   const [adminSubTab, setAdminSubTab] = useState<'HARIAN' | 'REKAP_BULANAN'>('HARIAN');
+  const effectiveAdminSubTab = forcedSubTab || adminSubTab;
   const [location, setLocation] = useState<{ lat: number; lng: number; accuracy?: number } | null>(null);
   const [isSpoofedLocation, setIsSpoofedLocation] = useState(false);
   const [kegiatan, setKegiatan] = useState('');
@@ -691,36 +696,38 @@ export const AbsensiPklView: React.FC<UniversalAbsensiPklViewProps> = React.memo
         ) : (
           <div className="space-y-4">
             {/* Dual Sub-Tab Switcher for Management */}
-            <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-2 shadow-xs">
-              <div className="inline-flex items-center p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
-                <button
-                  type="button"
-                  onClick={() => setAdminSubTab('HARIAN')}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                    adminSubTab === 'HARIAN'
-                      ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                >
-                  <Clock size={14} />
-                  <span>Verifikasi Harian</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAdminSubTab('REKAP_BULANAN')}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                    adminSubTab === 'REKAP_BULANAN'
-                      ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                >
-                  <Calendar size={14} />
-                  <span>Rekap Bulanan (Matriks)</span>
-                </button>
+            {!hideSubTabSwitcher && !forcedSubTab && (
+              <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-2 shadow-xs">
+                <div className="inline-flex items-center p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
+                  <button
+                    type="button"
+                    onClick={() => setAdminSubTab('HARIAN')}
+                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                      effectiveAdminSubTab === 'HARIAN'
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <Clock size={14} />
+                    <span>Verifikasi Harian</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdminSubTab('REKAP_BULANAN')}
+                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                      effectiveAdminSubTab === 'REKAP_BULANAN'
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <Calendar size={14} />
+                    <span>Rekap Bulanan (Matriks)</span>
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
-            {adminSubTab === 'HARIAN' ? (
+            {effectiveAdminSubTab === 'HARIAN' ? (
               <Suspense fallback={<div className="flex justify-center p-8"><Loader size="lg" /></div>}>
                 <HubinManagementView
                   rawPenempatan={rawPenempatan}

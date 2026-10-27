@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Briefcase, Users, Clock, Calendar, CalendarCheck, Award, Printer,
-  ArrowLeft, SlidersHorizontal, RefreshCw, Building2, CheckCircle2, ChevronRight, UserCheck,
+  ArrowLeft, SlidersHorizontal, RefreshCw, Building2, CheckCircle2, ChevronRight, UserCheck, ShieldCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -26,6 +26,10 @@ import { PklRekapTab } from './pembimbing-pkl/tabs/PklRekapTab';
 
 const AbsensiPklView = lazy(() =>
   import('@/components/hubin/absensi/AbsensiPklView').then((m) => ({ default: m.AbsensiPklView }))
+);
+
+const RekapAbsensiPklView = lazy(() =>
+  import('@/components/hubin/absensi/RekapAbsensiPklView').then((m) => ({ default: m.RekapAbsensiPklView }))
 );
 
 const SiswaBimbinganDetailModal = lazy(() =>
@@ -51,7 +55,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
   const [searchParams, setSearchParams] = useSearchParams();
   const subtabParam = searchParams.get('subtab') as PklTabId | null;
 
-  const validTabs: PklTabId[] = ['ringkasan', 'bimbingan', 'absensi', 'jurnal', 'monitoring', 'penilaian', 'rekap'];
+  const validTabs: PklTabId[] = ['ringkasan', 'bimbingan', 'verifikasi_absensi', 'absensi', 'jurnal', 'monitoring', 'penilaian', 'rekap'];
 
   // Mobile Filter Collapsible State
   const [showMobileFilter, setShowMobileFilter] = useState(false);
@@ -119,22 +123,12 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
   const { data: penempatanRes, isLoading, refetch: refetchPenempatan } = useQuery({
     queryKey: ['hubin-penempatan-pembimbing', guruId, tpId],
     queryFn: async () => {
-      // Coba ambil penempatan spesifik pembimbing
       try {
-        const res = await hubinApi.getPenempatan({
-          pembimbing_id: guruId,
-          tahun_pelajaran_id: tpId,
-          limit: 100,
-        });
+        const res = await hubinApi.getPenempatan({ pembimbing_id: guruId, tahun_pelajaran_id: tpId, limit: 100 });
         if (res?.data && Array.isArray(res.data) && res.data.length > 0) return res.data;
-      } catch {
-        // Fallback to my penempatan
-      }
+      } catch { /* Fallback to my penempatan */ }
       const myRes = await hubinApi.getMyPenempatan().catch(() => ({ data: [] }));
-      const list = myRes?.data;
-      if (Array.isArray(list) && list.length > 0) return list;
-      
-      // Fallback umum bila pembimbing admin / koordinator
+      if (Array.isArray(myRes?.data) && myRes.data.length > 0) return myRes.data;
       const allRes = await hubinApi.getPenempatan({ limit: 50 }).catch(() => ({ data: [] }));
       return allRes?.data || [];
     },
@@ -154,15 +148,11 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
 
   // Compute Stats & Data Model
   const { stats, siswaList, kunjunganList } = useMemo(() => {
-    const rawList: SiswaPkl[] = Array.isArray(penempatanRes)
-      ? penempatanRes
-      : (penempatanRes as any)?.data || [];
+    const rawList: SiswaPkl[] = Array.isArray(penempatanRes) ? penempatanRes : (penempatanRes as any)?.data || [];
 
     const mappedSiswa: SiswaBimbinganItem[] = rawList.map((p) => {
       const s = p.Siswa || ({} as any);
       const m = p.Mitra || ({} as any);
-      const k = p.kunjungan_json || [];
-
       return {
         id: p.id,
         siswa_id: p.siswa_id,
@@ -199,11 +189,17 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
       },
     ];
 
+    const pendingAbsensiCount = rawList.reduce((sum, p: any) => {
+      const absList = p.AbsensiPkl || [];
+      return sum + absList.filter((a: any) => !a.is_verified).length;
+    }, 0);
+
     const computedStats: PklDashboardStats = {
       total_siswa_bimbingan: mappedSiswa.length,
       siswa_aktif: activeCount,
       siswa_selesai: completedCount,
       total_mitra_industri: uniqueMitra.size,
+      absensi_pending_verification: pendingAbsensiCount,
       jurnal_pending_review: mappedSiswa.filter((s) => (s.jurnal_pending_count || 0) > 0).length,
       total_kunjungan_terlaksana: 4,
       persentase_dinilai: 75,
@@ -219,13 +215,14 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
     () => [
       { id: 'ringkasan', label: 'Ringkasan Beranda', shortLabel: 'Beranda', icon: Briefcase },
       { id: 'bimbingan', label: 'Siswa Bimbingan', shortLabel: 'Bimbingan', icon: Users, badge: stats.total_siswa_bimbingan },
-      { id: 'absensi', label: 'Presensi Siswa', shortLabel: 'Presensi', icon: CalendarCheck },
+      { id: 'verifikasi_absensi', label: 'Verifikasi Absensi', shortLabel: 'Verif Absen', icon: ShieldCheck, badge: stats.absensi_pending_verification },
+      { id: 'absensi', label: 'Rekap Presensi', shortLabel: 'Presensi', icon: CalendarCheck },
       { id: 'jurnal', label: 'Verifikasi Jurnal', shortLabel: 'Jurnal', icon: Clock, badge: stats.jurnal_pending_review },
       { id: 'monitoring', label: 'Supervisi DU/DI', shortLabel: 'Supervisi', icon: Calendar },
       { id: 'penilaian', label: 'Penilaian Magang', shortLabel: 'Nilai', icon: Award },
       { id: 'rekap', label: 'Cetak Dokumen', shortLabel: 'Cetak', icon: Printer },
     ],
-    [stats.total_siswa_bimbingan, stats.jurnal_pending_review]
+    [stats.total_siswa_bimbingan, stats.absensi_pending_verification, stats.jurnal_pending_review]
   );
 
   const activeTabMeta = useMemo(() => {
@@ -304,24 +301,16 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                   <UserCheck size={18} />
                 </div>
                 <div className="min-w-0">
-                  <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">
-                    {user?.full_name || 'Guru Pembimbing'}
-                  </h4>
-                  <p className="text-[10px] text-teal-600 dark:text-teal-400 font-bold truncate">
-                    Pembimbing PKL
-                  </p>
+                  <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">{user?.full_name || 'Guru Pembimbing'}</h4>
+                  <p className="text-[10px] text-teal-600 dark:text-teal-400 font-bold truncate">Pembimbing PKL</p>
                 </div>
               </div>
 
               {/* Status Banner */}
               <div className="p-2.5 rounded-xl bg-teal-50/70 dark:bg-teal-950/40 border border-teal-100 dark:border-teal-900/40 text-[11px] text-teal-900 dark:text-teal-300">
-                <span className="font-bold block text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">
-                  Tahun Pelajaran
-                </span>
+                <span className="font-bold block text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Tahun Pelajaran</span>
                 <span className="font-extrabold">{tpTahun || '2026/2027'}</span>
-                <span className="text-[10px] text-teal-700/80 dark:text-teal-400/80 block mt-0.5">
-                  {semesterNama || 'Semester Ganjil'}
-                </span>
+                <span className="text-[10px] text-teal-700/80 dark:text-teal-400/80 block mt-0.5">{semesterNama || 'Semester Ganjil'}</span>
               </div>
 
               {/* Vertical Tab Navigation */}
@@ -416,10 +405,10 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                   </div>
                 )}
 
-                {/* 2b. Presensi Siswa Bimbingan (Verifikasi Harian & Rekap Matriks) */}
-                {visitedTabs.has('absensi') && (
-                  <div className={cn(activeTab === 'absensi' ? 'block' : 'hidden')}>
-                    <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400">Memuat presensi siswa bimbingan...</div>}>
+                {/* 2b. Verifikasi Absensi PKL Harian */}
+                {visitedTabs.has('verifikasi_absensi') && (
+                  <div className={cn(activeTab === 'verifikasi_absensi' ? 'block' : 'hidden')}>
+                    <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400">Memuat verifikasi absensi bimbingan...</div>}>
                       <AbsensiPklView
                         guruId={guruId}
                         guruNama={user?.full_name || (user as any)?.name || user?.guru_profile?.nama_lengkap}
@@ -427,7 +416,25 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                         hideLayout={true}
                         hideScopeBanner={true}
                         hideHeaderStats={true}
+                        forcedSubTab="HARIAN"
+                        hideSubTabSwitcher={true}
                         isModal={false}
+                      />
+                    </Suspense>
+                  </div>
+                )}
+
+                {/* 2c. Rekap Matriks Presensi PKL */}
+                {visitedTabs.has('absensi') && (
+                  <div className={cn(activeTab === 'absensi' ? 'block' : 'hidden')}>
+                    <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400">Memuat matriks presensi bimbingan...</div>}>
+                      <RekapAbsensiPklView
+                        guruId={guruId}
+                        guruNama={user?.full_name || (user as any)?.name || user?.guru_profile?.nama_lengkap}
+                        tahunPelajaranId={tpId}
+                        semesterId={academicFilter.values.semesterId}
+                        hideLayout={true}
+                        className="w-full"
                       />
                     </Suspense>
                   </div>

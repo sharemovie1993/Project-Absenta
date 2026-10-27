@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Calendar,
   CalendarCheck,
+  ShieldCheck,
   Award,
   Printer,
   ChevronRight,
@@ -96,6 +97,14 @@ export const PklRingkasanTab: React.FC<PklRingkasanTabProps> = ({
         onClick: () => onSelectTab('bimbingan'),
       },
       {
+        id: 'act-verif-absensi',
+        label: 'Verifikasi Absensi',
+        icon: ShieldCheck,
+        iconColorClass: 'text-blue-600 dark:text-blue-400',
+        badge: (stats.absensi_pending_verification ?? 0) > 0 ? stats.absensi_pending_verification : undefined,
+        onClick: () => onSelectTab('verifikasi_absensi'),
+      },
+      {
         id: 'act-absensi',
         label: 'Rekap Presensi',
         icon: CalendarCheck,
@@ -132,7 +141,7 @@ export const PklRingkasanTab: React.FC<PklRingkasanTabProps> = ({
         onClick: () => onSelectTab('rekap'),
       },
     ],
-    [stats.jurnal_pending_review, onSelectTab]
+    [stats.absensi_pending_verification, stats.jurnal_pending_review, onSelectTab]
   );
 
   const siswaList = stats.siswa_bimbingan_list || [];
