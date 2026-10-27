@@ -20,6 +20,7 @@ import { exportDataToExcel } from '@/utils/export.utils';
 import { useRekapPklColumns, type ViewMode } from './rekapPklColumns';
 import { SectionCard, Button, Input, Badge, Loader } from '@/components/ui';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useTahunPelajaranOptions } from '@/hooks/useTahunPelajaranOptions';
 
 const Table = lazy(() => import('@/components/ui/Table').then(m => ({ default: m.Table })));
 const RekapPresensiPklPrintModal = lazy(() =>
@@ -73,6 +74,16 @@ export const RekapAbsensiPklView: React.FC<UniversalRekapAbsensiPklViewProps> = 
   }, [bulan]);
 
   const dayNumbers = useMemo(() => Array.from({ length: daysInMonth }, (_, i) => i + 1), [daysInMonth]);
+
+  // Resolving Tahun Pelajaran ke label human-readable
+  const { rawList: tpList, activeYear } = useTahunPelajaranOptions();
+  const currentTpLabel = useMemo(() => {
+    if (propTpId) {
+      const match = tpList.find((tp) => tp.id === propTpId);
+      if (match?.tahun) return match.tahun;
+    }
+    return activeYear?.tahun || '';
+  }, [propTpId, tpList, activeYear]);
 
   // Main Data Query
   const { data: responseData, isLoading, refetch, isFetching } = useQuery({
@@ -402,7 +413,7 @@ export const RekapAbsensiPklView: React.FC<UniversalRekapAbsensiPklViewProps> = 
             isOpen={isPrintModalOpen}
             onClose={() => setIsPrintModalOpen(false)}
             bulan={bulan}
-            tahunPelajaran={propTpId}
+            tahunPelajaran={currentTpLabel || propTpId}
             pembimbingId={propGuruId}
             pembimbingNama={propGuruNama}
             viewMode={viewMode}

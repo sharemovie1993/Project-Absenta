@@ -11,8 +11,9 @@ import { jsPDF } from 'jspdf';
 import { toast } from 'react-hot-toast';
 import { SlidersHorizontal, UserCheck, RotateCcw, X } from 'lucide-react';
 import type { RekapBulananPklRow } from '@/api/hubin.api';
-import { getStrukturTree } from '@/api/academic/strukturOrganisasi.api';
 import { guruApi } from '@/api/academic.api';
+import { useTahunPelajaranOptions } from '@/hooks/useTahunPelajaranOptions';
+import { usePklMatriksSigners } from '../nilai-pkl/usePklMatriksSigners';
 import type { ViewMode } from './rekapPklColumns';
 
 export interface RekapPresensiPklPrintModalProps {
@@ -55,15 +56,13 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
   // 1. Hook SSOT Kop Surat Dinas & Sekolah
   const { tenantInfo, rawSekolah } = usePrintHeaderData();
 
-  // 2. Query Live Struktur Organisasi Tree
-  const { data: treeRes } = useQuery({
-    queryKey: ['struktur-organisasi-tree-print-live'],
-    queryFn: () => getStrukturTree().catch(() => null),
-    staleTime: 10 * 60 * 1000,
-    enabled: isOpen,
-  });
+  // 2. Hook SSOT Struktur Organisasi (Waka Hubin & Kepala Sekolah)
+  const autoSigners = usePklMatriksSigners(undefined, jurusanNama);
 
-  // 3. Query Live Guru List untuk sinkronisasi NIP
+  // 3. Hook SSOT Master Tahun Pelajaran (Resolving UUID ke Human-Readable Label)
+  const { rawList: tpList, activeYear } = useTahunPelajaranOptions();
+
+  // 4. Query Live Guru List untuk sinkronisasi NIP Guru Pembimbing
   const { data: guruListRes } = useQuery({
     queryKey: ['guru-list-for-ttd-print'],
     queryFn: () => guruApi.getAll({ limit: 200 }).catch(() => null),
@@ -71,72 +70,31 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
     enabled: isOpen,
   });
 
-  const rawPositions: any[] = useMemo(() => {
-    const d = treeRes?.data;
-    if (Array.isArray(d)) return d;
-    if (d && typeof d === 'object') {
-      const all: any[] = [];
-      Object.values(d).forEach((v) => {
-        if (Array.isArray(v)) all.push(...v);
-      });
-      return all;
-    }
-    return [];
-  }, [treeRes]);
-
   const guruList: any[] = useMemo(() => {
     return guruListRes?.data || [];
   }, [guruListRes]);
 
   // Resolving Penandatangan Otomatis dari Database Riil (Tanpa Mock/Fallback Dummy)
   const resolvedSigners = useMemo(() => {
-    // A. Kepala Sekolah
-    let resolvedKepsekNama = '';
-    let resolvedKepsekNip = '';
-
-    const kepsekPos = rawPositions.find(
-      (p) => p.code === 'KEPALA_SEKOLAH' || p.name?.toLowerCase().includes('kepala sekolah')
-    );
-    const activeKepsekAssign = kepsekPos?.organizationalAssigns?.find((a: any) => a.is_active);
-    if (activeKepsekAssign?.User) {
-      resolvedKepsekNama = activeKepsekAssign.User.Guru?.nama_guru || activeKepsekAssign.User.name || '';
-      resolvedKepsekNip = activeKepsekAssign.User.Guru?.nip || '';
-    } else if (rawSekolah?.kepala_sekolah) {
-      resolvedKepsekNama = rawSekolah.kepala_sekolah;
-      resolvedKepsekNip = (rawSekolah as any).nip_kepala || (rawSekolah as any).nip_kepala_sekolah || '';
-    } else if ((tenantInfo as any)?.nama_kepsek || (tenantInfo as any)?.kepala_sekolah) {
-      resolvedKepsekNama = (tenantInfo as any).nama_kepsek || (tenantInfo as any).kepala_sekolah || '';
-      resolvedKepsekNip = (tenantInfo as any).nip_kepsek || '';
-    }
-
-    // B. Waka Hubin (Struktur Kode: HUBIN)
+    // A. Waka Hubin (Struktur Organisasi kode: HUBIN)
     let resolvedHubinTitle = 'Waka. Bidang Hubungan Industri';
     let resolvedHubinNama = '';
     let resolvedHubinNip = '';
 
-    const hubinPos =
-      rawPositions.find((p) => p.code === 'HUBIN') ||
-      rawPositions.find(
-        (p) =>
-          p.code === 'WAKA_HUBIN' ||
-          p.code?.includes('HUBIN') ||
-          p.name?.toLowerCase().includes('waka hubin') ||
-          p.name?.toLowerCase().includes('hubin')
-      );
-    if (hubinPos) {
-      if (hubinPos.name && !hubinPos.name.includes('& Staf')) {
-        resolvedHubinTitle = hubinPos.name;
-      } else {
-        resolvedHubinTitle = 'Waka. Bidang Hubungan Industri';
-      }
-      const activeHubinAssign = hubinPos.organizationalAssigns?.find((a: any) => a.is_active);
-      if (activeHubinAssign?.User) {
-        resolvedHubinNama = activeHubinAssign.User.Guru?.nama_guru || activeHubinAssign.User.name || '';
-        resolvedHubinNip = activeHubinAssign.User.Guru?.nip || '';
+    if (autoSigners?.wakasekHubin?.isAssigned) {
+      resolvedHubinNama = autoSigners.wakasekHubin.nama;
+      resolvedHubinNip =
+        autoSigners.wakasekHubin.nip && autoSigners.wakasekHubin.nip !== '-'
+          ? autoSigners.wakasekHubin.nip
+          : '';
+      if (autoSigners.wakasekHubin.jabatan) {
+        resolvedHubinTitle =
+          autoSigners.wakasekHubin.jabatan.replace(/\s*&\s*Staf/i, '').trim() ||
+          'Waka. Bidang Hubungan Industri';
       }
     }
 
-    // C. Guru Pembimbing PKL
+    // B. Guru Pembimbing PKL
     let resolvedPembimbingNama = propPembimbingNama || '';
     let resolvedPembimbingNip = propPembimbingNip || '';
 
@@ -165,6 +123,24 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
       }
     }
 
+    // C. Kepala Sekolah
+    let resolvedKepsekNama = '';
+    let resolvedKepsekNip = '';
+
+    if (autoSigners?.kepsek?.isAssigned) {
+      resolvedKepsekNama = autoSigners.kepsek.nama;
+      resolvedKepsekNip =
+        autoSigners.kepsek.nip && autoSigners.kepsek.nip !== '-'
+          ? autoSigners.kepsek.nip
+          : '';
+    } else if (rawSekolah?.kepala_sekolah) {
+      resolvedKepsekNama = rawSekolah.kepala_sekolah;
+      resolvedKepsekNip = (rawSekolah as any).nip_kepala || (rawSekolah as any).nip_kepala_sekolah || '';
+    } else if ((tenantInfo as any)?.nama_kepsek || (tenantInfo as any)?.kepala_sekolah) {
+      resolvedKepsekNama = (tenantInfo as any).nama_kepsek || (tenantInfo as any).kepala_sekolah || '';
+      resolvedKepsekNip = (tenantInfo as any).nip_kepsek || '';
+    }
+
     // D. Kota Sekolah
     const resolvedKota =
       rawSekolah?.kota ||
@@ -190,7 +166,7 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
       kota: resolvedKota,
       tanggal: resolvedTanggal,
     };
-  }, [rawPositions, guruList, rawSekolah, tenantInfo, propPembimbingNama, propPembimbingNip, pembimbingId, rows]);
+  }, [autoSigners, guruList, rawSekolah, tenantInfo, propPembimbingNama, propPembimbingNip, pembimbingId, rows]);
 
   // Form State Penandatangan (Dapat disesuaikan sementara oleh pengguna via drawer)
   const [hubinTitle, setHubinTitle] = useState('');
@@ -242,6 +218,17 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
     }
     return bulan;
   }, [bulan]);
+
+  // Resolving Tahun Pelajaran dari UUID ke Label Human-Readable (e.g. 2025/2026)
+  const resolvedTahunPelajaran = useMemo(() => {
+    if (!tahunPelajaran) return activeYear?.tahun || '';
+    if (/^[0-9a-f-]{36}$/i.test(tahunPelajaran)) {
+      const match = tpList.find((tp) => tp.id === tahunPelajaran);
+      if (match?.tahun) return match.tahun;
+      return activeYear?.tahun || '';
+    }
+    return tahunPelajaran;
+  }, [tahunPelajaran, tpList, activeYear]);
 
   const resolvedDays = useMemo(() => {
     if (dayNumbers && dayNumbers.length > 0) return dayNumbers;
@@ -378,7 +365,7 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                  Waka Hubin (Sisi Kiri - HUBIN)
+                  {hubinTitle || 'Waka Hubin'} (Sisi Kiri - HUBIN)
                 </label>
                 <input
                   type="text"
@@ -460,7 +447,7 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
                 LAPORAN REKAPITULASI PRESENSI PRAKTIK KERJA LAPANGAN (PKL)
               </h2>
               <p className="text-xs font-semibold text-slate-800 mt-0.5">
-                Periode: {bulanFormatted} {tahunPelajaran ? `• Tahun Pelajaran ${tahunPelajaran}` : ''}
+                Periode: {bulanFormatted} {resolvedTahunPelajaran ? `• Tahun Pelajaran ${resolvedTahunPelajaran}` : ''}
               </p>
               {activePembimbingNama && (
                 <p className="text-[11px] text-slate-700 mt-0.5">

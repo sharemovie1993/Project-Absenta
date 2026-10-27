@@ -151,7 +151,9 @@ export const usePklMatriksSigners = (
         hubinPerson = {
           nama: m.name,
           nip: cleanNip(m.details),
-          jabatan: activeHubinNode.nama || 'Wakil Kepala Sekolah Bidang Hubinmas',
+          jabatan: activeHubinNode.nama
+            ? activeHubinNode.nama.replace(/\s*&\s*Staf/i, '').trim()
+            : 'Wakil Kepala Sekolah Bidang Hubinmas',
           isAssigned: true,
         };
       }
