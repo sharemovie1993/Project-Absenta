@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Flame,
   Sparkles,
+  Briefcase,
 } from 'lucide-react';
 import { renderApiValue } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -33,6 +34,7 @@ import { SiswaHeaderBanner } from './siswa/components/SiswaHeaderBanner';
 
 // Subtabs
 import { SiswaRingkasanTab } from './siswa/tabs/SiswaRingkasanTab';
+import { SiswaPklTab } from './siswa/tabs/SiswaPklTab';
 import { SiswaKehadiranTab } from './siswa/tabs/SiswaKehadiranTab';
 import { SiswaCatatanTab } from './siswa/tabs/SiswaCatatanTab';
 import { SiswaBerkasTab } from './siswa/tabs/SiswaBerkasTab';
@@ -180,17 +182,27 @@ export const SiswaDashboard: React.FC = () => {
   }, [data.siswaProfile, data.user]);
 
   // Tab items config
-  const navTabs: SiswaNavTabItem[] = useMemo(
-    () => [
+  const navTabs: SiswaNavTabItem[] = useMemo(() => {
+    const tabs: SiswaNavTabItem[] = [
       { id: 'ringkasan', label: 'Ringkasan Beranda', icon: LayoutList },
+    ];
+    if (data.isAktifPkl || data.myPenempatan) {
+      tabs.push({
+        id: 'pkl',
+        label: 'Ruang PKL',
+        icon: Briefcase,
+        badge: data.pendingJurnalCount > 0 ? data.pendingJurnalCount : undefined,
+      });
+    }
+    tabs.push(
       { id: 'kehadiran', label: 'Presensi & KBM', icon: CheckCircle2 },
       { id: 'catatan', label: 'Catatan Kedisiplinan', icon: FileText, badge: data.pelanggaranCount },
       { id: 'berkas', label: 'Berkas Dokumen', icon: FolderOpen },
       { id: 'portal', label: 'Portal Aplikasi', icon: LayoutGrid },
-      { id: 'profil', label: 'Profil & Kartu', icon: User },
-    ],
-    [data.pelanggaranCount]
-  );
+      { id: 'profil', label: 'Profil & Kartu', icon: User }
+    );
+    return tabs;
+  }, [data.isAktifPkl, data.myPenempatan, data.pendingJurnalCount, data.pelanggaranCount]);
 
   const activeTabMeta = useMemo(() => {
     return navTabs.find((t) => t.id === activeTab) || navTabs[0];
@@ -422,6 +434,30 @@ export const SiswaDashboard: React.FC = () => {
                 onOpenKehadiranModal={() => setShowKehadiranModal(true)}
                 onOpenPklModal={handleOpenPklModal}
                 onNavigateTab={handleTabChange}
+              />
+            </div>
+          )}
+
+          {visitedTabs.has('pkl') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'pkl'}
+              className={cn('w-full min-w-0', activeTab === 'pkl' ? 'block' : 'hidden')}
+            >
+              <SiswaPklTab
+                myPenempatan={data.myPenempatan}
+                isAktifPkl={data.isAktifPkl}
+                todayPklAbsensi={data.todayPklAbsensi}
+                pklHadir={data.pklHadir}
+                pklSisaHari={data.pklSisaHari}
+                pendingJurnals={data.pendingJurnals}
+                pendingJurnalCount={data.pendingJurnalCount}
+                studentName={data.studentName}
+                className={data.currentClassName}
+                onRefreshData={() => {
+                  data.refetchPklAbsensi();
+                  data.refetchProfile();
+                }}
               />
             </div>
           )}

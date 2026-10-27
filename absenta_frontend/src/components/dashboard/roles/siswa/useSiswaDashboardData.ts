@@ -249,7 +249,7 @@ export function useSiswaDashboardData() {
 
   const { data: pklAbsensiDashboardRaw, refetch: refetchPklAbsensi } = useQuery({
     queryKey: ['pkl-absensi-dashboard', (myPenempatan as any)?.id],
-    queryFn: () => hubinApi.getAbsensi((myPenempatan as any).id, { limit: 5 }),
+    queryFn: () => hubinApi.getAbsensi((myPenempatan as any).id, { limit: 100 }),
     enabled: isAktifPkl && !!(myPenempatan as any)?.id,
     staleTime: 2 * 60 * 1000,
   });
@@ -258,6 +258,21 @@ export function useSiswaDashboardData() {
     const raw = pklAbsensiDashboardRaw;
     return Array.isArray((raw as any)?.data) ? (raw as any).data : [];
   }, [pklAbsensiDashboardRaw]);
+
+  const pendingJurnals = useMemo(() => {
+    return pklAbsensiHistory.filter((a: any) => {
+      if (a.status !== 'HADIR') return false;
+      if (!a.kegiatan || a.kegiatan.trim() === '' || a.kegiatan === '[]') return true;
+      try {
+        const parsed = JSON.parse(a.kegiatan);
+        return Array.isArray(parsed) && parsed.length === 0;
+      } catch {
+        return false;
+      }
+    });
+  }, [pklAbsensiHistory]);
+
+  const pendingJurnalCount = pendingJurnals.length;
 
   const todayPklAbsensi = useMemo(() => {
     const todayStr = todayIso;
@@ -802,6 +817,9 @@ export function useSiswaDashboardData() {
     refetchPklAbsensi,
     pklHadir,
     pklSisaHari,
+    pklAbsensiHistory,
+    pendingJurnals,
+    pendingJurnalCount,
     dailyRecap,
     monthlyRecap,
     gamification,
