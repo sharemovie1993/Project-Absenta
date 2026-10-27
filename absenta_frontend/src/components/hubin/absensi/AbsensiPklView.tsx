@@ -84,6 +84,7 @@ export interface UniversalAbsensiPklViewProps {
   readOnly?: boolean;
   forcedSubTab?: 'HARIAN' | 'REKAP_BULANAN';
   hideSubTabSwitcher?: boolean;
+  attendanceVerificationOnly?: boolean;
 
   // Initial Context
   initialTpId?: string;
@@ -106,6 +107,7 @@ export const AbsensiPklView: React.FC<UniversalAbsensiPklViewProps> = React.memo
   readOnly = false,
   forcedSubTab,
   hideSubTabSwitcher = false,
+  attendanceVerificationOnly = false,
   initialTpId,
   onClose,
 }) => {
@@ -778,6 +780,7 @@ export const AbsensiPklView: React.FC<UniversalAbsensiPklViewProps> = React.memo
                   tpOptions={tpOptions}
                   hideScopeBanner={isModal || hideScopeBanner}
                   hideHeaderStats={hideHeaderStats}
+                  attendanceVerificationOnly={attendanceVerificationOnly}
                   defaultScopeFilter={propGuruId ? 'MY_GUIDANCE' : undefined}
                 />
               </Suspense>

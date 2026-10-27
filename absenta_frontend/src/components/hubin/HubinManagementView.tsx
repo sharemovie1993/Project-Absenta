@@ -73,6 +73,7 @@ interface HubinManagementViewProps {
   tpOptions?: Array<{ value: string; label: string }>;
   hideScopeBanner?: boolean;
   hideHeaderStats?: boolean;
+  attendanceVerificationOnly?: boolean;
   defaultScopeFilter?: 'ALL' | 'MY_GUIDANCE';
 }
 
@@ -97,6 +98,7 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
   tpOptions,
   hideScopeBanner = false,
   hideHeaderStats = false,
+  attendanceVerificationOnly = false,
   defaultScopeFilter,
 }) => {
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
@@ -626,6 +628,7 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
 
                       {/* Action Group */}
                       <div className="flex items-center justify-end gap-2 shrink-0 lg:ml-auto">
+                        {!attendanceVerificationOnly && (
                         <Button
                           size="sm"
                           variant="ghost"
@@ -641,6 +644,7 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
                             <ChevronDown size={10} />
                           </div>
                         </Button>
+                        )}
 
                         {needsVerification && (
                           <Button
@@ -656,7 +660,7 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
                     </div>
 
                     {/* Expandable Content */}
-                    {isExpanded && (
+                    {!attendanceVerificationOnly && isExpanded && (
                       <div className="border-t border-slate-50 dark:border-slate-800/50 bg-slate-50/30 dark:bg-slate-950/5 animate-in fade-in slide-in-from-top-2 duration-300">
                         <div className="flex flex-col lg:flex-row p-4 lg:p-5 gap-6">
                           {/* Timeline Section */}

@@ -12,6 +12,7 @@ import {
   MessageSquare,
   Building2,
   Calendar,
+  ExternalLink,
 } from 'lucide-react';
 import { Badge, Button, Input } from '@/components/ui';
 import { toast } from 'react-hot-toast';
@@ -37,6 +38,7 @@ export interface PklJurnalTabProps {
   logbookList?: LogbookItem[];
   onApproveLogbook?: (logbookId: string) => Promise<void>;
   onRejectLogbook?: (logbookId: string, catatan: string) => Promise<void>;
+  onOpenSiswaDetail?: (penempatanId: string) => void;
 }
 
 export const PklJurnalTab: React.FC<PklJurnalTabProps> = ({
@@ -44,6 +46,7 @@ export const PklJurnalTab: React.FC<PklJurnalTabProps> = ({
   logbookList = [],
   onApproveLogbook,
   onRejectLogbook,
+  onOpenSiswaDetail,
 }) => {
   const [statusFilter, setStatusFilter] = useState<'SEMUA' | 'MENUNGGU_REVIEW' | 'DISETUJUI' | 'REVISI'>('MENUNGGU_REVIEW');
   const [searchTerm, setSearchTerm] = useState('');
@@ -51,33 +54,7 @@ export const PklJurnalTab: React.FC<PklJurnalTabProps> = ({
   const [catatanRevisi, setCatatanRevisi] = useState('');
   const [submittingId, setSubmittingId] = useState<string | null>(null);
 
-  // Fallback demo items if backend hasn't populated logbooks yet
-  const displayItems: LogbookItem[] = logbookList.length > 0 ? logbookList : [
-    {
-      id: 'demo-1',
-      penempatan_id: 'pen-1',
-      nama_siswa: siswaList[0]?.nama_siswa || 'Ahmad Rifai',
-      kelas: siswaList[0]?.kelas || 'XII TKJ 1',
-      nama_mitra: siswaList[0]?.nama_mitra || 'PT Telkom Indonesia',
-      tanggal: 'Hari ini, 08:30 WIB',
-      jam_masuk: '08:00',
-      jam_pulang: '16:30',
-      kegiatan: 'Melakukan instalasi rack server dan konfigurasi router mikrotik pada lab jaringan datacenter.',
-      status_verifikasi: 'MENUNGGU_REVIEW',
-    },
-    {
-      id: 'demo-2',
-      penempatan_id: 'pen-2',
-      nama_siswa: siswaList[1]?.nama_siswa || 'Budi Santoso',
-      kelas: siswaList[1]?.kelas || 'XII TKJ 2',
-      nama_mitra: siswaList[1]?.nama_mitra || 'PT Astra Honda Motor',
-      tanggal: 'Kemarin, 14:15 WIB',
-      jam_masuk: '07:30',
-      jam_pulang: '16:00',
-      kegiatan: 'Membantu proses preventive maintenance unit mesin CNC dan pengecekan sensor hidrolik.',
-      status_verifikasi: 'DISETUJUI',
-    },
-  ];
+  const displayItems: LogbookItem[] = logbookList;
 
   const filteredLogs = displayItems.filter((log) => {
     const matchStatus = statusFilter === 'SEMUA' || log.status_verifikasi === statusFilter;
@@ -221,9 +198,23 @@ export const PklJurnalTab: React.FC<PklJurnalTabProps> = ({
               </div>
 
               {/* Uraian Kegiatan Logbook */}
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-xs sm:text-sm text-slate-800 dark:text-slate-200 leading-relaxed">
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-xs sm:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-line">
                 {log.kegiatan}
               </div>
+
+              {log.image_url && (
+                <div className="pt-1">
+                  <a
+                    href={log.image_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                  >
+                    <ExternalLink size={12} />
+                    <span>Lihat Bukti Foto Kegiatan PKL ↗</span>
+                  </a>
+                </div>
+              )}
 
               {log.catatan_pembimbing && (
                 <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-xs text-rose-800 dark:text-rose-200">
@@ -232,7 +223,19 @@ export const PklJurnalTab: React.FC<PklJurnalTabProps> = ({
               )}
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-2 pt-1">
+              <div className="flex items-center justify-end gap-2 pt-1 flex-wrap">
+                {onOpenSiswaDetail && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onOpenSiswaDetail(log.penempatan_id)}
+                    className="text-xs font-bold rounded-xl h-8 gap-1.5 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 mr-auto"
+                    title="Buka seluruh histori kalender jurnal siswa ini"
+                  >
+                    <Eye size={14} />
+                    <span className="hidden sm:inline">Histori Lengkap</span>
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="outline"

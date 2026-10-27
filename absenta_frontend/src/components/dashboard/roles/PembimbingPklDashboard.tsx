@@ -23,6 +23,7 @@ import { PklJurnalTab } from './pembimbing-pkl/tabs/PklJurnalTab';
 import { PklMonitoringTab } from './pembimbing-pkl/tabs/PklMonitoringTab';
 import { PklPenilaianTab } from './pembimbing-pkl/tabs/PklPenilaianTab';
 import { PklRekapTab } from './pembimbing-pkl/tabs/PklRekapTab';
+import { extractLogbooksFromPenempatan, rejectLogbookAction, mapSiswaBimbingan } from './pembimbing-pkl/logbookUtils';
 
 const AbsensiPklView = lazy(() =>
   import('@/components/hubin/absensi/AbsensiPklView').then((m) => ({ default: m.AbsensiPklView }))
@@ -63,32 +64,16 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
   const [selectedDetailSiswa, setSelectedDetailSiswa] = useState<SiswaBimbinganItem | null>(null);
 
   // Active Tab State
-  const [activeTab, setActiveTab] = useState<PklTabId>(() => {
-    if (subtabParam && validTabs.includes(subtabParam)) {
-      return subtabParam;
-    }
-    return 'ringkasan';
-  });
+  const [activeTab, setActiveTab] = useState<PklTabId>(() => (subtabParam && validTabs.includes(subtabParam) ? subtabParam : 'ringkasan'));
+  const [visitedTabs, setVisitedTabs] = useState<Set<PklTabId>>(() => new Set([activeTab]));
 
-  // Keep-Alive Tab Cache
-  const [visitedTabs, setVisitedTabs] = useState<Set<PklTabId>>(
-    () => new Set([activeTab])
-  );
-
-  // Synchronize Tab with URL
+  // Synchronize Tab with URL & Keep-Alive Cache
   useEffect(() => {
-    if (subtabParam && validTabs.includes(subtabParam) && subtabParam !== activeTab) {
-      setActiveTab(subtabParam);
-    }
+    if (subtabParam && validTabs.includes(subtabParam) && subtabParam !== activeTab) setActiveTab(subtabParam);
   }, [subtabParam, activeTab]);
 
   useEffect(() => {
-    setVisitedTabs((prev) => {
-      if (prev.has(activeTab)) return prev;
-      const next = new Set(prev);
-      next.add(activeTab);
-      return next;
-    });
+    setVisitedTabs((prev) => (prev.has(activeTab) ? prev : new Set(prev).add(activeTab)));
   }, [activeTab]);
 
   const handleTabSelect = useCallback(
@@ -150,29 +135,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
   const { stats, siswaList, kunjunganList } = useMemo(() => {
     const rawList: SiswaPkl[] = Array.isArray(penempatanRes) ? penempatanRes : (penempatanRes as any)?.data || [];
 
-    const mappedSiswa: SiswaBimbinganItem[] = rawList.map((p) => {
-      const s = p.Siswa || ({} as any);
-      const m = p.Mitra || ({} as any);
-      return {
-        id: p.id,
-        siswa_id: p.siswa_id,
-        nama_siswa: s.nama_siswa || 'Siswa PKL',
-        nis: s.nis || '-',
-        kelas: s.Kelas?.nama_kelas || 'Kelas XII',
-        mitra_id: p.mitra_id,
-        nama_mitra: m.nama || 'Mitra Industri DU/DI',
-        alamat_mitra: m.alamat || '',
-        kontak_mitra: s.no_hp || '',
-        pembimbing_industri: p.Pembimbing?.nama_guru || 'Instruktur DU/DI',
-        tanggal_mulai: p.tanggal_mulai || '2026-07-15',
-        tanggal_selesai: p.tanggal_selesai || '2026-11-30',
-        status: p.status || 'AKTIF',
-        total_kehadiran: 45,
-        jurnal_pending_count: p.jurnal_json?.status === 'MENUNGGU_REVIEW' ? 1 : 0,
-        nilai_akhir: p.nilai_json?.nilai_akhir || null,
-        predikat: p.nilai_json?.predikat || '',
-      };
-    });
+    const mappedSiswa = mapSiswaBimbingan(rawList);
 
     const uniqueMitra = new Set(mappedSiswa.map((s) => s.nama_mitra));
     const activeCount = mappedSiswa.filter((s) => s.status === 'AKTIF').length;
@@ -194,20 +157,22 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
       return sum + absList.filter((a: any) => !a.is_verified).length;
     }, 0);
 
+    const realLogbooks = extractLogbooksFromPenempatan(rawList);
+
     const computedStats: PklDashboardStats = {
       total_siswa_bimbingan: mappedSiswa.length,
       siswa_aktif: activeCount,
       siswa_selesai: completedCount,
       total_mitra_industri: uniqueMitra.size,
       absensi_pending_verification: pendingAbsensiCount,
-      jurnal_pending_review: mappedSiswa.filter((s) => (s.jurnal_pending_count || 0) > 0).length,
+      jurnal_pending_review: realLogbooks.filter((l) => l.status_verifikasi === 'MENUNGGU_REVIEW').length,
       total_kunjungan_terlaksana: 4,
       persentase_dinilai: 75,
       siswa_bimbingan_list: mappedSiswa,
       kunjungan_terbaru: dummyVisits,
     };
 
-    return { stats: computedStats, siswaList: mappedSiswa, kunjunganList: dummyVisits };
+    return { stats: computedStats, siswaList: mappedSiswa, logbookList: realLogbooks, kunjunganList: dummyVisits };
   }, [penempatanRes]);
 
   // Navigation Items
@@ -228,6 +193,17 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
   const activeTabMeta = useMemo(() => {
     return navTabs.find((t) => t.id === activeTab) || navTabs[0];
   }, [navTabs, activeTab]);
+
+  const handleApproveLogbook = useCallback(async (id: string) => {
+    await hubinApi.verifyAbsensi(id);
+    queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-pembimbing'] });
+  }, [queryClient]);
+
+  const handleRejectLogbook = useCallback(async (id: string, notes: string) => {
+    const rawList: SiswaPkl[] = Array.isArray(penempatanRes) ? penempatanRes : (penempatanRes as any)?.data || [];
+    await rejectLogbookAction(rawList, id, notes);
+    queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-pembimbing'] });
+  }, [penempatanRes, queryClient]);
 
   return (
     <PremiumFeatureGate feature="hubin">
@@ -418,6 +394,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                         hideHeaderStats={false}
                         forcedSubTab="HARIAN"
                         hideSubTabSwitcher={true}
+                        attendanceVerificationOnly={true}
                         isModal={false}
                       />
                     </Suspense>
@@ -443,7 +420,16 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                 {/* 3. Verifikasi Jurnal Tab */}
                 {visitedTabs.has('jurnal') && (
                   <div className={cn(activeTab === 'jurnal' ? 'block' : 'hidden')}>
-                    <PklJurnalTab siswaList={siswaList} />
+                    <PklJurnalTab
+                      siswaList={siswaList}
+                      logbookList={logbookList}
+                      onApproveLogbook={handleApproveLogbook}
+                      onRejectLogbook={handleRejectLogbook}
+                      onOpenSiswaDetail={(pId) => {
+                        const target = siswaList.find((s) => s.id === pId);
+                        if (target) setSelectedDetailSiswa(target);
+                      }}
+                    />
                   </div>
                 )}
 
