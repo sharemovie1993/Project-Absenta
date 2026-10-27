@@ -160,6 +160,20 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
 
     const realLogbooks = extractLogbooksFromPenempatan(rawList);
 
+    const realVisitsCount = rawList.reduce((sum, p: any) => {
+      let count = 0;
+      if (Array.isArray(p.kunjungan_json)) {
+        count = p.kunjungan_json.length;
+      } else if (typeof p.kunjungan_json === 'string') {
+        try {
+          count = JSON.parse(p.kunjungan_json).length;
+        } catch {
+          count = 0;
+        }
+      }
+      return sum + count;
+    }, 0);
+
     const computedStats: PklDashboardStats = {
       total_siswa_bimbingan: mappedSiswa.length,
       siswa_aktif: activeCount,
@@ -167,7 +181,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
       total_mitra_industri: uniqueMitra.size,
       absensi_pending_verification: pendingAbsensiCount,
       jurnal_pending_review: realLogbooks.filter((l) => l.status_verifikasi === 'MENUNGGU_REVIEW').length,
-      total_kunjungan_terlaksana: 4,
+      total_kunjungan_terlaksana: realVisitsCount,
       persentase_dinilai: 75,
       siswa_bimbingan_list: mappedSiswa,
       kunjungan_terbaru: dummyVisits,
@@ -468,7 +482,12 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                 {/* 4. Supervisi DU/DI Tab */}
                 {visitedTabs.has('monitoring') && (
                   <div className={cn(activeTab === 'monitoring' ? 'block' : 'hidden')}>
-                    <PklMonitoringTab siswaList={siswaList} kunjunganList={kunjunganList} />
+                    <PklMonitoringTab
+                      guruId={guruId}
+                      tahunPelajaranId={tpId}
+                      semesterId={academicFilter.values.semesterId}
+                      siswaList={siswaList}
+                    />
                   </div>
                 )}
 
