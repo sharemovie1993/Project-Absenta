@@ -2,20 +2,8 @@ import React, { useState, useMemo, useEffect, useCallback, lazy, Suspense } from
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Briefcase,
-  Users,
-  Clock,
-  Calendar,
-  CalendarCheck,
-  Award,
-  Printer,
-  ArrowLeft,
-  SlidersHorizontal,
-  RefreshCw,
-  Building2,
-  CheckCircle2,
-  ChevronRight,
-  UserCheck,
+  Briefcase, Users, Clock, Calendar, CalendarCheck, Award, Printer,
+  ArrowLeft, SlidersHorizontal, RefreshCw, Building2, CheckCircle2, ChevronRight, UserCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -36,16 +24,12 @@ import { PklMonitoringTab } from './pembimbing-pkl/tabs/PklMonitoringTab';
 import { PklPenilaianTab } from './pembimbing-pkl/tabs/PklPenilaianTab';
 import { PklRekapTab } from './pembimbing-pkl/tabs/PklRekapTab';
 
-const RekapAbsensiPklView = lazy(() =>
-  import('@/components/hubin/absensi/RekapAbsensiPklView').then((m) => ({
-    default: m.RekapAbsensiPklView,
-  }))
+const AbsensiPklView = lazy(() =>
+  import('@/components/hubin/absensi/AbsensiPklView').then((m) => ({ default: m.AbsensiPklView }))
 );
 
 const SiswaBimbinganDetailModal = lazy(() =>
-  import('@/components/hubin/SiswaBimbinganDetailModal').then((m) => ({
-    default: m.SiswaBimbinganDetailModal,
-  }))
+  import('@/components/hubin/SiswaBimbinganDetailModal').then((m) => ({ default: m.SiswaBimbinganDetailModal }))
 );
 
 export interface PembimbingPklDashboardProps {
@@ -235,7 +219,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
     () => [
       { id: 'ringkasan', label: 'Ringkasan Beranda', shortLabel: 'Beranda', icon: Briefcase },
       { id: 'bimbingan', label: 'Siswa Bimbingan', shortLabel: 'Bimbingan', icon: Users, badge: stats.total_siswa_bimbingan },
-      { id: 'absensi', label: 'Rekap Presensi', shortLabel: 'Presensi', icon: CalendarCheck },
+      { id: 'absensi', label: 'Presensi Siswa', shortLabel: 'Presensi', icon: CalendarCheck },
       { id: 'jurnal', label: 'Verifikasi Jurnal', shortLabel: 'Jurnal', icon: Clock, badge: stats.jurnal_pending_review },
       { id: 'monitoring', label: 'Supervisi DU/DI', shortLabel: 'Supervisi', icon: Calendar },
       { id: 'penilaian', label: 'Penilaian Magang', shortLabel: 'Nilai', icon: Award },
@@ -432,17 +416,18 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                   </div>
                 )}
 
-                {/* 2b. Rekap Matriks Presensi PKL Tab */}
+                {/* 2b. Presensi Siswa Bimbingan (Verifikasi Harian & Rekap Matriks) */}
                 {visitedTabs.has('absensi') && (
                   <div className={cn(activeTab === 'absensi' ? 'block' : 'hidden')}>
-                    <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400">Memuat matriks presensi bimbingan...</div>}>
-                      <RekapAbsensiPklView
+                    <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400">Memuat presensi siswa bimbingan...</div>}>
+                      <AbsensiPklView
                         guruId={guruId}
-                        guruNama={user?.name}
-                        tahunPelajaranId={tpId}
-                        semesterId={academicFilter.values.semesterId}
+                        guruNama={user?.full_name || (user as any)?.name || user?.guru_profile?.nama_lengkap}
+                        initialTpId={tpId}
                         hideLayout={true}
-                        className="w-full"
+                        hideScopeBanner={true}
+                        hideHeaderStats={true}
+                        isModal={false}
                       />
                     </Suspense>
                   </div>

@@ -206,8 +206,14 @@ export const AbsensiPklView: React.FC<UniversalAbsensiPklViewProps> = React.memo
 
   // -- React Query Hooks --
   const { data: penempatanData, isLoading: isLoadingAll } = useQuery({
-    queryKey: ['penempatan-pkl', { limit: 100, tahun_pelajaran_id: selectedTpFilter }],
-    queryFn: () => hubinApi.getPenempatan({ limit: 100, tahun_pelajaran_id: selectedTpFilter || undefined }),
+    queryKey: ['penempatan-pkl', { limit: 150, tahun_pelajaran_id: selectedTpFilter, pembimbing_id: propGuruId, kelas_id: effectiveKelasId, jurusan_id: effectiveJurusanId }],
+    queryFn: () => hubinApi.getPenempatan({
+      limit: 150,
+      tahun_pelajaran_id: selectedTpFilter || undefined,
+      pembimbing_id: propGuruId || undefined,
+      kelas_id: effectiveKelasId || undefined,
+      jurusan_id: effectiveJurusanId || undefined,
+    }),
     enabled: isEnabled && !isStudent
   });
 
@@ -746,6 +752,7 @@ export const AbsensiPklView: React.FC<UniversalAbsensiPklViewProps> = React.memo
                   onTpChange={setSelectedTpFilter}
                   tpOptions={tpOptions}
                   hideScopeBanner={isModal || hideScopeBanner}
+                  defaultScopeFilter={propGuruId ? 'MY_GUIDANCE' : undefined}
                 />
               </Suspense>
             ) : (

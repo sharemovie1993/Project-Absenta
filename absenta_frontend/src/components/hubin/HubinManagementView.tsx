@@ -72,6 +72,7 @@ interface HubinManagementViewProps {
   onTpChange?: (tpId: string) => void;
   tpOptions?: Array<{ value: string; label: string }>;
   hideScopeBanner?: boolean;
+  defaultScopeFilter?: 'ALL' | 'MY_GUIDANCE';
 }
 
 export const HubinManagementView: React.FC<HubinManagementViewProps> = React.memo(({
@@ -93,11 +94,14 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
   selectedTp,
   onTpChange,
   tpOptions,
-  hideScopeBanner = false
+  hideScopeBanner = false,
+  defaultScopeFilter,
 }) => {
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState('');
-  const [scopeFilter, setScopeFilter] = useState<'ALL' | 'MY_GUIDANCE'>('ALL');
+  const [scopeFilter, setScopeFilter] = useState<'ALL' | 'MY_GUIDANCE'>(
+    defaultScopeFilter || (activeGuruId && !isGlobalHubin && !isKaprog ? 'MY_GUIDANCE' : 'ALL')
+  );
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'NEEDS_VERIFICATION' | 'ATTENDED_TODAY' | 'NOT_ATTENDED_TODAY'>('ALL');
   const [mitraFilter, setMitraFilter] = useState('ALL');
   const [pembimbingFilter, setPembimbingFilter] = useState('ALL');
