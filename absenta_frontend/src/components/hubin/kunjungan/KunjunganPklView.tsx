@@ -24,23 +24,13 @@ import { KunjunganStatsCards } from './KunjunganStatsCards';
 import { KunjunganFeedItem } from './KunjunganFeedItem';
 import { KunjunganTargetList } from './KunjunganTargetList';
 import { useKunjunganData } from './useKunjunganData';
-import type {
-  UniversalKunjunganPklViewProps,
-  KunjunganItemDetail,
-  SiswaTargetItem,
-  MitraTargetGroup,
-} from './types';
+import type { UniversalKunjunganPklViewProps, KunjunganItemDetail, SiswaTargetItem, MitraTargetGroup } from './types';
 
 // Lazy Loaded Modal Subsystems
-const HubinPklKunjunganModal = lazy(() =>
-  import('@/components/hubin/HubinPklKunjunganModal').then((m) => ({ default: m.HubinPklKunjunganModal }))
-);
-const KunjunganPrintModal = lazy(() =>
-  import('./KunjunganPrintModal').then((m) => ({ default: m.KunjunganPrintModal }))
-);
-const HubinPklKunjunganKolektifModal = lazy(() =>
-  import('./HubinPklKunjunganKolektifModal').then((m) => ({ default: m.HubinPklKunjunganKolektifModal }))
-);
+const HubinPklKunjunganModal = lazy(() => import('@/components/hubin/HubinPklKunjunganModal').then(m => ({ default: m.HubinPklKunjunganModal })));
+const KunjunganPrintModal = lazy(() => import('./KunjunganPrintModal').then(m => ({ default: m.KunjunganPrintModal })));
+const HubinPklKunjunganKolektifModal = lazy(() => import('./HubinPklKunjunganKolektifModal').then(m => ({ default: m.HubinPklKunjunganKolektifModal })));
+const KunjunganMitraPrintModal = lazy(() => import('./KunjunganMitraPrintModal').then(m => ({ default: m.KunjunganMitraPrintModal })));
 
 type ActiveViewMode = 'TARGET' | 'FEED';
 
@@ -88,6 +78,7 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
   const [printPkl, setPrintPkl] = useState<SiswaPkl | null>(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [selectedBulkGroup, setSelectedBulkGroup] = useState<MitraTargetGroup | null>(null);
+  const [printMitraGroup, setPrintMitraGroup] = useState<MitraTargetGroup | null>(null);
 
   const resetVisitForm = useCallback(() => {
     setIsKunjunganModalOpen(false);
@@ -368,11 +359,7 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <Input
               type="text"
-              placeholder={
-                activeViewMode === 'TARGET'
-                  ? 'Cari nama siswa, NIS, kelas, atau mitra DU/DI...'
-                  : 'Cari catatan observasi, umpan balik DU/DI, nama siswa...'
-              }
+              placeholder={activeViewMode === 'TARGET' ? 'Cari nama siswa, NIS, kelas, atau mitra...' : 'Cari catatan observasi, umpan balik DU/DI...'}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9 text-xs sm:text-sm rounded-xl h-10 w-full"
@@ -410,6 +397,7 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
           onViewHistory={handleViewHistoryForSiswa}
           onPrint={handlePrintForSiswa}
           onBulkRecordVisit={(group) => setSelectedBulkGroup(group)}
+          onPrintMitraGroup={(group) => setPrintMitraGroup(group)}
         />
       ) : filteredVisits.length === 0 ? (
         <div className="p-12 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
@@ -487,6 +475,17 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
                 queryClient.invalidateQueries({ queryKey: [k] })
               );
             }}
+          />
+        </Suspense>
+      )}
+
+      {/* 10. Modal Cetak Berita Acara Supervisi Kolektif Mitra DU/DI */}
+      {printMitraGroup && (
+        <Suspense fallback={null}>
+          <KunjunganMitraPrintModal
+            isOpen={Boolean(printMitraGroup)}
+            onClose={() => setPrintMitraGroup(null)}
+            group={printMitraGroup}
           />
         </Suspense>
       )}

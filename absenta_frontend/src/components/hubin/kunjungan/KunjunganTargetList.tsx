@@ -22,6 +22,7 @@ interface KunjunganTargetListProps {
   onViewHistory: (target: SiswaTargetItem) => void;
   onPrint: (target: SiswaTargetItem) => void;
   onBulkRecordVisit?: (group: MitraTargetGroup) => void;
+  onPrintMitraGroup?: (group: MitraTargetGroup) => void;
 }
 
 export const KunjunganTargetList: React.FC<KunjunganTargetListProps> = React.memo(({
@@ -31,6 +32,7 @@ export const KunjunganTargetList: React.FC<KunjunganTargetListProps> = React.mem
   onViewHistory,
   onPrint,
   onBulkRecordVisit,
+  onPrintMitraGroup,
 }) => {
   if (groups.length === 0) {
     return (
@@ -105,19 +107,34 @@ export const KunjunganTargetList: React.FC<KunjunganTargetListProps> = React.mem
                 </div>
               </div>
 
-              {!readOnly && onBulkRecordVisit && group.siswaList.length > 0 && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onBulkRecordVisit(group)}
-                  className="text-xs font-bold rounded-xl gap-1.5 shrink-0 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 shadow-2xs h-9"
-                  title={`Catat satu kali supervisi kolektif untuk seluruh ${group.siswaList.length} siswa di ${group.nama_mitra}`}
-                >
-                  <Users size={14} className="text-indigo-600 dark:text-indigo-400" />
-                  <span>Kunjungan Kolektif ({group.siswaList.length} Siswa)</span>
-                </Button>
-              )}
+              <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                {onPrintMitraGroup && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onPrintMitraGroup(group)}
+                    className="text-xs font-bold rounded-xl gap-1.5 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-2xs h-9"
+                    title={`Cetak Berita Acara & Laporan Supervisi Kolektif untuk ${group.nama_mitra}`}
+                  >
+                    <Printer size={14} className="text-indigo-600 dark:text-indigo-400" />
+                    <span className="hidden sm:inline">Cetak Berita Acara</span>
+                  </Button>
+                )}
+                {!readOnly && onBulkRecordVisit && group.siswaList.length > 0 && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onBulkRecordVisit(group)}
+                    className="text-xs font-bold rounded-xl gap-1.5 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 shadow-2xs h-9"
+                    title={`Catat satu kali supervisi kolektif untuk seluruh ${group.siswaList.length} siswa di ${group.nama_mitra}`}
+                  >
+                    <Users size={14} className="text-indigo-600 dark:text-indigo-400" />
+                    <span>Kunjungan Kolektif ({group.siswaList.length} Siswa)</span>
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* List Siswa di Mitra ini */}
