@@ -361,6 +361,11 @@ export const hubinApi = {
     tempatTerbit?: string;
     penandatanganNama?: string;
     penandatanganNip?: string;
+    visitCycleTarget?: number;
+    visitCycleMode?: 'THREE_CYCLE' | 'FOUR_CYCLE' | 'CUSTOM';
+    visitRequirePhoto?: boolean;
+    visitRequireSignature?: boolean;
+    visitRequireJournal?: boolean;
   }>('get', '/hubin/settings', { params, unwrapData: true }),
   updateSettings: (data: { 
     folderUrl?: string; 
@@ -376,6 +381,11 @@ export const hubinApi = {
     tempatTerbit?: string;
     penandatanganNama?: string;
     penandatanganNip?: string;
+    visitCycleTarget?: number;
+    visitCycleMode?: 'THREE_CYCLE' | 'FOUR_CYCLE' | 'CUSTOM';
+    visitRequirePhoto?: boolean;
+    visitRequireSignature?: boolean;
+    visitRequireJournal?: boolean;
   }) => requestWithFallback<any>('put', '/hubin/settings', { data, unwrapData: true }),
   deletePhoto: (url: string) => requestWithFallback<any>('delete', '/hubin/upload', { data: { url } }),
 

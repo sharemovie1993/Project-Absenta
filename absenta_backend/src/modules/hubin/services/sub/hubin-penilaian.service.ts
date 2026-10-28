@@ -50,69 +50,52 @@ export class HubinPenilaianService extends HubinCommonHelper {
       targetTpId = activeTp?.id;
     }
 
-    const [
-      configUrl, 
-      configMode, 
-      globalAssessmentMode, 
-      globalWeightDudi, 
-      globalWeightLaporan, 
-      globalWeightSidang,
-      tpAssessmentMode,
-      tpWeightDudi,
-      tpWeightLaporan,
-      tpWeightSidang,
-      tpNomorSurat,
-      tpTanggalTerbit,
-      tpDurasiJp,
-      tpTempatTerbit,
-      tpPenandatanganNama,
-      tpPenandatanganNip,
-      globalNomorSurat,
-      globalTanggalTerbit,
-      globalDurasiJp,
-      sekolah
-    ] = await Promise.all([
-      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_GOOGLE_DRIVE_FOLDER_URL' } }),
-      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_GOOGLE_DRIVE_MODE' } }),
-      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_ASSESSMENT_MODE' } }),
-      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_WEIGHT_DUDI' } }),
-      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_WEIGHT_LAPORAN' } }),
-      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_WEIGHT_SIDANG' } }),
-      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_ASSESSMENT_MODE_${targetTpId}` } }) : null,
-      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_WEIGHT_DUDI_${targetTpId}` } }) : null,
-      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_WEIGHT_LAPORAN_${targetTpId}` } }) : null,
-      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_WEIGHT_SIDANG_${targetTpId}` } }) : null,
-      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_NOMOR_SURAT_${targetTpId}` } }) : null,
-      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_TANGGAL_TERBIT_${targetTpId}` } }) : null,
-      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_DURASI_JP_${targetTpId}` } }) : null,
-      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_TEMPAT_TERBIT_${targetTpId}` } }) : null,
-      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_PENANDATANGAN_NAMA_${targetTpId}` } }) : null,
-      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_PENANDATANGAN_NIP_${targetTpId}` } }) : null,
-      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_NOMOR_SURAT' } }),
-      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_TANGGAL_TERBIT' } }),
-      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_DURASI_JP' } }),
+    const [allConfigs, sekolah] = await Promise.all([
+      prisma.config.findMany({
+        where: {
+          tenant_id: tenantId,
+          key: { startsWith: 'HUBIN_' },
+        },
+      }),
       prisma.sekolah.findFirst({ where: { tenant_id: tenantId } }),
     ]);
 
-    const resolvedAssessmentMode = (tpAssessmentMode?.value || globalAssessmentMode?.value as 'DUDI_ONLY' | 'COMPOSITE') || 'DUDI_ONLY';
-    const resolvedWeightDudi = tpWeightDudi ? Number(tpWeightDudi.value) : (globalWeightDudi ? Number(globalWeightDudi.value) : 70);
-    const resolvedWeightLaporan = tpWeightLaporan ? Number(tpWeightLaporan.value) : (globalWeightLaporan ? Number(globalWeightLaporan.value) : 15);
-    const resolvedWeightSidang = tpWeightSidang ? Number(tpWeightSidang.value) : (globalWeightSidang ? Number(globalWeightSidang.value) : 15);
+    const configMap = new Map<string, string>();
+    allConfigs.forEach((c) => configMap.set(c.key, c.value));
+
+    const tpKey = (prefix: string) => (targetTpId ? configMap.get(`${prefix}_${targetTpId}`) : undefined);
+    const getVal = (key: string) => tpKey(key) || configMap.get(key);
+
+    const resolvedAssessmentMode = (tpKey('HUBIN_PKL_ASSESSMENT_MODE') || configMap.get('HUBIN_PKL_ASSESSMENT_MODE') || 'DUDI_ONLY') as 'DUDI_ONLY' | 'COMPOSITE';
+    const resolvedWeightDudi = Number(tpKey('HUBIN_PKL_WEIGHT_DUDI') || configMap.get('HUBIN_PKL_WEIGHT_DUDI') || 70);
+    const resolvedWeightLaporan = Number(tpKey('HUBIN_PKL_WEIGHT_LAPORAN') || configMap.get('HUBIN_PKL_WEIGHT_LAPORAN') || 15);
+    const resolvedWeightSidang = Number(tpKey('HUBIN_PKL_WEIGHT_SIDANG') || configMap.get('HUBIN_PKL_WEIGHT_SIDANG') || 15);
+
+    const resolvedCycleTarget = Number(tpKey('HUBIN_PKL_VISIT_CYCLE_TARGET') || configMap.get('HUBIN_PKL_VISIT_CYCLE_TARGET') || 3);
+    const resolvedCycleMode = (tpKey('HUBIN_PKL_VISIT_CYCLE_MODE') || configMap.get('HUBIN_PKL_VISIT_CYCLE_MODE') || 'THREE_CYCLE') as 'THREE_CYCLE' | 'FOUR_CYCLE' | 'CUSTOM';
+    const resolvedRequirePhoto = (tpKey('HUBIN_PKL_VISIT_REQUIRE_PHOTO') ?? configMap.get('HUBIN_PKL_VISIT_REQUIRE_PHOTO') ?? 'true') === 'true';
+    const resolvedRequireSignature = (tpKey('HUBIN_PKL_VISIT_REQUIRE_SIGNATURE') ?? configMap.get('HUBIN_PKL_VISIT_REQUIRE_SIGNATURE') ?? 'true') === 'true';
+    const resolvedRequireJournal = (tpKey('HUBIN_PKL_VISIT_REQUIRE_JOURNAL') ?? configMap.get('HUBIN_PKL_VISIT_REQUIRE_JOURNAL') ?? 'true') === 'true';
 
     return {
-      folderUrl: configUrl?.value || '',
-      driveMode: configMode?.value || 'simulated',
-      assessmentMode: resolvedAssessmentMode as 'DUDI_ONLY' | 'COMPOSITE',
+      folderUrl: configMap.get('HUBIN_GOOGLE_DRIVE_FOLDER_URL') || '',
+      driveMode: configMap.get('HUBIN_GOOGLE_DRIVE_MODE') || 'simulated',
+      assessmentMode: resolvedAssessmentMode,
       weightDudi: resolvedWeightDudi,
       weightLaporan: resolvedWeightLaporan,
       weightSidang: resolvedWeightSidang,
       tahun_pelajaran_id: targetTpId || null,
-      nomorSuratSertifikat: tpNomorSurat?.value || globalNomorSurat?.value || '425.1/0630/SMKN1PLD-KCD Wil.IV',
-      tanggalTerbitSertifikat: tpTanggalTerbit?.value || globalTanggalTerbit?.value || '',
-      durasiJp: tpDurasiJp?.value || globalDurasiJp?.value || '792',
-      tempatTerbit: tpTempatTerbit?.value || sekolah?.kota || 'Purwakarta',
-      penandatanganNama: tpPenandatanganNama?.value || sekolah?.kepala_sekolah || '',
-      penandatanganNip: tpPenandatanganNip?.value || sekolah?.nip_kepala || '',
+      nomorSuratSertifikat: getVal('HUBIN_PKL_NOMOR_SURAT') || '425.1/0630/SMKN1PLD-KCD Wil.IV',
+      tanggalTerbitSertifikat: getVal('HUBIN_PKL_TANGGAL_TERBIT') || '',
+      durasiJp: getVal('HUBIN_PKL_DURASI_JP') || '792',
+      tempatTerbit: getVal('HUBIN_PKL_TEMPAT_TERBIT') || sekolah?.kota || 'Purwakarta',
+      penandatanganNama: getVal('HUBIN_PKL_PENANDATANGAN_NAMA') || sekolah?.kepala_sekolah || '',
+      penandatanganNip: getVal('HUBIN_PKL_PENANDATANGAN_NIP') || sekolah?.nip_kepala || '',
+      visitCycleTarget: resolvedCycleTarget,
+      visitCycleMode: resolvedCycleMode,
+      visitRequirePhoto: resolvedRequirePhoto,
+      visitRequireSignature: resolvedRequireSignature,
+      visitRequireJournal: resolvedRequireJournal,
     };
   }
 
