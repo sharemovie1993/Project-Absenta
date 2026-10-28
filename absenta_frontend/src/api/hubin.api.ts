@@ -341,6 +341,11 @@ export const hubinApi = {
     weightDudi?: number;
     weightLaporan?: number;
     weightSidang?: number;
+    visitCycleTarget?: number;
+    visitCycleMode?: 'THREE_CYCLE' | 'FOUR_CYCLE' | 'CUSTOM';
+    visitRequirePhoto?: boolean;
+    visitRequireSignature?: boolean;
+    visitRequireJournal?: boolean;
   }>>('get', '/hubin/settings/summary', { unwrapData: true }),
   getSettings: (params?: { tahun_pelajaran_id?: string }) => requestWithFallback<{ 
     folderUrl: string; 

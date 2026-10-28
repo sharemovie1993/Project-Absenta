@@ -10,6 +10,7 @@ import {
   Sliders,
   Settings,
   X,
+  RotateCcw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
@@ -27,6 +28,7 @@ import {
 } from './HubinSettingsRekapTable';
 import { HubinYearConfigModal } from './HubinYearConfigModal';
 import { HubinSkemaRekapTable } from './HubinSkemaRekapTable';
+import { HubinSiklusRekapTable } from './HubinSiklusRekapTable';
 
 // Zod Schema Validation Guard (Pilar 25)
 const storageSettingsSchema = z.object({
@@ -51,7 +53,7 @@ export interface UniversalHubinSettingsViewProps {
 
   // 3. Event Callbacks
   onClose?: () => void;
-  defaultTab?: 'sertifikat' | 'skema' | 'storage';
+  defaultTab?: 'sertifikat' | 'skema' | 'siklus' | 'storage';
 }
 
 export const HubinSettingsView: React.FC<UniversalHubinSettingsViewProps> = React.memo(({
@@ -68,12 +70,12 @@ export const HubinSettingsView: React.FC<UniversalHubinSettingsViewProps> = Reac
   const urlTab = searchParams.get('tab');
 
   const [activeTab, setActiveTab] = useState<string>(() => {
-    if (urlTab && ['sertifikat', 'skema', 'storage'].includes(urlTab)) return urlTab;
+    if (urlTab && ['sertifikat', 'skema', 'siklus', 'storage'].includes(urlTab)) return urlTab;
     return defaultTab;
   });
 
   useEffect(() => {
-    if (!isModal && urlTab && ['sertifikat', 'skema', 'storage'].includes(urlTab)) {
+    if (!isModal && urlTab && ['sertifikat', 'skema', 'siklus', 'storage'].includes(urlTab)) {
       setActiveTab(urlTab);
     }
   }, [urlTab, isModal]);
@@ -183,6 +185,7 @@ export const HubinSettingsView: React.FC<UniversalHubinSettingsViewProps> = Reac
   const tabs = useMemo(() => [
     { id: 'sertifikat', label: isMobile ? '📜 Sertifikat' : '📜 Nomor Surat & Sertifikat' },
     { id: 'skema', label: isMobile ? '⚖️ Skema Nilai' : '⚖️ Skema & Bobot Penilaian' },
+    { id: 'siklus', label: isMobile ? '🔄 Siklus Kunjungan' : '🔄 Siklus Kunjungan Industri' },
     { id: 'storage', label: isMobile ? '☁️ Cloud Storage' : '☁️ Cloud Storage & Berkas' }
   ], [isMobile]);
 
@@ -297,7 +300,31 @@ export const HubinSettingsView: React.FC<UniversalHubinSettingsViewProps> = Reac
         </div>
       )}
 
-      {/* TAB 3: CLOUD STORAGE */}
+      {/* TAB 3: REKAP TABEL SIKLUS KUNJUNGAN INDUSTRI */}
+      {activeTab === 'siklus' && (
+        <div className="space-y-4">
+          <div className="p-3.5 sm:p-4 bg-purple-50/70 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/40 rounded-xl sm:rounded-2xl flex items-start gap-3">
+            <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 mt-0.5">
+              <RotateCcw size={18} />
+            </div>
+            <div className="text-xs sm:text-sm text-purple-950 dark:text-purple-200">
+              <p className="font-bold">Standarisasi Pola Siklus Kunjungan Pembimbing ke DUDI</p>
+              <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                Atur frekuensi target monitoring pembimbing (3 Siklus Kemendikbud vs 4 Siklus Intensif) dan instrumen bukti wajib (Foto GPS, TTD Industri, Jurnal) untuk tiap tahun pelajaran sebagai dasar SPPD dan BAP resmi.
+              </p>
+            </div>
+          </div>
+
+          <HubinSiklusRekapTable
+            rows={summaryRows}
+            isLoading={isLoadingSummary}
+            activeTahunAjaran={activeYear?.nama}
+            readOnly={readOnly}
+          />
+        </div>
+      )}
+
+      {/* TAB 4: CLOUD STORAGE */}
       {activeTab === 'storage' && (
         <div className="max-w-2xl space-y-4 sm:space-y-6">
           <Card className="p-3.5 sm:p-5 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">

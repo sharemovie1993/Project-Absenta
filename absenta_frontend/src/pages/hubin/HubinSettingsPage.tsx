@@ -29,6 +29,7 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
             items: [
               { text: "Tab Nomor Surat & Sertifikat: Klik [Atur Slot] pada baris tahun pelajaran terkait untuk menginput nomor surat resmi dari TU dan identitas pejabat penandatangan." },
               { text: "Tab Skema & Bobot: Tentukan model penilaian (Hanya DUDI atau Gabungan DUDI + Laporan + Sidang) untuk tiap angkatan." },
+              { text: "Tab Siklus Kunjungan: Tetapkan pola target monitoring pembimbing (3 Siklus Kemendikbud vs 4 Siklus Intensif) dan instrumen wajib (Foto GPS, TTD Industri, Jurnal)." },
               { text: "Tab Cloud Storage: Sambungkan folder Google Drive untuk arsip portofolio dan dokumen PKL siswa." }
             ]
           }}

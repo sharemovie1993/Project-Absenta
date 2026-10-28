@@ -144,6 +144,11 @@ export class HubinPenilaianService extends HubinCommonHelper {
     const globalWeightDudi = configMap.get('HUBIN_PKL_WEIGHT_DUDI') || '70';
     const globalWeightLaporan = configMap.get('HUBIN_PKL_WEIGHT_LAPORAN') || '15';
     const globalWeightSidang = configMap.get('HUBIN_PKL_WEIGHT_SIDANG') || '15';
+    const globalCycleTarget = configMap.get('HUBIN_PKL_VISIT_CYCLE_TARGET') || '3';
+    const globalCycleMode = configMap.get('HUBIN_PKL_VISIT_CYCLE_MODE') || 'THREE_CYCLE';
+    const globalRequirePhoto = configMap.get('HUBIN_PKL_VISIT_REQUIRE_PHOTO') || 'true';
+    const globalRequireSignature = configMap.get('HUBIN_PKL_VISIT_REQUIRE_SIGNATURE') || 'true';
+    const globalRequireJournal = configMap.get('HUBIN_PKL_VISIT_REQUIRE_JOURNAL') || 'true';
 
     return tpList.map((tp) => {
       const tpId = tp.id;
@@ -157,6 +162,11 @@ export class HubinPenilaianService extends HubinCommonHelper {
       const tpWeightDudi = configMap.get(`HUBIN_PKL_WEIGHT_DUDI_${tpId}`);
       const tpWeightLaporan = configMap.get(`HUBIN_PKL_WEIGHT_LAPORAN_${tpId}`);
       const tpWeightSidang = configMap.get(`HUBIN_PKL_WEIGHT_SIDANG_${tpId}`);
+      const tpCycleTarget = configMap.get(`HUBIN_PKL_VISIT_CYCLE_TARGET_${tpId}`);
+      const tpCycleMode = configMap.get(`HUBIN_PKL_VISIT_CYCLE_MODE_${tpId}`);
+      const tpRequirePhoto = configMap.get(`HUBIN_PKL_VISIT_REQUIRE_PHOTO_${tpId}`);
+      const tpRequireSignature = configMap.get(`HUBIN_PKL_VISIT_REQUIRE_SIGNATURE_${tpId}`);
+      const tpRequireJournal = configMap.get(`HUBIN_PKL_VISIT_REQUIRE_JOURNAL_${tpId}`);
 
       const isConfigured = Boolean(tpNomor || tpTgl || tpJp || tpTempat || tpKepsek);
 
@@ -175,6 +185,11 @@ export class HubinPenilaianService extends HubinCommonHelper {
         weightDudi: Number(tpWeightDudi || globalWeightDudi || 70),
         weightLaporan: Number(tpWeightLaporan || globalWeightLaporan || 15),
         weightSidang: Number(tpWeightSidang || globalWeightSidang || 15),
+        visitCycleTarget: Number(tpCycleTarget || globalCycleTarget || 3),
+        visitCycleMode: (tpCycleMode || globalCycleMode || 'THREE_CYCLE') as 'THREE_CYCLE' | 'FOUR_CYCLE' | 'CUSTOM',
+        visitRequirePhoto: (tpRequirePhoto ?? globalRequirePhoto ?? 'true') === 'true',
+        visitRequireSignature: (tpRequireSignature ?? globalRequireSignature ?? 'true') === 'true',
+        visitRequireJournal: (tpRequireJournal ?? globalRequireJournal ?? 'true') === 'true',
       };
     });
   }
@@ -224,6 +239,26 @@ export class HubinPenilaianService extends HubinCommonHelper {
       if (data.penandatanganNip !== undefined) {
         await this.updateConfig(tenantId, `HUBIN_PKL_PENANDATANGAN_NIP_${tpId}`, data.penandatanganNip);
       }
+      if (data.visitCycleTarget !== undefined) {
+        await this.updateConfig(tenantId, `HUBIN_PKL_VISIT_CYCLE_TARGET_${tpId}`, String(data.visitCycleTarget));
+        await this.updateConfig(tenantId, 'HUBIN_PKL_VISIT_CYCLE_TARGET', String(data.visitCycleTarget));
+      }
+      if (data.visitCycleMode !== undefined) {
+        await this.updateConfig(tenantId, `HUBIN_PKL_VISIT_CYCLE_MODE_${tpId}`, data.visitCycleMode);
+        await this.updateConfig(tenantId, 'HUBIN_PKL_VISIT_CYCLE_MODE', data.visitCycleMode);
+      }
+      if (data.visitRequirePhoto !== undefined) {
+        await this.updateConfig(tenantId, `HUBIN_PKL_VISIT_REQUIRE_PHOTO_${tpId}`, String(data.visitRequirePhoto));
+        await this.updateConfig(tenantId, 'HUBIN_PKL_VISIT_REQUIRE_PHOTO', String(data.visitRequirePhoto));
+      }
+      if (data.visitRequireSignature !== undefined) {
+        await this.updateConfig(tenantId, `HUBIN_PKL_VISIT_REQUIRE_SIGNATURE_${tpId}`, String(data.visitRequireSignature));
+        await this.updateConfig(tenantId, 'HUBIN_PKL_VISIT_REQUIRE_SIGNATURE', String(data.visitRequireSignature));
+      }
+      if (data.visitRequireJournal !== undefined) {
+        await this.updateConfig(tenantId, `HUBIN_PKL_VISIT_REQUIRE_JOURNAL_${tpId}`, String(data.visitRequireJournal));
+        await this.updateConfig(tenantId, 'HUBIN_PKL_VISIT_REQUIRE_JOURNAL', String(data.visitRequireJournal));
+      }
     } else {
       if (data.assessmentMode !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_ASSESSMENT_MODE', data.assessmentMode);
       if (data.weightDudi !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_WEIGHT_DUDI', String(data.weightDudi));
@@ -235,6 +270,11 @@ export class HubinPenilaianService extends HubinCommonHelper {
       if (data.tempatTerbit !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_TEMPAT_TERBIT', data.tempatTerbit);
       if (data.penandatanganNama !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_PENANDATANGAN_NAMA', data.penandatanganNama);
       if (data.penandatanganNip !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_PENANDATANGAN_NIP', data.penandatanganNip);
+      if (data.visitCycleTarget !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_VISIT_CYCLE_TARGET', String(data.visitCycleTarget));
+      if (data.visitCycleMode !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_VISIT_CYCLE_MODE', data.visitCycleMode);
+      if (data.visitRequirePhoto !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_VISIT_REQUIRE_PHOTO', String(data.visitRequirePhoto));
+      if (data.visitRequireSignature !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_VISIT_REQUIRE_SIGNATURE', String(data.visitRequireSignature));
+      if (data.visitRequireJournal !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_VISIT_REQUIRE_JOURNAL', String(data.visitRequireJournal));
     }
 
     await cacheInvalidationService.invalidateHubinCache(tenantId);

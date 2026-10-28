@@ -28,6 +28,11 @@ export interface HubinSettingSummaryRow {
   weightDudi?: number;
   weightLaporan?: number;
   weightSidang?: number;
+  visitCycleTarget?: number;
+  visitCycleMode?: 'THREE_CYCLE' | 'FOUR_CYCLE' | 'CUSTOM';
+  visitRequirePhoto?: boolean;
+  visitRequireSignature?: boolean;
+  visitRequireJournal?: boolean;
 }
 
 export interface HubinSettingsRekapTableProps {
