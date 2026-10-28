@@ -12,6 +12,7 @@ import {
   type KunjunganItem,
 } from './kunjungan/HubinPklKunjunganTimeline';
 import { HubinPklKunjunganForm } from './kunjungan/HubinPklKunjunganForm';
+import { type KunjunganOperationalStage } from './kunjungan/KunjunganStageSelector';
 
 export interface HubinPklKunjunganModalProps {
   isOpen: boolean;
@@ -68,6 +69,7 @@ export const HubinPklKunjunganModal: React.FC<HubinPklKunjunganModalProps> = Rea
   const [catatanDudi, setCatatanDudi] = useState('');
   const [tanggal, setTanggal] = useState('');
   const [jurnalVerified, setJurnalVerified] = useState(true);
+  const [tahap, setTahap] = useState<KunjunganOperationalStage>('MONITORING');
   const isMobile = useIsMobile();
 
   // 1. Fetch Hubin Visit Cycle Policy & Requirements for this Academic Year
@@ -86,6 +88,16 @@ export const HubinPklKunjunganModal: React.FC<HubinPklKunjunganModalProps> = Rea
   const requirePhoto = hubinSettings?.visitRequirePhoto !== false;
   const requireSignature = hubinSettings?.visitRequireSignature !== false;
   const requireJournal = hubinSettings?.visitRequireJournal !== false;
+
+  // Resolve Smart Default Stage based on cycle count
+  const resolveDefaultStage = useCallback(
+    (count: number): KunjunganOperationalStage => {
+      if (count === 0) return 'PENGANTARAN';
+      if (count >= cycleTarget - 1) return 'PENJEMPUTAN';
+      return 'MONITORING';
+    },
+    [cycleTarget]
+  );
 
   // 2. Dynamic Cycle Title Resolver
   const getCycleLabel = useCallback(
@@ -127,17 +139,20 @@ export const HubinPklKunjunganModal: React.FC<HubinPklKunjunganModalProps> = Rea
     setCatatanDudi('');
     setTanggal('');
     setJurnalVerified(true);
+    setTahap(resolveDefaultStage(selectedKunjunganList.length));
     setVisitFotoUrl('');
     setVisitLat('');
     setVisitLng('');
-  }, [setVisitFotoUrl, setVisitLat, setVisitLng]);
+  }, [selectedKunjunganList.length, resolveDefaultStage, setVisitFotoUrl, setVisitLat, setVisitLng]);
 
   useEffect(() => {
     if (!isOpen) {
       setActiveMobileTab('form');
       handleCancelEdit();
+    } else if (!editingKunjungan) {
+      setTahap(resolveDefaultStage(selectedKunjunganList.length));
     }
-  }, [isOpen, handleCancelEdit]);
+  }, [isOpen, editingKunjungan, selectedKunjunganList.length, resolveDefaultStage, handleCancelEdit]);
 
   const handleStartEdit = useCallback(
     (k: KunjunganItem, index: number) => {
@@ -149,11 +164,12 @@ export const HubinPklKunjunganModal: React.FC<HubinPklKunjunganModalProps> = Rea
       setVisitLat(k.latitude !== undefined && k.latitude !== null ? String(k.latitude) : '');
       setVisitLng(k.longitude !== undefined && k.longitude !== null ? String(k.longitude) : '');
       setJurnalVerified(k.jurnal_verified !== false);
+      setTahap((k.tahap as KunjunganOperationalStage) || resolveDefaultStage(index));
       if (isMobile) {
         setActiveMobileTab('form');
       }
     },
-    [isMobile, setVisitFotoUrl, setVisitLat, setVisitLng]
+    [isMobile, resolveDefaultStage, setVisitFotoUrl, setVisitLat, setVisitLng]
   );
 
   const deleteFn = onDeleteKunjungan || handleDeleteKunjungan;
@@ -404,6 +420,8 @@ export const HubinPklKunjunganModal: React.FC<HubinPklKunjunganModalProps> = Rea
                 requireSignature={requireSignature}
                 jurnalVerified={jurnalVerified}
                 setJurnalVerified={setJurnalVerified}
+                tahap={tahap}
+                setTahap={setTahap}
               />
             </div>
           </div>

@@ -14,6 +14,7 @@ export interface KunjunganItem {
   latitude?: string | number;
   longitude?: string | number;
   jurnal_verified?: boolean;
+  tahap?: 'PENGANTARAN' | 'MONITORING' | 'PENJEMPUTAN' | 'INSIDENTAL' | string;
 }
 
 export interface HubinPklKunjunganTimelineProps {
@@ -93,9 +94,26 @@ export const HubinPklKunjunganTimeline: React.FC<HubinPklKunjunganTimelineProps>
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/80">
-                        <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                          {isBeingEdited ? 'Sedang Diedit' : `Log Kunjungan #${index + 1}`}
-                        </span>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                            {isBeingEdited ? 'Sedang Diedit' : `Log #${index + 1}`}
+                          </span>
+                          {k.tahap && (
+                            <span
+                              className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-md border ${
+                                k.tahap === 'PENGANTARAN'
+                                  ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                                  : k.tahap === 'PENJEMPUTAN'
+                                  ? 'bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800'
+                                  : k.tahap === 'INSIDENTAL'
+                                  ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                                  : 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800'
+                              }`}
+                            >
+                              {k.tahap}
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-1.5">
                           <button
                             type="button"

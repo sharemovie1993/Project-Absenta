@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Badge, Button } from '@/components/ui';
 import type { MitraTargetGroup, SiswaTargetItem } from './types';
+import { KunjunganMitraLifecycleStrip } from './KunjunganMitraLifecycleStrip';
 
 interface KunjunganTargetListProps {
   groups: MitraTargetGroup[];
@@ -136,6 +137,9 @@ export const KunjunganTargetList: React.FC<KunjunganTargetListProps> = React.mem
                 )}
               </div>
             </div>
+
+            {/* Lifecycle Strip Operasional: Pengantaran -> Monitoring -> Penjemputan */}
+            <KunjunganMitraLifecycleStrip totalVisits={group.totalVisits} />
 
             {/* List Siswa di Mitra ini */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

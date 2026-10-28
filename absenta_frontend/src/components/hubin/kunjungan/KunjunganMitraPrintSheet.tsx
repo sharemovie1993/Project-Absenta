@@ -11,6 +11,7 @@ export interface KunjunganMitraPrintSheetProps {
   rawSekolah: any;
   group: MitraTargetGroup;
   cycleTitle: string;
+  tahap?: string;
   visitDateFormatted: string;
   visitCatatan: string;
   visitCatatanDudi: string;
@@ -34,6 +35,7 @@ export const KunjunganMitraPrintSheet: React.FC<KunjunganMitraPrintSheetProps> =
   rawSekolah,
   group,
   cycleTitle,
+  tahap,
   visitDateFormatted,
   visitCatatan,
   visitCatatanDudi,
@@ -53,6 +55,15 @@ export const KunjunganMitraPrintSheet: React.FC<KunjunganMitraPrintSheetProps> =
     ? getDriveThumbnailUrl(visitFotoUrl) || resolveAttachmentUrl(visitFotoUrl)
     : null;
 
+  const docTitle =
+    tahap === 'PENGANTARAN'
+      ? 'BERITA ACARA SERAH TERIMA & PENGANTARAN SISWA PKL'
+      : tahap === 'PENJEMPUTAN'
+      ? 'BERITA ACARA PENJEMPUTAN & PENARIKAN SISWA PKL'
+      : tahap === 'INSIDENTAL'
+      ? 'BERITA ACARA KUNJUNGAN KHUSUS & PEMBINAAN PKL'
+      : 'BERITA ACARA & LAPORAN HASIL SUPERVISI PKL';
+
   return (
     <PrintDocumentSheet
       orientation="portrait"
@@ -69,7 +80,7 @@ export const KunjunganMitraPrintSheet: React.FC<KunjunganMitraPrintSheetProps> =
       {/* 2. Judul Dokumen Berita Acara */}
       <div className="text-center mt-3 mb-3">
         <h3 className="text-sm sm:text-base font-black uppercase tracking-wider text-black border-b-2 border-black inline-block pb-0.5">
-          BERITA ACARA &amp; LAPORAN HASIL SUPERVISI PKL
+          {docTitle}
         </h3>
         <p className="text-[11px] font-semibold text-gray-700 mt-1">
           Tahun Ajaran: {tenantInfo?.tahun_ajaran || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`} • Mitra IDUKA: {group.nama_mitra}

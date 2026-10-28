@@ -4,6 +4,7 @@ import { Button, Input, Textarea } from '../../ui';
 import { SimpleFormField } from '../../ui/SimpleFormField';
 import { HubinGoogleDriveUploader } from '../HubinGoogleDriveUploader';
 import type { KunjunganItem } from './HubinPklKunjunganTimeline';
+import { KunjunganStageSelector, STAGE_OPTIONS, type KunjunganOperationalStage } from './KunjunganStageSelector';
 
 export interface HubinPklKunjunganFormProps {
   editingKunjungan: { k: KunjunganItem; index: number } | null;
@@ -30,6 +31,8 @@ export interface HubinPklKunjunganFormProps {
   requireSignature?: boolean;
   jurnalVerified: boolean;
   setJurnalVerified: (v: boolean) => void;
+  tahap: KunjunganOperationalStage;
+  setTahap: (v: KunjunganOperationalStage) => void;
 }
 
 export const HubinPklKunjunganForm: React.FC<HubinPklKunjunganFormProps> = React.memo(({
@@ -57,8 +60,20 @@ export const HubinPklKunjunganForm: React.FC<HubinPklKunjunganFormProps> = React
   requireSignature = true,
   jurnalVerified,
   setJurnalVerified,
+  tahap,
+  setTahap,
 }) => {
   const [mapView, setMapView] = useState<'standard' | 'satellite'>('standard');
+
+  const handleStageSelect = (newStage: KunjunganOperationalStage, draftText?: string) => {
+    setTahap(newStage);
+    const isBlankOrExistingDraft =
+      !catatan.trim() ||
+      STAGE_OPTIONS.some((s) => s.defaultDraft.trim() === catatan.trim());
+    if (isBlankOrExistingDraft && draftText) {
+      setCatatan(draftText);
+    }
+  };
 
   return (
     <div
@@ -110,6 +125,12 @@ export const HubinPklKunjunganForm: React.FC<HubinPklKunjunganFormProps> = React
       </div>
 
       <form onSubmit={onFormSubmit} className="space-y-3.5">
+        {/* Hidden Field Tahap Operasional */}
+        <input type="hidden" name="tahap" value={tahap} />
+
+        {/* Pemilihan Tahap Operasional Siklus (Pengantaran, Monitoring, Penjemputan, Insidental) */}
+        <KunjunganStageSelector value={tahap} onChange={handleStageSelect} />
+
         <SimpleFormField htmlFor="kunjungan-tanggal" label="Tanggal & Jam Kunjungan">
           <Input
             id="kunjungan-tanggal"

@@ -562,6 +562,7 @@ export class HubinAbsensiService extends HubinCommonHelper {
     kunjunganList.push({
       id: crypto.randomBytes(8).toString('hex'),
       tanggal: new Date().toISOString(),
+      tahap: data.tahap || 'MONITORING',
       ...data
     });
 
@@ -576,7 +577,7 @@ export class HubinAbsensiService extends HubinCommonHelper {
   }
 
   async addBulkKunjungan(tenantId: string, payload: any, requesterId?: string, org?: any) {
-    const { pkl_ids, catatan, catatan_dudi, foto_url, latitude, longitude, tanggal, catatan_khusus, jurnal_verified } = payload || {};
+    const { pkl_ids, catatan, catatan_dudi, foto_url, latitude, longitude, tanggal, catatan_khusus, jurnal_verified, tahap } = payload || {};
     if (!Array.isArray(pkl_ids) || pkl_ids.length === 0) {
       throw new Error('Daftar ID penempatan siswa (pkl_ids) wajib diisi');
     }
@@ -624,6 +625,7 @@ export class HubinAbsensiService extends HubinCommonHelper {
         collective_batch_id: sharedVisitId,
         is_collective: true,
         total_peserta: pklRecords.length,
+        tahap: tahap || 'MONITORING',
         tanggal: visitTime,
         catatan: mergedCatatan,
         catatan_dudi,

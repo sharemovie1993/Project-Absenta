@@ -18,6 +18,11 @@ import { HubinGoogleDriveUploader } from '../HubinGoogleDriveUploader';
 import { hubinApi } from '@/api/hubin.api';
 import type { MitraTargetGroup } from './types';
 import { HubinPklKolektifStudentPicker } from './HubinPklKolektifStudentPicker';
+import {
+  KunjunganStageSelector,
+  STAGE_OPTIONS,
+  type KunjunganOperationalStage,
+} from './KunjunganStageSelector';
 
 export interface HubinPklKunjunganKolektifModalProps {
   isOpen: boolean;
@@ -34,6 +39,7 @@ export const HubinPklKunjunganKolektifModal: React.FC<HubinPklKunjunganKolektifM
 }) => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [tanggal, setTanggal] = useState('');
+  const [tahap, setTahap] = useState<KunjunganOperationalStage>('MONITORING');
   const [catatan, setCatatan] = useState('');
   const [catatanDudi, setCatatanDudi] = useState('');
   const [visitFotoUrl, setVisitFotoUrl] = useState('');
@@ -70,6 +76,7 @@ export const HubinPklKunjunganKolektifModal: React.FC<HubinPklKunjunganKolektifM
     if (isOpen && group?.siswaList) {
       setSelectedIds(group.siswaList.map((s) => s.penempatan_id));
       setTanggal(new Date().toISOString().slice(0, 16));
+      setTahap(group.totalVisits === 0 ? 'PENGANTARAN' : 'MONITORING');
       setCatatan('');
       setCatatanDudi('');
       setVisitFotoUrl('');
@@ -80,6 +87,19 @@ export const HubinPklKunjunganKolektifModal: React.FC<HubinPklKunjunganKolektifM
       setShowSpecificNotes(false);
     }
   }, [isOpen, group]);
+
+  // Stage change handler with smart draft auto-fill
+  const handleStageChange = useCallback(
+    (newStage: KunjunganOperationalStage, draftText?: string) => {
+      setTahap(newStage);
+      const isBlankOrExistingDraft =
+        !catatan.trim() || STAGE_OPTIONS.some((s) => s.defaultDraft.trim() === catatan.trim());
+      if (isBlankOrExistingDraft && draftText) {
+        setCatatan(draftText);
+      }
+    },
+    [catatan]
+  );
 
   // Selection Handlers
   const handleToggleSelectAll = useCallback(() => {
@@ -103,23 +123,20 @@ export const HubinPklKunjunganKolektifModal: React.FC<HubinPklKunjunganKolektifM
     const selectedStudents = group.siswaList.filter((s) => selectedIds.includes(s.penempatan_id));
     const minVisits = Math.min(...selectedStudents.map((s) => s.visitsCount));
 
-    if (cycleMode === 'FOUR_CYCLE') {
-      const titles = [
-        'Siklus I: Monitoring Awal (Penyerahan & Orientasi DU/DI)',
-        'Siklus II: Monitoring Tengah (Evaluasi Kinerja & Progres PKL)',
-        'Siklus III: Monitoring Pra-Akhir (Verifikasi Jurnal & Laporan)',
-        'Siklus IV: Monitoring Akhir (Evaluasi Akhir & Penjemputan)',
-      ];
-      return titles[minVisits] || `Siklus Khusus Ke-${minVisits + 1}`;
-    }
-    if (cycleMode === 'THREE_CYCLE') {
-      const titles = [
-        'Siklus I: Monitoring Awal (Orientasi Siswa)',
-        'Siklus II: Monitoring Tengah (Evaluasi & Kendala)',
-        'Siklus III: Monitoring Akhir (Penjemputan & Penarikan)',
-      ];
-      return titles[minVisits] || `Siklus Khusus Ke-${minVisits + 1}`;
-    }
+    const fourCycle = [
+      'Siklus I: Monitoring Awal (Penyerahan & Orientasi DU/DI)',
+      'Siklus II: Monitoring Tengah (Evaluasi Kinerja & Progres PKL)',
+      'Siklus III: Monitoring Pra-Akhir (Verifikasi Jurnal & Laporan)',
+      'Siklus IV: Monitoring Akhir (Evaluasi Akhir & Penjemputan)',
+    ];
+    const threeCycle = [
+      'Siklus I: Monitoring Awal (Orientasi Siswa)',
+      'Siklus II: Monitoring Tengah (Evaluasi & Kendala)',
+      'Siklus III: Monitoring Akhir (Penjemputan & Penarikan)',
+    ];
+
+    if (cycleMode === 'FOUR_CYCLE') return fourCycle[minVisits] || `Siklus Khusus Ke-${minVisits + 1}`;
+    if (cycleMode === 'THREE_CYCLE') return threeCycle[minVisits] || `Siklus Khusus Ke-${minVisits + 1}`;
     return `Siklus Ke-${minVisits + 1} dari ${cycleTarget}`;
   }, [group, selectedIds, cycleMode, cycleTarget]);
 
@@ -165,6 +182,7 @@ export const HubinPklKunjunganKolektifModal: React.FC<HubinPklKunjunganKolektifM
     try {
       await hubinApi.addBulkKunjungan({
         pkl_ids: selectedIds,
+        tahap,
         tanggal: tanggal ? new Date(tanggal).toISOString() : new Date().toISOString(),
         catatan,
         catatan_dudi: catatanDudi || undefined,
@@ -250,6 +268,9 @@ export const HubinPklKunjunganKolektifModal: React.FC<HubinPklKunjunganKolektifM
           onToggleStudent={handleToggleStudent}
         />
 
+        {/* Tahap Operasional Kunjungan Kolektif */}
+        <KunjunganStageSelector value={tahap} onChange={handleStageChange} />
+
         {/* Shared Visit Details Form */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Kolom Kiri: Tanggal, Catatan Umum, Feedback DU/DI */}
@@ -324,12 +345,7 @@ export const HubinPklKunjunganKolektifModal: React.FC<HubinPklKunjunganKolektifM
                   <span className="text-[10px] text-slate-400">(Opsional)</span>
                 )}
               </div>
-              <HubinGoogleDriveUploader
-                value={visitFotoUrl}
-                onChange={setVisitFotoUrl}
-                compact
-                label="Unggah 1 Foto Bersama Kelompok Siswa & Mentor DU/DI"
-              />
+              <HubinGoogleDriveUploader value={visitFotoUrl} onChange={setVisitFotoUrl} compact label="Unggah 1 Foto Bersama Kelompok Siswa & Mentor DU/DI" />
               <p className="text-[10px] text-slate-400 ml-1">
                 * Foto ini otomatis ditautkan ke lembar monitoring seluruh {selectedIds.length} siswa terpilih.
               </p>
@@ -359,8 +375,7 @@ export const HubinPklKunjunganKolektifModal: React.FC<HubinPklKunjunganKolektifM
                           : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                       }`}
                     >
-                      <MapPin size={10} />
-                      Peta
+                      <MapPin size={10} /> Peta
                     </button>
                     <button
                       type="button"
@@ -371,33 +386,24 @@ export const HubinPklKunjunganKolektifModal: React.FC<HubinPklKunjunganKolektifM
                           : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                       }`}
                     >
-                      <Camera size={10} />
-                      Satelit
+                      <Camera size={10} /> Satelit
                     </button>
                   </div>
 
-                  <div className="relative w-full h-28 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 animate-in fade-in shadow-inner">
-                    {mapView === 'standard' ? (
-                      <iframe
-                        width="100%"
-                        height="100%"
-                        frameBorder="0"
-                        scrolling="no"
-                        title="Bulk Map Standard"
-                        src={`https://www.openstreetmap.org/export/embed.html?bbox=${parseFloat(visitLng) - 0.002}%2C${parseFloat(visitLat) - 0.001}%2C${parseFloat(visitLng) + 0.002}%2C${parseFloat(visitLat) + 0.001}&layer=mapnik&marker=${visitLat}%2C${visitLng}`}
-                        className="grayscale-[0.1] contrast-[1.1] opacity-90"
-                      />
-                    ) : (
-                      <iframe
-                        width="100%"
-                        height="100%"
-                        frameBorder="0"
-                        scrolling="no"
-                        title="Bulk Map Satellite"
-                        src={`https://maps.google.com/maps?q=${visitLat},${visitLng}&t=k&z=17&output=embed`}
-                        className="opacity-90"
-                      />
-                    )}
+                  <div className="relative w-full h-28 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 shadow-inner">
+                    <iframe
+                      width="100%"
+                      height="100%"
+                      frameBorder="0"
+                      scrolling="no"
+                      title="Bulk Map"
+                      src={
+                        mapView === 'standard'
+                          ? `https://www.openstreetmap.org/export/embed.html?bbox=${parseFloat(visitLng) - 0.002}%2C${parseFloat(visitLat) - 0.001}%2C${parseFloat(visitLng) + 0.002}%2C${parseFloat(visitLat) + 0.001}&layer=mapnik&marker=${visitLat}%2C${visitLng}`
+                          : `https://maps.google.com/maps?q=${visitLat},${visitLng}&t=k&z=17&output=embed`
+                      }
+                      className="grayscale-[0.1] contrast-[1.1] opacity-90"
+                    />
                   </div>
                 </div>
               )}
@@ -456,15 +462,10 @@ export const HubinPklKunjunganKolektifModal: React.FC<HubinPklKunjunganKolektifM
                       </span>
                       <Input
                         type="text"
-                        placeholder="Contoh: Kinerja sangat baik / Perlu melengkapi laporan bab 2..."
+                        placeholder="Evaluasi khusus siswa ini..."
                         className="text-xs h-8 rounded-lg"
                         value={specificNotes[siswa.penempatan_id] || ''}
-                        onChange={(e) =>
-                          setSpecificNotes((prev) => ({
-                            ...prev,
-                            [siswa.penempatan_id]: e.target.value,
-                          }))
-                        }
+                        onChange={(e) => setSpecificNotes((p) => ({ ...p, [siswa.penempatan_id]: e.target.value }))}
                       />
                     </div>
                   ))}

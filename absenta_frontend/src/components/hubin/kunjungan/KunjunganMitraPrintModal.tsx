@@ -107,6 +107,7 @@ export const KunjunganMitraPrintModal: React.FC<KunjunganMitraPrintModalProps> =
               : '';
 
             return {
+              tahap: last.tahap,
               tanggalFormatted: tglFormatted,
               catatan: last.catatan || '',
               catatanDudi: last.catatan_dudi || '',
@@ -310,6 +311,7 @@ export const KunjunganMitraPrintModal: React.FC<KunjunganMitraPrintModalProps> =
             rawSekolah={rawSekolah}
             group={group}
             cycleTitle={latestVisitData.cycleTitle}
+            tahap={latestVisitData.tahap}
             visitDateFormatted={latestVisitData.tanggalFormatted}
             visitCatatan={latestVisitData.catatan}
             visitCatatanDudi={latestVisitData.catatanDudi}
