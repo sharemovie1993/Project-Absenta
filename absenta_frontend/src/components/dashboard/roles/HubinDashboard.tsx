@@ -14,6 +14,7 @@ import {
   SlidersHorizontal,
   RefreshCw,
   Tv,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -33,6 +34,7 @@ import { HubinNilaiTab } from './hubin/tabs/HubinNilaiTab';
 import { HubinBkkTab } from './hubin/tabs/HubinBkkTab';
 import { HubinTracerTab } from './hubin/tabs/HubinTracerTab';
 import { HubinRekapTab } from './hubin/tabs/HubinRekapTab';
+import { HubinSettingsTab } from './hubin/tabs/HubinSettingsTab';
 
 export interface HubinDashboardProps {
   user?: {
@@ -57,6 +59,7 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
     'bkk',
     'tracer',
     'rekap',
+    'pengaturan',
   ];
 
   // Mobile Filter Collapsible State
@@ -193,6 +196,12 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
         label: 'Cetak Dokumen Hubin',
         shortLabel: 'Cetak Dokumen',
         icon: Printer,
+      },
+      {
+        id: 'pengaturan',
+        label: 'Pengaturan & Referensi',
+        shortLabel: 'Pengaturan',
+        icon: Settings,
       },
     ],
     [stats?.mouExpiringCount, stats?.pklAktif, stats?.todayPresensi?.unverified, stats?.penilaianStats?.belumDinilai, stats?.totalLowonganAktif]
@@ -477,6 +486,17 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
                 className={cn('w-full min-w-0', activeTab === 'rekap' ? 'block' : 'hidden')}
               >
                 <HubinRekapTab />
+              </div>
+            )}
+
+            {/* TAB 9: PENGATURAN & REFERENSI HUBIN */}
+            {visitedTabs.has('pengaturan') && (
+              <div
+                role="tabpanel"
+                aria-hidden={activeTab !== 'pengaturan'}
+                className={cn('w-full min-w-0', activeTab === 'pengaturan' ? 'block' : 'hidden')}
+              >
+                <HubinSettingsTab />
               </div>
             )}
           </main>

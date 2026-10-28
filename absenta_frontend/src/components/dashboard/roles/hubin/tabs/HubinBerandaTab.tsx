@@ -71,6 +71,10 @@ export const HubinBerandaTab: React.FC<HubinBerandaTabProps> = React.memo(({
       case 'cetak':
         onTabSelect('rekap');
         break;
+      case 'pengaturan':
+      case 'settings':
+        onTabSelect('pengaturan');
+        break;
       default:
         onTabSelect('ringkasan');
         break;

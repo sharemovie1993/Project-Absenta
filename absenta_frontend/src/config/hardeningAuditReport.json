@@ -4924,7 +4924,7 @@
     "usesAcademicLayout": true,
     "usesPageLayout": false,
     "usesUiComponents": true,
-    "usesMemo": true,
+    "usesMemo": false,
     "noAnyType": true,
     "safeMapping": true,
     "strictColors": true,
