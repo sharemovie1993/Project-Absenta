@@ -11,7 +11,7 @@ import {
   HubinPklKunjunganTimeline,
   type KunjunganItem,
 } from './kunjungan/HubinPklKunjunganTimeline';
-import { HubinPklKunjunganForm } from './kunjungan/HubinPklKunjunganForm';
+import { KunjunganWizardForm } from './kunjungan/KunjunganWizardForm';
 import { type KunjunganOperationalStage } from './kunjungan/KunjunganStageSelector';
 
 export interface HubinPklKunjunganModalProps {
@@ -395,7 +395,7 @@ export const HubinPklKunjunganModal: React.FC<HubinPklKunjunganModalProps> = Rea
 
             {/* Form Input Kunjungan - Right Column */}
             <div className={`md:col-span-5 ${isMobile && activeMobileTab !== 'form' ? 'hidden' : 'block'}`}>
-              <HubinPklKunjunganForm
+              <KunjunganWizardForm
                 editingKunjungan={editingKunjungan}
                 activeCycleTitle={activeCycleTitle}
                 catatan={catatan}
