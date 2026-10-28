@@ -43,7 +43,7 @@ const CYCLE_MODE_LABELS: Record<string, { label: string; desc: string; badgeClas
   },
 };
 
-const CYCLE_OPTIONS: Array<{
+export const CYCLE_OPTIONS: Array<{
   mode: 'THREE_CYCLE' | 'FOUR_CYCLE' | 'CUSTOM';
   title: string;
   desc: string;

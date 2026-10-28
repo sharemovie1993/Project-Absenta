@@ -10,6 +10,7 @@ import {
   TrendingUp,
   AlertTriangle,
   ArrowRight,
+  Settings,
 } from 'lucide-react';
 import {
   HubCard,
@@ -195,6 +196,13 @@ export const HubinBerandaTab: React.FC<HubinBerandaTabProps> = React.memo(({
         icon: Printer,
         iconColorClass: 'text-rose-600 dark:text-rose-400',
         onClick: () => onTabSelect('rekap'),
+      },
+      {
+        id: 'pengaturan',
+        label: 'Pengaturan',
+        icon: Settings,
+        iconColorClass: 'text-indigo-600 dark:text-indigo-400',
+        onClick: () => onTabSelect('pengaturan'),
       },
     ],
     [stats, onTabSelect]

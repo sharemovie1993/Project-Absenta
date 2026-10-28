@@ -160,6 +160,7 @@ const DEFAULT_HUBIN_PRIMARY: FlatMenuItem[] = [
   { id: 'trc', title: 'Tracer Study Alumni', path: '/hubin/tracer', icon: 'GraduationCap' },
   { id: 'tfa', title: 'Teaching Factory', path: '/hubin/tefa', icon: 'Tool' },
   { id: 'ctk', title: 'Cetak Berkas', path: '/hubin/cetak-berkas', icon: 'ClipboardList' },
+  { id: 'cfg', title: 'Pengaturan & Referensi', path: '/hubin/settings', icon: 'Settings' },
 ];
 
 const DEFAULT_BPBK_PRIMARY: FlatMenuItem[] = [
