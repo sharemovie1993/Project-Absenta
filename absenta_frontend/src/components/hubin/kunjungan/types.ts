@@ -1,3 +1,5 @@
+import type { SiswaPkl } from '@/api/hubin.api';
+
 export interface UniversalKunjunganPklViewProps {
   // Universal Scoping Injections (Role-Ready)
   guruId?: string;
@@ -46,9 +48,38 @@ export interface KunjunganItemDetail {
   created_by?: string;
 }
 
+export interface SiswaTargetItem {
+  penempatan_id: string;
+  siswa_id: string;
+  nama_siswa: string;
+  nis: string;
+  foto_siswa?: string | null;
+  kelas: string;
+  mitra_id: string;
+  nama_mitra: string;
+  alamat_mitra?: string;
+  pembimbing_nama?: string;
+  visitsCount: number;
+  lastVisitDate?: string;
+  lastVisitNote?: string;
+  rawPkl: SiswaPkl;
+}
+
+export interface MitraTargetGroup {
+  mitra_id: string;
+  nama_mitra: string;
+  alamat_mitra?: string;
+  siswaList: SiswaTargetItem[];
+  totalVisits: number;
+  lastVisitDate?: string;
+  isAllVisited: boolean;
+  hasUnvisited: boolean;
+}
+
 export interface KunjunganStats {
   totalKunjungan: number;
   totalMitraTerkunjungi: number;
   totalSiswaTerkunjungi: number;
   persentaseKunjungan: number;
+  unvisitedSiswaCount: number;
 }

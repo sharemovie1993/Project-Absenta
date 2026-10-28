@@ -6,12 +6,15 @@ import {
   Plus,
   Search,
   Filter,
+  Users,
+  Clock,
+  History,
+  AlertCircle,
   CheckCircle2,
   Printer,
   X,
-  FileSpreadsheet,
 } from 'lucide-react';
-import { Button, Input, SectionCard } from '@/components/ui';
+import { Button, Input, SectionCard, Badge } from '@/components/ui';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { hubinApi, type SiswaPkl } from '@/api/hubin.api';
 import { toast } from 'react-hot-toast';
@@ -19,7 +22,13 @@ import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import { KunjunganStatsCards } from './KunjunganStatsCards';
 import { KunjunganFeedItem } from './KunjunganFeedItem';
-import type { UniversalKunjunganPklViewProps, KunjunganItemDetail, KunjunganStats } from './types';
+import { KunjunganTargetList } from './KunjunganTargetList';
+import { useKunjunganData } from './useKunjunganData';
+import type {
+  UniversalKunjunganPklViewProps,
+  KunjunganItemDetail,
+  SiswaTargetItem,
+} from './types';
 
 // Lazy Loaded Modal Subsystems
 const HubinPklKunjunganModal = lazy(() =>
@@ -32,15 +41,12 @@ const HubinPklPrintSurat = lazy(() =>
   import('@/components/hubin/HubinPklPrintSurat').then((m) => ({ default: m.HubinPklPrintSurat }))
 );
 
+type ActiveViewMode = 'TARGET' | 'FEED';
+
 export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.memo(({
   guruId: propGuruId,
-  guruNama: propGuruNama,
   jurusanId: propJurusanId,
-  jurusanNama: propJurusanNama,
-  mitraId: propMitraId,
-  kelasId: propKelasId,
   tahunPelajaranId: propTpId,
-  semesterId: propSemesterId,
   isModal = false,
   hideLayout = false,
   hideHeaderStats = false,
@@ -48,7 +54,6 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
   readOnly = false,
   className,
   onClose,
-  onNavigateDetail,
 }) => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
@@ -63,15 +68,16 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
   const effectiveTpId = propTpId || academicFilter.activeTpYear?.id;
   const effectiveJurusanId = propJurusanId;
 
-  // 2. Local State
+  // 2. View Mode & Filter State
+  const [activeViewMode, setActiveViewMode] = useState<ActiveViewMode>('TARGET');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMitraFilter, setSelectedMitraFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'UNVISITED' | 'VISITED'>('ALL');
 
   // Modal State for New/Edit Visit
   const [isKunjunganModalOpen, setIsKunjunganModalOpen] = useState(false);
   const [activeSelectedPkl, setActiveSelectedPkl] = useState<SiswaPkl | null>(null);
   const [editingKunjunganId, setEditingKunjunganId] = useState<string | undefined>(undefined);
-  const [isSelectSiswaModalOpen, setIsSelectSiswaModalOpen] = useState(false);
 
   // Form State passed to HubinPklKunjunganModal
   const [visitLat, setVisitLat] = useState('');
@@ -86,7 +92,7 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
   const [monitoringPrintConfig, setMonitoringPrintConfig] = useState<any>(null);
 
   // 3. Query Siswa Penempatan PKL
-  const { data: penempatanData, isLoading, refetch } = useQuery({
+  const { data: penempatanData, isLoading } = useQuery({
     queryKey: ['hubin-kunjungan-list', effectiveGuruId, effectiveTpId, effectiveJurusanId],
     queryFn: async () => {
       try {
@@ -98,7 +104,7 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
         });
         if (res?.data && Array.isArray(res.data) && res.data.length > 0) return res.data as SiswaPkl[];
       } catch {
-        /* Fallback to my penempatan */
+        /* Fallback */
       }
       const myRes = await hubinApi.getMyPenempatan().catch(() => ({ data: [] }));
       if (Array.isArray(myRes?.data) && myRes.data.length > 0) return myRes.data as SiswaPkl[];
@@ -111,78 +117,37 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
     return Array.isArray(penempatanData) ? penempatanData : [];
   }, [penempatanData]);
 
-  // 4. Flatten all visits from rawList
-  const allVisits = useMemo<KunjunganItemDetail[]>(() => {
-    const list: KunjunganItemDetail[] = [];
-    rawList.forEach((p) => {
-      let kList: any[] = [];
-      if (Array.isArray(p.kunjungan_json)) {
-        kList = p.kunjungan_json;
-      } else if (typeof p.kunjungan_json === 'string') {
-        try {
-          kList = JSON.parse(p.kunjungan_json);
-        } catch {
-          kList = [];
-        }
-      }
+  // 4. Extracted Business Logic & Computations Hook
+  const { allVisits, targetGroups, stats, mitraFilterOptions } = useKunjunganData(rawList);
 
-      kList.forEach((k: any, idx: number) => {
-        list.push({
-          id: k.id || `visit-${p.id}-${idx}`,
-          rawKunjunganId: k.id ? String(k.id) : String(idx),
-          penempatan_id: p.id,
-          siswa_id: p.Siswa?.id || p.siswa_id,
-          nama_siswa: p.Siswa?.nama_siswa || 'Siswa Magang',
-          nis: p.Siswa?.nis || '-',
-          foto_siswa: p.Siswa?.foto,
-          kelas: p.Siswa?.Kelas?.nama_kelas || 'Kelas XII',
-          mitra_id: p.Mitra?.id || p.mitra_id,
-          nama_mitra: p.Mitra?.nama || 'Mitra DU/DI',
-          alamat_mitra: p.Mitra?.alamat,
-          pembimbing_nama: p.Pembimbing?.nama_guru,
-          tanggal: k.tanggal || new Date().toISOString(),
-          catatan: k.catatan || '',
-          catatan_dudi: k.catatan_dudi,
-          foto_url: k.foto_url,
-          latitude: k.latitude !== undefined && k.latitude !== null ? Number(k.latitude) : undefined,
-          longitude: k.longitude !== undefined && k.longitude !== null ? Number(k.longitude) : undefined,
-          created_at: k.created_at,
-          created_by: k.created_by,
+  // Filtered Target Groups
+  const filteredTargetGroups = useMemo(() => {
+    return targetGroups
+      .filter((g) => {
+        if (selectedMitraFilter !== 'ALL' && g.mitra_id !== selectedMitraFilter) return false;
+        if (statusFilter === 'UNVISITED' && !g.hasUnvisited) return false;
+        if (statusFilter === 'VISITED' && g.totalVisits === 0) return false;
+        return true;
+      })
+      .map((g) => {
+        const filteredSiswa = g.siswaList.filter((s) => {
+          if (statusFilter === 'UNVISITED' && s.visitsCount > 0) return false;
+          if (statusFilter === 'VISITED' && s.visitsCount === 0) return false;
+          if (!searchTerm) return true;
+          const q = searchTerm.toLowerCase();
+          return (
+            s.nama_siswa.toLowerCase().includes(q) ||
+            s.nis.toLowerCase().includes(q) ||
+            s.kelas.toLowerCase().includes(q) ||
+            g.nama_mitra.toLowerCase().includes(q)
+          );
         });
-      });
-    });
+        return { ...g, siswaList: filteredSiswa };
+      })
+      .filter((g) => g.siswaList.length > 0);
+  }, [targetGroups, selectedMitraFilter, statusFilter, searchTerm]);
 
-    list.sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
-    return list;
-  }, [rawList]);
-
-  // 5. Compute Stats
-  const stats: KunjunganStats = useMemo(() => {
-    const visitedMitraIds = new Set(allVisits.map((v) => v.mitra_id).filter(Boolean));
-    const visitedSiswaIds = new Set(allVisits.map((v) => v.siswa_id).filter(Boolean));
-    const totalMitra = new Set(rawList.map((p) => p.mitra_id).filter(Boolean)).size;
-    const persentase = totalMitra > 0 ? Math.min(100, Math.round((visitedMitraIds.size / totalMitra) * 100)) : 0;
-
-    return {
-      totalKunjungan: allVisits.length,
-      totalMitraTerkunjungi: visitedMitraIds.size,
-      totalSiswaTerkunjungi: visitedSiswaIds.size,
-      persentaseKunjungan: persentase,
-    };
-  }, [allVisits, rawList]);
-
-  // 6. Distinct Mitra Options for filter
-  const mitraFilterOptions = useMemo(() => {
-    const map = new Map<string, string>();
-    rawList.forEach((p) => {
-      if (p.mitra_id && p.Mitra?.nama) {
-        map.set(p.mitra_id, p.Mitra.nama);
-      }
-    });
-    return Array.from(map.entries()).map(([id, nama]) => ({ id, nama }));
-  }, [rawList]);
-
-  // 7. Filtered Feed List
+  // Filtered Feed List
   const filteredVisits = useMemo(() => {
     return allVisits.filter((v) => {
       const matchSearch =
@@ -196,7 +161,7 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
     });
   }, [allVisits, searchTerm, selectedMitraFilter]);
 
-  // 8. Mutations
+  // 5. Mutations
   const addVisitMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => hubinApi.addKunjungan(id, data),
     onSuccess: () => {
@@ -250,33 +215,24 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
     },
   });
 
-  // 9. Handlers
-  const handleOpenNewVisit = useCallback(() => {
-    if (rawList.length === 0) {
-      toast.error('Belum ada data siswa bimbingan atau penempatan magang aktif.');
-      return;
-    }
-    // If only 1 placement, open directly. If multiple, show selector modal
-    if (rawList.length === 1) {
-      setActiveSelectedPkl(rawList[0]);
-      setEditingKunjunganId(undefined);
-      setVisitLat('');
-      setVisitLng('');
-      setVisitFotoUrl('');
-      setIsKunjunganModalOpen(true);
-    } else {
-      setIsSelectSiswaModalOpen(true);
-    }
-  }, [rawList]);
-
-  const handleSelectPklForNewVisit = useCallback((pkl: SiswaPkl) => {
-    setIsSelectSiswaModalOpen(false);
-    setActiveSelectedPkl(pkl);
+  // 6. Handlers
+  const handleRecordVisitForSiswa = useCallback((target: SiswaTargetItem) => {
+    setActiveSelectedPkl(target.rawPkl);
     setEditingKunjunganId(undefined);
     setVisitLat('');
     setVisitLng('');
     setVisitFotoUrl('');
     setIsKunjunganModalOpen(true);
+  }, []);
+
+  const handleViewHistoryForSiswa = useCallback((target: SiswaTargetItem) => {
+    setSearchTerm(target.nama_siswa);
+    setActiveViewMode('FEED');
+  }, []);
+
+  const handlePrintForSiswa = useCallback((target: SiswaTargetItem) => {
+    setPrintPkl(target.rawPkl);
+    setIsPrintModalOpen(true);
   }, []);
 
   const handleEditVisit = useCallback((item: KunjunganItemDetail) => {
@@ -341,7 +297,7 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
               Supervisi &amp; Kunjungan Industri DU/DI
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-              Pusat pencatatan observasi, verifikasi lokasi GPS, dan dokumentasi monitoring berkala siswa PKL.
+              Peta monitoring target, checklist siswa bimbingan, geotagging GPS, dan dokumentasi supervisi berkala.
             </p>
           </div>
           {isModal && onClose && (
@@ -352,7 +308,7 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
         </div>
       )}
 
-      {/* 2. Standar Academic Filter Toolbar (Hidden if controlled by parent role) */}
+      {/* 2. Standar Academic Filter Toolbar */}
       {!hideScopeBanner && (
         <AcademicFilterToolbar
           {...academicFilter.toolbarProps}
@@ -363,14 +319,73 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
       {/* 3. Bento Metric Stats */}
       {!hideHeaderStats && <KunjunganStatsCards stats={stats} />}
 
-      {/* 4. Action Control & Filter Toolbar */}
+      {/* 4. Dual-View Mode Switcher */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="inline-flex p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60">
+          <button
+            type="button"
+            onClick={() => setActiveViewMode('TARGET')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              activeViewMode === 'TARGET'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Users size={14} />
+            <span>Target &amp; Siswa Bimbingan</span>
+            {stats.unvisitedSiswaCount > 0 && (
+              <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-rose-500 text-white">
+                {stats.unvisitedSiswaCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveViewMode('FEED')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              activeViewMode === 'FEED'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <History size={14} />
+            <span>Riwayat Log Supervisi</span>
+            <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+              {allVisits.length}
+            </span>
+          </button>
+        </div>
+
+        {activeViewMode === 'TARGET' && (
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            {(['ALL', 'UNVISITED', 'VISITED'] as const).map((st) => (
+              <Button
+                key={st}
+                size="sm"
+                variant={statusFilter === st ? 'primary' : 'outline'}
+                onClick={() => setStatusFilter(st)}
+                className="text-xs font-bold rounded-xl h-8 shrink-0"
+              >
+                {st === 'ALL' ? 'Semua Target' : st === 'UNVISITED' ? 'Belum Dikunjungi' : 'Sudah Dikunjungi'}
+              </Button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 5. Filter Toolbar */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 max-w-2xl">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <Input
               type="text"
-              placeholder="Cari nama siswa, mitra DU/DI, atau catatan observasi..."
+              placeholder={
+                activeViewMode === 'TARGET'
+                  ? 'Cari nama siswa, NIS, kelas, atau mitra DU/DI...'
+                  : 'Cari catatan observasi, umpan balik DU/DI, nama siswa...'
+              }
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9 text-xs sm:text-sm rounded-xl h-10 w-full"
@@ -392,47 +407,31 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
             </select>
           )}
         </div>
-
-        {!readOnly && (
-          <Button
-            type="button"
-            variant="primary"
-            onClick={handleOpenNewVisit}
-            className="text-xs font-bold rounded-xl h-10 gap-1.5 shadow-xs shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white"
-          >
-            <Plus size={16} />
-            Catat Supervisi Baru
-          </Button>
-        )}
       </div>
 
-      {/* 5. Visits Feed List */}
+      {/* 6. Body Content: TARGET vs FEED */}
       {isLoading ? (
         <div className="p-12 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
           <div className="animate-spin w-8 h-8 mx-auto text-indigo-600 mb-2 border-2 border-current border-t-transparent rounded-full" />
-          <p className="text-xs text-slate-400">Memuat riwayat supervisi kunjungan...</p>
+          <p className="text-xs text-slate-400">Memuat data supervisi bimbingan...</p>
         </div>
+      ) : activeViewMode === 'TARGET' ? (
+        <KunjunganTargetList
+          groups={filteredTargetGroups}
+          readOnly={readOnly}
+          onRecordVisit={handleRecordVisitForSiswa}
+          onViewHistory={handleViewHistoryForSiswa}
+          onPrint={handlePrintForSiswa}
+        />
       ) : filteredVisits.length === 0 ? (
         <div className="p-12 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <Calendar className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
+          <History className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
           <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">
-            Belum Ada Catatan Kunjungan Supervisi
+            Belum Ada Riwayat Kunjungan
           </h4>
           <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-            Gunakan tombol &apos;Catat Supervisi Baru&apos; untuk mendokumentasikan koordinasi, foto bukti, dan observasi langsung ke DU/DI.
+            Beralihlah ke tab &apos;Target &amp; Siswa Bimbingan&apos; untuk mulai mencatat supervisi pertama Anda.
           </p>
-          {!readOnly && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleOpenNewVisit}
-              className="mt-4 text-xs font-bold rounded-xl gap-1.5"
-            >
-              <Plus size={14} />
-              Mulai Supervisi Perdana
-            </Button>
-          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -446,49 +445,6 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
               onPrint={handlePrintVisit}
             />
           ))}
-        </div>
-      )}
-
-      {/* 6. Modal Dialog Pilih Siswa / Mitra untuk Kunjungan Baru */}
-      {isSelectSiswaModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black text-slate-900 dark:text-white">
-                Pilih Lokasi DU/DI &amp; Siswa Supervisi
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsSelectSiswaModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <p className="text-xs text-slate-500">
-              Pilih siswa bimbingan atau mitra industri yang Anda kunjungi hari ini:
-            </p>
-            <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
-              {rawList.map((pkl) => (
-                <button
-                  type="button"
-                  key={pkl.id}
-                  onClick={() => handleSelectPklForNewVisit(pkl)}
-                  className="w-full text-left p-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 transition-all flex items-center justify-between gap-2"
-                >
-                  <div className="min-w-0">
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block truncate">
-                      {pkl.Siswa?.nama_siswa || 'Siswa Magang'}
-                    </span>
-                    <span className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold block truncate">
-                      {pkl.Mitra?.nama || 'Mitra DU/DI'}
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-slate-400 shrink-0">Pilih ↗</span>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       )}
 
