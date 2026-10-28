@@ -32,6 +32,15 @@ export class HubinPenilaianController {
     }
   }
 
+  async getAllSettingsSummary(request: AuthenticatedRequest, reply: any) {
+    try {
+      const data = await this.hubinService.getAllSettingsSummary(request.tenantId!);
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
   async updateSettings(request: AuthenticatedRequest, reply: any) {
     try {
       const data = await this.hubinService.updateSettings(request.tenantId!, request.body);

@@ -326,6 +326,22 @@ export const hubinApi = {
   getStats: () => requestWithFallback<any>('get', '/dashboard/hubin/stats'),
 
   // Settings & Source of Truth Referensi Hubin
+  getSettingsSummary: () => requestWithFallback<Array<{
+    tahun_pelajaran_id: string;
+    tahun_ajaran: string;
+    is_active: boolean;
+    is_configured: boolean;
+    nomorSuratSertifikat?: string;
+    tanggalTerbitSertifikat?: string;
+    durasiJp?: string | number;
+    tempatTerbit?: string;
+    penandatanganNama?: string;
+    penandatanganNip?: string;
+    assessmentMode?: 'DUDI_ONLY' | 'COMPOSITE';
+    weightDudi?: number;
+    weightLaporan?: number;
+    weightSidang?: number;
+  }>>('get', '/hubin/settings/summary', { unwrapData: true }),
   getSettings: (params?: { tahun_pelajaran_id?: string }) => requestWithFallback<{ 
     folderUrl: string; 
     driveMode: string;

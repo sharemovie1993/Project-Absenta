@@ -72,6 +72,7 @@ export class HubinController {
   // Penilaian, Settings & TEFA
   async updatePenilaian(...args: any[]) { return (this.penilaian as any).updatePenilaian(...args); }
   async getSettings(...args: any[]) { return (this.penilaian as any).getSettings(...args); }
+  async getAllSettingsSummary(...args: any[]) { return (this.penilaian as any).getAllSettingsSummary(...args); }
   async updateSettings(...args: any[]) { return (this.penilaian as any).updateSettings(...args); }
   async getTefaOrders(...args: any[]) { return (this.penilaian as any).getTefaOrders(...args); }
   async createTefaOrder(...args: any[]) { return (this.penilaian as any).createTefaOrder(...args); }

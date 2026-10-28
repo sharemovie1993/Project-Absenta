@@ -116,6 +116,69 @@ export class HubinPenilaianService extends HubinCommonHelper {
     };
   }
 
+  async getAllSettingsSummary(tenantId: string) {
+    const [tpList, allConfigs, sekolah] = await Promise.all([
+      prisma.tahunPelajaran.findMany({
+        where: { tenant_id: tenantId },
+        orderBy: { tahun: 'desc' },
+      }),
+      prisma.config.findMany({
+        where: {
+          tenant_id: tenantId,
+          key: { startsWith: 'HUBIN_' },
+        },
+      }),
+      prisma.sekolah.findFirst({ where: { tenant_id: tenantId } }),
+    ]);
+
+    const configMap = new Map<string, string>();
+    allConfigs.forEach((c) => configMap.set(c.key, c.value));
+
+    const globalNomor = configMap.get('HUBIN_PKL_NOMOR_SURAT') || null;
+    const globalTgl = configMap.get('HUBIN_PKL_TANGGAL_TERBIT') || null;
+    const globalJp = configMap.get('HUBIN_PKL_DURASI_JP') || '792';
+    const globalTempat = configMap.get('HUBIN_PKL_TEMPAT_TERBIT') || sekolah?.kota || 'Purwakarta';
+    const globalKepsek = configMap.get('HUBIN_PKL_PENANDATANGAN_NAMA') || sekolah?.kepala_sekolah || '';
+    const globalNip = configMap.get('HUBIN_PKL_PENANDATANGAN_NIP') || sekolah?.nip_kepala || '';
+    const globalMode = configMap.get('HUBIN_PKL_ASSESSMENT_MODE') || 'DUDI_ONLY';
+    const globalWeightDudi = configMap.get('HUBIN_PKL_WEIGHT_DUDI') || '70';
+    const globalWeightLaporan = configMap.get('HUBIN_PKL_WEIGHT_LAPORAN') || '15';
+    const globalWeightSidang = configMap.get('HUBIN_PKL_WEIGHT_SIDANG') || '15';
+
+    return tpList.map((tp) => {
+      const tpId = tp.id;
+      const tpNomor = configMap.get(`HUBIN_PKL_NOMOR_SURAT_${tpId}`);
+      const tpTgl = configMap.get(`HUBIN_PKL_TANGGAL_TERBIT_${tpId}`);
+      const tpJp = configMap.get(`HUBIN_PKL_DURASI_JP_${tpId}`);
+      const tpTempat = configMap.get(`HUBIN_PKL_TEMPAT_TERBIT_${tpId}`);
+      const tpKepsek = configMap.get(`HUBIN_PKL_PENANDATANGAN_NAMA_${tpId}`);
+      const tpNip = configMap.get(`HUBIN_PKL_PENANDATANGAN_NIP_${tpId}`);
+      const tpMode = configMap.get(`HUBIN_PKL_ASSESSMENT_MODE_${tpId}`);
+      const tpWeightDudi = configMap.get(`HUBIN_PKL_WEIGHT_DUDI_${tpId}`);
+      const tpWeightLaporan = configMap.get(`HUBIN_PKL_WEIGHT_LAPORAN_${tpId}`);
+      const tpWeightSidang = configMap.get(`HUBIN_PKL_WEIGHT_SIDANG_${tpId}`);
+
+      const isConfigured = Boolean(tpNomor || tpTgl || tpJp || tpTempat || tpKepsek);
+
+      return {
+        tahun_pelajaran_id: tp.id,
+        tahun_ajaran: tp.tahun,
+        is_active: Boolean(tp.is_active),
+        is_configured: isConfigured,
+        nomorSuratSertifikat: tpNomor || globalNomor || '',
+        tanggalTerbitSertifikat: tpTgl || globalTgl || '',
+        durasiJp: tpJp || globalJp || '792',
+        tempatTerbit: tpTempat || globalTempat || '',
+        penandatanganNama: tpKepsek || globalKepsek || '',
+        penandatanganNip: tpNip || globalNip || '',
+        assessmentMode: (tpMode || globalMode) as 'DUDI_ONLY' | 'COMPOSITE',
+        weightDudi: Number(tpWeightDudi || globalWeightDudi || 70),
+        weightLaporan: Number(tpWeightLaporan || globalWeightLaporan || 15),
+        weightSidang: Number(tpWeightSidang || globalWeightSidang || 15),
+      };
+    });
+  }
+
   async updateSettings(tenantId: string, payload: any) {
     const data = payload?.data || payload || {};
     if (data.folderUrl !== undefined) await this.updateConfig(tenantId, 'HUBIN_GOOGLE_DRIVE_FOLDER_URL', data.folderUrl);
