@@ -34,11 +34,8 @@ import type {
 const HubinPklKunjunganModal = lazy(() =>
   import('@/components/hubin/HubinPklKunjunganModal').then((m) => ({ default: m.HubinPklKunjunganModal }))
 );
-const HubinPklPrintMonitoringModal = lazy(() =>
-  import('@/components/hubin/HubinPklPrintMonitoringModal').then((m) => ({ default: m.HubinPklPrintMonitoringModal }))
-);
-const HubinPklPrintSurat = lazy(() =>
-  import('@/components/hubin/HubinPklPrintSurat').then((m) => ({ default: m.HubinPklPrintSurat }))
+const KunjunganPrintModal = lazy(() =>
+  import('./KunjunganPrintModal').then((m) => ({ default: m.KunjunganPrintModal }))
 );
 
 type ActiveViewMode = 'TARGET' | 'FEED';
@@ -85,11 +82,9 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
   const [visitFotoUrl, setVisitFotoUrl] = useState('');
   const [isDetectingGps, setIsDetectingGps] = useState(false);
 
-  // Print State
+  // Print State (Universal Document Print Modal)
   const [printPkl, setPrintPkl] = useState<SiswaPkl | null>(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
-  const [printMode, setPrintMode] = useState<string | null>(null);
-  const [monitoringPrintConfig, setMonitoringPrintConfig] = useState<any>(null);
 
   // 3. Query Siswa Penempatan PKL
   const { data: penempatanData, isLoading } = useQuery({
@@ -483,37 +478,16 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
         </Suspense>
       )}
 
-      {/* 8. Modal Dialog Cetak Lembar Supervisi */}
+      {/* 8. Universal Document Print Modal (True WYSIWYG, Kop Dinas Resmi & 2-Tier TTD) */}
       {isPrintModalOpen && printPkl && (
         <Suspense fallback={null}>
-          <HubinPklPrintMonitoringModal
+          <KunjunganPrintModal
             isOpen={isPrintModalOpen}
             onClose={() => {
               setIsPrintModalOpen(false);
               setPrintPkl(null);
             }}
-            selectedPkl={printPkl as any}
-            onConfirmPrint={(cfg) => {
-              setMonitoringPrintConfig(cfg);
-              setPrintMode('monitoring');
-              setIsPrintModalOpen(false);
-              setTimeout(() => window.print(), 300);
-            }}
-          />
-        </Suspense>
-      )}
-
-      {/* 9. True WYSIWYG Print Document Output */}
-      {printMode && printPkl && (
-        <Suspense fallback={null}>
-          <HubinPklPrintSurat
-            printMode={printMode}
-            printData={printPkl as any}
-            monitoringConfig={monitoringPrintConfig}
-            onClose={() => {
-              setPrintMode(null);
-              setPrintPkl(null);
-            }}
+            selectedPkl={printPkl}
           />
         </Suspense>
       )}
