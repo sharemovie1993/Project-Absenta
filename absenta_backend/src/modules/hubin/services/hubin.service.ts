@@ -51,6 +51,7 @@ export class HubinService {
   async syncOfflineLogbook(...args: any[]) { return (this.absensi as any).syncOfflineLogbook(...args); }
   async verifyAbsensi(...args: any[]) { return (this.absensi as any).verifyAbsensi(...args); }
   async addKunjungan(...args: any[]) { return (this.absensi as any).addKunjungan(...args); }
+  async addBulkKunjungan(...args: any[]) { return (this.absensi as any).addBulkKunjungan(...args); }
   async updateKunjungan(...args: any[]) { return (this.absensi as any).updateKunjungan(...args); }
   async deleteKunjungan(...args: any[]) { return (this.absensi as any).deleteKunjungan(...args); }
   async submitJurnalPortofolio(...args: any[]) { return (this.absensi as any).submitJurnalPortofolio(...args); }

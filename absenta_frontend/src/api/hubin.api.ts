@@ -261,6 +261,17 @@ export const hubinApi = {
   importExcelPlotting: (data: any) => requestWithFallback<any>('post', '/hubin/penempatan/import-excel', { data }),
   updatePenilaian: (id: string, nilai: any) => requestWithFallback<any>('put', `/hubin/penempatan/${id}/nilai`, { data: { nilai } }),
   addKunjungan: (id: string, data: any) => requestWithFallback<any>('post', `/hubin/penempatan/${id}/kunjungan`, { data }),
+  addBulkKunjungan: (data: {
+    pkl_ids: string[];
+    tanggal?: string;
+    catatan: string;
+    catatan_dudi?: string;
+    foto_url?: string;
+    latitude?: number;
+    longitude?: number;
+    catatan_khusus?: Record<string, string>;
+    jurnal_verified?: boolean;
+  }) => requestWithFallback<any>('post', '/hubin/penempatan/kunjungan-kolektif', { data }),
   updateKunjungan: (id: string, kunjunganId: string, data: any) => requestWithFallback<any>('put', `/hubin/penempatan/${id}/kunjungan/${kunjunganId}`, { data }),
   deleteKunjungan: (id: string, kunjunganId: string) => requestWithFallback<any>('delete', `/hubin/penempatan/${id}/kunjungan/${kunjunganId}`),
   deletePenempatan: (id: string) => requestWithFallback<any>('delete', `/hubin/penempatan/${id}`),

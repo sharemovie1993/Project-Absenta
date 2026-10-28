@@ -28,6 +28,7 @@ import type {
   UniversalKunjunganPklViewProps,
   KunjunganItemDetail,
   SiswaTargetItem,
+  MitraTargetGroup,
 } from './types';
 
 // Lazy Loaded Modal Subsystems
@@ -36,6 +37,9 @@ const HubinPklKunjunganModal = lazy(() =>
 );
 const KunjunganPrintModal = lazy(() =>
   import('./KunjunganPrintModal').then((m) => ({ default: m.KunjunganPrintModal }))
+);
+const HubinPklKunjunganKolektifModal = lazy(() =>
+  import('./HubinPklKunjunganKolektifModal').then((m) => ({ default: m.HubinPklKunjunganKolektifModal }))
 );
 
 type ActiveViewMode = 'TARGET' | 'FEED';
@@ -76,31 +80,35 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
   const [activeSelectedPkl, setActiveSelectedPkl] = useState<SiswaPkl | null>(null);
   const [editingKunjunganId, setEditingKunjunganId] = useState<string | undefined>(undefined);
 
-  // Form State passed to HubinPklKunjunganModal
+  // Form & Modal States
   const [visitLat, setVisitLat] = useState('');
   const [visitLng, setVisitLng] = useState('');
   const [visitFotoUrl, setVisitFotoUrl] = useState('');
   const [isDetectingGps, setIsDetectingGps] = useState(false);
-
-  // Print State (Universal Document Print Modal)
   const [printPkl, setPrintPkl] = useState<SiswaPkl | null>(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [selectedBulkGroup, setSelectedBulkGroup] = useState<MitraTargetGroup | null>(null);
+
+  const resetVisitForm = useCallback(() => {
+    setIsKunjunganModalOpen(false);
+    setActiveSelectedPkl(null);
+    setEditingKunjunganId(undefined);
+    setVisitLat('');
+    setVisitLng('');
+    setVisitFotoUrl('');
+  }, []);
 
   // 3. Query Siswa Penempatan PKL
   const { data: penempatanData, isLoading } = useQuery({
     queryKey: ['hubin-kunjungan-list', effectiveGuruId, effectiveTpId, effectiveJurusanId],
     queryFn: async () => {
-      try {
-        const res = await hubinApi.getPenempatan({
-          pembimbing_id: effectiveGuruId,
-          tahun_pelajaran_id: effectiveTpId,
-          jurusan_id: effectiveJurusanId,
-          limit: 100,
-        });
-        if (res?.data && Array.isArray(res.data) && res.data.length > 0) return res.data as SiswaPkl[];
-      } catch {
-        /* Fallback */
-      }
+      const res = await hubinApi.getPenempatan({
+        pembimbing_id: effectiveGuruId,
+        tahun_pelajaran_id: effectiveTpId,
+        jurusan_id: effectiveJurusanId,
+        limit: 100,
+      }).catch(() => null);
+      if (Array.isArray(res?.data) && res.data.length > 0) return res.data as SiswaPkl[];
       const myRes = await hubinApi.getMyPenempatan().catch(() => ({ data: [] }));
       if (Array.isArray(myRes?.data) && myRes.data.length > 0) return myRes.data as SiswaPkl[];
       const allRes = await hubinApi.getPenempatan({ limit: 100 }).catch(() => ({ data: [] }));
@@ -164,12 +172,7 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
       queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
       queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-pembimbing'] });
       toast.success('Laporan kunjungan supervisi berhasil disimpan!');
-      setIsKunjunganModalOpen(false);
-      setActiveSelectedPkl(null);
-      setEditingKunjunganId(undefined);
-      setVisitLat('');
-      setVisitLng('');
-      setVisitFotoUrl('');
+      resetVisitForm();
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Gagal menyimpan laporan kunjungan.');
@@ -184,12 +187,7 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
       queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
       queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-pembimbing'] });
       toast.success('Catatan kunjungan berhasil diperbarui!');
-      setIsKunjunganModalOpen(false);
-      setActiveSelectedPkl(null);
-      setEditingKunjunganId(undefined);
-      setVisitLat('');
-      setVisitLng('');
-      setVisitFotoUrl('');
+      resetVisitForm();
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Gagal memperbarui kunjungan.');
@@ -212,13 +210,10 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
 
   // 6. Handlers
   const handleRecordVisitForSiswa = useCallback((target: SiswaTargetItem) => {
+    resetVisitForm();
     setActiveSelectedPkl(target.rawPkl);
-    setEditingKunjunganId(undefined);
-    setVisitLat('');
-    setVisitLng('');
-    setVisitFotoUrl('');
     setIsKunjunganModalOpen(true);
-  }, []);
+  }, [resetVisitForm]);
 
   const handleViewHistoryForSiswa = useCallback((target: SiswaTargetItem) => {
     setSearchTerm(target.nama_siswa);
@@ -232,10 +227,7 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
 
   const handleEditVisit = useCallback((item: KunjunganItemDetail) => {
     const parentPkl = rawList.find((p) => p.id === item.penempatan_id);
-    if (!parentPkl) {
-      toast.error('Data penempatan siswa tidak ditemukan.');
-      return;
-    }
+    if (!parentPkl) return toast.error('Data penempatan siswa tidak ditemukan.');
     setActiveSelectedPkl(parentPkl);
     setEditingKunjunganId(item.rawKunjunganId);
     setVisitLat(item.latitude !== undefined ? String(item.latitude) : '');
@@ -417,6 +409,7 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
           onRecordVisit={handleRecordVisitForSiswa}
           onViewHistory={handleViewHistoryForSiswa}
           onPrint={handlePrintForSiswa}
+          onBulkRecordVisit={(group) => setSelectedBulkGroup(group)}
         />
       ) : filteredVisits.length === 0 ? (
         <div className="p-12 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
@@ -448,11 +441,7 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
         <Suspense fallback={null}>
           <HubinPklKunjunganModal
             isOpen={isKunjunganModalOpen}
-            onClose={() => {
-              setIsKunjunganModalOpen(false);
-              setActiveSelectedPkl(null);
-              setEditingKunjunganId(undefined);
-            }}
+            onClose={resetVisitForm}
             selectedPkl={activeSelectedPkl as any}
             selectedKunjunganList={(activeSelectedPkl.kunjungan_json as any) || []}
             handleKunjunganSubmit={handleKunjunganSubmit}
@@ -470,10 +459,7 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
             setVisitLng={setVisitLng}
             visitFotoUrl={visitFotoUrl}
             setVisitFotoUrl={setVisitFotoUrl}
-            onPrintMonitoring={(row) => {
-              setPrintPkl(row);
-              setIsPrintModalOpen(true);
-            }}
+            onPrintMonitoring={(row) => { setPrintPkl(row); setIsPrintModalOpen(true); }}
           />
         </Suspense>
       )}
@@ -483,11 +469,24 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
         <Suspense fallback={null}>
           <KunjunganPrintModal
             isOpen={isPrintModalOpen}
-            onClose={() => {
-              setIsPrintModalOpen(false);
-              setPrintPkl(null);
-            }}
+            onClose={() => { setIsPrintModalOpen(false); setPrintPkl(null); }}
             selectedPkl={printPkl}
+          />
+        </Suspense>
+      )}
+
+      {/* 9. Modal Kunjungan Kolektif Berbasis Mitra DU/DI */}
+      {selectedBulkGroup && (
+        <Suspense fallback={null}>
+          <HubinPklKunjunganKolektifModal
+            isOpen={Boolean(selectedBulkGroup)}
+            onClose={() => setSelectedBulkGroup(null)}
+            group={selectedBulkGroup}
+            onSuccess={() => {
+              ['hubin-kunjungan-list', 'penempatan-pkl', 'hubin-penempatan-pembimbing'].forEach((k) =>
+                queryClient.invalidateQueries({ queryKey: [k] })
+              );
+            }}
           />
         </Suspense>
       )}

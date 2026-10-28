@@ -575,6 +575,81 @@ export class HubinAbsensiService extends HubinCommonHelper {
     return res;
   }
 
+  async addBulkKunjungan(tenantId: string, payload: any, requesterId?: string, org?: any) {
+    const { pkl_ids, catatan, catatan_dudi, foto_url, latitude, longitude, tanggal, catatan_khusus, jurnal_verified } = payload || {};
+    if (!Array.isArray(pkl_ids) || pkl_ids.length === 0) {
+      throw new Error('Daftar ID penempatan siswa (pkl_ids) wajib diisi');
+    }
+
+    const pklRecords = await prisma.siswaPkl.findMany({
+      where: {
+        id: { in: pkl_ids },
+        tenant_id: tenantId,
+      },
+    });
+
+    if (pklRecords.length === 0) {
+      throw new Error('Tidak ada data penempatan PKL yang valid ditemukan');
+    }
+
+    // Check ownership if requested by guru pembimbing
+    if (requesterId) {
+      for (const pkl of pklRecords) {
+        await this.ensureOwnership(tenantId, pkl.id, requesterId, org);
+      }
+    }
+
+    const visitTime = tanggal || new Date().toISOString();
+    const sharedVisitId = crypto.randomBytes(8).toString('hex');
+
+    const updates = pklRecords.map((pkl) => {
+      let kunjunganList: any[] = [];
+      if (pkl.kunjungan_json) {
+        if (Array.isArray(pkl.kunjungan_json)) {
+          kunjunganList = [...pkl.kunjungan_json];
+        } else {
+          try {
+            kunjunganList = JSON.parse(pkl.kunjungan_json as string);
+          } catch (e) {
+            kunjunganList = [];
+          }
+        }
+      }
+
+      const specificNote = catatan_khusus?.[pkl.id];
+      const mergedCatatan = specificNote ? `${catatan}\n\n[Catatan Khusus Siswa]: ${specificNote}` : catatan;
+
+      kunjunganList.push({
+        id: crypto.randomBytes(8).toString('hex'),
+        collective_batch_id: sharedVisitId,
+        is_collective: true,
+        total_peserta: pklRecords.length,
+        tanggal: visitTime,
+        catatan: mergedCatatan,
+        catatan_dudi,
+        foto_url,
+        latitude,
+        longitude,
+        jurnal_verified: jurnal_verified !== false,
+        created_at: new Date().toISOString(),
+      });
+
+      return prisma.siswaPkl.update({
+        where: { id: pkl.id },
+        data: { kunjungan_json: kunjunganList },
+      });
+    });
+
+    await prisma.$transaction(updates);
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
+
+    return {
+      success: true,
+      updated_count: pklRecords.length,
+      collective_batch_id: sharedVisitId,
+    };
+  }
+
   async updateKunjungan(tenantId: string, id: string, kunjunganId: string, data: any, requesterId?: string, org?: any) {
     if (requesterId) {
       await this.ensureOwnership(tenantId, id, requesterId, org);

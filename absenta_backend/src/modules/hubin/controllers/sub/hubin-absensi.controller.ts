@@ -220,6 +220,20 @@ export class HubinAbsensiController {
     }
   }
 
+  async addBulkKunjungan(request: AuthenticatedRequest, reply: any) {
+    try {
+      const data = await this.hubinService.addBulkKunjungan(
+        request.tenantId!, 
+        request.body, 
+        request.user.id,
+        request.organizationalScope
+      );
+      return reply.status(201).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
   async updateKunjungan(request: AuthenticatedRequest, reply: any) {
     try {
       const data = await this.hubinService.updateKunjungan(

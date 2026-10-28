@@ -10,6 +10,7 @@ import {
   Clock,
   User,
   MapPin,
+  Users,
 } from 'lucide-react';
 import { Badge, Button } from '@/components/ui';
 import type { MitraTargetGroup, SiswaTargetItem } from './types';
@@ -20,6 +21,7 @@ interface KunjunganTargetListProps {
   onRecordVisit: (target: SiswaTargetItem) => void;
   onViewHistory: (target: SiswaTargetItem) => void;
   onPrint: (target: SiswaTargetItem) => void;
+  onBulkRecordVisit?: (group: MitraTargetGroup) => void;
 }
 
 export const KunjunganTargetList: React.FC<KunjunganTargetListProps> = React.memo(({
@@ -28,6 +30,7 @@ export const KunjunganTargetList: React.FC<KunjunganTargetListProps> = React.mem
   onRecordVisit,
   onViewHistory,
   onPrint,
+  onBulkRecordVisit,
 }) => {
   if (groups.length === 0) {
     return (
@@ -101,6 +104,20 @@ export const KunjunganTargetList: React.FC<KunjunganTargetListProps> = React.mem
                   )}
                 </div>
               </div>
+
+              {!readOnly && onBulkRecordVisit && group.siswaList.length > 0 && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onBulkRecordVisit(group)}
+                  className="text-xs font-bold rounded-xl gap-1.5 shrink-0 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 shadow-2xs h-9"
+                  title={`Catat satu kali supervisi kolektif untuk seluruh ${group.siswaList.length} siswa di ${group.nama_mitra}`}
+                >
+                  <Users size={14} className="text-indigo-600 dark:text-indigo-400" />
+                  <span>Kunjungan Kolektif ({group.siswaList.length} Siswa)</span>
+                </Button>
+              )}
             </div>
 
             {/* List Siswa di Mitra ini */}
