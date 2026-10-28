@@ -1,7 +1,11 @@
 import React, { useMemo } from 'react';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { PenempatanPklView, type PenempatanPklViewProps } from '../../components/hubin/penempatan/PenempatanPklView';
+import { 
+  PenempatanPklView, 
+  type PenempatanPklViewProps,
+  type UniversalPenempatanPklViewProps,
+} from '../../components/hubin/penempatan/PenempatanPklView';
 
 const breadcrumbs = [
   { label: 'Dashboard', path: '/dashboard' },
