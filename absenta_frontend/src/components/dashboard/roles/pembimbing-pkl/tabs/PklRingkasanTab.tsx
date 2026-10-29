@@ -78,7 +78,7 @@ export const PklRingkasanTab: React.FC<PklRingkasanTabProps> = ({
       {
         id: 'supervisi',
         title: 'Supervisi Terlaksana',
-        value: `${stats.total_kunjungan_terlaksana ?? 0} Kali`,
+        value: `${stats.total_kunjungan_terlaksana ?? 0} Sesi`,
         subtext: 'Kunjungan Lapangan',
         icon: CheckCircle2,
         iconColorClass: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60',
@@ -258,25 +258,64 @@ export const PklRingkasanTab: React.FC<PklRingkasanTabProps> = ({
             </div>
           ) : (
             <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
-              {kunjunganList.slice(0, 4).map((kunjungan) => (
-                <div
-                  key={kunjungan.id}
-                  onClick={() => onSelectTab('monitoring')}
-                  className="p-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 active:bg-slate-100 dark:active:bg-slate-800/60 transition-colors cursor-pointer space-y-1"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
-                      {kunjungan.nama_mitra}
-                    </span>
-                    <span className="text-[10px] text-slate-400 shrink-0 font-medium">
-                      {kunjungan.tanggal_kunjungan}
-                    </span>
+              {kunjunganList.slice(0, 4).map((kunjungan) => {
+                const getTahapBadge = (tahap?: string) => {
+                  switch (tahap) {
+                    case 'PENGANTARAN':
+                      return (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 shrink-0">
+                          Pengantaran
+                        </span>
+                      );
+                    case 'PENJEMPUTAN':
+                      return (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/80 shrink-0">
+                          Penjemputan
+                        </span>
+                      );
+                    case 'INSIDENTAL':
+                      return (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/80 shrink-0">
+                          Insidental
+                        </span>
+                      );
+                    default:
+                      return (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 shrink-0">
+                          Monitoring
+                        </span>
+                      );
+                  }
+                };
+
+                return (
+                  <div
+                    key={kunjungan.id}
+                    onClick={() => onSelectTab('monitoring')}
+                    className="p-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 active:bg-slate-100 dark:active:bg-slate-800/60 transition-colors cursor-pointer space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {getTahapBadge(kunjungan.tahap)}
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                          {kunjungan.nama_mitra}
+                        </span>
+                        {kunjungan.total_siswa && kunjungan.total_siswa > 1 && (
+                          <span className="text-[10px] text-slate-400 font-medium shrink-0">
+                            ({kunjungan.total_siswa} Siswa)
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-slate-400 shrink-0 font-medium">
+                        {kunjungan.tanggal_kunjungan}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 leading-relaxed">
+                      {kunjungan.catatan_supervisi || kunjungan.tujuan || 'Monitoring berkala pelaksanaan PKL.'}
+                    </p>
                   </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 leading-relaxed">
-                    {kunjungan.catatan_supervisi || kunjungan.tujuan || 'Monitoring berkala pelaksanaan PKL.'}
-                  </p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </HubCard>

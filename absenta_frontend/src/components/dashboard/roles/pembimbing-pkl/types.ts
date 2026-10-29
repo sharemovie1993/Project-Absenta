@@ -45,6 +45,9 @@ export interface KunjunganMonitoringItem {
   tanggal_kunjungan: string;
   tujuan: string;
   catatan_supervisi: string;
+  tahap?: string;
+  total_siswa?: number;
+  siswa_names?: string[];
   kendala_siswa?: string;
   tindak_lanjut?: string;
   foto_kegiatan_url?: string;

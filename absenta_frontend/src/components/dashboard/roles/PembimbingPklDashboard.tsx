@@ -142,7 +142,8 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
     const activeCount = mappedSiswa.filter((s) => s.status === 'AKTIF').length;
     const completedCount = mappedSiswa.filter((s) => s.status === 'SELESAI').length;
 
-    const realVisits: KunjunganMonitoringItem[] = [];
+    // Deduplikasi sesi supervisi fisik nyata (berdasarkan mitra, tanggal & tahap)
+    const sessionMap = new Map<string, KunjunganMonitoringItem & { tanggal_iso: string }>();
     rawList.forEach((p) => {
       let list: any[] = [];
       if (Array.isArray(p.kunjungan_json)) list = p.kunjungan_json;
@@ -150,18 +151,39 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
         try { list = JSON.parse(p.kunjungan_json); } catch { list = []; }
       }
       list.forEach((k: any, idx: number) => {
-        realVisits.push({
-          id: k.id || `visit-${p.id}-${idx}`,
-          penempatan_id: p.id,
-          nama_mitra: p.Mitra?.nama || 'Mitra Industri DU/DI',
-          tanggal_kunjungan: k.tanggal
-            ? new Date(k.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
-            : 'Sesi Supervisi',
-          tujuan: k.tahap || 'Monitoring Berkala',
-          catatan_supervisi: k.catatan || 'Monitoring pelaksanaan PKL siswa.',
-        });
+        const mId = p.Mitra?.id || p.mitra_id || 'mitra';
+        const dateKey = k.tanggal ? String(k.tanggal).slice(0, 16) : `visit-${idx}`;
+        const tahapKey = k.tahap || 'MONITORING';
+        const sessionKey = `${mId}_${dateKey}_${tahapKey}`;
+        const studentName = p.Siswa?.nama_siswa || 'Siswa';
+
+        if (!sessionMap.has(sessionKey)) {
+          sessionMap.set(sessionKey, {
+            id: k.id || sessionKey,
+            penempatan_id: p.id,
+            nama_mitra: p.Mitra?.nama || 'Mitra Industri DU/DI',
+            tanggal_iso: k.tanggal || '',
+            tanggal_kunjungan: k.tanggal
+              ? new Date(k.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+              : 'Sesi Supervisi',
+            tahap: tahapKey,
+            tujuan: tahapKey,
+            catatan_supervisi: k.catatan || 'Monitoring pelaksanaan PKL siswa.',
+            total_siswa: 1,
+            siswa_names: [studentName],
+          });
+        } else {
+          const item = sessionMap.get(sessionKey)!;
+          if (item.siswa_names && !item.siswa_names.includes(studentName)) {
+            item.siswa_names.push(studentName);
+            item.total_siswa = item.siswa_names.length;
+          }
+        }
       });
     });
+
+    const uniqueVisitSessions: KunjunganMonitoringItem[] = Array.from(sessionMap.values())
+      .sort((a, b) => new Date(b.tanggal_iso).getTime() - new Date(a.tanggal_iso).getTime());
 
     const pendingAbsensiCount = rawList.reduce((sum, p: any) => {
       const absList = p.AbsensiPkl || [];
@@ -170,20 +192,6 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
 
     const realLogbooks = extractLogbooksFromPenempatan(rawList);
 
-    const realVisitsCount = rawList.reduce((sum, p: any) => {
-      let count = 0;
-      if (Array.isArray(p.kunjungan_json)) {
-        count = p.kunjungan_json.length;
-      } else if (typeof p.kunjungan_json === 'string') {
-        try {
-          count = JSON.parse(p.kunjungan_json).length;
-        } catch {
-          count = 0;
-        }
-      }
-      return sum + count;
-    }, 0);
-
     const computedStats: PklDashboardStats = {
       total_siswa_bimbingan: mappedSiswa.length,
       siswa_aktif: activeCount,
@@ -191,13 +199,13 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
       total_mitra_industri: uniqueMitra.size,
       absensi_pending_verification: pendingAbsensiCount,
       jurnal_pending_review: realLogbooks.filter((l) => l.status_verifikasi === 'MENUNGGU_REVIEW').length,
-      total_kunjungan_terlaksana: realVisitsCount,
+      total_kunjungan_terlaksana: uniqueVisitSessions.length,
       persentase_dinilai: 75,
       siswa_bimbingan_list: mappedSiswa,
-      kunjungan_terbaru: realVisits,
+      kunjungan_terbaru: uniqueVisitSessions,
     };
 
-    return { stats: computedStats, siswaList: mappedSiswa, logbookList: realLogbooks, kunjunganList: realVisits };
+    return { stats: computedStats, siswaList: mappedSiswa, logbookList: realLogbooks, kunjunganList: uniqueVisitSessions };
   }, [penempatanRes]);
 
   const selectedRawSiswa = useMemo(() => {
@@ -404,21 +412,16 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
               <PembimbingPklDashboardSkeleton />
             ) : (
               <>
-                {/* 1. Ringkasan Beranda Tab */}
                 {visitedTabs.has('ringkasan') && (
                   <div className={cn(activeTab === 'ringkasan' ? 'block' : 'hidden')}>
                     <PklRingkasanTab stats={stats} tpTahun={tpTahun} semesterNama={semesterNama} onSelectTab={handleTabSelect} onOpenSiswaDetail={(s) => { setModalInitialTab('presensi'); setSelectedDetailSiswa(s); }} />
                   </div>
                 )}
-
-                {/* 2. Siswa Bimbingan Tab */}
                 {visitedTabs.has('bimbingan') && (
                   <div className={cn(activeTab === 'bimbingan' ? 'block' : 'hidden')}>
                     <PklBimbinganTab guruId={guruId} tahunPelajaranId={tpId} semesterId={academicFilter.values.semesterId} siswaList={siswaList} onOpenSiswaDetail={(s) => { setModalInitialTab('presensi'); setSelectedDetailSiswa(s); }} onOpenKunjunganModal={() => handleTabSelect('monitoring')} />
                   </div>
                 )}
-
-                {/* 2b. Verifikasi Absensi PKL Harian */}
                 {visitedTabs.has('verifikasi_absensi') && (
                   <div className={cn(activeTab === 'verifikasi_absensi' ? 'block' : 'hidden')}>
                     <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat verifikasi absensi...</div>}>
@@ -426,8 +429,6 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                     </Suspense>
                   </div>
                 )}
-
-                {/* 2c. Rekap Matriks Presensi PKL */}
                 {visitedTabs.has('absensi') && (
                   <div className={cn(activeTab === 'absensi' ? 'block' : 'hidden')}>
                     <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat matriks presensi...</div>}>
@@ -435,8 +436,6 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                     </Suspense>
                   </div>
                 )}
-
-                {/* 3. Verifikasi Jurnal Tab */}
                 {visitedTabs.has('jurnal') && (
                   <div className={cn(activeTab === 'jurnal' ? 'block' : 'hidden')}>
                     <PklJurnalTab
@@ -451,22 +450,16 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                     />
                   </div>
                 )}
-
-                {/* 4. Supervisi DU/DI Tab */}
                 {visitedTabs.has('monitoring') && (
                   <div className={cn(activeTab === 'monitoring' ? 'block' : 'hidden')}>
                     <PklMonitoringTab guruId={guruId} tahunPelajaranId={tpId} semesterId={academicFilter.values.semesterId} siswaList={siswaList} />
                   </div>
                 )}
-
-                {/* 5. Penilaian Magang Tab */}
                 {visitedTabs.has('penilaian') && (
                   <div className={cn(activeTab === 'penilaian' ? 'block' : 'hidden')}>
                     <PklPenilaianTab guruId={guruId} tahunPelajaranId={tpId} semesterId={academicFilter.values.semesterId} siswaList={siswaList} />
                   </div>
                 )}
-
-                {/* 6. Rekap & Cetak Tab */}
                 {visitedTabs.has('rekap') && (
                   <div className={cn(activeTab === 'rekap' ? 'block' : 'hidden')}>
                     <PklRekapTab siswaList={siswaList} kunjunganList={kunjunganList} tpTahun={tpTahun} semesterNama={semesterNama} />
