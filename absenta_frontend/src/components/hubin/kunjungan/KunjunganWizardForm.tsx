@@ -1,65 +1,21 @@
 import React, { useState } from 'react';
 import {
   Pencil, Plus, X, MapPin, Camera, CheckCircle2, ShieldAlert,
-  BookOpenCheck, ChevronRight, ChevronLeft, Send, Activity, LogOut, AlertTriangle,
+  BookOpenCheck, ChevronRight, ChevronLeft, Send, Activity, FileText,
 } from 'lucide-react';
 import { Button, Input, Textarea } from '../../ui';
 import { SimpleFormField } from '../../ui/SimpleFormField';
 import { HubinGoogleDriveUploader } from '../HubinGoogleDriveUploader';
 import type { KunjunganItem } from './HubinPklKunjunganTimeline';
 import { KunjunganStageSelector, STAGE_OPTIONS, type KunjunganOperationalStage } from './KunjunganStageSelector';
+import { KunjunganWizardStrip } from './KunjunganWizardStrip';
 import type { HubinPklKunjunganFormProps } from './HubinPklKunjunganForm';
 
-// Step definitions
-const WIZARD_STEPS = [
+const STEPS = [
   { id: 1, label: 'Tahap & Waktu', icon: Send },
-  { id: 2, label: 'Catatan', icon: Activity },
+  { id: 2, label: 'Catatan', icon: FileText },
   { id: 3, label: 'Dokumentasi', icon: Camera },
 ] as const;
-
-type WizardStep = 1 | 2 | 3;
-
-// Step indicator strip
-const WizardStepStrip: React.FC<{ step: WizardStep; total: number }> = ({ step, total }) => (
-  <div className="flex items-center gap-0 w-full mb-4">
-    {WIZARD_STEPS.map((s, idx) => {
-      const Icon = s.icon;
-      const done = step > s.id;
-      const active = step === s.id;
-      return (
-        <React.Fragment key={s.id}>
-          <div className={`flex flex-col items-center gap-0.5 shrink-0 ${active ? 'flex-1' : ''}`}>
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${
-                done
-                  ? 'bg-emerald-500 border-emerald-500 text-white'
-                  : active
-                  ? 'bg-indigo-600 border-indigo-600 text-white scale-110 shadow-md shadow-indigo-600/30'
-                  : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-400'
-              }`}
-            >
-              {done ? <CheckCircle2 size={15} /> : <Icon size={13} />}
-            </div>
-            <span
-              className={`text-[9px] font-bold uppercase tracking-wider whitespace-nowrap ${
-                done ? 'text-emerald-600 dark:text-emerald-400' : active ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'
-              }`}
-            >
-              {s.label}
-            </span>
-          </div>
-          {idx < total - 1 && (
-            <div
-              className={`flex-1 h-0.5 mx-1 rounded-full transition-all ${
-                step > s.id ? 'bg-emerald-400' : 'bg-slate-200 dark:bg-slate-800'
-              }`}
-            />
-          )}
-        </React.Fragment>
-      );
-    })}
-  </div>
-);
 
 export const KunjunganWizardForm: React.FC<HubinPklKunjunganFormProps> = React.memo(({
   editingKunjungan,
@@ -89,7 +45,7 @@ export const KunjunganWizardForm: React.FC<HubinPklKunjunganFormProps> = React.m
   tahap,
   setTahap,
 }) => {
-  const [step, setStep] = useState<WizardStep>(1);
+  const [step, setStep] = useState<number>(1);
   const [mapView, setMapView] = useState<'standard' | 'satellite'>('standard');
 
   // Reset to step 1 when editingKunjungan changes
@@ -109,7 +65,7 @@ export const KunjunganWizardForm: React.FC<HubinPklKunjunganFormProps> = React.m
     return true;
   };
 
-  const stepLabel = WIZARD_STEPS.find((s) => s.id === step)?.label || '';
+  const stepLabel = STEPS.find((s) => s.id === step)?.label || '';
   const currentStage = STAGE_OPTIONS.find((s) => s.id === tahap);
 
   return (
@@ -149,8 +105,8 @@ export const KunjunganWizardForm: React.FC<HubinPklKunjunganFormProps> = React.m
         )}
       </div>
 
-      {/* Step Indicator */}
-      <WizardStepStrip step={step} total={WIZARD_STEPS.length} />
+      {/* Step Indicator — shared component */}
+      <KunjunganWizardStrip steps={STEPS} currentStep={step} />
 
       {/* Current stage context chip (shown on steps 2 & 3) */}
       {step > 1 && currentStage && (
