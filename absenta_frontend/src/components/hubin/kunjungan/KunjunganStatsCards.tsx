@@ -66,7 +66,6 @@ export const KunjunganStatsCards: React.FC<KunjunganStatsCardsProps> = React.mem
       </div>
     </div>
   );
-  );
 });
 
 KunjunganStatsCards.displayName = 'KunjunganStatsCards';
