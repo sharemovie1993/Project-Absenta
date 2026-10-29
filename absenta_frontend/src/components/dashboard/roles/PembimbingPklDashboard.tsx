@@ -142,16 +142,26 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
     const activeCount = mappedSiswa.filter((s) => s.status === 'AKTIF').length;
     const completedCount = mappedSiswa.filter((s) => s.status === 'SELESAI').length;
 
-    const dummyVisits: KunjunganMonitoringItem[] = [
-      {
-        id: 'kunj-1',
-        penempatan_id: mappedSiswa[0]?.id || '1',
-        nama_mitra: mappedSiswa[0]?.nama_mitra || 'PT Telkom Indonesia',
-        tanggal_kunjungan: '15 Okt 2026',
-        tujuan: 'Monitoring Rutin',
-        catatan_supervisi: 'Siswa aktif, koordinasi dengan mentor lapangan berjalan lancar.',
-      },
-    ];
+    const realVisits: KunjunganMonitoringItem[] = [];
+    rawList.forEach((p) => {
+      let list: any[] = [];
+      if (Array.isArray(p.kunjungan_json)) list = p.kunjungan_json;
+      else if (typeof p.kunjungan_json === 'string') {
+        try { list = JSON.parse(p.kunjungan_json); } catch { list = []; }
+      }
+      list.forEach((k: any, idx: number) => {
+        realVisits.push({
+          id: k.id || `visit-${p.id}-${idx}`,
+          penempatan_id: p.id,
+          nama_mitra: p.Mitra?.nama || 'Mitra Industri DU/DI',
+          tanggal_kunjungan: k.tanggal
+            ? new Date(k.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+            : 'Sesi Supervisi',
+          tujuan: k.tahap || 'Monitoring Berkala',
+          catatan_supervisi: k.catatan || 'Monitoring pelaksanaan PKL siswa.',
+        });
+      });
+    });
 
     const pendingAbsensiCount = rawList.reduce((sum, p: any) => {
       const absList = p.AbsensiPkl || [];
@@ -184,31 +194,20 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
       total_kunjungan_terlaksana: realVisitsCount,
       persentase_dinilai: 75,
       siswa_bimbingan_list: mappedSiswa,
-      kunjungan_terbaru: dummyVisits,
+      kunjungan_terbaru: realVisits,
     };
 
-    return { stats: computedStats, siswaList: mappedSiswa, logbookList: realLogbooks, kunjunganList: dummyVisits };
+    return { stats: computedStats, siswaList: mappedSiswa, logbookList: realLogbooks, kunjunganList: realVisits };
   }, [penempatanRes]);
 
   const selectedRawSiswa = useMemo(() => {
     if (!selectedDetailSiswa) return null;
     const rawList: SiswaPkl[] = Array.isArray(penempatanRes) ? penempatanRes : (penempatanRes as any)?.data || [];
-    const found = rawList.find((r) => r.id === selectedDetailSiswa.id);
-    if (found) return found;
-    return {
+    return rawList.find((r) => r.id === selectedDetailSiswa.id) || {
       id: selectedDetailSiswa.id,
       siswa_id: selectedDetailSiswa.siswa_id,
-      Siswa: {
-        id: selectedDetailSiswa.siswa_id,
-        nama_siswa: selectedDetailSiswa.nama_siswa,
-        nis: selectedDetailSiswa.nis,
-        foto: (selectedDetailSiswa as any)?.foto,
-        Kelas: { nama_kelas: selectedDetailSiswa.kelas },
-      },
-      Mitra: {
-        id: selectedDetailSiswa.mitra_id,
-        nama: selectedDetailSiswa.nama_mitra,
-      },
+      Siswa: { id: selectedDetailSiswa.siswa_id, nama_siswa: selectedDetailSiswa.nama_siswa, nis: selectedDetailSiswa.nis, foto: (selectedDetailSiswa as any)?.foto, Kelas: { nama_kelas: selectedDetailSiswa.kelas } },
+      Mitra: { id: selectedDetailSiswa.mitra_id, nama: selectedDetailSiswa.nama_mitra },
     };
   }, [selectedDetailSiswa, penempatanRes]);
 
@@ -246,9 +245,9 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
     <PremiumFeatureGate feature="hubin">
       <div className="space-y-4 w-full max-w-full min-w-0">
         {/* 1. Shopee-Grade Clean Header */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-xs">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
+        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xs">
+          <div className="flex items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
               <Button
                 variant="ghost"
                 size="sm"
@@ -257,32 +256,33 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
               >
                 <ArrowLeft size={16} />
               </Button>
-              <div className="w-10 h-10 rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
-                <Briefcase size={20} />
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                <Briefcase size={18} className="sm:w-5 sm:h-5" />
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white truncate">
-                    Dashboard Pembimbing PKL
+                <div className="flex items-center gap-1.5">
+                  <h1 className="text-sm sm:text-lg font-black tracking-tight text-slate-900 dark:text-white truncate">
+                    <span className="hidden sm:inline">Dashboard </span>Pembimbing PKL
                   </h1>
-                  <Badge variant="outline" className="text-[10px] font-bold text-teal-600 dark:text-teal-400">
-                    DU/DI &amp; Magang
+                  <Badge variant="outline" className="text-[9px] sm:text-[10px] font-bold text-teal-600 dark:text-teal-400 px-1.5 py-0 shrink-0">
+                    DU/DI
                   </Badge>
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
-                  Monitoring Siswa Bimbingan, Logbook Jurnal &amp; Supervisi Industri
+                <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
+                  Monitoring Bimbingan &amp; Supervisi Industri
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowMobileFilter(!showMobileFilter)}
-                className="sm:hidden text-xs font-bold rounded-xl h-9 px-2.5"
+                className="sm:hidden text-xs font-bold rounded-xl h-8 px-2"
+                title="Filter Tahun Pelajaran / Semester"
               >
-                <SlidersHorizontal size={14} className="mr-1 text-teal-600" />
+                <SlidersHorizontal size={13} className="mr-1 text-teal-600" />
                 Filter
               </Button>
               <Button
@@ -290,16 +290,17 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                 size="sm"
                 onClick={handleRefresh}
                 disabled={isRefreshing}
-                className="text-xs font-bold rounded-xl h-9 px-3 gap-1.5"
+                className="text-xs font-bold rounded-xl h-8 px-2 sm:px-3 gap-1"
+                title="Perbarui Data"
               >
-                <RefreshCw size={14} className={cn(isRefreshing && 'animate-spin text-teal-600')} />
+                <RefreshCw size={13} className={cn(isRefreshing && 'animate-spin text-teal-600')} />
                 <span className="hidden sm:inline">Perbarui</span>
               </Button>
             </div>
           </div>
 
           {/* Academic Filter Toolbar */}
-          <div className={cn('mt-3 pt-3 border-t border-slate-100 dark:border-slate-800', !showMobileFilter && 'hidden sm:block')}>
+          <div className={cn('mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800', !showMobileFilter && 'hidden sm:block')}>
             <AcademicFilterToolbar {...academicFilter.toolbarProps} variant="compact" />
           </div>
         </div>
@@ -336,10 +337,8 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                       key={tab.id}
                       onClick={() => handleTabSelect(tab.id)}
                       className={cn(
-                        'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left',
-                        isActive
-                          ? 'bg-teal-600 text-white shadow-xs font-black'
-                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                        'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer',
+                        isActive ? 'bg-teal-600 text-white shadow-xs font-black' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
                       )}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -347,12 +346,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                         <span className="truncate">{tab.label}</span>
                       </div>
                       {typeof tab.badge === 'number' && tab.badge > 0 && (
-                        <span
-                          className={cn(
-                            'text-[10px] px-1.5 py-0.2 rounded-full font-bold',
-                            isActive ? 'bg-white/25 text-white' : 'bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300'
-                          )}
-                        >
+                        <span className={cn('text-[10px] px-1.5 py-0.2 rounded-full font-bold', isActive ? 'bg-white/25 text-white' : 'bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300')}>
                           {tab.badge}
                         </span>
                       )}
@@ -394,50 +388,31 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                 {/* 1. Ringkasan Beranda Tab */}
                 {visitedTabs.has('ringkasan') && (
                   <div className={cn(activeTab === 'ringkasan' ? 'block' : 'hidden')}>
-                    <PklRingkasanTab
-                      stats={stats}
-                      tpTahun={tpTahun}
-                      semesterNama={semesterNama}
-                      onSelectTab={handleTabSelect}
-                      onOpenSiswaDetail={(s) => {
-                        setModalInitialTab('presensi');
-                        setSelectedDetailSiswa(s);
-                      }}
-                    />
+                    <PklRingkasanTab stats={stats} tpTahun={tpTahun} semesterNama={semesterNama} onSelectTab={handleTabSelect} onOpenSiswaDetail={(s) => { setModalInitialTab('presensi'); setSelectedDetailSiswa(s); }} />
                   </div>
                 )}
 
                 {/* 2. Siswa Bimbingan Tab */}
                 {visitedTabs.has('bimbingan') && (
                   <div className={cn(activeTab === 'bimbingan' ? 'block' : 'hidden')}>
-                    <PklBimbinganTab
-                      guruId={guruId}
-                      tahunPelajaranId={tpId}
-                      semesterId={academicFilter.values.semesterId}
-                      siswaList={siswaList}
-                      onOpenSiswaDetail={(s) => {
-                        setModalInitialTab('presensi');
-                        setSelectedDetailSiswa(s);
-                      }}
-                      onOpenKunjunganModal={() => handleTabSelect('monitoring')}
-                    />
+                    <PklBimbinganTab guruId={guruId} tahunPelajaranId={tpId} semesterId={academicFilter.values.semesterId} siswaList={siswaList} onOpenSiswaDetail={(s) => { setModalInitialTab('presensi'); setSelectedDetailSiswa(s); }} onOpenKunjunganModal={() => handleTabSelect('monitoring')} />
                   </div>
                 )}
 
                 {/* 2b. Verifikasi Absensi PKL Harian */}
                 {visitedTabs.has('verifikasi_absensi') && (
                   <div className={cn(activeTab === 'verifikasi_absensi' ? 'block' : 'hidden')}>
-                    <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400">Memuat verifikasi absensi bimbingan...</div>}>
+                    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat verifikasi absensi...</div>}>
                       <AbsensiPklView
                         guruId={guruId}
                         guruNama={user?.full_name || (user as any)?.name || user?.guru_profile?.nama_lengkap}
                         initialTpId={tpId}
-                        hideLayout={true}
-                        hideScopeBanner={true}
+                        hideLayout
+                        hideScopeBanner
                         hideHeaderStats={false}
                         forcedSubTab="HARIAN"
-                        hideSubTabSwitcher={true}
-                        attendanceVerificationOnly={true}
+                        hideSubTabSwitcher
+                        attendanceVerificationOnly
                         isModal={false}
                       />
                     </Suspense>
@@ -447,13 +422,13 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                 {/* 2c. Rekap Matriks Presensi PKL */}
                 {visitedTabs.has('absensi') && (
                   <div className={cn(activeTab === 'absensi' ? 'block' : 'hidden')}>
-                    <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400">Memuat matriks presensi bimbingan...</div>}>
+                    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat matriks presensi...</div>}>
                       <RekapAbsensiPklView
                         guruId={guruId}
                         guruNama={user?.full_name || (user as any)?.name || user?.guru_profile?.nama_lengkap}
                         tahunPelajaranId={tpId}
                         semesterId={academicFilter.values.semesterId}
-                        hideLayout={true}
+                        hideLayout
                         className="w-full"
                       />
                     </Suspense>
@@ -470,10 +445,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                       onRejectLogbook={handleRejectLogbook}
                       onOpenSiswaDetail={(pId) => {
                         const target = siswaList.find((s) => s.id === pId);
-                        if (target) {
-                          setModalInitialTab('logbook');
-                          setSelectedDetailSiswa(target);
-                        }
+                        if (target) { setModalInitialTab('logbook'); setSelectedDetailSiswa(target); }
                       }}
                     />
                   </div>
@@ -482,36 +454,21 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                 {/* 4. Supervisi DU/DI Tab */}
                 {visitedTabs.has('monitoring') && (
                   <div className={cn(activeTab === 'monitoring' ? 'block' : 'hidden')}>
-                    <PklMonitoringTab
-                      guruId={guruId}
-                      tahunPelajaranId={tpId}
-                      semesterId={academicFilter.values.semesterId}
-                      siswaList={siswaList}
-                    />
+                    <PklMonitoringTab guruId={guruId} tahunPelajaranId={tpId} semesterId={academicFilter.values.semesterId} siswaList={siswaList} />
                   </div>
                 )}
 
                 {/* 5. Penilaian Magang Tab */}
                 {visitedTabs.has('penilaian') && (
                   <div className={cn(activeTab === 'penilaian' ? 'block' : 'hidden')}>
-                    <PklPenilaianTab
-                      guruId={guruId}
-                      tahunPelajaranId={tpId}
-                      semesterId={academicFilter.values.semesterId}
-                      siswaList={siswaList}
-                    />
+                    <PklPenilaianTab guruId={guruId} tahunPelajaranId={tpId} semesterId={academicFilter.values.semesterId} siswaList={siswaList} />
                   </div>
                 )}
 
                 {/* 6. Rekap & Cetak Tab */}
                 {visitedTabs.has('rekap') && (
                   <div className={cn(activeTab === 'rekap' ? 'block' : 'hidden')}>
-                    <PklRekapTab
-                      siswaList={siswaList}
-                      kunjunganList={kunjunganList}
-                      tpTahun={tpTahun}
-                      semesterNama={semesterNama}
-                    />
+                    <PklRekapTab siswaList={siswaList} kunjunganList={kunjunganList} tpTahun={tpTahun} semesterNama={semesterNama} />
                   </div>
                 )}
               </>
