@@ -273,14 +273,15 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
               >
                 <ArrowLeft size={16} />
               </Button>
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+              {/* Ikon disembunyikan di mobile agar teks judul tampil penuh tanpa terpotong */}
+              <div className="hidden sm:flex w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 items-center justify-center shrink-0">
                 {activeTab === 'ringkasan' ? (
                   <Briefcase size={18} className="sm:w-5 sm:h-5" />
                 ) : (
                   <activeTabMeta.icon size={18} className="sm:w-5 sm:h-5" />
                 )}
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <h1 className="text-sm sm:text-lg font-black tracking-tight text-slate-900 dark:text-white truncate">
                     {activeTab === 'ringkasan' ? (
@@ -291,7 +292,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                       activeTabMeta.label
                     )}
                   </h1>
-                  <Badge variant="outline" className="text-[9px] sm:text-[10px] font-bold text-teal-600 dark:text-teal-400 px-1.5 py-0 shrink-0">
+                  <Badge variant="outline" className="hidden sm:inline-flex text-[9px] sm:text-[10px] font-bold text-teal-600 dark:text-teal-400 px-1.5 py-0 shrink-0">
                     DU/DI
                   </Badge>
                 </div>
