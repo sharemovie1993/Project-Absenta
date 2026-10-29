@@ -132,7 +132,7 @@ export const KunjunganTargetList: React.FC<KunjunganTargetListProps> = React.mem
                     title={`Catat satu kali supervisi kolektif untuk seluruh ${group.siswaList.length} siswa di ${group.nama_mitra}`}
                   >
                     <Users size={14} className="text-indigo-600 dark:text-indigo-400" />
-                    <span>Kunjungan Kolektif ({group.siswaList.length} Siswa)</span>
+                    <span>Kolektif ({group.siswaList.length}<span className="hidden sm:inline"> Siswa</span>)</span>
                   </Button>
                 )}
               </div>

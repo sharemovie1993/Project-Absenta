@@ -299,18 +299,18 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
 
       {/* 4. Dual-View Mode Switcher */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="inline-flex p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60">
+        <div className="inline-flex p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 max-w-full overflow-x-auto no-scrollbar">
           <button
             type="button"
             onClick={() => setActiveViewMode('TARGET')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
               activeViewMode === 'TARGET'
                 ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <Users size={14} />
-            <span>Target &amp; Siswa Bimbingan</span>
+            <span>Target &amp; Siswa<span className="hidden sm:inline"> Bimbingan</span></span>
             {stats.unvisitedSiswaCount > 0 && (
               <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-rose-500 text-white">
                 {stats.unvisitedSiswaCount}
@@ -321,14 +321,14 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
           <button
             type="button"
             onClick={() => setActiveViewMode('FEED')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
               activeViewMode === 'FEED'
                 ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <History size={14} />
-            <span>Riwayat Log Supervisi</span>
+            <span>Riwayat<span className="hidden sm:inline"> Log Supervisi</span></span>
             <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
               {allVisits.length}
             </span>
