@@ -1,11 +1,8 @@
 import React from 'react';
 import { 
   Building2, 
-  MapPin, 
-  Award, 
   MessageCircle 
 } from 'lucide-react';
-import { Button } from '@/components/ui';
 import { formatDate } from '@/utils/layoutUtils';
 import { SiswaIdentityCell } from '@/components/common/SiswaIdentityCell';
 import { PklStatusBadge } from '@/components/hubin/PklStatusBadge';
@@ -188,27 +185,6 @@ export const PenempatanMobileCard: React.FC<PenempatanMobileCardProps> = React.m
             )}
           </div>
         )}
-      </div>
-
-      {/* Quick Action Buttons */}
-      <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 px-3 text-[11px] font-bold text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900 bg-blue-50/30 dark:bg-blue-950/20 rounded-xl"
-          onClick={() => onNilai(row)}
-        >
-          <Award size={13} className="mr-1" /> Nilai PKL
-        </Button>
-
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 px-3 text-[11px] font-bold text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900 bg-amber-50/30 dark:bg-amber-950/20 rounded-xl"
-          onClick={() => onKunjungan(row)}
-        >
-          <MapPin size={13} className="mr-1" /> Kunjungan
-        </Button>
       </div>
     </div>
   );
