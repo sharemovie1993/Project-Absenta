@@ -11,11 +11,15 @@ import { KunjunganStageSelector, STAGE_OPTIONS, type KunjunganOperationalStage }
 import { KunjunganWizardStrip } from './KunjunganWizardStrip';
 import type { HubinPklKunjunganFormProps } from './HubinPklKunjunganForm';
 
-const STEPS = [
+type WizardStep = 1 | 2 | 3;
+
+const WIZARD_STEPS = [
   { id: 1, label: 'Tahap & Waktu', icon: Send },
   { id: 2, label: 'Catatan', icon: FileText },
   { id: 3, label: 'Dokumentasi', icon: Camera },
 ] as const;
+
+const STEPS = WIZARD_STEPS;
 
 export const KunjunganWizardForm: React.FC<HubinPklKunjunganFormProps> = React.memo(({
   editingKunjungan,
