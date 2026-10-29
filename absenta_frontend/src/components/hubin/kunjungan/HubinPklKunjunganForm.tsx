@@ -34,7 +34,9 @@ export interface HubinPklKunjunganFormProps {
   tahap: KunjunganOperationalStage;
   setTahap: (v: KunjunganOperationalStage) => void;
   hasPengantaran?: boolean;
+  hasMonitoring?: boolean;
   hasPenjemputan?: boolean;
+  isReadyForPenjemputan?: boolean;
 }
 
 export const HubinPklKunjunganForm: React.FC<HubinPklKunjunganFormProps> = React.memo(({
@@ -65,7 +67,9 @@ export const HubinPklKunjunganForm: React.FC<HubinPklKunjunganFormProps> = React
   tahap,
   setTahap,
   hasPengantaran = false,
+  hasMonitoring = false,
   hasPenjemputan = false,
+  isReadyForPenjemputan = false,
 }) => {
   const [mapView, setMapView] = useState<'standard' | 'satellite'>('standard');
 
@@ -137,7 +141,9 @@ export const HubinPklKunjunganForm: React.FC<HubinPklKunjunganFormProps> = React
           value={tahap}
           onChange={handleStageSelect}
           hasPengantaran={hasPengantaran}
+          hasMonitoring={hasMonitoring}
           hasPenjemputan={hasPenjemputan}
+          isReadyForPenjemputan={isReadyForPenjemputan}
           isEditing={Boolean(editingKunjungan)}
         />
 

@@ -45,7 +45,9 @@ export const KunjunganWizardForm: React.FC<HubinPklKunjunganFormProps> = React.m
   tahap,
   setTahap,
   hasPengantaran = false,
+  hasMonitoring = false,
   hasPenjemputan = false,
+  isReadyForPenjemputan = false,
 }) => {
   const [step, setStep] = useState<number>(1);
   const [mapView, setMapView] = useState<'standard' | 'satellite'>('standard');
@@ -138,7 +140,9 @@ export const KunjunganWizardForm: React.FC<HubinPklKunjunganFormProps> = React.m
               value={tahap}
               onChange={handleStageSelect}
               hasPengantaran={hasPengantaran}
+              hasMonitoring={hasMonitoring}
               hasPenjemputan={hasPenjemputan}
+              isReadyForPenjemputan={isReadyForPenjemputan}
               isEditing={Boolean(editingKunjungan)}
             />
             <SimpleFormField htmlFor="kunjungan-tanggal" label="Tanggal & Jam Kunjungan">

@@ -94,19 +94,30 @@ export const HubinPklKunjunganModal: React.FC<HubinPklKunjunganModalProps> = Rea
     return selectedKunjunganList.some((k) => k.tahap === 'PENGANTARAN') || selectedKunjunganList.length > 0;
   }, [selectedKunjunganList]);
 
+  const hasMonitoringDone = useMemo(() => {
+    if (!selectedKunjunganList || selectedKunjunganList.length === 0) return false;
+    return selectedKunjunganList.some((k) => k.tahap === 'MONITORING') || selectedKunjunganList.length >= 2;
+  }, [selectedKunjunganList]);
+
   const hasPenjemputanDone = useMemo(() => {
     if (!selectedKunjunganList || selectedKunjunganList.length === 0) return false;
     return selectedKunjunganList.some((k) => k.tahap === 'PENJEMPUTAN');
   }, [selectedKunjunganList]);
 
-  // Resolve Smart Default Stage based on cycle count
+  const isPenjemputanReady = useMemo(() => {
+    if (hasPenjemputanDone) return false;
+    return hasPengantaranDone && hasMonitoringDone;
+  }, [hasPengantaranDone, hasMonitoringDone, hasPenjemputanDone]);
+
+  // Resolve Smart Default Stage based on cycle count & history
   const resolveDefaultStage = useCallback(
     (count: number): KunjunganOperationalStage => {
-      if (count === 0) return 'PENGANTARAN';
-      if (count >= cycleTarget - 1) return 'PENJEMPUTAN';
+      if (!hasPengantaranDone || count === 0) return 'PENGANTARAN';
+      if (hasPenjemputanDone) return 'INSIDENTAL';
+      if (isPenjemputanReady || count >= cycleTarget - 1) return 'PENJEMPUTAN';
       return 'MONITORING';
     },
-    [cycleTarget]
+    [hasPengantaranDone, hasPenjemputanDone, isPenjemputanReady, cycleTarget]
   );
 
   // 2. Dynamic Cycle Title Resolver
@@ -433,7 +444,9 @@ export const HubinPklKunjunganModal: React.FC<HubinPklKunjunganModalProps> = Rea
                 tahap={tahap}
                 setTahap={setTahap}
                 hasPengantaran={hasPengantaranDone}
+                hasMonitoring={hasMonitoringDone}
                 hasPenjemputan={hasPenjemputanDone}
+                isReadyForPenjemputan={isPenjemputanReady}
               />
             </div>
           </div>

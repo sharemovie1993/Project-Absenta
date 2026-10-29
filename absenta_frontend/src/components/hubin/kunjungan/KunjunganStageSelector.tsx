@@ -66,7 +66,9 @@ export interface KunjunganStageSelectorProps {
   onChange: (stage: KunjunganOperationalStage, draftText?: string) => void;
   compact?: boolean;
   hasPengantaran?: boolean;
+  hasMonitoring?: boolean;
   hasPenjemputan?: boolean;
+  isReadyForPenjemputan?: boolean;
   isEditing?: boolean;
 }
 
@@ -75,29 +77,32 @@ export const KunjunganStageSelector: React.FC<KunjunganStageSelectorProps> = Rea
   onChange,
   compact = false,
   hasPengantaran = false,
+  hasMonitoring = false,
   hasPenjemputan = false,
+  isReadyForPenjemputan = false,
   isEditing = false,
 }) => {
-  // Logika Proteksi Alur Supervisi Hubin:
-  // 1. Belum Pengantaran -> Hanya Pengantaran yang aktif, tahap lain terkunci
-  // 2. Sudah Pengantaran -> Pengantaran selesai (non-aktif), Monitoring & Penjemputan aktif
-  // 3. Sudah Penjemputan -> Penjemputan selesai (non-aktif)
-  // 4. Mode Edit -> Bebas agar pembimbing bisa merevisi
+  // Logika Proteksi Alur Supervisi Siklus Tertutup:
+  // 1. Belum Pengantaran -> Hanya Pengantaran AKTIF
+  // 2. Sudah Pengantaran, Belum Monitoring -> Pengantaran SELESAI, Monitoring AKTIF, Penjemputan TERKUNCI
+  // 3. Masuk Tahap Penjemputan (Monitoring selesai) -> Monitoring SELESAI, Penjemputan AKTIF
+  // 4. Sudah Penjemputan -> Seluruh tahap reguler SELESAI
+  // 5. Mode Edit -> Bebas agar pembimbing bisa merevisi data lama
   const getStageState = (stageId: KunjunganOperationalStage): { disabled: boolean; reason?: string; isDone?: boolean } => {
     if (isEditing) {
       return { disabled: false };
     }
 
+    // 1. Belum Pengantaran
     if (!hasPengantaran) {
-      if (stageId === 'PENGANTARAN') {
-        return { disabled: false };
-      }
+      if (stageId === 'PENGANTARAN') return { disabled: false };
       return {
         disabled: true,
         reason: 'Terkunci: Wajib selesaikan tahap Pengantaran & Penyerahan terlebih dahulu',
       };
     }
 
+    // 2. Sudah Pengantaran -> Pengantaran selesai
     if (stageId === 'PENGANTARAN') {
       return {
         disabled: true,
@@ -106,10 +111,37 @@ export const KunjunganStageSelector: React.FC<KunjunganStageSelectorProps> = Rea
       };
     }
 
-    if (hasPenjemputan && stageId === 'PENJEMPUTAN') {
+    // 3. Sudah Penjemputan -> Penjemputan & Monitoring selesai
+    if (hasPenjemputan) {
+      if (stageId === 'PENJEMPUTAN') {
+        return {
+          disabled: true,
+          reason: 'Selesai: Penjemputan & penarikan siswa sudah terlaksana',
+          isDone: true,
+        };
+      }
+      if (stageId === 'MONITORING') {
+        return {
+          disabled: true,
+          reason: 'Selesai: Masa PKL telah selesai dan siswa sudah ditarik',
+          isDone: true,
+        };
+      }
+    }
+
+    // 4. Belum Penjemputan, tapi belum pernah Monitoring -> Penjemputan belum dibuka
+    if (!hasMonitoring && stageId === 'PENJEMPUTAN') {
       return {
         disabled: true,
-        reason: 'Selesai: Penjemputan & penarikan siswa sudah terlaksana',
+        reason: 'Terkunci: Wajib lakukan minimal 1x Monitoring berkala sebelum penjemputan',
+      };
+    }
+
+    // 5. Masuk Tahap Penjemputan (Monitoring selesai) -> Monitoring dinonaktifkan
+    if (isReadyForPenjemputan && stageId === 'MONITORING') {
+      return {
+        disabled: true,
+        reason: 'Selesai: Tahap monitoring berkala sudah terlaksana. Saatnya penjemputan',
         isDone: true,
       };
     }
@@ -125,7 +157,13 @@ export const KunjunganStageSelector: React.FC<KunjunganStageSelectorProps> = Rea
         </span>
         {!isEditing && (
           <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
-            {!hasPengantaran ? 'Wajib: Pengantaran Awal' : 'Tahap Aktif: Monitoring / Penjemputan'}
+            {!hasPengantaran
+              ? 'Tahap 1: Pengantaran Awal'
+              : !hasMonitoring
+              ? 'Tahap 2: Monitoring Berkala'
+              : !hasPenjemputan
+              ? 'Tahap 3: Penjemputan Siswa'
+              : 'Siklus Lengkap'}
           </span>
         )}
       </div>
@@ -200,14 +238,28 @@ export const KunjunganStageSelector: React.FC<KunjunganStageSelectorProps> = Rea
             <>
               <Send size={12} className="text-emerald-600 shrink-0" />
               <span>
-                <strong>Proteksi Siklus:</strong> Wajib selesaikan tahap <em>Pengantaran & Penyerahan</em> sebelum monitoring berkala dapat dicatat.
+                <strong>Proteksi Siklus 1:</strong> Wajib selesaikan tahap <em>Pengantaran & Penyerahan</em> sebelum monitoring dapat dicatat.
+              </span>
+            </>
+          ) : !hasMonitoring ? (
+            <>
+              <Activity size={12} className="text-indigo-600 shrink-0" />
+              <span>
+                <strong>Proteksi Siklus 2:</strong> Siswa sudah diantar. Lakukan <em>Monitoring Berkala</em> untuk evaluasi jurnal & capaian CP.
+              </span>
+            </>
+          ) : !hasPenjemputan ? (
+            <>
+              <LogOut size={12} className="text-purple-600 shrink-0" />
+              <span>
+                <strong>Proteksi Siklus Akhir:</strong> Pengantaran & Monitoring selesai. Saatnya melakukan <em>Penjemputan & Penarikan Siswa</em>.
               </span>
             </>
           ) : (
             <>
-              <Activity size={12} className="text-indigo-600 shrink-0" />
+              <Check size={12} className="text-emerald-600 shrink-0" />
               <span>
-                <strong>Proteksi Siklus:</strong> Siswa telah diserahterimakan. Tahap pengantaran dikunci untuk mencegah duplikasi serah terima.
+                <strong>Siklus Lengkap:</strong> Seluruh tahap operasional PKL (Pengantaran, Monitoring, Penjemputan) telah selesai dilaksanakan.
               </span>
             </>
           )}

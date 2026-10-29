@@ -76,6 +76,18 @@ export const HubinPklKunjunganKolektifModal: React.FC<HubinPklKunjunganKolektifM
     });
   }, [selectedStudents, group?.totalVisits]);
 
+  const hasMonitoringDone = useMemo(() => {
+    if (selectedStudents.length === 0) return (group?.totalVisits || 0) >= 2;
+    return selectedStudents.every((s) => {
+      let kList: any[] = [];
+      if (Array.isArray(s.rawPkl?.kunjungan_json)) kList = s.rawPkl.kunjungan_json;
+      else if (typeof s.rawPkl?.kunjungan_json === 'string') {
+        try { kList = JSON.parse(s.rawPkl.kunjungan_json); } catch { kList = []; }
+      }
+      return kList.some((k: any) => k.tahap === 'MONITORING') || s.visitsCount >= 2;
+    });
+  }, [selectedStudents, group?.totalVisits]);
+
   const hasPenjemputanDone = useMemo(() => {
     if (selectedStudents.length === 0) return false;
     return selectedStudents.every((s) => {
@@ -87,6 +99,11 @@ export const HubinPklKunjunganKolektifModal: React.FC<HubinPklKunjunganKolektifM
       return kList.some((k: any) => k.tahap === 'PENJEMPUTAN');
     });
   }, [selectedStudents]);
+
+  const isPenjemputanReady = useMemo(() => {
+    if (hasPenjemputanDone) return false;
+    return hasPengantaranDone && hasMonitoringDone;
+  }, [hasPengantaranDone, hasMonitoringDone, hasPenjemputanDone]);
 
   useEffect(() => {
     if (isOpen && group?.siswaList) {
@@ -102,18 +119,34 @@ export const HubinPklKunjunganKolektifModal: React.FC<HubinPklKunjunganKolektifM
   // Otomatis sesuaikan tahap jika kondisi proteksi siklus berubah
   useEffect(() => {
     if (!isOpen) return;
-    if (!hasPengantaranDone && tahap !== 'PENGANTARAN') {
-      setTahap('PENGANTARAN');
-      const draft = STAGE_OPTIONS.find((s) => s.id === 'PENGANTARAN')?.defaultDraft;
-      if (draft && !catatan.trim()) setCatatan(draft);
-    } else if (hasPengantaranDone && tahap === 'PENGANTARAN') {
-      setTahap('MONITORING');
-      const draft = STAGE_OPTIONS.find((s) => s.id === 'MONITORING')?.defaultDraft;
-      if (draft && (!catatan.trim() || STAGE_OPTIONS.some((s) => s.defaultDraft.trim() === catatan.trim()))) {
-        setCatatan(draft);
+    if (!hasPengantaranDone) {
+      if (tahap !== 'PENGANTARAN') {
+        setTahap('PENGANTARAN');
+        const draft = STAGE_OPTIONS.find((s) => s.id === 'PENGANTARAN')?.defaultDraft;
+        if (draft && !catatan.trim()) setCatatan(draft);
+      }
+    } else if (hasPenjemputanDone) {
+      if (tahap !== 'INSIDENTAL' && tahap !== 'PENJEMPUTAN') {
+        setTahap('INSIDENTAL');
+      }
+    } else if (isPenjemputanReady) {
+      if (tahap !== 'PENJEMPUTAN') {
+        setTahap('PENJEMPUTAN');
+        const draft = STAGE_OPTIONS.find((s) => s.id === 'PENJEMPUTAN')?.defaultDraft;
+        if (draft && (!catatan.trim() || STAGE_OPTIONS.some((s) => s.defaultDraft.trim() === catatan.trim()))) {
+          setCatatan(draft);
+        }
+      }
+    } else {
+      if (tahap !== 'MONITORING') {
+        setTahap('MONITORING');
+        const draft = STAGE_OPTIONS.find((s) => s.id === 'MONITORING')?.defaultDraft;
+        if (draft && (!catatan.trim() || STAGE_OPTIONS.some((s) => s.defaultDraft.trim() === catatan.trim()))) {
+          setCatatan(draft);
+        }
       }
     }
-  }, [hasPengantaranDone, isOpen]);
+  }, [hasPengantaranDone, hasMonitoringDone, hasPenjemputanDone, isPenjemputanReady, isOpen]);
 
   const handleStageChange = useCallback((newStage: KunjunganOperationalStage, draftText?: string) => {
     setTahap(newStage);
@@ -237,7 +270,9 @@ export const HubinPklKunjunganKolektifModal: React.FC<HubinPklKunjunganKolektifM
               value={tahap}
               onChange={handleStageChange}
               hasPengantaran={hasPengantaranDone}
+              hasMonitoring={hasMonitoringDone}
               hasPenjemputan={hasPenjemputanDone}
+              isReadyForPenjemputan={isPenjemputanReady}
             />
             <SimpleFormField htmlFor="bulk-tanggal" label="Tanggal & Waktu Supervisi Bersama">
               <Input
