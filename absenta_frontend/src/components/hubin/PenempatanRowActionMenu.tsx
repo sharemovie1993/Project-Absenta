@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { toast } from 'react-hot-toast';
 import { 
   MoreVertical, 
   Award, 
@@ -339,41 +340,72 @@ export const PenempatanRowActionMenu: React.FC<PenempatanRowActionMenuProps> = R
               </>
             )}
 
-            {/* Group 3: WhatsApp Quick Links */}
-            {(resolvedSiswaPhone || resolvedMitraPhone) && (
-              <div className="border-t border-slate-100 dark:border-slate-800 py-1">
-                {resolvedSiswaPhone && (
-                  <a
-                    href={formatWhatsAppLink(
-                      resolvedSiswaPhone,
-                      `Halo ${row.Siswa?.nama_siswa || 'Siswa'}, saya pembimbing PKL Anda dari sekolah. Bagaimana perkembangan praktik Anda hari ini?`
-                    )}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => setIsOpen(false)}
-                    className="w-full flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-medium text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors text-left"
-                  >
-                    <MessageCircle size={14} className="text-emerald-500 shrink-0" />
+            {/* Group 3: WhatsApp Quick Links (Selalu Tampil dengan Indikator Status) */}
+            <div className="border-t border-slate-100 dark:border-slate-800 py-1">
+              {resolvedSiswaPhone ? (
+                <a
+                  href={formatWhatsAppLink(
+                    resolvedSiswaPhone,
+                    `Halo ${row.Siswa?.nama_siswa || 'Siswa'}, saya pembimbing PKL Anda dari sekolah. Bagaimana perkembangan praktik Anda hari ini?`
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setIsOpen(false)}
+                  className="w-full flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-medium text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors text-left"
+                >
+                  <MessageCircle size={14} className="text-emerald-500 shrink-0" />
+                  <span>Chat Siswa (WA)</span>
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    toast('Nomor WhatsApp siswa belum terdaftar di profil siswa.', { icon: 'ℹ️' });
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-1.5 text-[11px] font-medium text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors text-left cursor-pointer"
+                  title="Nomor HP siswa belum diisi"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <MessageCircle size={14} className="text-slate-300 dark:text-slate-600 shrink-0" />
                     <span>Chat Siswa (WA)</span>
-                  </a>
-                )}
-                {resolvedMitraPhone && (
-                  <a
-                    href={formatWhatsAppLink(
-                      resolvedMitraPhone,
-                      `Halo Bapak/Ibu dari ${row.Mitra?.nama || 'Mitra'}, saya pembimbing PKL dari sekolah untuk siswa ${row.Siswa?.nama_siswa || 'Siswa'}. Bagaimana progres magang siswa kami di sana?`
-                    )}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => setIsOpen(false)}
-                    className="w-full flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-medium text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-left"
-                  >
-                    <Building2 size={14} className="text-indigo-500 shrink-0" />
+                  </span>
+                  <span className="text-[9px] text-slate-400 italic">Belum Ada No</span>
+                </button>
+              )}
+
+              {resolvedMitraPhone ? (
+                <a
+                  href={formatWhatsAppLink(
+                    resolvedMitraPhone,
+                    `Halo Bapak/Ibu dari ${row.Mitra?.nama || 'Mitra'}, saya pembimbing PKL dari sekolah untuk siswa ${row.Siswa?.nama_siswa || 'Siswa'}. Bagaimana progres magang siswa kami di sana?`
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setIsOpen(false)}
+                  className="w-full flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-medium text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-left"
+                >
+                  <Building2 size={14} className="text-indigo-500 shrink-0" />
+                  <span>Chat Mitra/HRD (WA)</span>
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    toast('Kontak PIC DUDI belum diisi. Anda dapat melengkapinya via menu Info & Kontak PIC DUDI.', { icon: 'ℹ️' });
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-1.5 text-[11px] font-medium text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors text-left cursor-pointer"
+                  title="Kontak PIC DUDI belum diisi"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <Building2 size={14} className="text-slate-300 dark:text-slate-600 shrink-0" />
                     <span>Chat Mitra/HRD (WA)</span>
-                  </a>
-                )}
-              </div>
-            )}
+                  </span>
+                  <span className="text-[9px] text-slate-400 italic">Belum Ada No</span>
+                </button>
+              )}
+            </div>
 
             {/* Group 4: Manajemen (Edit & Hapus) */}
             {canManage && (
