@@ -23,6 +23,9 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import { useTahunPelajaranOptions } from '@/hooks/useTahunPelajaranOptions';
 
 const Table = lazy(() => import('@/components/ui/Table').then(m => ({ default: m.Table })));
+const RekapPresensiMobileCard = lazy(() =>
+  import('./RekapPresensiMobileCard').then(m => ({ default: m.RekapPresensiMobileCard }))
+);
 const RekapPresensiPklPrintModal = lazy(() =>
   import('./RekapPresensiPklPrintModal').then(m => ({ default: m.RekapPresensiPklPrintModal }))
 );
@@ -253,33 +256,70 @@ export const RekapAbsensiPklView: React.FC<UniversalRekapAbsensiPklViewProps> = 
         </div>
       )}
 
-      {/* Overview Stat Badges */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3 shadow-2xs">
-          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Total Siswa</span>
-          <span className="text-lg font-black text-slate-900 dark:text-white">{stats.totalSiswa}</span>
+      {/* Overview Stat Badges: Shopee-Grade Hairline di Mobile vs 6-Grid di Desktop */}
+      {isMobile ? (
+        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-2.5 shadow-xs space-y-2">
+          <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200 px-1">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+              Tingkat Disiplin: <strong className="text-indigo-600 dark:text-indigo-400">{stats.avgPercentage}%</strong>
+            </span>
+            <span className="text-[11px] text-slate-400 font-medium">
+              {stats.totalSiswa} Siswa
+            </span>
+          </div>
+
+          <div className="grid grid-cols-5 gap-1.5 text-center">
+            <div className="py-1 px-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60">
+              <div className="text-[9px] font-bold text-emerald-600">Hadir</div>
+              <div className="text-xs font-black text-emerald-700 dark:text-emerald-300">{stats.sumHadir}</div>
+            </div>
+            <div className="py-1 px-1 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200/60">
+              <div className="text-[9px] font-bold text-purple-600">Telat</div>
+              <div className="text-xs font-black text-purple-700 dark:text-purple-300">{stats.sumTerlambat}</div>
+            </div>
+            <div className="py-1 px-1 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60">
+              <div className="text-[9px] font-bold text-amber-600">Sakit</div>
+              <div className="text-xs font-black text-amber-700 dark:text-amber-300">{stats.sumSakit}</div>
+            </div>
+            <div className="py-1 px-1 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200/60">
+              <div className="text-[9px] font-bold text-blue-600">Izin</div>
+              <div className="text-xs font-black text-blue-700 dark:text-blue-300">{stats.sumIzin}</div>
+            </div>
+            <div className="py-1 px-1 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/60">
+              <div className="text-[9px] font-bold text-rose-600">Alpa</div>
+              <div className="text-xs font-black text-rose-700 dark:text-rose-300">{stats.sumAlpa}</div>
+            </div>
+          </div>
         </div>
-        <div className="bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/40 rounded-xl p-3 shadow-2xs">
-          <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">Total Hadir (H)</span>
-          <span className="text-lg font-black text-emerald-700 dark:text-emerald-300">{stats.sumHadir}</span>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3 shadow-2xs">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Total Siswa</span>
+            <span className="text-lg font-black text-slate-900 dark:text-white">{stats.totalSiswa}</span>
+          </div>
+          <div className="bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/40 rounded-xl p-3 shadow-2xs">
+            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">Total Hadir (H)</span>
+            <span className="text-lg font-black text-emerald-700 dark:text-emerald-300">{stats.sumHadir}</span>
+          </div>
+          <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 rounded-xl p-3 shadow-2xs">
+            <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 block">Sakit (S)</span>
+            <span className="text-lg font-black text-amber-700 dark:text-amber-300">{stats.sumSakit}</span>
+          </div>
+          <div className="bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-800/40 rounded-xl p-3 shadow-2xs">
+            <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 block">Izin (I)</span>
+            <span className="text-lg font-black text-blue-700 dark:text-blue-300">{stats.sumIzin}</span>
+          </div>
+          <div className="bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200/60 dark:border-rose-800/40 rounded-xl p-3 shadow-2xs">
+            <span className="text-[10px] font-black uppercase tracking-wider text-rose-600 dark:text-rose-400 block">Alpa (A)</span>
+            <span className="text-lg font-black text-rose-700 dark:text-rose-300">{stats.sumAlpa}</span>
+          </div>
+          <div className="bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/60 dark:border-indigo-800/40 rounded-xl p-3 shadow-2xs">
+            <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block">Tingkat Disiplin</span>
+            <span className="text-lg font-black text-indigo-700 dark:text-indigo-300">{stats.avgPercentage}%</span>
+          </div>
         </div>
-        <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 rounded-xl p-3 shadow-2xs">
-          <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 block">Sakit (S)</span>
-          <span className="text-lg font-black text-amber-700 dark:text-amber-300">{stats.sumSakit}</span>
-        </div>
-        <div className="bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-800/40 rounded-xl p-3 shadow-2xs">
-          <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 block">Izin (I)</span>
-          <span className="text-lg font-black text-blue-700 dark:text-blue-300">{stats.sumIzin}</span>
-        </div>
-        <div className="bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200/60 dark:border-rose-800/40 rounded-xl p-3 shadow-2xs">
-          <span className="text-[10px] font-black uppercase tracking-wider text-rose-600 dark:text-rose-400 block">Alpa (A)</span>
-          <span className="text-lg font-black text-rose-700 dark:text-rose-300">{stats.sumAlpa}</span>
-        </div>
-        <div className="bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/60 dark:border-indigo-800/40 rounded-xl p-3 shadow-2xs">
-          <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block">Tingkat Disiplin</span>
-          <span className="text-lg font-black text-indigo-700 dark:text-indigo-300">{stats.avgPercentage}%</span>
-        </div>
-      </div>
+      )}
 
       {/* Main Toolbar */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-xs">
@@ -374,26 +414,40 @@ export const RekapAbsensiPklView: React.FC<UniversalRekapAbsensiPklViewProps> = 
         </div>
       </div>
 
-      {/* Table Container */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
-        {isLoading ? (
-          <div className="p-12 flex flex-col items-center justify-center gap-2">
-            <Loader className="w-6 h-6 text-indigo-600 animate-spin" />
-            <p className="text-xs text-slate-400">Memuat matriks presensi bulanan PKL...</p>
+      {/* Content View: Mobile Cards vs Desktop Table */}
+      {isLoading ? (
+        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-12 flex flex-col items-center justify-center gap-2 shadow-xs">
+          <Loader className="w-6 h-6 text-indigo-600 animate-spin" />
+          <p className="text-xs text-slate-400">Memuat matriks presensi bulanan PKL...</p>
+        </div>
+      ) : filteredRows.length === 0 ? (
+        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-12 text-center shadow-xs">
+          <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-800/60 text-slate-400 flex items-center justify-center mx-auto mb-2">
+            <Calendar size={24} />
           </div>
-        ) : filteredRows.length === 0 ? (
-          <div className="p-12 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-800/60 text-slate-400 flex items-center justify-center mx-auto mb-2">
-              <Calendar size={24} />
-            </div>
-            <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
-              Tidak ada rekaman presensi PKL
-            </p>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Belum ada data kehadiran siswa magang untuk bulan {bulan}.
-            </p>
-          </div>
-        ) : (
+          <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+            Tidak ada rekaman presensi PKL
+          </p>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Belum ada data kehadiran siswa magang untuk bulan {bulan}.
+          </p>
+        </div>
+      ) : isMobile ? (
+        <div className="space-y-3">
+          <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Menyiapkan kartu rekap...</div>}>
+            {filteredRows.map((row) => (
+              <RekapPresensiMobileCard
+                key={row.nis || row.nama_siswa}
+                row={row}
+                dayNumbers={dayNumbers}
+                viewMode={viewMode}
+                onNavigateDetail={onNavigateDetail}
+              />
+            ))}
+          </Suspense>
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
           <div className="w-full overflow-x-auto">
             <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Menyiapkan tabel...</div>}>
               <Table
@@ -403,8 +457,8 @@ export const RekapAbsensiPklView: React.FC<UniversalRekapAbsensiPklViewProps> = 
               />
             </Suspense>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Official Skill Document Modal (True WYSIWYG & Browser Print) */}
       {isPrintModalOpen && (
