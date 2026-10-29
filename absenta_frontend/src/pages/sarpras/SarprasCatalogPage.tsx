@@ -223,7 +223,8 @@ export const SarprasCatalogPage: React.FC<SarprasCatalogPageProps> = React.memo(
   ], []);
 
   const mainBody = (
-    <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+    <>
+      <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
             <div className="space-y-6 w-full min-w-0 max-w-full">
               {/* Search Bar & TabSwitcher */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 w-full min-w-0 max-w-full">

@@ -338,11 +338,6 @@ export const PenempatanRowActionMenu: React.FC<PenempatanRowActionMenuProps> = R
                 </div>
               </>
             )}
-                  <Printer size={15} className="text-indigo-500 shrink-0" />
-                  <span>Cetak Tugas Kolektif</span>
-                </button>
-              )}
-            </div>
 
             {/* Group 3: WhatsApp Quick Links */}
             {(resolvedSiswaPhone || resolvedMitraPhone) && (
