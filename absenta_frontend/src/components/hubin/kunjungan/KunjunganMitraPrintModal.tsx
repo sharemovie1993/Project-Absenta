@@ -27,7 +27,6 @@ export const KunjunganMitraPrintModal: React.FC<KunjunganMitraPrintModalProps> =
   const [showLogoDaerah, setShowLogoDaerah] = useState<boolean>(true);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [showTtdConfig, setShowTtdConfig] = useState<boolean>(false);
-  const [modeTemplate, setModeTemplate] = useState<'latest' | 'blank'>('latest');
 
   // 1. Resolve Academic Year ID
   const tahunPelajaranId = useMemo(() => {
@@ -47,76 +46,24 @@ export const KunjunganMitraPrintModal: React.FC<KunjunganMitraPrintModalProps> =
   const { tenantInfo, rawSekolah } = usePrintHeaderData();
   const autoSigners = usePklMatriksSigners(undefined, group?.siswaList?.[0]?.kelas);
 
-  // 4. Resolve Latest Visit at this Mitra from students
-  const latestVisitData = useMemo(() => {
-    if (!group?.siswaList || modeTemplate === 'blank') {
-      return {
-        tanggalFormatted: '',
-        catatan: '',
-        catatanDudi: '',
-        fotoUrl: undefined,
-        lat: undefined,
-        lng: undefined,
-        jurnalVerified: false,
-        cycleTitle: 'Supervisi Lapangan Terjadwal',
-      };
-    }
+  // 4. Extract All Recorded Visits for this Mitra Group
+  const allGroupVisits = useMemo(() => {
+    if (!group?.siswaList || group.siswaList.length === 0) return [];
 
-    // Find first student with visits
+    // Cari siswa dengan riwayat kunjungan paling lengkap
+    let maxVisitsStudent = group.siswaList[0];
+    let maxCount = 0;
+
     for (const s of group.siswaList) {
       const pkl = s.rawPkl;
       if (pkl?.kunjungan_json) {
         try {
           const list = Array.isArray(pkl.kunjungan_json)
             ? pkl.kunjungan_json
-            : JSON.parse(pkl.kunjungan_json as string);
-          if (Array.isArray(list) && list.length > 0) {
-            const last = list[list.length - 1];
-            const cycleMode = hubinSettings?.visitCycleMode || 'THREE_CYCLE';
-            const idx = list.length - 1;
-
-            let cycleTitle = `Siklus Ke-${idx + 1}`;
-            if (cycleMode === 'FOUR_CYCLE') {
-              const titles = [
-                'Siklus I: Monitoring Awal (Penyerahan & Orientasi DU/DI)',
-                'Siklus II: Monitoring Tengah (Evaluasi Kinerja & Progres PKL)',
-                'Siklus III: Monitoring Pra-Akhir (Verifikasi Jurnal & Laporan)',
-                'Siklus IV: Monitoring Akhir (Evaluasi Akhir & Penjemputan)',
-              ];
-              cycleTitle = titles[idx] || `Siklus ${idx + 1}`;
-            } else if (cycleMode === 'THREE_CYCLE') {
-              const titles = [
-                'Siklus I: Monitoring Awal (Orientasi Siswa)',
-                'Siklus II: Monitoring Tengah (Evaluasi & Kendala)',
-                'Siklus III: Monitoring Akhir (Penjemputan & Penarikan)',
-              ];
-              cycleTitle = titles[idx] || `Siklus ${idx + 1}`;
-            }
-
-            const tglFormatted = last.tanggal
-              ? new Date(last.tanggal).toLocaleDateString('id-ID', {
-                  weekday: 'long',
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric',
-                }) +
-                ` (Pukul ${new Date(last.tanggal).toLocaleTimeString('id-ID', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })} WIB)`
-              : '';
-
-            return {
-              tahap: last.tahap,
-              tanggalFormatted: tglFormatted,
-              catatan: last.catatan || '',
-              catatanDudi: last.catatan_dudi || '',
-              fotoUrl: last.foto_url,
-              lat: last.latitude,
-              lng: last.longitude,
-              jurnalVerified: last.jurnal_verified !== false,
-              cycleTitle,
-            };
+            : JSON.parse((pkl.kunjungan_json as string) || '[]');
+          if (Array.isArray(list) && list.length > maxCount) {
+            maxCount = list.length;
+            maxVisitsStudent = s;
           }
         } catch {
           // ignore
@@ -124,17 +71,125 @@ export const KunjunganMitraPrintModal: React.FC<KunjunganMitraPrintModalProps> =
       }
     }
 
+    try {
+      const pkl = maxVisitsStudent.rawPkl;
+      const list = Array.isArray(pkl?.kunjungan_json)
+        ? pkl.kunjungan_json
+        : JSON.parse((pkl?.kunjungan_json as string) || '[]');
+      return Array.isArray(list) ? list : [];
+    } catch {
+      return [];
+    }
+  }, [group]);
+
+  // State Pilihan Sesi Kunjungan: angka (index kunjungan) atau 'blank' (template kosong)
+  const [selectedVisitIndex, setSelectedVisitIndex] = useState<number | 'blank'>('blank');
+
+  // Set default ke sesi kunjungan terakhir ketika modal dibuka
+  useEffect(() => {
+    if (isOpen) {
+      if (allGroupVisits.length > 0) {
+        setSelectedVisitIndex(allGroupVisits.length - 1);
+      } else {
+        setSelectedVisitIndex('blank');
+      }
+    }
+  }, [isOpen, allGroupVisits.length]);
+
+  // 5. Resolve Visit Data for the Selected Session
+  const activeVisitData = useMemo(() => {
+    if (
+      selectedVisitIndex === 'blank' ||
+      typeof selectedVisitIndex !== 'number' ||
+      !allGroupVisits[selectedVisitIndex]
+    ) {
+      return {
+        tahap: undefined,
+        tanggalFormatted: '',
+        catatan: '',
+        catatanDudi: '',
+        fotoUrl: undefined,
+        lat: undefined,
+        lng: undefined,
+        jurnalVerified: false,
+        cycleTitle: 'Formulir Blanko Supervisi Lapangan',
+      };
+    }
+
+    const v = allGroupVisits[selectedVisitIndex];
+    const idx = selectedVisitIndex;
+    const cycleMode = hubinSettings?.visitCycleMode || 'THREE_CYCLE';
+
+    let cycleTitle = `Siklus Ke-${idx + 1}`;
+    if (v.tahap === 'PENGANTARAN') {
+      cycleTitle = 'Siklus I: Pengantaran & Penyerahan Siswa ke DU/DI';
+    } else if (v.tahap === 'PENJEMPUTAN') {
+      cycleTitle = 'Siklus Akhir: Penjemputan & Penarikan Resmi Siswa PKL';
+    } else if (v.tahap === 'INSIDENTAL') {
+      cycleTitle = 'Supervisi Khusus / Insidental';
+    } else if (cycleMode === 'FOUR_CYCLE') {
+      const titles = [
+        'Siklus I: Monitoring Awal (Penyerahan & Orientasi DU/DI)',
+        'Siklus II: Monitoring Tengah (Evaluasi Kinerja & Progres PKL)',
+        'Siklus III: Monitoring Pra-Akhir (Verifikasi Jurnal & Laporan)',
+        'Siklus IV: Monitoring Akhir (Evaluasi Akhir & Penjemputan)',
+      ];
+      cycleTitle = titles[idx] || `Siklus Ke-${idx + 1}`;
+    } else if (cycleMode === 'THREE_CYCLE') {
+      const titles = [
+        'Siklus I: Monitoring Awal (Orientasi Siswa)',
+        'Siklus II: Monitoring Tengah (Evaluasi & Kendala)',
+        'Siklus III: Monitoring Akhir (Penjemputan & Penarikan)',
+      ];
+      cycleTitle = titles[idx] || `Siklus Ke-${idx + 1}`;
+    }
+
+    const tglFormatted = v.tanggal
+      ? new Date(v.tanggal).toLocaleDateString('id-ID', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        }) +
+        ` (Pukul ${new Date(v.tanggal).toLocaleTimeString('id-ID', {
+          hour: '2-digit',
+          minute: '2-digit',
+        })} WIB)`
+      : '';
+
     return {
-      tanggalFormatted: '',
-      catatan: '',
-      catatanDudi: '',
-      fotoUrl: undefined,
-      lat: undefined,
-      lng: undefined,
-      jurnalVerified: false,
-      cycleTitle: 'Siklus I: Monitoring Awal (Penyerahan & Orientasi DU/DI)',
+      tahap: v.tahap,
+      tanggalFormatted: tglFormatted,
+      catatan: v.catatan || '',
+      catatanDudi: v.catatan_dudi || '',
+      fotoUrl: v.foto_url,
+      lat: v.latitude,
+      lng: v.longitude,
+      jurnalVerified: v.jurnal_verified !== false,
+      cycleTitle,
     };
-  }, [group, modeTemplate, hubinSettings]);
+  }, [allGroupVisits, selectedVisitIndex, hubinSettings]);
+
+  // Helper Label untuk Dropdown Pilihan Kunjungan
+  const getStageOptionLabel = (v: any, idx: number) => {
+    const dateStr = v.tanggal
+      ? new Date(v.tanggal).toLocaleDateString('id-ID', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        })
+      : '';
+    const stageName =
+      v.tahap === 'PENGANTARAN'
+        ? 'Pengantaran & Penyerahan'
+        : v.tahap === 'PENJEMPUTAN'
+        ? 'Penjemputan & Penarikan'
+        : v.tahap === 'INSIDENTAL'
+        ? 'Kunjungan Khusus'
+        : 'Monitoring Berkala';
+
+    return `Sesi ${idx + 1}: ${stageName}${dateStr ? ` • ${dateStr}` : ''}`;
+  };
 
   // Signers Default Resolution
   const resolvedSigners = useMemo(() => {
@@ -243,7 +298,8 @@ export const KunjunganMitraPrintModal: React.FC<KunjunganMitraPrintModalProps> =
       pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
 
       const safeName = (group.nama_mitra || 'Mitra').replace(/\s+/g, '_');
-      pdf.save(`BERITA_ACARA_SUPERVISI_${safeName}.pdf`);
+      const stageTag = activeVisitData.tahap ? `_${activeVisitData.tahap}` : '';
+      pdf.save(`BERITA_ACARA${stageTag}_${safeName}.pdf`);
       toast.success('Dokumen Berita Acara PDF berhasil diunduh!', { id: 'pdf-mitra' });
     } catch {
       toast.error('Gagal membuat dokumen PDF', { id: 'pdf-mitra' });
@@ -277,14 +333,29 @@ export const KunjunganMitraPrintModal: React.FC<KunjunganMitraPrintModalProps> =
       size="5xl"
       extraActions={
         <div className="flex items-center gap-2">
+          {/* Dropdown Pemilih Sesi Berita Acara (Bebas Cetak Ulang Kapan Saja) */}
           <select
-            value={modeTemplate}
-            onChange={(e) => setModeTemplate(e.target.value as any)}
-            className="text-xs p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-medium h-9"
-            title="Pilih Sumber Data Dokumen"
+            value={selectedVisitIndex}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSelectedVisitIndex(val === 'blank' ? 'blank' : Number(val));
+            }}
+            className="text-xs p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-bold h-9 shadow-2xs cursor-pointer max-w-[260px] sm:max-w-[340px]"
+            title="Pilih Sesi Berita Acara yang Ingin Dicetak"
           >
-            <option value="latest">Laporan Kunjungan Terakhir ({group.totalVisits}x)</option>
-            <option value="blank">Template Formulir Kosong (Isi Manual Tangan)</option>
+            {allGroupVisits.length > 0 ? (
+              allGroupVisits.map((v, idx) => (
+                <option key={idx} value={idx}>
+                  {getStageOptionLabel(v, idx)}
+                  {idx === allGroupVisits.length - 1 ? ' ★ (Terbaru)' : ''}
+                </option>
+              ))
+            ) : (
+              <option value="blank" disabled>
+                Belum ada riwayat kunjungan tercatat
+              </option>
+            )}
+            <option value="blank">📄 Template Formulir Kosong (Isi Manual Tangan)</option>
           </select>
 
           <Button
@@ -292,7 +363,7 @@ export const KunjunganMitraPrintModal: React.FC<KunjunganMitraPrintModalProps> =
             size="sm"
             variant={showTtdConfig ? 'primary' : 'outline'}
             onClick={() => setShowTtdConfig((v) => !v)}
-            className="text-xs font-bold rounded-xl h-9 gap-1.5"
+            className="text-xs font-bold rounded-xl h-9 gap-1.5 shrink-0"
             title="Kustomisasi Penandatangan"
           >
             <SlidersHorizontal size={14} />
@@ -310,15 +381,15 @@ export const KunjunganMitraPrintModal: React.FC<KunjunganMitraPrintModalProps> =
             tenantInfo={tenantInfo}
             rawSekolah={rawSekolah}
             group={group}
-            cycleTitle={latestVisitData.cycleTitle}
-            tahap={latestVisitData.tahap}
-            visitDateFormatted={latestVisitData.tanggalFormatted}
-            visitCatatan={latestVisitData.catatan}
-            visitCatatanDudi={latestVisitData.catatanDudi}
-            visitFotoUrl={latestVisitData.fotoUrl}
-            visitLat={latestVisitData.lat}
-            visitLng={latestVisitData.lng}
-            visitJurnalVerified={latestVisitData.jurnalVerified}
+            cycleTitle={activeVisitData.cycleTitle}
+            tahap={activeVisitData.tahap}
+            visitDateFormatted={activeVisitData.tanggalFormatted}
+            visitCatatan={activeVisitData.catatan}
+            visitCatatanDudi={activeVisitData.catatanDudi}
+            visitFotoUrl={activeVisitData.fotoUrl}
+            visitLat={activeVisitData.lat}
+            visitLng={activeVisitData.lng}
+            visitJurnalVerified={activeVisitData.jurnalVerified}
             hubinSettings={hubinSettings}
             activeMitraNama={activeMitraNama}
             activePembimbingNama={activePembimbingNama}
