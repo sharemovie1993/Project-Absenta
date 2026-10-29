@@ -31,7 +31,13 @@ export interface PenempatanMobileCardProps {
   selectable?: boolean;
   isSelected?: boolean;
   onToggleSelect?: (id: string) => void;
+  hidePembimbing?: boolean;
 }
+
+const toTitleCase = (str?: string) => {
+  if (!str) return '';
+  return str.toLowerCase().replace(/(?:^|\s|-)\S/g, (c) => c.toUpperCase());
+};
 
 export const PenempatanMobileCard: React.FC<PenempatanMobileCardProps> = React.memo(({
   row,
@@ -51,7 +57,8 @@ export const PenempatanMobileCard: React.FC<PenempatanMobileCardProps> = React.m
   onEditMitraKontak,
   selectable,
   isSelected,
-  onToggleSelect
+  onToggleSelect,
+  hidePembimbing = false,
 }) => {
   const fullMitra = rawMitra?.find((m: MitraData) => m.id === row.mitra_id);
   const siswaPhone = row.Siswa?.no_hp || '';
@@ -93,11 +100,11 @@ export const PenempatanMobileCard: React.FC<PenempatanMobileCardProps> = React.m
           )}
           <SiswaIdentityCell
             foto={row.Siswa?.foto}
-            nama={row.Siswa?.nama_siswa}
+            nama={toTitleCase(row.Siswa?.nama_siswa)}
             nis={row.Siswa?.nis}
             kelas={row.Siswa?.Kelas?.nama_kelas}
             size="md"
-            nameClassName="font-extrabold text-xs uppercase tracking-tight"
+            nameClassName="font-bold text-xs tracking-tight"
             showMeta={true}
           />
         </div>
@@ -124,7 +131,7 @@ export const PenempatanMobileCard: React.FC<PenempatanMobileCardProps> = React.m
         </div>
       </div>
 
-      <div className="p-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 space-y-2 text-xs">
+      <div className="p-2.5 bg-slate-50/70 dark:bg-slate-800/30 rounded-xl border border-slate-100/90 dark:border-slate-800/70 space-y-2 text-xs">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200 min-w-0">
             <Building2 size={13} className="text-indigo-500 shrink-0" />
@@ -132,18 +139,20 @@ export const PenempatanMobileCard: React.FC<PenempatanMobileCardProps> = React.m
               <button
                 type="button"
                 onClick={() => onEditMitraKontak(row.mitra_id)}
-                className="truncate hover:text-indigo-600 dark:hover:text-indigo-400 text-left hover:underline cursor-pointer"
+                className="truncate hover:text-indigo-600 dark:hover:text-indigo-400 text-left hover:underline cursor-pointer font-semibold text-slate-800 dark:text-slate-200"
                 title="Klik untuk melihat / perbarui kontak & PIC DUDI"
               >
-                {row.Mitra?.nama}
+                {toTitleCase(row.Mitra?.nama)}
               </button>
             ) : (
-              <span className="truncate">{row.Mitra?.nama}</span>
+              <span className="truncate font-semibold text-slate-800 dark:text-slate-200">{toTitleCase(row.Mitra?.nama)}</span>
             )}
           </div>
-          <span className="text-[10px] font-bold text-slate-500 shrink-0">
-            Pmb: {row.Pembimbing?.nama_guru || 'Belum ada'}
-          </span>
+          {!hidePembimbing && (
+            <span className="text-[10px] font-bold text-slate-500 shrink-0">
+              Pmb: {row.Pembimbing?.nama_guru || 'Belum ada'}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center justify-between text-[10px] text-slate-500 border-t border-slate-200/50 dark:border-slate-800 pt-1.5">
@@ -153,30 +162,32 @@ export const PenempatanMobileCard: React.FC<PenempatanMobileCardProps> = React.m
           <span className="font-bold">{visitCount}/{targetVisits} Visit ({percentage}%)</span>
         </div>
 
-        {/* Contact WA Links */}
-        <div className="flex items-center gap-2 pt-1 flex-wrap">
-          <span className="text-[10px] font-bold text-slate-400">Kontak WA:</span>
-          {siswaPhone && (
-            <a
-              href={siswaWaLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full"
-            >
-              <MessageCircle size={10} /> Siswa
-            </a>
-          )}
-          {mitraPhone && (
-            <a
-              href={mitraWaLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/20 px-2 py-0.5 rounded-full"
-            >
-              <Building2 size={10} /> HRD
-            </a>
-          )}
-        </div>
+        {/* Contact WA Links (Hanya tampil jika ada nomor telepon) */}
+        {(siswaPhone || mitraPhone) && (
+          <div className="flex items-center gap-2 pt-1 flex-wrap">
+            <span className="text-[10px] font-bold text-slate-400">Kontak WA:</span>
+            {siswaPhone && (
+              <a
+                href={siswaWaLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full"
+              >
+                <MessageCircle size={10} /> Siswa
+              </a>
+            )}
+            {mitraPhone && (
+              <a
+                href={mitraWaLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/20 px-2 py-0.5 rounded-full"
+              >
+                <Building2 size={10} /> HRD
+              </a>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Quick Action Buttons */}

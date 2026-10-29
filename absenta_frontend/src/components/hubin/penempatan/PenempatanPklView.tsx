@@ -134,7 +134,16 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
     enabled: !!user?.tenant_id
   });
 
-  const isWaliKelasRestricted = Boolean(isWaliKelas && walikelasKelas?.id && !isAdmin && !isHubin && !isKaprog && !propJurusanId);
+  const isWaliKelasRestricted = Boolean(
+    isWaliKelas &&
+    walikelasKelas?.id &&
+    !isAdmin &&
+    !isHubin &&
+    !isKaprog &&
+    !propJurusanId &&
+    initialTab !== 'MY_GUIDANCE' &&
+    !propGuruId
+  );
 
   // Standarisasi Academic Filter Engine (Pilar 21 & Pilar 31 SSOT)
   const academicFilter = useAcademicFilter({
@@ -181,7 +190,7 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
     return matchedGuru?.id || null;
   }, [propGuruId, capActiveGuruId, rawGuru, user]);
 
-  const effectiveKelasFilter = activeTab === 'MY_GUIDANCE' ? undefined : (selectedKelasFilter || undefined);
+  const effectiveKelasFilter = selectedKelasFilter || undefined;
   const effectivePembimbingFilter = (activeTab === 'MY_GUIDANCE' || propGuruId) && activeGuruId ? activeGuruId : undefined;
 
   const { data: penempatanData, isLoading } = useQuery({
@@ -473,21 +482,13 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
         <FileSpreadsheet size={16} />
         Import Plotting Excel
       </Button>
-      <Button
-        onClick={() => actions.setIsBulkPlottingOpen(true)}
-        variant="toolbarOutline"
-        size="toolbar"
-        className="rounded-xl h-9 px-4 flex items-center gap-1.5"
-      >
+      <Button onClick={() => actions.setIsBulkPlottingOpen(true)} variant="toolbarOutline" size="toolbar" className="rounded-xl h-9 px-4 flex items-center gap-1.5">
         <Users size={16} />
         Plotting Kolektif
       </Button>
       <Button
         onClick={() => {
-          actions.setSelectedPkl(null);
-          actions.setSelectedSiswaId('');
-          actions.setSelectedMitraId('');
-          actions.setSelectedPembimbingId('');
+          actions.setSelectedPkl(null); actions.setSelectedSiswaId(''); actions.setSelectedMitraId(''); actions.setSelectedPembimbingId('');
           actions.setIsPlottingOpen(true);
         }}
         variant="toolbarPrimary"
@@ -502,14 +503,8 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
 
   // Unified row action handlers shared across Table columns and Mobile card
   const rowActionHandlers = useMemo(() => ({
-    onNilai: (row: SiswaPkl) => {
-      actions.setSelectedPkl(row);
-      actions.setIsNilaiOpen(true);
-    },
-    onKunjungan: (row: SiswaPkl) => {
-      actions.setSelectedPkl(row);
-      actions.setIsKunjunganOpen(true);
-    },
+    onNilai: (row: SiswaPkl) => { actions.setSelectedPkl(row); actions.setIsNilaiOpen(true); },
+    onKunjungan: (row: SiswaPkl) => { actions.setSelectedPkl(row); actions.setIsKunjunganOpen(true); },
     onReviewJurnal: (row: SiswaPkl) => {
       actions.setSelectedPkl(row);
       actions.setReviewJurnalStatus(row.jurnal_json?.status === HubinJurnalStatus.REVISI ? HubinJurnalStatus.REVISI : HubinJurnalStatus.DISETUJUI);
@@ -518,10 +513,7 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
     },
     onCetakTugas: actions.handlePrintTugas,
     onCetakKolektif: actions.handlePrintKolektif,
-    onPrintMonitoring: (row: SiswaPkl) => {
-      actions.setSelectedMonitoringPkl(row);
-      actions.setIsMonitoringConfigModalOpen(true);
-    },
+    onPrintMonitoring: (row: SiswaPkl) => { actions.setSelectedMonitoringPkl(row); actions.setIsMonitoringConfigModalOpen(true); },
     onHapus: async (row: SiswaPkl) => {
       const isConfirmed = await confirm({
         title: 'Hapus Penempatan PKL',
@@ -539,10 +531,7 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
       actions.setSelectedPembimbingId(row.pembimbing_id || '');
       actions.setIsPlottingOpen(true);
     },
-    onMutasi: (row: SiswaPkl) => {
-      actions.setSelectedMutasiPkl(row);
-      actions.setIsMutasiOpen(true);
-    },
+    onMutasi: (row: SiswaPkl) => { actions.setSelectedMutasiPkl(row); actions.setIsMutasiOpen(true); },
     onFilterSiswaHistory: (namaSiswa: string) => academicFilter.setSearchQuery(namaSiswa),
     onEditMitraKontak: actions.handleOpenEditMitraKontak
   }), [actions, confirm, academicFilter]);
@@ -603,6 +592,7 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
       hasKolektif={hasKolektif}
       selectable={canManage}
       isSelected={actions.selectedRowKeys.has(row.id)}
+      hidePembimbing={activeTab === 'MY_GUIDANCE' || Boolean(propGuruId)}
       onToggleSelect={(id) => {
         actions.setSelectedRowKeys((prev) => {
           const next = new Set(prev);
@@ -613,7 +603,7 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
       }}
       {...rowActionHandlers}
     />
-  ), [rawMitra, canManage, hasKolektif, rowActionHandlers, actions.selectedRowKeys, actions.setSelectedRowKeys]);
+  ), [rawMitra, canManage, hasKolektif, rowActionHandlers, actions.selectedRowKeys, actions.setSelectedRowKeys, activeTab, propGuruId]);
 
   return (
     <div className={cn('space-y-4', className)}>
@@ -632,20 +622,20 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
 
       {/* 1. Header KPI Stats Cards (Bisa disembunyikan via props) */}
       {!hideHeaderStats && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
           {statsList.map((s, idx) => (
             <div
               key={idx}
               className={cn(
-                'p-3 sm:p-3.5 rounded-2xl border flex items-center justify-between shadow-2xs transition-all',
+                'p-2.5 sm:p-3.5 rounded-2xl border flex items-center justify-between shadow-2xs transition-all',
                 s.bg
               )}
             >
-              <div>
-                <div className="text-[11px] font-medium opacity-80">{s.title}</div>
-                <div className="text-lg sm:text-xl font-bold font-mono mt-0.5">{s.value}</div>
+              <div className="min-w-0">
+                <div className="text-[10px] sm:text-[11px] font-medium opacity-80 truncate">{s.title}</div>
+                <div className="text-base sm:text-xl font-bold font-mono mt-0.5">{s.value}</div>
               </div>
-              <div className="p-2 rounded-xl bg-white/70 dark:bg-slate-900/60 shadow-2xs shrink-0">
+              <div className="p-1.5 sm:p-2 rounded-xl bg-white/70 dark:bg-slate-900/60 shadow-2xs shrink-0">
                 {s.icon}
               </div>
             </div>
@@ -724,11 +714,11 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
           </div>
         )}
 
-        {/* Standarisasi Academic Filter Engine Toolbar */}
-        <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+        {/* Standarisasi Academic Filter Engine Toolbar (Varian Mini Ramping di HP) */}
+        <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-gray-800">
           <AcademicFilterToolbar
             {...academicFilter.toolbarProps}
-            variant="plain"
+            variant={isMobile ? 'mini' : 'plain'}
             className="!p-0 !border-0 !shadow-none !bg-transparent"
           />
         </div>
