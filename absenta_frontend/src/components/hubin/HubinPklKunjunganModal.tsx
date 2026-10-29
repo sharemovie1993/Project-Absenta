@@ -89,6 +89,16 @@ export const HubinPklKunjunganModal: React.FC<HubinPklKunjunganModalProps> = Rea
   const requireSignature = hubinSettings?.visitRequireSignature !== false;
   const requireJournal = hubinSettings?.visitRequireJournal !== false;
 
+  const hasPengantaranDone = useMemo(() => {
+    if (!selectedKunjunganList || selectedKunjunganList.length === 0) return false;
+    return selectedKunjunganList.some((k) => k.tahap === 'PENGANTARAN') || selectedKunjunganList.length > 0;
+  }, [selectedKunjunganList]);
+
+  const hasPenjemputanDone = useMemo(() => {
+    if (!selectedKunjunganList || selectedKunjunganList.length === 0) return false;
+    return selectedKunjunganList.some((k) => k.tahap === 'PENJEMPUTAN');
+  }, [selectedKunjunganList]);
+
   // Resolve Smart Default Stage based on cycle count
   const resolveDefaultStage = useCallback(
     (count: number): KunjunganOperationalStage => {
@@ -422,6 +432,8 @@ export const HubinPklKunjunganModal: React.FC<HubinPklKunjunganModalProps> = Rea
                 setJurnalVerified={setJurnalVerified}
                 tahap={tahap}
                 setTahap={setTahap}
+                hasPengantaran={hasPengantaranDone}
+                hasPenjemputan={hasPenjemputanDone}
               />
             </div>
           </div>

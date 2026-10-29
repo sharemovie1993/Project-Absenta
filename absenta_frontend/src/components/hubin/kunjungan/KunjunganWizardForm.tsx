@@ -44,6 +44,8 @@ export const KunjunganWizardForm: React.FC<HubinPklKunjunganFormProps> = React.m
   setJurnalVerified,
   tahap,
   setTahap,
+  hasPengantaran = false,
+  hasPenjemputan = false,
 }) => {
   const [step, setStep] = useState<number>(1);
   const [mapView, setMapView] = useState<'standard' | 'satellite'>('standard');
@@ -132,7 +134,13 @@ export const KunjunganWizardForm: React.FC<HubinPklKunjunganFormProps> = React.m
         {/* ===== STEP 1: Tahap & Waktu ===== */}
         {step === 1 && (
           <div className="space-y-3.5 animate-in fade-in slide-in-from-right-3 duration-200">
-            <KunjunganStageSelector value={tahap} onChange={handleStageSelect} />
+            <KunjunganStageSelector
+              value={tahap}
+              onChange={handleStageSelect}
+              hasPengantaran={hasPengantaran}
+              hasPenjemputan={hasPenjemputan}
+              isEditing={Boolean(editingKunjungan)}
+            />
             <SimpleFormField htmlFor="kunjungan-tanggal" label="Tanggal & Jam Kunjungan">
               <Input
                 id="kunjungan-tanggal"

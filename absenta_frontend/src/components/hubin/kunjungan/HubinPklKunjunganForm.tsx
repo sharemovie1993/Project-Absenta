@@ -33,6 +33,8 @@ export interface HubinPklKunjunganFormProps {
   setJurnalVerified: (v: boolean) => void;
   tahap: KunjunganOperationalStage;
   setTahap: (v: KunjunganOperationalStage) => void;
+  hasPengantaran?: boolean;
+  hasPenjemputan?: boolean;
 }
 
 export const HubinPklKunjunganForm: React.FC<HubinPklKunjunganFormProps> = React.memo(({
@@ -62,6 +64,8 @@ export const HubinPklKunjunganForm: React.FC<HubinPklKunjunganFormProps> = React
   setJurnalVerified,
   tahap,
   setTahap,
+  hasPengantaran = false,
+  hasPenjemputan = false,
 }) => {
   const [mapView, setMapView] = useState<'standard' | 'satellite'>('standard');
 
@@ -129,7 +133,13 @@ export const HubinPklKunjunganForm: React.FC<HubinPklKunjunganFormProps> = React
         <input type="hidden" name="tahap" value={tahap} />
 
         {/* Pemilihan Tahap Operasional Siklus (Pengantaran, Monitoring, Penjemputan, Insidental) */}
-        <KunjunganStageSelector value={tahap} onChange={handleStageSelect} />
+        <KunjunganStageSelector
+          value={tahap}
+          onChange={handleStageSelect}
+          hasPengantaran={hasPengantaran}
+          hasPenjemputan={hasPenjemputan}
+          isEditing={Boolean(editingKunjungan)}
+        />
 
         <SimpleFormField htmlFor="kunjungan-tanggal" label="Tanggal & Jam Kunjungan">
           <Input

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Send, Activity, LogOut, AlertTriangle } from 'lucide-react';
+import { Send, Activity, LogOut, AlertTriangle, Lock, Check } from 'lucide-react';
 
 export type KunjunganOperationalStage = 'PENGANTARAN' | 'MONITORING' | 'PENJEMPUTAN' | 'INSIDENTAL';
 
@@ -65,46 +65,154 @@ export interface KunjunganStageSelectorProps {
   value: KunjunganOperationalStage;
   onChange: (stage: KunjunganOperationalStage, draftText?: string) => void;
   compact?: boolean;
+  hasPengantaran?: boolean;
+  hasPenjemputan?: boolean;
+  isEditing?: boolean;
 }
 
 export const KunjunganStageSelector: React.FC<KunjunganStageSelectorProps> = React.memo(({
   value,
   onChange,
   compact = false,
+  hasPengantaran = false,
+  hasPenjemputan = false,
+  isEditing = false,
 }) => {
+  // Logika Proteksi Alur Supervisi Hubin:
+  // 1. Belum Pengantaran -> Hanya Pengantaran yang aktif, tahap lain terkunci
+  // 2. Sudah Pengantaran -> Pengantaran selesai (non-aktif), Monitoring & Penjemputan aktif
+  // 3. Sudah Penjemputan -> Penjemputan selesai (non-aktif)
+  // 4. Mode Edit -> Bebas agar pembimbing bisa merevisi
+  const getStageState = (stageId: KunjunganOperationalStage): { disabled: boolean; reason?: string; isDone?: boolean } => {
+    if (isEditing) {
+      return { disabled: false };
+    }
+
+    if (!hasPengantaran) {
+      if (stageId === 'PENGANTARAN') {
+        return { disabled: false };
+      }
+      return {
+        disabled: true,
+        reason: 'Terkunci: Wajib selesaikan tahap Pengantaran & Penyerahan terlebih dahulu',
+      };
+    }
+
+    if (stageId === 'PENGANTARAN') {
+      return {
+        disabled: true,
+        reason: 'Selesai: Pengantaran & serah terima siswa sudah terlaksana',
+        isDone: true,
+      };
+    }
+
+    if (hasPenjemputan && stageId === 'PENJEMPUTAN') {
+      return {
+        disabled: true,
+        reason: 'Selesai: Penjemputan & penarikan siswa sudah terlaksana',
+        isDone: true,
+      };
+    }
+
+    return { disabled: false };
+  };
+
   return (
-    <div className="space-y-1.5">
-      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-        Tahap Operasional Kunjungan
-      </span>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+          Tahap Operasional Kunjungan
+        </span>
+        {!isEditing && (
+          <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
+            {!hasPengantaran ? 'Wajib: Pengantaran Awal' : 'Tahap Aktif: Monitoring / Penjemputan'}
+          </span>
+        )}
+      </div>
+
       <div className={`grid ${compact ? 'grid-cols-2 gap-1.5' : 'grid-cols-2 sm:grid-cols-4 gap-2'}`}>
         {STAGE_OPTIONS.map((stage) => {
           const Icon = stage.icon;
           const isSelected = value === stage.id;
+          const state = getStageState(stage.id);
+
           return (
             <button
               key={stage.id}
               type="button"
-              onClick={() => onChange(stage.id, stage.defaultDraft)}
-              className={`p-2 sm:p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                isSelected
-                  ? `${stage.activeBg} shadow-xs ring-1 ring-current font-bold`
-                  : 'bg-white dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
+              disabled={state.disabled}
+              onClick={() => {
+                if (!state.disabled) {
+                  onChange(stage.id, stage.defaultDraft);
+                }
+              }}
+              title={state.reason || stage.label}
+              className={`p-2 sm:p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between relative ${
+                state.disabled
+                  ? state.isDone
+                    ? 'bg-slate-100/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed opacity-70'
+                    : 'bg-slate-50/50 dark:bg-slate-900/30 border-dashed border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed opacity-55'
+                  : isSelected
+                  ? `${stage.activeBg} shadow-xs ring-1 ring-current font-bold cursor-pointer`
+                  : 'bg-white dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700 cursor-pointer'
               }`}
             >
-              <div className="flex items-center gap-1.5 mb-1">
-                <Icon size={14} className={isSelected ? 'currentColor' : stage.colorClass} />
-                <span className="text-xs font-bold leading-tight block truncate">
-                  {compact ? stage.shortLabel : stage.label}
-                </span>
+              <div className="flex items-center justify-between gap-1 mb-1">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Icon
+                    size={14}
+                    className={
+                      state.disabled
+                        ? 'text-slate-400 shrink-0'
+                        : isSelected
+                        ? 'currentColor shrink-0'
+                        : `${stage.colorClass} shrink-0`
+                    }
+                  />
+                  <span className="text-xs font-bold leading-tight block truncate">
+                    {compact ? stage.shortLabel : stage.label}
+                  </span>
+                </div>
+                {state.isDone ? (
+                  <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5 shrink-0 bg-emerald-50 dark:bg-emerald-950/60 px-1 py-0.2 rounded">
+                    <Check size={9} /> Selesai
+                  </span>
+                ) : state.disabled ? (
+                  <span className="text-[9px] font-bold text-slate-400 flex items-center gap-0.5 shrink-0 bg-slate-200/60 dark:bg-slate-800 px-1 py-0.2 rounded">
+                    <Lock size={9} /> Terkunci
+                  </span>
+                ) : isSelected ? (
+                  <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
+                ) : null}
               </div>
               <p className="text-[10px] opacity-75 line-clamp-1 leading-tight">
-                {stage.desc}
+                {state.reason || stage.desc}
               </p>
             </button>
           );
         })}
       </div>
+
+      {/* Helper Context Alert */}
+      {!isEditing && (
+        <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[11px] border bg-slate-50/80 dark:bg-slate-900/40 border-slate-200/70 dark:border-slate-800/80 text-slate-600 dark:text-slate-400">
+          {!hasPengantaran ? (
+            <>
+              <Send size={12} className="text-emerald-600 shrink-0" />
+              <span>
+                <strong>Proteksi Siklus:</strong> Wajib selesaikan tahap <em>Pengantaran & Penyerahan</em> sebelum monitoring berkala dapat dicatat.
+              </span>
+            </>
+          ) : (
+            <>
+              <Activity size={12} className="text-indigo-600 shrink-0" />
+              <span>
+                <strong>Proteksi Siklus:</strong> Siswa telah diserahterimakan. Tahap pengantaran dikunci untuk mencegah duplikasi serah terima.
+              </span>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 });
