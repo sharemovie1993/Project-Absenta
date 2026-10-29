@@ -25,8 +25,8 @@ import { UserPlus } from 'lucide-react';
 import { type Student } from '../../../../components/common/SmartStudentPicker';
 
 interface GateInputModuleProps {
-  miniStats: { masuk: number; keluar: number };
-  refreshStats: () => Promise<void>;
+  miniStats?: { masuk: number; keluar: number };
+  refreshStats?: () => Promise<void>;
   onTapSuccess?: () => void;
   onTapSuccessMetadata?: (data: { name: string }) => void;
   direction?: TapPayload['arah'];
@@ -34,9 +34,12 @@ interface GateInputModuleProps {
   minimal?: boolean;
 }
 
+const DEFAULT_MINI_STATS = { masuk: 0, keluar: 0 };
+const DEFAULT_REFRESH_STATS = async () => {};
+
 const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
-  miniStats,
-  refreshStats,
+  miniStats = DEFAULT_MINI_STATS,
+  refreshStats = DEFAULT_REFRESH_STATS,
   onTapSuccess,
   onTapSuccessMetadata,
   direction,
