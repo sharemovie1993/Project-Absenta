@@ -72,6 +72,7 @@ export interface UniversalPenempatanPklViewProps {
   // 3. Event Callbacks
   onClose?: () => void;    // Callback penutup jika dipanggil dalam modal
   onNavigateDetail?: (id: string) => void;
+  onOpenSiswaDetail?: (siswa: any) => void;
   className?: string;
 }
 
@@ -96,6 +97,7 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
   initialTpId,
   onClose,
   onNavigateDetail,
+  onOpenSiswaDetail,
   className
 }) => {
   const { subscription, user } = useAuthStore();
@@ -583,6 +585,7 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
         ];
   }, [isGuru, isJurusanScoped, effectiveJurusanNama, isWaliKelas, walikelasKelas, allCount, myGuidanceCount]);
 
+  const isPembimbingMode = activeTab === 'MY_GUIDANCE' || Boolean(propGuruId);
   const renderMobileCard = useCallback((row: SiswaPkl) => (
     <PenempatanMobileCard
       key={row.id}
@@ -592,7 +595,9 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
       hasKolektif={hasKolektif}
       selectable={canManage}
       isSelected={actions.selectedRowKeys.has(row.id)}
-      hidePembimbing={activeTab === 'MY_GUIDANCE' || Boolean(propGuruId)}
+      hidePembimbing={isPembimbingMode}
+      isPembimbingMode={isPembimbingMode}
+      onOpenDetail={onOpenSiswaDetail}
       onToggleSelect={(id) => {
         actions.setSelectedRowKeys((prev) => {
           const next = new Set(prev);
@@ -603,7 +608,7 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
       }}
       {...rowActionHandlers}
     />
-  ), [rawMitra, canManage, hasKolektif, rowActionHandlers, actions.selectedRowKeys, actions.setSelectedRowKeys, activeTab, propGuruId]);
+  ), [rawMitra, canManage, hasKolektif, rowActionHandlers, actions.selectedRowKeys, actions.setSelectedRowKeys, isPembimbingMode, onOpenSiswaDetail]);
 
   return (
     <div className={cn('space-y-4', className)}>

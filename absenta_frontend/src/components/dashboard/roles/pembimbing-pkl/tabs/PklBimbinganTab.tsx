@@ -16,6 +16,7 @@ export const PklBimbinganTab: React.FC<PklBimbinganTabProps> = ({
   guruId,
   tahunPelajaranId,
   semesterId,
+  onOpenSiswaDetail,
 }) => {
   return (
     <div className="w-full min-w-0 space-y-4">
@@ -27,6 +28,7 @@ export const PklBimbinganTab: React.FC<PklBimbinganTabProps> = ({
         hideLayout={true}
         hideHeaderStats={false}
         hideScopeBanner={true}
+        onOpenSiswaDetail={onOpenSiswaDetail}
         className="w-full"
       />
     </div>

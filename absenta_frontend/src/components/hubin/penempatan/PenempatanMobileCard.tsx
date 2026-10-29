@@ -29,6 +29,8 @@ export interface PenempatanMobileCardProps {
   isSelected?: boolean;
   onToggleSelect?: (id: string) => void;
   hidePembimbing?: boolean;
+  isPembimbingMode?: boolean;
+  onOpenDetail?: (row: SiswaPkl) => void;
 }
 
 const toTitleCase = (str?: string) => {
@@ -56,6 +58,8 @@ export const PenempatanMobileCard: React.FC<PenempatanMobileCardProps> = React.m
   isSelected,
   onToggleSelect,
   hidePembimbing = false,
+  isPembimbingMode = false,
+  onOpenDetail,
 }) => {
   const fullMitra = rawMitra?.find((m: MitraData) => m.id === row.mitra_id);
   const siswaPhone = row.Siswa?.no_hp || '';
@@ -122,6 +126,8 @@ export const PenempatanMobileCard: React.FC<PenempatanMobileCardProps> = React.m
             onMutasi={onMutasi}
             onFilterSiswaHistory={onFilterSiswaHistory}
             onEditMitraKontak={onEditMitraKontak}
+            onOpenDetail={onOpenDetail}
+            isPembimbingMode={isPembimbingMode}
             siswaPhone={siswaPhone}
             mitraPhone={mitraPhone}
           />
