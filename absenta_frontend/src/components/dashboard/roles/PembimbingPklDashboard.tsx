@@ -241,6 +241,14 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
     queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-pembimbing'] });
   }, [penempatanRes, queryClient]);
 
+  const handleBackNavigation = useCallback(() => {
+    if (activeTab !== 'ringkasan') {
+      handleTabSelect('ringkasan');
+    } else {
+      navigate('/dashboard?tab=ringkasan');
+    }
+  }, [activeTab, handleTabSelect, navigate]);
+
   return (
     <PremiumFeatureGate feature="hubin">
       <div className="space-y-4 w-full max-w-full min-w-0">
@@ -251,25 +259,36 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate('/dashboard?tab=ringkasan')}
-                className="lg:hidden p-1.5 h-8 w-8 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 shrink-0"
+                onClick={handleBackNavigation}
+                title={activeTab !== 'ringkasan' ? 'Kembali ke Ringkasan PKL' : 'Kembali ke Portal Guru'}
+                className="lg:hidden p-1.5 h-8 w-8 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 shrink-0 cursor-pointer"
               >
                 <ArrowLeft size={16} />
               </Button>
               <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
-                <Briefcase size={18} className="sm:w-5 sm:h-5" />
+                {activeTab === 'ringkasan' ? (
+                  <Briefcase size={18} className="sm:w-5 sm:h-5" />
+                ) : (
+                  <activeTabMeta.icon size={18} className="sm:w-5 sm:h-5" />
+                )}
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <h1 className="text-sm sm:text-lg font-black tracking-tight text-slate-900 dark:text-white truncate">
-                    <span className="hidden sm:inline">Dashboard </span>Pembimbing PKL
+                    {activeTab === 'ringkasan' ? (
+                      <>
+                        <span className="hidden sm:inline">Dashboard </span>Pembimbing PKL
+                      </>
+                    ) : (
+                      activeTabMeta.label
+                    )}
                   </h1>
                   <Badge variant="outline" className="text-[9px] sm:text-[10px] font-bold text-teal-600 dark:text-teal-400 px-1.5 py-0 shrink-0">
                     DU/DI
                   </Badge>
                 </div>
                 <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
-                  Monitoring Bimbingan &amp; Supervisi Industri
+                  {activeTab === 'ringkasan' ? 'Monitoring Bimbingan & Supervisi Industri' : 'Pembimbing PKL'}
                 </p>
               </div>
             </div>
@@ -403,18 +422,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                 {visitedTabs.has('verifikasi_absensi') && (
                   <div className={cn(activeTab === 'verifikasi_absensi' ? 'block' : 'hidden')}>
                     <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat verifikasi absensi...</div>}>
-                      <AbsensiPklView
-                        guruId={guruId}
-                        guruNama={user?.full_name || (user as any)?.name || user?.guru_profile?.nama_lengkap}
-                        initialTpId={tpId}
-                        hideLayout
-                        hideScopeBanner
-                        hideHeaderStats={false}
-                        forcedSubTab="HARIAN"
-                        hideSubTabSwitcher
-                        attendanceVerificationOnly
-                        isModal={false}
-                      />
+                      <AbsensiPklView guruId={guruId} guruNama={user?.full_name || (user as any)?.name || user?.guru_profile?.nama_lengkap} initialTpId={tpId} hideLayout hideScopeBanner hideHeaderStats={false} forcedSubTab="HARIAN" hideSubTabSwitcher attendanceVerificationOnly isModal={false} />
                     </Suspense>
                   </div>
                 )}
@@ -423,14 +431,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                 {visitedTabs.has('absensi') && (
                   <div className={cn(activeTab === 'absensi' ? 'block' : 'hidden')}>
                     <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat matriks presensi...</div>}>
-                      <RekapAbsensiPklView
-                        guruId={guruId}
-                        guruNama={user?.full_name || (user as any)?.name || user?.guru_profile?.nama_lengkap}
-                        tahunPelajaranId={tpId}
-                        semesterId={academicFilter.values.semesterId}
-                        hideLayout
-                        className="w-full"
-                      />
+                      <RekapAbsensiPklView guruId={guruId} guruNama={user?.full_name || (user as any)?.name || user?.guru_profile?.nama_lengkap} tahunPelajaranId={tpId} semesterId={academicFilter.values.semesterId} hideLayout className="w-full" />
                     </Suspense>
                   </div>
                 )}
