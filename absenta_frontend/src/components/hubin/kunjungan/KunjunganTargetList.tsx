@@ -234,9 +234,3 @@ export const KunjunganTargetList: React.FC<KunjunganTargetListProps> = React.mem
 });
 
 KunjunganTargetList.displayName = 'KunjunganTargetList';
-      })}
-    </div>
-  );
-});
-
-KunjunganTargetList.displayName = 'KunjunganTargetList';
