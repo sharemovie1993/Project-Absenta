@@ -21,6 +21,7 @@ export const PklPenilaianTab: React.FC<PklPenilaianTabProps> = ({
         semesterId={semesterId}
         hideScopeBanner={true}
         hideHeaderStats={false}
+        hideCetakRapor={true}
         layoutMode="hubin"
         className="w-full"
       />

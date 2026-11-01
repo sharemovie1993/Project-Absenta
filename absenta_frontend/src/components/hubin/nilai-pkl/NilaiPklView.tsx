@@ -41,6 +41,7 @@ export interface UniversalNilaiPklViewProps {
   readOnly?: boolean;
   hideHeaderStats?: boolean;
   hideScopeBanner?: boolean;
+  hideCetakRapor?: boolean;
   onClose?: () => void;
   className?: string;
 }
@@ -58,6 +59,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
   readOnly = false,
   hideHeaderStats = false,
   hideScopeBanner = false,
+  hideCetakRapor = false,
   onClose,
   className
 }) => {
@@ -616,7 +618,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
               handleScoreChange={handleScoreChange}
               handleApplyToSameMitra={handleApplyToSameMitra}
               handleSyncFromDailyAttendance={handleSyncFromDailyAttendance}
-              onNavigateCetakRapor={handleNavigateCetakRapor}
+              onNavigateCetakRapor={hideCetakRapor ? undefined : handleNavigateCetakRapor}
             />
           )}
 
@@ -665,7 +667,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
               setItemsPerPage={setItemsPerPage}
               setCurrentPage={setCurrentPage}
               handleScoreChange={handleScoreChange}
-              onNavigateCetakRapor={handleNavigateCetakRapor}
+              onNavigateCetakRapor={hideCetakRapor ? undefined : handleNavigateCetakRapor}
             />
           )}
         </Suspense>
