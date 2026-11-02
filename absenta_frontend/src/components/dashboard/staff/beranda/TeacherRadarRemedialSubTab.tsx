@@ -362,132 +362,250 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto -mx-4 sm:mx-0">
-            <table className="w-full text-left border-collapse min-w-[700px]">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-800/50 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  <th className="py-3 px-3.5 w-12 text-center">No</th>
-                  <th className="py-3 px-3.5">Nama Siswa</th>
-                  <th className="py-3 px-3.5">Kelas</th>
-                  <th className="py-3 px-3.5">Mata Pelajaran</th>
-                  <th className="py-3 px-3.5 text-center">Nilai Saat Ini</th>
-                  <th className="py-3 px-3 text-center">KKM</th>
-                  <th className="py-3 px-3.5">Status Radar</th>
-                  <th className="py-3 px-3.5 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs">
-                {filteredItems.map((item, idx) => {
-                  const isRemedial = item.status === 'needs_remedial';
-                  const isUnassessed = item.status === 'unassessed';
-                  const isCompleted = item.status === 'completed';
+          <div>
+            {/* ─── Mode Mobile: Shopee-Grade Flat List Cards (< sm) ─── */}
+            <div className="block sm:hidden space-y-2.5">
+              {filteredItems.map((item, idx) => {
+                const isRemedial = item.status === 'needs_remedial';
+                const isUnassessed = item.status === 'unassessed';
+                const isCompleted = item.status === 'completed';
 
-                  return (
-                    <tr
-                      key={item.id}
-                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors group"
-                    >
-                      <td className="py-3 px-3.5 text-center text-slate-400 font-semibold">
-                        {idx + 1}
-                      </td>
-                      <td className="py-3 px-3.5">
-                        <div className="font-bold text-slate-900 dark:text-white">
-                          {item.nama_siswa}
-                        </div>
-                        <div className="text-[11px] text-slate-400 font-normal">
-                          NIS: {item.nis || '-'}
-                        </div>
-                      </td>
-                      <td className="py-3 px-3.5">
-                        <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 font-bold text-[11px] border border-purple-200/60 dark:border-purple-800/60">
+                return (
+                  <div
+                    key={`mobile-${item.id}-${idx}`}
+                    className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-2"
+                  >
+                    {/* Header: Kelas, Mapel & Status Badge */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 font-bold text-[10px] border border-purple-200/60 dark:border-purple-800/60 shrink-0">
                           {item.nama_kelas}
                         </span>
-                      </td>
-                      <td className="py-3 px-3.5 font-medium text-slate-700 dark:text-slate-300">
-                        <div className="font-bold text-slate-900 dark:text-white">{item.nama_mapel}</div>
-                        {item.nama_guru && (
-                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
-                            Pengajar: {item.nama_guru}
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-3 px-3.5 text-center">
-                        <span
-                          className={`inline-block px-2.5 py-1 rounded-lg font-black text-xs ${
-                            isRemedial
-                              ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
-                              : isUnassessed
-                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300 italic font-semibold text-[11px]'
-                              : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                          }`}
-                        >
-                          {item.nilai_saat_ini !== null ? item.nilai_saat_ini : 'Kosong'}
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                          {item.nama_mapel}
                         </span>
-                      </td>
-                      <td className="py-3 px-3 text-center font-bold text-slate-600 dark:text-slate-300">
-                        {kkm}
-                      </td>
-                      <td className="py-3 px-3.5">
+                      </div>
+                      <span
+                        className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 border ${
+                          isRemedial
+                            ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800'
+                            : isUnassessed
+                            ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800'
+                        }`}
+                      >
                         <span
-                          className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                          className={`w-1.5 h-1.5 rounded-full ${
                             isRemedial
-                              ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800'
+                              ? 'bg-rose-500 animate-pulse'
                               : isUnassessed
-                              ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800'
-                              : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800'
+                              ? 'bg-amber-500'
+                              : 'bg-emerald-500'
                           }`}
-                        >
+                        />
+                        <span>
+                          {isRemedial
+                            ? 'Remedial'
+                            : isUnassessed
+                            ? 'Kosong'
+                            : 'Tuntas'}
+                        </span>
+                      </span>
+                    </div>
+
+                    {/* Siswa & Guru Pengajar */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h4 className="font-bold text-slate-900 dark:text-white text-xs leading-tight">
+                          {idx + 1}. {item.nama_siswa}
+                        </h4>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          NIS: {item.nis || '-'}
+                          {item.nama_guru ? ` • Pengajar: ${item.nama_guru}` : ''}
+                        </p>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="text-[9px] font-bold uppercase text-slate-400 block">Nilai vs KKM</span>
+                        <div className="flex items-center gap-1 justify-end">
                           <span
-                            className={`w-1.5 h-1.5 rounded-full ${
+                            className={`px-1.5 py-0.2 rounded font-black text-xs ${
                               isRemedial
-                                ? 'bg-rose-500 animate-pulse'
+                                ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
                                 : isUnassessed
-                                ? 'bg-amber-500'
-                                : 'bg-emerald-500'
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 text-[10px]'
+                                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
                             }`}
-                          />
-                          <span>
-                            {isRemedial
-                              ? 'Butuh Remedial'
-                              : isUnassessed
-                              ? 'Belum Ada Nilai'
-                              : 'Tuntas Remedial'}
+                          >
+                            {item.nilai_saat_ini !== null ? item.nilai_saat_ini : '-'}
                           </span>
-                        </span>
-                      </td>
-                      <td className="py-3 px-3.5 text-right">
-                        <button
-                          type="button"
-                          onClick={() => setActiveModalItem(item)}
-                          className={isWalas 
-                            ? "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
-                            : `inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs ${
-                              isRemedial
-                                ? 'bg-rose-600 hover:bg-rose-700 text-white'
-                                : isUnassessed
-                                ? 'bg-amber-500 hover:bg-amber-600 text-white'
-                                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                            }`
-                          }
-                        >
-                          {isWalas ? (
-                            <>
-                              <Eye size={13} />
-                              <span>Lihat Rincian</span>
-                            </>
-                          ) : (
-                            <>
-                              <span>{isCompleted ? 'Perbarui Nilai' : 'Input Remedial'}</span>
-                              <ArrowRight size={13} />
-                            </>
+                          <span className="text-[10px] text-slate-400">/{kkm}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tombol Aksi Mobile Touch-Friendly */}
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setActiveModalItem(item)}
+                        className={isWalas 
+                          ? "w-full py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center gap-1.5"
+                          : `w-full py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center justify-center gap-1.5 ${
+                            isRemedial
+                              ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                              : isUnassessed
+                              ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                              : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                          }`
+                        }
+                      >
+                        {isWalas ? (
+                          <>
+                            <Eye size={13} />
+                            <span>Lihat Rincian</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>{isCompleted ? 'Perbarui Nilai' : 'Input Remedial'}</span>
+                            <ArrowRight size={13} />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* ─── Mode Desktop: Tabular Data Table (>= sm) ─── */}
+            <div className="hidden sm:block overflow-x-auto -mx-4 sm:mx-0">
+              <table className="w-full text-left border-collapse min-w-[700px]">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-800/50 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <th className="py-3 px-3.5 w-12 text-center">No</th>
+                    <th className="py-3 px-3.5">Nama Siswa</th>
+                    <th className="py-3 px-3.5">Kelas</th>
+                    <th className="py-3 px-3.5">Mata Pelajaran</th>
+                    <th className="py-3 px-3.5 text-center">Nilai Saat Ini</th>
+                    <th className="py-3 px-3 text-center">KKM</th>
+                    <th className="py-3 px-3.5">Status Radar</th>
+                    <th className="py-3 px-3.5 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs">
+                  {filteredItems.map((item, idx) => {
+                    const isRemedial = item.status === 'needs_remedial';
+                    const isUnassessed = item.status === 'unassessed';
+                    const isCompleted = item.status === 'completed';
+
+                    return (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors group"
+                      >
+                        <td className="py-3 px-3.5 text-center text-slate-400 font-semibold">
+                          {idx + 1}
+                        </td>
+                        <td className="py-3 px-3.5">
+                          <div className="font-bold text-slate-900 dark:text-white">
+                            {item.nama_siswa}
+                          </div>
+                          <div className="text-[11px] text-slate-400 font-normal">
+                            NIS: {item.nis || '-'}
+                          </div>
+                        </td>
+                        <td className="py-3 px-3.5">
+                          <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 font-bold text-[11px] border border-purple-200/60 dark:border-purple-800/60">
+                            {item.nama_kelas}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3.5 font-medium text-slate-700 dark:text-slate-300">
+                          <div className="font-bold text-slate-900 dark:text-white">{item.nama_mapel}</div>
+                          {item.nama_guru && (
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                              Pengajar: {item.nama_guru}
+                            </div>
                           )}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                        <td className="py-3 px-3.5 text-center">
+                          <span
+                            className={`inline-block px-2.5 py-1 rounded-lg font-black text-xs ${
+                              isRemedial
+                                ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                                : isUnassessed
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300 italic font-semibold text-[11px]'
+                                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                            }`}
+                          >
+                            {item.nilai_saat_ini !== null ? item.nilai_saat_ini : 'Kosong'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-center font-bold text-slate-600 dark:text-slate-300">
+                          {kkm}
+                        </td>
+                        <td className="py-3 px-3.5">
+                          <span
+                            className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                              isRemedial
+                                ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800'
+                                : isUnassessed
+                                ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800'
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                isRemedial
+                                  ? 'bg-rose-500 animate-pulse'
+                                  : isUnassessed
+                                  ? 'bg-amber-500'
+                                  : 'bg-emerald-500'
+                              }`}
+                            />
+                            <span>
+                              {isRemedial
+                                ? 'Butuh Remedial'
+                                : isUnassessed
+                                ? 'Belum Ada Nilai'
+                                : 'Tuntas Remedial'}
+                            </span>
+                          </span>
+                        </td>
+                        <td className="py-3 px-3.5 text-right">
+                          <button
+                            type="button"
+                            onClick={() => setActiveModalItem(item)}
+                            className={isWalas 
+                              ? "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                              : `inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs ${
+                                isRemedial
+                                  ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                                  : isUnassessed
+                                  ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                              }`
+                            }
+                          >
+                            {isWalas ? (
+                              <>
+                                <Eye size={13} />
+                                <span>Lihat Rincian</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>{isCompleted ? 'Perbarui Nilai' : 'Input Remedial'}</span>
+                                <ArrowRight size={13} />
+                              </>
+                            )}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </HubCard>

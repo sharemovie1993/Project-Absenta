@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { z } from 'zod';
 import { 
   GraduationCap, 
   Save, 
@@ -126,7 +127,7 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
       const numS3 = s3 !== '' ? Number(s3) : null;
       const numSas = sas !== '' ? Number(sas) : null;
 
-      return await raporApi.submitRemedialSingle({
+      const payload = {
         siswa_id: item.siswa_id,
         kelas_id: item.kelas_id,
         mapel_id: item.mapel_id,
@@ -138,7 +139,27 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
         sumatif_akhir: numSas,
         nilai_rapor_final: nilaiRaporFinal,
         catatan_remedial: catatan.trim(),
+      };
+
+      // Zod Validation Guard (Standard Google Platform & Phase 4 Hardening)
+      const remedialSchema = z.object({
+        siswa_id: z.string().min(1, 'ID Siswa wajib valid'),
+        kelas_id: z.string().min(1, 'ID Kelas wajib valid'),
+        mapel_id: z.string().min(1, 'ID Mapel wajib valid'),
+        sumatif_1: z.number().min(0).max(100).nullable(),
+        sumatif_2: z.number().min(0).max(100).nullable(),
+        sumatif_3: z.number().min(0).max(100).nullable(),
+        sumatif_akhir: z.number().min(0).max(100).nullable(),
+        nilai_rapor_final: z.number().min(0).max(100).nullable(),
+        catatan_remedial: z.string().max(255).optional(),
       });
+
+      const validation = remedialSchema.safeParse(payload);
+      if (!validation.success) {
+        throw new Error(validation.error.issues[0]?.message || 'Validasi data gagal');
+      }
+
+      return await raporApi.submitRemedialSingle(payload);
     },
     onSuccess: () => {
       toast.success(`Nilai remedial ${item?.nama_siswa} berhasil diperbarui!`);
@@ -297,6 +318,7 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
                 disabled={readOnly}
                 onChange={(e) => setS1(e.target.value)}
                 placeholder="0-100"
+                aria-label="Nilai Sumatif 1"
                 className="w-full text-base font-bold text-slate-900 dark:text-white bg-transparent focus:outline-none disabled:cursor-not-allowed"
               />
             </div>
@@ -317,6 +339,7 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
                 disabled={readOnly}
                 onChange={(e) => setS2(e.target.value)}
                 placeholder="0-100"
+                aria-label="Nilai Sumatif 2"
                 className="w-full text-base font-bold text-slate-900 dark:text-white bg-transparent focus:outline-none disabled:cursor-not-allowed"
               />
             </div>
@@ -337,6 +360,7 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
                 disabled={readOnly}
                 onChange={(e) => setS3(e.target.value)}
                 placeholder="0-100"
+                aria-label="Nilai Sumatif 3"
                 className="w-full text-base font-bold text-slate-900 dark:text-white bg-transparent focus:outline-none disabled:cursor-not-allowed"
               />
             </div>
@@ -357,6 +381,7 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
                 disabled={readOnly}
                 onChange={(e) => setSas(e.target.value)}
                 placeholder="0-100"
+                aria-label="Nilai Sumatif Akhir SAS"
                 className="w-full text-base font-bold text-purple-900 dark:text-purple-200 bg-transparent focus:outline-none disabled:cursor-not-allowed"
               />
             </div>
@@ -416,6 +441,7 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
             disabled={readOnly}
             onChange={(e) => setCatatan(e.target.value)}
             placeholder={readOnly ? 'Tidak ada catatan khusus' : 'Contoh: Tuntas remedial Sumatif 1 (50 ➔ 75)...'}
+            aria-label="Catatan Perbaikan Tindak Lanjut"
             className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium disabled:cursor-not-allowed disabled:opacity-80"
           />
         </div>
