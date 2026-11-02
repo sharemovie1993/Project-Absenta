@@ -25,6 +25,8 @@ interface GetColumnsParams {
   canManage: boolean;
   hasKolektif: (mitraId: string) => boolean;
   hidePembimbing?: boolean;
+  isPembimbingMode?: boolean;
+  onOpenDetail?: (row: SiswaPkl) => void;
   onNilai: (row: SiswaPkl) => void;
   onKunjungan: (row: SiswaPkl) => void;
   onReviewJurnal: (row: SiswaPkl) => void;
@@ -44,6 +46,8 @@ export const getPenempatanColumns = ({
   canManage,
   hasKolektif,
   hidePembimbing = false,
+  isPembimbingMode = false,
+  onOpenDetail,
   onNilai,
   onKunjungan,
   onReviewJurnal,
@@ -237,6 +241,8 @@ export const getPenempatanColumns = ({
             row={row}
             canManage={canManage}
             hasKolektif={hasKolektif}
+            isPembimbingMode={isPembimbingMode}
+            onOpenDetail={onOpenDetail}
             onNilai={onNilai}
             onKunjungan={onKunjungan}
             onReviewJurnal={onReviewJurnal}

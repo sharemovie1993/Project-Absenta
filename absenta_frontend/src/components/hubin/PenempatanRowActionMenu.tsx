@@ -172,9 +172,9 @@ export const PenempatanRowActionMenu: React.FC<PenempatanRowActionMenuProps> = R
               </p>
             </div>
 
-            {/* Mode Khusus Pembimbing PKL: Aksi Ramping, Fokus & Bebas Redundansi */}
-            {isPembimbingMode ? (
-              <div className="py-1">
+            {/* 1. Quick Info / Navigation (Detail Siswa & Riwayat Siswa) */}
+            {(onOpenDetail || (onFilterSiswaHistory && row.Siswa?.nama_siswa)) && (
+              <div className="border-b border-slate-100 dark:border-slate-800 py-1 bg-teal-50/20 dark:bg-teal-950/10">
                 {onOpenDetail && (
                   <button
                     type="button"
@@ -185,160 +185,126 @@ export const PenempatanRowActionMenu: React.FC<PenempatanRowActionMenuProps> = R
                     className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950/40 transition-colors text-left cursor-pointer"
                   >
                     <User size={15} className="text-teal-600 dark:text-teal-400 shrink-0" />
-                    <span>Detail & Rekap Siswa</span>
+                    <span>Detail &amp; Rekap Siswa</span>
                   </button>
                 )}
 
-                {onEditMitraKontak && row.mitra_id && (
+                {onFilterSiswaHistory && row.Siswa?.nama_siswa && (
                   <button
                     type="button"
                     onClick={() => {
                       setIsOpen(false);
-                      onEditMitraKontak(row.mitra_id);
+                      onFilterSiswaHistory(row.Siswa!.nama_siswa);
                     }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-600 transition-colors text-left cursor-pointer"
+                    className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors text-left cursor-pointer"
                   >
-                    <Building2 size={15} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
-                    <span>Info & Kontak PIC DUDI</span>
-                  </button>
-                )}
-
-                {onPrintMonitoring && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsOpen(false);
-                      onPrintMonitoring(row);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors text-left cursor-pointer"
-                  >
-                    <Printer size={15} className="text-amber-500 shrink-0" />
-                    <span>Cetak Lembar Monitoring</span>
+                    <History size={14} className="text-indigo-500 shrink-0" />
+                    <span>Riwayat Siswa Ini</span>
                   </button>
                 )}
               </div>
-            ) : (
-              /* Mode Default Hubin Admin */
-              <>
-                {/* Quick Filter: Riwayat Siswa */}
-                {onFilterSiswaHistory && row.Siswa?.nama_siswa && (
-                  <div className="border-b border-slate-100 dark:border-slate-800 py-1 bg-indigo-50/30 dark:bg-indigo-950/20">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsOpen(false);
-                        onFilterSiswaHistory(row.Siswa!.nama_siswa);
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors text-left cursor-pointer"
-                    >
-                      <History size={14} className="text-indigo-500 shrink-0" />
-                      <span>Riwayat Siswa Ini</span>
-                    </button>
-                  </div>
-                )}
-
-                {/* Group 1: Pembimbingan & Penilaian */}
-                <div className="py-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsOpen(false);
-                      onNilai(row);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-left cursor-pointer"
-                  >
-                    <Award size={15} className="text-blue-500 shrink-0" />
-                    <span>Input Nilai PKL</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsOpen(false);
-                      onKunjungan(row);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-600 dark:hover:text-amber-400 transition-colors text-left cursor-pointer"
-                  >
-                    <MapPin size={15} className="text-amber-500 shrink-0" />
-                    <span>Jurnal Kunjungan Guru</span>
-                  </button>
-
-                  {isJurnalAvailable && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsOpen(false);
-                        onReviewJurnal(row);
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors text-left cursor-pointer"
-                    >
-                      <FileText size={15} className="text-emerald-500 shrink-0" />
-                      <span>Review Jurnal Portofolio</span>
-                    </button>
-                  )}
-                </div>
-
-                {/* Aksi Khusus: Info & Kontak PIC DUDI */}
-                {onEditMitraKontak && row.mitra_id && (
-                  <div className="border-t border-slate-100 dark:border-slate-800 py-1 bg-indigo-50/20 dark:bg-indigo-950/10">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsOpen(false);
-                        onEditMitraKontak(row.mitra_id);
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors text-left cursor-pointer"
-                    >
-                      <Building2 size={15} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
-                      <span>Info & Kontak PIC DUDI</span>
-                    </button>
-                  </div>
-                )}
-
-                {/* Group 2: Surat & Dokumen */}
-                <div className="border-t border-slate-100 dark:border-slate-800 py-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsOpen(false);
-                      onCetakTugas(row);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors text-left cursor-pointer"
-                  >
-                    <Printer size={15} className="text-slate-400 shrink-0" />
-                    <span>Cetak Surat Tugas PKL</span>
-                  </button>
-
-                  {onPrintMonitoring && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsOpen(false);
-                        onPrintMonitoring(row);
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors text-left cursor-pointer"
-                    >
-                      <Printer size={15} className="text-amber-500 shrink-0" />
-                      <span>Cetak Lembar Monitoring</span>
-                    </button>
-                  )}
-
-                  {isKolektifAvailable && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsOpen(false);
-                        onCetakKolektif(row.mitra_id);
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors text-left cursor-pointer"
-                    >
-                      <Printer size={15} className="text-indigo-500 shrink-0" />
-                      <span>Cetak Tugas Kolektif</span>
-                    </button>
-                  )}
-                </div>
-              </>
             )}
+
+            {/* 2. Group: Pembimbingan & Penilaian */}
+            <div className="py-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onNilai(row);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-left cursor-pointer"
+              >
+                <Award size={15} className="text-blue-500 shrink-0" />
+                <span>Input Nilai PKL</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onKunjungan(row);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-600 dark:hover:text-amber-400 transition-colors text-left cursor-pointer"
+              >
+                <MapPin size={15} className="text-amber-500 shrink-0" />
+                <span>Jurnal Kunjungan Guru</span>
+              </button>
+
+              {isJurnalAvailable && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    onReviewJurnal(row);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors text-left cursor-pointer"
+                >
+                  <FileText size={15} className="text-emerald-500 shrink-0" />
+                  <span>Review Jurnal Portofolio</span>
+                </button>
+              )}
+            </div>
+
+            {/* 3. Aksi Khusus: Info & Kontak PIC DUDI */}
+            {onEditMitraKontak && row.mitra_id && (
+              <div className="border-t border-slate-100 dark:border-slate-800 py-1 bg-indigo-50/20 dark:bg-indigo-950/10">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    onEditMitraKontak(row.mitra_id);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors text-left cursor-pointer"
+                >
+                  <Building2 size={15} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                  <span>Info & Kontak PIC DUDI</span>
+                </button>
+              </div>
+            )}
+
+            {/* 4. Group: Surat & Dokumen */}
+            <div className="border-t border-slate-100 dark:border-slate-800 py-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onCetakTugas(row);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors text-left cursor-pointer"
+              >
+                <Printer size={15} className="text-slate-400 shrink-0" />
+                <span>Cetak Surat Tugas PKL</span>
+              </button>
+
+              {onPrintMonitoring && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    onPrintMonitoring(row);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors text-left cursor-pointer"
+                >
+                  <Printer size={15} className="text-amber-500 shrink-0" />
+                  <span>Cetak Lembar Monitoring</span>
+                </button>
+              )}
+
+              {isKolektifAvailable && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    onCetakKolektif(row.mitra_id);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors text-left cursor-pointer"
+                >
+                  <Printer size={15} className="text-indigo-500 shrink-0" />
+                  <span>Cetak Tugas Kolektif</span>
+                </button>
+              )}
+            </div>
 
             {/* Group 3: WhatsApp Quick Links (Selalu Tampil dengan Indikator Status) */}
             <div className="border-t border-slate-100 dark:border-slate-800 py-1">

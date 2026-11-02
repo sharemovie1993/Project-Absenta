@@ -545,8 +545,10 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
     canManage,
     hasKolektif,
     hidePembimbing: isPembimbingMode,
+    isPembimbingMode,
+    onOpenDetail: onOpenSiswaDetail,
     ...rowActionHandlers
-  }), [rawMitra, canManage, hasKolektif, isPembimbingMode, rowActionHandlers]);
+  }), [rawMitra, canManage, hasKolektif, isPembimbingMode, onOpenSiswaDetail, rowActionHandlers]);
 
   // Visit history list calculation
   const currentSelectedPkl = useMemo(() => {
