@@ -59,6 +59,9 @@ const BiodataPrintModal = lazy(() =>
 const P5PrintModal = lazy(() =>
   import('./P5PrintModal').then((m) => ({ default: m.P5PrintModal }))
 );
+const RaporSemesterPrintModal = lazy(() =>
+  import('./RaporSemesterPrintModal').then((m) => ({ default: m.RaporSemesterPrintModal }))
+);
 
 // ── Smart Session & Context Persistence Constants ──
 const CETAK_RAPOR_SESSION_KEY = 'absenta_rapor_cetak_context';
@@ -230,6 +233,11 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
   const [selectedTranskripStudent, setSelectedTranskripStudent] = useState<LegerStudent | null>(null);
   const [selectedBiodataStudent, setSelectedBiodataStudent] = useState<LegerStudent | null>(null);
   const [selectedP5Student, setSelectedP5Student] = useState<LegerStudent | null>(null);
+  const [selectedSemesterStudent, setSelectedSemesterStudent] = useState<{
+    student: LegerStudent;
+    tahunPelajaranId?: string;
+    semesterId?: string;
+  } | null>(null);
   const [selectedUkkStudent, setSelectedUkkStudent] = useState<LegerStudent | null>(null);
   const [isUkkModalOpen, setIsUkkModalOpen] = useState(false);
   const [showMonitoringModal, setShowMonitoringModal] = useState(false);
@@ -849,7 +857,14 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
             const s = filteredStudents.find((x) => x.id === sId) || ({ id: sId } as any);
             setSelectedBiodataStudent(s);
           }}
-          onPrintRaporSemester={(sId, tpId, semId) => printRaporSemester(sId, tpId, semId)}
+          onPrintRaporSemester={(sId, tpId, semId) => {
+            const s = filteredStudents.find((x) => x.id === sId) || ({ id: sId } as any);
+            setSelectedSemesterStudent({
+              student: s,
+              tahunPelajaranId: tpId || activeYear?.id,
+              semesterId: semId || activeSemester?.id,
+            });
+          }}
           onPrintRaporSumatif={(sId, tpId, semId) => printRaporSumatif(sId, tpId, semId)}
           onPrintP5={(sId) => {
             const s = filteredStudents.find((x) => x.id === sId) || ({ id: sId } as any);
@@ -877,7 +892,13 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
           semesterNama={activeSemester?.nama || academicActiveSemester?.nama_semester}
           modeCetakRapor={modeCetakRapor}
           onOpenSummaryModal={handleOpenSummaryModal}
-          onPrintRapor={handlePrintRapor}
+          onPrintRapor={(student) => {
+            setSelectedSemesterStudent({
+              student,
+              tahunPelajaranId: activeYear?.id,
+              semesterId: activeSemester?.id,
+            });
+          }}
           onPrintP5={(student) => setSelectedP5Student(student)}
           onPrintRaporPkl={handlePrintRaporPkl}
           onPrintSertifikatPkl={handlePrintSertifikatPkl}
@@ -1056,6 +1077,26 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
           tahunPelajaranNama={activeYear?.nama || academicActiveYear?.tahun}
           semesterNama={activeSemester?.nama || academicActiveSemester?.nama_semester}
           kelasNama={currentKelasObj?.nama_kelas || waliKelasNama}
+        />
+      </Suspense>
+
+      {/* Rapor Semester 1 - 6 CK1-CK2 Print Modal (Universal Document Printing) */}
+      <Suspense fallback={null}>
+        <RaporSemesterPrintModal
+          isOpen={!!selectedSemesterStudent}
+          onClose={() => setSelectedSemesterStudent(null)}
+          selectedStudent={selectedSemesterStudent?.student || null}
+          students={filteredStudents}
+          onSelectStudent={(s) => {
+            setSelectedSemesterStudent((prev) =>
+              prev ? { ...prev, student: s } : { student: s }
+            );
+          }}
+          initialTahunPelajaranId={selectedSemesterStudent?.tahunPelajaranId || activeYear?.id}
+          initialSemesterId={selectedSemesterStudent?.semesterId || activeSemester?.id}
+          tahunPelajaranNama={activeYear?.nama || academicActiveYear?.tahun}
+          semesterNama={activeSemester?.nama || academicActiveSemester?.nama_semester}
+          isJenjangSmk={isJenjangSmk}
         />
       </Suspense>
 

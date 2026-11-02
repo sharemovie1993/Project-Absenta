@@ -31,6 +31,7 @@ export interface RaporPrintMenuProps {
   btnSize?: 'sm' | 'md';
   eligibility?: DokumenEligibility;
   onPrintBiodata?: (studentId: string) => void;
+  onPrintRaporSemester?: (studentId: string) => void;
   onPrintP5?: (studentId: string) => void;
   onPrintRaporPkl?: () => void;
   onPrintSertifikatPkl?: () => void;
@@ -54,6 +55,7 @@ export const RaporPrintMenu: React.FC<RaporPrintMenuProps> = ({
   btnSize = 'sm',
   eligibility,
   onPrintBiodata,
+  onPrintRaporSemester,
   onPrintP5,
   onPrintRaporPkl,
   onPrintSertifikatPkl,
@@ -220,7 +222,7 @@ export const RaporPrintMenu: React.FC<RaporPrintMenuProps> = ({
               {/* 3. Rapor Semester CK1-CK2 */}
               <button
                 type="button"
-                onClick={() => handleAction(() => printRaporSemester(studentId))}
+                onClick={() => handleAction(() => onPrintRaporSemester ? onPrintRaporSemester(studentId) : printRaporSemester(studentId))}
                 className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
               >
                 <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
