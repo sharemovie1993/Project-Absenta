@@ -21,7 +21,8 @@ import { TeacherOpsMicroGrid } from '../beranda/TeacherOpsMicroGrid';
 import { TeacherCoreWorkspaceBento } from '../beranda/TeacherCoreWorkspaceBento';
 import { TeacherActionHubWidget } from '../beranda/TeacherActionHubWidget';
 import { DirectKbmFeed } from '../beranda/DirectKbmFeed';
-import { TeacherSubNavPills, TeacherSubTabId } from '../beranda/TeacherSubNavPills';
+import { TeacherSidebarNav } from '../beranda/TeacherSidebarNav';
+import { TeacherSubTabId } from '../beranda/TeacherSubNavPills';
 import { TeacherBukuNilaiSubTab } from '../beranda/TeacherBukuNilaiSubTab';
 
 // Universal Role-Ready Views (In-Place Sub-Tab)
@@ -126,7 +127,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
     staleTime: 5 * 60 * 1000,
   });
 
-  // Query Perangkat Ajar Guru Sendiri (Untuk Notification Badges di Sub-Tab Pill)
+  // Query Perangkat Ajar Guru Sendiri (Untuk Notification Badges di Sidebar)
   const { data: myPerangkatRes } = useQuery({
     queryKey: ['my-perangkat-workspace', guruId],
     queryFn: () => kurikulumApi.getPerangkatAjar({ guru_id: guruId }).catch(() => ({ success: true, data: [] })),
@@ -228,161 +229,159 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -6 }}
       transition={{ duration: 0.15 }}
-      className="space-y-3 sm:space-y-4 max-w-full"
+      className="max-w-full"
     >
       {/* ────────────────────────────────────────────────────────────────── */}
-      {/* 0. SUB-NAV PILLS: LINGKUNGAN GURU PENDIDIK (Shopee-Grade High Density) */}
+      {/* 2-COLUMN LAYOUT ALA KAPROG / KURIKULUM (Left Sidebar + Right Main)  */}
       {/* ────────────────────────────────────────────────────────────────── */}
-      {isActualTeachingStaff && (
-        <TeacherSubNavPills
-          activeSubTab={activeSubTab}
-          onChangeSubTab={handleSubTabChange}
-          perangkatRejectedCount={rejectedPerangkatCount}
-          unfilledJournalsCount={unfilledJournalsCount}
-        />
-      )}
-
-      {/* ────────────────────────────────────────────────────────────────── */}
-      {/* SUB-TAB 1: AGENDA & KBM HARI INI                                   */}
-      {/* ────────────────────────────────────────────────────────────────── */}
-      {isActualTeachingStaff && activeSubTab === 'agenda' && (
-        <div className="space-y-3 sm:space-y-4">
-          {/* Daily Status Strip */}
-          <TeacherDailyStatusStrip
-            activeKbm={activeKbm}
-            nextKbm={nextKbm}
-            isAllFinished={isAllFinished}
-            totalJp={totalJp}
-            totalMinutes={totalMinutes}
-            guruTapTime={(rekapStats as any)?.JAM_MASUK || null}
-            isGuruHadir={Boolean(rekapStats.HADIR > 0 || (rekapStats as any)?.JAM_MASUK)}
-          />
-
-          {/* Operational Micro-Grid */}
-          <TeacherOpsMicroGrid
-            totalJp={totalJp}
-            totalMinutes={totalMinutes}
-            unfilledJournalsCount={unfilledJournalsCount}
-            currentJp={teacherBeban?.total_calculated_jp ?? teacherBeban?.current_jp ?? 0}
-            targetJp={teacherBeban?.max_jp ?? 24}
-            onOpenSchedule={() => {}}
-            onOpenJournals={() => {}}
-            onOpenBeban={() => onNavigateTab('profil')}
-            onOpenRekapMapel={() => handleSubTabChange('rekap')}
-          />
-
-          {/* Meja Kerja Pendidik (4 Pilar Terpadu) */}
-          <TeacherCoreWorkspaceBento
-            guruId={guruId}
-            guruNama={guruNama}
-            timelineItems={timelineItems}
-            unfilledJournalsCount={unfilledJournalsCount}
-            totalJpToday={totalJp}
-            onOpenJournal={handleOpenJournal}
-            onNavigateTab={onNavigateTab}
-            onSelectSubTab={handleSubTabChange}
-          />
-
-          {/* Pusat Tindakan & Peringatan Guru (Cross-Divisional Action Hub) */}
-          <TeacherActionHubWidget
-            actions={actionHubData.actions || []}
-            summary={actionHubData.summary || { total: 0, critical: 0, today: 0, upcoming: 0 }}
-            isLoading={loadingActionHub}
-            onOpenJournal={handleOpenJournal}
-            onNavigateTab={onNavigateTab}
-          />
-
-          {/* Direct KBM Execution Feed (Sesi Mengajar Langsung di Layar) */}
-          <DirectKbmFeed
-            timelineItems={timelineItems}
-            onOpenAttendance={handleOpenAttendance}
-            onOpenJournal={handleOpenJournal}
-          />
-
-          {/* Desktop Wide View (Jadwal Mingguan & Beban Mengajar Luas) */}
-          <div className="hidden md:block space-y-4 pt-2">
-            <StaffWeeklyScheduleWidget
-              guruId={guruId}
+      {isActualTeachingStaff ? (
+        <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-5 items-start">
+          {/* Kolom Kiri: Sidebar Sub-Menu Guru (Desktop sticky) */}
+          <aside className="space-y-3 lg:sticky lg:top-20">
+            <TeacherSidebarNav
+              activeSubTab={activeSubTab}
+              onChangeSubTab={handleSubTabChange}
               guruNama={guruNama}
+              perangkatRejectedCount={rejectedPerangkatCount}
+              unfilledJournalsCount={unfilledJournalsCount}
+              totalJp={totalJp}
+              currentBebanJp={teacherBeban?.total_calculated_jp ?? teacherBeban?.current_jp ?? 0}
+              targetBebanJp={teacherBeban?.max_jp ?? 24}
             />
+          </aside>
 
-            <BebanMengajarWidget
-              currentJp={teacherBeban?.total_calculated_jp ?? teacherBeban?.current_jp ?? 0}
-              kbmJp={teacherBeban?.current_jp ?? 0}
-              ekuivalenJp={teacherBeban?.ekuivalen_position_jp ?? 0}
-              targetJp={teacherBeban?.max_jp ?? 24}
-              teacherName={guruNama}
-              positions={teacherBeban?.positions || []}
-              hadirBulanIni={rekapStats.HADIR || 0}
-              terlambatBulanIni={rekapStats.TERLAMBAT || 0}
-              dinasLuarBulanIni={rekapStats.DISPEN || 0}
-              izinBulanIni={(rekapStats.IZIN || 0) + (rekapStats.SAKIT || 0)}
-              isLoading={loadingBeban || loadingRekap}
-              onOpenAjukanIzin={() => setShowIzinModal(true)}
-            />
-          </div>
+          {/* Kolom Kanan: Main Content Canvas */}
+          <main className="min-w-0 space-y-4">
+            {/* SUB-TAB 1: AGENDA & KBM HARI INI */}
+            {activeSubTab === 'agenda' && (
+              <div className="space-y-3 sm:space-y-4">
+                {/* Daily Status Strip */}
+                <TeacherDailyStatusStrip
+                  activeKbm={activeKbm}
+                  nextKbm={nextKbm}
+                  isAllFinished={isAllFinished}
+                  totalJp={totalJp}
+                  totalMinutes={totalMinutes}
+                  guruTapTime={(rekapStats as any)?.JAM_MASUK || null}
+                  isGuruHadir={Boolean(rekapStats.HADIR > 0 || (rekapStats as any)?.JAM_MASUK)}
+                />
+
+                {/* Operational Micro-Grid */}
+                <TeacherOpsMicroGrid
+                  totalJp={totalJp}
+                  totalMinutes={totalMinutes}
+                  unfilledJournalsCount={unfilledJournalsCount}
+                  currentJp={teacherBeban?.total_calculated_jp ?? teacherBeban?.current_jp ?? 0}
+                  targetJp={teacherBeban?.max_jp ?? 24}
+                  onOpenSchedule={() => {}}
+                  onOpenJournals={() => {}}
+                  onOpenBeban={() => onNavigateTab('profil')}
+                  onOpenRekapMapel={() => handleSubTabChange('rekap')}
+                />
+
+                {/* Meja Kerja Pendidik (4 Pilar Terpadu) */}
+                <TeacherCoreWorkspaceBento
+                  guruId={guruId}
+                  guruNama={guruNama}
+                  timelineItems={timelineItems}
+                  unfilledJournalsCount={unfilledJournalsCount}
+                  totalJpToday={totalJp}
+                  onOpenJournal={handleOpenJournal}
+                  onNavigateTab={onNavigateTab}
+                  onSelectSubTab={handleSubTabChange}
+                />
+
+                {/* Pusat Tindakan & Peringatan Guru (Cross-Divisional Action Hub) */}
+                <TeacherActionHubWidget
+                  actions={actionHubData.actions || []}
+                  summary={actionHubData.summary || { total: 0, critical: 0, today: 0, upcoming: 0 }}
+                  isLoading={loadingActionHub}
+                  onOpenJournal={handleOpenJournal}
+                  onNavigateTab={onNavigateTab}
+                />
+
+                {/* Direct KBM Execution Feed (Sesi Mengajar Langsung di Layar) */}
+                <DirectKbmFeed
+                  timelineItems={timelineItems}
+                  onOpenAttendance={handleOpenAttendance}
+                  onOpenJournal={handleOpenJournal}
+                />
+
+                {/* Desktop Wide View (Jadwal Mingguan & Beban Mengajar Luas) */}
+                <div className="hidden md:block space-y-4 pt-2">
+                  <StaffWeeklyScheduleWidget
+                    guruId={guruId}
+                    guruNama={guruNama}
+                  />
+
+                  <BebanMengajarWidget
+                    currentJp={teacherBeban?.total_calculated_jp ?? teacherBeban?.current_jp ?? 0}
+                    kbmJp={teacherBeban?.current_jp ?? 0}
+                    ekuivalenJp={teacherBeban?.ekuivalen_position_jp ?? 0}
+                    targetJp={teacherBeban?.max_jp ?? 24}
+                    teacherName={guruNama}
+                    positions={teacherBeban?.positions || []}
+                    hadirBulanIni={rekapStats.HADIR || 0}
+                    terlambatBulanIni={rekapStats.TERLAMBAT || 0}
+                    dinasLuarBulanIni={rekapStats.DISPEN || 0}
+                    izinBulanIni={(rekapStats.IZIN || 0) + (rekapStats.SAKIT || 0)}
+                    isLoading={loadingBeban || loadingRekap}
+                    onOpenAjukanIzin={() => setShowIzinModal(true)}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB 2: PERANGKAT AJAR SAYA (Universal Role-Ready View In-Place) */}
+            {activeSubTab === 'perangkat' && (
+              <Suspense
+                fallback={
+                  <div className="p-12 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-col items-center justify-center gap-3">
+                    <Loader className="animate-spin text-emerald-600" size={32} />
+                    <p className="text-xs text-slate-500 font-semibold">Memuat Meja Perangkat Ajar...</p>
+                  </div>
+                }
+              >
+                <PerangkatAjarView guruId={guruId} hideLayout={true} />
+              </Suspense>
+            )}
+
+            {/* SUB-TAB 3: BUKU NILAI & ASESMEN SISWA */}
+            {activeSubTab === 'nilai' && (
+              <TeacherBukuNilaiSubTab guruId={guruId} guruNama={guruNama} />
+            )}
+
+            {/* SUB-TAB 4: REKAPITULASI PRESENSI MAPEL */}
+            {activeSubTab === 'rekap' && (
+              <Suspense
+                fallback={
+                  <div className="p-12 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-col items-center justify-center gap-3">
+                    <Loader className="animate-spin text-indigo-600" size={32} />
+                    <p className="text-xs text-slate-500 font-semibold">Memuat Rekapitulasi Mapel...</p>
+                  </div>
+                }
+              >
+                <StaffRekapMapelTab user={user} />
+              </Suspense>
+            )}
+
+            {/* SUB-TAB 5: SUPERVISI AKADEMIK SAYA */}
+            {activeSubTab === 'supervisi' && (
+              <Suspense
+                fallback={
+                  <div className="p-12 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-col items-center justify-center gap-3">
+                    <Loader className="animate-spin text-amber-600" size={32} />
+                    <p className="text-xs text-slate-500 font-semibold">Memuat Catatan Supervisi Akademik...</p>
+                  </div>
+                }
+              >
+                <SupervisiAkademikView guruId={guruId} hideLayout={true} readOnly={true} />
+              </Suspense>
+            )}
+          </main>
         </div>
-      )}
-
-      {/* ────────────────────────────────────────────────────────────────── */}
-      {/* SUB-TAB 2: PERANGKAT AJAR SAYA (Universal Role-Ready View In-Place) */}
-      {/* ────────────────────────────────────────────────────────────────── */}
-      {isActualTeachingStaff && activeSubTab === 'perangkat' && (
-        <Suspense
-          fallback={
-            <div className="p-12 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-col items-center justify-center gap-3">
-              <Loader className="animate-spin text-emerald-600" size={32} />
-              <p className="text-xs text-slate-500 font-semibold">Memuat Meja Perangkat Ajar...</p>
-            </div>
-          }
-        >
-          <PerangkatAjarView guruId={guruId} hideLayout={true} />
-        </Suspense>
-      )}
-
-      {/* ────────────────────────────────────────────────────────────────── */}
-      {/* SUB-TAB 3: BUKU NILAI & ASESMEN SISWA                              */}
-      {/* ────────────────────────────────────────────────────────────────── */}
-      {isActualTeachingStaff && activeSubTab === 'nilai' && (
-        <TeacherBukuNilaiSubTab guruId={guruId} guruNama={guruNama} />
-      )}
-
-      {/* ────────────────────────────────────────────────────────────────── */}
-      {/* SUB-TAB 4: REKAPITULASI PRESENSI MAPEL                             */}
-      {/* ────────────────────────────────────────────────────────────────── */}
-      {isActualTeachingStaff && activeSubTab === 'rekap' && (
-        <Suspense
-          fallback={
-            <div className="p-12 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-col items-center justify-center gap-3">
-              <Loader className="animate-spin text-indigo-600" size={32} />
-              <p className="text-xs text-slate-500 font-semibold">Memuat Rekapitulasi Mapel...</p>
-            </div>
-          }
-        >
-          <StaffRekapMapelTab user={user} />
-        </Suspense>
-      )}
-
-      {/* ────────────────────────────────────────────────────────────────── */}
-      {/* SUB-TAB 5: SUPERVISI AKADEMIK SAYA                                 */}
-      {/* ────────────────────────────────────────────────────────────────── */}
-      {isActualTeachingStaff && activeSubTab === 'supervisi' && (
-        <Suspense
-          fallback={
-            <div className="p-12 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-col items-center justify-center gap-3">
-              <Loader className="animate-spin text-amber-600" size={32} />
-              <p className="text-xs text-slate-500 font-semibold">Memuat Catatan Supervisi Akademik...</p>
-            </div>
-          }
-        >
-          <SupervisiAkademikView guruId={guruId} hideLayout={true} readOnly={true} />
-        </Suspense>
-      )}
-
-      {/* ────────────────────────────────────────────────────────────────── */}
-      {/* TERMINAL SCANNER (Khusus Staf Satpam / Gerbang Non-Guru)           */}
-      {/* ────────────────────────────────────────────────────────────────── */}
-      {!isActualTeachingStaff && (
+      ) : (
+        /* TERMINAL SCANNER (Khusus Staf Satpam / Gerbang Non-Guru) */
         <div className="space-y-4">
           <Suspense
             fallback={
