@@ -8,6 +8,28 @@
   forced-color-adjust: none;
 }
 
+/* ── Custom Official Fonts for Document & Certificate Printing ── */
+@font-face {
+  font-family: 'Cambria';
+  src: url('/fonts/cambria.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Cambria';
+  src: url('/fonts/cambria-bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+.font-cambria,
+.font-cambria * {
+  font-family: 'Cambria', 'Times New Roman', serif !important;
+}
+
 html[data-theme="light"],
 html:not([data-theme="dark"]),
 html[data-theme="light"] body {
