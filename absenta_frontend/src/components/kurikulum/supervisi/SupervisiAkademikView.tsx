@@ -137,6 +137,13 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
   const activeGuruId = propGuruId || academicFilter.values.guruId;
   const debouncedSearch = academicFilter.debouncedSearchQuery;
 
+  // 🛡️ Academic Context Guard: Deteksi apakah user sedang melihat tahun ajaran arsip/lampau
+  const isViewingArchiveYear = Boolean(
+    academicFilter.activeAcademicYear?.id &&
+    activeTpId &&
+    academicFilter.activeAcademicYear.id !== activeTpId
+  );
+
   // ── Reference Options Hooks ───────────────────────────────────────────────
   const { options: guruOptions, rawList: guruItems } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
   const { options: kelasSelectOptions, rawList: kelasItems } = useKelasOptions();
@@ -275,11 +282,19 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
   }, []);
 
   const handleSave = useCallback(async () => {
+    // 🛡️ Academic Context Hardening: Untuk jadwal baru, selalu alokasikan ke Periode Aktif
+    const targetTpId = selectedId
+      ? (activeTpId || undefined)
+      : (academicFilter.activeAcademicYear?.id || activeTpId || undefined);
+    const targetSemId = selectedId
+      ? (activeSemId || undefined)
+      : (academicFilter.activeSemester?.id || activeSemId || undefined);
+
     const payload = {
       ...formData,
       nilai: formData.nilai === '' ? undefined : Number(formData.nilai),
-      tahun_pelajaran_id: activeTpId || undefined,
-      semester_id: activeSemId || undefined,
+      tahun_pelajaran_id: targetTpId,
+      semester_id: targetSemId,
     };
 
     const parseResult = supervisiSchema.safeParse(payload);
@@ -501,6 +516,16 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
 
   const content = (
     <div className="space-y-4 animate-in fade-in duration-300 pb-10">
+      {/* 🛡️ Mode Arsip Historis Alert Banner */}
+      {isViewingArchiveYear && (
+        <div className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-medium shadow-xs">
+          <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+          <span>
+            <strong>Mode Arsip Supervisi:</strong> Anda sedang meninjau jadwal supervisi tahun pelajaran non-aktif ({academicFilter.selectedTahunPelajaranNama || 'Lampau'}). Jadwal supervisi baru otomatis dialokasikan ke Periode Akademik Aktif ({academicFilter.activeAcademicYear?.tahun || 'Aktif'}).
+          </span>
+        </div>
+      )}
+
       {/* 1. TabSwitcher (hanya jika ada akses analytics) */}
       {canViewAnalytics && (
         <TabSwitcher

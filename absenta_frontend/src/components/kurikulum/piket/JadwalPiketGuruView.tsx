@@ -9,7 +9,9 @@ import {
   Plus,
   Users,
   Bell,
-  Printer
+  Printer,
+  Lock,
+  AlertCircle
 } from 'lucide-react';
 import { piketGuruApi, JadwalPiketGuru, Hari } from '../../../api/piketGuru.api';
 import { useJenjang } from '../../../hooks/useJenjang';
@@ -88,6 +90,13 @@ export const JadwalPiketGuruView: React.FC<UniversalJadwalPiketGuruProps> = Reac
     return semesterOptions.find(s => s.value === effectiveSemId)?.label || 'Ganjil';
   }, [semesterOptions, effectiveSemId]);
 
+  // 🛡️ Academic Context Guard: Deteksi apakah user sedang melihat jadwal piket tahun pelajaran non-aktif (arsip)
+  const isViewingArchiveYear = Boolean(
+    academicFilter.activeAcademicYear?.id &&
+    effectiveTpId &&
+    academicFilter.activeAcademicYear.id !== effectiveTpId
+  );
+
   const { rawList: guruList } = useGuruOptions({ jenisPtk: 'ALL' });
   const { rawList: jurusanList } = useJurusanOptions();
 
@@ -164,6 +173,16 @@ export const JadwalPiketGuruView: React.FC<UniversalJadwalPiketGuruProps> = Reac
   const content = (
     <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
       <div className="space-y-4">
+        {/* 🛡️ Mode Arsip Historis Alert Banner */}
+        {isViewingArchiveYear && (
+          <div className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-medium shadow-xs">
+            <Lock className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <span>
+              <strong>Mode Arsip Terkunci:</strong> Anda sedang melihat jadwal piket untuk tahun pelajaran non-aktif ({selectedTpNama}). Penugasan piket baru dinonaktifkan demi melindungi integritas riwayat piket.
+            </span>
+          </div>
+        )}
+
         {/* Action Header / Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
           <div className="flex items-center gap-2">
@@ -193,7 +212,9 @@ export const JadwalPiketGuruView: React.FC<UniversalJadwalPiketGuruProps> = Reac
                   variant="outline"
                   size="sm"
                   onClick={() => setIsBulkModalOpen(true)}
-                  className="flex items-center gap-1.5 font-bold rounded-xl text-xs"
+                  disabled={isViewingArchiveYear}
+                  className="flex items-center gap-1.5 font-bold rounded-xl text-xs disabled:opacity-50"
+                  title={isViewingArchiveYear ? "Penugasan dinonaktifkan pada mode arsip" : undefined}
                 >
                   <Users className="w-3.5 h-3.5" />
                   Penugasan Massal
@@ -202,7 +223,9 @@ export const JadwalPiketGuruView: React.FC<UniversalJadwalPiketGuruProps> = Reac
                   variant="primary"
                   size="sm"
                   onClick={handleOpenAdd}
-                  className="flex items-center gap-1.5 font-bold rounded-xl shadow-xs text-xs"
+                  disabled={isViewingArchiveYear}
+                  className="flex items-center gap-1.5 font-bold rounded-xl shadow-xs text-xs disabled:opacity-50"
+                  title={isViewingArchiveYear ? "Penugasan dinonaktifkan pada mode arsip" : undefined}
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Tambah Guru Piket
@@ -277,8 +300,8 @@ export const JadwalPiketGuruView: React.FC<UniversalJadwalPiketGuruProps> = Reac
             onClose={() => setIsAssignModalOpen(false)}
             editingItem={editingItem}
             activeHari={activeHari}
-            selectedTpId={selectedTpId}
-            selectedSemId={selectedSemId}
+            selectedTpId={editingItem ? selectedTpId : (academicFilter.activeAcademicYear?.id || selectedTpId)}
+            selectedSemId={editingItem ? selectedSemId : (academicFilter.activeSemester?.id || selectedSemId)}
             isSmk={isSmk}
             jurusanList={jurusanList}
             onSuccess={fetchSchedules}
@@ -292,8 +315,8 @@ export const JadwalPiketGuruView: React.FC<UniversalJadwalPiketGuruProps> = Reac
             isOpen={isBulkModalOpen}
             onClose={() => setIsBulkModalOpen(false)}
             activeHari={activeHari}
-            selectedTpId={selectedTpId}
-            selectedSemId={selectedSemId}
+            selectedTpId={academicFilter.activeAcademicYear?.id || selectedTpId}
+            selectedSemId={academicFilter.activeSemester?.id || selectedSemId}
             guruList={guruList}
             onSuccess={fetchSchedules}
             getSlotStartTime={getSlotStartTime}

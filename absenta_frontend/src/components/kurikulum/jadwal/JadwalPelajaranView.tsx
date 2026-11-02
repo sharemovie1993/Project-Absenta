@@ -16,7 +16,9 @@ import {
   Sparkles,
   Trash2,
   Users,
-  FileUp
+  FileUp,
+  Lock,
+  AlertCircle
 } from 'lucide-react';
 import { AutoJadwalWizardModal } from '../AutoJadwalWizardModal';
 import { BebanGuruSummaryModal } from '../jadwal-builder/BebanGuruSummaryModal';
@@ -202,6 +204,13 @@ export const JadwalPelajaranView: React.FC<UniversalJadwalPelajaranViewProps> = 
       setSelectedTahunId(activeTp.id);
     }
   }, [activeTp, selectedTahunId]);
+
+  // 🛡️ Academic Context Guard: Deteksi apakah user sedang melihat jadwal tahun pelajaran non-aktif (arsip)
+  const isViewingArchiveYear = Boolean(
+    activeTp?.id &&
+    selectedTahunId &&
+    activeTp.id !== selectedTahunId
+  );
 
   const { data: semesterRes } = useQuery({
     queryKey: ['semesters-by-tp', selectedTahunId],
@@ -411,11 +420,22 @@ export const JadwalPelajaranView: React.FC<UniversalJadwalPelajaranViewProps> = 
           ) : null}
         </div>
 
+        {/* 🛡️ Mode Arsip Historis Alert Banner */}
+        {isViewingArchiveYear && (
+          <div className="flex items-center gap-2.5 p-3.5 mb-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-medium shadow-xs">
+            <Lock className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <span>
+              <strong>Mode Arsip Terkunci:</strong> Anda sedang melihat jadwal untuk Tahun Pelajaran Non-Aktif. Mode perubahan jadwal dinonaktifkan demi melindungi integritas arsip riwayat jadwal KBM.
+            </span>
+          </div>
+        )}
+
         <Suspense fallback={<div className="flex justify-center py-20"><Loader /></div>}>
           {canManage && viewMode !== 'preview' ? (
             <JadwalBuilder 
               tahunPelajaranId={selectedTahunId} 
               semesterId={selectedSemesterId}
+              readOnly={readOnly || isViewingArchiveYear}
               selectedGuruId={selectedGuruId}
               setSelectedGuruId={setSelectedGuruId}
               selectedKelasId={selectedKelasId}

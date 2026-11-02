@@ -197,6 +197,13 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
   const activeMapelId = propMapelId || academicFilter.values.mapelId;
   const activeSearch = academicFilter.debouncedSearchQuery;
 
+  // 🛡️ Academic Context Guard: Deteksi apakah user sedang melihat tahun ajaran arsip/lampau
+  const isViewingArchiveYear = Boolean(
+    academicFilter.activeAcademicYear?.id &&
+    activeTpId &&
+    academicFilter.activeAcademicYear.id !== activeTpId
+  );
+
   const { options: canonicalMapelOptions, rawList: mapelRawList } = useMapelOptions();
   const { options: canonicalGuruOptions, rawList: guruRawList } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
 
@@ -435,8 +442,12 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
     formData.append('jenis', validData.jenis);
     formData.append('mapel_id', validData.mapel_id);
     formData.append('guru_id', validData.guru_id);
-    if (activeTpId) formData.append('tahun_pelajaran_id', activeTpId);
-    if (activeSemId) formData.append('semester_id', activeSemId);
+    
+    // 🛡️ Academic Context Hardening: Selalu alokasikan dokumen baru ke Periode Aktif
+    const targetTpId = academicFilter.activeAcademicYear?.id || activeTpId;
+    const targetSemId = academicFilter.activeSemester?.id || activeSemId;
+    if (targetTpId) formData.append('tahun_pelajaran_id', targetTpId);
+    if (targetSemId) formData.append('semester_id', targetSemId);
     if (validData.file) formData.append('file', validData.file);
 
     uploadMutation.mutate(formData);
@@ -481,13 +492,17 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
   };
 
   const handleAISave = () => {
+    // 🛡️ Academic Context Hardening: Alokasikan AI draft ke Periode Aktif
+    const targetTpId = academicFilter.activeAcademicYear?.id || activeTpId;
+    const targetSemId = academicFilter.activeSemester?.id || activeSemId;
+
     const rawPayload = {
       judul: `${JENIS_LABELS[aiForm.jenis] || aiForm.jenis} - ${aiForm.topik}`,
       jenis: aiForm.jenis,
       mapel_id: aiForm.mapel_id,
       guru_id: currentGuru?.id,
-      tahun_pelajaran_id: activeTpId || '',
-      semester_id: activeSemId || '',
+      tahun_pelajaran_id: targetTpId || '',
+      semester_id: targetSemId || '',
       html_content: generatedAIContent,
     };
 
@@ -576,6 +591,16 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
 
   const content = (
     <div className="space-y-4 animate-in fade-in duration-300 pb-10">
+      {/* 🛡️ Mode Arsip Historis Alert Banner */}
+      {isViewingArchiveYear && (
+        <div className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-medium shadow-xs">
+          <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+          <span>
+            <strong>Mode Arsip Dokumen:</strong> Anda sedang meninjau perangkat ajar untuk tahun pelajaran non-aktif ({academicFilter.selectedTahunPelajaranNama || 'Lampau'}). Dokumen baru yang diunggah/dibuat otomatis akan dialokasikan ke Periode Akademik Aktif ({academicFilter.activeAcademicYear?.tahun || 'Aktif'}).
+          </span>
+        </div>
+      )}
+
       {/* 1. Status Filter Tabs */}
       <TabSwitcher
         options={tabOptions}
