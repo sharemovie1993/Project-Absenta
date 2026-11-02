@@ -10,7 +10,7 @@ import type { Supervisi } from '../../../api/kurikulum.api';
 import { AcademicPageLayout } from '../../academic/AcademicPageLayout';
 import { TabSwitcher } from '../../ui/TabSwitcher';
 import { cn } from '../../../lib/utils';
-import { ClipboardList, Plus, Clock, Award, BookOpen, User, Calendar, List, BarChart2, ShieldCheck } from 'lucide-react';
+import { ClipboardList, Plus, Clock, Award, BookOpen, User, Calendar, List, BarChart2, ShieldCheck, AlertCircle } from 'lucide-react';
 import { z } from 'zod';
 import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../../hooks/useCapabilities';

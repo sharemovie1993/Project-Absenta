@@ -15,6 +15,7 @@ import {
   LayoutGrid,
   List,
   Search,
+  AlertCircle,
 } from 'lucide-react';
 
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
