@@ -330,14 +330,30 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
           </div>
         ) : filteredItems.length === 0 ? (
           <div className="py-12 text-center text-xs space-y-2">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mx-auto ${
+              statusFilter === 'needs_remedial' 
+                ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+            }`}>
               <Award size={24} />
             </div>
             <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm">
-              Luar Biasa! Tidak Ada Siswa Bermasalah
+              {statusFilter === 'needs_remedial'
+                ? 'Luar Biasa! Tidak Ada Siswa Bermasalah'
+                : statusFilter === 'completed'
+                ? 'Belum Ada Data Siswa Tuntas'
+                : statusFilter === 'unassessed'
+                ? 'Semua Siswa Telah Memiliki Nilai'
+                : 'Tidak Ada Data Siswa'}
             </h4>
             <p className="text-slate-400 max-w-md mx-auto text-[11px]">
-              Seluruh siswa pada kelas yang diampu telah tuntas dan tidak ada nilai di bawah batas KKM ({kkm}).
+              {statusFilter === 'needs_remedial'
+                ? `Seluruh siswa pada kelas yang diampu telah tuntas dan tidak ada nilai di bawah batas KKM (${kkm}).`
+                : statusFilter === 'completed'
+                ? `Belum ada siswa yang nilainya telah mencapai batas ketuntasan KKM (${kkm}).`
+                : statusFilter === 'unassessed'
+                ? 'Seluruh siswa telah memiliki asesmen dan tidak ada nilai yang kosong.'
+                : 'Silakan ubah kata kunci pencarian atau filter rombel.'}
             </p>
           </div>
         ) : (

@@ -263,33 +263,30 @@ export class NilaiRemedialService {
             });
           } else {
             totalTuntas++;
-            const isRemedialResolved = (grade.catatan_deskripsi || '').toLowerCase().includes('remedial');
-            if (isRemedialResolved) {
-              radarItems.push({
-                id: `${student.id}_${t.mapel_id}`,
-                siswa_id: student.id,
-                nis: student.nis,
-                nama_siswa: student.nama_siswa,
-                kelas_id: t.kelas_id,
-                nama_kelas: t.nama_kelas,
-                mapel_id: t.mapel_id,
-                nama_mapel: t.nama_mapel,
-                guru_id: t.guru_id,
-                nama_guru: t.nama_guru || 'Guru Pengajar',
-                tahun_pelajaran_id: tp.id,
-                tahun_pelajaran_nama: tp.tahun,
-                semester_id: sem.id,
-                semester_nama: sem.nama_semester,
-                kkm: kkmThreshold,
-                nilai_saat_ini: finalScore,
-                sumatif_1: grade.sumatif_1,
-                sumatif_2: grade.sumatif_2,
-                sumatif_3: grade.sumatif_3,
-                sumatif_akhir: grade.nilai_akhir_sumatif,
-                status: 'completed',
-                catatan: grade.catatan_deskripsi || 'Tuntas Remedial',
-              });
-            }
+            radarItems.push({
+              id: `${student.id}_${t.mapel_id}`,
+              siswa_id: student.id,
+              nis: student.nis,
+              nama_siswa: student.nama_siswa,
+              kelas_id: t.kelas_id,
+              nama_kelas: t.nama_kelas,
+              mapel_id: t.mapel_id,
+              nama_mapel: t.nama_mapel,
+              guru_id: t.guru_id,
+              nama_guru: t.nama_guru || 'Guru Pengajar',
+              tahun_pelajaran_id: tp.id,
+              tahun_pelajaran_nama: tp.tahun,
+              semester_id: sem.id,
+              semester_nama: sem.nama_semester,
+              kkm: kkmThreshold,
+              nilai_saat_ini: finalScore,
+              sumatif_1: grade.sumatif_1,
+              sumatif_2: grade.sumatif_2,
+              sumatif_3: grade.sumatif_3,
+              sumatif_akhir: grade.nilai_akhir_sumatif,
+              status: 'completed',
+              catatan: grade.catatan_deskripsi || 'Tuntas KKM',
+            });
           }
         }
       });
