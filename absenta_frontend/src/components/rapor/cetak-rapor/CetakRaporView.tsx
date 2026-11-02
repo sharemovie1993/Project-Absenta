@@ -62,6 +62,12 @@ const P5PrintModal = lazy(() =>
 const RaporSemesterPrintModal = lazy(() =>
   import('./RaporSemesterPrintModal').then((m) => ({ default: m.RaporSemesterPrintModal }))
 );
+const RaporPklPrintModal = lazy(() =>
+  import('./RaporPklPrintModal').then((m) => ({ default: m.RaporPklPrintModal }))
+);
+const SertifikatPklPrintModal = lazy(() =>
+  import('./SertifikatPklPrintModal').then((m) => ({ default: m.SertifikatPklPrintModal }))
+);
 
 // ── Smart Session & Context Persistence Constants ──
 const CETAK_RAPOR_SESSION_KEY = 'absenta_rapor_cetak_context';
@@ -238,6 +244,8 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
     tahunPelajaranId?: string;
     semesterId?: string;
   } | null>(null);
+  const [selectedRaporPklStudent, setSelectedRaporPklStudent] = useState<LegerStudent | null>(null);
+  const [selectedSertifikatPklStudent, setSelectedSertifikatPklStudent] = useState<LegerStudent | null>(null);
   const [selectedUkkStudent, setSelectedUkkStudent] = useState<LegerStudent | null>(null);
   const [isUkkModalOpen, setIsUkkModalOpen] = useState(false);
   const [showMonitoringModal, setShowMonitoringModal] = useState(false);
@@ -870,8 +878,8 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
             const s = filteredStudents.find((x) => x.id === sId) || ({ id: sId } as any);
             setSelectedP5Student(s);
           }}
-          onPrintRaporPkl={(s) => handlePrintRaporPkl(s)}
-          onPrintSertifikatPkl={(s) => handlePrintSertifikatPkl(s)}
+          onPrintRaporPkl={(s) => setSelectedRaporPklStudent(s)}
+          onPrintSertifikatPkl={(s) => setSelectedSertifikatPklStudent(s)}
           onPrintSertifikatUkk={(s) => {
             setSelectedUkkStudent(s);
             setIsUkkModalOpen(true);
@@ -900,8 +908,8 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
             });
           }}
           onPrintP5={(student) => setSelectedP5Student(student)}
-          onPrintRaporPkl={handlePrintRaporPkl}
-          onPrintSertifikatPkl={handlePrintSertifikatPkl}
+          onPrintRaporPkl={(student) => setSelectedRaporPklStudent(student)}
+          onPrintSertifikatPkl={(student) => setSelectedSertifikatPklStudent(student)}
           onPrintBiodata={(sId) => {
             const s = filteredStudents.find((x) => x.id === sId) || ({ id: sId } as any);
             setSelectedBiodataStudent(s);
@@ -1097,6 +1105,39 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
           tahunPelajaranNama={activeYear?.nama || academicActiveYear?.tahun}
           semesterNama={activeSemester?.nama || academicActiveSemester?.nama_semester}
           isJenjangSmk={isJenjangSmk}
+        />
+      </Suspense>
+
+      {/* Rapor PKL 2 Halaman Print Modal (Universal Document Printing) */}
+      <Suspense fallback={null}>
+        <RaporPklPrintModal
+          isOpen={!!selectedRaporPklStudent}
+          onClose={() => setSelectedRaporPklStudent(null)}
+          selectedStudent={selectedRaporPklStudent}
+          students={filteredStudents}
+          onSelectStudent={(s) => setSelectedRaporPklStudent(s)}
+          selectedKelas={selectedKelas}
+          tahunPelajaranId={activeYear?.id}
+          semesterId={activeSemester?.id}
+          tahunPelajaranNama={activeYear?.nama || academicActiveYear?.tahun}
+          semesterNama={activeSemester?.nama || academicActiveSemester?.nama_semester}
+        />
+      </Suspense>
+
+      {/* Sertifikat PKL Piagam & Transkrip Print Modal (Universal Document Printing) */}
+      <Suspense fallback={null}>
+        <SertifikatPklPrintModal
+          isOpen={!!selectedSertifikatPklStudent}
+          onClose={() => setSelectedSertifikatPklStudent(null)}
+          selectedStudent={selectedSertifikatPklStudent}
+          students={filteredStudents}
+          onSelectStudent={(s) => setSelectedSertifikatPklStudent(s)}
+          selectedKelas={selectedKelas}
+          tahunPelajaranId={activeYear?.id}
+          semesterId={activeSemester?.id}
+          tahunPelajaranNama={activeYear?.nama || academicActiveYear?.tahun}
+          semesterNama={activeSemester?.nama || academicActiveSemester?.nama_semester}
+          showLogoKananInitial={showLogoKananSertifikat}
         />
       </Suspense>
 
