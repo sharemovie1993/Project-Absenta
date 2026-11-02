@@ -24,6 +24,7 @@ export const PklBimbinganTab: React.FC<PklBimbinganTabProps> = ({
         guruId={guruId}
         tahunPelajaranId={tahunPelajaranId}
         semesterId={semesterId}
+        siswaList={siswaList}
         initialTab="MY_GUIDANCE"
         hideLayout={true}
         hideHeaderStats={false}

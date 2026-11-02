@@ -69,6 +69,8 @@ export interface UniversalPenempatanPklViewProps {
   hideScopeBanner?: boolean;
   hideTpFilter?: boolean;
   hideKelasFilter?: boolean;
+  siswaList?: any[];
+  mitraOptions?: { value: string; label: string }[];
   readOnly?: boolean;      // True jika user hanya memiliki hak pantau (misal: Kepsek / Pengawas)
 
   // 3. Event Callbacks
@@ -97,6 +99,8 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
   hideScopeBanner = false,
   hideTpFilter = false,
   hideKelasFilter = false,
+  siswaList: propSiswaList,
+  mitraOptions: propMitraOptions,
   initialKelasId,
   initialTpId,
   onClose,
@@ -277,9 +281,7 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
     return new Set<string>(list.filter((p: SiswaPkl) => p.status === 'AKTIF')?.map((p: SiswaPkl) => p.siswa_id));
   }, [allActivePenempatan]);
 
-  const allActiveList = useMemo(() => {
-    return Array.isArray(allActivePenempatan?.data) ? allActivePenempatan.data : (allActivePenempatan as { data?: SiswaPkl[] })?.data || [];
-  }, [allActivePenempatan]);
+  const allActiveList = useMemo(() => (Array.isArray(allActivePenempatan?.data) ? allActivePenempatan.data : (allActivePenempatan as { data?: SiswaPkl[] })?.data || []), [allActivePenempatan]);
 
   const isActuallyPembimbing = useMemo(() => {
     if (!activeGuruId) return false;
@@ -296,10 +298,7 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
   const allCount = useMemo(() => {
     const list = allActiveList.length > 0 ? allActiveList : (rawPenempatan || []);
     if (isWaliKelas && walikelasKelas?.id && !isAdmin && !isHubin && !isKaprog && !propJurusanId) {
-      return list.filter((p: SiswaPkl) => {
-        const kId = p.SiswaAkademik?.kelas_id || p.Siswa?.Kelas?.id || p.Siswa?.kelas_id;
-        return kId === walikelasKelas.id;
-      }).length;
+      return list.filter((p: SiswaPkl) => (p.SiswaAkademik?.kelas_id || p.Siswa?.Kelas?.id || p.Siswa?.kelas_id) === walikelasKelas.id).length;
     }
     return list.length;
   }, [allActiveList, rawPenempatan, isWaliKelas, walikelasKelas, isAdmin, isHubin, isKaprog, propJurusanId]);
@@ -410,30 +409,10 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
     const mitraCount = backendStats?.mitraCount ?? (Array.from(new Set((rawPenempatan ?? [])?.map((p: SiswaPkl) => p.mitra_id))).length || 0);
 
     return [
-      {
-        title: 'Total Penempatan',
-        value: totalCount,
-        icon: <ClipboardList className="w-5 h-5 text-blue-500" />,
-        bg: 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-200/70 dark:border-blue-900/40 text-blue-700 dark:text-blue-300'
-      },
-      {
-        title: 'Penempatan Aktif',
-        value: activeCount,
-        icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
-        bg: 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200/70 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-300'
-      },
-      {
-        title: 'Penempatan Selesai',
-        value: finishedCount,
-        icon: <GraduationCap className="w-5 h-5 text-purple-500" />,
-        bg: 'bg-purple-50/80 dark:bg-purple-950/40 border-purple-200/70 dark:border-purple-900/40 text-purple-700 dark:text-purple-300'
-      },
-      {
-        title: 'Mitra Terlibat',
-        value: mitraCount,
-        icon: <Building2 className="w-5 h-5 text-amber-500" />,
-        bg: 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-200/70 dark:border-amber-900/40 text-amber-700 dark:text-amber-300'
-      }
+      { title: 'Total Penempatan', value: totalCount, icon: <ClipboardList className="w-5 h-5 text-blue-500" />, bg: 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-200/70 dark:border-blue-900/40 text-blue-700 dark:text-blue-300' },
+      { title: 'Penempatan Aktif', value: activeCount, icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />, bg: 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200/70 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-300' },
+      { title: 'Penempatan Selesai', value: finishedCount, icon: <GraduationCap className="w-5 h-5 text-purple-500" />, bg: 'bg-purple-50/80 dark:bg-purple-950/40 border-purple-200/70 dark:border-purple-900/40 text-purple-700 dark:text-purple-300' },
+      { title: 'Mitra Terlibat', value: mitraCount, icon: <Building2 className="w-5 h-5 text-amber-500" />, bg: 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-200/70 dark:border-amber-900/40 text-amber-700 dark:text-amber-300' }
     ];
   }, [penempatanData, pagination, rawPenempatan]);
 
@@ -456,53 +435,23 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
     <div className="flex items-center gap-2">
       {actions.selectedRowKeys.size > 0 && (
         <div className="flex items-center gap-1.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 px-2.5 py-1 rounded-xl">
-          <span className="text-xs font-bold text-rose-700 dark:text-rose-300">
-            {actions.selectedRowKeys.size} dipilih
-          </span>
-          <Button
-            onClick={handleBulkDelete}
-            disabled={actions.bulkDeleteMutation.isPending}
-            variant="destructive"
-            size="sm"
-            className="h-7 px-2 text-xs flex items-center gap-1"
-          >
-            <Trash2 size={13} />
-            Hapus Terpilih
+          <span className="text-xs font-bold text-rose-700 dark:text-rose-300">{actions.selectedRowKeys.size} dipilih</span>
+          <Button onClick={handleBulkDelete} disabled={actions.bulkDeleteMutation.isPending} variant="destructive" size="sm" className="h-7 px-2 text-xs flex items-center gap-1">
+            <Trash2 size={13} /> Hapus Terpilih
           </Button>
-          <Button
-            onClick={() => actions.setSelectedRowKeys(new Set())}
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-xs text-slate-500 hover:text-slate-700"
-          >
+          <Button onClick={() => actions.setSelectedRowKeys(new Set())} variant="ghost" size="sm" className="h-7 px-2 text-xs text-slate-500 hover:text-slate-700">
             Batal
           </Button>
         </div>
       )}
-      <Button
-        onClick={() => actions.setIsImportWizardOpen(true)}
-        variant="toolbarOutline"
-        size="toolbar"
-        className="rounded-xl h-9 px-3.5 flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-      >
-        <FileSpreadsheet size={16} />
-        Import Plotting Excel
+      <Button onClick={() => actions.setIsImportWizardOpen(true)} variant="toolbarOutline" size="toolbar" className="rounded-xl h-9 px-3.5 flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40">
+        <FileSpreadsheet size={16} /> Import Plotting Excel
       </Button>
       <Button onClick={() => actions.setIsBulkPlottingOpen(true)} variant="toolbarOutline" size="toolbar" className="rounded-xl h-9 px-4 flex items-center gap-1.5">
-        <Users size={16} />
-        Plotting Kolektif
+        <Users size={16} /> Plotting Kolektif
       </Button>
-      <Button
-        onClick={() => {
-          actions.setSelectedPkl(null); actions.setSelectedSiswaId(''); actions.setSelectedMitraId(''); actions.setSelectedPembimbingId('');
-          actions.setIsPlottingOpen(true);
-        }}
-        variant="toolbarPrimary"
-        size="toolbar"
-        className="h-9 px-4 rounded-xl flex items-center gap-1.5"
-      >
-        <UserPlus size={16} />
-        Plotting Baru
+      <Button onClick={() => { actions.setSelectedPkl(null); actions.setSelectedSiswaId(''); actions.setSelectedMitraId(''); actions.setSelectedPembimbingId(''); actions.setIsPlottingOpen(true); }} variant="toolbarPrimary" size="toolbar" className="h-9 px-4 rounded-xl flex items-center gap-1.5">
+        <UserPlus size={16} /> Plotting Baru
       </Button>
     </div>
   ) : null;
@@ -543,6 +492,52 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
   }), [actions, confirm, academicFilter]);
 
   const isPembimbingMode = activeTab === 'MY_GUIDANCE' || Boolean(propGuruId);
+
+  // Jika dalam isPembimbingMode, tampilkan hanya mitra yang tertaut dengan pembimbing ini
+  const scopedMitraOptions = useMemo(() => {
+    if (!isPembimbingMode) return undefined;
+    const map = new Map<string, string>();
+
+    if (propMitraOptions && propMitraOptions.length > 0) {
+      propMitraOptions.forEach(m => { if (m.value) map.set(m.value, m.label); });
+    } else if (propSiswaList && propSiswaList.length > 0) {
+      propSiswaList.forEach((s: any) => {
+        const mId = s.mitra_id || s.Mitra?.id;
+        const mName = s.nama_mitra || s.Mitra?.nama || s.Mitra?.nama_perusahaan;
+        if (mId && mName && !map.has(mId)) map.set(mId, mName);
+      });
+    }
+
+    const list = allActiveList.length > 0 ? allActiveList : (rawPenempatan || []);
+    if (list && list.length > 0) {
+      const mentorList = activeGuruId 
+        ? list.filter((p: SiswaPkl) => (p.pembimbing_id || p.Pembimbing?.id) === activeGuruId)
+        : list;
+
+      mentorList.forEach((p: SiswaPkl) => {
+        const mId = p.mitra_id || p.Mitra?.id;
+        const mName = p.Mitra?.nama || p.Mitra?.nama_perusahaan;
+        if (mId && mName && !map.has(mId)) map.set(mId, mName);
+      });
+    }
+
+    if (map.size === 0) return undefined;
+
+    return [
+      { value: '', label: 'Semua' },
+      ...Array.from(map.entries())
+        .sort((a, b) => a[1].localeCompare(b[1]))
+        .map(([value, label]) => ({ value, label }))
+    ];
+  }, [isPembimbingMode, propMitraOptions, propSiswaList, allActiveList, rawPenempatan, activeGuruId]);
+
+  useEffect(() => {
+    if (isPembimbingMode && scopedMitraOptions && scopedMitraOptions.length > 0 && selectedMitraFilter) {
+      if (!scopedMitraOptions.some((m) => m.value === selectedMitraFilter)) {
+        academicFilter.setMitraId('');
+      }
+    }
+  }, [isPembimbingMode, scopedMitraOptions, selectedMitraFilter, academicFilter]);
 
   // Table Columns
   const columns = useMemo(() => getPenempatanColumns({
@@ -729,6 +724,7 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
         <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-gray-800">
           <AcademicFilterToolbar
             {...academicFilter.toolbarProps}
+            mitraOptions={scopedMitraOptions || academicFilter.toolbarProps.mitraOptions}
             variant={isMobile ? 'mini' : 'plain'}
             className="!p-0 !border-0 !shadow-none !bg-transparent"
           />
