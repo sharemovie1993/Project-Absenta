@@ -356,6 +356,45 @@ export class NilaiRemedialService {
       throw new Error('Data tidak lengkap: siswa_id, mapel_id, tahun_pelajaran_id, dan semester_id wajib diisi.');
     }
 
+    // 0. Authorization Guard: Cegah Guru/Wali Kelas mengubah nilai mapel orang lain (Phase 4 Hardening)
+    const privilegedRoles = ['ADMIN', 'SUPER_ADMIN', 'ADMIN_TENANT', 'KURIKULUM', 'KEPALA_SEKOLAH'];
+    const isPrivileged = privilegedRoles.includes(user.roleName.toUpperCase());
+
+    if (!isPrivileged && user.roleName === 'GURU') {
+      const guru = await prisma.guru.findFirst({
+        where: { tenant_id: tenantId, user_id: user.id },
+        select: { id: true, nama_guru: true },
+      });
+
+      if (!guru) {
+        throw new Error('Akses ditolak: Profil guru Anda tidak terdaftar dalam pangkalan data.');
+      }
+
+      // Periksa apakah guru ini memiliki penugasan resmi pada kelas dan mapel ini
+      const isAssigned = await prisma.jadwalKBM.findFirst({
+        where: {
+          tenant_id: tenantId,
+          kelas_id: data.kelas_id,
+          mapel_id: data.mapel_id,
+          OR: [
+            { guru_id: guru.id },
+            { guru_pelaksana_id: guru.id },
+          ],
+        },
+        select: { id: true },
+      });
+
+      if (!isAssigned) {
+        appLogger.warn(
+          { userId: user.id, guruId: guru.id, kelasId: data.kelas_id, mapelId: data.mapel_id },
+          'Security Alert: Upaya pengubahan nilai remedial oleh pengguna yang bukan guru pengajar mapel tersebut'
+        );
+        throw new Error(
+          'Akses ditolak: Anda tidak memiliki wewenang untuk mengubah nilai mata pelajaran ini. Pengisian nilai remedial hanya dapat dilakukan oleh guru pengajar yang bersangkutan.'
+        );
+      }
+    }
+
     // 1. Kalkulasi Rata-rata Sumatif Harian
     const s1 = data.sumatif_1 !== undefined && data.sumatif_1 !== null && !isNaN(Number(data.sumatif_1)) ? Number(data.sumatif_1) : null;
     const s2 = data.sumatif_2 !== undefined && data.sumatif_2 !== null && !isNaN(Number(data.sumatif_2)) ? Number(data.sumatif_2) : null;
