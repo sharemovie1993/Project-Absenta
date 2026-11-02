@@ -24,6 +24,7 @@ interface GetColumnsParams {
   rawMitra: MitraData[];
   canManage: boolean;
   hasKolektif: (mitraId: string) => boolean;
+  hidePembimbing?: boolean;
   onNilai: (row: SiswaPkl) => void;
   onKunjungan: (row: SiswaPkl) => void;
   onReviewJurnal: (row: SiswaPkl) => void;
@@ -42,6 +43,7 @@ export const getPenempatanColumns = ({
   rawMitra,
   canManage,
   hasKolektif,
+  hidePembimbing = false,
   onNilai,
   onKunjungan,
   onReviewJurnal,
@@ -97,9 +99,11 @@ export const getPenempatanColumns = ({
             <span>{row.Mitra?.nama}</span>
           )}
         </div>
-        <div className="flex items-center gap-1 text-[10px] font-medium text-slate-500 bg-slate-50 dark:bg-slate-950/20 px-2 py-0.5 rounded border border-slate-100 dark:border-slate-800 w-fit">
-          <span>Pmb: {row.Pembimbing?.nama_guru || 'Belum ditunjuk'}</span>
-        </div>
+        {!hidePembimbing && (
+          <div className="flex items-center gap-1 text-[10px] font-medium text-slate-500 bg-slate-50 dark:bg-slate-950/20 px-2 py-0.5 rounded border border-slate-100 dark:border-slate-800 w-fit">
+            <span>Pmb: {row.Pembimbing?.nama_guru || 'Belum ditunjuk'}</span>
+          </div>
+        )}
         {row.catatan_pkl && row.catatan_pkl.includes('Mutasi:') && (
           <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-900/40 w-fit">
             <span>🏷️ {row.catatan_pkl}</span>

@@ -28,6 +28,8 @@ export const PklBimbinganTab: React.FC<PklBimbinganTabProps> = ({
         hideLayout={true}
         hideHeaderStats={false}
         hideScopeBanner={true}
+        hideTpFilter={true}
+        hideKelasFilter={true}
         onOpenSiswaDetail={onOpenSiswaDetail}
         className="w-full"
       />

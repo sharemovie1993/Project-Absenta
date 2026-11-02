@@ -67,6 +67,8 @@ export interface UniversalPenempatanPklViewProps {
   hideLayout?: boolean;    // True jika dirender dalam Tab (sembunyikan Topbar / Page Header duplikat)
   hideHeaderStats?: boolean;
   hideScopeBanner?: boolean;
+  hideTpFilter?: boolean;
+  hideKelasFilter?: boolean;
   readOnly?: boolean;      // True jika user hanya memiliki hak pantau (misal: Kepsek / Pengawas)
 
   // 3. Event Callbacks
@@ -93,6 +95,8 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
   readOnly = false,
   hideHeaderStats = false,
   hideScopeBanner = false,
+  hideTpFilter = false,
+  hideKelasFilter = false,
   initialKelasId,
   initialTpId,
   onClose,
@@ -149,8 +153,8 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
 
   // Standarisasi Academic Filter Engine (Pilar 21 & Pilar 31 SSOT)
   const academicFilter = useAcademicFilter({
-    enableTp: true,
-    enableKelas: !propKelasId,
+    enableTp: !hideTpFilter,
+    enableKelas: !hideKelasFilter && !propKelasId,
     allowAllKelas: true,
     enableMitra: true,
     allowAllMitra: true,
@@ -543,8 +547,9 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
     rawMitra,
     canManage,
     hasKolektif,
+    hidePembimbing: isPembimbingMode,
     ...rowActionHandlers
-  }), [rawMitra, canManage, hasKolektif, rowActionHandlers]);
+  }), [rawMitra, canManage, hasKolektif, isPembimbingMode, rowActionHandlers]);
 
   // Visit history list calculation
   const currentSelectedPkl = useMemo(() => {
