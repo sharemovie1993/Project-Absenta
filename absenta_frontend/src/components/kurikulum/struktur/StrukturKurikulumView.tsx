@@ -23,7 +23,6 @@ import { getTenantById } from '@/api/tenants.api';
 import {
   INDIGO_THEME,
   resolveMajorTheme,
-  buildDynamicStyles,
 } from '@/components/kurikulum/strukturKurikulum.theme';
 import type { Jurusan } from '@/components/kurikulum/strukturKurikulum.theme';
 
@@ -174,8 +173,6 @@ export const StrukturKurikulumView: React.FC<UniversalStrukturKurikulumViewProps
     if (!isSmkOrMak) return INDIGO_THEME;
     return resolveMajorTheme(selectedJurusan?.nama ?? '');
   }, [isSmkOrMak, selectedJurusan]);
-
-  const activeCardTheme = useMemo(() => buildDynamicStyles(activeTheme), [activeTheme]);
 
   const selectedGradeStats = useMemo(() => {
     if (selectedTingkat === null) return { totalJp: 0, count: 0, byKelompok: {} };

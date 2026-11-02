@@ -308,7 +308,8 @@ export function resolveMajorTheme(j: Jurusan): ThemePalette {
 
 export function buildDynamicStyles(jurusanList: Jurusan[]): string {
   let styles = '';
-  jurusanList?.forEach(j => {
+  if (!Array.isArray(jurusanList)) return '';
+  jurusanList.forEach(j => {
     if (!j.warna?.startsWith('#')) return;
     const hex = j.warna;
     const id  = j.id;
