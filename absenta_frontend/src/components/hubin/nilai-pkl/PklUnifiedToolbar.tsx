@@ -57,6 +57,7 @@ export interface PklUnifiedToolbarProps {
   onSaveBatch?: () => void;
   isSavingBatch?: boolean;
   displayedScoresLength?: number;
+  hideLocalFilters?: boolean;
 }
 
 export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
@@ -97,6 +98,7 @@ export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
   onSaveBatch,
   isSavingBatch,
   displayedScoresLength,
+  hideLocalFilters = false,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const isNilaiTab = activeTab === 'dudi' || activeTab === 'sidang' || activeTab === 'nilai';
@@ -138,7 +140,7 @@ export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
           )}
 
           {/* Toggle Minimize/Maximize Filter */}
-          {isNilaiTab && (
+          {isNilaiTab && !hideLocalFilters && (
             <button
               type="button"
               onClick={() => setIsCollapsed((prev) => !prev)}
@@ -153,7 +155,7 @@ export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
       </div>
 
       {/* Baris 2: Context TP, Semester, Kelas, Scoping, dan Status Filter */}
-      {!isCollapsed && (
+      {!isCollapsed && !hideLocalFilters && (
         <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-col xl:flex-row xl:items-center justify-between gap-2.5">
           {/* Kiri: Konteks Akademik & Filter Kelas Terpusat */}
           <div className="flex items-center gap-2 flex-wrap">

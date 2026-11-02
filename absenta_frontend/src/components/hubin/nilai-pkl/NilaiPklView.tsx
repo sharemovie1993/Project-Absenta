@@ -42,6 +42,7 @@ export interface UniversalNilaiPklViewProps {
   hideHeaderStats?: boolean;
   hideScopeBanner?: boolean;
   hideCetakRapor?: boolean;
+  hideLocalFilters?: boolean;
   onClose?: () => void;
   className?: string;
 }
@@ -60,6 +61,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
   hideHeaderStats = false,
   hideScopeBanner = false,
   hideCetakRapor = false,
+  hideLocalFilters = false,
   onClose,
   className
 }) => {
@@ -575,6 +577,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
           onSaveBatch={handleSaveBatch}
           isSavingBatch={saveBatchMutation.isPending}
           displayedScoresLength={displayedScores.length}
+          hideLocalFilters={hideLocalFilters}
         />
 
         <Suspense fallback={<PklSpreadsheetSkeleton isMobile={isMobile} />}>

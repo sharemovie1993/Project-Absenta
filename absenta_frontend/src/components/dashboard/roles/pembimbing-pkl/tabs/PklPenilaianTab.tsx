@@ -22,6 +22,7 @@ export const PklPenilaianTab: React.FC<PklPenilaianTabProps> = ({
         hideScopeBanner={true}
         hideHeaderStats={false}
         hideCetakRapor={true}
+        hideLocalFilters={true}
         layoutMode="hubin"
         className="w-full"
       />
