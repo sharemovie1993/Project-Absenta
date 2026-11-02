@@ -501,7 +501,11 @@ export const InputNilaiView: React.FC<UniversalInputNilaiViewProps> = React.memo
     existingGrades: memoizedExistingGrades,
   });
 
+  // Guru Mapel TIDAK BOLEH mencetak rapor — hak cetak rapor hanya ada pada Wali Kelas, Kurikulum, atau Admin di tab supervisi luar modal
+  const canPrintRapor = !isModal && activeRoleTab === 'supervisi' && canSupervise;
+
   const handleNavigateCetakRapor = useCallback(() => {
+    if (!canPrintRapor) return;
     const params = new URLSearchParams();
     if (selectedKelas) params.set('kelas_id', selectedKelas);
     if (activeRoleTab === 'supervisi') params.set('tab', 'supervisi');
@@ -513,7 +517,7 @@ export const InputNilaiView: React.FC<UniversalInputNilaiViewProps> = React.memo
     }
     const q = params.toString();
     navigate(`/rapor/cetak${q ? `?${q}` : ''}`);
-  }, [activeRoleTab, selectedKelas, selectedTahunPelajaran, activeYear?.id, selectedSemester, activeSemester?.id, navigate]);
+  }, [canPrintRapor, activeRoleTab, selectedKelas, selectedTahunPelajaran, activeYear?.id, selectedSemester, activeSemester?.id, navigate]);
 
   const mainContent = (
     <div className="space-y-4">
@@ -685,7 +689,7 @@ export const InputNilaiView: React.FC<UniversalInputNilaiViewProps> = React.memo
             onDownloadTemplate={handleDownloadTemplate}
             onExportEraporKemendikbud={handleExportEraporKemendikbud}
             onUploadSubmit={handleUploadSubmit}
-            onNavigateCetakRapor={handleNavigateCetakRapor}
+            onNavigateCetakRapor={canPrintRapor ? handleNavigateCetakRapor : undefined}
             isUploading={isUploading}
             isSaving={isSaving}
             isLoading={isLoadingStudents || isLoadingGrades}
