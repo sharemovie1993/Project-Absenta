@@ -15,7 +15,8 @@ import {
   X,
   Check,
   Copy,
-  Share2
+  Share2,
+  Eye
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { raporApi } from '@/api/rapor.api';
@@ -437,16 +438,28 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
                         <button
                           type="button"
                           onClick={() => setActiveModalItem(item)}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs ${
-                            isRemedial
-                              ? 'bg-rose-600 hover:bg-rose-700 text-white'
-                              : isUnassessed
-                              ? 'bg-amber-500 hover:bg-amber-600 text-white'
-                              : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                          }`}
+                          className={isWalas 
+                            ? "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                            : `inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs ${
+                              isRemedial
+                                ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                                : isUnassessed
+                                ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                            }`
+                          }
                         >
-                          <span>{isCompleted ? (isWalas ? 'Lihat Nilai' : 'Perbarui Nilai') : (isWalas ? 'Bedah Nilai' : 'Input Remedial')}</span>
-                          <ArrowRight size={13} />
+                          {isWalas ? (
+                            <>
+                              <Eye size={13} />
+                              <span>Lihat Rincian</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>{isCompleted ? 'Perbarui Nilai' : 'Input Remedial'}</span>
+                              <ArrowRight size={13} />
+                            </>
+                          )}
                         </button>
                       </td>
                     </tr>
@@ -466,6 +479,7 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
           item={activeModalItem}
           tahunPelajaranId={activeYear?.id || ''}
           semesterId={activeSemester?.id || ''}
+          readOnly={isWalas}
           onSuccess={() => refetch()}
         />
       )}

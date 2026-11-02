@@ -47,6 +47,7 @@ interface RemedialQuickModalProps {
   item: RadarRemedialItem | null;
   tahunPelajaranId: string;
   semesterId: string;
+  readOnly?: boolean;
   onSuccess?: () => void;
 }
 
@@ -56,6 +57,7 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
   item,
   tahunPelajaranId,
   semesterId,
+  readOnly = false,
   onSuccess,
 }) => {
   const queryClient = useQueryClient();
@@ -191,10 +193,13 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
           </div>
           <div>
             <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight">
-              Bedah Nilai &amp; Remedial Siswa
+              {readOnly ? 'Detail Capaian & Asesmen Siswa' : 'Bedah Nilai &amp; Remedial Siswa'}
             </h3>
             <p className="text-[11px] font-normal text-slate-500 dark:text-slate-400 flex items-center gap-1.5 flex-wrap">
               <span>{item.nama_kelas} &bull; {item.nama_mapel}</span>
+              {item.nama_guru && (
+                <span className="text-slate-400">&bull; Pengajar: {item.nama_guru}</span>
+              )}
               {(item.tahun_pelajaran_nama || item.semester_nama) && (
                 <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/70 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
                   TP {item.tahun_pelajaran_nama} &bull; Sem. {item.semester_nama}
@@ -206,6 +211,19 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
       }
     >
       <div className="space-y-4">
+        {/* Banner Mode Pantau Khusus Wali Kelas */}
+        {readOnly && (
+          <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center gap-2.5 text-xs text-amber-800 dark:text-amber-200 shadow-2xs">
+            <Info size={16} className="shrink-0 text-amber-600 dark:text-amber-400" />
+            <div>
+              <span className="font-bold block">Mode Pantau Wali Kelas (Hanya Baca)</span>
+              <span className="text-[11px] opacity-90 block">
+                Anda hanya memiliki akses melihat data capaian. Pengisian atau perubahan nilai remedial merupakan wewenang Guru Mata Pelajaran bersangkutan{item.nama_guru ? ` (${item.nama_guru})` : ''}.
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Banner Konteks Periode Akademik & Jaminan Isolasi Database */}
         <div className="p-3 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-800/60 flex items-center justify-between gap-3 shadow-2xs">
           <div className="flex items-center gap-2.5">
@@ -251,14 +269,22 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
               <span>Rincian Komponen Nilai Sumatif</span>
               <span className="text-[10px] font-normal text-slate-400">(Skala 0 - 100)</span>
             </label>
-            <span className="text-[11px] text-purple-600 dark:text-purple-400 font-semibold flex items-center gap-1">
-              <Sparkles size={12} /> Edit nilai sumatif yang diremedial
-            </span>
+            {!readOnly ? (
+              <span className="text-[11px] text-purple-600 dark:text-purple-400 font-semibold flex items-center gap-1">
+                <Sparkles size={12} /> Edit nilai sumatif yang diremedial
+              </span>
+            ) : (
+              <span className="text-[11px] text-slate-400 font-medium">
+                Capaian asesmen riil siswa
+              </span>
+            )}
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             {/* Sumatif 1 */}
-            <div className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus-within:border-purple-500 focus-within:ring-1 focus-within:ring-purple-500 transition-all">
+            <div className={`p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 transition-all ${
+              !readOnly ? 'focus-within:border-purple-500 focus-within:ring-1 focus-within:ring-purple-500' : 'opacity-90'
+            }`}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Sumatif 1</span>
                 {renderStatusBadge(s1)}
@@ -268,14 +294,17 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
                 min={0}
                 max={100}
                 value={s1}
+                disabled={readOnly}
                 onChange={(e) => setS1(e.target.value)}
                 placeholder="0-100"
-                className="w-full text-base font-bold text-slate-900 dark:text-white bg-transparent focus:outline-none"
+                className="w-full text-base font-bold text-slate-900 dark:text-white bg-transparent focus:outline-none disabled:cursor-not-allowed"
               />
             </div>
 
             {/* Sumatif 2 */}
-            <div className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus-within:border-purple-500 focus-within:ring-1 focus-within:ring-purple-500 transition-all">
+            <div className={`p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 transition-all ${
+              !readOnly ? 'focus-within:border-purple-500 focus-within:ring-1 focus-within:ring-purple-500' : 'opacity-90'
+            }`}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Sumatif 2</span>
                 {renderStatusBadge(s2)}
@@ -285,14 +314,17 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
                 min={0}
                 max={100}
                 value={s2}
+                disabled={readOnly}
                 onChange={(e) => setS2(e.target.value)}
                 placeholder="0-100"
-                className="w-full text-base font-bold text-slate-900 dark:text-white bg-transparent focus:outline-none"
+                className="w-full text-base font-bold text-slate-900 dark:text-white bg-transparent focus:outline-none disabled:cursor-not-allowed"
               />
             </div>
 
             {/* Sumatif 3 */}
-            <div className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus-within:border-purple-500 focus-within:ring-1 focus-within:ring-purple-500 transition-all">
+            <div className={`p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 transition-all ${
+              !readOnly ? 'focus-within:border-purple-500 focus-within:ring-1 focus-within:ring-purple-500' : 'opacity-90'
+            }`}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Sumatif 3</span>
                 {renderStatusBadge(s3)}
@@ -302,14 +334,17 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
                 min={0}
                 max={100}
                 value={s3}
+                disabled={readOnly}
                 onChange={(e) => setS3(e.target.value)}
                 placeholder="0-100"
-                className="w-full text-base font-bold text-slate-900 dark:text-white bg-transparent focus:outline-none"
+                className="w-full text-base font-bold text-slate-900 dark:text-white bg-transparent focus:outline-none disabled:cursor-not-allowed"
               />
             </div>
 
             {/* Sumatif Akhir (SAS) */}
-            <div className="p-2.5 rounded-xl border border-purple-200 dark:border-purple-800 bg-purple-50/30 dark:bg-purple-950/20 focus-within:border-purple-500 focus-within:ring-1 focus-within:ring-purple-500 transition-all">
+            <div className={`p-2.5 rounded-xl border border-purple-200 dark:border-purple-800 bg-purple-50/30 dark:bg-purple-950/20 transition-all ${
+              !readOnly ? 'focus-within:border-purple-500 focus-within:ring-1 focus-within:ring-purple-500' : 'opacity-90'
+            }`}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[11px] font-bold text-purple-700 dark:text-purple-300">Sum. Akhir (SAS)</span>
                 {renderStatusBadge(sas)}
@@ -319,9 +354,10 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
                 min={0}
                 max={100}
                 value={sas}
+                disabled={readOnly}
                 onChange={(e) => setSas(e.target.value)}
                 placeholder="0-100"
-                className="w-full text-base font-bold text-purple-900 dark:text-purple-200 bg-transparent focus:outline-none"
+                className="w-full text-base font-bold text-purple-900 dark:text-purple-200 bg-transparent focus:outline-none disabled:cursor-not-allowed"
               />
             </div>
           </div>
@@ -377,9 +413,10 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
           <input
             type="text"
             value={catatan}
+            disabled={readOnly}
             onChange={(e) => setCatatan(e.target.value)}
-            placeholder="Contoh: Tuntas remedial Sumatif 1 (50 ➔ 75)..."
-            className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+            placeholder={readOnly ? 'Tidak ada catatan khusus' : 'Contoh: Tuntas remedial Sumatif 1 (50 ➔ 75)...'}
+            className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium disabled:cursor-not-allowed disabled:opacity-80"
           />
         </div>
 
@@ -390,20 +427,22 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
             variant="outline"
             onClick={onClose}
             disabled={submitMutation.isPending}
-            className="text-xs"
+            className="text-xs font-medium"
           >
-            Batal
+            {readOnly ? 'Tutup Pratinjau' : 'Batal'}
           </Button>
-          <Button
-            type="button"
-            variant="primary"
-            onClick={() => submitMutation.mutate()}
-            disabled={submitMutation.isPending || nilaiRaporFinal === null}
-            className="text-xs font-bold flex items-center gap-1.5"
-          >
-            <Save size={14} />
-            <span>{submitMutation.isPending ? 'Menyimpan...' : 'Simpan Perubahan Nilai'}</span>
-          </Button>
+          {!readOnly && (
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => submitMutation.mutate()}
+              disabled={submitMutation.isPending || nilaiRaporFinal === null}
+              className="text-xs font-bold flex items-center gap-1.5"
+            >
+              <Save size={14} />
+              <span>{submitMutation.isPending ? 'Menyimpan...' : 'Simpan Perubahan Nilai'}</span>
+            </Button>
+          )}
         </div>
       </div>
     </Modal>
