@@ -2,6 +2,7 @@ import { prisma } from '../../../utils/prisma';
 import { cacheService } from '../../../utils/cache.service';
 import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
 import { CACHE_KEYS, CACHE_TTL } from '../../../constants/cache-keys';
+import { nilaiMatrixService } from './sub/nilai-matrix.service';
 
 export class RaporService {
   static async upsertRapor(
@@ -1419,84 +1420,76 @@ export class RaporService {
     return await cacheService.getOrSet(
       cacheKey,
       async () => {
+        // 1. Dapatkan Matriks Nilai Lintas Semester (SSOT Multi-Tenant & Multi-Jenjang)
+        const matrixResult = await nilaiMatrixService.getStudentMultiSemesterMatrix(tenantId, {
+          siswa_id: siswaId,
+        });
+
+        // 2. Fetch Siswa Lengkap dengan Jurusan & Kelas
         const siswa = await prisma.siswa.findFirst({
           where: { id: siswaId, tenant_id: tenantId },
-          include: { Kelas: true },
+          include: {
+            Kelas: {
+              include: {
+                Jurusan: true,
+              },
+            },
+          },
         });
 
         if (!siswa) {
           throw new Error('Siswa tidak ditemukan atau akses lintas tenant ditolak');
         }
 
-        // Fetch all historical grades for this student across all semesters with SiswaAkademik context
-        const listNilai = await prisma.nilaiSiswa.findMany({
-          where: { tenant_id: tenantId, siswa_id: siswaId },
-          include: {
-            Mapel: true,
-            TahunPelajaran: true,
-            Semester: true,
-            SiswaAkademik: {
-              include: {
-                kelas: true,
-              },
-            },
-          },
-          orderBy: [
-            { TahunPelajaran: { tahun: 'asc' } },
-            { Semester: { nama_semester: 'asc' } },
-          ],
-        });
+        // 3. Fetch SKL, UKK, & PKL
+        const [skl, ukk, pkl] = await Promise.all([
+          prisma.kelulusanSiswa.findFirst({ where: { tenant_id: tenantId, siswa_id: siswaId } }),
+          prisma.sertifikatUkk.findFirst({ where: { tenant_id: tenantId, siswa_id: siswaId } }),
+          prisma.siswaPkl.findFirst({
+            where: { tenant_id: tenantId, siswa_id: siswaId },
+            orderBy: { created_at: 'desc' },
+          }),
+        ]);
 
-        // Group by Mapel across all semesters
-        const mapelTranskripMap = new Map<
-          string,
-          {
-            mapel_id: string;
-            nama_mapel: string;
-            kode_mapel: string;
-            nilai_per_semester: Record<string, number>;
-            rata_rata_kumulatif: number;
-          }
-        >();
-
-        listNilai.forEach((n) => {
-          if (!mapelTranskripMap.has(n.mapel_id)) {
-            mapelTranskripMap.set(n.mapel_id, {
-              mapel_id: n.mapel_id,
-              nama_mapel: n.Mapel.nama_mapel,
-              kode_mapel: n.Mapel.kode_mapel || 'N/A',
-              nilai_per_semester: {},
-              rata_rata_kumulatif: 0,
-            });
-          }
-          const item = mapelTranskripMap.get(n.mapel_id)!;
-          const semLabel = `${n.TahunPelajaran.tahun} - ${n.Semester.nama_semester}`;
-          const finalVal = n.nilai_rapor_final ?? n.nilai ?? 0;
-          item.nilai_per_semester[semLabel] = finalVal;
-        });
-
-        // Calculate cumulative average per subject and overall GPA
+        // 4. Hitung Rata-Rata Kumulatif Ijazah (GPA) dari Seluruh Mapel yang Memiliki Nilai
         let grandTotal = 0;
-        let totalSubjects = 0;
+        let totalMapelWithScores = 0;
 
-        const transkripMapelList = Array.from(mapelTranskripMap.values()).map((m) => {
-          const scores = Object.values(m.nilai_per_semester).filter((s) => s > 0);
-          const sum = scores.reduce((acc, curr) => acc + curr, 0);
-          const avg = scores.length > 0 ? Number((sum / scores.length).toFixed(2)) : 0;
-          m.rata_rata_kumulatif = avg;
-
-          if (avg > 0) {
-            grandTotal += avg;
-            totalSubjects++;
+        const transkripList = matrixResult.matrix.map((row: any) => {
+          if (row.rata_rata !== null && row.rata_rata > 0) {
+            grandTotal += row.rata_rata;
+            totalMapelWithScores++;
           }
-          return m;
+
+          const semesterScores: Record<string, number | null> = {};
+          matrixResult.headers.forEach((h: any) => {
+            semesterScores[h.label] = row.scores[h.index]?.nilai ?? null;
+          });
+
+          const isKejuruan = 
+            row.nama_mapel.toLowerCase().includes('kejuruan') ||
+            row.nama_mapel.toLowerCase().includes('konsentrasi') ||
+            row.nama_mapel.toLowerCase().includes('cnc') ||
+            row.nama_mapel.toLowerCase().includes('gerinda') ||
+            row.nama_mapel.toLowerCase().includes('gtmf') ||
+            row.nama_mapel.toLowerCase().includes('tjkt') ||
+            row.nama_mapel.toLowerCase().includes('mesin');
+
+          return {
+            mapel_id: row.mapel_id,
+            mapel_name: row.nama_mapel,
+            kode_mapel: row.kode_mapel || 'N/A',
+            kelompok_mapel: isKejuruan ? 'B (KEJURUAN)' : 'A (UMUM)',
+            nilai_per_semester: semesterScores,
+            scores: row.scores,
+            rata_rata_mapel: row.rata_rata ?? 0,
+            has_red: row.has_red,
+            red_semesters: row.red_semesters,
+          };
         });
 
-        const gpaKumulatif = totalSubjects > 0 ? Number((grandTotal / totalSubjects).toFixed(2)) : 0;
-
-        // Fetch SKL & UKK summary if available
-        const skl = await prisma.kelulusanSiswa.findFirst({ where: { tenant_id: tenantId, siswa_id: siswaId } });
-        const ukk = await prisma.sertifikatUkk.findFirst({ where: { tenant_id: tenantId, siswa_id: siswaId } });
+        const gpaKumulatif = totalMapelWithScores > 0 ? Number((grandTotal / totalMapelWithScores).toFixed(2)) : 0;
+        const isClean = matrixResult.diagnostics.total_mapel_merah === 0;
 
         return {
           siswa: {
@@ -1504,12 +1497,41 @@ export class RaporService {
             nama_siswa: siswa.nama_siswa,
             nis: siswa.nis,
             nisn: siswa.nisn || '',
+            tempat_lahir: (siswa as any).tempat_lahir || '-',
+            tanggal_lahir: (siswa as any).tanggal_lahir || null,
             kelas: siswa.Kelas?.nama_kelas || '—',
+            jurusan: (siswa.Kelas as any)?.Jurusan?.nama_jurusan || 'Teknik Pemesinan',
+            program_keahlian: (siswa.Kelas as any)?.Jurusan?.nama_jurusan || 'Teknik Mesin',
           },
-          mata_pelajaran: transkripMapelList,
+          headers: matrixResult.headers,
+          matrix: matrixResult.matrix,
+          mata_pelajaran: transkripList,
+          transkrip: transkripList, // Kompatibel dengan TranskripModal lama
+          ringkasan: {
+            rata_rata_ijazah: gpaKumulatif,
+            total_mapel: transkripList.length,
+            total_mapel_merah: matrixResult.diagnostics.total_mapel_merah,
+            is_eligible_kelulusan: isClean && totalMapelWithScores > 0,
+            status_kelulusan: skl?.status_kelulusan || (isClean && totalMapelWithScores > 0 ? 'MEMENUHI KRITERIA' : 'PERLU PERBAIKAN'),
+            nomor_ijazah: (skl as any)?.nomor_ijazah || '-',
+            nilai_ukk: ukk ? {
+              nomor_sertifikat: ukk.nomor_sertifikat,
+              nilai_praktik: ukk.nilai_praktik,
+              nilai_teori: ukk.nilai_teori,
+              predikat: ukk.predikat,
+              asesor_eksternal: ukk.asesor_eksternal,
+            } : null,
+            nilai_pkl: pkl ? {
+              nomor_sertifikat: pkl.nomor_sertifikat,
+              nilai_akhir: pkl.nilai_akhir_pkl,
+              predikat: pkl.predikat_pkl,
+              instruktur: pkl.instruktur_nama,
+            } : null,
+          },
           rata_rata_ijazah_kumulatif: gpaKumulatif,
           skl_summary: skl ? { nomor_skl: skl.nomor_skl, status: skl.status_kelulusan, rata_rata: skl.rata_rata_nilai } : null,
           ukk_summary: ukk ? { nomor_sertifikat: ukk.nomor_sertifikat, predikat: ukk.predikat, nilai_praktik: ukk.nilai_praktik } : null,
+          pkl_summary: pkl ? { nomor_sertifikat: pkl.nomor_sertifikat, predikat: pkl.predikat_pkl, nilai_akhir: pkl.nilai_akhir_pkl } : null,
         };
       },
       CACHE_TTL.DASHBOARD
