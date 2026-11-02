@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type TeacherSubTabId = 'agenda' | 'perangkat' | 'nilai' | 'rekap' | 'supervisi';
+export type TeacherSubTabId = 'agenda' | 'tugas' | 'perangkat' | 'nilai' | 'rekap' | 'supervisi';
 
 export interface TeacherSubTabItem {
   id: TeacherSubTabId;

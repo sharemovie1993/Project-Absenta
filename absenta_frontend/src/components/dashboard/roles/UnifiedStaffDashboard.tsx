@@ -354,13 +354,22 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   // Synchronize Active Tab with Query Param (?tab=...) atau Smart Default Tab (dengan guard akses)
   const rawRequestedTab = searchParams.get('tab');
-  const requestedTab = rawRequestedTab === 'walas' ? 'binaan' : rawRequestedTab === 'jadwal' ? 'ringkasan' : rawRequestedTab;
+  const requestedTab =
+    rawRequestedTab === 'walas'
+      ? 'binaan'
+      : rawRequestedTab === 'jadwal' || rawRequestedTab === 'action_hub' || rawRequestedTab === 'rekap_mapel'
+      ? 'ringkasan'
+      : rawRequestedTab;
   const activeTab = requestedTab || defaultTabId;
 
-  // Sinkronisasi query param otomatis saat akses /dashboard polosan
+  // Sinkronisasi query param otomatis saat akses /dashboard polosan atau legacy tabs
   useEffect(() => {
     if (!rawRequestedTab) {
       setSearchParams({ tab: defaultTabId }, { replace: true });
+    } else if (rawRequestedTab === 'action_hub') {
+      setSearchParams({ tab: 'ringkasan', subtab: 'tugas' }, { replace: true });
+    } else if (rawRequestedTab === 'rekap_mapel') {
+      setSearchParams({ tab: 'ringkasan', subtab: 'rekap' }, { replace: true });
     }
   }, [rawRequestedTab, defaultTabId, setSearchParams]);
 
@@ -874,32 +883,12 @@ export const UnifiedStaffDashboard: React.FC = () => {
       });
     }
 
-    // ⚡ Tugas Saya (Pusat Tugas & Tindakan Terpadu Guru/Staf)
-    if (!isKepsek) {
-      list.push({
-        id: 'action_hub',
-        label: 'Tugas Saya',
-        icon: CheckSquare,
-      });
-    }
-
     // 1.1 Input Manual (Khusus Petugas Gerbang / Piket)
     if ((hasGerbangDuty || isGerbang || isPureGerbangStaff) && (!isAdminRole || isEffectivePendidik) && !isKepsek) {
       list.push({
         id: 'manual_presensi',
         label: 'Input Manual',
         icon: ClipboardCheck,
-      });
-    }
-
-    // 2. KBM & Absen telah terintegrasi langsung di Beranda Guru (Single Responsibility Core)
-
-    // 2.1 Rekap Mapel (Khusus Guru Pendidik yang mengampu mata pelajaran)
-    if ((isPendidik || isEffectivePendidik || hasTeachingDuty) && !isKepsek) {
-      list.push({ 
-        id: 'rekap_mapel', 
-        label: 'Rekap Mapel', 
-        icon: BookOpen 
       });
     }
 
@@ -1156,7 +1145,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
       actions.push({
         label: 'Rekap Mapel',
         icon: FileText,
-        onClick: () => handleTabChange('rekap_mapel'),
+        onClick: () => setSearchParams({ tab: 'ringkasan', subtab: 'rekap' }, { replace: true }),
         color: 'emerald'
       });
     }
@@ -1376,47 +1365,6 @@ export const UnifiedStaffDashboard: React.FC = () => {
               isLoadingTimeline={timelineLoading}
               onRefreshTimeline={refetchTimeline}
             />
-          </div>
-        )}
-
-        {/* ⚡ TAB ACTION HUB: PUSAT TUGAS & TINDAKAN TERPADU */}
-        {visitedTabs.has('action_hub') && (
-          <div 
-            key="tab-action_hub"
-            role="tabpanel"
-            aria-hidden={activeTab !== 'action_hub'}
-            className={cn("w-full min-w-0", activeTab === 'action_hub' ? "block" : "hidden")}
-          >
-            <Suspense fallback={
-              <div className="w-full space-y-4 py-4">
-                <div className="h-24 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
-                <div className="h-96 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
-              </div>
-            }>
-              <StaffActionHubTab 
-                onOpenJournal={(sesi) => { setSessionForJournal(sesi); setJournalModalOpen(true); }}
-                onNavigateTab={handleTabChange}
-              />
-            </Suspense>
-          </div>
-        )}
-
-        {/* 📚 TAB REKAP MAPEL: REKAPITULASI PRESENSI PER MATA PELAJARAN */}
-        {visitedTabs.has('rekap_mapel') && (
-          <div 
-            key="tab-rekap_mapel"
-            role="tabpanel"
-            aria-hidden={activeTab !== 'rekap_mapel'}
-            className={cn("w-full min-w-0", activeTab === 'rekap_mapel' ? "block" : "hidden")}
-          >
-            <Suspense fallback={
-              <div className="w-full space-y-4 py-4">
-                <div className="h-24 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
-                <div className="h-96 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
-              </div>
-            }>
-              <StaffRekapMapelTab user={user} />
-            </Suspense>
           </div>
         )}
 

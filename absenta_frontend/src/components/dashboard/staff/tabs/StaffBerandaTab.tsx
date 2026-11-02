@@ -88,7 +88,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
 
   // Sub-tab Navigation State via Search Params (DRY & Direct-Linkable)
   const subTabParam = (searchParams.get('subtab') as TeacherSubTabId) || 'agenda';
-  const validSubTabs: TeacherSubTabId[] = ['agenda', 'perangkat', 'nilai', 'rekap', 'supervisi'];
+  const validSubTabs: TeacherSubTabId[] = ['agenda', 'tugas', 'perangkat', 'nilai', 'rekap', 'supervisi'];
   const activeSubTab = validSubTabs.includes(subTabParam) ? subTabParam : 'agenda';
 
   const handleSubTabChange = useCallback((newSubTab: TeacherSubTabId) => {
@@ -244,6 +244,8 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
               guruNama={guruNama}
               perangkatRejectedCount={rejectedPerangkatCount}
               unfilledJournalsCount={unfilledJournalsCount}
+              actionHubTotalCount={actionHubData.summary?.total || 0}
+              actionHubCriticalCount={actionHubData.summary?.critical || 0}
               totalJp={totalJp}
               currentBebanJp={teacherBeban?.total_calculated_jp ?? teacherBeban?.current_jp ?? 0}
               targetBebanJp={teacherBeban?.max_jp ?? 24}
@@ -329,6 +331,20 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
                     onOpenAjukanIzin={() => setShowIzinModal(true)}
                   />
                 </div>
+              </div>
+            )}
+
+            {/* SUB-TAB TUGAS SAYA (Action Hub Full View) */}
+            {activeSubTab === 'tugas' && (
+              <div className="space-y-4">
+                <TeacherActionHubWidget
+                  title="Pusat Tugas & Peringatan Saya"
+                  actions={actionHubData.actions || []}
+                  summary={actionHubData.summary || { total: 0, critical: 0, today: 0, upcoming: 0 }}
+                  isLoading={loadingActionHub}
+                  onOpenJournal={handleOpenJournal}
+                  onNavigateTab={onNavigateTab}
+                />
               </div>
             )}
 

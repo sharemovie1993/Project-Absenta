@@ -1,6 +1,7 @@
 import React from 'react';
 import { 
   CalendarDays, 
+  CheckSquare,
   FileText, 
   GraduationCap, 
   BarChart2, 
@@ -18,6 +19,8 @@ interface TeacherSidebarNavProps {
   guruNama?: string;
   perangkatRejectedCount?: number;
   unfilledJournalsCount?: number;
+  actionHubTotalCount?: number;
+  actionHubCriticalCount?: number;
   totalJp?: number;
   currentBebanJp?: number;
   targetBebanJp?: number;
@@ -30,6 +33,8 @@ export const TeacherSidebarNav: React.FC<TeacherSidebarNavProps> = React.memo(({
   guruNama,
   perangkatRejectedCount = 0,
   unfilledJournalsCount = 0,
+  actionHubTotalCount = 0,
+  actionHubCriticalCount = 0,
   totalJp = 0,
   currentBebanJp = 0,
   targetBebanJp = 24,
@@ -42,6 +47,13 @@ export const TeacherSidebarNav: React.FC<TeacherSidebarNavProps> = React.memo(({
       icon: CalendarDays,
       badgeCount: unfilledJournalsCount > 0 ? unfilledJournalsCount : undefined,
       badgeVariant: 'amber',
+    },
+    {
+      id: 'tugas',
+      label: 'Tugas Saya',
+      icon: CheckSquare,
+      badgeCount: actionHubTotalCount > 0 ? actionHubTotalCount : undefined,
+      badgeVariant: actionHubCriticalCount > 0 ? 'rose' : 'indigo',
     },
     {
       id: 'perangkat',
