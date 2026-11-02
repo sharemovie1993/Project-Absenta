@@ -30,7 +30,7 @@ export const PklRekapTab: React.FC<PklRekapTabProps> = ({
     {
       id: 'doc-nilai',
       title: 'Rekap Penilaian Pembimbing Sekolah',
-      description: 'Format rekapitulasi penilaian capaian kompetensi magang untuk pelaporan nilai rapor dan sertifikat.',
+      description: 'Format rekapitulasi penilaian capaian kompetensi PKL untuk pelaporan nilai rapor dan sertifikat.',
       icon: Award,
       colorVariant: 'emerald',
       actionLabel: 'Cetak Lembar Nilai',
@@ -54,7 +54,7 @@ export const PklRekapTab: React.FC<PklRekapTabProps> = ({
     {
       id: 'doc-pengesahan',
       title: 'Lembar Pengesahan Laporan PKL',
-      description: 'Format halaman pengesahan laporan akhir magang siswa oleh guru pembimbing dan pimpinan sekolah.',
+      description: 'Format halaman pengesahan laporan akhir PKL siswa oleh guru pembimbing dan pimpinan sekolah.',
       icon: FileText,
       colorVariant: 'purple',
       actionLabel: 'Cetak Pengesahan',
@@ -79,7 +79,7 @@ export const PklRekapTab: React.FC<PklRekapTabProps> = ({
               Pusat Cetak Dokumen Resmi Pembimbing PKL
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-              Dokumentasi administrasi magang siswa {tpTahun ? `Tahun Pelajaran ${tpTahun}` : ''}
+              Dokumentasi administrasi PKL siswa {tpTahun ? `Tahun Pelajaran ${tpTahun}` : ''}
             </p>
           </div>
         </div>

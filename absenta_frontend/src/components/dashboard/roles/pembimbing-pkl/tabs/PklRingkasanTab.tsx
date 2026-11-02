@@ -42,7 +42,7 @@ export const PklRingkasanTab: React.FC<PklRingkasanTabProps> = ({
         id: 'totalSiswa',
         title: 'Siswa Bimbingan',
         value: `${stats.total_siswa_bimbingan ?? 0} Siswa`,
-        subtext: (stats.siswa_aktif ?? 0) > 0 ? `${stats.siswa_aktif} Siswa Aktif` : tpTahun ? `Periode ${tpTahun}` : 'Aktif Magang',
+        subtext: (stats.siswa_aktif ?? 0) > 0 ? `${stats.siswa_aktif} Siswa Aktif` : tpTahun ? `Periode ${tpTahun}` : 'Aktif PKL',
         icon: Users,
         iconColorClass: 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/60',
         badge: (stats.siswa_aktif ?? 0) > 0 ? (
@@ -179,7 +179,7 @@ export const PklRingkasanTab: React.FC<PklRingkasanTabProps> = ({
               </div>
               <div className="min-w-0">
                 <h3 className="text-xs sm:text-[13px] font-bold text-slate-900 dark:text-white truncate">
-                  Siswa Bimbingan Magang
+                  Siswa Bimbingan PKL
                 </h3>
                 <p className="text-[10px] sm:text-[11px] text-slate-400 dark:text-slate-500 font-medium truncate">
                   {stats.total_siswa_bimbingan} Siswa di {stats.total_mitra_industri} Mitra DU/DI

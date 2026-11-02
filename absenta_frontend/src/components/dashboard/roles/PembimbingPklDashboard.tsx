@@ -228,7 +228,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
       { id: 'absensi', label: 'Rekap Presensi', shortLabel: 'Presensi', icon: CalendarCheck },
       { id: 'jurnal', label: 'Verifikasi Jurnal', shortLabel: 'Jurnal', icon: Clock, badge: stats.jurnal_pending_review },
       { id: 'monitoring', label: 'Supervisi DU/DI', shortLabel: 'Supervisi', icon: Calendar },
-      { id: 'penilaian', label: 'Penilaian Magang', shortLabel: 'Nilai', icon: Award },
+      { id: 'penilaian', label: 'Penilaian PKL', shortLabel: 'Nilai PKL', icon: Award },
       { id: 'rekap', label: 'Cetak Dokumen', shortLabel: 'Cetak', icon: Printer },
     ],
     [stats.total_siswa_bimbingan, stats.absensi_pending_verification, stats.jurnal_pending_review]

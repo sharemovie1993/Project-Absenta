@@ -150,7 +150,7 @@ export const PklJurnalTab: React.FC<PklJurnalTabProps> = ({
             Seluruh Jurnal Telah Ditinjau
           </h4>
           <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-            Tidak ada jurnal logbook magang dengan status ini yang memerlukan tindakan Anda saat ini.
+            Tidak ada jurnal logbook PKL dengan status ini yang memerlukan tindakan Anda saat ini.
           </p>
         </div>
       ) : (
