@@ -287,7 +287,8 @@ export class NilaiRemedialService {
   }
 
   /**
-   * ⚡ SUBMIT NILAI REMEDIAL CEPAT PER SISWA
+   * ⚡ SUBMIT NILAI REMEDIAL & PERBAIKAN SUMATIF SISWA
+   * Mendukung pembaruan rincian Sumatif 1, 2, 3, Sumatif Akhir, serta perhitungan otomatis Nilai Rapor Final.
    */
   static async submitRemedialSingle(
     tenantId: string,
@@ -298,7 +299,12 @@ export class NilaiRemedialService {
       mapel_id: string;
       tahun_pelajaran_id: string;
       semester_id: string;
-      nilai_remedial: number;
+      sumatif_1?: number | null;
+      sumatif_2?: number | null;
+      sumatif_3?: number | null;
+      sumatif_akhir?: number | null;
+      nilai_rapor_final?: number | null;
+      nilai_remedial?: number | null;
       catatan_remedial?: string;
     }
   ) {
@@ -306,8 +312,37 @@ export class NilaiRemedialService {
       throw new Error('Data tidak lengkap: siswa_id, mapel_id, tahun_pelajaran_id, dan semester_id wajib diisi.');
     }
 
-    const nilaiRemedial = Math.min(100, Math.max(0, Number(data.nilai_remedial) || 0));
-    const catatan = data.catatan_remedial?.trim() || `Tuntas Remedial (${nilaiRemedial})`;
+    // 1. Kalkulasi Rata-rata Sumatif Harian
+    const s1 = data.sumatif_1 !== undefined && data.sumatif_1 !== null && !isNaN(Number(data.sumatif_1)) ? Number(data.sumatif_1) : null;
+    const s2 = data.sumatif_2 !== undefined && data.sumatif_2 !== null && !isNaN(Number(data.sumatif_2)) ? Number(data.sumatif_2) : null;
+    const s3 = data.sumatif_3 !== undefined && data.sumatif_3 !== null && !isNaN(Number(data.sumatif_3)) ? Number(data.sumatif_3) : null;
+    const sas = data.sumatif_akhir !== undefined && data.sumatif_akhir !== null && !isNaN(Number(data.sumatif_akhir)) ? Number(data.sumatif_akhir) : null;
+
+    const sumatifList = [s1, s2, s3].filter((v): v is number => v !== null);
+    let rataRataSumatif: number | null = null;
+    if (sumatifList.length > 0) {
+      const sum = sumatifList.reduce((acc, curr) => acc + curr, 0);
+      rataRataSumatif = Number((sum / sumatifList.length).toFixed(2));
+    }
+
+    // 2. Kalkulasi Nilai Rapor Final: Formula Resmi Kurikulum Merdeka (Rata-rata Sumatif + Sumatif Akhir) / 2
+    let calculatedFinal: number | null = null;
+    if (data.nilai_rapor_final !== undefined && data.nilai_rapor_final !== null && !isNaN(Number(data.nilai_rapor_final))) {
+      calculatedFinal = Number(data.nilai_rapor_final);
+    } else if (rataRataSumatif !== null && sas !== null) {
+      calculatedFinal = Number(((rataRataSumatif + sas) / 2).toFixed(2));
+    } else if (sas !== null) {
+      calculatedFinal = sas;
+    } else if (rataRataSumatif !== null) {
+      calculatedFinal = rataRataSumatif;
+    } else if (data.nilai_remedial !== undefined && data.nilai_remedial !== null) {
+      calculatedFinal = Number(data.nilai_remedial);
+    } else {
+      calculatedFinal = 0;
+    }
+
+    const finalRaporScore = Math.min(100, Math.max(0, calculatedFinal));
+    const catatan = data.catatan_remedial?.trim() || `Tuntas Remedial (${finalRaporScore})`;
 
     // Pastikan SiswaAkademik ada
     let saRecord = await prisma.siswaAkademik.findFirst({
@@ -332,7 +367,7 @@ export class NilaiRemedialService {
       });
     }
 
-    // Upsert NilaiSiswa
+    // Upsert NilaiSiswa dengan rincian sumatif lengkap
     const updated = await prisma.nilaiSiswa.upsert({
       where: {
         siswa_id_mapel_id_tahun_pelajaran_id_semester_id: {
@@ -343,9 +378,13 @@ export class NilaiRemedialService {
         },
       },
       update: {
-        nilai: nilaiRemedial,
-        nilai_akhir_sumatif: nilaiRemedial,
-        nilai_rapor_final: nilaiRemedial,
+        sumatif_1: s1,
+        sumatif_2: s2,
+        sumatif_3: s3,
+        rata_rata_sumatif: rataRataSumatif,
+        nilai_akhir_sumatif: sas,
+        nilai_rapor_final: finalRaporScore,
+        nilai: finalRaporScore,
         catatan_deskripsi: catatan,
         ...(saRecord ? { siswa_akademik_id: saRecord.id } : {}),
       },
@@ -356,16 +395,20 @@ export class NilaiRemedialService {
         mapel_id: data.mapel_id,
         tahun_pelajaran_id: data.tahun_pelajaran_id,
         semester_id: data.semester_id,
-        nilai: nilaiRemedial,
-        nilai_akhir_sumatif: nilaiRemedial,
-        nilai_rapor_final: nilaiRemedial,
+        sumatif_1: s1,
+        sumatif_2: s2,
+        sumatif_3: s3,
+        rata_rata_sumatif: rataRataSumatif,
+        nilai_akhir_sumatif: sas,
+        nilai_rapor_final: finalRaporScore,
+        nilai: finalRaporScore,
         catatan_deskripsi: catatan,
       },
     });
 
     // Invalidate Cache Rapor
     void cacheInvalidationService.invalidateRaporCache(tenantId);
-    appLogger.info({ tenantId, siswaId: data.siswa_id, nilaiRemedial }, 'Nilai remedial berhasil disimpan');
+    appLogger.info({ tenantId, siswaId: data.siswa_id, finalRaporScore }, 'Rincian nilai remedial sumatif berhasil disimpan');
 
     return updated;
   }

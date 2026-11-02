@@ -102,7 +102,12 @@ export const raporApi = {
     mapel_id: string;
     tahun_pelajaran_id: string;
     semester_id: string;
-    nilai_remedial: number;
+    sumatif_1?: number | null;
+    sumatif_2?: number | null;
+    sumatif_3?: number | null;
+    sumatif_akhir?: number | null;
+    nilai_rapor_final?: number | null;
+    nilai_remedial?: number | null;
     catatan_remedial?: string;
   }) => {
     const response = await api.post('/rapor/nilai/radar-remedial/submit', data);
