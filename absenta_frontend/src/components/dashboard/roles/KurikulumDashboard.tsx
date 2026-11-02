@@ -20,6 +20,8 @@ import {
   ShieldCheck,
   Zap,
   Settings,
+  BarChart2,
+  UserCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -57,6 +59,8 @@ import { KurikulumKalenderTab } from './kurikulum/tabs/KurikulumKalenderTab';
 import { KurikulumJamKbmTab } from './kurikulum/tabs/KurikulumJamKbmTab';
 import { KurikulumDelegasiTab } from './kurikulum/tabs/KurikulumDelegasiTab';
 import { KurikulumCetakTab } from './kurikulum/tabs/KurikulumCetakTab';
+import { KurikulumRekapKbmTab } from './kurikulum/tabs/KurikulumRekapKbmTab';
+import { KurikulumWaliKelasTab } from './kurikulum/tabs/KurikulumWaliKelasTab';
 
 export interface KurikulumDashboardProps {
   user?: {
@@ -75,6 +79,7 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
   const validTabs: KurikulumTabId[] = [
     'ringkasan',
     'delegasi',
+    'rekap_kbm',
     'perangkat',
     'supervisi',
     'rapor',
@@ -82,6 +87,7 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
     'jam_kbm',
     'struktur',
     'guru_mapel',
+    'wali_kelas',
     'jadwal',
     'piket',
     'cetak',
@@ -361,6 +367,13 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
         icon: ArrowRightLeft,
       },
       {
+        id: 'rekap_kbm',
+        label: 'Rekap Realisasi KBM',
+        shortLabel: 'Rekap KBM',
+        category: 'operasional',
+        icon: BarChart2,
+      },
+      {
         id: 'perangkat',
         label: 'Perangkat Ajar',
         shortLabel: 'Perangkat',
@@ -414,6 +427,13 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
         icon: Users,
         badge: overloadCount > 0 ? `${overloadCount}` : undefined,
         badgeColor: 'bg-rose-500 text-white',
+      },
+      {
+        id: 'wali_kelas',
+        label: 'Penugasan Wali Kelas',
+        shortLabel: 'Wali Kelas',
+        category: 'persiapan',
+        icon: UserCheck,
       },
       {
         id: 'jadwal',
@@ -842,6 +862,28 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               className={cn('w-full min-w-0', activeTab === 'rapor' ? 'block' : 'hidden')}
             >
               <KurikulumRaporTab />
+            </div>
+          )}
+
+          {/* TAB REKAP REALISASI KBM */}
+          {visitedTabs.has('rekap_kbm') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'rekap_kbm'}
+              className={cn('w-full min-w-0', activeTab === 'rekap_kbm' ? 'block' : 'hidden')}
+            >
+              <KurikulumRekapKbmTab />
+            </div>
+          )}
+
+          {/* TAB PENUGASAN WALI KELAS */}
+          {visitedTabs.has('wali_kelas') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'wali_kelas'}
+              className={cn('w-full min-w-0', activeTab === 'wali_kelas' ? 'block' : 'hidden')}
+            >
+              <KurikulumWaliKelasTab />
             </div>
           )}
 
