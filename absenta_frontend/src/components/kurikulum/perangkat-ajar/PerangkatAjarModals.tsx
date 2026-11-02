@@ -72,7 +72,7 @@ interface PerangkatAjarModalsProps {
   setStudioPerangkat: (v: any) => void;
 }
 
-export const PerangkatAjarModals: React.FC<PerangkatAjarModalsProps> = React.memo((props) => {
+export const PerangkatAjarModals: React.FC<PerangkatAjarModalsProps> = React.memo((props: any) => {
   const {
     isUploadModalOpen, setIsUploadModalOpen, uploadForm, setUploadForm,
     filterJenisOptions, mapelOptions, teacherOptions, uploadMutation, handleUploadSubmit,
@@ -85,8 +85,15 @@ export const PerangkatAjarModals: React.FC<PerangkatAjarModalsProps> = React.mem
     isWizardModalOpen, setIsWizardModalOpen, isWordEditorOpen, setIsWordEditorOpen,
     selectedWordEditItem, setSelectedWordEditItem, queryClient,
     isReaderModalOpen, setIsReaderModalOpen, readerPerangkatId,
-    isStudioModalOpen, setIsStudioModalOpen, studioPerangkat, setStudioPerangkat
+    isStudioModalOpen, setIsStudioModalOpen, studioPerangkat, setStudioPerangkat,
+    uploadLoading, reviewLoading, generateAILoading, saveAILoading, canonicalGuruOptions
   } = props;
+
+  const resolvedTeacherOptions = teacherOptions || canonicalGuruOptions || [];
+  const isUploadSubmitting = Boolean(uploadMutation?.isPending ?? uploadLoading);
+  const isReviewSubmitting = Boolean(reviewMutation?.isPending ?? reviewLoading);
+  const isGenerating = Boolean(generateAIMutation?.isPending ?? generateAILoading);
+  const isSaving = Boolean(saveAIMutation?.isPending ?? saveAILoading);
 
   return (
     <Suspense fallback={null}>
@@ -98,8 +105,8 @@ export const PerangkatAjarModals: React.FC<PerangkatAjarModalsProps> = React.mem
               setUploadForm={setUploadForm}
               filterJenisOptions={filterJenisOptions}
               mapelOptions={mapelOptions}
-              teacherOptions={teacherOptions}
-              isSubmitting={uploadMutation.isPending}
+              teacherOptions={resolvedTeacherOptions}
+              isSubmitting={isUploadSubmitting}
               onSubmit={handleUploadSubmit}
             />
           )}
@@ -110,7 +117,7 @@ export const PerangkatAjarModals: React.FC<PerangkatAjarModalsProps> = React.mem
               onClose={() => setIsReviewModalOpen(false)}
               reviewForm={reviewForm}
               setReviewForm={setReviewForm}
-              isSubmitting={reviewMutation.isPending}
+              isSubmitting={isReviewSubmitting}
               onSubmit={handleReviewSubmit}
             />
           )}
@@ -163,8 +170,8 @@ export const PerangkatAjarModals: React.FC<PerangkatAjarModalsProps> = React.mem
                 setIsAIModalOpen(false);
                 handleOpenWordEditor(item);
               }}
-              isGeneratingAI={generateAIMutation.isPending}
-              isSavingAI={saveAIMutation.isPending}
+              isGeneratingAI={isGenerating}
+              isSavingAI={isSaving}
               generatedAIContent={generatedAIContent}
               setGeneratedAIContent={setGeneratedAIContent}
               onSubmitAI={handleAISubmit}
@@ -190,7 +197,7 @@ export const PerangkatAjarModals: React.FC<PerangkatAjarModalsProps> = React.mem
                 setIsWizardModalOpen(false);
                 handleOpenWordEditor(item);
               }}
-              isGeneratingAI={generateAIMutation.isPending}
+              isGeneratingAI={isGenerating}
               onSubmitAI={handleAISubmit}
             />
           )}
