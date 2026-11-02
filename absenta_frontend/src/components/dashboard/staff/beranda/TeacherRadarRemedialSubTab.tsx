@@ -44,6 +44,11 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
   const [statusFilter, setStatusFilter] = useState<'all' | 'needs_remedial' | 'unassessed' | 'completed'>('needs_remedial');
   const [activeModalItem, setActiveModalItem] = useState<RadarRemedialItem | null>(null);
 
+  // Selalu pastikan default filter terkunci di "Perlu Remedial" setiap kali konteks rombel/role berubah
+  React.useEffect(() => {
+    setStatusFilter('needs_remedial');
+  }, [kelasId, roleMode]);
+
   const { activeYear, activeSemester } = useAcademicFilter({
     enableTp: true,
     enableSemester: true,
