@@ -122,7 +122,8 @@ export const StrukturKurikulumView: React.FC<UniversalStrukturKurikulumViewProps
 
   const activeYear = useMemo(() => {
     if (propTahunPelajaranId) {
-      return (years?.data ?? []).find(y => y.id === propTahunPelajaranId);
+      const match = (years?.data ?? []).find(y => y.id === propTahunPelajaranId);
+      return match || { id: propTahunPelajaranId, tahun: '', is_active: false };
     }
     return (years?.data ?? []).find(y => y.is_active);
   }, [years, propTahunPelajaranId]);

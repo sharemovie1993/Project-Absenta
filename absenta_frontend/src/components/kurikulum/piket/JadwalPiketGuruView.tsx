@@ -32,6 +32,8 @@ export interface UniversalJadwalPiketGuruProps {
   isModal?: boolean;
   readOnly?: boolean;
   propHari?: Hari;
+  tahunPelajaranId?: string;
+  semesterId?: string;
 }
 
 export const JadwalPiketGuruView: React.FC<UniversalJadwalPiketGuruProps> = React.memo(({
@@ -39,6 +41,8 @@ export const JadwalPiketGuruView: React.FC<UniversalJadwalPiketGuruProps> = Reac
   isModal = false,
   readOnly = false,
   propHari,
+  tahunPelajaranId: propTpId,
+  semesterId: propSemId,
 }) => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
@@ -63,6 +67,8 @@ export const JadwalPiketGuruView: React.FC<UniversalJadwalPiketGuruProps> = Reac
     enableTp: true,
     enableSemester: true,
     enableSearch: true,
+    initialTpId: propTpId,
+    initialSemesterId: propSemId,
   });
 
   const {
@@ -71,19 +77,22 @@ export const JadwalPiketGuruView: React.FC<UniversalJadwalPiketGuruProps> = Reac
     semesterOptions,
   } = academicFilter;
 
+  const effectiveTpId = propTpId || selectedTpId;
+  const effectiveSemId = propSemId || selectedSemId;
+
   const selectedTpNama = useMemo(() => {
-    return tpOptions.find(t => t.value === selectedTpId)?.label || '2026/2027';
-  }, [tpOptions, selectedTpId]);
+    return tpOptions.find(t => t.value === effectiveTpId)?.label || '2026/2027';
+  }, [tpOptions, effectiveTpId]);
 
   const selectedSemNama = useMemo(() => {
-    return semesterOptions.find(s => s.value === selectedSemId)?.label || 'Ganjil';
-  }, [semesterOptions, selectedSemId]);
+    return semesterOptions.find(s => s.value === effectiveSemId)?.label || 'Ganjil';
+  }, [semesterOptions, effectiveSemId]);
 
   const { rawList: guruList } = useGuruOptions({ jenisPtk: 'ALL' });
   const { rawList: jurusanList } = useJurusanOptions();
 
   const { list: schedules, isLoading: loading, refetch: fetchSchedules } = usePiketGuruOptions(
-    selectedTpId && selectedSemId ? { tahun_pelajaran_id: selectedTpId, semester_id: selectedSemId } : undefined
+    effectiveTpId && effectiveSemId ? { tahun_pelajaran_id: effectiveTpId, semester_id: effectiveSemId } : undefined
   );
 
   // Modals state
@@ -203,12 +212,14 @@ export const JadwalPiketGuruView: React.FC<UniversalJadwalPiketGuruProps> = Reac
           </div>
         </div>
 
-        {/* Filter Bar Terpadu */}
-        <AcademicFilterToolbar
-          {...academicFilter.toolbarProps}
-          searchPlaceholder="Cari guru piket atau pos..."
-          variant="card"
-        />
+        {/* Filter Bar Terpadu (Hanya jika bukan mode tab tersemat) */}
+        {!hideLayout && (
+          <AcademicFilterToolbar
+            {...academicFilter.toolbarProps}
+            searchPlaceholder="Cari guru piket atau pos..."
+            variant="card"
+          />
+        )}
 
         {/* Day Switcher */}
         <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-1">

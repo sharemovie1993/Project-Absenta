@@ -22,14 +22,10 @@ import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
 import { Modal } from '../../ui/Modal';
 import { kurikulumApi } from '../../../api/kurikulum.api';
-import { useAcademicContext } from '../../../hooks/useAcademicContext';
+import { AcademicFilterToolbar, useAcademicFilter } from '../../common/academic-filter';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { cn } from '../../../lib/utils';
-
-const SearchableSelect = lazy(() =>
-  import('../../ui/SearchableSelect').then((m) => ({ default: m.SearchableSelect }))
-);
 
 export interface UniversalRekapKBMViewProps {
   tahunPelajaranId?: string;
@@ -141,24 +137,23 @@ export const RekapKBMView: React.FC<UniversalRekapKBMViewProps> = React.memo(({
   const isMobile = useIsMobile();
   const { isKurikulum, isKaprog, isAdmin, can } = useCapabilities();
 
-  const [searchTerm, setSearchTerm] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'BAIK' | 'PERHATIAN' | 'RENDAH'>('ALL');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [expandedGuruIds, setExpandedGuruIds] = useState<Set<string>>(new Set());
   const [selectedGuruDetail, setSelectedGuruDetail] = useState<RekapKBMRecord | null>(null);
 
-  // ── Konteks Akademik Terpadu ──
-  const {
-    selectedTahunPelajaran: contextTpId,
-    selectedSemester: contextSemId,
-    handleTpChange: setContextTpId,
-    handleSemesterChange: setContextSemId,
-    tpOptions: tahunOptions,
-    semesterOptions,
-  } = useAcademicContext();
+  // ── Konteks Akademik Terpusat (AcademicFilterToolbar SSOT) ──
+  const academicFilter = useAcademicFilter({
+    enableTp: true,
+    enableSemester: true,
+    enableSearch: true,
+    initialTpId: propTpId,
+    initialSemesterId: propSemId,
+  });
 
-  const activeTpId = propTpId || contextTpId;
-  const activeSemId = propSemId || contextSemId;
+  const activeTpId = propTpId || academicFilter.values.tahunPelajaranId;
+  const activeSemId = propSemId || academicFilter.values.semesterId;
+  const activeSearch = searchTerm || academicFilter.values.searchQuery;
 
   const { data: rekapData, isLoading, refetch } = useQuery({
     queryKey: ['rekap-kbm-guru', activeSemId, activeTpId],
@@ -205,8 +200,8 @@ export const RekapKBMView: React.FC<UniversalRekapKBMViewProps> = React.memo(({
       list = list.filter((g: RekapKBMRecord) => g.persentase < 60);
     }
 
-    if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase();
+    if (activeSearch.trim()) {
+      const q = activeSearch.toLowerCase();
       list = list.filter(
         (g: RekapKBMRecord) =>
           (g.nama_guru && g.nama_guru.toLowerCase().includes(q)) ||
@@ -219,7 +214,7 @@ export const RekapKBMView: React.FC<UniversalRekapKBMViewProps> = React.memo(({
     }
 
     return list;
-  }, [guruDataList, statusFilter, searchTerm]);
+  }, [guruDataList, statusFilter, activeSearch]);
 
   const avgPct = useMemo(() => {
     if (guruDataList.length === 0) return 0;
@@ -279,45 +274,28 @@ export const RekapKBMView: React.FC<UniversalRekapKBMViewProps> = React.memo(({
 
   const innerContent = (
     <div className="space-y-4 w-full min-w-0">
-      {/* ─── Search & Filter Card ──────────────── */}
-      <div className="space-y-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
-        <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
-            type="text"
-            placeholder="Cari guru (Nama, NIP, Mapel, Kelas)..."
-            aria-label="Cari guru"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-          />
-        </div>
+      {/* ─── Standar AcademicFilterToolbar (Hanya saat dibuka mandiri) ──────────────── */}
+      {!hideLayout && (
+        <AcademicFilterToolbar
+          {...academicFilter.toolbarProps}
+          searchPlaceholder="Cari guru (Nama, NIP, Mapel, Kelas)..."
+          variant="card"
+        />
+      )}
 
-        {!propTpId && !propSemId && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <Suspense fallback={null}>
-              <SearchableSelect
-                options={tahunOptions}
-                value={contextTpId}
-                onValueChange={(v) => {
-                  setContextTpId(v);
-                  setContextSemId('');
-                }}
-                placeholder="Tahun Pelajaran"
-                searchPlaceholder="Cari Tahun..."
-                triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-              />
-            </Suspense>
-            <Suspense fallback={null}>
-              <SearchableSelect
-                options={semesterOptions}
-                value={contextSemId}
-                onValueChange={(v) => setContextSemId(v)}
-                placeholder="Semester"
-                searchPlaceholder="Cari Semester..."
-                triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-              />
-            </Suspense>
+      {/* ─── Filter Status & Action Card ──────────────── */}
+      <div className="space-y-3 bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+        {hideLayout && (
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              type="text"
+              placeholder="Cari guru (Nama, NIP, Mapel, Kelas)..."
+              aria-label="Cari guru"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+            />
           </div>
         )}
 

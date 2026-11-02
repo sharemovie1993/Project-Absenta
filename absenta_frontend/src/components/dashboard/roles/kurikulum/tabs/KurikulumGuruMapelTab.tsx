@@ -12,11 +12,13 @@ import { cn } from '@/lib/utils';
 import { GuruMapelView } from '@/components/kurikulum/guru-mapel/GuruMapelView';
 
 export interface KurikulumGuruMapelTabProps {
+  tahunPelajaranId?: string;
   teachersLoad: { id: string; nama: string; jp: number; nip?: string }[];
   loading?: boolean;
 }
 
 export const KurikulumGuruMapelTab: React.FC<KurikulumGuruMapelTabProps> = ({
+  tahunPelajaranId,
   teachersLoad,
   loading = false,
 }) => {
@@ -85,7 +87,10 @@ export const KurikulumGuruMapelTab: React.FC<KurikulumGuruMapelTabProps> = ({
       </div>
 
       {activeSubTab === 'plotting' ? (
-        <GuruMapelView hideLayout={true} />
+        <GuruMapelView
+          hideLayout={true}
+          propTahunPelajaranId={tahunPelajaranId}
+        />
       ) : (
         <div className="space-y-4">
           {/* Quick Metrics Bar */}

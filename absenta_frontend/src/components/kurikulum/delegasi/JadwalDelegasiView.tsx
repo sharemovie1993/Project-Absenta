@@ -28,6 +28,8 @@ export interface UniversalJadwalDelegasiViewProps {
   hideLayout?: boolean;
   isModal?: boolean;
   readOnly?: boolean;
+  tahunPelajaranId?: string;
+  semesterId?: string;
   propKelasId?: string;
   propHari?: string;
 }
@@ -36,6 +38,8 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
   hideLayout = false,
   isModal = false,
   readOnly = false,
+  tahunPelajaranId: propTpId,
+  semesterId: propSemId,
   propKelasId,
   propHari,
 }) => {
@@ -48,14 +52,19 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
     enableSemester: true,
     enableKelas: !propKelasId,
     enableSearch: true,
+    initialTpId: propTpId,
+    initialSemesterId: propSemId,
     onTpChange: () => setCurrentPage(1),
     onKelasChange: () => setCurrentPage(1),
     onSearchChange: () => setCurrentPage(1),
   });
 
+  const effectiveTpId = propTpId || academicFilter.values.tahunPelajaranId;
+  const effectiveSemId = propSemId || academicFilter.values.semesterId;
+
   const academic = useMemo(() => ({
-    selectedTahunPelajaran: academicFilter.values.tahunPelajaranId,
-    selectedSemester: academicFilter.values.semesterId,
+    selectedTahunPelajaran: effectiveTpId,
+    selectedSemester: effectiveSemId,
     activeYear: academicFilter.activeTpYear,
     activeSemester: academicFilter.activeSemester,
     isAcademicActive: Boolean(academicFilter.activeTpYear?.is_active && academicFilter.activeSemester?.is_active),
@@ -65,7 +74,7 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
     handleSemesterChange: academicFilter.setSemesterId,
     isLoadingTp: academicFilter.isLoadingTp,
     isLoadingSem: academicFilter.isLoadingSem,
-  }), [academicFilter]);
+  }), [academicFilter, effectiveTpId, effectiveSemId]);
 
   // Filters State
   const selectedKelasId = propKelasId || academicFilter.values.kelasId;
@@ -508,12 +517,14 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
 
   const content = (
     <div className="space-y-4">
-      {/* Filter Toolbar */}
-      <AcademicFilterToolbar
-        {...academicFilter.toolbarProps}
-        searchPlaceholder="Cari mapel, kelas, atau guru..."
-        variant="card"
-      />
+      {/* Filter Toolbar (Hanya tampil jika bukan mode tab tersemat) */}
+      {!hideLayout && (
+        <AcademicFilterToolbar
+          {...academicFilter.toolbarProps}
+          searchPlaceholder="Cari mapel, kelas, atau guru..."
+          variant="card"
+        />
+      )}
 
       <SectionCard fullWidth noPadding>
         <div className="p-4">

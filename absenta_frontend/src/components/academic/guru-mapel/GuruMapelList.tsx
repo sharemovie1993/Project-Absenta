@@ -32,12 +32,21 @@ import { cn } from '@/lib/utils';
 
 interface Props {
   refreshTrigger?: number;
+  propTahunPelajaranId?: string;
+  propSemesterId?: string;
   onAdd?: () => void;
   onAddWizard?: () => void;
   onOpenTimeOff?: (guruId: string, guruName?: string) => void;
 }
 
-const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizard, onOpenTimeOff }) => {
+const GuruMapelList = React.memo<Props>(({
+  refreshTrigger = 0,
+  propTahunPelajaranId,
+  propSemesterId,
+  onAdd,
+  onAddWizard,
+  onOpenTimeOff,
+}) => {
   const queryClient = useQueryClient();
   const invalidateJadwalCache = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['beban-guru-list'] });
@@ -60,8 +69,20 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   const debouncedSearch = useDebounce(search, 500);
   const [selectedGuruId, setSelectedGuruId] = useState<string>('');
   const [selectedMapelId, setSelectedMapelId] = useState<string>('');
-  const [selectedTahunPelajaranId, setSelectedTahunPelajaranId] = useState<string>('');
-  const [selectedSemesterId, setSelectedSemesterId] = useState<string>('');
+  const [selectedTahunPelajaranId, setSelectedTahunPelajaranId] = useState<string>(propTahunPelajaranId || '');
+  const [selectedSemesterId, setSelectedSemesterId] = useState<string>(propSemesterId || '');
+
+  useEffect(() => {
+    if (propTahunPelajaranId) {
+      setSelectedTahunPelajaranId(propTahunPelajaranId);
+    }
+  }, [propTahunPelajaranId]);
+
+  useEffect(() => {
+    if (propSemesterId) {
+      setSelectedSemesterId(propSemesterId);
+    }
+  }, [propSemesterId]);
   const [jurusanDropdown, setJurusanDropdown] = useState<DropdownOption[]>([]);
   const [kelasDropdown, setKelasDropdown] = useState<DropdownOption[]>([]);
   const [updatingScopeId, setUpdatingScopeId] = useState<string | null>(null);

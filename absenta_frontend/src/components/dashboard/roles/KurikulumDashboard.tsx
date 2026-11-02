@@ -787,6 +787,7 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               className={cn('w-full min-w-0', activeTab === 'guru_mapel' ? 'block' : 'hidden')}
             >
               <KurikulumGuruMapelTab
+                tahunPelajaranId={resolvedTahunPelajaranId}
                 teachersLoad={teachersLoad}
                 loading={lGuru || lJw}
               />
@@ -801,6 +802,7 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               className={cn('w-full min-w-0', activeTab === 'struktur' ? 'block' : 'hidden')}
             >
               <KurikulumStrukturTab
+                tahunPelajaranId={resolvedTahunPelajaranId}
                 strRows={strRows}
                 kelompokOptions={kelompokOptions}
                 isVocational={isVocational}
@@ -872,7 +874,10 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               aria-hidden={activeTab !== 'rekap_kbm'}
               className={cn('w-full min-w-0', activeTab === 'rekap_kbm' ? 'block' : 'hidden')}
             >
-              <KurikulumRekapKbmTab />
+              <KurikulumRekapKbmTab
+                tahunPelajaranId={resolvedTahunPelajaranId}
+                semesterId={resolvedSemesterId}
+              />
             </div>
           )}
 
@@ -883,7 +888,9 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               aria-hidden={activeTab !== 'wali_kelas'}
               className={cn('w-full min-w-0', activeTab === 'wali_kelas' ? 'block' : 'hidden')}
             >
-              <KurikulumWaliKelasTab />
+              <KurikulumWaliKelasTab
+                tahunPelajaranId={resolvedTahunPelajaranId}
+              />
             </div>
           )}
 
@@ -894,7 +901,10 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               aria-hidden={activeTab !== 'delegasi'}
               className={cn('w-full min-w-0', activeTab === 'delegasi' ? 'block' : 'hidden')}
             >
-              <KurikulumDelegasiTab />
+              <KurikulumDelegasiTab
+                tahunPelajaranId={resolvedTahunPelajaranId}
+                semesterId={resolvedSemesterId}
+              />
             </div>
           )}
 

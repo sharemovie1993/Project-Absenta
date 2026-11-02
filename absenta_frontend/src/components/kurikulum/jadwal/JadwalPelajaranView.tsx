@@ -43,6 +43,8 @@ export interface UniversalJadwalPelajaranViewProps {
   hideLayout?: boolean;
   isModal?: boolean;
   readOnly?: boolean;
+  tahunPelajaranId?: string;
+  semesterId?: string;
   propKelasId?: string;
   propGuruId?: string;
   propHari?: string;
@@ -52,6 +54,8 @@ export const JadwalPelajaranView: React.FC<UniversalJadwalPelajaranViewProps> = 
   hideLayout = false,
   isModal = false,
   readOnly = false,
+  tahunPelajaranId,
+  semesterId,
   propKelasId,
   propGuruId,
   propHari,
@@ -93,8 +97,20 @@ export const JadwalPelajaranView: React.FC<UniversalJadwalPelajaranViewProps> = 
   const [selectedKelasId, setSelectedKelasId] = useState<string>(
     propKelasId || searchParams.get('kelas_id') || ''
   );
-  const [selectedTahunId, setSelectedTahunId] = useState<string>('');
-  const [selectedSemesterId, setSelectedSemesterId] = useState<string>('');
+  const [selectedTahunId, setSelectedTahunId] = useState<string>(tahunPelajaranId || '');
+  const [selectedSemesterId, setSelectedSemesterId] = useState<string>(semesterId || '');
+
+  useEffect(() => {
+    if (tahunPelajaranId) {
+      setSelectedTahunId(tahunPelajaranId);
+    }
+  }, [tahunPelajaranId]);
+
+  useEffect(() => {
+    if (semesterId) {
+      setSelectedSemesterId(semesterId);
+    }
+  }, [semesterId]);
   const [autoWizardOpen, setAutoWizardOpen] = useState(false);
   const [bebanModalOpen, setBebanModalOpen] = useState(false);
   const [ascWizardOpen, setAscWizardOpen] = useState(false);

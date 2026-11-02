@@ -6,10 +6,17 @@ export interface KurikulumPiketTabProps {
   semesterId?: string;
 }
 
-export const KurikulumPiketTab: React.FC<KurikulumPiketTabProps> = () => {
+export const KurikulumPiketTab: React.FC<KurikulumPiketTabProps> = ({
+  tahunPelajaranId,
+  semesterId,
+}) => {
   return (
     <div className="space-y-4">
-      <JadwalPiketGuruView hideLayout={true} />
+      <JadwalPiketGuruView
+        hideLayout={true}
+        tahunPelajaranId={tahunPelajaranId}
+        semesterId={semesterId}
+      />
     </div>
   );
 };

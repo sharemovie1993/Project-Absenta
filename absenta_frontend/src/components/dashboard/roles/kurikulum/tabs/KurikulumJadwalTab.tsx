@@ -18,7 +18,11 @@ export const KurikulumJadwalTab: React.FC<KurikulumJadwalTabProps> = ({
 }) => {
   return (
     <div className="space-y-4">
-      <JadwalPelajaranView hideLayout={true} />
+      <JadwalPelajaranView
+        hideLayout={true}
+        tahunPelajaranId={tahunPelajaranId}
+        semesterId={semesterId}
+      />
     </div>
   );
 };

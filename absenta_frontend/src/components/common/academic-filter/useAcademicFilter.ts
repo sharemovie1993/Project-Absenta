@@ -121,10 +121,25 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
 
   const {
     options: semesterOptions,
+    activeSemester,
     isLoading: isLoadingSem,
   } = useSemesterOptions({
     tahunPelajaranId: tahunPelajaranId || undefined,
   });
+
+  // Auto-set active Semester jika belum terisi atau tidak valid di TP saat ini
+  useEffect(() => {
+    if (enableSemester && semesterOptions.length > 0) {
+      const isCurrentValid = semesterId && semesterOptions.some((s) => s.value === semesterId);
+      if (!isCurrentValid) {
+        if (activeSemester?.id && semesterOptions.some((s) => s.value === activeSemester.id)) {
+          setSemesterId(activeSemester.id);
+        } else {
+          setSemesterId(semesterOptions[0].value);
+        }
+      }
+    }
+  }, [enableSemester, activeSemester, semesterOptions, semesterId]);
 
   const {
     rawList: rawKelasList,

@@ -211,7 +211,8 @@ export const GuruMapelView: React.FC<UniversalGuruMapelViewProps> = ({
           onAdd={canManage ? handleSelectionOpen : undefined} 
           onAddWizard={canManage ? handleWizardOpen : undefined} 
           onOpenTimeOff={canManage ? handleOpenTimeOff : undefined}
-          refreshTrigger={refreshTrigger} 
+          refreshTrigger={refreshTrigger}
+          propTahunPelajaranId={propTahunPelajaranId}
         />
       </SectionCard>
 
