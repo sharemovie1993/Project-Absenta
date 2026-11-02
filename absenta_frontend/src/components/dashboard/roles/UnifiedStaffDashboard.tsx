@@ -324,7 +324,12 @@ export const UnifiedStaffDashboard: React.FC = () => {
     const userId = user?.id || (user as any)?.userId;
     if (waliKelasAssignments && waliKelasAssignments.length > 0) {
       return waliKelasAssignments.find((item: any) => {
-        const hasClass = Boolean(item.kelas_id || item.Kelas?.id);
+        const hasClass = Boolean(
+          item.kelas_id || 
+          item.Kelas?.id || 
+          item.StrukturOrganisasi?.kelas_id || 
+          item.StrukturOrganisasi?.Kelas?.id
+        );
         if (!hasClass) return false;
         if (guruProfileId && (item.guru_id === guruProfileId || item.Guru?.id === guruProfileId)) return true;
         if (userId && (item.user_id === userId || item.Guru?.user_id === userId)) return true;
@@ -335,12 +340,16 @@ export const UnifiedStaffDashboard: React.FC = () => {
   }, [user, waliKelasAssignments, guruProfile]);
 
   const waliKelasId = useMemo(() => {
+    if ((user as any)?.walikelas_kelas?.id) return (user as any).walikelas_kelas.id;
     if (waliKelasStrukturItem?.Kelas?.id) return waliKelasStrukturItem.Kelas.id;
+    if (waliKelasStrukturItem?.StrukturOrganisasi?.Kelas?.id) return waliKelasStrukturItem.StrukturOrganisasi.Kelas.id;
+    if (waliKelasStrukturItem?.StrukturOrganisasi?.kelas_id) return waliKelasStrukturItem.StrukturOrganisasi.kelas_id;
     if (waliKelasStrukturItem?.kelas_id) return waliKelasStrukturItem.kelas_id;
     return guruProfile?.wali_kelas_di?.id || (user?.guru_profile as any)?.wali_kelas_di?.id;
   }, [waliKelasStrukturItem, guruProfile, user]);
 
   const waliKelasNama = useMemo(() => {
+    if ((user as any)?.walikelas_kelas?.nama_kelas) return (user as any).walikelas_kelas.nama_kelas;
     if (waliKelasStrukturItem?.Kelas?.nama_kelas) return waliKelasStrukturItem.Kelas.nama_kelas;
     if (waliKelasStrukturItem?.StrukturOrganisasi?.Kelas?.nama_kelas) return waliKelasStrukturItem.StrukturOrganisasi.Kelas.nama_kelas;
     return guruProfile?.wali_kelas_di?.nama_kelas || (user?.guru_profile as any)?.wali_kelas_di?.nama_kelas || 'Kelas Binaan';

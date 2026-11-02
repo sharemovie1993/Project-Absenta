@@ -181,7 +181,11 @@ export function useCapabilities() {
       isWaliKelas,
       isHomeroomTeacher: isWaliKelas, // canonical alias
       walikelasKelas: (user as any)?.walikelas_kelas || (user as any)?.guru_profile?.wali_kelas_di || null,
-      walikelasKelasIds: (user as any)?.kelas_ids || ((user as any)?.guru_profile?.wali_kelas_di?.id ? [(user as any).guru_profile.wali_kelas_di.id] : []),
+      walikelasKelasIds: (user as any)?.walikelas_kelas?.id
+        ? [(user as any).walikelas_kelas.id]
+        : ((user as any)?.guru_profile?.wali_kelas_di?.id
+          ? [(user as any).guru_profile.wali_kelas_di.id]
+          : ((user as any)?.kelas_ids || [])),
       isPembimbingPkl,
       isBpbk,
       isPembinaEskul,

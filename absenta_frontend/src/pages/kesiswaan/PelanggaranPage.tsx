@@ -108,29 +108,34 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
 
   // Resolusi nama & ID rombel binaan Wali Kelas menggunakan profile & useWaliKelasOptions hook
   const effectiveWaliKelasId = useMemo(() => {
+    if ((user as any)?.walikelas_kelas?.id) return (user as any).walikelas_kelas.id;
     const directObj = guruProfile?.wali_kelas_di;
     const directId = typeof directObj === 'object' ? directObj?.id : directObj || guruProfile?.kelas_id;
     if (directId) return directId;
 
     if (waliKelasAssignments && waliKelasAssignments.length > 0 && user?.id) {
       const found = waliKelasAssignments.find(
-        (item) => item.user_id === user.id || item.Guru?.user_id === user.id || item.Guru?.id === guruProfile?.id
+        (item: any) => item.user_id === user.id || item.Guru?.user_id === user.id || item.Guru?.id === guruProfile?.id
       );
       if (found?.kelas_id) return found.kelas_id;
       if (found?.Kelas?.id) return found.Kelas.id;
+      if (found?.StrukturOrganisasi?.kelas_id) return found.StrukturOrganisasi.kelas_id;
+      if (found?.StrukturOrganisasi?.Kelas?.id) return found.StrukturOrganisasi.Kelas.id;
     }
     return null;
   }, [user, guruProfile, waliKelasAssignments]);
 
   const waliKelasNama = useMemo(() => {
+    if ((user as any)?.walikelas_kelas?.nama_kelas) return (user as any).walikelas_kelas.nama_kelas;
     const directObj = guruProfile?.wali_kelas_di;
     if (typeof directObj === 'object' && directObj?.nama_kelas) return directObj.nama_kelas;
 
     if (waliKelasAssignments && waliKelasAssignments.length > 0 && user?.id) {
       const found = waliKelasAssignments.find(
-        (item) => item.user_id === user.id || item.Guru?.user_id === user.id || item.Guru?.id === guruProfile?.id
+        (item: any) => item.user_id === user.id || item.Guru?.user_id === user.id || item.Guru?.id === guruProfile?.id
       );
       if (found?.Kelas?.nama_kelas) return found.Kelas.nama_kelas;
+      if (found?.StrukturOrganisasi?.Kelas?.nama_kelas) return found.StrukturOrganisasi.Kelas.nama_kelas;
     }
     return '';
   }, [user, guruProfile, waliKelasAssignments]);

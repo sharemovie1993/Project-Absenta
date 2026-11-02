@@ -20,7 +20,12 @@ export function useWaliKelasOptions(params: UseWaliKelasOptionsParams = {}) {
 
   const rawList: WaliKelasStrukturAssignment[] = useMemo(() => {
     const list = query.data?.data || [];
-    return Array.isArray(list) ? list : [];
+    if (!Array.isArray(list)) return [];
+    return list.map((item: any) => ({
+      ...item,
+      kelas_id: item.kelas_id || item.StrukturOrganisasi?.kelas_id || item.Kelas?.id || item.StrukturOrganisasi?.Kelas?.id,
+      Kelas: item.Kelas || item.StrukturOrganisasi?.Kelas,
+    }));
   }, [query.data]);
 
   const options: SearchableSelectOption[] = useMemo(() => {
@@ -28,11 +33,11 @@ export function useWaliKelasOptions(params: UseWaliKelasOptionsParams = {}) {
       const namaGuru = item.Guru?.nama_guru || (item.User?.Guru?.nama_guru) || 'Guru';
       const nip = item.Guru?.nip || item.User?.Guru?.nip;
       const nipLabel = nip ? ` (NIP: ${nip})` : '';
-      const namaKelas = item.Kelas?.nama_kelas || 'Kelas';
+      const namaKelas = item.Kelas?.nama_kelas || item.StrukturOrganisasi?.Kelas?.nama_kelas || 'Kelas';
 
       let optionValue = item.guru_id;
       if (valueKey === 'kelas_id') {
-        optionValue = item.kelas_id;
+        optionValue = item.kelas_id || item.StrukturOrganisasi?.kelas_id;
       } else if (valueKey === 'assignment_id') {
         optionValue = item.id;
       }
