@@ -206,6 +206,8 @@ export class NilaiRemedialService {
             nama_kelas: t.nama_kelas,
             mapel_id: t.mapel_id,
             nama_mapel: t.nama_mapel,
+            tahun_pelajaran_id: tp.id,
+            semester_id: sem.id,
             kkm: kkmThreshold,
             nilai_saat_ini: null,
             sumatif_1: null,
@@ -230,6 +232,8 @@ export class NilaiRemedialService {
               nama_kelas: t.nama_kelas,
               mapel_id: t.mapel_id,
               nama_mapel: t.nama_mapel,
+              tahun_pelajaran_id: tp.id,
+              semester_id: sem.id,
               kkm: kkmThreshold,
               nilai_saat_ini: finalScore,
               sumatif_1: grade.sumatif_1,
@@ -252,6 +256,8 @@ export class NilaiRemedialService {
                 nama_kelas: t.nama_kelas,
                 mapel_id: t.mapel_id,
                 nama_mapel: t.nama_mapel,
+                tahun_pelajaran_id: tp.id,
+                semester_id: sem.id,
                 kkm: kkmThreshold,
                 nilai_saat_ini: finalScore,
                 sumatif_1: grade.sumatif_1,
@@ -297,8 +303,8 @@ export class NilaiRemedialService {
       siswa_id: string;
       kelas_id: string;
       mapel_id: string;
-      tahun_pelajaran_id: string;
-      semester_id: string;
+      tahun_pelajaran_id?: string;
+      semester_id?: string;
       sumatif_1?: number | null;
       sumatif_2?: number | null;
       sumatif_3?: number | null;
@@ -308,7 +314,26 @@ export class NilaiRemedialService {
       catatan_remedial?: string;
     }
   ) {
-    if (!data.siswa_id || !data.mapel_id || !data.tahun_pelajaran_id || !data.semester_id) {
+    let tpId = data.tahun_pelajaran_id;
+    let semId = data.semester_id;
+
+    if (!tpId) {
+      const activeTp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true },
+      });
+      tpId = activeTp?.id;
+    }
+
+    if (!semId) {
+      const activeSem = await prisma.semester.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true },
+      });
+      semId = activeSem?.id;
+    }
+
+    if (!data.siswa_id || !data.mapel_id || !tpId || !semId) {
       throw new Error('Data tidak lengkap: siswa_id, mapel_id, tahun_pelajaran_id, dan semester_id wajib diisi.');
     }
 
@@ -344,27 +369,35 @@ export class NilaiRemedialService {
     const finalRaporScore = Math.min(100, Math.max(0, calculatedFinal));
     const catatan = data.catatan_remedial?.trim() || `Tuntas Remedial (${finalRaporScore})`;
 
-    // Pastikan SiswaAkademik ada
-    let saRecord = await prisma.siswaAkademik.findFirst({
-      where: {
-        tenant_id: tenantId,
-        siswa_id: data.siswa_id,
-        tahun_pelajaran_id: data.tahun_pelajaran_id,
-        semester_id: data.semester_id,
-      },
-    });
-
-    if (!saRecord && data.kelas_id) {
-      saRecord = await prisma.siswaAkademik.create({
-        data: {
-          tenant_id: tenantId,
-          siswa_id: data.siswa_id,
-          kelas_id: data.kelas_id,
-          tahun_pelajaran_id: data.tahun_pelajaran_id,
-          semester_id: data.semester_id,
-          status: 'AKTIF',
-        },
-      });
+    // Pastikan SiswaAkademik ada menggunakan upsert standar (tanpa tenant_id pada SiswaAkademik)
+    let saId: string | null = null;
+    if (data.kelas_id) {
+      try {
+        const saRecord = await prisma.siswaAkademik.upsert({
+          where: {
+            siswa_id_tahun_pelajaran_id_semester_id: {
+              siswa_id: data.siswa_id,
+              tahun_pelajaran_id: tpId,
+              semester_id: semId,
+            },
+          },
+          update: {
+            kelas_id: data.kelas_id,
+            status: 'AKTIF',
+          },
+          create: {
+            siswa_id: data.siswa_id,
+            kelas_id: data.kelas_id,
+            tahun_pelajaran_id: tpId,
+            semester_id: semId,
+            status: 'AKTIF',
+          },
+          select: { id: true },
+        });
+        saId = saRecord?.id || null;
+      } catch (err) {
+        appLogger.warn({ err }, 'SiswaAkademik upsert warning, proceeding without saId');
+      }
     }
 
     // Upsert NilaiSiswa dengan rincian sumatif lengkap
@@ -373,8 +406,8 @@ export class NilaiRemedialService {
         siswa_id_mapel_id_tahun_pelajaran_id_semester_id: {
           siswa_id: data.siswa_id,
           mapel_id: data.mapel_id,
-          tahun_pelajaran_id: data.tahun_pelajaran_id,
-          semester_id: data.semester_id,
+          tahun_pelajaran_id: tpId,
+          semester_id: semId,
         },
       },
       update: {
@@ -386,15 +419,15 @@ export class NilaiRemedialService {
         nilai_rapor_final: finalRaporScore,
         nilai: finalRaporScore,
         catatan_deskripsi: catatan,
-        ...(saRecord ? { siswa_akademik_id: saRecord.id } : {}),
+        ...(saId ? { siswa_akademik_id: saId } : {}),
       },
       create: {
         tenant_id: tenantId,
         siswa_id: data.siswa_id,
-        siswa_akademik_id: saRecord?.id || null,
+        siswa_akademik_id: saId,
         mapel_id: data.mapel_id,
-        tahun_pelajaran_id: data.tahun_pelajaran_id,
-        semester_id: data.semester_id,
+        tahun_pelajaran_id: tpId,
+        semester_id: semId,
         sumatif_1: s1,
         sumatif_2: s2,
         sumatif_3: s3,
