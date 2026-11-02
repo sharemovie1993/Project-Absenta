@@ -302,7 +302,10 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
         <div className="inline-flex p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 max-w-full overflow-x-auto no-scrollbar">
           <button
             type="button"
-            onClick={() => setActiveViewMode('TARGET')}
+            onClick={() => {
+              setActiveViewMode('TARGET');
+              if (searchTerm) setSearchTerm('');
+            }}
             className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
               activeViewMode === 'TARGET'
                 ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
@@ -356,14 +359,24 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
       <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 max-w-2xl">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
             <Input
               type="text"
               placeholder={activeViewMode === 'TARGET' ? 'Cari nama siswa, NIS, kelas, atau mitra...' : 'Cari catatan observasi, umpan balik DU/DI...'}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 text-xs sm:text-sm rounded-xl h-10 w-full"
+              className="pl-9 pr-8 text-xs sm:text-sm rounded-xl h-10 w-full"
             />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+                title="Hapus filter pencarian"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
 
           {mitraFilterOptions.length > 0 && (
@@ -379,6 +392,20 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
                 </option>
               ))}
             </select>
+          )}
+
+          {searchTerm && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setSearchTerm('')}
+              className="h-10 px-3 text-xs font-bold text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl shrink-0 gap-1"
+              title="Reset pencarian agar menampilkan seluruh siswa"
+            >
+              <X size={13} />
+              <span>Reset</span>
+            </Button>
           )}
         </div>
       </div>

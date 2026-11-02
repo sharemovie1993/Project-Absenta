@@ -67,10 +67,16 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
   // Active Tab State
   const [activeTab, setActiveTab] = useState<PklTabId>(() => (subtabParam && validTabs.includes(subtabParam) ? subtabParam : 'ringkasan'));
   const [visitedTabs, setVisitedTabs] = useState<Set<PklTabId>>(() => new Set([activeTab]));
+  const [monitoringKey, setMonitoringKey] = useState(0);
 
   // Synchronize Tab with URL & Keep-Alive Cache
   useEffect(() => {
-    if (subtabParam && validTabs.includes(subtabParam) && subtabParam !== activeTab) setActiveTab(subtabParam);
+    if (subtabParam && validTabs.includes(subtabParam) && subtabParam !== activeTab) {
+      if (subtabParam === 'monitoring') {
+        setMonitoringKey((k) => k + 1);
+      }
+      setActiveTab(subtabParam);
+    }
   }, [subtabParam, activeTab]);
 
   useEffect(() => {
@@ -79,6 +85,9 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
 
   const handleTabSelect = useCallback(
     (tabId: PklTabId) => {
+      if (tabId === 'monitoring') {
+        setMonitoringKey((k) => k + 1);
+      }
       setActiveTab(tabId);
       setSearchParams(
         (prev) => {
@@ -453,7 +462,13 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                 )}
                 {visitedTabs.has('monitoring') && (
                   <div className={cn(activeTab === 'monitoring' ? 'block' : 'hidden')}>
-                    <PklMonitoringTab guruId={guruId} tahunPelajaranId={tpId} semesterId={academicFilter.values.semesterId} siswaList={siswaList} />
+                    <PklMonitoringTab
+                      key={monitoringKey}
+                      guruId={guruId}
+                      tahunPelajaranId={tpId}
+                      semesterId={academicFilter.values.semesterId}
+                      siswaList={siswaList}
+                    />
                   </div>
                 )}
                 {visitedTabs.has('penilaian') && (
