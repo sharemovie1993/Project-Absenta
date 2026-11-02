@@ -5,7 +5,8 @@ import {
   GraduationCap, 
   BarChart2, 
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  Radio
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +25,7 @@ interface TeacherSubNavPillsProps {
   onChangeSubTab: (subTabId: TeacherSubTabId) => void;
   perangkatRejectedCount?: number;
   unfilledJournalsCount?: number;
+  remedialAlertCount?: number;
   className?: string;
 }
 
@@ -32,6 +34,7 @@ export const TeacherSubNavPills: React.FC<TeacherSubNavPillsProps> = React.memo(
   onChangeSubTab,
   perangkatRejectedCount = 0,
   unfilledJournalsCount = 0,
+  remedialAlertCount = 0,
   className,
 }) => {
   const tabs: TeacherSubTabItem[] = [
@@ -53,6 +56,13 @@ export const TeacherSubNavPills: React.FC<TeacherSubNavPillsProps> = React.memo(
       id: 'nilai',
       label: 'Buku Nilai',
       icon: GraduationCap,
+    },
+    {
+      id: 'remedial',
+      label: 'Radar Remedial',
+      icon: Radio,
+      badgeCount: remedialAlertCount > 0 ? remedialAlertCount : undefined,
+      badgeVariant: 'rose',
     },
     {
       id: 'rekap',

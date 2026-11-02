@@ -151,10 +151,10 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
 
   const actionHubData = actionHubRes?.data || { summary: { total: 0, critical: 0, today: 0, upcoming: 0 }, actions: [] };
 
-  // Query Radar Remedial (Untuk alert badge di sidebar)
+  // Query Radar Remedial (Untuk alert badge di sidebar - khusus menghitung siswa yang perlu remedial)
   const { data: radarRes } = useQuery({
     queryKey: ['rapor-radar-remedial-badge', guruId],
-    queryFn: () => raporApi.getRadarRemedial().catch(() => ({ success: true, data: null })),
+    queryFn: () => raporApi.getRadarRemedial({ guru_id: guruId }).catch(() => ({ success: true, data: null })),
     enabled: isActualTeachingStaff,
     staleTime: 60 * 1000,
   });

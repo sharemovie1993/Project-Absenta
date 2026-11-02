@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { 
   LayoutDashboard,
   ArrowLeft,
@@ -16,6 +17,7 @@ import {
   Shield,
   Radio,
 } from 'lucide-react';
+import { raporApi } from '@/api/rapor.api';
 import { WalasDashboardSkeleton } from './walikelas/WalasDashboardSkeleton';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { useWalasDashboardData } from './walikelas/useWalasDashboardData';
@@ -134,6 +136,22 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
   const activeKelasNama = walasData?.kelasInfo?.nama_kelas || initialKelasNama || 'KELAS BINAAN';
   const kelasList = walasData?.kelas_binaan_list || [];
 
+  // Query Radar Ketuntasan Nilai Rombel Walas (Khusus Counter Siswa Perlu Remedial)
+  const { data: radarWalasRes } = useQuery({
+    queryKey: ['rapor-radar-remedial-badge-walas', activeKelasId, academicFilter.values.tahunPelajaranId, academicFilter.values.semesterId],
+    queryFn: () => raporApi.getRadarRemedial({
+      kelas_id: activeKelasId,
+      role_mode: 'walas',
+      tahun_pelajaran_id: academicFilter.values.tahunPelajaranId,
+      semester_id: academicFilter.values.semesterId,
+      kkm: 70,
+    }).catch(() => ({ success: true, data: null })),
+    enabled: Boolean(activeKelasId),
+    staleTime: 60 * 1000,
+  });
+
+  const walasPerluRemedialCount = radarWalasRes?.data?.stats?.total_perlu_remedial || 0;
+
   // Tab Definitions with dynamic badges matching Kaprog's nav tabs
   const navTabs = useMemo(() => {
     // 1. Data Siswa: total siswa di rombel
@@ -189,6 +207,7 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
         id: 'ketuntasan' as WaliKelasTabId, 
         label: 'Radar Ketuntasan', 
         icon: Radio,
+        badge: walasPerluRemedialCount > 0 ? walasPerluRemedialCount : undefined,
       },
       { 
         id: 'jurnal' as WaliKelasTabId, 
@@ -217,7 +236,7 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
       { id: 'rekap' as WaliKelasTabId, label: 'Cetak & Rekap', icon: FileSpreadsheet },
       { id: 'rapor' as WaliKelasTabId, label: 'Cetak Rapor', icon: Printer },
     ];
-  }, [walasData]);
+  }, [walasData, walasPerluRemedialCount]);
 
   const handleClassChange = (newKelasId: string) => {
     setSelectedKelasId(newKelasId);
