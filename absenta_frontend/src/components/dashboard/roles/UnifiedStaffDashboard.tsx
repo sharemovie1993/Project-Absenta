@@ -34,7 +34,6 @@ import {
   Sparkles,
   Award,
   LayoutList,
-  LayoutGrid,
   Fingerprint,
   MessageCircle,
   Building,
@@ -103,9 +102,8 @@ const EkskulDashboard = React.lazy(() => import('./EkskulDashboard').then(m => (
 const PembimbingPklDashboard = React.lazy(() => import('./PembimbingPklDashboard').then(m => ({ default: m.PembimbingPklDashboard })));
 // Satpam / Gerbang Dashboard — clean role-patterned architecture
 const SatpamDashboard = React.lazy(() => import('./SatpamDashboard').then(m => ({ default: m.SatpamDashboard })));
-import { StaffPortalTab } from '../staff/tabs/StaffPortalTab';
 
-// Modular Dashboards are accessed via Google-style App Launcher & Portal tab
+// Modular Dashboards are accessed via dedicated role dashboards and top workspace launcher
 // Admin Overview Tab — dirender di tab Admin untuk role ADMIN/SUPERADMIN
 import { StaffAdminOverviewTab } from '../staff/tabs/StaffAdminOverviewTab';
 // Executive Principal Dashboard — dirender di tab Overview Eksekutif untuk KEPALA_SEKOLAH
@@ -361,7 +359,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   // Sinkronisasi query param otomatis saat akses /dashboard polosan
   useEffect(() => {
-    if (!rawRequestedTab && defaultTabId !== 'portal') {
+    if (!rawRequestedTab) {
       setSearchParams({ tab: defaultTabId }, { replace: true });
     }
   }, [rawRequestedTab, defaultTabId, setSearchParams]);
@@ -876,13 +874,6 @@ export const UnifiedStaffDashboard: React.FC = () => {
       });
     }
 
-    // 🌐 Portal Aplikasi (Google Apps Launcher Style) - Pusat Modul Sekolah
-    list.push({
-      id: 'portal',
-      label: 'Portal',
-      icon: LayoutGrid,
-    });
-
     // ⚡ Tugas Saya (Pusat Tugas & Tindakan Terpadu Guru/Staf)
     if (!isKepsek) {
       list.push({
@@ -1366,21 +1357,6 @@ export const UnifiedStaffDashboard: React.FC = () => {
                 onOpenJournal={(sesi) => { setSessionForJournal(sesi); setJournalModalOpen(true); }}
               />
             )}
-          </div>
-        )}
-
-        {/* 🌐 TAB PORTAL: APP LAUNCHER PUSAT APLIKASI SEKOLAH */}
-        {visitedTabs.has('portal') && (
-          <div 
-            key="tab-portal"
-            role="tabpanel"
-            aria-hidden={activeTab !== 'portal'}
-            className={cn("w-full min-w-0", activeTab === 'portal' ? "block" : "hidden")}
-          >
-            <StaffPortalTab 
-              onBackToBeranda={() => handleTabChange(isAdminRole && !isKepsek ? 'admin' : 'ringkasan')}
-              onNavigateTab={handleTabChange}
-            />
           </div>
         )}
 
