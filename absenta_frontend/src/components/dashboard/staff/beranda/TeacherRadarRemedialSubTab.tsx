@@ -26,6 +26,15 @@ import { HubCard } from '@/components/ui/hub';
 import { RemedialQuickModal, RadarRemedialItem } from './RemedialQuickModal';
 import { useAcademicFilter } from '@/components/common/academic-filter';
 
+export interface RadarKbmTask {
+  kelas_id: string;
+  nama_kelas: string;
+  mapel_id?: string;
+  nama_mapel?: string;
+  guru_id?: string;
+  nama_guru?: string;
+}
+
 export interface UniversalRadarRemedialProps {
   guruId?: string;
   kelasId?: string;
@@ -88,7 +97,7 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
     kkm_threshold: 70,
   };
 
-  const tasks: any[] = radarData?.tasks || [];
+  const tasks: RadarKbmTask[] = radarData?.tasks || [];
   const rawItems: RadarRemedialItem[] = radarData?.items || [];
 
   // Opsi Kelas untuk Filter Rombel
