@@ -184,7 +184,18 @@ export class NilaiRemedialService {
       gradeMap.set(`${n.siswa_id}_${n.mapel_id}`, n);
     });
 
-    // 6. Evaluasi tiap siswa di tiap jadwal KBM
+    // Hash Map Grouping Siswa per Kelas: O(N) grouping agar lookup di tugas KBM O(1)
+    const studentsByKelasMap = new Map<string, typeof students>();
+    students.forEach((s) => {
+      const list = studentsByKelasMap.get(s.kelas_id);
+      if (list) {
+        list.push(s);
+      } else {
+        studentsByKelasMap.set(s.kelas_id, [s]);
+      }
+    });
+
+    // 6. Evaluasi tiap siswa di tiap jadwal KBM (High Performance Hash Lookup)
     const radarItems: any[] = [];
     let totalPerluRemedial = 0;
     let totalBelumDinilai = 0;
@@ -192,7 +203,7 @@ export class NilaiRemedialService {
     let totalSiswaDiampu = 0;
 
     uniqueTasks.forEach((t) => {
-      const classStudents = students.filter((s) => s.kelas_id === t.kelas_id);
+      const classStudents = studentsByKelasMap.get(t.kelas_id) || [];
       classStudents.forEach((student) => {
         totalSiswaDiampu++;
         const gradeKey = `${student.id}_${t.mapel_id}`;

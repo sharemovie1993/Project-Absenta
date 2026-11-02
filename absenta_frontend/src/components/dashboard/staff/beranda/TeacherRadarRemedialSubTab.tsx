@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useDeferredValue, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Radio, 
@@ -16,7 +16,9 @@ import {
   Check,
   Copy,
   Share2,
-  Eye
+  Eye,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { raporApi } from '@/api/rapor.api';
@@ -40,14 +42,24 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
   className,
 }) => {
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
   const [selectedKelasFilter, setSelectedKelasFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'needs_remedial' | 'unassessed' | 'completed'>('needs_remedial');
   const [activeModalItem, setActiveModalItem] = useState<RadarRemedialItem | null>(null);
 
+  // Pagination State (High Density & 60 FPS Multi-Device Performance)
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(25);
+
   // Selalu pastikan default filter terkunci di "Perlu Remedial" setiap kali konteks rombel/role berubah
-  React.useEffect(() => {
+  useEffect(() => {
     setStatusFilter('needs_remedial');
   }, [kelasId, roleMode]);
+
+  // Reset page ke 1 setiap kali kriteria filter berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedKelasFilter, statusFilter, deferredSearch]);
 
   const { activeYear, activeSemester } = useAcademicFilter({
     enableTp: true,
@@ -90,7 +102,7 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
     return Array.from(map.entries()).map(([id, nama]) => ({ id, nama }));
   }, [tasks]);
 
-  // Filter Items
+  // Filter Items (Menggunakan deferredSearch untuk isolasi komputasi dari main-thread)
   const filteredItems = useMemo(() => {
     let result = rawItems;
 
@@ -105,8 +117,8 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
     }
 
     // Filter Search
-    if (search.trim()) {
-      const q = search.toLowerCase();
+    if (deferredSearch.trim()) {
+      const q = deferredSearch.toLowerCase();
       result = result.filter((item) =>
         item.nama_siswa?.toLowerCase().includes(q) ||
         item.nis?.toLowerCase().includes(q) ||
@@ -116,7 +128,13 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
     }
 
     return result;
-  }, [rawItems, selectedKelasFilter, statusFilter, search]);
+  }, [rawItems, selectedKelasFilter, statusFilter, deferredSearch]);
+
+  const totalPages = Math.ceil(filteredItems.length / pageSize) || 1;
+  const paginatedItems = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredItems.slice(start, start + pageSize);
+  }, [filteredItems, currentPage, pageSize]);
 
   const kkm = stats.kkm_threshold || 70;
   const isWalas = roleMode === 'walas';
@@ -365,10 +383,11 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
           <div>
             {/* ─── Mode Mobile: Shopee-Grade Flat List Cards (< sm) ─── */}
             <div className="block sm:hidden space-y-2.5">
-              {filteredItems.map((item, idx) => {
+              {paginatedItems.map((item, idx) => {
                 const isRemedial = item.status === 'needs_remedial';
                 const isUnassessed = item.status === 'unassessed';
                 const isCompleted = item.status === 'completed';
+                const rowNumber = (currentPage - 1) * pageSize + idx + 1;
 
                 return (
                   <div
@@ -417,7 +436,7 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <h4 className="font-bold text-slate-900 dark:text-white text-xs leading-tight">
-                          {idx + 1}. {item.nama_siswa}
+                          {rowNumber}. {item.nama_siswa}
                         </h4>
                         <p className="text-[10px] text-slate-400 mt-0.5">
                           NIS: {item.nis || '-'}
@@ -494,10 +513,11 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs">
-                  {filteredItems.map((item, idx) => {
+                  {paginatedItems.map((item, idx) => {
                     const isRemedial = item.status === 'needs_remedial';
                     const isUnassessed = item.status === 'unassessed';
                     const isCompleted = item.status === 'completed';
+                    const rowNumber = (currentPage - 1) * pageSize + idx + 1;
 
                     return (
                       <tr
@@ -505,7 +525,7 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
                         className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors group"
                       >
                         <td className="py-3 px-3.5 text-center text-slate-400 font-semibold">
-                          {idx + 1}
+                          {rowNumber}
                         </td>
                         <td className="py-3 px-3.5">
                           <div className="font-bold text-slate-900 dark:text-white">
@@ -606,6 +626,63 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
                 </tbody>
               </table>
             </div>
+
+            {/* ─── Paginasi High-Density (Phase 4 Performance Optimization) ─── */}
+            {filteredItems.length > pageSize && (
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs">
+                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-[11px]">
+                  <span>
+                    Menampilkan <span className="font-bold text-slate-800 dark:text-slate-200">{(currentPage - 1) * pageSize + 1}</span> - <span className="font-bold text-slate-800 dark:text-slate-200">{Math.min(currentPage * pageSize, filteredItems.length)}</span> dari <span className="font-bold text-slate-800 dark:text-slate-200">{filteredItems.length}</span> data
+                  </span>
+                  <span className="hidden sm:inline">&bull;</span>
+                  <div className="hidden sm:flex items-center gap-1">
+                    <span>Per hal:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300 focus:outline-none"
+                    >
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={currentPage <= 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-all shadow-2xs"
+                    title="Halaman Sebelumnya"
+                    aria-label="Halaman Sebelumnya"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+
+                  <div className="flex items-center gap-1 px-1">
+                    <span className="text-[11px] font-bold text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800">
+                      {currentPage} / {totalPages}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-all shadow-2xs"
+                    title="Halaman Selanjutnya"
+                    aria-label="Halaman Selanjutnya"
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </HubCard>
