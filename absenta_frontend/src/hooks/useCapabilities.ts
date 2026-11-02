@@ -35,6 +35,15 @@ export function useCapabilities() {
     const isToolman =
       userPositions.includes('TOOLMAN');
 
+    const isPiketGuru =
+      userPositions.includes('PIKET') ||
+      userPositions.includes('GURU_PIKET') ||
+      Boolean(
+        (user as any)?.guru_profile?.is_piket_guru ||
+        ((user as any)?.guru_profile?.active_piket_count && (user as any).guru_profile.active_piket_count > 0) ||
+        (user as any)?.is_piket_guru
+      );
+
     // ═══════════════════════════════════════════════════════════════════
     // LEVEL 2: STAF OPERASIONAL & ADMINISTRASI (TU & KOPERASI)
     // ═══════════════════════════════════════════════════════════════════
@@ -148,7 +157,7 @@ export function useCapabilities() {
       // Level 1
       isPetugasKelas,
       isGerbang,
-      isPiketGuru: isGerbang || can('attendance.piket.view') || can('attendance.piket.manage'),
+      isPiketGuru,
       isToolman,
       isSiswa,
       isStudent: isSiswa,

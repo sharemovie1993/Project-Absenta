@@ -431,13 +431,13 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       });
     }
 
-    if (isPiketGuru || hasGerbangDuty || isGerbang || isAdminRole || can('attendance.gate.scan')) {
+    if (isPiketGuru && !isKepsek) {
       list.push({
         id: 'dash-piket',
         label: 'Dashboard Piket',
         shortLabel: 'Dashboard Piket',
         icon: ScanLine,
-        targetPath: '/attendance/gate-scanner',
+        targetPath: '/dashboard?tab=kelola',
         color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400',
       });
     }

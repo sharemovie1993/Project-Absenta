@@ -303,6 +303,17 @@ export const UnifiedStaffDashboard: React.FC = () => {
     ))
   );
 
+  // Piket Guru: Murni hanya jika guru terdaftar dalam jadwal piket (bukan Hubin/Kepsek/guru umum tanpa jadwal)
+  const isPiketGuruActual = !isKepsek && (
+    Boolean(isPiketGuru) ||
+    Boolean(
+      guruProfile?.is_piket_guru || 
+      (guruProfile?.active_piket_count && guruProfile.active_piket_count > 0) ||
+      ((user?.guru_profile as any)?.is_piket_guru) ||
+      ((user?.guru_profile as any)?.active_piket_count > 0)
+    )
+  );
+
   const hasStructuralRole = isWaliKelas || isKurikulum || isKesiswaan || isKepsek
     || isSarpras || isHubin || isToolman || isKaprog || isKabeng
     || isBpbk || isBkk || isGerbang || isTU;
@@ -1028,9 +1039,9 @@ export const UnifiedStaffDashboard: React.FC = () => {
       list.push({ id: 'kepegawaian', label: 'Dashboard TU', icon: Building });
     }
 
-    // 11. Piket & Gerbang (Tugas piket harian, gerbang, kesiswaan, kurikulum, dan seluruh guru pendidik)
-    const canAccessPiket = isPiketGuru || isGerbang || isKesiswaan || isKurikulum || isPendidik || can('attendance.piket.view') || can('attendance.piket.manage');
-    if (canAccessPiket && (!isAdminRole || isPendidik) && !isKepsek) {
+    // 11. Piket & Gerbang: Murni hanya untuk guru yang terdaftar dalam jadwal piket atau petugas keamanan gerbang
+    const canAccessPiket = isPureGerbangStaff || (isPiketGuruActual && !isKepsek);
+    if (canAccessPiket) {
       list.push({ 
         id: 'kelola', 
         label: isPureGerbangStaff ? 'Pos Keamanan' : 'Dashboard Piket', 
@@ -1067,7 +1078,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isTUKepegawaian,
     isTU,
     tuTabMeta,
-    isPiketGuru,
+    isPiketGuruActual,
     isSarpras,
     isHubin,
     isKoperasi,
@@ -1085,11 +1096,12 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   // Normalisasi tab aktif jika tab di URL tidak termasuk dalam daftar kapabilitas user
   useEffect(() => {
-    // Tab binaan, kaprog, dan kepegawaian valid jika user memiliki peran tersebut
+    // Tab binaan, kaprog, kepegawaian, pembimbing_pkl, dan kelola (piket) valid jika user memiliki peran tersebut
     if (activeTab === 'binaan' && (isWaliKelas || Boolean(waliKelasId))) return;
     if (activeTab === 'kaprog' && isKaprog) return;
     if (activeTab === 'kepegawaian' && (isTUKepala || isTUPersuratan || isTUKepegawaian || isTU)) return;
     if (activeTab === 'pembimbing_pkl' && isPembimbingPkl) return;
+    if (activeTab === 'kelola' && (isPiketGuruActual || isPureGerbangStaff)) return;
 
     // Tunggu sampai tabs siap sebelum melakukan fallback
     if (tabs.length === 0) return;
@@ -1098,7 +1110,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
       const fallback = tabs.some(t => t.id === defaultTabId) ? defaultTabId : tabs[0].id;
       setSearchParams({ tab: fallback }, { replace: true });
     }
-  }, [tabs, activeTab, defaultTabId, setSearchParams, isWaliKelas, waliKelasId, isKaprog, isTUKepala, isTUPersuratan, isTUKepegawaian, isTU, isPembimbingPkl]);
+  }, [tabs, activeTab, defaultTabId, setSearchParams, isWaliKelas, waliKelasId, isKaprog, isTUKepala, isTUPersuratan, isTUKepegawaian, isTU, isPembimbingPkl, isPiketGuruActual, isPureGerbangStaff]);
 
   // ── 6. Quick Actions ──────────────────────────────────────────────────────────
   const quickActions = useMemo(() => {

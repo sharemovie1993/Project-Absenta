@@ -86,10 +86,20 @@ export async function getGuruMeQuery(userId: string, tenantId: string): Promise<
     },
   });
 
+  // 5. Hitung penugasan piket guru ini (apakah terdaftar dalam jadwal piket)
+  const activePiketCount = await prisma.jadwalPiketGuru.count({
+    where: {
+      tenant_id: tenantId,
+      guru_id: rawGuru.id,
+    },
+  });
+
   return {
     ...guru,
     is_pembimbing_pkl: activePklCount > 0,
     active_pkl_count: activePklCount,
+    is_piket_guru: activePiketCount > 0,
+    active_piket_count: activePiketCount,
     jabatan_list: jabatanList,
     jabatan: jabatanFormatted || guru.jabatan || null,
     wali_kelas_di: waliKelasDi,

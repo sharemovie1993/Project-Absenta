@@ -202,17 +202,26 @@ export class OrganizationalAuthorizationEngine {
       const now = new Date();
       const hariIni = todayDays[now.getDay()];
 
-      const isGuruPiketToday = await prisma.jadwalPiketGuru.findFirst({
+      const piketCount = await prisma.jadwalPiketGuru.count({
         where: {
           guru_id: guru.id,
-          hari: hariIni as any,
         },
-        select: { id: true }
       });
 
-      if (isGuruPiketToday) {
+      if (piketCount > 0) {
         capSet.add('attendance.piket.view');
-        capSet.add('attendance.piket.manage');
+
+        const isGuruPiketToday = await prisma.jadwalPiketGuru.findFirst({
+          where: {
+            guru_id: guru.id,
+            hari: hariIni as any,
+          },
+          select: { id: true }
+        });
+
+        if (isGuruPiketToday) {
+          capSet.add('attendance.piket.manage');
+        }
       }
     }
 

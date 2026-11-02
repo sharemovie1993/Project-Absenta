@@ -1024,6 +1024,14 @@ export class AuthService {
         }
       });
 
+      // Check active piket assignments count for this teacher
+      const activePiketCount = await prisma.jadwalPiketGuru.count({
+        where: {
+          tenant_id: user.tenant_id,
+          guru_id: guru.id,
+        }
+      });
+
       response.guru_profile = {
         id: guru.id,
         wali_kelas_di: waliKelasDi,
@@ -1034,6 +1042,8 @@ export class AuthService {
         active_pkl_count: activePklCount,
         is_fasilitator_p5: activeP5Count > 0,
         active_p5_count: activeP5Count,
+        is_piket_guru: activePiketCount > 0,
+        active_piket_count: activePiketCount,
       };
     }
   }
