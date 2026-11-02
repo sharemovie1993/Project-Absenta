@@ -31,7 +31,7 @@ export const TeacherRadarRemedialSubTab: React.FC<TeacherRadarRemedialSubTabProp
 }) => {
   const [search, setSearch] = useState('');
   const [selectedKelasFilter, setSelectedKelasFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'needs_remedial' | 'unassessed' | 'completed'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'needs_remedial' | 'unassessed' | 'completed'>('needs_remedial');
   const [activeModalItem, setActiveModalItem] = useState<RadarRemedialItem | null>(null);
 
   const { activeYear, activeSemester } = useAcademicFilter({
