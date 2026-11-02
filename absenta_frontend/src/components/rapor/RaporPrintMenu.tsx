@@ -30,6 +30,7 @@ export interface RaporPrintMenuProps {
   className?: string;
   btnSize?: 'sm' | 'md';
   eligibility?: DokumenEligibility;
+  onPrintBiodata?: (studentId: string) => void;
   onPrintRaporPkl?: () => void;
   onPrintSertifikatPkl?: () => void;
   onPrintSertifikatUkk?: () => void;
@@ -51,6 +52,7 @@ export const RaporPrintMenu: React.FC<RaporPrintMenuProps> = ({
   className = '',
   btnSize = 'sm',
   eligibility,
+  onPrintBiodata,
   onPrintRaporPkl,
   onPrintSertifikatPkl,
   onPrintSertifikatUkk,
@@ -188,7 +190,7 @@ export const RaporPrintMenu: React.FC<RaporPrintMenuProps> = ({
               {/* 1. Biodata Rapor (Cover dimerger ke Biodata) */}
               <button
                 type="button"
-                onClick={() => handleAction(() => printBiodata(studentId))}
+                onClick={() => handleAction(() => onPrintBiodata ? onPrintBiodata(studentId) : printBiodata(studentId))}
                 className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors cursor-pointer"
               >
                 <UserCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />

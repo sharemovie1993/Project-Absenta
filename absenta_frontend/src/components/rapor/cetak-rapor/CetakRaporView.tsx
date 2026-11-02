@@ -53,6 +53,9 @@ const RaporRenderProgressModal = lazy(() =>
 const MonitoringMapelRombelModal = lazy(() =>
   import('../input-nilai/MonitoringMapelRombelModal').then((m) => ({ default: m.MonitoringMapelRombelModal }))
 );
+const BiodataPrintModal = lazy(() =>
+  import('./BiodataPrintModal').then((m) => ({ default: m.BiodataPrintModal }))
+);
 
 // ── Smart Session & Context Persistence Constants ──
 const CETAK_RAPOR_SESSION_KEY = 'absenta_rapor_cetak_context';
@@ -222,6 +225,7 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
   const [selectedKelas, setSelectedKelas] = useState<string>(initialContext.kelasId);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTranskripStudent, setSelectedTranskripStudent] = useState<LegerStudent | null>(null);
+  const [selectedBiodataStudent, setSelectedBiodataStudent] = useState<LegerStudent | null>(null);
   const [selectedUkkStudent, setSelectedUkkStudent] = useState<LegerStudent | null>(null);
   const [isUkkModalOpen, setIsUkkModalOpen] = useState(false);
   const [showMonitoringModal, setShowMonitoringModal] = useState(false);
@@ -837,7 +841,10 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
           isJenjangSmk={isJenjangSmk}
           pdfLoading={pdfLoading}
           modeCetakRapor={modeCetakRapor}
-          onPrintBiodata={(sId) => printBiodata(sId)}
+          onPrintBiodata={(sId) => {
+            const s = filteredStudents.find((x) => x.id === sId) || ({ id: sId } as any);
+            setSelectedBiodataStudent(s);
+          }}
           onPrintRaporSemester={(sId, tpId, semId) => printRaporSemester(sId, tpId, semId)}
           onPrintRaporSumatif={(sId, tpId, semId) => printRaporSumatif(sId, tpId, semId)}
           onPrintP5={(sId) => printP5(sId)}
@@ -867,6 +874,10 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
           onPrintP5={handlePrintP5}
           onPrintRaporPkl={handlePrintRaporPkl}
           onPrintSertifikatPkl={handlePrintSertifikatPkl}
+          onPrintBiodata={(sId) => {
+            const s = filteredStudents.find((x) => x.id === sId) || ({ id: sId } as any);
+            setSelectedBiodataStudent(s);
+          }}
           onPrintLeger={() => printLeger(selectedKelas, activeYear?.id, activeSemester?.id, currentKelasObj?.nama_kelas)}
           onExportLeger={handleExportLeger}
           onBatchPrintRapor={handleBatchPrintRapor}
@@ -1007,6 +1018,21 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
           activeSemesterNama={activeSemester?.nama}
           kelasNama={currentKelasObj?.nama_kelas || waliKelasNama}
           isWaliKelas={isPureWaliKelas}
+        />
+      </Suspense>
+
+      {/* Biodata & Sampul Rapor Print Modal (Universal Document Printing) */}
+      <Suspense fallback={null}>
+        <BiodataPrintModal
+          isOpen={!!selectedBiodataStudent}
+          onClose={() => setSelectedBiodataStudent(null)}
+          selectedStudent={selectedBiodataStudent}
+          students={filteredStudents}
+          onSelectStudent={(s) => setSelectedBiodataStudent(s)}
+          tahunPelajaranId={activeYear?.id}
+          semesterId={activeSemester?.id}
+          tahunPelajaranNama={activeYear?.nama || academicActiveYear?.tahun}
+          semesterNama={activeSemester?.nama || academicActiveSemester?.nama_semester}
         />
       </Suspense>
 

@@ -44,6 +44,7 @@ interface LegerStudentTableProps {
   onPrintP5?: (student: LegerStudent) => void;
   onPrintRaporPkl?: (student: LegerStudent) => void;
   onPrintSertifikatPkl?: (student: LegerStudent) => void;
+  onPrintBiodata?: (studentId: string) => void;
   onPrintLeger?: () => void;
   onExportLeger?: () => void;
   onBatchPrintRapor?: () => void;
@@ -77,6 +78,7 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
   onPrintP5,
   onPrintRaporPkl,
   onPrintSertifikatPkl,
+  onPrintBiodata,
   onPrintLeger,
   onExportLeger,
   onBatchPrintRapor,
@@ -678,6 +680,7 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
                         showSumatifArchive={modeCetakRapor === 'SUMATIF_AND_CP' || modeCetakRapor === 'SUMATIF_ONLY'}
                         onPrintRaporPkl={() => onPrintRaporPkl?.(student)}
                         onPrintSertifikatPkl={() => onPrintSertifikatPkl?.(student)}
+                        onPrintBiodata={onPrintBiodata ? () => onPrintBiodata(student.id) : undefined}
                         onPrintSertifikatUkk={() => {
                           setSelectedUkkStudent(student);
                           setIsUkkModalOpen(true);
