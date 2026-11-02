@@ -18,7 +18,7 @@ import {
 import { raporApi } from '@/api/rapor.api';
 import { HubCard } from '@/components/ui/hub';
 import { RemedialQuickModal, RadarRemedialItem } from './RemedialQuickModal';
-import { useAcademicFilter } from '@/components/common/academic-filter';
+import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 
 interface TeacherRadarRemedialSubTabProps {
   guruId?: string;
@@ -34,16 +34,23 @@ export const TeacherRadarRemedialSubTab: React.FC<TeacherRadarRemedialSubTabProp
   const [statusFilter, setStatusFilter] = useState<'all' | 'needs_remedial' | 'unassessed' | 'completed'>('all');
   const [activeModalItem, setActiveModalItem] = useState<RadarRemedialItem | null>(null);
 
-  const { activeYear, activeSemester } = useAcademicFilter({
+  const filter = useAcademicFilter({
     enableTp: true,
     enableSemester: true,
   });
 
+  const selectedTpId = filter.values.tahunPelajaranId || filter.activeYear?.id;
+  const selectedSemId = filter.values.semesterId || filter.activeSemester?.id;
+
+  const isCurrentActivePeriod = 
+    Boolean(filter.activeYear?.id && selectedTpId === filter.activeYear.id) &&
+    Boolean(!selectedSemId || !filter.activeSemester?.id || selectedSemId === filter.activeSemester.id);
+
   const { data: radarRes, isLoading, refetch } = useQuery({
-    queryKey: ['rapor-radar-remedial', guruId, activeYear?.id, activeSemester?.id],
+    queryKey: ['rapor-radar-remedial', guruId, selectedTpId, selectedSemId],
     queryFn: () => raporApi.getRadarRemedial({
-      tahun_pelajaran_id: activeYear?.id,
-      semester_id: activeSemester?.id,
+      tahun_pelajaran_id: selectedTpId,
+      semester_id: selectedSemId,
       kkm: 70,
     }).catch(() => ({ success: true, data: null })),
     staleTime: 30 * 1000,
@@ -120,18 +127,32 @@ export const TeacherRadarRemedialSubTab: React.FC<TeacherRadarRemedialSubTabProp
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Pantau dan tuntaskan siswa yang butuh perbaikan nilai pada semester berjalan agar tidak menjadi beban kelulusan.
+              Pantau dan tuntaskan nilai siswa pada semester berjalan maupun semester lampau tanpa merusak rekam nilai periode lain.
             </p>
           </div>
         </div>
 
-        {(activeSemester?.nama || activeYear?.nama) && (
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 self-start sm:self-auto shadow-2xs">
-            <Calendar size={13} className="text-purple-500" />
-            <span>{activeSemester?.nama || 'Semester'} {activeYear?.nama || ''}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          {isCurrentActivePeriod ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-xs font-bold text-emerald-700 dark:text-emerald-300 shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              Semester Berjalan (Aktif)
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-xs font-bold text-amber-700 dark:text-amber-300 shadow-2xs">
+              <Clock size={13} />
+              Mode Arsip Periode Lampau
+            </span>
+          )}
+        </div>
       </div>
+
+      {/* ─── Filter Akademik Terpadu (Pilih Tahun Pelajaran & Semester) ─── */}
+      <AcademicFilterToolbar
+        {...filter.toolbarProps}
+        variant="card"
+        className="shadow-2xs"
+      />
 
       {/* ─── Stat KPI Cards (Interaktif 1-Click Quick Filter) ─── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -402,8 +423,8 @@ export const TeacherRadarRemedialSubTab: React.FC<TeacherRadarRemedialSubTabProp
           isOpen={!!activeModalItem}
           onClose={() => setActiveModalItem(null)}
           item={activeModalItem}
-          tahunPelajaranId={activeYear?.id || ''}
-          semesterId={activeSemester?.id || ''}
+          tahunPelajaranId={selectedTpId || ''}
+          semesterId={selectedSemId || ''}
           onSuccess={() => refetch()}
         />
       )}

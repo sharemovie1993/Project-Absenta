@@ -8,7 +8,8 @@ import {
   Clock, 
   Calculator,
   Sparkles,
-  Info
+  Info,
+  Calendar
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -33,7 +34,9 @@ export interface RadarRemedialItem {
   status: 'needs_remedial' | 'unassessed' | 'completed';
   catatan?: string;
   tahun_pelajaran_id?: string;
+  tahun_pelajaran_nama?: string;
   semester_id?: string;
+  semester_nama?: string;
 }
 
 interface RemedialQuickModalProps {
@@ -188,14 +191,41 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
             <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight">
               Bedah Nilai &amp; Remedial Siswa
             </h3>
-            <p className="text-[11px] font-normal text-slate-500 dark:text-slate-400">
-              {item.nama_kelas} &bull; {item.nama_mapel}
+            <p className="text-[11px] font-normal text-slate-500 dark:text-slate-400 flex items-center gap-1.5 flex-wrap">
+              <span>{item.nama_kelas} &bull; {item.nama_mapel}</span>
+              {(item.tahun_pelajaran_nama || item.semester_nama) && (
+                <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/70 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                  TP {item.tahun_pelajaran_nama} &bull; Sem. {item.semester_nama}
+                </span>
+              )}
             </p>
           </div>
         </div>
       }
     >
       <div className="space-y-4">
+        {/* Banner Konteks Periode Akademik & Jaminan Isolasi Database */}
+        <div className="p-3 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-800/60 flex items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300 flex items-center justify-center shrink-0">
+              <Calendar size={15} />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Target: TP {item.tahun_pelajaran_nama || 'Terpilih'} &bull; Semester {item.semester_nama || 'Terpilih'}
+                </span>
+                <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-purple-200 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                  Terkunci Presisi
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Nilai yang disimpan terisolasi mutlak pada periode ini dan tidak akan menimpa semester aktif lainnya.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Identitas Siswa & Target KKM */}
         <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between gap-3">
           <div>
