@@ -106,7 +106,21 @@ export class SupervisiService {
     catatan?: string;
     nilai?: number;
     supervisor_id?: string;
+    tahun_pelajaran_id?: string;
+    semester_id?: string;
   }) {
+    let tpId = data.tahun_pelajaran_id;
+    let semId = data.semester_id;
+    if (!tpId || !semId) {
+      const activeSem = await prisma.semester.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+      });
+      if (activeSem) {
+        tpId = tpId || activeSem.tahun_pelajaran_id;
+        semId = semId || activeSem.id;
+      }
+    }
+
     const created = await prisma.supervisiGuru.create({
       data: {
         tenant_id: tenantId,
@@ -119,6 +133,8 @@ export class SupervisiService {
         catatan: data.catatan,
         nilai: data.nilai,
         supervisor_id: data.supervisor_id,
+        tahun_pelajaran_id: tpId || null,
+        semester_id: semId || null,
       },
     });
 
@@ -179,6 +195,8 @@ export class SupervisiService {
     status?: string;
     startDate?: string;
     endDate?: string;
+    tahun_pelajaran_id?: string;
+    semester_id?: string;
   }) {
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
@@ -187,6 +205,14 @@ export class SupervisiService {
     const where: Prisma.SupervisiGuruWhereInput = {
       tenant_id: tenantId,
     };
+
+    if (query.tahun_pelajaran_id) {
+      where.tahun_pelajaran_id = query.tahun_pelajaran_id;
+    }
+
+    if (query.semester_id) {
+      where.semester_id = query.semester_id;
+    }
 
     if (query.guru_id) {
       where.guru_id = query.guru_id;

@@ -185,8 +185,12 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
   });
 
   const { data: supR, isLoading: lSup } = useQuery({
-    queryKey: ['kurikulum', 'supervisi-dash'],
-    queryFn: () => kurikulumApi.getSupervisi({ limit: 200 }),
+    queryKey: ['kurikulum', 'supervisi-dash', resolvedTahunPelajaranId, resolvedSemesterId],
+    queryFn: () => kurikulumApi.getSupervisi({
+      limit: 200,
+      tahun_pelajaran_id: resolvedTahunPelajaranId,
+      semester_id: resolvedSemesterId,
+    }),
     enabled: hasSupervisiAccess,
     staleTime: 5 * 60 * 1000,
   });

@@ -44,7 +44,9 @@ export const supervisiGuruCreateSchema = z.object({
   nilai: z.number().int().min(0, 'Nilai minimal 0').max(100, 'Nilai maksimal 100').nullable().optional().transform(v => v === null ? undefined : v),
   supervisor_id: z.string().uuid({
     message: 'supervisor_id harus berupa UUID yang valid'
-  }).nullable().optional().transform(v => v === null ? undefined : v)
+  }).nullable().optional().transform(v => v === null ? undefined : v),
+  tahun_pelajaran_id: z.string().uuid().nullable().optional().transform(v => v === null ? undefined : v),
+  semester_id: z.string().uuid().nullable().optional().transform(v => v === null ? undefined : v)
 });
 
 export const supervisiGuruUpdateSchema = z.object({
