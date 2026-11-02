@@ -8,8 +8,6 @@ import ConfirmDialog from '../../ui/ConfirmDialog';
 import {
   Plus,
   Users,
-  LayoutGrid,
-  Table as TableIcon,
   Bell,
   Printer
 } from 'lucide-react';
@@ -26,7 +24,6 @@ import { JadwalPiketPrintModal } from './JadwalPiketPrintModal';
 
 const SingleAssignModal = lazy(() => import('./SingleAssignModal'));
 const BulkAssignModal = lazy(() => import('./BulkAssignModal'));
-const PiketGridView = lazy(() => import('./PiketGridView'));
 const PiketTableView = lazy(() => import('./PiketTableView'));
 const PiketNotifModal = lazy(() => import('../../piket/PiketNotifModal').then(m => ({ default: m.PiketNotifModal })));
 
@@ -59,7 +56,6 @@ export const JadwalPiketGuruView: React.FC<UniversalJadwalPiketGuruProps> = Reac
 
   const [activeHari, setActiveHari] = useState<Hari>(propHari || 'SENIN');
   const [piketFilterMode] = useState<'ALL' | 'MY_PIKET'>('ALL');
-  const [viewMode, setViewMode] = useState<'GRID' | 'TABLE'>('GRID');
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   // Konteks Akademik Terpusat
@@ -205,29 +201,6 @@ export const JadwalPiketGuruView: React.FC<UniversalJadwalPiketGuruProps> = Reac
               </>
             )}
           </div>
-
-          <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={() => setViewMode('GRID')}
-              className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition ${
-                viewMode === 'GRID' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-400'
-              }`}
-            >
-              <LayoutGrid size={13} />
-              <span className="hidden sm:inline">Kartu</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('TABLE')}
-              className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition ${
-                viewMode === 'TABLE' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-400'
-              }`}
-            >
-              <TableIcon size={13} />
-              <span className="hidden sm:inline">Tabel</span>
-            </button>
-          </div>
         </div>
 
         {/* Filter Bar Terpadu */}
@@ -263,29 +236,12 @@ export const JadwalPiketGuruView: React.FC<UniversalJadwalPiketGuruProps> = Reac
           })}
         </div>
 
-        {/* Content View */}
+        {/* Content View: Grouped Operational Table/List */}
         {loading ? (
           <div className="text-center py-20 text-xs text-slate-400">
             <div className="animate-spin rounded-full h-8 w-8 border-2 border-indigo-500 border-t-transparent mx-auto mb-2" />
             Memuat jadwal piket guru...
           </div>
-        ) : activeHariSchedules.length === 0 ? (
-          <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs text-slate-400">
-            Belum ada guru piket yang ditugaskan pada hari ini.
-          </div>
-        ) : viewMode === 'GRID' ? (
-          <Suspense fallback={null}>
-            <PiketGridView
-              schedules={activeHariSchedules}
-              currentGuruId={currentGuruId}
-              isKurikulumAdmin={isKurikulumAdmin}
-              onEdit={handleOpenEdit}
-              onDelete={(id) => {
-                setItemToDelete(id);
-                setDeleteConfirmOpen(true);
-              }}
-            />
-          </Suspense>
         ) : (
           <Suspense fallback={null}>
             <PiketTableView
