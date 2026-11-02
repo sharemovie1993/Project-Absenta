@@ -357,6 +357,7 @@ export const InputNilaiView: React.FC<UniversalInputNilaiViewProps> = React.memo
   }, [isReadOnly, isArchivedAcademic, activeYear?.nama, activeRoleTab, currentClassSubjectDetail?.nama_guru]);
 
   const tabOptions: TabOption[] = useMemo(() => {
+    if (isModal) return [];
     const opts: TabOption[] = [];
     if (hasTeachingTasks || !canSupervise) {
       opts.push({ id: 'my_tasks', label: 'Tugas Saya', icon: BookOpen });
@@ -365,7 +366,7 @@ export const InputNilaiView: React.FC<UniversalInputNilaiViewProps> = React.memo
       opts.push({ id: 'supervisi', label: 'Supervisi', icon: Layers });
     }
     return opts;
-  }, [hasTeachingTasks, canSupervise]);
+  }, [isModal, hasTeachingTasks, canSupervise]);
 
   const [tabInitialized, setTabInitialized] = useState(false);
   useEffect(() => {
@@ -501,8 +502,10 @@ export const InputNilaiView: React.FC<UniversalInputNilaiViewProps> = React.memo
     existingGrades: memoizedExistingGrades,
   });
 
-  // Guru Mapel TIDAK BOLEH mencetak rapor — hak cetak rapor hanya ada pada Wali Kelas, Kurikulum, atau Admin di tab supervisi luar modal
+  // Guru Mapel TIDAK BOLEH mencetak rapor atau melihat tombol monitoring (hanya untuk supervisi/wali kelas)
+  const isGuruMapelContext = isModal || activeRoleTab === 'my_tasks';
   const canPrintRapor = !isModal && activeRoleTab === 'supervisi' && canSupervise;
+  const canShowMonitoring = !isGuruMapelContext && canSupervise;
 
   const handleNavigateCetakRapor = useCallback(() => {
     if (!canPrintRapor) return;
@@ -569,22 +572,24 @@ export const InputNilaiView: React.FC<UniversalInputNilaiViewProps> = React.memo
                 />
               </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowMonitoringModal(true)}
-                  className="flex items-center gap-1.5 px-2.5 sm:px-3 h-[32px] rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 font-bold text-xs shadow-2xs transition-all cursor-pointer shrink-0"
-                  title="Buka Status Monitoring Pengisian Mapel Seluruh Rombel"
-                >
-                  <BarChart3 className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                  <span>Monitoring</span>
-                </button>
-              </div>
+              {canShowMonitoring && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowMonitoringModal(true)}
+                    className="flex items-center gap-1.5 px-2.5 sm:px-3 h-[32px] rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 font-bold text-xs shadow-2xs transition-all cursor-pointer shrink-0"
+                    title="Buka Status Monitoring Pengisian Mapel Seluruh Rombel"
+                  >
+                    <BarChart3 className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                    <span>Monitoring</span>
+                  </button>
+                </div>
+              )}
             </div>
           ) : undefined
         }
         actionsRight={
-          tabOptions.length <= 1 ? (
+          (canShowMonitoring && tabOptions.length <= 1) ? (
             <div className="self-end pb-0.5">
               <button
                 type="button"
