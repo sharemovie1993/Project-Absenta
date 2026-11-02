@@ -18,7 +18,7 @@ import {
 import { raporApi } from '@/api/rapor.api';
 import { HubCard } from '@/components/ui/hub';
 import { RemedialQuickModal, RadarRemedialItem } from './RemedialQuickModal';
-import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
+import { useAcademicFilter } from '@/components/common/academic-filter';
 
 interface TeacherRadarRemedialSubTabProps {
   guruId?: string;
@@ -34,23 +34,16 @@ export const TeacherRadarRemedialSubTab: React.FC<TeacherRadarRemedialSubTabProp
   const [statusFilter, setStatusFilter] = useState<'all' | 'needs_remedial' | 'unassessed' | 'completed'>('all');
   const [activeModalItem, setActiveModalItem] = useState<RadarRemedialItem | null>(null);
 
-  const filter = useAcademicFilter({
+  const { activeYear, activeSemester } = useAcademicFilter({
     enableTp: true,
     enableSemester: true,
   });
 
-  const selectedTpId = filter.values.tahunPelajaranId || filter.activeYear?.id;
-  const selectedSemId = filter.values.semesterId || filter.activeSemester?.id;
-
-  const isCurrentActivePeriod = 
-    Boolean(filter.activeYear?.id && selectedTpId === filter.activeYear.id) &&
-    Boolean(!selectedSemId || !filter.activeSemester?.id || selectedSemId === filter.activeSemester.id);
-
   const { data: radarRes, isLoading, refetch } = useQuery({
-    queryKey: ['rapor-radar-remedial', guruId, selectedTpId, selectedSemId],
+    queryKey: ['rapor-radar-remedial', guruId, activeYear?.id, activeSemester?.id],
     queryFn: () => raporApi.getRadarRemedial({
-      tahun_pelajaran_id: selectedTpId,
-      semester_id: selectedSemId,
+      tahun_pelajaran_id: activeYear?.id,
+      semester_id: activeSemester?.id,
       kkm: 70,
     }).catch(() => ({ success: true, data: null })),
     staleTime: 30 * 1000,
@@ -127,32 +120,18 @@ export const TeacherRadarRemedialSubTab: React.FC<TeacherRadarRemedialSubTabProp
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Pantau dan tuntaskan nilai siswa pada semester berjalan maupun semester lampau tanpa merusak rekam nilai periode lain.
+              Pantau dan tuntaskan siswa yang butuh perbaikan nilai pada semester berjalan agar tidak menjadi beban kelulusan.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-          {isCurrentActivePeriod ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-xs font-bold text-emerald-700 dark:text-emerald-300 shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Semester Berjalan (Aktif)
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-xs font-bold text-amber-700 dark:text-amber-300 shadow-2xs">
-              <Clock size={13} />
-              Mode Arsip Periode Lampau
-            </span>
-          )}
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-xs font-bold text-emerald-700 dark:text-emerald-300 shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            {activeSemester?.nama || 'Semester Ganjil'} {activeYear?.nama || ''}
+          </span>
         </div>
       </div>
-
-      {/* ─── Filter Akademik Terpadu (Pilih Tahun Pelajaran & Semester) ─── */}
-      <AcademicFilterToolbar
-        {...filter.toolbarProps}
-        variant="card"
-        className="shadow-2xs"
-      />
 
       {/* ─── Stat KPI Cards (Interaktif 1-Click Quick Filter) ─── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -308,111 +287,115 @@ export const TeacherRadarRemedialSubTab: React.FC<TeacherRadarRemedialSubTabProp
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filteredItems.map((item) => {
-              const isRemedial = item.status === 'needs_remedial';
-              const isUnassessed = item.status === 'unassessed';
-              const isCompleted = item.status === 'completed';
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <table className="w-full text-left border-collapse min-w-[700px]">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-800/50 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="py-3 px-3.5 w-12 text-center">No</th>
+                  <th className="py-3 px-3.5">Nama Siswa</th>
+                  <th className="py-3 px-3.5">Kelas</th>
+                  <th className="py-3 px-3.5">Mata Pelajaran</th>
+                  <th className="py-3 px-3.5 text-center">Nilai Saat Ini</th>
+                  <th className="py-3 px-3 text-center">KKM</th>
+                  <th className="py-3 px-3.5">Status Radar</th>
+                  <th className="py-3 px-3.5 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs">
+                {filteredItems.map((item, idx) => {
+                  const isRemedial = item.status === 'needs_remedial';
+                  const isUnassessed = item.status === 'unassessed';
+                  const isCompleted = item.status === 'completed';
 
-              return (
-                <div
-                  key={item.id}
-                  className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:border-purple-300 dark:hover:border-purple-700 transition-all shadow-xs flex flex-col justify-between"
-                >
-                  <div>
-                    {/* Header Item: Tag Kelas & Badge Status */}
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-700 dark:bg-purple-950/80 dark:text-purple-300 font-bold text-xs">
-                        {item.nama_kelas}
-                      </span>
-                      <div
-                        className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
-                          isRemedial
-                            ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800'
-                            : isUnassessed
-                            ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800'
-                            : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800'
-                        }`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            isRemedial
-                              ? 'bg-rose-500 animate-pulse'
-                              : isUnassessed
-                              ? 'bg-amber-500'
-                              : 'bg-emerald-500'
-                          }`}
-                        />
-                        <span>
-                          {isRemedial
-                            ? 'Butuh Remedial'
-                            : isUnassessed
-                            ? 'Belum Ada Nilai'
-                            : 'Tuntas Remedial'}
+                  return (
+                    <tr
+                      key={item.id}
+                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors group"
+                    >
+                      <td className="py-3 px-3.5 text-center text-slate-400 font-semibold">
+                        {idx + 1}
+                      </td>
+                      <td className="py-3 px-3.5">
+                        <div className="font-bold text-slate-900 dark:text-white">
+                          {item.nama_siswa}
+                        </div>
+                        <div className="text-[11px] text-slate-400 font-normal">
+                          NIS: {item.nis || '-'}
+                        </div>
+                      </td>
+                      <td className="py-3 px-3.5">
+                        <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 font-bold text-[11px] border border-purple-200/60 dark:border-purple-800/60">
+                          {item.nama_kelas}
                         </span>
-                      </div>
-                    </div>
-
-                    {/* Nama Siswa & NIS */}
-                    <h5 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm line-clamp-1">
-                      {item.nama_siswa}
-                    </h5>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      NIS: {item.nis || '-'} &bull; {item.nama_mapel}
-                    </p>
-
-                    {/* Score Compare Strip */}
-                    <div className="mt-3 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/80 flex items-center justify-between text-xs">
-                      <div>
-                        <span className="text-[10px] text-slate-400 block font-medium">Nilai Saat Ini</span>
+                      </td>
+                      <td className="py-3 px-3.5 font-medium text-slate-700 dark:text-slate-300">
+                        {item.nama_mapel}
+                      </td>
+                      <td className="py-3 px-3.5 text-center">
                         <span
-                          className={`font-black text-sm ${
+                          className={`inline-block px-2.5 py-1 rounded-lg font-black text-xs ${
                             isRemedial
-                              ? 'text-rose-600 dark:text-rose-400'
+                              ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
                               : isUnassessed
-                              ? 'text-amber-600 dark:text-amber-400 italic font-semibold text-xs'
-                              : 'text-emerald-600 dark:text-emerald-400'
+                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300 italic font-semibold text-[11px]'
+                              : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
                           }`}
                         >
                           {item.nilai_saat_ini !== null ? item.nilai_saat_ini : 'Kosong'}
                         </span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-[10px] text-slate-400 block font-medium">Standar KKM</span>
-                        <span className="font-extrabold text-sm text-purple-600 dark:text-purple-400">
-                          {kkm}
+                      </td>
+                      <td className="py-3 px-3 text-center font-bold text-slate-600 dark:text-slate-300">
+                        {kkm}
+                      </td>
+                      <td className="py-3 px-3.5">
+                        <span
+                          className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                            isRemedial
+                              ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800'
+                              : isUnassessed
+                              ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800'
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              isRemedial
+                                ? 'bg-rose-500 animate-pulse'
+                                : isUnassessed
+                                ? 'bg-amber-500'
+                                : 'bg-emerald-500'
+                            }`}
+                          />
+                          <span>
+                            {isRemedial
+                              ? 'Butuh Remedial'
+                              : isUnassessed
+                              ? 'Belum Ada Nilai'
+                              : 'Tuntas Remedial'}
+                          </span>
                         </span>
-                      </div>
-                    </div>
-
-                    {/* Catatan Perbaikan jika ada */}
-                    {item.catatan && (
-                      <p className="text-[10px] text-slate-400 mt-1.5 line-clamp-1 italic">
-                        {item.catatan}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Footer: Tombol Eksekusi Cepat */}
-                  <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setActiveModalItem(item)}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        isRemedial
-                          ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
-                          : isUnassessed
-                          ? 'bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
-                          : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                      }`}
-                    >
-                      <span>{isCompleted ? 'Perbarui Nilai' : 'Input Nilai Remedial'}</span>
-                      <ArrowRight size={13} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                      </td>
+                      <td className="py-3 px-3.5 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setActiveModalItem(item)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs ${
+                            isRemedial
+                              ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                              : isUnassessed
+                              ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                              : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                          }`}
+                        >
+                          <span>{isCompleted ? 'Perbarui Nilai' : 'Input Remedial'}</span>
+                          <ArrowRight size={13} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </HubCard>
@@ -423,8 +406,8 @@ export const TeacherRadarRemedialSubTab: React.FC<TeacherRadarRemedialSubTabProp
           isOpen={!!activeModalItem}
           onClose={() => setActiveModalItem(null)}
           item={activeModalItem}
-          tahunPelajaranId={selectedTpId || ''}
-          semesterId={selectedSemId || ''}
+          tahunPelajaranId={activeYear?.id || ''}
+          semesterId={activeSemester?.id || ''}
           onSuccess={() => refetch()}
         />
       )}
