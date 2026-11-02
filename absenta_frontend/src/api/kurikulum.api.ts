@@ -265,6 +265,11 @@ export const kurikulumApi = {
   },
 
   // Kalender Akademik - Compatibility Aliases
+  getCalendar: async (tahun_pelajaran_id?: string) => {
+    const params = tahun_pelajaran_id ? `?tahun_pelajaran_id=${tahun_pelajaran_id}` : '';
+    const response = await api.get(`/kurikulum/kalender${params}`);
+    return response.data;
+  },
   getCalendarEvents: async (tahun_pelajaran_id?: string) => {
     const params = tahun_pelajaran_id ? `?tahun_pelajaran_id=${tahun_pelajaran_id}` : '';
     const response = await api.get(`/kurikulum/kalender${params}`);

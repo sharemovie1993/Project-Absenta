@@ -170,17 +170,29 @@ export const KalenderAkademikView: React.FC<UniversalKalenderAkademikViewProps> 
     }
   }, [activeTp, tahunPelajaranId]);
 
-  const { data: events = [], isLoading } = useQuery<CalendarEvent[]>({
+  const { data: rawEvents, isLoading } = useQuery({
     queryKey: ['kalender-akademik', tahunPelajaranId],
-    queryFn: () => kurikulumApi.getCalendar(tahunPelajaranId || undefined),
+    queryFn: () => kurikulumApi.getCalendarEvents(tahunPelajaranId || undefined),
     staleTime: 1000 * 60 * 2,
   });
 
-  const { data: statsData } = useQuery<CalendarStats | null>({
+  const events: CalendarEvent[] = useMemo(() => {
+    if (Array.isArray(rawEvents)) return rawEvents;
+    if (Array.isArray((rawEvents as any)?.data)) return (rawEvents as any).data;
+    return [];
+  }, [rawEvents]);
+
+  const { data: rawStatsData } = useQuery({
     queryKey: ['kalender-stats', tahunPelajaranId],
     queryFn: () => kurikulumApi.getCalendarStats(tahunPelajaranId || undefined),
     staleTime: 1000 * 60 * 2,
   });
+
+  const statsData: CalendarStats | null = useMemo(() => {
+    if (!rawStatsData) return null;
+    if ((rawStatsData as any)?.data) return (rawStatsData as any).data;
+    return rawStatsData as CalendarStats;
+  }, [rawStatsData]);
 
   const { data: rawDbPresets } = useQuery({
     queryKey: ['kalender-presets'],
