@@ -23,6 +23,7 @@ export interface SubjectScoreDetail {
   kkm: number;
   semester_id?: string;
   tahun_pelajaran_id?: string;
+  catatan?: string;
 }
 
 export interface SubjectMatrixRow {
@@ -52,8 +53,8 @@ export class NilaiMatrixService {
       throw new Error('siswa_id wajib disertakan');
     }
 
-    // 1. Ambil Profil Sekolah Tenant (Multi-Tenant & Multi-Jenjang Context)
-    const sekolahProfile = await prisma.sekolahProfile.findFirst({
+    // 1. Ambil Profil Sekolah Tenant (Nama model: Sekolah)
+    const sekolah = await prisma.sekolah.findFirst({
       where: { tenant_id: tenantId },
       select: {
         jenjang: true,
@@ -62,7 +63,7 @@ export class NilaiMatrixService {
       },
     });
 
-    // 2. Ambil Profil Siswa dan Kelas Binaan Saat Ini
+    // 2. Ambil Profil Siswa dan Kelas
     const student = await prisma.siswa.findFirst({
       where: {
         id: siswa_id,
@@ -100,9 +101,21 @@ export class NilaiMatrixService {
       throw new Error('Data siswa tidak ditemukan di tenant ini');
     }
 
+    // Ambil Periode Aktif Tenant sebagai acuan fallback
+    const [activeTp, activeSem] = await Promise.all([
+      prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, tahun: true },
+      }),
+      prisma.semester.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, nama_semester: true, tahun_pelajaran_id: true },
+      }),
+    ]);
+
     // 3. Tentukan Rentang Tingkat Berdasarkan Jenjang Sekolah
-    const jenjang = (sekolahProfile?.jenjang || 'SMK').toUpperCase();
-    const durasiSmk = sekolahProfile?.durasi_smk || '3_TAHUN';
+    const jenjang = (sekolah?.jenjang || 'SMK').toUpperCase();
+    const durasiSmk = sekolah?.durasi_smk || '3_TAHUN';
     const isSmk4Tahun = durasiSmk === '4_TAHUN' && (jenjang === 'SMK' || jenjang === 'MAK');
 
     let tingkatMin = 10;
@@ -125,7 +138,7 @@ export class NilaiMatrixService {
     }
 
     const currentTingkat = student.Kelas?.tingkat || tingkatMin;
-    const currentSemesterNama = (student.Semester?.nama_semester || 'GANJIL').toUpperCase();
+    const currentSemesterNama = (student.Semester?.nama_semester || activeSem?.nama_semester || 'GANJIL').toUpperCase();
     const isCurrentGenap = currentSemesterNama.includes('GENAP');
     const currentSemesterIndex = (currentTingkat - baseTingkatOffset) * 2 + (isCurrentGenap ? 2 : 1);
 
@@ -203,7 +216,22 @@ export class NilaiMatrixService {
       }
     });
 
-    // 6. Ambil Seluruh Nilai Siswa (Query Terindeks B-Tree: @@index([tenant_id, siswa_id]))
+    // 6. Kumpulkan SEMUA Mata Pelajaran yang Relevan untuk Siswa ini
+    // A. Dari Jadwal KBM resmi di kelas siswa saat ini
+    const classKbmMapels = student.kelas_id ? await prisma.jadwalKBM.findMany({
+      where: {
+        tenant_id: tenantId,
+        kelas_id: student.kelas_id,
+      },
+      select: {
+        mapel_id: true,
+        Mapel: {
+          select: { id: true, nama_mapel: true, kode_mapel: true },
+        },
+      },
+    }) : [];
+
+    // B. Dari NilaiSiswa yang pernah tercatat untuk siswa ini di semester manapun
     const allGrades = await prisma.nilaiSiswa.findMany({
       where: {
         tenant_id: tenantId,
@@ -217,6 +245,7 @@ export class NilaiMatrixService {
         nilai: true,
         nilai_akhir_sumatif: true,
         nilai_rapor_final: true,
+        catatan_deskripsi: true,
         Mapel: {
           select: {
             id: true,
@@ -239,47 +268,67 @@ export class NilaiMatrixService {
       },
     });
 
-    // 7. In-Memory Pivot: Bentuk Matriks per Mata Pelajaran (O(N) Single-Pass)
-    const mapelMap = new Map<string, SubjectMatrixRow>();
+    // 7. Bentuk Kamus Lengkap Seluruh Mata Pelajaran (SSOT Subject Catalog)
+    const masterSubjectMap = new Map<string, { id: string; nama_mapel: string; kode_mapel?: string }>();
+
+    classKbmMapels.forEach((k) => {
+      if (k.Mapel) {
+        masterSubjectMap.set(k.Mapel.id, {
+          id: k.Mapel.id,
+          nama_mapel: k.Mapel.nama_mapel,
+          kode_mapel: k.Mapel.kode_mapel || undefined,
+        });
+      }
+    });
 
     allGrades.forEach((g) => {
-      const mapelId = g.mapel_id;
-      let row = mapelMap.get(mapelId);
-
-      if (!row) {
-        row = {
-          mapel_id: mapelId,
-          kode_mapel: g.Mapel?.kode_mapel || undefined,
-          nama_mapel: g.Mapel?.nama_mapel || 'Mata Pelajaran',
-          kkm: kkmThreshold,
-          scores: {},
-          rata_rata: null,
-          has_red: false,
-          red_semesters: [],
-        };
-
-        // Inisialisasi sel untuk setiap header semester
-        headers.forEach((h) => {
-          row!.scores[h.index] = {
-            nilai: null,
-            status: h.is_future ? 'future' : 'unassessed',
-            kkm: kkmThreshold,
-          };
+      if (g.Mapel && !masterSubjectMap.has(g.Mapel.id)) {
+        masterSubjectMap.set(g.Mapel.id, {
+          id: g.Mapel.id,
+          nama_mapel: g.Mapel.nama_mapel,
+          kode_mapel: g.Mapel.kode_mapel || undefined,
         });
-
-        mapelMap.set(mapelId, row);
       }
+    });
 
-      // Tentukan nomor semester dari lookup historis atau fallback estimasi
+    // Inisialisasi Seluruh Baris Matriks untuk Semua Mapel
+    const matrixMap = new Map<string, SubjectMatrixRow>();
+
+    masterSubjectMap.forEach((subj, mapelId) => {
+      const row: SubjectMatrixRow = {
+        mapel_id: mapelId,
+        kode_mapel: subj.kode_mapel,
+        nama_mapel: subj.nama_mapel,
+        kkm: kkmThreshold,
+        scores: {},
+        rata_rata: null,
+        has_red: false,
+        red_semesters: [],
+      };
+
+      headers.forEach((h) => {
+        row.scores[h.index] = {
+          nilai: null,
+          status: h.is_future ? 'future' : 'unassessed',
+          kkm: kkmThreshold,
+        };
+      });
+
+      matrixMap.set(mapelId, row);
+    });
+
+    // 8. Petakan Nilai Riil ke Kolom Semester Matriks
+    allGrades.forEach((g) => {
+      const row = matrixMap.get(g.mapel_id);
+      if (!row) return;
+
       const periodKey = `${g.tahun_pelajaran_id}_${g.semester_id}`;
       let semNum = periodToSemesterIndexMap.get(periodKey);
 
       if (!semNum) {
-        // Fallback jika tidak tercatat di SiswaAkademik: gunakan semester aktif siswa jika sama
-        if (g.tahun_pelajaran_id === student.TahunPelajaran?.id && g.semester_id === student.Semester?.id) {
+        if (activeTp?.id === g.tahun_pelajaran_id && activeSem?.id === g.semester_id) {
           semNum = currentSemesterIndex;
         } else {
-          // Fallback parsing nama semester
           const isGenap = (g.Semester?.nama_semester || '').toUpperCase().includes('GENAP');
           semNum = (currentTingkat - baseTingkatOffset) * 2 + (isGenap ? 2 : 1);
         }
@@ -296,6 +345,7 @@ export class NilaiMatrixService {
             kkm: kkmThreshold,
             semester_id: g.semester_id,
             tahun_pelajaran_id: g.tahun_pelajaran_id,
+            catatan: g.catatan_deskripsi || undefined,
           };
 
           if (isRed) {
@@ -309,8 +359,8 @@ export class NilaiMatrixService {
       }
     });
 
-    // 8. Hitung Rata-Rata Kumulatif & Urutkan Baris Matriks
-    const matrixRows = Array.from(mapelMap.values());
+    // 9. Hitung Rata-Rata Kumulatif & Urutkan
+    const matrixRows = Array.from(matrixMap.values());
     let totalMapelMerah = 0;
     const redSummaryList: string[] = [];
 
@@ -331,7 +381,7 @@ export class NilaiMatrixService {
       }
     });
 
-    // Prioritaskan mapel yang memiliki nilai merah di urutan teratas agar langsung tertangkap mata walas
+    // Mapel dengan nilai merah selalu di atas agar perhatian wali kelas langsung tertuju ke sana
     matrixRows.sort((a, b) => {
       if (a.has_red && !b.has_red) return -1;
       if (!a.has_red && b.has_red) return 1;
@@ -360,8 +410,8 @@ export class NilaiMatrixService {
         daftar_mapel_merah: redSummaryList,
         is_clean: totalMapelMerah === 0,
         kesimpulan: totalMapelMerah === 0
-          ? 'Luar biasa! Seluruh mata pelajaran tuntas di atas KKM di setiap semester.'
-          : `Perhatian: Terdapat ${totalMapelMerah} mata pelajaran dengan nilai di bawah KKM (${kkmThreshold}) pada semester lampau/berjalan.`,
+          ? `Kondisi Akademik Prima: Seluruh ${matrixRows.length} mata pelajaran tuntas di atas KKM.`
+          : `Perhatian: Terdeteksi ${totalMapelMerah} mata pelajaran dengan nilai di bawah KKM (${kkmThreshold}) pada semester lampau/berjalan.`,
       },
     };
   }

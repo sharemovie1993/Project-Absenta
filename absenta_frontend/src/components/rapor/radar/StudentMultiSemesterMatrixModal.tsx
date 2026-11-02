@@ -39,18 +39,57 @@ export const StudentMultiSemesterMatrixModal: React.FC<StudentMultiSemesterMatri
 }) => {
   const { jenjang, durasiSmk } = useJenjang();
 
-  const { data: matrixRes, isLoading } = useQuery({
+  const { 
+    data: matrixRes, 
+    isLoading, 
+    isError, 
+    error, 
+    refetch 
+  } = useQuery({
     queryKey: ['matrix-lintas-semester', siswaId, kkm],
-    queryFn: () => raporApi.getMatrixLintasSemester({ siswa_id: siswaId, kkm }).catch(() => ({ success: true, data: null })),
+    queryFn: async () => {
+      const res = await raporApi.getMatrixLintasSemester({ siswa_id: siswaId, kkm });
+      return res?.data || res;
+    },
     enabled: isOpen && Boolean(siswaId),
     staleTime: 60 * 1000,
+    retry: 1,
   });
 
   const matrixData = matrixRes?.data || matrixRes || {};
-  const headers: any[] = matrixData?.headers || [];
+
+  // Dynamic fallback headers jika server headers kosong
+  const fallbackHeaders = useMemo(() => {
+    const isSmk4 = durasiSmk === '4_TAHUN' && (jenjang === 'SMK' || jenjang === 'MAK');
+    const totalSmt = (jenjang === 'SD' || jenjang === 'MI') ? 12 : isSmk4 ? 8 : 6;
+    const baseOffset = (jenjang === 'SD' || jenjang === 'MI') ? 1 : (jenjang === 'SMP' || jenjang === 'MTS') ? 7 : 10;
+
+    return Array.from({ length: totalSmt }, (_, i) => {
+      const semIdx = i + 1;
+      const t = baseOffset + Math.floor(i / 2);
+      const isGanjil = i % 2 === 0;
+      const tingkLabel = (jenjang === 'SD' || jenjang === 'MI') 
+        ? `Kelas ${t}` 
+        : (jenjang === 'SMP' || jenjang === 'MTS')
+        ? `Kelas ${t === 7 ? 'VII' : t === 8 ? 'VIII' : 'IX'}`
+        : `Kelas ${t === 10 ? 'X' : t === 11 ? 'XI' : t === 12 ? 'XII' : 'XIII'}`;
+
+      return {
+        index: semIdx,
+        label: `Smt ${semIdx}`,
+        sublabel: `${tingkLabel} ${isGanjil ? 'Ganjil' : 'Genap'}`,
+        tingkat: t,
+        semester_nama: isGanjil ? 'Ganjil' : 'Genap',
+        is_current: semIdx === 1,
+        is_future: semIdx > 1,
+      };
+    });
+  }, [jenjang, durasiSmk]);
+
+  const headers: any[] = (matrixData?.headers && matrixData.headers.length > 0) ? matrixData.headers : fallbackHeaders;
   const matrixRows: any[] = matrixData?.matrix || [];
   const diagnostics = matrixData?.diagnostics || {
-    total_mapel: 0,
+    total_mapel: matrixRows.length,
     total_mapel_merah: 0,
     daftar_mapel_merah: [],
     is_clean: true,
@@ -122,6 +161,18 @@ export const StudentMultiSemesterMatrixModal: React.FC<StudentMultiSemesterMatri
         <div className="py-16 text-center text-xs text-slate-400 space-y-2">
           <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto" />
           <p>Memindai rekam jejak nilai seluruh semester siswa...</p>
+        </div>
+      ) : isError ? (
+        <div className="py-12 text-center text-xs space-y-3">
+          <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-400 flex items-center justify-center mx-auto">
+            <AlertCircle size={22} />
+          </div>
+          <p className="text-slate-600 dark:text-slate-300 font-medium">
+            Gagal memuat rekam jejak matriks nilai: {(error as any)?.message || 'Terjadi kesalahan sistem'}
+          </p>
+          <Button type="button" variant="outline" size="sm" onClick={() => refetch()} className="text-xs">
+            Coba Lagi
+          </Button>
         </div>
       ) : (
         <div className="space-y-4">
