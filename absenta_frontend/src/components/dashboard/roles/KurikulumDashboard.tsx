@@ -14,6 +14,12 @@ import {
   SlidersHorizontal,
   RefreshCw,
   BookOpen,
+  CalendarDays,
+  ArrowRightLeft,
+  Printer,
+  ShieldCheck,
+  Zap,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -47,6 +53,10 @@ import { KurikulumPiketTab } from './kurikulum/tabs/KurikulumPiketTab';
 import { KurikulumPerangkatTab } from './kurikulum/tabs/KurikulumPerangkatTab';
 import { KurikulumSupervisiTab } from './kurikulum/tabs/KurikulumSupervisiTab';
 import { KurikulumRaporTab } from './kurikulum/tabs/KurikulumRaporTab';
+import { KurikulumKalenderTab } from './kurikulum/tabs/KurikulumKalenderTab';
+import { KurikulumJamKbmTab } from './kurikulum/tabs/KurikulumJamKbmTab';
+import { KurikulumDelegasiTab } from './kurikulum/tabs/KurikulumDelegasiTab';
+import { KurikulumCetakTab } from './kurikulum/tabs/KurikulumCetakTab';
 
 export interface KurikulumDashboardProps {
   user?: {
@@ -64,13 +74,17 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
 
   const validTabs: KurikulumTabId[] = [
     'ringkasan',
-    'jadwal',
-    'guru_mapel',
-    'struktur',
-    'piket',
+    'delegasi',
     'perangkat',
     'supervisi',
     'rapor',
+    'kalender',
+    'jam_kbm',
+    'struktur',
+    'guru_mapel',
+    'jadwal',
+    'piket',
+    'cetak',
   ];
 
   // Mobile Filter Collapsible State
@@ -328,47 +342,29 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
 
   const overloadCount = teachersLoad.filter((t) => t.jp > 24).length;
 
-  // Nav Tabs Definition
+  // Nav Tabs Definition (Dikategorisasi berdasarkan 2 Siklus Kerja Kurikulum)
   const navTabs: KurikulumNavTabItem[] = useMemo(
     () => [
+      // ⚡ KATEGORI 1: OPERASIONAL KBM (Daily Live Monitoring & Supervisi)
       {
         id: 'ringkasan',
-        label: 'Ringkasan',
-        shortLabel: 'Beranda',
+        label: 'Monitoring Live KBM',
+        shortLabel: 'Live KBM',
+        category: 'operasional',
         icon: LayoutDashboard,
       },
       {
-        id: 'jadwal',
-        label: 'Jadwal KBM',
-        shortLabel: 'Jadwal',
-        icon: Calendar,
-        badge: conflicts.length > 0 ? `${conflicts.length}` : undefined,
-        badgeColor: 'bg-amber-500 text-white',
-      },
-      {
-        id: 'guru_mapel',
-        label: 'Plotting Guru',
-        shortLabel: 'Guru Mapel',
-        icon: Users,
-        badge: overloadCount > 0 ? `${overloadCount}` : undefined,
-        badgeColor: 'bg-rose-500 text-white',
-      },
-      {
-        id: 'struktur',
-        label: 'Struktur Kurikulum',
-        shortLabel: 'Struktur',
-        icon: Layers,
-      },
-      {
-        id: 'piket',
-        label: 'Jadwal Piket',
-        shortLabel: 'Piket',
-        icon: Clock,
+        id: 'delegasi',
+        label: 'Delegasi & Guru Inval',
+        shortLabel: 'Guru Inval',
+        category: 'operasional',
+        icon: ArrowRightLeft,
       },
       {
         id: 'perangkat',
         label: 'Perangkat Ajar',
         shortLabel: 'Perangkat',
+        category: 'operasional',
         icon: FileText,
         badge: perangkatStats.pending > 0 ? `${perangkatStats.pending}` : undefined,
         badgeColor: 'bg-teal-500 text-white',
@@ -377,13 +373,70 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
         id: 'supervisi',
         label: 'Supervisi Akademik',
         shortLabel: 'Supervisi',
+        category: 'operasional',
         icon: CheckCircle2,
       },
       {
         id: 'rapor',
         label: 'Pleno Rapor',
         shortLabel: 'Rapor',
+        category: 'operasional',
         icon: Award,
+      },
+
+      // ⚙️ KATEGORI 2: PERSIAPAN TAHUN AJARAN (Master Setup & Plotting)
+      {
+        id: 'kalender',
+        label: 'Kalender Akademik',
+        shortLabel: 'Kalender',
+        category: 'persiapan',
+        icon: CalendarDays,
+      },
+      {
+        id: 'jam_kbm',
+        label: 'Jam KBM & Waktu',
+        shortLabel: 'Jam KBM',
+        category: 'persiapan',
+        icon: Clock,
+      },
+      {
+        id: 'struktur',
+        label: 'Struktur Kurikulum',
+        shortLabel: 'Struktur',
+        category: 'persiapan',
+        icon: Layers,
+      },
+      {
+        id: 'guru_mapel',
+        label: 'Plotting Beban Guru',
+        shortLabel: 'Beban Guru',
+        category: 'persiapan',
+        icon: Users,
+        badge: overloadCount > 0 ? `${overloadCount}` : undefined,
+        badgeColor: 'bg-rose-500 text-white',
+      },
+      {
+        id: 'jadwal',
+        label: 'Jadwal Pelajaran',
+        shortLabel: 'Jadwal',
+        category: 'persiapan',
+        icon: Calendar,
+        badge: conflicts.length > 0 ? `${conflicts.length}` : undefined,
+        badgeColor: 'bg-amber-500 text-white',
+      },
+      {
+        id: 'piket',
+        label: 'Jadwal Piket Guru',
+        shortLabel: 'Piket',
+        category: 'persiapan',
+        icon: ShieldCheck,
+      },
+      {
+        id: 'cetak',
+        label: 'Cetak Dokumen & SK',
+        shortLabel: 'Cetak Dokumen',
+        category: 'persiapan',
+        icon: Printer,
       },
     ],
     [conflicts.length, overloadCount, perangkatStats.pending]
@@ -490,6 +543,38 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
             />
           </div>
         )}
+
+        {/* Mobile Horizontal Subtab Scroller (Shopee-Grade Horizontal Scroller) */}
+        <div className="lg:hidden mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 overflow-x-auto no-scrollbar flex items-center gap-1.5 pb-0.5">
+          {navTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleTabSelect(tab.id)}
+                className={cn(
+                  'px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap',
+                  isActive
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                )}
+              >
+                <Icon size={13} className="shrink-0" />
+                <span>{tab.shortLabel || tab.label}</span>
+                {tab.badge !== undefined && (
+                  <span className={cn(
+                    'px-1.5 py-0.2 rounded-full text-[10px] font-bold',
+                    isActive ? 'bg-white/20 text-white' : 'bg-emerald-200/80 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-200'
+                  )}>
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* 2. Desktop 2-Column Layout (>= lg: Left Sidebar Controls + Wide Main Content Canvas) */}
@@ -527,42 +612,104 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
             variant="sidebar"
           />
 
-          {/* Navigasi Menu Vertikal Sidebar */}
-          <nav className="p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1">
-            {navTabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => handleTabSelect(tab.id)}
-                  className={cn(
-                    'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left',
-                    isActive
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
-                  )}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Icon className="w-4 h-4 shrink-0" />
-                    <span>{tab.label}</span>
-                  </div>
-                  {tab.badge !== undefined && (
-                    <span
-                      className={cn(
-                        'px-2 py-0.5 rounded-full text-[11px] font-bold min-w-5 text-center transition-colors',
-                        isActive
-                          ? 'bg-white/20 text-white'
-                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
-                      )}
-                    >
-                      {tab.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+          {/* Navigasi Menu Vertikal Sidebar dengan 2 Kategori Siklus Kerja */}
+          <nav className="p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2.5">
+            {/* ⚡ Seksi 1: OPERASIONAL KBM */}
+            <div className="space-y-0.5">
+              <div className="px-2.5 pt-1 pb-1 flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                  <Zap className="w-3 h-3" />
+                  Operasional KBM
+                </span>
+                <span className="text-[9px] px-1.5 py-0.2 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 rounded font-bold">
+                  Harian
+                </span>
+              </div>
+              {navTabs.filter((t) => t.category === 'operasional').map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => handleTabSelect(tab.id)}
+                    className={cn(
+                      'w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left',
+                      isActive
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    )}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{tab.label}</span>
+                    </div>
+                    {tab.badge !== undefined && (
+                      <span
+                        className={cn(
+                          'px-2 py-0.5 rounded-full text-[10px] font-bold min-w-5 text-center transition-colors shrink-0',
+                          isActive
+                            ? 'bg-white/20 text-white'
+                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
+                        )}
+                      >
+                        {tab.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Garis Pemisah */}
+            <div className="border-t border-slate-100 dark:border-slate-800/80 mx-1.5" />
+
+            {/* ⚙️ Seksi 2: PERSIAPAN TAHUN AJARAN */}
+            <div className="space-y-0.5">
+              <div className="px-2.5 pt-1 pb-1 flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                  <Settings className="w-3 h-3" />
+                  Persiapan TA Baru
+                </span>
+                <span className="text-[9px] px-1.5 py-0.2 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 rounded font-bold">
+                  Setup
+                </span>
+              </div>
+              {navTabs.filter((t) => t.category === 'persiapan').map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => handleTabSelect(tab.id)}
+                    className={cn(
+                      'w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left',
+                      isActive
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    )}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{tab.label}</span>
+                    </div>
+                    {tab.badge !== undefined && (
+                      <span
+                        className={cn(
+                          'px-2 py-0.5 rounded-full text-[10px] font-bold min-w-5 text-center transition-colors shrink-0',
+                          isActive
+                            ? 'bg-white/20 text-white'
+                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
+                        )}
+                      >
+                        {tab.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </nav>
         </aside>
 
@@ -695,6 +842,53 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               className={cn('w-full min-w-0', activeTab === 'rapor' ? 'block' : 'hidden')}
             >
               <KurikulumRaporTab />
+            </div>
+          )}
+
+          {/* TAB 9: DELEGASI & GURU INVAL */}
+          {visitedTabs.has('delegasi') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'delegasi'}
+              className={cn('w-full min-w-0', activeTab === 'delegasi' ? 'block' : 'hidden')}
+            >
+              <KurikulumDelegasiTab />
+            </div>
+          )}
+
+          {/* TAB 10: KALENDER AKADEMIK */}
+          {visitedTabs.has('kalender') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'kalender'}
+              className={cn('w-full min-w-0', activeTab === 'kalender' ? 'block' : 'hidden')}
+            >
+              <KurikulumKalenderTab
+                tahunPelajaranId={resolvedTahunPelajaranId}
+                tahunPelajaranNama={tpTahun}
+              />
+            </div>
+          )}
+
+          {/* TAB 11: JAM KBM & SHIFT */}
+          {visitedTabs.has('jam_kbm') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'jam_kbm'}
+              className={cn('w-full min-w-0', activeTab === 'jam_kbm' ? 'block' : 'hidden')}
+            >
+              <KurikulumJamKbmTab />
+            </div>
+          )}
+
+          {/* TAB 12: CETAK BERKAS KURIKULUM */}
+          {visitedTabs.has('cetak') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'cetak'}
+              className={cn('w-full min-w-0', activeTab === 'cetak' ? 'block' : 'hidden')}
+            >
+              <KurikulumCetakTab />
             </div>
           )}
         </main>

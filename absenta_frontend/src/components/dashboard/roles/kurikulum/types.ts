@@ -2,19 +2,24 @@ import React from 'react';
 
 export type KurikulumTabId =
   | 'ringkasan'
-  | 'jadwal'
-  | 'guru_mapel'
-  | 'struktur'
-  | 'piket'
+  | 'delegasi'
   | 'perangkat'
   | 'supervisi'
-  | 'rapor';
+  | 'rapor'
+  | 'kalender'
+  | 'jam_kbm'
+  | 'struktur'
+  | 'guru_mapel'
+  | 'jadwal'
+  | 'piket'
+  | 'cetak';
 
 export interface KurikulumNavTabItem {
   id: KurikulumTabId;
   label: string;
   shortLabel: string;
   icon: React.ComponentType<{ className?: string; size?: number }>;
+  category: 'operasional' | 'persiapan';
   badge?: string | number | null;
   badgeColor?: string;
 }

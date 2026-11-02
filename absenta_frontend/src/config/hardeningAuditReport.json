@@ -6120,11 +6120,11 @@
     "relativePath": "src\\pages\\kurikulum\\JadwalPiketGuruPage.tsx"
   },
   "jamkbmpage": {
-    "usesLayout": true,
-    "usesAcademicLayout": true,
+    "usesLayout": false,
+    "usesAcademicLayout": false,
     "usesPageLayout": false,
-    "usesUiComponents": true,
-    "usesMemo": true,
+    "usesUiComponents": false,
+    "usesMemo": false,
     "noAnyType": true,
     "safeMapping": true,
     "strictColors": true,
@@ -6159,12 +6159,12 @@
     "filename": "JamKBMPage.tsx",
     "relativePath": "src\\pages\\kurikulum\\JamKBMPage.tsx"
   },
-  "kalender_akademik_page": {
-    "usesLayout": true,
-    "usesAcademicLayout": true,
+  "kalenderakademikpage": {
+    "usesLayout": false,
+    "usesAcademicLayout": false,
     "usesPageLayout": false,
-    "usesUiComponents": true,
-    "usesMemo": true,
+    "usesUiComponents": false,
+    "usesMemo": false,
     "noAnyType": true,
     "safeMapping": true,
     "strictColors": true,
