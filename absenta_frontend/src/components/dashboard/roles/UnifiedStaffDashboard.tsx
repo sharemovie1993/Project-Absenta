@@ -1340,6 +1340,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
               </Suspense>
             ) : (
               <StaffBerandaTab
+                user={user}
                 guruId={guruId}
                 guruNama={guruProfile?.nama_guru || user?.full_name}
                 waliKelasNama={waliKelasNama}

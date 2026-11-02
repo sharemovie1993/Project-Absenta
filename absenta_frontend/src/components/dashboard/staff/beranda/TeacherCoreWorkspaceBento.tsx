@@ -26,6 +26,7 @@ interface TeacherCoreWorkspaceBentoProps {
   totalJpToday?: number;
   onOpenJournal?: (sesi?: any) => void;
   onNavigateTab?: (tabId: string) => void;
+  onSelectSubTab?: (subTab: 'agenda' | 'perangkat' | 'nilai' | 'rekap' | 'supervisi') => void;
   className?: string;
 }
 
@@ -37,6 +38,7 @@ export const TeacherCoreWorkspaceBento: React.FC<TeacherCoreWorkspaceBentoProps>
   totalJpToday = 0,
   onOpenJournal,
   onNavigateTab,
+  onSelectSubTab,
   className,
 }) => {
   const navigate = useNavigate();
@@ -91,7 +93,7 @@ export const TeacherCoreWorkspaceBento: React.FC<TeacherCoreWorkspaceBentoProps>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* ─── KARTU 1: PERANGKAT AJAR (PLANNING) ─── */}
           <div
-            onClick={() => navigate('/kurikulum/perangkat')}
+            onClick={() => onSelectSubTab ? onSelectSubTab('perangkat') : navigate('/kurikulum/perangkat')}
             className="group relative flex flex-col justify-between p-3.5 rounded-xl border border-emerald-100 dark:border-emerald-950/60 bg-gradient-to-br from-emerald-50/50 via-white to-white dark:from-emerald-950/20 dark:via-slate-900 dark:to-slate-900 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-md transition-all duration-200 cursor-pointer"
           >
             <div>
@@ -171,7 +173,7 @@ export const TeacherCoreWorkspaceBento: React.FC<TeacherCoreWorkspaceBentoProps>
 
           {/* ─── KARTU 3: BUKU NILAI & ASESMEN (EVALUATION) ─── */}
           <div
-            onClick={() => navigate('/rapor/input-nilai')}
+            onClick={() => onSelectSubTab ? onSelectSubTab('nilai') : navigate('/rapor/input-nilai')}
             className="group relative flex flex-col justify-between p-3.5 rounded-xl border border-purple-100 dark:border-purple-950/60 bg-gradient-to-br from-purple-50/50 via-white to-white dark:from-purple-950/20 dark:via-slate-900 dark:to-slate-900 hover:border-purple-300 dark:hover:border-purple-700 hover:shadow-md transition-all duration-200 cursor-pointer"
           >
             <div>
@@ -201,7 +203,9 @@ export const TeacherCoreWorkspaceBento: React.FC<TeacherCoreWorkspaceBentoProps>
           {/* ─── KARTU 4: SUPERVISI AKADEMIK SAYA (REFLECTION) ─── */}
           <div
             onClick={() => {
-              if (onNavigateTab) {
+              if (onSelectSubTab) {
+                onSelectSubTab('supervisi');
+              } else if (onNavigateTab) {
                 onNavigateTab('rekap_mapel');
               } else {
                 navigate('/dashboard?tab=rekap_mapel');
