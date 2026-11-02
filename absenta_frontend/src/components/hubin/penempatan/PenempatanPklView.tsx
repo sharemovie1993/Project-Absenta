@@ -542,6 +542,8 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
     onEditMitraKontak: actions.handleOpenEditMitraKontak
   }), [actions, confirm, academicFilter]);
 
+  const isPembimbingMode = activeTab === 'MY_GUIDANCE' || Boolean(propGuruId);
+
   // Table Columns
   const columns = useMemo(() => getPenempatanColumns({
     rawMitra,
@@ -590,7 +592,6 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
         ];
   }, [isGuru, isJurusanScoped, effectiveJurusanNama, isWaliKelas, walikelasKelas, allCount, myGuidanceCount]);
 
-  const isPembimbingMode = activeTab === 'MY_GUIDANCE' || Boolean(propGuruId);
   const renderMobileCard = useCallback((row: SiswaPkl) => (
     <PenempatanMobileCard
       key={row.id}
