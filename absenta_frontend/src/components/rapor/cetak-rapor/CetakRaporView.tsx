@@ -742,25 +742,6 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
               <BarChart3 className="w-3.5 h-3.5 text-indigo-500" />
               <span className="text-[11px]">Mapel</span>
             </Button>
-
-            {/* Shortcut Input Nilai di Mobile */}
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (onNavigateDetail) {
-                  onNavigateDetail(selectedKelas);
-                } else {
-                  navigate(
-                    `/rapor/nilai?kelas_id=${selectedKelas || ''}&tahun_pelajaran_id=${selectedTahunPelajaran || ''}&semester_id=${selectedSemester || ''}`
-                  );
-                }
-              }}
-              className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/80 rounded-xl font-bold text-xs h-9 px-2.5 flex items-center gap-1 shrink-0 cursor-pointer"
-              title="Beralih ke Lembar Penginputan Nilai"
-            >
-              <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
-              <span className="text-[11px]">Nilai</span>
-            </Button>
           </div>
         </div>
       ) : (

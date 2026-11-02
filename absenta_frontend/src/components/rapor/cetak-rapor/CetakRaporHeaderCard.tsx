@@ -146,19 +146,6 @@ export const CetakRaporHeaderCard: React.FC<CetakRaporHeaderCardProps> = memo(({
                 onChange={onRoleTabChange}
               />
             )}
-
-            {/* Quick Nav: Lembar Input Nilai (Berada di atas disamping TabSwitcher) */}
-            {onNavigateInputNilai && (
-              <Button
-                variant="outline"
-                onClick={onNavigateInputNilai}
-                className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-bold text-xs h-[38px] px-2.5 sm:px-3.5 flex items-center gap-1.5 cursor-pointer shrink-0"
-                title="Beralih ke Lembar Penginputan Nilai e-Rapor"
-              >
-                <BookOpen className="w-4 h-4 text-indigo-500 shrink-0" />
-                <span>Input Nilai</span>
-              </Button>
-            )}
           </div>
         </div>
       )}
@@ -247,19 +234,6 @@ export const CetakRaporHeaderCard: React.FC<CetakRaporHeaderCardProps> = memo(({
                 >
                   <BarChart3 className="w-3.5 h-3.5 text-indigo-500" />
                   <span className="text-[11px]">Mapel</span>
-                </Button>
-              )}
-
-              {/* Shortcut Input Nilai di Mobile */}
-              {onNavigateInputNilai && (
-                <Button
-                  variant="outline"
-                  onClick={onNavigateInputNilai}
-                  className="sm:hidden border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/80 rounded-xl font-bold text-xs h-[38px] px-2.5 flex items-center gap-1 shrink-0 cursor-pointer"
-                  title="Beralih ke Lembar Penginputan Nilai"
-                >
-                  <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
-                  <span className="text-[11px]">Nilai</span>
                 </Button>
               )}
             </div>
