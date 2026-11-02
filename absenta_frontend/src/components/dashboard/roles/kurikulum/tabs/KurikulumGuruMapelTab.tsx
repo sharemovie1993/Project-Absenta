@@ -9,7 +9,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { GuruMapelView } from '../../../kurikulum/guru-mapel/GuruMapelView';
+import { GuruMapelView } from '@/components/kurikulum/guru-mapel/GuruMapelView';
 
 export interface KurikulumGuruMapelTabProps {
   teachersLoad: { id: string; nama: string; jp: number; nip?: string }[];
