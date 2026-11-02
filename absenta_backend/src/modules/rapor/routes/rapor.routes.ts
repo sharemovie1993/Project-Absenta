@@ -24,6 +24,8 @@ export default async function raporRoutes(fastify: any) {
   fastify.get('/detail', { preHandler: [requireCapability(academicStaffCaps), determineDataScope()]}, RaporController.getDetail);
   fastify.get('/leger', { preHandler: [requireCapability(academicStaffCaps), determineDataScope()]}, RaporController.getLeger);
   fastify.get('/leger/export', { preHandler: [requireCapability(academicStaffCaps), determineDataScope()]}, RaporController.exportLeger);
+  fastify.get('/transkrip', { preHandler: [requireCapability(academicStaffCaps), determineDataScope()] }, RaporController.getTranskrip);
+  fastify.get('/transkrip/:siswa_id', { preHandler: [requireCapability(academicStaffCaps), determineDataScope()] }, RaporController.getTranskrip);
   const settingsReadCaps = [
     ...academicStaffCaps,
     'core.sekolah.update.profile',

@@ -105,7 +105,7 @@ export class RaporController {
   static async getTranskrip(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
-      const { siswa_id } = req.query;
+      const siswa_id = req.query?.siswa_id || req.params?.siswa_id || req.params?.id;
 
       if (!siswa_id) {
         return reply.status(400).send({
