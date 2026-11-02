@@ -13,20 +13,29 @@ import {
   Sparkles,
   Award,
   X,
-  Check
+  Check,
+  Copy,
+  Share2
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { raporApi } from '@/api/rapor.api';
 import { HubCard } from '@/components/ui/hub';
 import { RemedialQuickModal, RadarRemedialItem } from './RemedialQuickModal';
 import { useAcademicFilter } from '@/components/common/academic-filter';
 
-interface TeacherRadarRemedialSubTabProps {
+export interface UniversalRadarRemedialProps {
   guruId?: string;
+  kelasId?: string;
+  kelasNama?: string;
+  roleMode?: 'guru' | 'walas';
   className?: string;
 }
 
-export const TeacherRadarRemedialSubTab: React.FC<TeacherRadarRemedialSubTabProps> = React.memo(({
+export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> = React.memo(({
   guruId,
+  kelasId,
+  kelasNama,
+  roleMode = 'guru',
   className,
 }) => {
   const [search, setSearch] = useState('');
@@ -40,8 +49,10 @@ export const TeacherRadarRemedialSubTab: React.FC<TeacherRadarRemedialSubTabProp
   });
 
   const { data: radarRes, isLoading, refetch } = useQuery({
-    queryKey: ['rapor-radar-remedial', guruId, activeYear?.id, activeSemester?.id],
+    queryKey: ['rapor-radar-remedial', guruId, kelasId, roleMode, activeYear?.id, activeSemester?.id],
     queryFn: () => raporApi.getRadarRemedial({
+      guru_id: roleMode === 'walas' ? undefined : guruId,
+      kelas_id: kelasId || undefined,
       tahun_pelajaran_id: activeYear?.id,
       semester_id: activeSemester?.id,
       kkm: 70,
@@ -101,6 +112,36 @@ export const TeacherRadarRemedialSubTab: React.FC<TeacherRadarRemedialSubTabProp
   }, [rawItems, selectedKelasFilter, statusFilter, search]);
 
   const kkm = stats.kkm_threshold || 70;
+  const isWalas = roleMode === 'walas';
+  const headerTitle = isWalas ? 'Radar Ketuntasan Nilai Rombel' : 'Radar Remedial & Penuntasan Nilai';
+  const headerBadge = isWalas ? 'Pantauan Walas' : 'Deteksi Dini';
+  const headerDesc = isWalas
+    ? `Pantau ketuntasan seluruh mata pelajaran siswa ${kelasNama || 'Kelas Binaan'} untuk kesiapan kenaikan kelas & kelulusan rapor.`
+    : 'Pantau dan tuntaskan siswa yang butuh perbaikan nilai pada semester berjalan agar tidak menjadi beban kelulusan.';
+
+  const handleCopyRekap = () => {
+    const remedialList = rawItems.filter((i) => i.status === 'needs_remedial');
+    if (remedialList.length === 0) {
+      toast.info('Tidak ada siswa yang berstatus perlu remedial.');
+      return;
+    }
+    const semesterLabel = `${activeSemester?.nama || 'Semester Ganjil'} ${activeYear?.nama || ''}`;
+    let text = `*📋 RADAR KETUNTASAN & REMEDIAL SISWA*\n`;
+    text += `*Periode:* ${semesterLabel}\n`;
+    if (kelasNama) text += `*Kelas:* ${kelasNama}\n`;
+    text += `--------------------------------------\n`;
+    remedialList.forEach((r, idx) => {
+      text += `${idx + 1}. *${r.nama_siswa}* (NIS: ${r.nis || '-'})\n`;
+      text += `   • Mapel: ${r.nama_mapel}\n`;
+      if (r.nama_guru) text += `   • Pengajar: ${r.nama_guru}\n`;
+      text += `   • Nilai: *${r.nilai_saat_ini}* (Standar KKM: ${r.kkm})\n`;
+    });
+    text += `--------------------------------------\n`;
+    text += `_Mohon siswa yang bersangkutan segera menghubungi guru pengajar untuk jadwal remedial._`;
+
+    navigator.clipboard.writeText(text);
+    toast.success(`${remedialList.length} data remedial berhasil disalin ke clipboard!`);
+  };
 
   return (
     <div className={`space-y-4 ${className || ''}`}>
@@ -113,14 +154,14 @@ export const TeacherRadarRemedialSubTab: React.FC<TeacherRadarRemedialSubTabProp
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-extrabold text-slate-900 dark:text-white text-sm sm:text-base">
-                Radar Remedial &amp; Penuntasan Nilai
+                {headerTitle}
               </h3>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 uppercase tracking-wide">
-                Deteksi Dini
+                {headerBadge}
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Pantau dan tuntaskan siswa yang butuh perbaikan nilai pada semester berjalan agar tidak menjadi beban kelulusan.
+              {headerDesc}
             </p>
           </div>
         </div>
@@ -231,6 +272,17 @@ export const TeacherRadarRemedialSubTab: React.FC<TeacherRadarRemedialSubTabProp
         badgeVariant={statusFilter === 'needs_remedial' ? 'rose' : statusFilter === 'unassessed' ? 'amber' : 'purple'}
         action={
           <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+            {/* Tombol Salin Rekap WhatsApp */}
+            <button
+              type="button"
+              onClick={handleCopyRekap}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 dark:text-purple-300 font-semibold transition-all cursor-pointer shadow-2xs"
+              title="Salin rekap siswa remedial untuk WhatsApp"
+            >
+              <Copy size={13} />
+              <span>Salin Rekap</span>
+            </button>
+
             {/* Filter Rombel Dropdown */}
             {classOptions.length > 1 && (
               <select
@@ -329,7 +381,12 @@ export const TeacherRadarRemedialSubTab: React.FC<TeacherRadarRemedialSubTabProp
                         </span>
                       </td>
                       <td className="py-3 px-3.5 font-medium text-slate-700 dark:text-slate-300">
-                        {item.nama_mapel}
+                        <div className="font-bold text-slate-900 dark:text-white">{item.nama_mapel}</div>
+                        {item.nama_guru && (
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                            Pengajar: {item.nama_guru}
+                          </div>
+                        )}
                       </td>
                       <td className="py-3 px-3.5 text-center">
                         <span
@@ -387,7 +444,7 @@ export const TeacherRadarRemedialSubTab: React.FC<TeacherRadarRemedialSubTabProp
                               : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                           }`}
                         >
-                          <span>{isCompleted ? 'Perbarui Nilai' : 'Input Remedial'}</span>
+                          <span>{isCompleted ? (isWalas ? 'Lihat Nilai' : 'Perbarui Nilai') : (isWalas ? 'Bedah Nilai' : 'Input Remedial')}</span>
                           <ArrowRight size={13} />
                         </button>
                       </td>

@@ -73,6 +73,7 @@ export class NilaiRemedialService {
       include: {
         Kelas: { select: { id: true, nama_kelas: true } },
         Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
+        Guru: { select: { id: true, nama_guru: true } },
       },
     });
 
@@ -86,12 +87,13 @@ export class NilaiRemedialService {
         include: {
           Kelas: { select: { id: true, nama_kelas: true } },
           Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
+          Guru: { select: { id: true, nama_guru: true } },
         },
       });
     }
 
     // Map unique tasks
-    const taskMap = new Map<string, { kelas_id: string; nama_kelas: string; mapel_id: string; nama_mapel: string }>();
+    const taskMap = new Map<string, { kelas_id: string; nama_kelas: string; mapel_id: string; nama_mapel: string; guru_id?: string; nama_guru?: string }>();
     schedules.forEach((s) => {
       if (s.kelas_id && s.mapel_id && s.Kelas && s.Mapel) {
         const key = `${s.kelas_id}_${s.mapel_id}`;
@@ -101,6 +103,8 @@ export class NilaiRemedialService {
             nama_kelas: s.Kelas.nama_kelas,
             mapel_id: s.mapel_id,
             nama_mapel: s.Mapel.nama_mapel,
+            guru_id: s.guru_id || undefined,
+            nama_guru: s.Guru?.nama_guru || undefined,
           });
         }
       }
@@ -206,6 +210,8 @@ export class NilaiRemedialService {
             nama_kelas: t.nama_kelas,
             mapel_id: t.mapel_id,
             nama_mapel: t.nama_mapel,
+            guru_id: t.guru_id,
+            nama_guru: t.nama_guru || 'Guru Pengajar',
             tahun_pelajaran_id: tp.id,
             tahun_pelajaran_nama: tp.tahun,
             semester_id: sem.id,
@@ -234,6 +240,8 @@ export class NilaiRemedialService {
               nama_kelas: t.nama_kelas,
               mapel_id: t.mapel_id,
               nama_mapel: t.nama_mapel,
+              guru_id: t.guru_id,
+              nama_guru: t.nama_guru || 'Guru Pengajar',
               tahun_pelajaran_id: tp.id,
               tahun_pelajaran_nama: tp.tahun,
               semester_id: sem.id,
@@ -260,6 +268,8 @@ export class NilaiRemedialService {
                 nama_kelas: t.nama_kelas,
                 mapel_id: t.mapel_id,
                 nama_mapel: t.nama_mapel,
+                guru_id: t.guru_id,
+                nama_guru: t.nama_guru || 'Guru Pengajar',
                 tahun_pelajaran_id: tp.id,
                 tahun_pelajaran_nama: tp.tahun,
                 semester_id: sem.id,

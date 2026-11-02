@@ -14,6 +14,7 @@ import {
   Printer,
   SlidersHorizontal,
   Shield,
+  Radio,
 } from 'lucide-react';
 import { WalasDashboardSkeleton } from './walikelas/WalasDashboardSkeleton';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -24,6 +25,7 @@ import { WalasSiswaTab } from './walikelas/tabs/WalasSiswaTab';
 import { WalasStrukturTab } from './walikelas/tabs/WalasStrukturTab';
 import { WalasPresensiTab } from './walikelas/tabs/WalasPresensiTab';
 import { WalasDeteksiDiniTab } from './walikelas/tabs/WalasDeteksiDiniTab';
+import { TeacherRadarRemedialSubTab } from '@/components/dashboard/staff/beranda/TeacherRadarRemedialSubTab';
 import { WalasJurnalTab } from './walikelas/tabs/WalasJurnalTab';
 import { WalasIzinTab } from './walikelas/tabs/WalasIzinTab';
 import { WalasDisiplinTab } from './walikelas/tabs/WalasDisiplinTab';
@@ -52,7 +54,7 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
   const subtabParam = searchParams.get('subtab') as WaliKelasTabId | null;
 
   const validTabs: WaliKelasTabId[] = [
-    'ringkasan', 'siswa', 'struktur', 'presensi', 'deteksi', 'jurnal', 'izin', 'disiplin', 'prestasi', 'rekap', 'rapor'
+    'ringkasan', 'siswa', 'struktur', 'presensi', 'deteksi', 'ketuntasan', 'jurnal', 'izin', 'disiplin', 'prestasi', 'rekap', 'rapor'
   ];
 
   // Mobile Filter Collapsible State
@@ -182,6 +184,11 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
         label: 'Deteksi Dini', 
         icon: ShieldAlert, 
         badge: atRiskCount > 0 ? atRiskCount : undefined,
+      },
+      { 
+        id: 'ketuntasan' as WaliKelasTabId, 
+        label: 'Radar Ketuntasan', 
+        icon: Radio,
       },
       { 
         id: 'jurnal' as WaliKelasTabId, 
@@ -446,6 +453,19 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
                     kelasNama={activeKelasNama}
                     data={walasData}
                     onOpenRujukanModal={() => handleTabSelect('disiplin')}
+                  />
+                </div>
+              )}
+
+              {visitedTabs.has('ketuntasan') && (
+                <div
+                  key="tab-ketuntasan"
+                  className={cn('w-full', activeTab === 'ketuntasan' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                >
+                  <TeacherRadarRemedialSubTab
+                    roleMode="walas"
+                    kelasId={activeKelasId}
+                    kelasNama={activeKelasNama}
                   />
                 </div>
               )}

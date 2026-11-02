@@ -25,6 +25,8 @@ export interface RadarRemedialItem {
   nama_kelas: string;
   mapel_id: string;
   nama_mapel: string;
+  guru_id?: string;
+  nama_guru?: string;
   kkm: number;
   nilai_saat_ini: number | null;
   sumatif_1?: number | null;
