@@ -91,6 +91,8 @@ export const raporApi = {
     semester_id?: string;
     kelas_id?: string;
     mapel_id?: string;
+    guru_id?: string;
+    role_mode?: string;
     kkm?: number | string;
   }) => {
     const response = await api.get('/rapor/nilai/radar-remedial', { params });

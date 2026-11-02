@@ -17,6 +17,8 @@ export class NilaiRemedialService {
       semester_id?: string;
       kelas_id?: string;
       mapel_id?: string;
+      guru_id?: string;
+      role_mode?: string;
       kkm?: number | string;
     }
   ) {
@@ -51,14 +53,18 @@ export class NilaiRemedialService {
       };
     }
 
-    // 2. Ambil Profil Guru jika role GURU
-    let guruId: string | undefined;
-    if (user.roleName === 'GURU') {
+    // 2. Tentukan Scope Guru vs Walas
+    // Jika role_mode === 'walas' ATAU ada params.kelas_id tanpa guru_id spesifik:
+    // Scope adalah 1 KELAS PENUH UNTUK SELURUH MAPEL (Konteks Wali Kelas)
+    let guruId: string | undefined = params.guru_id;
+    const isWalasMode = params.role_mode === 'walas' || Boolean(params.kelas_id && !params.guru_id && user.roleName.includes('WALI_KELAS'));
+
+    if (!isWalasMode && !guruId && user.roleName === 'GURU') {
       const guru = await prisma.guru.findFirst({ where: { tenant_id: tenantId, user_id: user.id } });
       if (guru) guruId = guru.id;
     }
 
-    // 3. Ambil Jadwal KBM Guru
+    // 3. Ambil Jadwal KBM (Jika Walas: Semua Mapel di Kelas tersebut)
     const whereJadwal: any = {
       tenant_id: tenantId,
       tahun_pelajaran_id: tp.id,

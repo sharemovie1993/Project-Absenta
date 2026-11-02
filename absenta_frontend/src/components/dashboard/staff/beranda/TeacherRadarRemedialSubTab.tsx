@@ -53,6 +53,7 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
     queryFn: () => raporApi.getRadarRemedial({
       guru_id: roleMode === 'walas' ? undefined : guruId,
       kelas_id: kelasId || undefined,
+      role_mode: roleMode,
       tahun_pelajaran_id: activeYear?.id,
       semester_id: activeSemester?.id,
       kkm: 70,

@@ -366,12 +366,12 @@ export class NilaiController {
     try {
       const { tenant_id } = req.user!;
       const user = req.user!;
-      const { tahun_pelajaran_id, semester_id, kelas_id, mapel_id, kkm } = req.query;
+      const { tahun_pelajaran_id, semester_id, kelas_id, mapel_id, guru_id, role_mode, kkm } = req.query;
 
       const result = await NilaiService.getRadarRemedial(
         tenant_id,
         { id: user.id, roleName: user.roleName },
-        { tahun_pelajaran_id, semester_id, kelas_id, mapel_id, kkm }
+        { tahun_pelajaran_id, semester_id, kelas_id, mapel_id, guru_id, role_mode, kkm }
       );
 
       return sendResponse(reply, 200, true, 'Radar remedial berhasil dimuat', result);
