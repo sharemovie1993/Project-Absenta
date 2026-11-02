@@ -16,6 +16,7 @@ export const PklBimbinganTab: React.FC<PklBimbinganTabProps> = ({
   guruId,
   tahunPelajaranId,
   semesterId,
+  siswaList,
   onOpenSiswaDetail,
 }) => {
   return (
