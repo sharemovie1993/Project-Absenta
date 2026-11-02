@@ -5920,11 +5920,11 @@
     "relativePath": "src\\pages\\kurikulum\\EvaluasiKinerjaGuruPage.tsx"
   },
   "gurumapelpage": {
-    "usesLayout": true,
-    "usesAcademicLayout": true,
+    "usesLayout": false,
+    "usesAcademicLayout": false,
     "usesPageLayout": false,
-    "usesUiComponents": true,
-    "usesMemo": true,
+    "usesUiComponents": false,
+    "usesMemo": false,
     "noAnyType": true,
     "safeMapping": true,
     "strictColors": true,
@@ -5960,11 +5960,11 @@
     "relativePath": "src\\pages\\kurikulum\\GuruMapelPage.tsx"
   },
   "kurikulum_jadwal_delegasi": {
-    "usesLayout": true,
-    "usesAcademicLayout": true,
+    "usesLayout": false,
+    "usesAcademicLayout": false,
     "usesPageLayout": false,
-    "usesUiComponents": true,
-    "usesMemo": true,
+    "usesUiComponents": false,
+    "usesMemo": false,
     "noAnyType": true,
     "safeMapping": true,
     "strictColors": true,
@@ -6039,12 +6039,12 @@
     "filename": "JadwalKontrakKbmPage.tsx",
     "relativePath": "src\\pages\\kurikulum\\JadwalKontrakKbmPage.tsx"
   },
-  "jadwal_pelajaran_page": {
-    "usesLayout": true,
-    "usesAcademicLayout": true,
+  "jadwalpelajaranpage": {
+    "usesLayout": false,
+    "usesAcademicLayout": false,
     "usesPageLayout": false,
-    "usesUiComponents": true,
-    "usesMemo": true,
+    "usesUiComponents": false,
+    "usesMemo": false,
     "noAnyType": true,
     "safeMapping": true,
     "strictColors": true,
@@ -6079,12 +6079,12 @@
     "filename": "JadwalPelajaranPage.tsx",
     "relativePath": "src\\pages\\kurikulum\\JadwalPelajaranPage.tsx"
   },
-  "kurikulum_jadwal_piket": {
-    "usesLayout": true,
-    "usesAcademicLayout": true,
+  "jadwalpiketgurupage": {
+    "usesLayout": false,
+    "usesAcademicLayout": false,
     "usesPageLayout": false,
-    "usesUiComponents": true,
-    "usesMemo": true,
+    "usesUiComponents": false,
+    "usesMemo": false,
     "noAnyType": true,
     "safeMapping": true,
     "strictColors": true,
@@ -6360,11 +6360,11 @@
     "relativePath": "src\\pages\\kurikulum\\RekapKBMPage.tsx"
   },
   "strukturkurikulumpage": {
-    "usesLayout": true,
-    "usesAcademicLayout": true,
+    "usesLayout": false,
+    "usesAcademicLayout": false,
     "usesPageLayout": false,
-    "usesUiComponents": true,
-    "usesMemo": true,
+    "usesUiComponents": false,
+    "usesMemo": false,
     "noAnyType": true,
     "safeMapping": true,
     "strictColors": true,
