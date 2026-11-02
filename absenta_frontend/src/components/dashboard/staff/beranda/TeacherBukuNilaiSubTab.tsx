@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useDeferredValue, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   GraduationCap, 
@@ -8,7 +8,10 @@ import {
   Calendar,
   X,
   Sparkles,
-  Check
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  BookOpen
 } from 'lucide-react';
 import { raporApi } from '@/api/rapor.api';
 import { HubCard } from '@/components/ui/hub';
@@ -16,6 +19,17 @@ import { Modal } from '@/components/ui/Modal';
 import { InputNilaiView } from '@/components/rapor/input-nilai/InputNilaiView';
 import { useAcademicFilter } from '@/components/common/academic-filter';
 import { safeArr } from '@/components/kurikulum/dashboard/DashboardComponents';
+
+export interface TeacherKbmTask {
+  kelas_id: string;
+  nama_kelas: string;
+  mapel_id: string;
+  nama_mapel: string;
+  total_siswa: number;
+  siswa_terisi?: number;
+  status: 'completed' | 'partial' | 'empty';
+  kurikulum?: string;
+}
 
 interface TeacherBukuNilaiSubTabProps {
   guruId?: string;
@@ -29,7 +43,11 @@ export const TeacherBukuNilaiSubTab: React.FC<TeacherBukuNilaiSubTabProps> = Rea
 }) => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'partial' | 'empty'>('all');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(25);
+
   const [selectedRombel, setSelectedRombel] = useState<{
     kelasId: string;
     mapelId: string;
@@ -50,14 +68,19 @@ export const TeacherBukuNilaiSubTab: React.FC<TeacherBukuNilaiSubTabProps> = Rea
   });
 
   const progressData = progressRes?.data || progressRes || {};
-  const tasks: any[] = safeArr(progressData?.tasks);
+  const tasks: TeacherKbmTask[] = safeArr(progressData?.tasks);
 
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.status === 'completed').length;
   const partialTasks = tasks.filter((t) => t.status === 'partial').length;
   const emptyTasks = tasks.filter((t) => !t.status || t.status === 'empty').length;
 
-  // Filter gabungan berdasarkan Status KPI dan Pencarian Teks
+  // Reset page ke 1 setiap kali filter berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, deferredSearch]);
+
+  // Filter gabungan berdasarkan Status KPI dan Pencarian Teks Terisolasi
   const filteredTasks = useMemo(() => {
     let result = tasks;
     if (statusFilter !== 'all') {
@@ -68,17 +91,24 @@ export const TeacherBukuNilaiSubTab: React.FC<TeacherBukuNilaiSubTabProps> = Rea
         return true;
       });
     }
-    if (search.trim()) {
-      const q = search.toLowerCase();
+    if (deferredSearch.trim()) {
+      const q = deferredSearch.toLowerCase();
       result = result.filter((t) =>
         t.nama_kelas?.toLowerCase().includes(q) ||
         t.nama_mapel?.toLowerCase().includes(q)
       );
     }
     return result;
-  }, [tasks, statusFilter, search]);
+  }, [tasks, statusFilter, deferredSearch]);
 
-  const handleOpenInputNilaiModal = (t: any) => {
+  // Paginasi High Density
+  const totalPages = Math.ceil(filteredTasks.length / pageSize) || 1;
+  const paginatedTasks = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredTasks.slice(start, start + pageSize);
+  }, [filteredTasks, currentPage, pageSize]);
+
+  const handleOpenInputNilaiModal = (t: TeacherKbmTask) => {
     setSelectedRombel({
       kelasId: t.kelas_id,
       mapelId: t.mapel_id,
@@ -262,32 +292,38 @@ export const TeacherBukuNilaiSubTab: React.FC<TeacherBukuNilaiSubTabProps> = Rea
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filteredTasks.map((t, idx) => {
-              const isCompleted = t.status === 'completed';
-              const isPartial = t.status === 'partial';
+          <div>
+            {/* ─── Mode Mobile: Shopee-Grade Flat List Cards (< sm) ─── */}
+            <div className="block sm:hidden space-y-2.5">
+              {paginatedTasks.map((t, idx) => {
+                const isCompleted = t.status === 'completed';
+                const isPartial = t.status === 'partial';
+                const totalSiswa = Number(t.total_siswa) || 0;
+                const siswaTerisi = t.siswa_terisi !== undefined 
+                  ? Number(t.siswa_terisi) 
+                  : (isCompleted ? totalSiswa : 0);
+                const percentage = totalSiswa > 0 
+                  ? Math.min(100, Math.round((siswaTerisi / totalSiswa) * 100)) 
+                  : (isCompleted ? 100 : 0);
+                const rowNumber = (currentPage - 1) * pageSize + idx + 1;
 
-              const totalSiswa = Number(t.total_siswa) || 0;
-              const siswaTerisi = t.siswa_terisi !== undefined 
-                ? Number(t.siswa_terisi) 
-                : (isCompleted ? totalSiswa : 0);
-              const percentage = totalSiswa > 0 
-                ? Math.min(100, Math.round((siswaTerisi / totalSiswa) * 100)) 
-                : (isCompleted ? 100 : 0);
-
-              return (
-                <div
-                  key={`${t.kelas_id}_${t.mapel_id}_${idx}`}
-                  className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:border-purple-300 dark:hover:border-purple-700 transition-all shadow-xs flex flex-col justify-between"
-                >
-                  <div>
-                    {/* Header Kartu: Tag Kelas & Badge Status Crisp */}
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-700 dark:bg-purple-950/80 dark:text-purple-300 font-bold text-xs">
-                        {t.nama_kelas}
-                      </span>
-                      <div
-                        className={`inline-flex items-center gap-1.5 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${
+                return (
+                  <div
+                    key={`mobile-${t.kelas_id}_${t.mapel_id}_${idx}`}
+                    className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-2.5"
+                  >
+                    {/* Header: Kelas & Status Badge */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 font-bold text-[10px] border border-purple-200/60 dark:border-purple-800/60 shrink-0">
+                          {t.nama_kelas}
+                        </span>
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                          {t.nama_mapel}
+                        </span>
+                      </div>
+                      <span
+                        className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 border ${
                           isCompleted
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800'
                             : isPartial
@@ -304,33 +340,26 @@ export const TeacherBukuNilaiSubTab: React.FC<TeacherBukuNilaiSubTabProps> = Rea
                               : 'bg-rose-500'
                           }`}
                         />
-                        <span>{isCompleted ? 'Nilai Tuntas' : isPartial ? 'Sebagian' : 'Belum Diisi'}</span>
-                      </div>
+                        <span>{isCompleted ? 'Tuntas' : isPartial ? 'Sebagian' : 'Belum'}</span>
+                      </span>
                     </div>
 
-                    {/* Judul Mata Pelajaran & Jumlah Siswa */}
-                    <h5 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm line-clamp-1">
-                      {t.nama_mapel}
-                    </h5>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
-                      <Users size={12} />
-                      <span>{totalSiswa} Siswa Terdaftar</span>
-                    </p>
-
-                    {/* ─── Micro Progress Bar Pengisian Nilai ─── */}
-                    <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-1">
-                      <div className="flex items-center justify-between text-[10px] font-semibold">
-                        <span className="text-slate-500 dark:text-slate-400">Progres Nilai</span>
+                    {/* Progres Nilai */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-slate-400 font-medium">
+                          {rowNumber}. {totalSiswa} Siswa Terdaftar
+                        </span>
                         <span
-                          className={
+                          className={`font-bold ${
                             isCompleted
-                              ? 'text-emerald-600 dark:text-emerald-400 font-bold'
+                              ? 'text-emerald-600 dark:text-emerald-400'
                               : isPartial
-                              ? 'text-amber-600 dark:text-amber-400 font-bold'
+                              ? 'text-amber-600 dark:text-amber-400'
                               : 'text-slate-400'
-                          }
+                          }`}
                         >
-                          {isCompleted ? `${totalSiswa}/${totalSiswa} Siswa` : `${siswaTerisi}/${totalSiswa} Siswa`} ({percentage}%)
+                          {siswaTerisi}/{totalSiswa} ({percentage}%)
                         </span>
                       </div>
                       <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
@@ -340,31 +369,215 @@ export const TeacherBukuNilaiSubTab: React.FC<TeacherBukuNilaiSubTabProps> = Rea
                               ? 'bg-emerald-500'
                               : isPartial
                               ? 'bg-amber-500'
-                              : 'bg-slate-200 dark:bg-slate-700'
+                              : 'bg-rose-400'
                           }`}
                           style={{ width: `${percentage}%` }}
                         />
                       </div>
                     </div>
-                  </div>
 
-                  {/* Footer Kartu: Kurikulum & Tombol Modal Input Nilai */}
-                  <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                      Kurikulum Merdeka
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenInputNilaiModal(t)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-xs font-bold transition-all cursor-pointer"
+                    {/* Tombol Aksi Mobile */}
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                      <span className="text-[10px] text-slate-400">Kurikulum Merdeka</span>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenInputNilaiModal(t)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs bg-purple-600 hover:bg-purple-700 text-white"
+                      >
+                        <span>Input Nilai</span>
+                        <ArrowRight size={13} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* ─── Mode Desktop: Tabular Data Table (>= sm) ─── */}
+            <div className="hidden sm:block overflow-x-auto -mx-4 sm:mx-0">
+              <table className="w-full text-left border-collapse min-w-[700px]">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-800/50 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <th className="py-3 px-3.5 w-12 text-center">No</th>
+                    <th className="py-3 px-3.5 w-32">Kelas</th>
+                    <th className="py-3 px-3.5">Mata Pelajaran</th>
+                    <th className="py-3 px-3.5 text-center w-32">Siswa Terdaftar</th>
+                    <th className="py-3 px-3.5 w-48">Progres Pengisian</th>
+                    <th className="py-3 px-3.5 w-36">Status</th>
+                    <th className="py-3 px-3.5 text-right w-28">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs">
+                  {paginatedTasks.map((t, idx) => {
+                    const isCompleted = t.status === 'completed';
+                    const isPartial = t.status === 'partial';
+                    const totalSiswa = Number(t.total_siswa) || 0;
+                    const siswaTerisi = t.siswa_terisi !== undefined 
+                      ? Number(t.siswa_terisi) 
+                      : (isCompleted ? totalSiswa : 0);
+                    const percentage = totalSiswa > 0 
+                      ? Math.min(100, Math.round((siswaTerisi / totalSiswa) * 100)) 
+                      : (isCompleted ? 100 : 0);
+                    const rowNumber = (currentPage - 1) * pageSize + idx + 1;
+
+                    return (
+                      <tr
+                        key={`desktop-${t.kelas_id}_${t.mapel_id}_${idx}`}
+                        className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors group"
+                      >
+                        <td className="py-3 px-3.5 text-center text-slate-400 font-semibold">
+                          {rowNumber}
+                        </td>
+                        <td className="py-3 px-3.5">
+                          <span className="px-2.5 py-1 rounded-md bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 font-bold text-[11px] border border-purple-200/60 dark:border-purple-800/60">
+                            {t.nama_kelas}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3.5">
+                          <div className="font-bold text-slate-900 dark:text-white text-xs">
+                            {t.nama_mapel}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-normal mt-0.5">
+                            Kurikulum Merdeka
+                          </div>
+                        </td>
+                        <td className="py-3 px-3.5 text-center">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-[11px]">
+                            <Users size={12} className="text-slate-400" />
+                            <span>{totalSiswa} Siswa</span>
+                          </span>
+                        </td>
+                        <td className="py-3 px-3.5">
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[10px] font-semibold">
+                              <span
+                                className={
+                                  isCompleted
+                                    ? 'text-emerald-600 dark:text-emerald-400 font-bold'
+                                    : isPartial
+                                    ? 'text-amber-600 dark:text-amber-400 font-bold'
+                                    : 'text-slate-400'
+                                }
+                              >
+                                {siswaTerisi}/{totalSiswa} Siswa
+                              </span>
+                              <span className="text-slate-400 font-bold">{percentage}%</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                  isCompleted
+                                    ? 'bg-emerald-500'
+                                    : isPartial
+                                    ? 'bg-amber-500'
+                                    : 'bg-rose-400'
+                                }`}
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3.5">
+                          <span
+                            className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                              isCompleted
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800'
+                                : isPartial
+                                ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800'
+                                : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800'
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                isCompleted
+                                  ? 'bg-emerald-500'
+                                  : isPartial
+                                  ? 'bg-amber-500 animate-pulse'
+                                  : 'bg-rose-500'
+                              }`}
+                            />
+                            <span>
+                              {isCompleted
+                                ? 'Nilai Tuntas'
+                                : isPartial
+                                ? 'Sebagian Terisi'
+                                : 'Belum Diisi'}
+                            </span>
+                          </span>
+                        </td>
+                        <td className="py-3 px-3.5 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenInputNilaiModal(t)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs bg-purple-600 hover:bg-purple-700 text-white"
+                          >
+                            <span>Input Nilai</span>
+                            <ArrowRight size={13} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* ─── Paginasi High-Density Buku Nilai ─── */}
+            {filteredTasks.length > pageSize && (
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs">
+                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-[11px]">
+                  <span>
+                    Menampilkan <span className="font-bold text-slate-800 dark:text-slate-200">{(currentPage - 1) * pageSize + 1}</span> - <span className="font-bold text-slate-800 dark:text-slate-200">{Math.min(currentPage * pageSize, filteredTasks.length)}</span> dari <span className="font-bold text-slate-800 dark:text-slate-200">{filteredTasks.length}</span> rombel
+                  </span>
+                  <span className="hidden sm:inline">&bull;</span>
+                  <div className="hidden sm:flex items-center gap-1">
+                    <span>Per hal:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300 focus:outline-none"
                     >
-                      <span>Input Nilai</span>
-                      <ArrowRight size={13} />
-                    </button>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
                   </div>
                 </div>
-              );
-            })}
+
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={currentPage <= 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-all shadow-2xs"
+                    title="Halaman Sebelumnya"
+                    aria-label="Halaman Sebelumnya"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+
+                  <div className="flex items-center gap-1 px-1">
+                    <span className="text-[11px] font-bold text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800">
+                      {currentPage} / {totalPages}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-all shadow-2xs"
+                    title="Halaman Selanjutnya"
+                    aria-label="Halaman Selanjutnya"
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </HubCard>
