@@ -153,7 +153,7 @@ export const RekapKBMView: React.FC<UniversalRekapKBMViewProps> = React.memo(({
 
   const activeTpId = propTpId || academicFilter.values.tahunPelajaranId;
   const activeSemId = propSemId || academicFilter.values.semesterId;
-  const activeSearch = searchTerm || academicFilter.values.searchQuery;
+  const activeSearch = academicFilter.values.searchQuery || '';
 
   const { data: rekapData, isLoading, refetch } = useQuery({
     queryKey: ['rekap-kbm-guru', activeSemId, activeTpId],
@@ -292,8 +292,8 @@ export const RekapKBMView: React.FC<UniversalRekapKBMViewProps> = React.memo(({
               type="text"
               placeholder="Cari guru (Nama, NIP, Mapel, Kelas)..."
               aria-label="Cari guru"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={academicFilter.values.searchQuery}
+              onChange={(e) => academicFilter.setters.setSearchQuery(e.target.value)}
               className="pl-10 h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
             />
           </div>
