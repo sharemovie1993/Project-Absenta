@@ -78,7 +78,8 @@ export class DashboardActionHubService {
       guruId ? this.detectUpacaraDuty(tenantId, guruId, startOfDay) : Promise.resolve([]),
       guruId ? this.detectPklTasks(tenantId, guruId) : Promise.resolve([]),
       this.detectRaporTasks(tenantId, userId, guruId),
-      this.detectSarprasLoanTasks(tenantId, userId, startOfDay)
+      this.detectSarprasLoanTasks(tenantId, userId, startOfDay),
+      guruId ? this.detectPerangkatAjarTasks(tenantId, guruId) : Promise.resolve([])
     ]);
 
     // 3. Konsolidasi seluruh item yang sukses diambil
@@ -518,6 +519,154 @@ export class DashboardActionHubService {
           }
         };
       });
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // --- DETECTOR 7: Kelengkapan & Revisi Perangkat Ajar (Modul Kurikulum/Pedagogik) ---
+  private async detectPerangkatAjarTasks(
+    tenantId: string,
+    guruId: string
+  ): Promise<UnifiedActionItem[]> {
+    try {
+      // 1. Dapatkan periode Tahun Pelajaran & Semester aktif
+      const [activeTp, activeSem] = await Promise.all([
+        prisma.tahunPelajaran.findFirst({
+          where: { tenant_id: tenantId, is_active: true },
+          select: { id: true, tahun: true }
+        }),
+        prisma.semester.findFirst({
+          where: { tenant_id: tenantId, is_active: true },
+          select: { id: true, nama: true }
+        })
+      ]);
+
+      const actionItems: UnifiedActionItem[] = [];
+
+      // A. CEK 1: Dokumen yang berstatus REJECTED (Perlu Revisi dari Kurikulum)
+      const rejectedDocs = await prisma.perangkatAjar.findMany({
+        where: {
+          tenant_id: tenantId,
+          guru_id: guruId,
+          status: 'REJECTED',
+          ...(activeTp?.id ? { tahun_pelajaran_id: activeTp.id } : {})
+        },
+        include: {
+          Mapel: { select: { nama_mapel: true } }
+        },
+        orderBy: { updated_at: 'desc' },
+        take: 3
+      });
+
+      for (const doc of rejectedDocs) {
+        actionItems.push({
+          id: `perangkat_rejected_${doc.id}`,
+          division: 'KURIKULUM',
+          urgency: 'CRITICAL',
+          title: 'Perangkat Ajar Perlu Revisi',
+          subtitle: `${doc.judul} (${doc.Mapel?.nama_mapel || doc.jenis}) • ${doc.catatan_reviewer ? 'Catatan: ' + doc.catatan_reviewer : 'Perlu perbaikan sesuai catatan kurikulum'}`,
+          badgeText: 'Perlu Revisi',
+          action: {
+            label: 'Perbaiki Dokumen ➔',
+            type: 'NAVIGATE',
+            target: '/kurikulum/perangkat'
+          },
+          sourceModule: {
+            table: 'PerangkatAjar',
+            entityId: doc.id
+          }
+        });
+      }
+
+      // B. CEK 2: Periksa kelengkapan perangkat ajar untuk Mapel yang diampu guru di TP Aktif
+      if (activeTp?.id) {
+        const [guruMapelRows, jadwalRows] = await Promise.all([
+          prisma.guruMapel.findMany({
+            where: {
+              tenant_id: tenantId,
+              guru_id: guruId,
+              OR: [
+                { tahun_pelajaran_id: activeTp.id },
+                { tahun_pelajaran_id: null }
+              ]
+            },
+            select: { mapel_id: true, Mapel: { select: { id: true, nama_mapel: true } } }
+          }),
+          prisma.jadwalKBM.findMany({
+            where: {
+              tenant_id: tenantId,
+              tahun_pelajaran_id: activeTp.id,
+              OR: [
+                { guru_id: guruId },
+                { guru_pelaksana_id: guruId }
+              ],
+              mapel_id: { not: null }
+            },
+            select: { mapel_id: true, Mapel: { select: { id: true, nama_mapel: true } } }
+          })
+        ]);
+
+        const assignedMapelMap = new Map<string, string>();
+        guruMapelRows.forEach((r: any) => {
+          if (r.mapel_id && r.Mapel?.nama_mapel) assignedMapelMap.set(r.mapel_id, r.Mapel.nama_mapel);
+        });
+        jadwalRows.forEach((r: any) => {
+          if (r.mapel_id && r.Mapel?.nama_mapel) assignedMapelMap.set(r.mapel_id, r.Mapel.nama_mapel);
+        });
+
+        if (assignedMapelMap.size > 0) {
+          const uploadedDocs = await prisma.perangkatAjar.findMany({
+            where: {
+              tenant_id: tenantId,
+              guru_id: guruId,
+              tahun_pelajaran_id: activeTp.id
+            },
+            select: { mapel_id: true, status: true }
+          });
+
+          const uploadedMapelIds = new Set(uploadedDocs.map((d: any) => d.mapel_id));
+          const unsubmittedMapels: string[] = [];
+
+          assignedMapelMap.forEach((namaMapel, mapelId) => {
+            if (!uploadedMapelIds.has(mapelId)) {
+              unsubmittedMapels.push(namaMapel);
+            }
+          });
+
+          if (unsubmittedMapels.length > 0) {
+            const completedCount = assignedMapelMap.size - unsubmittedMapels.length;
+            const totalCount = assignedMapelMap.size;
+            const percent = Math.round((completedCount / totalCount) * 100);
+
+            actionItems.push({
+              id: `perangkat_unsubmitted_${guruId}`,
+              division: 'KURIKULUM',
+              urgency: unsubmittedMapels.length === totalCount ? 'TODAY' : 'UPCOMING',
+              title: 'Kelengkapan Perangkat Ajar',
+              subtitle: `Belum mengunggah berkas (${unsubmittedMapels.slice(0, 2).join(', ')}${unsubmittedMapels.length > 2 ? ' +' + (unsubmittedMapels.length - 2) + ' lainnya' : ''}) • TP ${activeTp.tahun || 'Aktif'}`,
+              badgeText: `${completedCount}/${totalCount} Mapel`,
+              progress: {
+                current: completedCount,
+                total: totalCount,
+                percent,
+                label: `${completedCount}/${totalCount} Terunggah`
+              },
+              action: {
+                label: 'Unggah Perangkat ➔',
+                type: 'NAVIGATE',
+                target: '/kurikulum/perangkat'
+              },
+              sourceModule: {
+                table: 'PerangkatAjar',
+                entityId: guruId
+              }
+            });
+          }
+        }
+      }
+
+      return actionItems;
     } catch (e) {
       return [];
     }
