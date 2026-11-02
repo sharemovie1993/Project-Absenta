@@ -18,6 +18,8 @@ import { z } from 'zod';
 import { performStrukturPrint } from '@/utils/kurikulum/masterStrukturHelper';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { getTenantById } from '@/api/tenants.api';
+import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
+import { SectionCard } from '@/components/ui';
 
 // Theme helpers
 import {
@@ -76,11 +78,20 @@ export const StrukturKurikulumView: React.FC<UniversalStrukturKurikulumViewProps
   const { tingkatList, kelompokOptions, jenjang } = useJenjang();
 
   const [selectedTingkat, setSelectedTingkat] = useState<number | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const [selectedKelompok, setSelectedKelompok] = useState<string>('ALL');
   const [selectedJurusanId, setSelectedJurusanId] = useState<string>(propJurusanId || '');
   const [isPrinting, setIsPrinting] = useState(false);
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
+
+  // ── Konteks Akademik SSOT (AcademicFilterToolbar) ──
+  const academicFilter = useAcademicFilter({
+    enableTp: !hideLayout,
+    enableSearch: true,
+    initialTpId: propTahunPelajaranId,
+  });
+
+  const effectiveTpId = propTahunPelajaranId || academicFilter.values.tahunPelajaranId;
+  const searchTerm = academicFilter.debouncedSearchQuery;
 
   useEffect(() => {
     if (propJurusanId) {
@@ -121,12 +132,12 @@ export const StrukturKurikulumView: React.FC<UniversalStrukturKurikulumViewProps
   }, [isSmkOrMak, jurusans, selectedJurusanId]);
 
   const activeYear = useMemo(() => {
-    if (propTahunPelajaranId) {
-      const match = (years?.data ?? []).find(y => y.id === propTahunPelajaranId);
-      return match || { id: propTahunPelajaranId, tahun: '', is_active: false };
+    if (effectiveTpId) {
+      const match = (years?.data ?? []).find(y => y.id === effectiveTpId);
+      return match || { id: effectiveTpId, tahun: academicFilter.selectedTahunPelajaranNama || '', is_active: false };
     }
     return (years?.data ?? []).find(y => y.is_active);
-  }, [years, propTahunPelajaranId]);
+  }, [years, effectiveTpId, academicFilter.selectedTahunPelajaranNama]);
 
   const { data: mapping, isLoading } = useQuery({
     queryKey: ['kurikulum-struktur-summary', activeYear?.id, selectedJurusanId],
@@ -232,6 +243,55 @@ export const StrukturKurikulumView: React.FC<UniversalStrukturKurikulumViewProps
 
   const content = (
     <div className="space-y-6 w-full min-w-0">
+      {/* Standalone Filter Toolbar (SSOT) saat dibuka langsung di URL /kurikulum/struktur */}
+      {!hideLayout && (
+        <SectionCard fullWidth noPadding>
+          <div className="p-3 sm:p-4">
+            <AcademicFilterToolbar
+              {...academicFilter.toolbarProps}
+              variant="plain"
+              searchPlaceholder="Cari mata pelajaran atau kode mapel..."
+              actionsRight={
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePrint}
+                    disabled={isPrinting}
+                    className="flex items-center gap-1.5 rounded-xl text-xs px-3 h-9"
+                  >
+                    {isPrinting ? <Loader2 size={13} className="animate-spin" /> : <Printer size={13} />}
+                    <span>Cetak Struktur</span>
+                  </Button>
+                  {canManage && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsCloneModalOpen(true)}
+                      className="flex items-center gap-1.5 rounded-xl text-xs px-3 h-9"
+                    >
+                      <Copy size={13} />
+                      <span>Salin TP Lain</span>
+                    </Button>
+                  )}
+                  {canManage && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => navigate('/kurikulum/master-struktur')}
+                      className="flex items-center gap-1.5 rounded-xl text-xs px-3 h-9"
+                    >
+                      <Settings size={13} />
+                      <span>Master Struktur</span>
+                    </Button>
+                  )}
+                </div>
+              }
+            />
+          </div>
+        </SectionCard>
+      )}
+
       {/* Action Bar saat di dalam Dashboard Tab atau Modal (hideLayout = true) */}
       {hideLayout && (
         <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs">

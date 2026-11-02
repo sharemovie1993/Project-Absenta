@@ -103,8 +103,12 @@ export const KurikulumBerandaTab: React.FC<KurikulumBerandaTabProps> = React.mem
       {
         id: 'semester',
         title: 'Semester Aktif',
-        value: semNama || '—',
-        subtext: tpTahun ? `TP ${tpTahun}` : 'Tahun Pelajaran',
+        value: semNama
+          ? (semNama.toLowerCase().startsWith('semester') ? semNama : `Semester ${semNama}`)
+          : (loading ? 'Memuat...' : '—'),
+        subtext: tpTahun
+          ? (tpTahun.toLowerCase().startsWith('tp') ? tpTahun : `TP ${tpTahun}`)
+          : 'Tahun Pelajaran',
         icon: CalendarDays,
         iconColorClass: 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/60',
         onClick: () => onTabSelect('struktur'),

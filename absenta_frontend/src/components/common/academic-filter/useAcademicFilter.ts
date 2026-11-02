@@ -121,6 +121,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
 
   const {
     options: semesterOptions,
+    rawList: semesterRawList,
     activeSemester,
     isLoading: isLoadingSem,
   } = useSemesterOptions({
@@ -397,14 +398,24 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
         }
       }
 
-      // Reset semester jika TP berganti
+      // Sinkronisasi semester otomatis saat TP berganti (tidak dibiarkan kosong/strip)
       if (enableSemester) {
-        setSemesterId('');
+        const semestersInNewTp = semesterRawList.filter((s) => s.tahun_pelajaran_id === newTpId);
+        const activeSemInNewTp = semestersInNewTp.find((s) => s.is_active);
+        const matchingSemByName = semesterId
+          ? semestersInNewTp.find((s) => {
+              const currentName = (semesterRawList.find((cur) => cur.id === semesterId)?.nama_semester || '').toLowerCase();
+              return currentName && (s.nama_semester || '').toLowerCase() === currentName;
+            })
+          : null;
+
+        const nextSemId = activeSemInNewTp?.id || matchingSemByName?.id || semestersInNewTp[0]?.id || '';
+        setSemesterId(nextSemId);
       }
 
       onTpChange?.(newTpId);
     },
-    [cohortStages, kelasId, tpOptions, enableBulan, bulan, enableSemester, onKelasChange, onTpChange]
+    [cohortStages, kelasId, tpOptions, enableBulan, bulan, enableSemester, semesterRawList, semesterId, onKelasChange, onTpChange]
   );
 
   const resetFilters = useCallback(() => {
@@ -485,7 +496,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
   const selectedTahunPelajaranNama = useMemo(() => {
     const opt = tpOptions.find((t) => t.value === tahunPelajaranId);
     if (opt?.label) {
-      return opt.label.replace(/\s*★\s*/g, '').trim();
+      return opt.label.replace(/\s*([★⭐])\s*/g, '').trim();
     }
     const raw = tpRawList?.find((y) => y.id === tahunPelajaranId) || activeTp;
     return raw?.tahun || '';
@@ -494,13 +505,14 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
   const selectedSemesterNama = useMemo(() => {
     const opt = semesterOptions.find((s) => s.value === semesterId);
     if (opt?.label) {
-      return opt.label.replace(/\s*⭐\s*/g, '').trim();
+      return opt.label.replace(/\s*([★⭐])\s*/g, '').trim();
     }
-    if (activeSemester?.nama_semester) {
-      return activeSemester.nama_semester.replace(/\s*⭐\s*/g, '').trim();
+    const rawSem = semesterRawList?.find((s) => s.id === semesterId) || activeSemester;
+    if (rawSem?.nama_semester) {
+      return rawSem.nama_semester.replace(/\s*([★⭐])\s*/g, '').trim();
     }
     return '';
-  }, [semesterOptions, semesterId, activeSemester]);
+  }, [semesterOptions, semesterId, semesterRawList, activeSemester]);
 
   // ── 6. Assemble Toolbar Props ──────────────────────────────────────────────
   const toolbarProps: AcademicFilterToolbarProps = {
@@ -634,7 +646,16 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
           }
         : null;
     })(),
-    activeSemester: semesterOptions.find((s) => s.value === semesterId) ? { id: semesterId, nama_semester: semesterOptions.find((s) => s.value === semesterId)?.label || '', is_active: true } : null,
+    activeSemester: (() => {
+      const semObj = semesterRawList?.find((s) => s.id === semesterId) || activeSemester;
+      return semObj
+        ? {
+            id: semObj.id,
+            nama_semester: (semObj.nama_semester || (semObj as any).nama || '').replace(/\s*([★⭐])\s*/g, '').trim(),
+            is_active: Boolean(semObj.is_active),
+          }
+        : null;
+    })(),
     selectedTahunPelajaranNama,
     selectedSemesterNama,
     selectedKelasLabel,

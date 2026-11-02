@@ -214,7 +214,6 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
     queryFn: () => kurikulumApi.getKbmGlobalMonitoring(targetDate, tahunPelajaranId, semesterId),
     refetchInterval: isToday ? 30000 : false,
     staleTime: 30000,
-    placeholderData: (prev) => prev,
     retry: 1,
   });
 
@@ -232,7 +231,6 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
     enabled: tenantMode !== 'SIMPLE',
     refetchInterval: isToday && tenantMode !== 'SIMPLE' ? 30000 : false, 
     staleTime: 30000,
-    placeholderData: (prev) => prev,
     retry: 1,
   });
 

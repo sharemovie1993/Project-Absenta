@@ -7,6 +7,7 @@ import { getAcademicStats } from '../../../api/academic-stats.api';
 import { Users, School, GraduationCap, Network } from 'lucide-react';
 import { AcademicPageLayout } from '../../academic/AcademicPageLayout';
 import { SectionCard } from '../../ui';
+import { AcademicFilterToolbar, useAcademicFilter } from '../../common/academic-filter';
 
 export interface UniversalWaliKelasViewProps {
   tahunPelajaranId?: string;
@@ -20,6 +21,7 @@ export interface UniversalWaliKelasViewProps {
 }
 
 export const WaliKelasView: React.FC<UniversalWaliKelasViewProps> = React.memo(({
+  tahunPelajaranId,
   hideLayout = false,
   isModal = false,
   readOnly = false,
@@ -27,6 +29,12 @@ export const WaliKelasView: React.FC<UniversalWaliKelasViewProps> = React.memo((
 }) => {
   const { can, isKurikulum, isWaliKelas, isAdmin, isAuthenticated } = useCapabilities();
   const authLoading = !isAuthenticated;
+
+  // Academic Filter SSOT saat berdiri sebagai standalone page
+  const academicFilter = useAcademicFilter({
+    enableTp: !hideLayout,
+    initialTpId: tahunPelajaranId,
+  });
 
   const canView = useMemo(
     () => isAdmin || isKurikulum || isWaliKelas || can('academic.homeroom.manage') || can('academic.manage.academic'),
@@ -51,9 +59,18 @@ export const WaliKelasView: React.FC<UniversalWaliKelasViewProps> = React.memo((
   ], [stats, navigate]);
 
   const innerContent = (
-    <SectionCard fullWidth className="p-0 border-none shadow-none bg-transparent">
-      <WaliKelasList />
-    </SectionCard>
+    <div className="space-y-4">
+      {!hideLayout && (
+        <AcademicFilterToolbar
+          {...academicFilter.toolbarProps}
+          variant="plain"
+          searchPlaceholder="Cari kelas atau wali kelas..."
+        />
+      )}
+      <SectionCard fullWidth className="p-0 border-none shadow-none bg-transparent">
+        <WaliKelasList />
+      </SectionCard>
+    </div>
   );
 
   if (hideLayout) {

@@ -12,7 +12,7 @@ export function useSemesterOptions(params: UseSemesterOptionsParams = {}) {
   const { tahunPelajaranId } = params;
 
   const query = useQuery({
-    queryKey: ['semester-options-list', tahunPelajaranId],
+    queryKey: ['semester-options-list'],
     queryFn: () => semesterApi.getAll({ limit: 200 }),
     staleTime: 5 * 60 * 1000,
   });
@@ -27,7 +27,7 @@ export function useSemesterOptions(params: UseSemesterOptionsParams = {}) {
   }, [rawList, tahunPelajaranId]);
 
   const activeSemester = useMemo(() => {
-    return filteredList.find(s => s.is_active) || rawList.find(s => s.is_active);
+    return filteredList.find(s => s.is_active) || filteredList[0] || rawList.find(s => s.is_active) || null;
   }, [filteredList, rawList]);
 
   const options: SearchableSelectOption[] = useMemo(() => {

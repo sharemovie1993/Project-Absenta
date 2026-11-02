@@ -17,6 +17,7 @@ import toast from 'react-hot-toast';
 import type { GuruMapel } from '../../../types/academic';
 import { Loader } from '../../ui/Loader';
 import { BebanMengajarPrintModal } from './BebanMengajarPrintModal';
+import { AcademicFilterToolbar, useAcademicFilter } from '../../common/academic-filter';
 
 // Lazy load Modal dan Komponen Berat
 const GuruMapelForm = lazy(() => import('../../academic/guru-mapel/GuruMapelForm').then(module => ({ default: module.default })));
@@ -50,6 +51,14 @@ export const GuruMapelView: React.FC<UniversalGuruMapelViewProps> = ({
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+
+  // Academic Filter SSOT saat berdiri sebagai standalone page
+  const academicFilter = useAcademicFilter({
+    enableTp: !hideLayout,
+    initialTpId: propTahunPelajaranId,
+  });
+
+  const effectiveTpId = propTahunPelajaranId || academicFilter.values.tahunPelajaranId;
 
   const handleOpenTimeOff = useCallback((guruId: string, guruName?: string) => {
     setTimeOffGuruId(guruId);
@@ -167,6 +176,15 @@ export const GuruMapelView: React.FC<UniversalGuruMapelViewProps> = ({
 
   const content = (
     <div className="space-y-4">
+      {!hideLayout && (
+        <div className="mb-2">
+          <AcademicFilterToolbar
+            {...academicFilter.toolbarProps}
+            variant="plain"
+          />
+        </div>
+      )}
+
       <SectionCard
         fullWidth
         noPadding
@@ -212,7 +230,7 @@ export const GuruMapelView: React.FC<UniversalGuruMapelViewProps> = ({
           onAddWizard={canManage ? handleWizardOpen : undefined} 
           onOpenTimeOff={canManage ? handleOpenTimeOff : undefined}
           refreshTrigger={refreshTrigger}
-          propTahunPelajaranId={propTahunPelajaranId}
+          propTahunPelajaranId={effectiveTpId}
         />
       </SectionCard>
 
