@@ -182,11 +182,17 @@ export const KalenderAkademikView: React.FC<UniversalKalenderAkademikViewProps> 
     staleTime: 1000 * 60 * 2,
   });
 
-  const { data: dbPresets = [] } = useQuery<CalendarPreset[]>({
+  const { data: rawDbPresets } = useQuery({
     queryKey: ['kalender-presets'],
     queryFn: () => kurikulumApi.getCalendarPresets(),
     staleTime: 1000 * 60 * 10,
   });
+
+  const dbPresets: CalendarPreset[] = useMemo(() => {
+    if (Array.isArray(rawDbPresets)) return rawDbPresets;
+    if (Array.isArray((rawDbPresets as any)?.data)) return (rawDbPresets as any).data;
+    return [];
+  }, [rawDbPresets]);
 
   const activeTpObj = useMemo(() => {
     const list = tpList as unknown as TahunPelajaran[] | undefined;

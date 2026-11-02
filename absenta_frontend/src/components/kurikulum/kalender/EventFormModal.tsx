@@ -107,10 +107,16 @@ export const EventFormModal: React.FC<EventFormModalProps> = React.memo(({
     }
   }, [isOpen, editTarget, defaultTahunPelajaranId, defaultDateStr]);
 
+  const safePresets = useMemo(() => {
+    if (Array.isArray(dbPresets)) return dbPresets;
+    if (Array.isArray((dbPresets as any)?.data)) return (dbPresets as any).data;
+    return [];
+  }, [dbPresets]);
+
   const handleSelectPreset = useCallback((val: string) => {
     setSelectedPreset(val);
     if (!val) return;
-    const preset = dbPresets.find(p => p.id === val);
+    const preset = safePresets.find((p: CalendarPreset) => p.id === val);
     if (preset) {
       setForm(f => ({
         ...f,
@@ -119,7 +125,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = React.memo(({
         keterangan: preset.keterangan ?? ''
       }));
     }
-  }, [dbPresets]);
+  }, [safePresets]);
 
   const handleFormSubmit = useCallback(() => {
     const parsed = eventSchema.safeParse(form);
@@ -135,15 +141,15 @@ export const EventFormModal: React.FC<EventFormModalProps> = React.memo(({
   }, [form, onSubmit]);
 
   const presetOptions = useMemo(() => {
-    return dbPresets?.map(p => {
+    return safePresets.map((p: CalendarPreset) => {
       const j = JENIS_OPTIONS.find(o => o.value === p.jenis);
       const labelSuffix = j ? ` (${j.label})` : '';
       return {
         value: p.id,
         label: `${p.judul}${labelSuffix}`
       };
-    }) ?? [];
-  }, [dbPresets]);
+    });
+  }, [safePresets]);
 
   const mappedJenisOptions = useMemo(() => {
     return JENIS_OPTIONS?.map(j => ({ value: j.value, label: j.label })) ?? [];
