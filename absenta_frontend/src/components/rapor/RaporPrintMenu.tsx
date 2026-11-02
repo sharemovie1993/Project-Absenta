@@ -31,6 +31,7 @@ export interface RaporPrintMenuProps {
   btnSize?: 'sm' | 'md';
   eligibility?: DokumenEligibility;
   onPrintBiodata?: (studentId: string) => void;
+  onPrintP5?: (studentId: string) => void;
   onPrintRaporPkl?: () => void;
   onPrintSertifikatPkl?: () => void;
   onPrintSertifikatUkk?: () => void;
@@ -53,6 +54,7 @@ export const RaporPrintMenu: React.FC<RaporPrintMenuProps> = ({
   btnSize = 'sm',
   eligibility,
   onPrintBiodata,
+  onPrintP5,
   onPrintRaporPkl,
   onPrintSertifikatPkl,
   onPrintSertifikatUkk,
@@ -231,7 +233,7 @@ export const RaporPrintMenu: React.FC<RaporPrintMenuProps> = ({
               {/* 4. Rapor P5 */}
               <button
                 type="button"
-                onClick={() => handleAction(() => printP5(studentId))}
+                onClick={() => handleAction(() => onPrintP5 ? onPrintP5(studentId) : printP5(studentId))}
                 className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:text-amber-700 dark:hover:text-amber-300 transition-colors cursor-pointer"
               >
                 <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />

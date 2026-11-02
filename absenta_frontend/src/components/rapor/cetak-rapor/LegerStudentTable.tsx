@@ -681,6 +681,7 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
                         onPrintRaporPkl={() => onPrintRaporPkl?.(student)}
                         onPrintSertifikatPkl={() => onPrintSertifikatPkl?.(student)}
                         onPrintBiodata={onPrintBiodata ? () => onPrintBiodata(student.id) : undefined}
+                        onPrintP5={onPrintP5 ? () => onPrintP5(student) : undefined}
                         onPrintSertifikatUkk={() => {
                           setSelectedUkkStudent(student);
                           setIsUkkModalOpen(true);
