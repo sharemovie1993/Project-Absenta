@@ -1,19 +1,15 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   GraduationCap, 
-  BookOpen, 
   Users, 
-  CheckCircle2, 
-  Clock, 
-  AlertCircle, 
   ArrowRight, 
   Search,
-  ExternalLink
 } from 'lucide-react';
 import { raporApi } from '@/api/rapor.api';
 import { HubCard } from '@/components/ui/hub';
+import { Modal } from '@/components/ui/Modal';
+import { InputNilaiView } from '@/components/rapor/input-nilai/InputNilaiView';
 import { safeArr } from '@/components/kurikulum/dashboard/DashboardComponents';
 
 interface TeacherBukuNilaiSubTabProps {
@@ -27,8 +23,14 @@ export const TeacherBukuNilaiSubTab: React.FC<TeacherBukuNilaiSubTabProps> = Rea
   guruNama,
   className,
 }) => {
-  const navigate = useNavigate();
-  const [search, setSearch] = React.useState('');
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState('');
+  const [selectedRombel, setSelectedRombel] = useState<{
+    kelasId: string;
+    mapelId: string;
+    namaKelas: string;
+    namaMapel: string;
+  } | null>(null);
 
   const { data: progressRes, isLoading } = useQuery({
     queryKey: ['rapor-teacher-progress-subtab', guruId],
@@ -52,6 +54,20 @@ export const TeacherBukuNilaiSubTab: React.FC<TeacherBukuNilaiSubTabProps> = Rea
   const completedTasks = tasks.filter((t) => t.status === 'completed').length;
   const partialTasks = tasks.filter((t) => t.status === 'partial').length;
   const emptyTasks = tasks.filter((t) => !t.status || t.status === 'empty').length;
+
+  const handleOpenInputNilaiModal = (t: any) => {
+    setSelectedRombel({
+      kelasId: t.kelas_id,
+      mapelId: t.mapel_id,
+      namaKelas: t.nama_kelas,
+      namaMapel: t.nama_mapel,
+    });
+  };
+
+  const handleCloseModal = () => {
+    setSelectedRombel(null);
+    queryClient.invalidateQueries({ queryKey: ['rapor-teacher-progress-subtab'] });
+  };
 
   return (
     <div className="space-y-4">
@@ -145,7 +161,7 @@ export const TeacherBukuNilaiSubTab: React.FC<TeacherBukuNilaiSubTabProps> = Rea
                     </span>
                     <button
                       type="button"
-                      onClick={() => navigate(`/rapor/input-nilai?kelasId=${t.kelas_id}&mapelId=${t.mapel_id}`)}
+                      onClick={() => handleOpenInputNilaiModal(t)}
                       className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-xs font-bold transition-all cursor-pointer"
                     >
                       <span>Input Nilai</span>
@@ -158,6 +174,40 @@ export const TeacherBukuNilaiSubTab: React.FC<TeacherBukuNilaiSubTabProps> = Rea
           </div>
         )}
       </HubCard>
+
+      {/* Modal Fullscreen Lembar Input Nilai e-Rapor */}
+      {selectedRombel && (
+        <Modal
+          isOpen={!!selectedRombel}
+          onClose={handleCloseModal}
+          size="full"
+          className="max-w-[98vw] w-[98vw] h-[95vh] max-h-[95vh] my-auto"
+          contentClassName="p-2 sm:p-5 overflow-y-auto"
+          title={
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 flex items-center justify-center shrink-0">
+                <GraduationCap size={18} />
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight">
+                  Lembar Input Nilai e-Rapor
+                </h3>
+                <p className="text-[11px] font-normal text-slate-500 dark:text-slate-400">
+                  {selectedRombel.namaKelas} &bull; {selectedRombel.namaMapel}
+                </p>
+              </div>
+            </div>
+          }
+        >
+          <InputNilaiView
+            initialKelasId={selectedRombel.kelasId}
+            initialMapelId={selectedRombel.mapelId}
+            isModal={true}
+            hideLayout={true}
+            onClose={handleCloseModal}
+          />
+        </Modal>
+      )}
     </div>
   );
 });
