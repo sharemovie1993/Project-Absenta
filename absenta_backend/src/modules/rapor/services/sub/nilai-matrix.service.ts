@@ -34,6 +34,7 @@ export interface SubjectMatrixRow {
   scores: Record<number, SubjectScoreDetail>;
   rata_rata: number | null;
   has_red: boolean;
+  has_scores: boolean;
   red_semesters: number[];
 }
 
@@ -303,6 +304,7 @@ export class NilaiMatrixService {
         scores: {},
         rata_rata: null,
         has_red: false,
+        has_scores: false,
         red_semesters: [],
       };
 
@@ -362,6 +364,7 @@ export class NilaiMatrixService {
     // 9. Hitung Rata-Rata Kumulatif & Urutkan
     const matrixRows = Array.from(matrixMap.values());
     let totalMapelMerah = 0;
+    let totalMapelDinilai = 0;
     const redSummaryList: string[] = [];
 
     matrixRows.forEach((row) => {
@@ -370,6 +373,8 @@ export class NilaiMatrixService {
         .filter((n): n is number => n !== null && n !== undefined);
 
       if (validScores.length > 0) {
+        totalMapelDinilai++;
+        row.has_scores = true;
         const sum = validScores.reduce((acc, curr) => acc + curr, 0);
         row.rata_rata = Number((sum / validScores.length).toFixed(1));
       }
@@ -385,8 +390,12 @@ export class NilaiMatrixService {
     matrixRows.sort((a, b) => {
       if (a.has_red && !b.has_red) return -1;
       if (!a.has_red && b.has_red) return 1;
+      if (a.has_scores && !b.has_scores) return -1;
+      if (!a.has_scores && b.has_scores) return 1;
       return a.nama_mapel.localeCompare(b.nama_mapel);
     });
+
+    const isAllUnassessed = totalMapelDinilai === 0;
 
     return {
       tenant_jenjang: jenjang,
@@ -406,11 +415,15 @@ export class NilaiMatrixService {
       matrix: matrixRows,
       diagnostics: {
         total_mapel: matrixRows.length,
+        total_mapel_dinilai: totalMapelDinilai,
         total_mapel_merah: totalMapelMerah,
         daftar_mapel_merah: redSummaryList,
-        is_clean: totalMapelMerah === 0,
-        kesimpulan: totalMapelMerah === 0
-          ? `Kondisi Akademik Prima: Seluruh ${matrixRows.length} mata pelajaran tuntas di atas KKM.`
+        is_all_unassessed: isAllUnassessed,
+        is_clean: totalMapelMerah === 0 && !isAllUnassessed,
+        kesimpulan: isAllUnassessed
+          ? `Belum Ada Penilaian: Belum ada catatan nilai yang terbit pada sistem untuk siswa ini.`
+          : totalMapelMerah === 0
+          ? `Kondisi Akademik Prima: Seluruh ${totalMapelDinilai} mata pelajaran yang terdata tuntas di atas KKM.`
           : `Perhatian: Terdeteksi ${totalMapelMerah} mata pelajaran dengan nilai di bawah KKM (${kkmThreshold}) pada semester lampau/berjalan.`,
       },
     };

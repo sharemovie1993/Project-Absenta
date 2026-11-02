@@ -112,6 +112,9 @@ export const StudentMultiSemesterMatrixModal: React.FC<StudentMultiSemesterMatri
         text += `   ${idx + 1}. ${dm}\n`;
       });
       text += `--------------------------------------\n`;
+    } else if (diagnostics.is_all_unassessed) {
+      text += `*ℹ️ STATUS:* Belum ada input penilaian tersimpan untuk siswa ini.\n`;
+      text += `--------------------------------------\n`;
     } else {
       text += `*✅ STATUS:* Seluruh semester tuntas di atas KKM.\n`;
       text += `--------------------------------------\n`;
@@ -180,30 +183,46 @@ export const StudentMultiSemesterMatrixModal: React.FC<StudentMultiSemesterMatri
           <div className={`p-3.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs ${
             diagnostics.total_mapel_merah > 0
               ? 'bg-rose-50/80 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/60'
+              : diagnostics.is_all_unassessed
+              ? 'bg-slate-50/90 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700'
               : 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/60'
           }`}>
             <div className="flex items-start gap-2.5">
               <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${
                 diagnostics.total_mapel_merah > 0
                   ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/80 dark:text-rose-300'
+                  : diagnostics.is_all_unassessed
+                  ? 'bg-slate-200/80 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
                   : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/80 dark:text-emerald-300'
               }`}>
-                {diagnostics.total_mapel_merah > 0 ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
+                {diagnostics.total_mapel_merah > 0 ? (
+                  <AlertCircle size={18} />
+                ) : diagnostics.is_all_unassessed ? (
+                  <Clock size={18} />
+                ) : (
+                  <CheckCircle2 size={18} />
+                )}
               </div>
               <div>
                 <h4 className={`text-xs font-bold ${
                   diagnostics.total_mapel_merah > 0
                     ? 'text-rose-800 dark:text-rose-200'
+                    : diagnostics.is_all_unassessed
+                    ? 'text-slate-800 dark:text-slate-200'
                     : 'text-emerald-800 dark:text-emerald-200'
                 }`}>
                   {diagnostics.total_mapel_merah > 0
                     ? `Perhatian: Terdeteksi ${diagnostics.total_mapel_merah} Mata Pelajaran dengan Blok Nilai Merah`
-                    : 'Kondisi Akademik Prima: Seluruh Semester Tuntas'
+                    : diagnostics.is_all_unassessed
+                    ? 'Rekam Jejak Nilai Belum Terbit'
+                    : `Kondisi Akademik Prima: Seluruh ${diagnostics.total_mapel_dinilai || matrixRows.length} Mata Pelajaran Tuntas`
                   }
                 </h4>
                 <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
                   {diagnostics.total_mapel_merah > 0
                     ? `Ditemukan nilai di bawah KKM (${kkm}) pada: ${diagnostics.daftar_mapel_merah.join(' • ')}`
+                    : diagnostics.is_all_unassessed
+                    ? 'Belum ada guru yang mempublikasikan nilai rapor untuk siswa ini di semester lampau maupun semester berjalan.'
                     : 'Tidak ada catatan nilai merah pada semester lampau maupun semester berjalan.'}
                 </p>
               </div>
@@ -253,6 +272,10 @@ export const StudentMultiSemesterMatrixModal: React.FC<StudentMultiSemesterMatri
                   </tr>
                 ) : (
                   matrixRows.map((row: any, idx: number) => {
+                    const cleanKode = row.kode_mapel && row.kode_mapel.length > 10 && row.kode_mapel.includes('_')
+                      ? row.kode_mapel.split('_')[0]
+                      : row.kode_mapel;
+
                     return (
                       <tr
                         key={`row-${row.mapel_id}-${idx}`}
@@ -267,9 +290,9 @@ export const StudentMultiSemesterMatrixModal: React.FC<StudentMultiSemesterMatri
                           <div className="font-bold text-slate-900 dark:text-white leading-tight">
                             {row.nama_mapel}
                           </div>
-                          {row.kode_mapel && (
-                            <div className="text-[10px] text-slate-400 font-mono">
-                              {row.kode_mapel}
+                          {cleanKode && (
+                            <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                              {cleanKode}
                             </div>
                           )}
                         </td>
@@ -304,16 +327,26 @@ export const StudentMultiSemesterMatrixModal: React.FC<StudentMultiSemesterMatri
                                 </span>
                               ) : isFuture ? (
                                 <span className="text-slate-300 dark:text-slate-600 text-[11px]">-</span>
+                              ) : h.is_current ? (
+                                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-300" title="Semester aktif belum dinilai">
+                                  Berjalan
+                                </span>
                               ) : (
-                                <span className="text-amber-500/70 dark:text-amber-400/70 text-[10px] italic">Kosong</span>
+                                <span className="text-slate-400 dark:text-slate-600 text-xs font-mono" title="Belum ada catatan nilai">-</span>
                               )}
                             </td>
                           );
                         })}
 
                         {/* Rata-Rata Kumulatif */}
-                        <td className="py-2.5 px-2 text-center font-black text-xs bg-slate-50/60 dark:bg-slate-800/30 text-purple-700 dark:text-purple-300">
-                          {row.rata_rata !== null ? row.rata_rata : '-'}
+                        <td className="py-2.5 px-2 text-center text-xs">
+                          {row.rata_rata !== null ? (
+                            <span className="font-black text-purple-700 dark:text-purple-300">
+                              {row.rata_rata}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-600 font-medium">-</span>
+                          )}
                         </td>
 
                         {/* Status Diagnostik Blok */}
@@ -323,10 +356,15 @@ export const StudentMultiSemesterMatrixModal: React.FC<StudentMultiSemesterMatri
                               <AlertCircle size={10} className="shrink-0" />
                               <span>Merah {row.red_semesters.map((s: number) => `S${s}`).join(', ')}</span>
                             </span>
-                          ) : (
+                          ) : row.has_scores ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                               <CheckCircle2 size={10} className="shrink-0" />
                               <span>Tuntas Konsisten</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                              <Clock size={10} className="shrink-0" />
+                              <span>Belum Dinilai</span>
                             </span>
                           )}
                         </td>
@@ -341,16 +379,26 @@ export const StudentMultiSemesterMatrixModal: React.FC<StudentMultiSemesterMatri
       )}
 
       {/* Footer Modal Action */}
-      <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
-        <div className="text-[11px] text-slate-400 flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded bg-rose-100 border border-rose-300 inline-block" />
-          <span>Kotak merah = Nilai di bawah KKM ({kkm})</span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+        <div className="text-[11px] text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded bg-rose-100 border border-rose-300 inline-block shadow-2xs" />
+            <span>Merah = Di bawah KKM ({kkm})</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded bg-purple-100 border border-purple-300 inline-block shadow-2xs" />
+            <span>Kolom Ungu = Semester Berjalan</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-400 font-mono text-xs font-bold">-</span>
+            <span>= Belum Ditempuh / Belum Diisi</span>
+          </div>
         </div>
         <Button
           type="button"
           variant="outline"
           onClick={onClose}
-          className="text-xs font-semibold"
+          className="text-xs font-semibold self-end sm:self-auto"
         >
           Tutup Matriks
         </Button>
