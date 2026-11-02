@@ -18,6 +18,7 @@ import { toLocalDate } from '../../../../utils/attendance/time';
 // Subkomponen High-Density Beranda
 import { TeacherDailyStatusStrip } from '../beranda/TeacherDailyStatusStrip';
 import { TeacherOpsMicroGrid } from '../beranda/TeacherOpsMicroGrid';
+import { TeacherCoreWorkspaceBento } from '../beranda/TeacherCoreWorkspaceBento';
 import { TeacherActionHubWidget } from '../beranda/TeacherActionHubWidget';
 import { DirectKbmFeed } from '../beranda/DirectKbmFeed';
 
@@ -213,6 +214,21 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
           onOpenJournals={() => {}}
           onOpenBeban={() => onNavigateTab('profil')}
           onOpenRekapMapel={() => onNavigateTab('rekap_mapel')}
+        />
+      )}
+
+      {/* ────────────────────────────────────────────────────────────────── */}
+      {/* 2.2 MEJA KERJA PENDIDIK (4 PILAR TUGAS POKOK GURU PENGAJAR)       */}
+      {/* ────────────────────────────────────────────────────────────────── */}
+      {isActualTeachingStaff && (
+        <TeacherCoreWorkspaceBento
+          guruId={guruId}
+          guruNama={guruNama}
+          timelineItems={timelineItems}
+          unfilledJournalsCount={unfilledJournalsCount}
+          totalJpToday={totalJp}
+          onOpenJournal={handleOpenJournal}
+          onNavigateTab={onNavigateTab}
         />
       )}
 
