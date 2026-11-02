@@ -361,5 +361,43 @@ export class NilaiController {
       return sendError(reply, 500, error.message || 'Gagal memuat kelengkapan nilai kelas', error);
     }
   }
+
+  static async getRadarRemedial(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const user = req.user!;
+      const { tahun_pelajaran_id, semester_id, kelas_id, mapel_id, kkm } = req.query;
+
+      const result = await NilaiService.getRadarRemedial(
+        tenant_id,
+        { id: user.id, roleName: user.roleName },
+        { tahun_pelajaran_id, semester_id, kelas_id, mapel_id, kkm }
+      );
+
+      return sendResponse(reply, 200, true, 'Radar remedial berhasil dimuat', result);
+    } catch (error: any) {
+      appLogger.error({ err: error }, 'Rapor controller error');
+      return sendError(reply, 500, error.message || 'Gagal memuat radar remedial', error);
+    }
+  }
+
+  static async submitRemedialSingle(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const user = req.user!;
+      const data = req.body;
+
+      const result = await NilaiService.submitRemedialSingle(
+        tenant_id,
+        { id: user.id, roleName: user.roleName },
+        data
+      );
+
+      return sendResponse(reply, 200, true, 'Nilai remedial berhasil disimpan', result);
+    } catch (error: any) {
+      appLogger.error({ err: error }, 'Rapor controller error');
+      return sendError(reply, 500, error.message || 'Gagal menyimpan nilai remedial', error);
+    }
+  }
 }
 

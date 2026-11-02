@@ -21,5 +21,9 @@ export default async function nilaiRoutes(fastify: any) {
   fastify.get('/monitoring/kelas/:kelas_id', { preHandler: [requireCapability('academic.teaching.view'), determineDataScope()]}, NilaiController.getClassSubjectProgress);
   fastify.post('/import', { preHandler: [requireCapability('academic.schedules.manage'), determineDataScope()]}, NilaiController.importNilai);
   fastify.get('/import/template', { preHandler: [requireCapability('academic.teaching.view'), determineDataScope()]}, NilaiController.downloadTemplate);
+
+  // Radar Remedial (Early Detection Hub)
+  fastify.get('/radar-remedial', { preHandler: [requireCapability('academic.teaching.view'), determineDataScope()]}, NilaiController.getRadarRemedial);
+  fastify.post('/radar-remedial/submit', { preHandler: [requireCapability('academic.schedules.manage'), determineDataScope()]}, NilaiController.submitRemedialSingle);
 }
 

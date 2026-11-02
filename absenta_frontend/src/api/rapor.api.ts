@@ -86,6 +86,28 @@ export const raporApi = {
     const response = await api.get(`/rapor/nilai/monitoring/kelas/${kelasId}`, { params });
     return response.data;
   },
+  getRadarRemedial: async (params?: {
+    tahun_pelajaran_id?: string;
+    semester_id?: string;
+    kelas_id?: string;
+    mapel_id?: string;
+    kkm?: number | string;
+  }) => {
+    const response = await api.get('/rapor/nilai/radar-remedial', { params });
+    return response.data;
+  },
+  submitRemedialSingle: async (data: {
+    siswa_id: string;
+    kelas_id: string;
+    mapel_id: string;
+    tahun_pelajaran_id: string;
+    semester_id: string;
+    nilai_remedial: number;
+    catatan_remedial?: string;
+  }) => {
+    const response = await api.post('/rapor/nilai/radar-remedial/submit', data);
+    return response.data;
+  },
   downloadTemplateBlob: async (params: { kelas_id: string; mapel_id: string; jenis_nilai_id?: string; mode?: string }) => {
 
     const response = await api.get('/rapor/nilai/import/template', {

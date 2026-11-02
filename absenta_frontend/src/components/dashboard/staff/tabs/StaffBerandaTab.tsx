@@ -24,6 +24,8 @@ import { DirectKbmFeed } from '../beranda/DirectKbmFeed';
 import { TeacherSidebarNav } from '../beranda/TeacherSidebarNav';
 import { TeacherSubTabId } from '../beranda/TeacherSubNavPills';
 import { TeacherBukuNilaiSubTab } from '../beranda/TeacherBukuNilaiSubTab';
+import { TeacherRadarRemedialSubTab } from '../beranda/TeacherRadarRemedialSubTab';
+import { raporApi } from '@/api/rapor.api';
 
 // Universal Role-Ready Views (In-Place Sub-Tab)
 const PerangkatAjarView = lazy(() =>
@@ -88,7 +90,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
 
   // Sub-tab Navigation State via Search Params (DRY & Direct-Linkable)
   const subTabParam = (searchParams.get('subtab') as TeacherSubTabId) || 'agenda';
-  const validSubTabs: TeacherSubTabId[] = ['agenda', 'tugas', 'perangkat', 'nilai', 'rekap', 'supervisi'];
+  const validSubTabs: TeacherSubTabId[] = ['agenda', 'tugas', 'perangkat', 'nilai', 'remedial', 'rekap', 'supervisi'];
   const activeSubTab = validSubTabs.includes(subTabParam) ? subTabParam : 'agenda';
 
   const handleSubTabChange = useCallback((newSubTab: TeacherSubTabId) => {
@@ -148,6 +150,16 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
   });
 
   const actionHubData = actionHubRes?.data || { summary: { total: 0, critical: 0, today: 0, upcoming: 0 }, actions: [] };
+
+  // Query Radar Remedial (Untuk alert badge di sidebar)
+  const { data: radarRes } = useQuery({
+    queryKey: ['rapor-radar-remedial-badge', guruId],
+    queryFn: () => raporApi.getRadarRemedial().catch(() => ({ success: true, data: null })),
+    enabled: isActualTeachingStaff,
+    staleTime: 60 * 1000,
+  });
+
+  const remedialCount = radarRes?.data?.stats?.total_perlu_remedial || 0;
 
   const teacherBeban = useMemo(() => {
     const list = Array.isArray(bebanGuruRes?.data)
@@ -246,6 +258,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
               unfilledJournalsCount={unfilledJournalsCount}
               actionHubTotalCount={actionHubData.summary?.total || 0}
               actionHubCriticalCount={actionHubData.summary?.critical || 0}
+              remedialAlertCount={remedialCount}
               totalJp={totalJp}
               currentBebanJp={teacherBeban?.total_calculated_jp ?? teacherBeban?.current_jp ?? 0}
               targetBebanJp={teacherBeban?.max_jp ?? 24}
@@ -365,6 +378,11 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
             {/* SUB-TAB 3: BUKU NILAI & ASESMEN SISWA */}
             {activeSubTab === 'nilai' && (
               <TeacherBukuNilaiSubTab guruId={guruId} guruNama={guruNama} />
+            )}
+
+            {/* SUB-TAB 4: RADAR REMEDIAL SISWA (EARLY DETECTION HUB) */}
+            {activeSubTab === 'remedial' && (
+              <TeacherRadarRemedialSubTab guruId={guruId} />
             )}
 
             {/* SUB-TAB 4: REKAPITULASI PRESENSI MAPEL */}

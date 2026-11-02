@@ -3,6 +3,7 @@ import { NilaiJenisService } from './sub/nilai-jenis.service';
 import { NilaiCrudService } from './sub/nilai-crud.service';
 import { NilaiExcelService } from './sub/nilai-excel.service';
 import { NilaiMonitoringService } from './sub/nilai-monitoring.service';
+import { NilaiRemedialService } from './sub/nilai-remedial.service';
 
 export class NilaiService {
   static async getAllJenis(...args: any[]) { return NilaiJenisService.getAllJenis(...args); }
@@ -17,6 +18,10 @@ export class NilaiService {
   static async getTeacherProgress(...args: any[]) { return NilaiCrudService.getTeacherProgress(...args); }
   static async getSchoolWideTeacherProgress(...args: any[]) { return NilaiMonitoringService.getSchoolWideTeacherProgress(...args); }
   static async getClassSubjectProgress(...args: any[]) { return NilaiMonitoringService.getClassSubjectProgress(...args); }
+
+  // Radar Remedial Service
+  static async getRadarRemedial(...args: any[]) { return NilaiRemedialService.getRadarRemedial(...args); }
+  static async submitRemedialSingle(...args: any[]) { return NilaiRemedialService.submitRemedialSingle(...args); }
 
   static async exportErafor(...args: any[]) { return NilaiExcelService.exportErafor(...args); }
   static async exportEraporKemendikbud(...args: any[]) { return NilaiExcelService.exportEraporKemendikbud(...args); }

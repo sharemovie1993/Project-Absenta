@@ -4,6 +4,7 @@ import {
   CheckSquare,
   FileText, 
   GraduationCap, 
+  Radio,
   BarChart2, 
   ShieldCheck,
   UserCheck,
@@ -21,6 +22,7 @@ interface TeacherSidebarNavProps {
   unfilledJournalsCount?: number;
   actionHubTotalCount?: number;
   actionHubCriticalCount?: number;
+  remedialAlertCount?: number;
   totalJp?: number;
   currentBebanJp?: number;
   targetBebanJp?: number;
@@ -35,6 +37,7 @@ export const TeacherSidebarNav: React.FC<TeacherSidebarNavProps> = React.memo(({
   unfilledJournalsCount = 0,
   actionHubTotalCount = 0,
   actionHubCriticalCount = 0,
+  remedialAlertCount = 0,
   totalJp = 0,
   currentBebanJp = 0,
   targetBebanJp = 24,
@@ -66,6 +69,13 @@ export const TeacherSidebarNav: React.FC<TeacherSidebarNavProps> = React.memo(({
       id: 'nilai',
       label: 'Buku Nilai',
       icon: GraduationCap,
+    },
+    {
+      id: 'remedial',
+      label: 'Radar Remedial',
+      icon: Radio,
+      badgeCount: remedialAlertCount > 0 ? remedialAlertCount : undefined,
+      badgeVariant: 'rose',
     },
     {
       id: 'rekap',
