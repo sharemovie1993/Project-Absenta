@@ -4,6 +4,7 @@ import { NilaiCrudService } from './sub/nilai-crud.service';
 import { NilaiExcelService } from './sub/nilai-excel.service';
 import { NilaiMonitoringService } from './sub/nilai-monitoring.service';
 import { NilaiRemedialService } from './sub/nilai-remedial.service';
+import { nilaiMatrixService } from './sub/nilai-matrix.service';
 
 export class NilaiService {
   static async getAllJenis(...args: any[]) { return NilaiJenisService.getAllJenis(...args); }
@@ -22,6 +23,11 @@ export class NilaiService {
   // Radar Remedial Service
   static async getRadarRemedial(...args: any[]) { return NilaiRemedialService.getRadarRemedial(...args); }
   static async submitRemedialSingle(...args: any[]) { return NilaiRemedialService.submitRemedialSingle(...args); }
+
+  // Multi-Semester Grade Matrix Service (Multi-Tenant & Multi-Jenjang)
+  static async getStudentMultiSemesterMatrix(tenantId: string, params: any) {
+    return nilaiMatrixService.getStudentMultiSemesterMatrix(tenantId, params);
+  }
 
   static async exportErafor(...args: any[]) { return NilaiExcelService.exportErafor(...args); }
   static async exportEraporKemendikbud(...args: any[]) { return NilaiExcelService.exportEraporKemendikbud(...args); }

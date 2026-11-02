@@ -25,5 +25,8 @@ export default async function nilaiRoutes(fastify: any) {
   // Radar Remedial (Early Detection Hub)
   fastify.get('/radar-remedial', { preHandler: [requireCapability('academic.teaching.view'), determineDataScope()]}, NilaiController.getRadarRemedial);
   fastify.post('/radar-remedial/submit', { preHandler: [requireCapability('academic.schedules.manage'), determineDataScope()]}, NilaiController.submitRemedialSingle);
+
+  // Matriks Pola Nilai Lintas Semester (Multi-Tenant & Multi-Jenjang)
+  fastify.get('/matrix-lintas-semester', { preHandler: [requireCapability('academic.teaching.view'), determineDataScope()]}, NilaiController.getMatrixLintasSemester);
 }
 

@@ -10,12 +10,15 @@ import {
   Calculator,
   Sparkles,
   Info,
-  Calendar
+  Calendar,
+  FileSpreadsheet,
+  ArrowRight
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { raporApi } from '@/api/rapor.api';
 import { toast } from 'sonner';
+import { StudentMultiSemesterMatrixModal } from '@/components/rapor/radar/StudentMultiSemesterMatrixModal';
 
 export interface RadarRemedialItem {
   id: string;
@@ -70,6 +73,7 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
   const [s3, setS3] = useState<string>('');
   const [sas, setSas] = useState<string>('');
   const [catatan, setCatatan] = useState<string>('');
+  const [showMatrixModal, setShowMatrixModal] = useState<boolean>(false);
 
   useEffect(() => {
     if (item) {
@@ -202,8 +206,9 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
+    <>
+      <Modal
+        isOpen={isOpen}
       onClose={onClose}
       size="lg"
       className="max-w-xl w-full"
@@ -281,6 +286,31 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
             <span className="text-[10px] font-bold text-slate-400 block uppercase">Target KKM</span>
             <span className="text-base font-black text-purple-600 dark:text-purple-400">{kkm}</span>
           </div>
+        </div>
+
+        {/* ─── Tombol Cepat Peta Riwayat Lintas Semester (Heatmap Blok Merah) ─── */}
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-purple-500/10 via-indigo-500/5 to-purple-500/10 border border-purple-200/80 dark:border-purple-800/60 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300 flex items-center justify-center shrink-0">
+              <FileSpreadsheet size={15} />
+            </div>
+            <div>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block leading-tight">
+                Peta Riwayat &amp; Pola Nilai Lintas Semester
+              </span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 block">
+                Deteksi letak blok nilai mapel yang merah dari Semester 1 s.d. akhir jenjang
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowMatrixModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg font-bold bg-purple-600 hover:bg-purple-700 text-white transition-all cursor-pointer shadow-xs shrink-0"
+          >
+            <span>Buka Heatmap</span>
+            <ArrowRight size={13} />
+          </button>
         </div>
 
         {/* ─── Grid Rincian Nilai Sumatif (Persis seperti Lembar e-Rapor) ─── */}
@@ -472,6 +502,20 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
         </div>
       </div>
     </Modal>
+
+    {/* ─── Modal Heatmap Matriks Lintas Semester Siswa ─── */}
+    {showMatrixModal && (
+      <StudentMultiSemesterMatrixModal
+        isOpen={showMatrixModal}
+        onClose={() => setShowMatrixModal(false)}
+        siswaId={item.siswa_id}
+        siswaNama={item.nama_siswa}
+        nis={item.nis}
+        kelasNama={item.nama_kelas}
+        kkm={kkm}
+      />
+    )}
+  </>
   );
 });
 

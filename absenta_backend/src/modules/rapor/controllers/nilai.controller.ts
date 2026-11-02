@@ -399,5 +399,29 @@ export class NilaiController {
       return sendError(reply, 500, error.message || 'Gagal menyimpan nilai remedial', error);
     }
   }
+
+  static async getMatrixLintasSemester(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { siswa_id, kkm } = req.query;
+
+      if (!siswa_id) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Parameter siswa_id wajib disertakan',
+        });
+      }
+
+      const result = await NilaiService.getStudentMultiSemesterMatrix(tenant_id, {
+        siswa_id,
+        kkm: kkm ? Number(kkm) : 70,
+      });
+
+      return sendResponse(reply, 200, true, 'Matriks nilai lintas semester berhasil dimuat', result);
+    } catch (error: any) {
+      appLogger.error({ err: error }, 'Rapor controller error');
+      return sendError(reply, 500, error.message || 'Gagal memuat matriks nilai lintas semester', error);
+    }
+  }
 }
 

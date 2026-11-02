@@ -98,6 +98,13 @@ export const raporApi = {
     const response = await api.get('/rapor/nilai/radar-remedial', { params });
     return response.data;
   },
+  getMatrixLintasSemester: async (params: {
+    siswa_id: string;
+    kkm?: number | string;
+  }) => {
+    const response = await api.get('/rapor/nilai/matrix-lintas-semester', { params });
+    return response.data;
+  },
   submitRemedialSingle: async (data: {
     siswa_id: string;
     kelas_id: string;
