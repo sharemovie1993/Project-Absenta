@@ -5,7 +5,7 @@ import { GraduationCap, Layers, X, Printer, Search, BarChart3, BookOpen, Chevron
 import { SectionCard } from '../../ui/SectionCard';
 import { Button } from '../../ui/Button';
 import { SearchableSelectOption } from '../../ui/SearchableSelect';
-import { TabOption } from '../../ui/TabSwitcher';
+import { TabSwitcher, TabOption } from '../../ui/TabSwitcher';
 import { raporApi } from '../../../api/rapor.api';
 import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../../hooks/useCapabilities';
@@ -731,126 +731,218 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
         </div>
       )}
 
-      {/* Unified Selector Header Card with Integrated Toolbar & Action Bar */}
-      {isMobile ? (
-        <div className="bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
-          <div className="flex items-center gap-1.5 w-full">
-            <div className="relative flex-1 min-w-0">
-              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              <input
-                id="search-siswa-mobile"
-                type="text"
-                placeholder="Cari siswa, NIS..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-xl text-xs font-medium pl-9 pr-7 py-2 h-9 text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-2xs"
+      {/* Unified Selector Header & Streamlined Toolbar */}
+      {activeRoleTab === 'wali_kelas' ? (
+        <div className="space-y-2">
+          {/* Persona Switcher jika user memiliki multi-role (Wali Kelas + Supervisi) */}
+          {tabOptions.length > 1 && (
+            <div className="flex items-center justify-between pb-0.5">
+              <TabSwitcher
+                options={tabOptions}
+                activeTab={activeRoleTab}
+                onChange={handleRoleTabChange}
               />
-              {searchQuery && (
+            </div>
+          )}
+
+          {/* Streamlined High-Density Action Bar (Wali Kelas Context) */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2 sm:p-2.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+            {/* Kiri: Switcher Dokumen Rapor vs Buku Leger + Badge Total Siswa */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
+              <div className="flex items-center gap-1 p-1 bg-slate-100/90 dark:bg-slate-850 rounded-xl border border-slate-200/60 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+                  onClick={() => setViewMode('orchestrator')}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
+                    viewMode === 'orchestrator'
+                      ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  )}
                 >
-                  <X size={12} />
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Dokumen Rapor</span>
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={() => setViewMode('leger')}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
+                    viewMode === 'leger'
+                      ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  )}
+                >
+                  <GraduationCap className="w-3.5 h-3.5" />
+                  <span>Buku Leger</span>
+                </button>
+              </div>
+
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold px-2.5 py-1 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-200/60 dark:border-slate-700/60 shrink-0">
+                {filteredStudents.length} Siswa
+              </span>
             </div>
 
-            {/* Shortcut Rincian Mapel di Mobile */}
-            <Button
-              variant="outline"
-              onClick={() => setShowMonitoringModal(true)}
-              className="border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-950/40 rounded-xl font-bold text-xs h-9 px-2.5 flex items-center gap-1 shrink-0 cursor-pointer"
-              title="Lihat Rincian Status Pengisian Nilai Mapel"
-            >
-              <BarChart3 className="w-3.5 h-3.5 text-indigo-500" />
-              <span className="text-[11px]">Mapel</span>
-            </Button>
+            {/* Kanan: Search Input & Rincian Mapel Button */}
+            <div className="flex items-center gap-2 flex-1 sm:justify-end min-w-0">
+              <div className="relative flex-1 sm:max-w-xs min-w-[160px]">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  id="search-siswa-walas"
+                  type="text"
+                  placeholder="Ketik nama / NIS..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-medium pl-8.5 pr-7 py-1.5 h-9 text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+                    title="Hapus pencarian"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+
+              <Button
+                variant="outline"
+                onClick={() => setShowMonitoringModal(true)}
+                className="border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-xl font-bold text-xs h-9 px-3 flex items-center gap-1.5 cursor-pointer shrink-0"
+                title="Lihat Rincian Status Pengisian Nilai Mapel Rombel Ini"
+              >
+                <BarChart3 className="w-3.5 h-3.5 text-indigo-500" />
+                <span className="hidden sm:inline">Rincian Mapel</span>
+                <span className="sm:hidden text-[11px]">Mapel</span>
+              </Button>
+            </div>
           </div>
         </div>
       ) : (
-        <CetakRaporHeaderCard
-          selectedKelas={selectedKelas}
-          onSelectKelas={setSelectedKelas}
-          activeRoleTab={activeRoleTab}
-          kelasOptions={kelasOptions}
-          isLoadingClasses={isLoadingClasses}
-          selectedTahunPelajaran={selectedTahunPelajaran}
-          selectedSemester={selectedSemester}
-          onTahunPelajaranChange={handleAcademicTpChange}
-          onSemesterChange={handleSemesterChange}
-          tpOptions={tpOptions}
-          semesterOptions={semesterOptions}
-          isLoadingTp={isLoadingTp}
-          isLoadingSem={isLoadingSem}
-          tabOptions={tabOptions}
-          onRoleTabChange={handleRoleTabChange}
-          searchQuery={searchQuery}
-          onSearchQueryChange={setSearchQuery}
-          hasLegerData={Boolean(leger?.data || filteredStudents.length > 0)}
-          isLoadingLeger={isLoadingLeger}
-          totalStudents={filteredStudents.length}
-          isBatchPrinting={isBatchPrinting}
-          onBatchPrintRapor={handleBatchPrintRapor}
-          onPrintLeger={() => printLeger(selectedKelas, activeYear?.id, activeSemester?.id, currentKelasObj?.nama_kelas)}
-          onExportLeger={handleExportLeger}
-          isJenjangSmk={isJenjangSmk}
-          onBatchPrintRaporPkl={handleBatchPrintRaporPkl}
-          isBatchPklPrinting={isBatchPklPrinting}
-          isPureWaliKelas={isPureWaliKelas}
-          currentKelasNama={currentKelasObj?.nama_kelas}
-          kurikulumStrukturListLength={kurikulumStrukturList?.length}
-          kurikulumTotalJp={kurikulumTotalJp}
-          modeCetakRapor={modeCetakRapor}
-          onOpenMonitoringModal={() => setShowMonitoringModal(true)}
-          onNavigateInputNilai={() => {
-            if (onNavigateDetail) {
-              onNavigateDetail(selectedKelas);
-            } else {
-              navigate(
-                `/rapor/nilai?kelas_id=${selectedKelas || ''}&tahun_pelajaran_id=${selectedTahunPelajaran || ''}&semester_id=${selectedSemester || ''}`
-              );
-            }
-          }}
-        />
+        <>
+          {/* Supervisi Mode: Selector Header Card dengan Dropdown Pilihan Kelas */}
+          {isMobile ? (
+            <div className="bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
+              <div className="flex items-center gap-1.5 w-full">
+                <div className="relative flex-1 min-w-0">
+                  <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <input
+                    id="search-siswa-mobile"
+                    type="text"
+                    placeholder="Cari siswa, NIS..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-xl text-xs font-medium pl-9 pr-7 py-2 h-9 text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-2xs"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+
+                <Button
+                  variant="outline"
+                  onClick={() => setShowMonitoringModal(true)}
+                  className="border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-950/40 rounded-xl font-bold text-xs h-9 px-2.5 flex items-center gap-1 shrink-0 cursor-pointer"
+                  title="Lihat Rincian Status Pengisian Nilai Mapel"
+                >
+                  <BarChart3 className="w-3.5 h-3.5 text-indigo-500" />
+                  <span className="text-[11px]">Mapel</span>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <CetakRaporHeaderCard
+              selectedKelas={selectedKelas}
+              onSelectKelas={setSelectedKelas}
+              activeRoleTab={activeRoleTab}
+              kelasOptions={kelasOptions}
+              isLoadingClasses={isLoadingClasses}
+              selectedTahunPelajaran={selectedTahunPelajaran}
+              selectedSemester={selectedSemester}
+              onTahunPelajaranChange={handleAcademicTpChange}
+              onSemesterChange={handleSemesterChange}
+              tpOptions={tpOptions}
+              semesterOptions={semesterOptions}
+              isLoadingTp={isLoadingTp}
+              isLoadingSem={isLoadingSem}
+              tabOptions={tabOptions}
+              onRoleTabChange={handleRoleTabChange}
+              searchQuery={searchQuery}
+              onSearchQueryChange={setSearchQuery}
+              hasLegerData={Boolean(leger?.data || filteredStudents.length > 0)}
+              isLoadingLeger={isLoadingLeger}
+              totalStudents={filteredStudents.length}
+              isBatchPrinting={isBatchPrinting}
+              onBatchPrintRapor={handleBatchPrintRapor}
+              onPrintLeger={() => printLeger(selectedKelas, activeYear?.id, activeSemester?.id, currentKelasObj?.nama_kelas)}
+              onExportLeger={handleExportLeger}
+              isJenjangSmk={isJenjangSmk}
+              onBatchPrintRaporPkl={handleBatchPrintRaporPkl}
+              isBatchPklPrinting={isBatchPklPrinting}
+              isPureWaliKelas={isPureWaliKelas}
+              currentKelasNama={currentKelasObj?.nama_kelas}
+              kurikulumStrukturListLength={kurikulumStrukturList?.length}
+              kurikulumTotalJp={kurikulumTotalJp}
+              modeCetakRapor={modeCetakRapor}
+              onOpenMonitoringModal={() => setShowMonitoringModal(true)}
+              onNavigateInputNilai={() => {
+                if (onNavigateDetail) {
+                  onNavigateDetail(selectedKelas);
+                } else {
+                  navigate(
+                    `/rapor/nilai?kelas_id=${selectedKelas || ''}&tahun_pelajaran_id=${selectedTahunPelajaran || ''}&semester_id=${selectedSemester || ''}`
+                  );
+                }
+              }}
+            />
+          )}
+
+          {/* View Mode Switcher: Orkestrator Dokumen vs Buku Leger Nilai (Supervisi Context) */}
+          <div className="flex items-center justify-between gap-2 p-1.5 bg-slate-100/80 dark:bg-slate-850 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+              <button
+                type="button"
+                onClick={() => setViewMode('orchestrator')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
+                  viewMode === 'orchestrator'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                )}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Dokumen</span>
+                <span className="hidden sm:inline">Rapor</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('leger')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
+                  viewMode === 'leger'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                )}
+              >
+                <GraduationCap className="w-3.5 h-3.5" />
+                <span>Buku Leger</span>
+              </button>
+            </div>
+
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-bold px-2 shrink-0">
+              <span>{filteredStudents.length} Siswa</span>
+            </div>
+          </div>
+        </>
       )}
-
-      {/* View Mode Switcher: Orkestrator Dokumen (Default) vs Buku Leger Nilai */}
-      <div className="flex items-center justify-between gap-2 p-1.5 bg-slate-100/80 dark:bg-slate-850 rounded-2xl border border-slate-200/80 dark:border-slate-800">
-        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-          <button
-            type="button"
-            onClick={() => setViewMode('orchestrator')}
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
-              viewMode === 'orchestrator'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            )}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Dokumen</span>
-            <span className="hidden sm:inline">Rapor</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('leger')}
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
-              viewMode === 'leger'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            )}
-          >
-            <GraduationCap className="w-3.5 h-3.5" />
-            <span>Buku Leger</span>
-          </button>
-        </div>
-
-        <div className="text-[11px] text-slate-500 dark:text-slate-400 font-bold px-2 shrink-0">
-          <span>{filteredStudents.length} Siswa</span>
-        </div>
-      </div>
 
       {/* Main View: Academic Document Orchestrator Table vs Leger Nilai Table */}
       {viewMode === 'orchestrator' ? (
