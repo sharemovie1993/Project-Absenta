@@ -106,11 +106,15 @@ export const kurikulumApi = {
   },
 
   // Dashboard Monitoring
-  getKbmGlobalMonitoring: async (tanggal?: string) => {
+  getKbmGlobalMonitoring: async (tanggal?: string, tahunPelajaranId?: string, semesterId?: string) => {
     // Pastikan tanggal dikirim dalam format YYYY-MM-DD murni tanpa konversi zona waktu yang salah
     const dateParam = tanggal || new Date().toLocaleDateString('sv-SE');
     const response = await api.get('/dashboard/kurikulum/monitoring-global', {
-      params: { tanggal: dateParam }
+      params: {
+        tanggal: dateParam,
+        tahun_pelajaran_id: tahunPelajaranId || undefined,
+        semester_id: semesterId || undefined,
+      }
     });
     return response.data;
   },

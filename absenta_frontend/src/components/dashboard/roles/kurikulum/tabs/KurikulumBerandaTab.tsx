@@ -35,6 +35,8 @@ import type { KurikulumTabId } from '../types';
 export interface KurikulumBerandaTabProps {
   semNama: string;
   tpTahun: string;
+  tahunPelajaranId?: string;
+  semesterId?: string;
   totalGuru: number;
   totalKelas: number;
   totalMapel: number;
@@ -64,6 +66,8 @@ export interface KurikulumBerandaTabProps {
 export const KurikulumBerandaTab: React.FC<KurikulumBerandaTabProps> = React.memo(({
   semNama,
   tpTahun,
+  tahunPelajaranId,
+  semesterId,
   totalGuru,
   totalKelas,
   totalMapel,
@@ -241,7 +245,11 @@ export const KurikulumBerandaTab: React.FC<KurikulumBerandaTabProps> = React.mem
 
       {/* 4. LIVE MONITORING KBM WIDGET */}
       <div className="w-full">
-        <MonitoringKbmWidget isExecutive={true} />
+        <MonitoringKbmWidget
+          isExecutive={true}
+          tahunPelajaranId={tahunPelajaranId}
+          semesterId={semesterId}
+        />
       </div>
 
       {/* 5. ANALYTICS ROW: DISTRIBUSI BEBAN JP & BEBAN GURU */}

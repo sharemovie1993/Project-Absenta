@@ -9,9 +9,9 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 | Metrik Evaluasi | Hasil Peminidaian | Persentase | Status |
 |---|---|---|---|
 | **Total Halaman Utama** | **225 Halaman** | 100% | - |
-| **✅ Lolos Sempurna (Hardened)** | **148 Halaman** | 66% | **Sangat Baik** |
-| **⚠️ Sebagian Terstandar (Partial)** | **66 Halaman** | 29% | **Butuh Sentuhan Ringan** |
-| **❌ Belum Terstandar (Non-Compliant)** | **11 Halaman** | 5% | **Prioritas Utama Refaktor** |
+| **✅ Lolos Sempurna (Hardened)** | **147 Halaman** | 65% | **Sangat Baik** |
+| **⚠️ Sebagian Terstandar (Partial)** | **65 Halaman** | 29% | **Butuh Sentuhan Ringan** |
+| **❌ Belum Terstandar (Non-Compliant)** | **13 Halaman** | 6% | **Prioritas Utama Refaktor** |
 
 ---
 
@@ -109,8 +109,24 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
+### 📄 Halaman: `RekapKBMPage.tsx`
+* **Lokasi File:** [RekapKBMPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/RekapKBMPage.tsx)
+* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Belum menggunakan AcademicPageLayout atau InfraErrorBoundary (Kerentanan Visual Halaman Total)
+
+---
+
 ### 📄 Halaman: `StrukturKurikulumPage.tsx`
 * **Lokasi File:** [StrukturKurikulumPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/StrukturKurikulumPage.tsx)
+* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Belum menggunakan AcademicPageLayout atau InfraErrorBoundary (Kerentanan Visual Halaman Total)
+
+---
+
+### 📄 Halaman: `WaliKelasPage.tsx`
+* **Lokasi File:** [WaliKelasPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/WaliKelasPage.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Belum menggunakan AcademicPageLayout atau InfraErrorBoundary (Kerentanan Visual Halaman Total)
@@ -600,18 +616,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [JadwalKontrakKbmPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/JadwalKontrakKbmPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
-  * ❌ Terdeteksi isu responsivitas pada antarmuka (Pelanggaran Pilar 30 Adaptabilitas Responsif Multi-Perangkat). Wajib melakukan refaktor secara best-practice: (1) Pada Topbar (<640px), sembunyikan badge status redundan 'hidden sm:block' agar judul halaman mendapatkan 100% ruang lebar penuh tanpa terpotong kaku. (2) Pada TabSwitcher, gunakan container touch-scroll 'overflow-x-auto no-scrollbar flex-nowrap' dengan item 'whitespace-nowrap'. (3) Pada Kartu Statistik, gunakan varian Mobile-Mini/Compact Premium ('variant="compact-premium"' atau 'mobileCompact={true}') agar hemat 50% ruang vertikal di layar ponsel dan sediakan fitur collapsible. (4) Pada Form & Input, pastikan seluruh container memiliki kelas 'w-full max-w-full min-w-0' agar elemen input dan ikon tidak terpotong (zero-clipping).
-
----
-
-### 📄 Halaman: `RekapKBMPage.tsx`
-* **Lokasi File:** [RekapKBMPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/RekapKBMPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
   * ❌ Terdeteksi isu responsivitas pada antarmuka (Pelanggaran Pilar 30 Adaptabilitas Responsif Multi-Perangkat). Wajib melakukan refaktor secara best-practice: (1) Pada Topbar (<640px), sembunyikan badge status redundan 'hidden sm:block' agar judul halaman mendapatkan 100% ruang lebar penuh tanpa terpotong kaku. (2) Pada TabSwitcher, gunakan container touch-scroll 'overflow-x-auto no-scrollbar flex-nowrap' dengan item 'whitespace-nowrap'. (3) Pada Kartu Statistik, gunakan varian Mobile-Mini/Compact Premium ('variant="compact-premium"' atau 'mobileCompact={true}') agar hemat 50% ruang vertikal di layar ponsel dan sediakan fitur collapsible. (4) Pada Form & Input, pastikan seluruh container memiliki kelas 'w-full max-w-full min-w-0' agar elemen input dan ikon tidak terpotong (zero-clipping).
 
@@ -1406,13 +1410,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `PerangkatAjarPage.tsx`
 * **Lokasi File:** [PerangkatAjarPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/PerangkatAjarPage.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `WaliKelasPage.tsx`
-* **Lokasi File:** [WaliKelasPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/WaliKelasPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 

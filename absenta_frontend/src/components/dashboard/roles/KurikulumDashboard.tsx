@@ -150,8 +150,8 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
 
   const resolvedTahunPelajaranId = academicFilter.values.tahunPelajaranId;
   const resolvedSemesterId = academicFilter.values.semesterId;
-  const semNama = academicFilter.selectedSemesterNama || '';
-  const tpTahun = academicFilter.selectedTahunPelajaranNama || '';
+  const semNama = academicFilter.selectedSemesterNama || academicFilter.activeSemester?.nama_semester?.replace(/\s*⭐\s*/g, '').trim() || '';
+  const tpTahun = academicFilter.selectedTahunPelajaranNama || academicFilter.activeTpYear?.tahun || '';
 
   const { jenjang, kelompokOptions, tingkatList } = useJenjang();
   const isVocational = useMemo(() => ['SMK', 'MAK'].includes(jenjang || ''), [jenjang]);
@@ -745,6 +745,8 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               <KurikulumBerandaTab
                 semNama={semNama}
                 tpTahun={tpTahun}
+                tahunPelajaranId={resolvedTahunPelajaranId}
+                semesterId={resolvedSemesterId}
                 totalGuru={totalGuru}
                 totalKelas={totalKelas}
                 totalMapel={totalMapel}

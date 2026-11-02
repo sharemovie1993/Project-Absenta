@@ -293,11 +293,16 @@ export class DashboardExecutiveService {
   /**
    * 🆕 Get Kurikulum Global Monitoring Data
    */
-  async getKurikulumMonitoringGlobal(tenantId: string | null, tanggal?: string) {
+  async getKurikulumMonitoringGlobal(
+    tenantId: string | null,
+    tanggal?: string,
+    tahunPelajaranId?: string,
+    semesterId?: string
+  ) {
     const tz = await getTenantTimezone(tenantId);
     const dateStr = tanggal || new Date().toLocaleDateString('sv-SE', { timeZone: tz || 'Asia/Jakarta' });
     const offsetStr = getTenantOffsetString(tz);
-    const cacheKey = CACHE_KEYS.DASHBOARD.KURIKULUM_MONITORING(tenantId, dateStr);
+    const cacheKey = `${CACHE_KEYS.DASHBOARD.KURIKULUM_MONITORING(tenantId, dateStr)}:${tahunPelajaranId || 'all'}:${semesterId || 'all'}`;
 
     return await cacheService.getOrSet(
       cacheKey,
@@ -314,7 +319,14 @@ export class DashboardExecutiveService {
         const lifecycleRes = await SesiLifecycleService.getInstance().list(
           tenantId || '',
           {},
-          { tanggal: dateStr, include_scheduled: true, summary: true, limit: 1000 }
+          {
+            tanggal: dateStr,
+            include_scheduled: true,
+            summary: true,
+            limit: 1000,
+            tahun_pelajaran_id: tahunPelajaranId,
+            semester_id: semesterId,
+          }
         );
 
         const sessionList = Array.isArray(lifecycleRes.data) ? lifecycleRes.data : [];

@@ -172,7 +172,20 @@ async function upsertTeacherAttendanceOnOpen(
 
 export class SesiQueryService {
   async list(tenantId: string, _org: any, query: any) {
-    const { kelas_id, guru_id, allowedKelasIds, guruIdFilter, tanggal, status, status_filter, include_scheduled, limit = 50, page = 1 } = query;
+    const {
+      kelas_id,
+      guru_id,
+      allowedKelasIds,
+      guruIdFilter,
+      tanggal,
+      status,
+      status_filter,
+      include_scheduled,
+      limit = 50,
+      page = 1,
+      tahun_pelajaran_id,
+      semester_id,
+    } = query;
 
     const tz = await getTenantTimezone(tenantId);
     const tzOffset = getTenantOffsetString(tz);
@@ -201,6 +214,8 @@ export class SesiQueryService {
     }
 
     if (status) where.status = status;
+    if (tahun_pelajaran_id) where.tahun_pelajaran_id = tahun_pelajaran_id;
+    if (semester_id) where.semester_id = semester_id;
     const targetSessionId = (query as any).id || (query as any).sesi_id;
     if (targetSessionId && typeof targetSessionId === 'string' && !targetSessionId.startsWith('sched_')) {
       where.id = targetSessionId;
@@ -442,6 +457,13 @@ export class SesiQueryService {
         ]
       }
     };
+
+    if (tahun_pelajaran_id) {
+      scheduleWhere.tahun_pelajaran_id = tahun_pelajaran_id;
+    }
+    if (semester_id) {
+      scheduleWhere.semester_id = semester_id;
+    }
 
     if (kelas_id) {
       scheduleWhere.kelas_id = kelas_id;

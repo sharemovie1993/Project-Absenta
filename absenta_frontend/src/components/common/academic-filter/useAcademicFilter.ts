@@ -482,6 +482,26 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     return mapelOptions.find((m) => m.value === mapelId)?.label || '';
   }, [mapelOptions, mapelId]);
 
+  const selectedTahunPelajaranNama = useMemo(() => {
+    const opt = tpOptions.find((t) => t.value === tahunPelajaranId);
+    if (opt?.label) {
+      return opt.label.replace(/\s*★\s*/g, '').trim();
+    }
+    const raw = tpRawList?.find((y) => y.id === tahunPelajaranId) || activeTp;
+    return raw?.tahun || '';
+  }, [tpOptions, tahunPelajaranId, tpRawList, activeTp]);
+
+  const selectedSemesterNama = useMemo(() => {
+    const opt = semesterOptions.find((s) => s.value === semesterId);
+    if (opt?.label) {
+      return opt.label.replace(/\s*⭐\s*/g, '').trim();
+    }
+    if (activeSemester?.nama_semester) {
+      return activeSemester.nama_semester.replace(/\s*⭐\s*/g, '').trim();
+    }
+    return '';
+  }, [semesterOptions, semesterId, activeSemester]);
+
   // ── 6. Assemble Toolbar Props ──────────────────────────────────────────────
   const toolbarProps: AcademicFilterToolbarProps = {
     enableTp,
@@ -615,6 +635,8 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
         : null;
     })(),
     activeSemester: semesterOptions.find((s) => s.value === semesterId) ? { id: semesterId, nama_semester: semesterOptions.find((s) => s.value === semesterId)?.label || '', is_active: true } : null,
+    selectedTahunPelajaranNama,
+    selectedSemesterNama,
     selectedKelasLabel,
     selectedMitraLabel,
     selectedMapelLabel,

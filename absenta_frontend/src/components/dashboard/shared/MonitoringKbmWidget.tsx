@@ -35,11 +35,18 @@ export interface MonitoringKbmWidgetProps {
    * Default filter status guru (misal: 'BELUM_MASUK', 'ALL', dll.)
    */
   defaultTeacherFilter?: string;
+  /**
+   * Scope filter tahun pelajaran & semester (AcademicFilter SSOT)
+   */
+  tahunPelajaranId?: string;
+  semesterId?: string;
 }
 
 export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ 
   isExecutive = true,
-  defaultTeacherFilter
+  defaultTeacherFilter,
+  tahunPelajaranId,
+  semesterId,
 }) => {
   const queryClient = useQueryClient();
   const { isConnected, subscribe, unsubscribe } = useSocket();
@@ -203,8 +210,8 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
 
   // 2. Fetch Global Monitoring Stats (Backend Source of Truth)
   const { data: monitoringRes, isLoading: monitoringLoading, error: monitoringError } = useQuery({
-    queryKey: ['dashboard', 'kurikulum', 'monitoring-global', targetDate],
-    queryFn: () => kurikulumApi.getKbmGlobalMonitoring(targetDate),
+    queryKey: ['dashboard', 'kurikulum', 'monitoring-global', targetDate, tahunPelajaranId, semesterId],
+    queryFn: () => kurikulumApi.getKbmGlobalMonitoring(targetDate, tahunPelajaranId, semesterId),
     refetchInterval: isToday ? 30000 : false,
     staleTime: 30000,
     placeholderData: (prev) => prev,
@@ -213,8 +220,15 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
 
   // 3. Fetch Session List (Unified Source with include_scheduled: true)
   const { data: sesiData, isLoading: sesiLoading, error: sesiError, refetch: refetchSessions } = useQuery({
-    queryKey: ['monitoring-sesi-absensi', targetDate],
-    queryFn: () => getSesiAbsensiList({ tanggal: targetDate, include_scheduled: true, summary: true, limit: 500 } as any),
+    queryKey: ['monitoring-sesi-absensi', targetDate, tahunPelajaranId, semesterId],
+    queryFn: () => getSesiAbsensiList({
+      tanggal: targetDate,
+      include_scheduled: true,
+      summary: true,
+      limit: 500,
+      tahun_pelajaran_id: tahunPelajaranId || undefined,
+      semester_id: semesterId || undefined,
+    } as any),
     enabled: tenantMode !== 'SIMPLE',
     refetchInterval: isToday && tenantMode !== 'SIMPLE' ? 30000 : false, 
     staleTime: 30000,

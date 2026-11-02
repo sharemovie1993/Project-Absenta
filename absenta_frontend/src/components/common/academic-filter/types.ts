@@ -127,6 +127,8 @@ export interface UseAcademicFilterReturn {
   // Derived objects & Cohort Lineage
   activeTpYear: { id: string; tahun: string; nama?: string; is_active?: boolean } | null;
   activeSemester: { id: string; nama_semester: string; is_active: boolean } | null;
+  selectedTahunPelajaranNama?: string;
+  selectedSemesterNama?: string;
   selectedKelasLabel: string;
   selectedMitraLabel: string;
   selectedMapelLabel: string;

@@ -203,7 +203,9 @@ export async function dashboardOverviewRoutes(fastify: any) {
       querystring: {
         type: 'object',
         properties: {
-          tanggal: { type: 'string', format: 'date' }
+          tanggal: { type: 'string', format: 'date' },
+          tahun_pelajaran_id: { type: 'string' },
+          semester_id: { type: 'string' }
         }
       }
     }

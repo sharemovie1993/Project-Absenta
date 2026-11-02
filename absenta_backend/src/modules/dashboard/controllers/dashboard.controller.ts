@@ -143,8 +143,17 @@ export class DashboardController {
   async getKurikulumMonitoringGlobal(request: AuthenticatedRequest, reply: any) {
     try {
       const tenantId = request.tenantId;
-      const { tanggal } = request.query as { tanggal?: string };
-      const data = await this.dashboardService.getKurikulumMonitoringGlobal(tenantId, tanggal);
+      const { tanggal, tahun_pelajaran_id, semester_id } = request.query as {
+        tanggal?: string;
+        tahun_pelajaran_id?: string;
+        semester_id?: string;
+      };
+      const data = await this.dashboardService.getKurikulumMonitoringGlobal(
+        tenantId,
+        tanggal,
+        tahun_pelajaran_id,
+        semester_id
+      );
 
       return reply.status(200).send({
         success: true,
