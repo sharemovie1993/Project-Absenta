@@ -1000,8 +1000,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
       });
     }
 
-    // 4.11 Pembimbing PKL (Guru Pendamping Siswa Magang Industri)
-    if ((isPembimbingPkl || (isAdminRole && !isKepsek) || can('hubin.guidance.manage')) && !isKepsek) {
+    // 4.11 Pembimbing PKL: Murni hanya untuk guru yang terdaftar di plotting PKL
+    if (isPembimbingPkl && !isKepsek) {
       list.push({ 
         id: 'pembimbing_pkl', 
         label: 'Dashboard Pembimbing PKL', 
@@ -1089,7 +1089,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     if (activeTab === 'binaan' && (isWaliKelas || Boolean(waliKelasId))) return;
     if (activeTab === 'kaprog' && isKaprog) return;
     if (activeTab === 'kepegawaian' && (isTUKepala || isTUPersuratan || isTUKepegawaian || isTU)) return;
-    if (activeTab === 'pembimbing_pkl' && (isPembimbingPkl || isAdminRole || can('hubin.guidance.manage'))) return;
+    if (activeTab === 'pembimbing_pkl' && isPembimbingPkl) return;
 
     // Tunggu sampai tabs siap sebelum melakukan fallback
     if (tabs.length === 0) return;
@@ -1098,7 +1098,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
       const fallback = tabs.some(t => t.id === defaultTabId) ? defaultTabId : tabs[0].id;
       setSearchParams({ tab: fallback }, { replace: true });
     }
-  }, [tabs, activeTab, defaultTabId, setSearchParams, isWaliKelas, waliKelasId, isKaprog, isTUKepala, isTUPersuratan, isTUKepegawaian, isTU]);
+  }, [tabs, activeTab, defaultTabId, setSearchParams, isWaliKelas, waliKelasId, isKaprog, isTUKepala, isTUPersuratan, isTUKepegawaian, isTU, isPembimbingPkl]);
 
   // ── 6. Quick Actions ──────────────────────────────────────────────────────────
   const quickActions = useMemo(() => {
