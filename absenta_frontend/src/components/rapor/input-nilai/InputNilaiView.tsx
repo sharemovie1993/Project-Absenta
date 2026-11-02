@@ -546,97 +546,99 @@ export const InputNilaiView: React.FC<UniversalInputNilaiViewProps> = React.memo
         </div>
       )}
 
-      {/* Toolbar Filter Terstandar */}
-      <AcademicFilterToolbar
-        {...academicFilter.toolbarProps}
-        enableKelas={isSupervisiMode}
-        enableMapel={isSupervisiMode}
-        mapelOptions={smartMapelOptions}
-        isLoadingMapel={isLoadingClassSubjects}
-        values={{
-          ...academicFilter.toolbarProps.values,
-          kelasId: selectedKelas,
-          mapelId: selectedMapel,
-        }}
-        actionsLeft={
-          tabOptions.length > 1 ? (
-            <div className="flex items-center justify-between w-full flex-wrap gap-2">
-              <div className="flex items-center gap-2.5">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  Tampilan
-                </span>
-                <TabSwitcher
-                  options={tabOptions}
-                  activeTab={activeRoleTab}
-                  onChange={handleRoleTabChange}
-                />
-              </div>
-
-              {canShowMonitoring && (
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowMonitoringModal(true)}
-                    className="flex items-center gap-1.5 px-2.5 sm:px-3 h-[32px] rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 font-bold text-xs shadow-2xs transition-all cursor-pointer shrink-0"
-                    title="Buka Status Monitoring Pengisian Mapel Seluruh Rombel"
-                  >
-                    <BarChart3 className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                    <span>Monitoring</span>
-                  </button>
+      {/* Toolbar Filter Terstandar — HANYA di halaman penuh (/rapor/nilai), disembunyikan di mode Modal Guru agar lembar nilai langsung luas */}
+      {!isModal && (
+        <AcademicFilterToolbar
+          {...academicFilter.toolbarProps}
+          enableKelas={isSupervisiMode}
+          enableMapel={isSupervisiMode}
+          mapelOptions={smartMapelOptions}
+          isLoadingMapel={isLoadingClassSubjects}
+          values={{
+            ...academicFilter.toolbarProps.values,
+            kelasId: selectedKelas,
+            mapelId: selectedMapel,
+          }}
+          actionsLeft={
+            tabOptions.length > 1 ? (
+              <div className="flex items-center justify-between w-full flex-wrap gap-2">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    Tampilan
+                  </span>
+                  <TabSwitcher
+                    options={tabOptions}
+                    activeTab={activeRoleTab}
+                    onChange={handleRoleTabChange}
+                  />
                 </div>
-              )}
-            </div>
-          ) : undefined
-        }
-        actionsRight={
-          (canShowMonitoring && tabOptions.length <= 1) ? (
-            <div className="self-end pb-0.5">
-              <button
-                type="button"
-                onClick={() => setShowMonitoringModal(true)}
-                className="flex items-center gap-1.5 px-3 h-10 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-xs shadow-2xs transition-all cursor-pointer whitespace-nowrap"
-                title="Buka Status Monitoring Pengisian Mapel Seluruh Rombel"
-              >
-                <BarChart3 className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                <span>Monitoring</span>
-              </button>
-            </div>
-          ) : undefined
-        }
-        bottomContent={
-          activeRoleTab === 'my_tasks' && (
-            hasTeachingTasks ? (
-              <TeacherProgressCard
-                embedded={true}
-                progressInfo={progressInfo}
-                showProgressDetail={showProgressDetail}
-                onToggleProgressDetail={() => setShowProgressDetail(!showProgressDetail)}
-                taskStatusFilter={taskStatusFilter}
-                onSetTaskStatusFilter={setTaskStatusFilter}
-                taskSearchQuery={taskSearchQuery}
-                onSetTaskSearchQuery={setTaskSearchQuery}
-                filteredTasks={filteredTasks}
-                selectedKelas={selectedKelas}
-                selectedMapel={selectedMapel}
-                onSelectTask={(kId, mId, kNama, mNama) => {
-                  setSelectedKelas(kId);
-                  setSelectedMapel(mId);
-                  toast.info(`Memilih ${kNama} — ${mNama}`);
-                }}
-              />
-            ) : (
-              <div className="py-4 text-center space-y-2">
-                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Belum Ada Jadwal KBM pada Periode Ini
-                </p>
-                <p className="text-[11px] text-slate-400 max-w-md mx-auto">
-                  Tidak ditemukan jadwal mengajar aktif pada Tahun Pelajaran / Semester terpilih.
-                </p>
+
+                {canShowMonitoring && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowMonitoringModal(true)}
+                      className="flex items-center gap-1.5 px-2.5 sm:px-3 h-[32px] rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 font-bold text-xs shadow-2xs transition-all cursor-pointer shrink-0"
+                      title="Buka Status Monitoring Pengisian Mapel Seluruh Rombel"
+                    >
+                      <BarChart3 className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                      <span>Monitoring</span>
+                    </button>
+                  </div>
+                )}
               </div>
+            ) : undefined
+          }
+          actionsRight={
+            (canShowMonitoring && tabOptions.length <= 1) ? (
+              <div className="self-end pb-0.5">
+                <button
+                  type="button"
+                  onClick={() => setShowMonitoringModal(true)}
+                  className="flex items-center gap-1.5 px-3 h-10 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-xs shadow-2xs transition-all cursor-pointer whitespace-nowrap"
+                  title="Buka Status Monitoring Pengisian Mapel Seluruh Rombel"
+                >
+                  <BarChart3 className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                  <span>Monitoring</span>
+                </button>
+              </div>
+            ) : undefined
+          }
+          bottomContent={
+            activeRoleTab === 'my_tasks' && (
+              hasTeachingTasks ? (
+                <TeacherProgressCard
+                  embedded={true}
+                  progressInfo={progressInfo}
+                  showProgressDetail={showProgressDetail}
+                  onToggleProgressDetail={() => setShowProgressDetail(!showProgressDetail)}
+                  taskStatusFilter={taskStatusFilter}
+                  onSetTaskStatusFilter={setTaskStatusFilter}
+                  taskSearchQuery={taskSearchQuery}
+                  onSetTaskSearchQuery={setTaskSearchQuery}
+                  filteredTasks={filteredTasks}
+                  selectedKelas={selectedKelas}
+                  selectedMapel={selectedMapel}
+                  onSelectTask={(kId, mId, kNama, mNama) => {
+                    setSelectedKelas(kId);
+                    setSelectedMapel(mId);
+                    toast.info(`Memilih ${kNama} — ${mNama}`);
+                  }}
+                />
+              ) : (
+                <div className="py-4 text-center space-y-2">
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Belum Ada Jadwal KBM pada Periode Ini
+                  </p>
+                  <p className="text-[11px] text-slate-400 max-w-md mx-auto">
+                    Tidak ditemukan jadwal mengajar aktif pada Tahun Pelajaran / Semester terpilih.
+                  </p>
+                </div>
+              )
             )
-          )
-        }
-      />
+          }
+        />
+      )}
 
       {saveSuccessMsg && (
         <div className="bg-emerald-600 text-white p-4 rounded-2xl shadow-xl flex items-center justify-between">
