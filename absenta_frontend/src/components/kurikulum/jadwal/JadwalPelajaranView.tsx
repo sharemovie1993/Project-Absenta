@@ -75,9 +75,18 @@ export const JadwalPelajaranView: React.FC<UniversalJadwalPelajaranViewProps> = 
     can('attendance.schedules.create') || can('attendance.schedules.update') || can('attendance.schedules.delete')
   );
 
-  // View State Logic
-  const [viewMode, setViewMode] = useState<'grid' | 'builder' | 'preview'>('grid');
+  // View State Logic: Kurikulum & Admin default langsung mendarat di Workspace Visual Builder
+  const [viewMode, setViewMode] = useState<'grid' | 'builder' | 'preview'>(() => {
+    return canManage ? 'builder' : 'grid';
+  });
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+
+  // Otomatis arahkan pengelola Kurikulum langsung ke Builder jika tidak di preview
+  useEffect(() => {
+    if (canManage && viewMode === 'grid') {
+      setViewMode('builder');
+    }
+  }, [canManage, viewMode]);
 
   // Shared Data State
   const [refreshKey, setRefreshKey] = useState(0);
@@ -368,12 +377,11 @@ export const JadwalPelajaranView: React.FC<UniversalJadwalPelajaranViewProps> = 
           {canManage ? (
             <TabSwitcher
               options={[
-                { id: 'grid', label: 'Visual Grid', icon: LayoutGrid, colorClass: 'text-indigo-600 dark:text-indigo-400' },
                 { id: 'builder', label: 'Visual Builder', icon: Paintbrush, colorClass: 'text-purple-600 dark:text-purple-400' },
                 { id: 'preview', label: 'Pratinjau PDF', icon: Printer, colorClass: 'text-blue-600 dark:text-blue-400' }
               ]}
               activeTab={viewMode}
-              onChange={(id) => id === 'preview' ? triggerPrintPreview() : setViewMode(id as 'grid' | 'builder' | 'preview')}
+              onChange={(id) => id === 'preview' ? triggerPrintPreview() : setViewMode(id as 'builder' | 'preview')}
             />
           ) : !isSiswa ? (
             <TabSwitcher
@@ -388,7 +396,7 @@ export const JadwalPelajaranView: React.FC<UniversalJadwalPelajaranViewProps> = 
         </div>
 
         <Suspense fallback={<div className="flex justify-center py-20"><Loader /></div>}>
-          {viewMode === 'builder' && canManage ? (
+          {canManage && viewMode !== 'preview' ? (
             <JadwalBuilder 
               tahunPelajaranId={selectedTahunId} 
               semesterId={selectedSemesterId}
