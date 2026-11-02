@@ -212,7 +212,7 @@ export const KalenderAkademikView: React.FC<UniversalKalenderAkademikViewProps> 
       closeModal();
       toast.success('Event berhasil ditambahkan');
     },
-    onError: () => toast.error('Gagal menambahkan event'),
+    onError: (err: any) => toast.error(err?.response?.data?.message || err?.message || 'Gagal menambahkan event'),
   });
 
   const updateMutation = useMutation({
@@ -226,7 +226,7 @@ export const KalenderAkademikView: React.FC<UniversalKalenderAkademikViewProps> 
       closeModal();
       toast.success('Event berhasil diperbarui');
     },
-    onError: () => toast.error('Gagal memperbarui event'),
+    onError: (err: any) => toast.error(err?.response?.data?.message || err?.message || 'Gagal memperbarui event'),
   });
 
   const deleteMutation = useMutation({
@@ -239,7 +239,7 @@ export const KalenderAkademikView: React.FC<UniversalKalenderAkademikViewProps> 
       setSelectedIds(prev => prev.filter(x => x !== id));
       toast.success('Event dihapus');
     },
-    onError: () => toast.error('Gagal menghapus event'),
+    onError: (err: any) => toast.error(err?.response?.data?.message || err?.message || 'Gagal menghapus event'),
   });
 
   const bulkDeleteMutation = useMutation({

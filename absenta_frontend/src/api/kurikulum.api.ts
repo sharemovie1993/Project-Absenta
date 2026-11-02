@@ -264,6 +264,30 @@ export const kurikulumApi = {
     return response.data;
   },
 
+  // Kalender Akademik - Compatibility Aliases
+  getCalendarEvents: async (tahun_pelajaran_id?: string) => {
+    const params = tahun_pelajaran_id ? `?tahun_pelajaran_id=${tahun_pelajaran_id}` : '';
+    const response = await api.get(`/kurikulum/kalender${params}`);
+    return response.data;
+  },
+  getCalendarStats: async (tahun_pelajaran_id?: string) => {
+    const params = tahun_pelajaran_id ? `?tahun_pelajaran_id=${tahun_pelajaran_id}` : '';
+    const response = await api.get(`/kurikulum/kalender/stats${params}`);
+    return response.data;
+  },
+  createCalendarEvent: async (data: any) => {
+    const response = await api.post('/kurikulum/kalender', data);
+    return response.data;
+  },
+  updateCalendarEvent: async (id: string, data: any) => {
+    const response = await api.put(`/kurikulum/kalender/${id}`, data);
+    return response.data;
+  },
+  deleteCalendarEvent: async (id: string) => {
+    const response = await api.delete(`/kurikulum/kalender/${id}`);
+    return response.data;
+  },
+
   // Rekap KBM
   getRekapKBM: async (params) => {
     const qs = new URLSearchParams();

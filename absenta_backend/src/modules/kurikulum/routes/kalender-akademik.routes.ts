@@ -16,22 +16,31 @@ export async function kalenderAkademikRoutes(fastify: any) {
     KalenderAkademikController.getStats
   );
 
-  // WRITE endpoints: hanya academic.structure.manage (Admin/Wakasek Kurikulum)
+  // WRITE endpoints: Academic Structure Manage, Academic Years Manage, atau Academic Manage (Admin & Kurikulum)
+  const canWriteCalendar = [
+    'academic.structure.manage',
+    'academic.manage.academic',
+    'academic.years.create',
+    'academic.years.update',
+    'academic.years.delete',
+    'academic.years.manage'
+  ];
+
   fastify.post(
     '/',
-    { preHandler: [requireCapability('academic.structure.manage'), determineDataScope()] },
+    { preHandler: [requireCapability(canWriteCalendar), determineDataScope()] },
     KalenderAkademikController.create
   );
 
   fastify.put(
     '/:id',
-    { preHandler: [requireCapability('academic.structure.manage'), determineDataScope()] },
+    { preHandler: [requireCapability(canWriteCalendar), determineDataScope()] },
     KalenderAkademikController.update
   );
 
   fastify.delete(
     '/:id',
-    { preHandler: [requireCapability('academic.structure.manage'), determineDataScope()] },
+    { preHandler: [requireCapability(canWriteCalendar), determineDataScope()] },
     KalenderAkademikController.delete
   );
 
@@ -66,14 +75,14 @@ export async function kalenderAkademikRoutes(fastify: any) {
   // POST /bulk-seed - Bulk seed standard national holidays for active school year
   fastify.post(
     '/bulk-seed',
-    { preHandler: [requireCapability('academic.structure.manage'), determineDataScope()] },
+    { preHandler: [requireCapability(canWriteCalendar), determineDataScope()] },
     KalenderAkademikController.bulkSeed
   );
 
   // DELETE /bulk-delete - Bulk delete calendar events
   fastify.delete(
     '/bulk-delete',
-    { preHandler: [requireCapability('academic.structure.manage'), determineDataScope()] },
+    { preHandler: [requireCapability(canWriteCalendar), determineDataScope()] },
     KalenderAkademikController.bulkDelete
   );
 }
