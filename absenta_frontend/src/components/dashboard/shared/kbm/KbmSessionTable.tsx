@@ -48,13 +48,23 @@ export const KbmSessionTable = React.memo<KbmSessionTableProps>(({
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
                       <span className="text-xs font-black text-gray-900 dark:text-white">{formatTime(sesi.waktu_mulai)}</span>
-                      <Badge 
-                        variant={sessionMeta.badgePropsVariant} 
-                        size="sm" 
-                        className="text-[7px] px-1 py-0 mt-1 w-fit"
-                      >
-                        {sessionMeta.shortLabel}
-                      </Badge>
+                      <div className="flex items-center gap-1 mt-1 flex-wrap">
+                        <Badge 
+                          variant={sessionMeta.badgePropsVariant} 
+                          size="sm" 
+                          className="text-[7px] px-1 py-0 w-fit"
+                        >
+                          {sessionMeta.shortLabel}
+                        </Badge>
+                        <span className={cn(
+                          "text-[7px] font-bold px-1 py-0.5 rounded",
+                          (sesi.isVirtual || sesi.is_virtual || String(sesi.id).startsWith('sched_'))
+                            ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                            : "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+                        )}>
+                          {(sesi.isVirtual || sesi.is_virtual || String(sesi.id).startsWith('sched_')) ? 'Virtual' : 'Fisik'}
+                        </span>
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">

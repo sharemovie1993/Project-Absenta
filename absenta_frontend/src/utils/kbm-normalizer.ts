@@ -331,6 +331,8 @@ export interface KbmItem {
   // Metadata
   is_adhoc?: boolean;
   is_piket?: boolean;
+  isVirtual?: boolean;
+  is_virtual?: boolean;
   _raw?: any; // raw response untuk keperluan debug
   [key: string]: any;
 }
@@ -352,6 +354,7 @@ export function normalizeFromSesiAbsensi(raw: any): KbmItem {
   const isFinished = raw.isFinished ?? raw._summary?.isFinished ?? summary.isFinished ?? raw.status?.isFinished ?? (raw.status === 'SELESAI');
   const isOverdue = raw.isOverdue ?? raw.is_overdue ?? raw._summary?.isOverdue ?? summary.isOverdue ?? raw.status?.isOverdue ?? false;
   const isUpcoming = raw.isUpcoming ?? raw._summary?.isUpcoming ?? summary.isUpcoming ?? raw.status?.isUpcoming ?? false;
+  const isVirtual = Boolean(raw.is_virtual ?? raw.isVirtual ?? (typeof raw.id === 'string' && (raw.id.startsWith('sched_') || raw.status === 'MENDATANG')));
   const teacherStatus = raw.teacherStatus ?? raw._summary?.teacherStatus ?? summary.teacherStatus ?? raw.guru_status ?? (raw.AbsenGuru?.[0]?.status) ?? 'BELUM_TAP';
 
   const status: KbmStatus = {
@@ -419,6 +422,8 @@ export function normalizeFromSesiAbsensi(raw: any): KbmItem {
     attendance_status: raw.attendance_status,
     waktu_tap: raw.waktu_tap,
     is_adhoc: raw.is_adhoc,
+    isVirtual,
+    is_virtual: isVirtual,
     _raw: raw,
     // ── Preserved Nested Relations for Legacy Components ──
     Kelas: raw.Kelas || { nama_kelas: raw.kelas_nama || '-' },
@@ -435,6 +440,8 @@ export function normalizeFromSesiAbsensi(raw: any): KbmItem {
       isOverdue: status.isOverdue,
       isUpcoming: status.isUpcoming,
       isReadyToOpen: status.isReadyToOpen,
+      isVirtual,
+      is_virtual: isVirtual,
       teacherStatus: status.teacherStatus,
     },
     // ── Backward-compatible root-level aliases ──
@@ -444,6 +451,8 @@ export function normalizeFromSesiAbsensi(raw: any): KbmItem {
     is_overdue: status.isOverdue,
     isUpcoming: status.isUpcoming,
     isReadyToOpen: status.isReadyToOpen,
+    isVirtual,
+    is_virtual: isVirtual,
   };
 }
 

@@ -303,7 +303,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
 
   const hasJournal = Boolean(item.ProgresMateri || item.progres_materi || item.session?.ProgresMateri);
   const fotoKegiatanUrl = item.foto_kegiatan || item.foto_masuk || item.session?.foto_kegiatan || item.session?.foto_masuk || item.AbsenGuru?.[0]?.foto_masuk || null;
-  const isOtomatis = Boolean(item.is_otomatis ?? (item.id && String(item.id).startsWith('sched_')));
+  const isOtomatis = Boolean(item.is_otomatis ?? item.is_virtual ?? item.isVirtual ?? (item.id && String(item.id).startsWith('sched_')));
 
   const handleClick = (e: React.MouseEvent) => {
     if (onSelectSession) {
@@ -428,11 +428,20 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
               )
             )}
 
-            {/* Jadwal Resmi Badge */}
-            {isOtomatis && mode === 'PETUGAS' && (
-              <span className="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 text-[10px] font-bold border border-amber-200 dark:border-amber-800">
-                <Sparkles size={10} className="text-amber-600 dark:text-amber-400" />
-                Jadwal Resmi
+            {/* 🏷️ Tipe Sesi Badge (Sesi Virtual vs Sesi Fisik) */}
+            {isOtomatis ? (
+              <span 
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[10px] font-bold shrink-0"
+                title="Sesi Virtual: Slot jadwal template KBM yang belum dibuka kelasnya oleh guru"
+              >
+                📅 Sesi Virtual
+              </span>
+            ) : (
+              <span 
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-[10px] font-bold shrink-0"
+                title="Sesi Fisik: Rekaman sesi KBM riil yang dibuka di aplikasi"
+              >
+                🎯 Sesi Fisik
               </span>
             )}
 

@@ -896,6 +896,8 @@ export class SesiQueryService {
         isOverdue,
         is_overdue: isOverdue,
         isUpcoming,
+        isVirtual: isVirtualSession,
+        is_virtual: isVirtualSession,
         guru_status: effectiveGuruStatus,
         guru_pengganti_nama: guruPengganti,
         guru_pengampu_nama: guruPengampu,
@@ -906,6 +908,8 @@ export class SesiQueryService {
           isFinished,
           isOverdue,
           isUpcoming,
+          isVirtual: isVirtualSession,
+          is_virtual: isVirtualSession,
           teacherStatus,
           hadir,
           total: baseSummary.total || 0,
@@ -919,11 +923,10 @@ export class SesiQueryService {
       const upperFilter = String(status_filter).toUpperCase();
       if (upperFilter === 'READY_UNOPENED' || upperFilter === 'PIKET') {
         processedData = enrichedData.filter(item => 
-          item.isReadyToOpen && 
           !item.isLive && 
-          !item.isOverdue && 
           !item.isFinished && 
-          (!item.guru_status || item.guru_status.includes('BELUM') || item.guru_status === 'BELUM_TAP' || item.guru_status === 'BELUM_HADIR')
+          (item.isReadyToOpen || (item.isOverdue && item.is_virtual)) &&
+          (!item.guru_status || item.guru_status.includes('BELUM') || item.guru_status === 'BELUM_TAP' || item.guru_status === 'BELUM_HADIR' || item.guru_status === 'ALPA')
         );
       } else if (upperFilter === 'LIVE') {
         processedData = enrichedData.filter(item => item.isLive);
