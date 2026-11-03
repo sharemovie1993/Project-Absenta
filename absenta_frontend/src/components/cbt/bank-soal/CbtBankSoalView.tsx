@@ -317,6 +317,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
           }}
           bankSoalToEdit={selectedBankSoal}
           defaultGuruId={guruId}
+          defaultMapelId={mapelId || (filter.values.mapelId as string) || undefined}
           onSuccess={() => {
             queryClient.invalidateQueries({ queryKey: cbtQueryKeys.bankSoal() });
           }}

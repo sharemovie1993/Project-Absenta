@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Modal,
   Button,
@@ -7,9 +7,14 @@ import {
 } from '@/components/ui';
 import { useGuruOptions, useMapelOptions } from '@/components/common';
 import { cbtApi } from '@/api/cbt.api';
+import { kurikulumApi } from '@/api/kurikulum.api';
+import { useAuthStore } from '@/store/authStore';
+import { useCapabilities } from '@/hooks/useCapabilities';
+import { useQuery } from '@tanstack/react-query';
 import type { CbtBankSoal } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
+import { BookOpen, CheckCircle2, Lock } from 'lucide-react';
 
 interface CbtBankSoalFormModalProps {
   isOpen: boolean;
@@ -17,6 +22,7 @@ interface CbtBankSoalFormModalProps {
   bankSoalToEdit?: CbtBankSoal | null;
   onSuccess: () => void;
   defaultGuruId?: string;
+  defaultMapelId?: string;
 }
 
 const bankSoalSchema = z.object({
@@ -34,20 +40,72 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   bankSoalToEdit,
   onSuccess,
   defaultGuruId,
+  defaultMapelId,
 }) => {
+  const { user } = useAuthStore();
+  const { isAdmin, isKurikulum } = useCapabilities();
+
+  // Kunci pemilihan guru jika user yang login adalah guru biasa (bukan Admin / Kurikulum)
+  const isTeacherLocked = useMemo(() => {
+    if (isAdmin || isKurikulum) return false;
+    return Boolean(defaultGuruId || user?.guru_profile?.id);
+  }, [isAdmin, isKurikulum, defaultGuruId, user?.guru_profile?.id]);
+
+  const initialGuruId = useMemo(() => {
+    return defaultGuruId || user?.guru_profile?.id || '';
+  }, [defaultGuruId, user?.guru_profile?.id]);
+
   const { options: guruOptions, loading: guruLoading } = useGuruOptions();
   const { options: mapelOptions, loading: mapelLoading } = useMapelOptions();
 
   const [kodeBank, setKodeBank] = useState('');
   const [judul, setJudul] = useState('');
-  const [guruId, setGuruId] = useState(defaultGuruId || '');
-  const [mapelId, setMapelId] = useState('');
+  const [guruId, setGuruId] = useState(initialGuruId);
+  const [mapelId, setMapelId] = useState(defaultMapelId || '');
   const [tingkat, setTingkat] = useState<'X' | 'XI' | 'XII' | 'SEMUA'>('X');
   const [alokasiMenit, setAlokasiMenit] = useState<number>(90);
   const [acakSoal, setAcakSoal] = useState(true);
   const [acakOpsi, setAcakOpsi] = useState(true);
+  const [showAllMapels, setShowAllMapels] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Ambil data penugasan mapel guru yang sedang dipilih
+  const { data: teacherAssignedMapels, isLoading: isAssignedMapelsLoading } = useQuery({
+    queryKey: ['guru-assigned-mapels', guruId],
+    queryFn: () => (guruId ? kurikulumApi.getGuruMapel(guruId).catch(() => null) : null),
+    enabled: isOpen && !!guruId,
+  });
+
+  // Ekstrak daftar unik mapel yang diampu guru
+  const assignedMapels = useMemo(() => {
+    const list = teacherAssignedMapels?.data || [];
+    const map = new Map<string, { value: string; label: string }>();
+    list.forEach((item: any) => {
+      const id = item.mapel_id || item.Mapel?.id;
+      if (id && !map.has(id)) {
+        const canonical = mapelOptions.find((m) => m.value === id);
+        const label = canonical?.label || item.Mapel?.nama_mapel || id;
+        map.set(id, { value: id, label });
+      }
+    });
+    return Array.from(map.values());
+  }, [teacherAssignedMapels?.data, mapelOptions]);
+
+  // Opsi mapel aktif (difilter hanya mapel yang diampu, atau semua jika dipilih/fallback)
+  const activeMapelOptions = useMemo(() => {
+    let base = showAllMapels || assignedMapels.length === 0 ? mapelOptions : assignedMapels;
+    
+    // Pastikan jika sedang edit, mapel yang sudah tersimpan tetap muncul di daftar opsi
+    if (mapelId && !base.some((m) => m.value === mapelId)) {
+      const canonical = mapelOptions.find((m) => m.value === mapelId);
+      if (canonical) {
+        base = [canonical, ...base];
+      }
+    }
+    return base;
+  }, [showAllMapels, assignedMapels, mapelOptions, mapelId]);
+
+  // Inisialisasi form saat buka modal atau ganti mode edit
   useEffect(() => {
     if (bankSoalToEdit) {
       setKodeBank(bankSoalToEdit.kode_bank);
@@ -58,17 +116,33 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setAlokasiMenit(bankSoalToEdit.alokasi_menit);
       setAcakSoal(bankSoalToEdit.acak_soal);
       setAcakOpsi(bankSoalToEdit.acak_opsi);
+      setShowAllMapels(false);
     } else {
       setKodeBank(`CBT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
       setJudul('');
-      setGuruId(defaultGuruId || '');
-      setMapelId('');
+      setGuruId(initialGuruId);
+      setMapelId(defaultMapelId || '');
       setTingkat('X');
       setAlokasiMenit(90);
       setAcakSoal(true);
       setAcakOpsi(true);
+      setShowAllMapels(false);
     }
-  }, [bankSoalToEdit, defaultGuruId, isOpen]);
+  }, [bankSoalToEdit, initialGuruId, defaultMapelId, isOpen]);
+
+  // Auto-select mapel jika guru hanya mengampu 1 mapel
+  useEffect(() => {
+    if (!isOpen || bankSoalToEdit) return;
+
+    if (!showAllMapels && assignedMapels.length === 1) {
+      setMapelId(assignedMapels[0].value);
+    } else if (!showAllMapels && assignedMapels.length > 1) {
+      // Jika mapel saat ini bukan salah satu mapel diampu guru
+      if (mapelId && !assignedMapels.some((m) => m.value === mapelId)) {
+        setMapelId('');
+      }
+    }
+  }, [isOpen, bankSoalToEdit, assignedMapels, showAllMapels]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,26 +254,80 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         {/* Mata Pelajaran & Guru */}
         <div className="space-y-3">
           <div>
-            <label htmlFor="form-mapel" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Mata Pelajaran <span className="text-rose-500">*</span>
-            </label>
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <label htmlFor="form-mapel" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Mata Pelajaran <span className="text-rose-500">*</span>
+              </label>
+              {assignedMapels.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-50 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300 border border-violet-200/60 dark:border-violet-800/60">
+                    <BookOpen className="w-2.5 h-2.5" />
+                    {showAllMapels ? 'Semua Mapel Sekolah' : `${assignedMapels.length} Mapel Diampu`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowAllMapels((prev) => !prev)}
+                    className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
+                  >
+                    {showAllMapels ? `(Batasi ke ${assignedMapels.length} Mapel Diampu)` : `(Buka Semua Mapel)`}
+                  </button>
+                </div>
+              )}
+            </div>
+
             <SearchableSelect
-              options={mapelOptions}
+              id="form-mapel"
+              options={activeMapelOptions}
               value={mapelId}
               onChange={setMapelId}
-              placeholder={mapelLoading ? 'Memuat mapel...' : 'Pilih Mata Pelajaran'}
+              placeholder={
+                isAssignedMapelsLoading || mapelLoading
+                  ? 'Memuat mapel diampu...'
+                  : activeMapelOptions.length === 0
+                  ? 'Tidak ada mapel tersedia'
+                  : 'Pilih Mata Pelajaran'
+              }
               aria-label="Pilih Mata Pelajaran"
             />
+
+            {/* Helper status interaktif */}
+            {assignedMapels.length === 1 && !showAllMapels && (
+              <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                <span>Otomatis terisi sesuai 1 mata pelajaran yang Anda ampu di sekolah.</span>
+              </p>
+            )}
+            {assignedMapels.length === 0 && !isAssignedMapelsLoading && guruId && (
+              <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+                ⚠️ Guru ini belum memiliki jadwal ploting mapel di kurikulum. Menampilkan seluruh mapel.
+              </p>
+            )}
           </div>
 
           <div>
-            <label htmlFor="form-guru" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Guru Pembuat / Pengampu <span className="text-rose-500">*</span>
-            </label>
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <label htmlFor="form-guru" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Guru Pembuat / Pengampu <span className="text-rose-500">*</span>
+              </label>
+              {isTeacherLocked && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                  <Lock className="w-2.5 h-2.5" />
+                  Terkunci ke profil Anda
+                </span>
+              )}
+            </div>
             <SearchableSelect
+              id="form-guru"
               options={guruOptions}
               value={guruId}
-              onChange={setGuruId}
+              onChange={(newGuruId) => {
+                if (!isTeacherLocked) {
+                  setGuruId(newGuruId);
+                  setMapelId('');
+                  setShowAllMapels(false);
+                }
+              }}
+              disabled={isTeacherLocked}
               placeholder={guruLoading ? 'Memuat guru...' : 'Pilih Guru Pengampu'}
               aria-label="Pilih Guru Pengampu"
             />
