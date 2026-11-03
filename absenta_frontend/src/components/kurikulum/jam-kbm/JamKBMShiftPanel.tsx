@@ -289,8 +289,8 @@ export default React.memo(function JamKBMShiftPanel({
     const cols: TabularColumn<TimelineItemRow>[] = [
       {
         key: 'type',
-        label: 'Keterangan / Sesi',
-        className: 'font-bold text-xs w-44',
+        label: 'Sesi',
+        className: 'font-bold text-xs w-36',
         render: (row) => {
           if (row.type === 'SLOT') {
             return (
@@ -312,8 +312,8 @@ export default React.memo(function JamKBMShiftPanel({
       },
       {
         key: 'start',
-        label: 'Jam Mulai',
-        className: 'w-32',
+        label: 'Mulai',
+        className: 'w-28',
         render: (row) => {
           if (row.type === 'SLOT' && row.slotNum !== undefined) {
             return readOnly ? (
@@ -333,8 +333,8 @@ export default React.memo(function JamKBMShiftPanel({
       },
       {
         key: 'end',
-        label: 'Jam Selesai',
-        className: 'w-32',
+        label: 'Selesai',
+        className: 'w-28',
         render: (row) => {
           if (row.type === 'SLOT' && row.slotNum !== undefined) {
             return readOnly ? (
@@ -386,9 +386,9 @@ export default React.memo(function JamKBMShiftPanel({
     if (!readOnly) {
       cols.push({
         key: 'actions',
-        label: 'Aksi Sisipkan / Hapus',
+        label: 'Aksi',
         align: 'right',
-        className: 'w-40',
+        className: 'w-32',
         render: (row) => {
           if (row.type === 'SLOT' && row.slotNum !== undefined) {
             const slots = currentShift.slots ?? [];
@@ -403,7 +403,7 @@ export default React.memo(function JamKBMShiftPanel({
                   onClick={() => handleAddBreak(row.slotNum!)}
                   className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 hover:text-indigo-750 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-400 dark:hover:bg-indigo-900/40 px-2 py-0.5 rounded-md transition-colors ml-auto cursor-pointer"
                 >
-                  <Plus className="w-3 h-3" /> Sisipkan Istirahat
+                  <Plus className="w-3 h-3" /> Istirahat
                 </button>
               );
             }
@@ -453,7 +453,7 @@ export default React.memo(function JamKBMShiftPanel({
         <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 rounded-xl w-fit">
           <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider px-2">Shift:</span>
           {(shiftConfig?.shifts ?? []).map(s => {
-            const displayName = s.name?.includes('Siang') ? 'Shift Siang' : (s.name || 'Shift Pagi');
+            const displayName = s.name?.includes('Siang') ? 'Siang' : s.name?.includes('Pagi') ? 'Pagi' : (s.name || 'Pagi');
             const isActive = s.id === activeSelectedShiftId;
             return (
               <button
@@ -508,7 +508,7 @@ export default React.memo(function JamKBMShiftPanel({
         {/* Right: Durasi per JP (Dipertahankan) */}
         <div className="flex items-center gap-1.5 ml-auto">
           <label htmlFor="input-durasi-slot" className="text-[11px] font-bold text-slate-500 uppercase shrink-0">
-            Durasi per JP:
+            Durasi:
           </label>
           {readOnly ? (
             <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{activePattern.slot_duration ?? 45} mnt</span>
@@ -533,7 +533,7 @@ export default React.memo(function JamKBMShiftPanel({
       <div className="space-y-1.5">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h3 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-            Daftar Urutan Jam Pelajaran ({currentShift.slots?.length || 0} JP) &amp; Istirahat
+            Urutan JP ({currentShift.slots?.length || 0} JP)
           </h3>
           {!readOnly && (
             <div className="flex items-center gap-1.5">
@@ -542,14 +542,14 @@ export default React.memo(function JamKBMShiftPanel({
                 onClick={handleAddSlot}
                 className="flex items-center gap-1 px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-bold transition-all border border-indigo-200/60 dark:border-indigo-800/40 cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" /> Tambah Slot JP
+                <Plus className="w-3.5 h-3.5" /> Tambah JP
               </button>
               <button
                 type="button"
                 onClick={handleRemoveLastSlot}
                 className="flex items-center gap-1 px-2.5 py-1 bg-slate-50 hover:bg-rose-50 dark:bg-slate-800 text-slate-500 hover:text-rose-600 rounded-lg text-xs font-bold transition-all border border-slate-200 dark:border-slate-700 cursor-pointer"
               >
-                <Trash2 className="w-3.5 h-3.5" /> Hapus Slot Terakhir
+                <Trash2 className="w-3.5 h-3.5" /> Hapus Terakhir
               </button>
             </div>
           )}

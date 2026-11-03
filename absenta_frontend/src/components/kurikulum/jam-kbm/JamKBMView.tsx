@@ -263,7 +263,7 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
         className="flex items-center gap-1.5 rounded-xl h-8 text-xs font-semibold cursor-pointer"
       >
         <Zap className="w-3.5 h-3.5 text-amber-500" />
-        <span>Batas Beban Guru</span>
+        <span>Beban Guru</span>
       </Button>
 
       {isMultiShift && (
@@ -274,7 +274,7 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
           className="flex items-center gap-1.5 rounded-xl h-8 text-xs font-semibold cursor-pointer"
         >
           <Users className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-          <span>Penugasan Shift Kelas</span>
+          <span>Shift Rombel</span>
         </Button>
       )}
 
@@ -285,7 +285,7 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
         className="flex items-center gap-1.5 rounded-xl h-8 text-xs font-semibold cursor-pointer"
       >
         <Sliders className="w-3.5 h-3.5 text-slate-500" />
-        <span>Pengaturan Shift</span>
+        <span>Shift</span>
         <span className="px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-300">
           {isMultiShift ? '2 Shift' : '1 Shift'}
         </span>
@@ -298,7 +298,7 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
         className="flex items-center gap-1.5 rounded-xl h-8 text-xs font-semibold cursor-pointer border-indigo-200 hover:border-indigo-300 text-indigo-700 dark:text-indigo-300 bg-indigo-50/50 dark:bg-indigo-950/30"
       >
         <Printer className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-        <span>Cetak Distribusi JP</span>
+        <span>Cetak</span>
       </Button>
 
       <Button
@@ -325,10 +325,10 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
             </div>
             <div className="min-w-0">
               <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
-                {isMultiShift ? 'Distribusi Jam Pelajaran & Shift' : 'Distribusi Jam Pelajaran'}
+                Distribusi JP
               </h2>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate hidden sm:block">
-                Pedoman alokasi slot jam pelajaran harian (Senin – Sabtu) &amp; jeda istirahat
+                Pedoman alokasi slot jam pelajaran harian &amp; jeda istirahat
               </p>
             </div>
           </div>
@@ -512,11 +512,8 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
 
   return (
     <AcademicPageLayout
-      title={isMultiShift ? "Distribusi Jam Pelajaran & Shift" : "Distribusi Jam Pelajaran"}
-      description={isMultiShift 
-        ? "Pedoman alokasi slot waktu jam pelajaran harian (Senin – Jumat/Sabtu), pembagian shift rombel, dan jeda istirahat."
-        : "Pedoman alokasi slot waktu jam pelajaran harian (Senin – Jumat/Sabtu), jam bel masuk, dan jeda istirahat sekolah."
-      }
+      title="Distribusi JP"
+      description="Pedoman alokasi slot waktu jam pelajaran harian dan jeda istirahat sekolah."
       hardeningModuleKey={HARDENING_KEY}
       breadcrumbs={breadcrumbs}
       instruction={instruction}
