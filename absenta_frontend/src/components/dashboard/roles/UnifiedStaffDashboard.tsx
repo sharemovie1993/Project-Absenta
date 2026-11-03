@@ -80,6 +80,8 @@ import { StaffProfilGuruTab } from '../staff/tabs/StaffProfilGuruTab';
 import { StaffManualInputTab } from '../staff/tabs/StaffManualInputTab';
 // Kaprog Dashboard — clean 3-zone design (replaced StaffKaprogTab)
 const KaprogDashboard = React.lazy(() => import('./KaprogDashboard').then(m => ({ default: m.KaprogDashboard })));
+// Admin Dashboard — clean role-patterned architecture
+const AdminDashboard = React.lazy(() => import('./AdminDashboard').then(m => ({ default: m.AdminDashboard })));
 // Kurikulum Dashboard — clean role-patterned architecture
 const KurikulumDashboard = React.lazy(() => import('./KurikulumDashboard').then(m => ({ default: m.KurikulumDashboard })));
 // Kesiswaan Dashboard — clean role-patterned architecture
@@ -1677,7 +1679,9 @@ export const UnifiedStaffDashboard: React.FC = () => {
             aria-hidden={activeTab !== 'admin'}
             className={cn("w-full min-w-0", activeTab === 'admin' ? "block" : "hidden")}
           >
-            <StaffAdminOverviewTab user={user} />
+            <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
+              <AdminDashboard user={user} />
+            </Suspense>
           </div>
         )}
 
