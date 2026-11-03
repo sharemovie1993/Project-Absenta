@@ -422,8 +422,8 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
       },
       {
         id: 'aturan_absensi',
-        label: 'Aturan Jam & Presensi',
-        shortLabel: 'Aturan Presensi',
+        label: 'Aturan Absensi',
+        shortLabel: 'Aturan Absensi',
         category: 'persiapan',
         icon: Settings2,
         badge: 'PLENO',

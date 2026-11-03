@@ -275,8 +275,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
       },
       {
         id: 'aturan_absensi',
-        label: 'Aturan Jam & Presensi',
-        shortLabel: 'Aturan Presensi',
+        label: 'Aturan Absensi',
+        shortLabel: 'Aturan Absensi',
         category: 'sistem',
         icon: Clock,
       },

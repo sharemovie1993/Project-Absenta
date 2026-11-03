@@ -284,8 +284,8 @@ export const KepalaSekolahDashboard: React.FC<KepalaSekolahDashboardProps> = Rea
       },
       {
         id: 'aturan_absensi',
-        label: 'Aturan Jam & Presensi',
-        shortLabel: 'Aturan Presensi',
+        label: 'Aturan Absensi',
+        shortLabel: 'Aturan Absensi',
         icon: Settings2,
         badge: 'PLENO',
         badgeColor: 'bg-emerald-600 text-white',
