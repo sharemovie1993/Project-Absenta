@@ -332,14 +332,14 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
           bankSoalToEdit={selectedBankSoal}
           defaultGuruId={guruId}
           defaultMapelId={mapelId || (filter.values.mapelId as string) || undefined}
-          onSuccess: async () => {
+          onSuccess={async () => {
             setPage(1);
             await queryClient.invalidateQueries({
               queryKey: cbtQueryKeys.bankSoal(),
               exact: false,
               refetchType: 'all',
             });
-          },
+          }}
         />
       )}
 

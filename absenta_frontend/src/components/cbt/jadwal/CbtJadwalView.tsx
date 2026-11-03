@@ -452,14 +452,14 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
             setSelectedJadwal(null);
           }}
           jadwalToEdit={selectedJadwal}
-          onSuccess: async () => {
+          onSuccess={async () => {
             setPage(1);
             await queryClient.invalidateQueries({
               queryKey: cbtQueryKeys.jadwal(),
               exact: false,
               refetchType: 'all',
             });
-          },
+          }}
         />
       )}
 
