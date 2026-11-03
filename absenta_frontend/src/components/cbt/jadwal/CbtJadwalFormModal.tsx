@@ -193,7 +193,8 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
       title={jadwalToEdit ? 'Edit Jadwal Ujian CBT' : 'Jadwalkan Sesi Ujian CBT Baru'}
       size="lg"
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="-mt-3 sm:-mt-6 -mx-3 sm:-mx-6 mb-3 sm:mb-4 h-2 bg-[#673ab7]" />
+      <form onSubmit={handleSubmit} className="space-y-3.5 sm:space-y-4">
         {/* Pilih Bank Soal */}
         <div>
           <label htmlFor="jadwal-bank-soal" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -429,7 +430,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
             variant="primary"
             size="sm"
             disabled={isSubmitting}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+            className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold"
           >
             {isSubmitting ? 'Menyimpan...' : jadwalToEdit ? 'Simpan Perubahan' : 'Terbitkan Jadwal Ujian'}
           </Button>

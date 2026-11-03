@@ -125,8 +125,8 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       title={bankSoalToEdit ? 'Edit Paket Bank Soal' : 'Buat Paket Bank Soal Baru'}
       size="md"
     >
-      <div className="-mt-6 -mx-6 mb-4 h-2 bg-[#673ab7]" />
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="-mt-3 sm:-mt-6 -mx-3 sm:-mx-6 mb-3 sm:mb-4 h-2 bg-[#673ab7]" />
+      <form onSubmit={handleSubmit} className="space-y-3.5 sm:space-y-4">
         {/* Kode & Tingkat */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
