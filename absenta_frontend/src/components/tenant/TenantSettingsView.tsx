@@ -1465,7 +1465,8 @@ export const TenantSettingsView: React.FC<UniversalTenantSettingsViewProps> = ({
   );
 };
 
-export default TenantSettings;
+export const TenantSettings = TenantSettingsView;
+export default TenantSettingsView;
 
 /* ─────────────────────────────────────────────────────────
    TenantThemeCard — Komponen Preset Warna untuk Tenant Admin
