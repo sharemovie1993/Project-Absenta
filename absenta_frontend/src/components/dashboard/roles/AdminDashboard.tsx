@@ -53,6 +53,7 @@ const StrukturOrganisasiPage = lazy(() => import('@/pages/academic/struktur-orga
 const StaffActivityLogPage = lazy(() => import('@/pages/academic/StaffActivityLogPage').then((m) => ({ default: m.StaffActivityLogPage })));
 const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'));
 const CetakBerkasPage = lazy(() => import('@/pages/academic/CetakBerkasPage').then((m) => ({ default: m.CetakBerkasPage })));
+const TenantSettingsView = lazy(() => import('@/components/tenant/TenantSettingsView').then((m) => ({ default: m.TenantSettingsView })));
 
 export interface AdminDashboardProps {
   user?: {
@@ -755,11 +756,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
                 fallback={
                   <div className="py-20 flex flex-col items-center justify-center gap-3">
                     <Loader size="md" />
-                    <span className="text-xs text-slate-500 font-medium">Memuat Format Kop Surat & Cetak Berkas...</span>
+                    <span className="text-xs text-slate-500 font-medium">Memuat Pengaturan Profil &amp; Kop Sekolah...</span>
                   </div>
                 }
               >
-                <CetakBerkasPage />
+                <TenantSettingsView hideLayout={true} initialSection="profil" />
               </Suspense>
             </div>
           )}
