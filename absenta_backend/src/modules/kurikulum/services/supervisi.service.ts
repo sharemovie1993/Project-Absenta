@@ -541,7 +541,7 @@ export class SupervisiService {
 
   static async getProgress(tenantId: string) {
     const [totalGuru, totalSupervisiSelesai, totalSupervisiTerjadwal] = await Promise.all([
-      prisma.guru.count({ where: { tenant_id: tenantId, is_active: true } }),
+      prisma.guru.count({ where: { tenant_id: tenantId } }),
       prisma.supervisiGuru.count({ where: { tenant_id: tenantId, status: 'COMPLETED' } }),
       prisma.supervisiGuru.count({ where: { tenant_id: tenantId, status: 'SCHEDULED' } }),
     ]);

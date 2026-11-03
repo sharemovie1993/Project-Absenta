@@ -124,6 +124,7 @@ const pinoTransport = {
 
 const fastify = Fastify({
   disableRequestLogging: true,
+  ignoreTrailingSlash: true,
   logger: {
     level: 'info',
     transport: pinoTransport,

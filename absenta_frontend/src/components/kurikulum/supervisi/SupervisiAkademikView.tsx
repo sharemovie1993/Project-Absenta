@@ -1,7 +1,7 @@
 import { formatDate } from '@/utils/date.utils';
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Card, Button, Input, Badge, Loader, SectionCard } from '../../ui';
+import { Card, Button, Input, Badge, Loader, SectionCard, Modal } from '../../ui';
 import type { Column } from '../../ui/Table';
 import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
@@ -10,7 +10,7 @@ import type { Supervisi } from '../../../api/kurikulum.api';
 import { AcademicPageLayout } from '../../academic/AcademicPageLayout';
 import { TabSwitcher } from '../../ui/TabSwitcher';
 import { cn } from '../../../lib/utils';
-import { ClipboardList, Plus, Clock, Award, BookOpen, User, Calendar, List, BarChart2, ShieldCheck, AlertCircle } from 'lucide-react';
+import { ClipboardList, Plus, Clock, Award, BookOpen, User, Calendar, List, BarChart2, ShieldCheck, AlertCircle, Eye, CheckCircle2 } from 'lucide-react';
 import { z } from 'zod';
 import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../../hooks/useCapabilities';
@@ -64,6 +64,7 @@ export interface UniversalSupervisiAkademikViewProps {
   hideLayout?: boolean;
   isModal?: boolean;
   readOnly?: boolean;
+  roleContext?: 'GURU' | 'KURIKULUM' | 'ADMIN';
   onClose?: () => void;
 }
 
@@ -74,6 +75,7 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
   hideLayout = false,
   isModal = false,
   readOnly = false,
+  roleContext,
   onClose,
 }) => {
   const queryClient = useQueryClient();
@@ -83,14 +85,17 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
 
   const { isKurikulum, isKepsek, isAdmin, can } = useCapabilities();
 
+  // 🛡️ Context Guard: Guru Context isolasi total dari hak akses kurikulum/eksekutif
+  const isGuruContext = roleContext === 'GURU' || Boolean(propGuruId);
+
   const canViewAnalytics = useMemo(
-    () => isAdmin || isKurikulum || isKepsek || can('curriculum.supervision.view.report'),
-    [isAdmin, isKurikulum, isKepsek, can]
+    () => !isGuruContext && (isAdmin || isKurikulum || isKepsek || can('curriculum.supervision.view.report')),
+    [isGuruContext, isAdmin, isKurikulum, isKepsek, can]
   );
 
   const canManage = useMemo(
-    () => !readOnly && (isAdmin || isKurikulum || isKepsek || can('curriculum.supervision.manage')),
-    [readOnly, isAdmin, isKurikulum, isKepsek, can]
+    () => !readOnly && !isGuruContext && (isAdmin || isKurikulum || isKepsek || can('curriculum.supervision.manage')),
+    [readOnly, isGuruContext, isAdmin, isKurikulum, isKepsek, can]
   );
 
   const invalidateSupervisiCache = useCallback(() => {
@@ -108,6 +113,10 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
   const [selfAssessmentModalOpen, setSelfAssessmentModalOpen] = useState(false);
   const [selfAssessmentSupervisiId, setSelfAssessmentSupervisiId] = useState<string | null>(null);
 
+  // ── Detail & Feedback Modal (Guru / Review) ────────────────────────────────
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailItem, setDetailItem] = useState<Supervisi | null>(null);
+
   // ── Data state ─────────────────────────────────────────────────────────────
   const [modalOpen, setModalOpen] = useState(false);
   const [formData, setFormData] = useState<SupervisiFormState>(DEFAULT_FORM);
@@ -121,20 +130,30 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
   const [loadingRecs, setLoadingRecs] = useState(false);
   const [selectedRecId, setSelectedRecId] = useState<string | null>(null);
 
+  // ── Reference Options Hooks ───────────────────────────────────────────────
+  const { options: guruOptions, rawList: guruItems } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
+  const { options: kelasSelectOptions, rawList: kelasItems } = useKelasOptions();
+  const { options: mapelSelectOptions, rawList: mapelItems } = useMapelOptions();
+
+  const currentGuru = useMemo(
+    () => (guruItems || [])?.find((g) => g.user_id === user?.id || g.id === (user?.guru_profile as { id?: string })?.id),
+    [guruItems, user]
+  );
+
   // ── Konteks Akademik SSOT (AcademicFilterToolbar) ──────────────────────────
   const academicFilter = useAcademicFilter({
     enableTp: !hideLayout,
     enableSemester: !hideLayout,
-    enableGuru: true,
+    enableGuru: !isGuruContext,
     enableSearch: true,
     initialTpId: propTpId,
     initialSemesterId: propSemId,
-    initialGuruId: propGuruId,
+    initialGuruId: propGuruId || (isGuruContext ? currentGuru?.id : undefined),
   });
 
   const activeTpId = propTpId || academicFilter.values.tahunPelajaranId;
   const activeSemId = propSemId || academicFilter.values.semesterId;
-  const activeGuruId = propGuruId || academicFilter.values.guruId;
+  const activeGuruId = isGuruContext ? (propGuruId || currentGuru?.id) : (propGuruId || academicFilter.values.guruId);
   const debouncedSearch = academicFilter.debouncedSearchQuery;
 
   // 🛡️ Academic Context Guard: Deteksi apakah user sedang melihat tahun ajaran arsip/lampau
@@ -142,16 +161,6 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
     academicFilter.activeAcademicYear?.id &&
     activeTpId &&
     academicFilter.activeAcademicYear.id !== activeTpId
-  );
-
-  // ── Reference Options Hooks ───────────────────────────────────────────────
-  const { options: guruOptions, rawList: guruItems } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
-  const { options: kelasSelectOptions, rawList: kelasItems } = useKelasOptions();
-  const { options: mapelSelectOptions, rawList: mapelItems } = useMapelOptions();
-
-  const currentGuru = useMemo(
-    () => (guruItems || [])?.find((g) => g.user_id === user?.id),
-    [guruItems, user]
   );
 
   // ── useQuery: Supervisi List ──────────────────────────────────────────────
@@ -319,7 +328,7 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
       const msg = error.response?.data?.message || error.message || 'Gagal menyimpan data';
       toast.error(msg);
     }
-  }, [formData, activeTpId, activeSemId, selectedId, handleCloseModal, invalidateSupervisiCache, fetchData]);
+  }, [formData, activeTpId, activeSemId, selectedId, handleCloseModal, invalidateSupervisiCache, fetchData, academicFilter]);
 
   const handleDelete = useCallback(
     async (item: Supervisi) => {
@@ -388,25 +397,29 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
   // ── Columns Table ──────────────────────────────────────────────────────────
   const columns: Column<Supervisi>[] = useMemo(
     () => [
-      {
-        key: 'guru',
-        title: 'Guru yang Disupervisi',
-        render: (_val, item) => (
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0">
-              {item.Guru?.nama_guru?.substring(0, 2).toUpperCase() || 'GU'}
-            </div>
-            <div>
-              <div className="font-bold text-xs text-slate-900 dark:text-slate-100">{item.Guru?.nama_guru || '-'}</div>
-              <div className="text-[10px] text-slate-400">NIP: {item.Guru?.nip || '-'}</div>
-            </div>
-          </div>
-        ),
-      },
+      ...(!isGuruContext
+        ? [
+            {
+              key: 'guru',
+              title: 'Guru yang Disupervisi',
+              render: (_val: unknown, item: Supervisi) => (
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0">
+                    {item.Guru?.nama_guru?.substring(0, 2).toUpperCase() || 'GU'}
+                  </div>
+                  <div>
+                    <div className="font-bold text-xs text-slate-900 dark:text-slate-100">{item.Guru?.nama_guru || '-'}</div>
+                    <div className="text-[10px] text-slate-400">NIP: {item.Guru?.nip || '-'}</div>
+                  </div>
+                </div>
+              ),
+            },
+          ]
+        : []),
       {
         key: 'kbm',
-        title: 'Kelas / Mapel',
-        render: (_val, item) => (
+        title: 'Mata Pelajaran & Kelas',
+        render: (_val: unknown, item: Supervisi) => (
           <div>
             <div className="font-bold text-xs text-slate-800 dark:text-slate-200">{item.mapel || '-'}</div>
             <div className="text-[10px] text-slate-400">
@@ -417,8 +430,8 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
       },
       {
         key: 'tanggal',
-        title: 'Tanggal Supervisi',
-        render: (_val, item) => (
+        title: 'Jadwal Observasi',
+        render: (_val: unknown, item: Supervisi) => (
           <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">
             {formatDate(item.tanggal)}
           </span>
@@ -426,53 +439,78 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
       },
       {
         key: 'supervisor',
-        title: 'Supervisor',
-        render: (_val, item) => (
-          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-            {item.Supervisor?.nama_guru || 'Kepala Sekolah / Kurikulum'}
-          </span>
+        title: 'Supervisor / Penilai',
+        render: (_val: unknown, item: Supervisi) => (
+          <div className="flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              {item.Supervisor?.nama_guru || 'Kepala Sekolah / Tim Kurikulum'}
+            </span>
+          </div>
         ),
       },
       {
         key: 'status',
         title: 'Status',
-        render: (_val, item) => (
+        render: (_val: unknown, item: Supervisi) => (
           <Badge
             variant={item.status === 'COMPLETED' ? 'success' : 'warning'}
             className="text-[10px] font-bold"
           >
-            {item.status === 'COMPLETED' ? 'Selesai' : 'Terjadwal'}
+            {item.status === 'COMPLETED' ? 'Selesai Diobservasi' : 'Terjadwal'}
           </Badge>
         ),
       },
       {
         key: 'nilai',
-        title: 'Nilai',
-        render: (_val, item) =>
+        title: 'Skor / Nilai',
+        render: (_val: unknown, item: Supervisi) =>
           item.nilai != null ? (
             <span
               className={cn(
-                'font-black text-xs px-2 py-0.5 rounded-md',
+                'font-black text-xs px-2 py-0.5 rounded-md inline-block',
                 item.nilai >= 85
-                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
+                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
                   : item.nilai >= 70
-                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400'
-                  : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400'
+                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
+                  : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200 dark:border-amber-800'
               )}
             >
               {item.nilai}
             </span>
           ) : (
-            <span className="text-slate-300 text-xs">-</span>
+            <span className="text-slate-400 text-xs italic">Belum dinilai</span>
           ),
+      },
+      {
+        key: 'catatan',
+        title: 'Catatan & Rekomendasi',
+        render: (_val: unknown, item: Supervisi) => (
+          <div className="max-w-[180px] truncate text-xs text-slate-600 dark:text-slate-400" title={item.catatan || 'Belum ada catatan'}>
+            {item.catatan || '-'}
+          </div>
+        ),
       },
       {
         key: 'aksi',
         title: 'Aksi',
-        render: (_val, item) => {
-          const isMySupervisi = item.guru_id === currentGuru?.id;
+        render: (_val: unknown, item: Supervisi) => {
+          const isMySupervisi = item.guru_id === (propGuruId || currentGuru?.id);
           return (
             <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setDetailItem(item);
+                  setDetailModalOpen(true);
+                }}
+                className="text-[11px] h-7 px-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                title="Lihat Detail Observasi"
+              >
+                <Eye className="w-3.5 h-3.5 mr-1" /> Detail
+              </Button>
+
               {isMySupervisi && item.status === 'SCHEDULED' && (
                 <Button
                   variant="outline"
@@ -481,11 +519,12 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
                     setSelfAssessmentSupervisiId(item.id);
                     setSelfAssessmentModalOpen(true);
                   }}
-                  className="text-[11px] h-7 px-2 text-indigo-600 font-bold"
+                  className="text-[11px] h-7 px-2 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 font-bold bg-indigo-50/50 hover:bg-indigo-100"
                 >
                   Evaluasi Diri
                 </Button>
               )}
+
               {canManage && (
                 <>
                   <Button
@@ -511,7 +550,7 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
         },
       },
     ],
-    [currentGuru, canManage, handleOpenModal, handleDelete]
+    [isGuruContext, currentGuru, propGuruId, canManage, handleOpenModal, handleDelete]
   );
 
   const content = (
@@ -526,7 +565,47 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
         </div>
       )}
 
-      {/* 1. TabSwitcher (hanya jika ada akses analytics) */}
+      {/* 🌟 Guru Context Header Banner */}
+      {isGuruContext && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/5 to-transparent border border-purple-200/60 dark:border-purple-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-950/80 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold shadow-xs shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                  Supervisi Akademik Saya
+                </h4>
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                  <CheckCircle2 className="w-3 h-3" /> Akun Terverifikasi
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Memantau jadwal observasi kelas, umpan balik refleksi, dan hasil pendampingan KBM Anda.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <div className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-center">
+              <div className="text-[10px] text-slate-400 font-medium">Terjadwal</div>
+              <div className="text-xs font-bold text-amber-600">{stats[1].value}</div>
+            </div>
+            <div className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-center">
+              <div className="text-[10px] text-slate-400 font-medium">Selesai</div>
+              <div className="text-xs font-bold text-emerald-600">{stats[2].value}</div>
+            </div>
+            {stats[3].value !== '-' && (
+              <div className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-center">
+                <div className="text-[10px] text-slate-400 font-medium">Skor Rata-Rata</div>
+                <div className="text-xs font-bold text-indigo-600">{stats[3].value}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 1. TabSwitcher (hanya jika ada akses analytics dan bukan Guru Context) */}
       {canViewAnalytics && (
         <TabSwitcher
           options={TAB_OPTIONS}
@@ -544,7 +623,7 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
             <AcademicFilterToolbar
               {...academicFilter.toolbarProps}
               variant="plain"
-              searchPlaceholder="Cari nama guru, mata pelajaran, atau kelas..."
+              searchPlaceholder={isGuruContext ? "Cari mata pelajaran, kelas, atau catatan..." : "Cari nama guru, mata pelajaran, atau kelas..."}
               actionsRight={
                 canManage ? (
                   <Button
@@ -570,10 +649,10 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
                 data={data ?? []}
                 isLoading={loading}
                 totalItems={totalData}
-                emptyMessage="Belum ada jadwal supervisi"
+                emptyMessage={isGuruContext ? "Belum ada jadwal supervisi untuk Anda pada periode ini" : "Belum ada jadwal supervisi"}
                 titleKey="mapel"
                 badgeKey="status"
-                subtitleKey="Guru.nama_guru"
+                subtitleKey={isGuruContext ? "Supervisor.nama_guru" : "Guru.nama_guru"}
                 metaKey="kelas"
                 pagination={{
                   currentPage,
@@ -583,7 +662,10 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
                   onPageChange: setCurrentPage,
                   onLimitChange: setPageLimit,
                 }}
-                onItemClick={(item) => setSelectedSupervisiId(item.id)}
+                onItemClick={(item) => {
+                  setDetailItem(item);
+                  setDetailModalOpen(true);
+                }}
               />
             ) : (
               <Suspense
@@ -608,7 +690,10 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
                       setCurrentPage(1);
                     },
                   }}
-                  onRowClick={(item) => setSelectedSupervisiId(item.id)}
+                  onRowClick={(item) => {
+                    setDetailItem(item);
+                    setDetailModalOpen(true);
+                  }}
                 />
               </Suspense>
             )}
@@ -652,6 +737,132 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
               fetchData();
             }}
           />
+        )}
+
+        {/* 6. Detail & Feedback Modal (True WYSIWYG Insight) */}
+        {detailModalOpen && detailItem && (
+          <Modal
+            isOpen={detailModalOpen}
+            onClose={() => {
+              setDetailModalOpen(false);
+              setDetailItem(null);
+            }}
+            title="Detail & Umpan Balik Supervisi Akademik"
+            size="lg"
+          >
+            <div className="space-y-4 text-xs">
+              {/* Header Info */}
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-sm text-slate-800 dark:text-slate-100">
+                    {detailItem.mapel || 'Mata Pelajaran'}
+                  </span>
+                  <Badge
+                    variant={detailItem.status === 'COMPLETED' ? 'success' : 'warning'}
+                    className="text-[10px] font-bold"
+                  >
+                    {detailItem.status === 'COMPLETED' ? 'Selesai Diobservasi' : 'Terjadwal'}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-slate-600 dark:text-slate-400 pt-1">
+                  <div>
+                    <span className="block text-slate-400">Kelas:</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">{detailItem.kelas || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="block text-slate-400">Jam KBM:</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">Jam ke-{detailItem.jam_ke || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="block text-slate-400">Tanggal:</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">{formatDate(detailItem.tanggal)}</span>
+                  </div>
+                  <div>
+                    <span className="block text-slate-400">Supervisor:</span>
+                    <span className="font-semibold text-indigo-600 dark:text-indigo-400">{detailItem.Supervisor?.nama_guru || 'Tim Penilai'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Nilai & Skor Section */}
+              <div className="p-3.5 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-bold text-indigo-900 dark:text-indigo-200">Hasil Evaluasi Observasi</div>
+                  <div className="text-[11px] text-indigo-700/80 dark:text-indigo-300">
+                    {detailItem.nilai != null ? 'Penilaian observasi telah tuntas dilakukan oleh supervisor.' : 'Observasi belum dinilai.'}
+                  </div>
+                </div>
+                {detailItem.nilai != null ? (
+                  <div className="text-right">
+                    <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{detailItem.nilai}</span>
+                    <span className="text-[10px] block font-bold text-slate-400">/ 100</span>
+                  </div>
+                ) : (
+                  <span className="text-xs font-semibold text-amber-600 bg-amber-50 dark:bg-amber-950/60 px-2.5 py-1 rounded-lg border border-amber-200 dark:border-amber-800">
+                    Menunggu Observasi
+                  </span>
+                )}
+              </div>
+
+              {/* Catatan / Feedback Supervisor */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Umpan Balik & Catatan Supervisor
+                </label>
+                <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap min-h-[70px]">
+                  {detailItem.catatan || (
+                    <span className="text-slate-400 italic">Belum ada catatan atau umpan balik tertulis dari supervisor.</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Target Pembelajaran / Evaluasi Diri Guru (Jika ada) */}
+              {(detailItem.target_pembelajaran || detailItem.catatan_self) && (
+                <div className="space-y-1.5 pt-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Refleksi Mandiri / Target Guru (Pra-Observasi)
+                  </label>
+                  <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed whitespace-pre-wrap">
+                    {detailItem.target_pembelajaran && (
+                      <p className="mb-1"><strong>Target:</strong> {detailItem.target_pembelajaran}</p>
+                    )}
+                    {detailItem.catatan_self && (
+                      <p><strong>Catatan Refleksi:</strong> {detailItem.catatan_self}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Footer Actions */}
+              <div className="flex justify-between items-center pt-3 border-t border-slate-100 dark:border-slate-800">
+                {detailItem.guru_id === (propGuruId || currentGuru?.id) && detailItem.status === 'SCHEDULED' ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setDetailModalOpen(false);
+                      setSelfAssessmentSupervisiId(detailItem.id);
+                      setSelfAssessmentModalOpen(true);
+                    }}
+                    className="rounded-xl text-indigo-600 font-bold border-indigo-200"
+                  >
+                    Isi Evaluasi Diri
+                  </Button>
+                ) : <div />}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setDetailModalOpen(false);
+                    setDetailItem(null);
+                  }}
+                  className="rounded-xl font-bold"
+                >
+                  TUTUP
+                </Button>
+              </div>
+            </div>
+          </Modal>
         )}
       </Suspense>
     </div>
