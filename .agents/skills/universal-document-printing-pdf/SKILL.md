@@ -72,7 +72,7 @@ Menghasilkan file PDF yang **100% identik** dengan tampilan di layar monitor sec
    const pdfWidth = isLandscape ? 297 : 210;
    const pdfHeight = isLandscape ? 210 : 297;
    ```
-4. Render canvas menggunakan `html2canvas-pro` dengan skala optimal:
+4. Render canvas menggunakan `html2canvas-pro` dengan skala optimal dan pembersihan border lembar:
    ```typescript
    const canvas = await html2canvas(sheetElement, {
      scale: 2, // Wajib: 2.0 (setara ~200 DPI Retina, tajam dan hemat RAM). DILARANG > 2.5
@@ -80,6 +80,15 @@ Menghasilkan file PDF yang **100% identik** dengan tampilan di layar monitor sec
      allowTaint: true,
      backgroundColor: '#ffffff',
      logging: false,
+     onclone: (clonedDoc) => {
+       // Wajib: Bersihkan border dan shadow lembar agar tepi dokumen PDF bersih tanpa garis bingkai di kiri/kanan
+       const sheets = clonedDoc.querySelectorAll('.print-sheet');
+       sheets.forEach((s: any) => {
+         s.style.border = 'none';
+         s.style.boxShadow = 'none';
+         s.style.outline = 'none';
+       });
+     },
    });
    ```
 5. **Anti-Bloat Guard & Aspect Ratio Preservation (PENTING - Mencegah File 20MB+ & Mencegah Teks Gepeng/Terpadatkan)**:

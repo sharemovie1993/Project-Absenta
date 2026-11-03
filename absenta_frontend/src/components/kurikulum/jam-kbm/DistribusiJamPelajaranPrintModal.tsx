@@ -471,6 +471,15 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
         allowTaint: true,
         backgroundColor: '#ffffff',
         logging: false,
+        onclone: (clonedDoc) => {
+          // Bersihkan border dan shadow lembar kertas agar tepi PDF bersih tanpa garis bingkai di kiri/kanan
+          const sheet = clonedDoc.querySelector('.print-sheet') as HTMLElement;
+          if (sheet) {
+            sheet.style.border = 'none';
+            sheet.style.boxShadow = 'none';
+            sheet.style.outline = 'none';
+          }
+        },
       });
 
       // Optimasi ukuran file: gunakan JPEG 88% kualitas tinggi + compression flag
@@ -728,7 +737,7 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
             pageNumber={1}
             totalPages={1}
             footerText={`Pedoman Resmi Distribusi Jam Pelajaran KBM - ${tenantInfo?.name || 'Sekolah'}`}
-            className="text-black font-serif !p-4 sm:!p-5"
+            className="text-black font-serif !p-4 sm:!p-5 print:!border-none print:!shadow-none"
           >
             {/* 1. KOP SURAT DINAS & SEKOLAH RESMI */}
             <PrintHeader

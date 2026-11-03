@@ -668,7 +668,7 @@ export const PrintDocumentSheet: React.FC<PrintDocumentSheetProps> = ({
         ...style,
       }}
       className={cn(
-        'print-sheet bg-white text-slate-900 shadow-2xl rounded-sm font-serif text-[12px] leading-relaxed select-text border border-slate-300 dark:border-slate-800 flex flex-col justify-between transition-shadow',
+        'print-sheet bg-white text-slate-900 shadow-2xl rounded-sm font-serif text-[12px] leading-relaxed select-text border border-slate-300 dark:border-slate-800 print:border-none print:shadow-none flex flex-col justify-between transition-shadow',
         isLandscape ? 'p-8 sm:p-12' : 'p-8 sm:p-12',
         className
       )}
