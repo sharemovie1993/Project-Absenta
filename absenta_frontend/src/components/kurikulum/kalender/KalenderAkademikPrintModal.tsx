@@ -146,7 +146,7 @@ const PrintMonthGrid: React.FC<{
       {/* Month Header */}
       <div
         className={cn(
-          "bg-slate-800 text-white text-center font-bold tracking-wider uppercase",
+          "bg-slate-800 text-white text-center font-bold uppercase",
           compact ? "py-0.5 text-[9.5px]" : "py-1 text-[10.5px]"
         )}
       >
@@ -423,9 +423,24 @@ export const KalenderAkademikPrintModal: React.FC<KalenderAkademikPrintModalProp
   // Ekspor Dokumen PDF True WYSIWYG Berstandar Industri (html2canvas-pro + jsPDF)
   const handleDownloadPdf = async () => {
     if (!containerRef.current) return;
+    
+    // 1. Simpan nilai zoom asli & matikan zoom sementara pada DOM sebelum capture
+    // Menghilangkan anomali Chromium/html2canvas di mana CSS zoom membuat teks/karakter saling bertumpuk (kerning collapse)
+    const deskCanvas = document.getElementById('print-desk-canvas-area');
+    const prevZoom = deskCanvas ? deskCanvas.style.zoom : '';
+    if (deskCanvas) {
+      deskCanvas.style.zoom = '1';
+    }
+
     try {
       setIsExportingPdf(true);
       toast.loading('Menyiapkan file PDF Kalender Akademik...', { id: 'pdf-kalender' });
+
+      // Tunggu hingga font selesai dimuat dan layout DOM stabil tanpa zoom
+      if (document.fonts?.ready) {
+        await document.fonts.ready;
+      }
+      await new Promise(r => setTimeout(r, 120));
 
       const html2canvas = (await import('html2canvas-pro')).default;
       const { jsPDF } = await import('jspdf');
@@ -460,9 +475,18 @@ export const KalenderAkademikPrintModal: React.FC<KalenderAkademikPrintModalProp
           allowTaint: true,
           backgroundColor: '#ffffff',
           logging: false,
+          windowWidth: isLandscape ? 1200 : 850,
           onclone: (clonedDoc) => {
+            const clonedDesk = clonedDoc.getElementById('print-desk-canvas-area');
+            if (clonedDesk) {
+              clonedDesk.style.zoom = '1';
+              (clonedDesk.style as any).transform = 'none';
+            }
             const clonedSheets = clonedDoc.querySelectorAll<HTMLElement>('.print-sheet');
             clonedSheets.forEach((s) => {
+              s.style.zoom = '1';
+              (s.style as any).transform = 'none';
+              s.style.letterSpacing = 'normal';
               s.style.border = 'none';
               s.style.boxShadow = 'none';
               s.style.outline = 'none';
@@ -489,6 +513,10 @@ export const KalenderAkademikPrintModal: React.FC<KalenderAkademikPrintModalProp
       console.error('PDF Export Error:', err);
       toast.error('Gagal membuat file PDF: ' + (err?.message || 'Error tidak diketahui'), { id: 'pdf-kalender' });
     } finally {
+      // 2. Kembalikan zoom asli setelah proses render selesai
+      if (deskCanvas && prevZoom) {
+        deskCanvas.style.zoom = prevZoom;
+      }
       setIsExportingPdf(false);
     }
   };
@@ -818,7 +846,7 @@ export const KalenderAkademikPrintModal: React.FC<KalenderAkademikPrintModalProp
 
             {/* Judul Dokumen */}
             <div className="text-center my-2 space-y-0.5">
-              <h1 className="text-xs sm:text-sm font-black uppercase tracking-wider text-black">
+              <h1 className="text-xs sm:text-sm font-black uppercase text-black">
                 KALENDER AKADEMIK &amp; PENDIDIKAN SEKOLAH 12 BULAN
               </h1>
               <p className="text-[11px] font-bold text-black uppercase">
@@ -830,7 +858,7 @@ export const KalenderAkademikPrintModal: React.FC<KalenderAkademikPrintModalProp
             <div className="grid grid-cols-2 gap-4 my-2 items-start">
               {/* Kolom Kiri: SEMESTER GANJIL */}
               <div className="border border-emerald-800/40 rounded-lg overflow-hidden bg-white">
-                <div className="bg-emerald-800 text-white text-center py-1 font-bold text-[10px] tracking-wider uppercase">
+                <div className="bg-emerald-800 text-white text-center py-1 font-bold text-[10px] uppercase">
                   SEMESTER GANJIL (JULI - DESEMBER {startYear})
                 </div>
                 <div className="p-2 grid grid-cols-3 gap-1.5 bg-emerald-50/10">
@@ -842,7 +870,7 @@ export const KalenderAkademikPrintModal: React.FC<KalenderAkademikPrintModalProp
 
               {/* Kolom Kanan: SEMESTER GENAP */}
               <div className="border border-blue-800/40 rounded-lg overflow-hidden bg-white">
-                <div className="bg-blue-800 text-white text-center py-1 font-bold text-[10px] tracking-wider uppercase">
+                <div className="bg-blue-800 text-white text-center py-1 font-bold text-[10px] uppercase">
                   SEMESTER GENAP (JANUARI - JUNI {endYear})
                 </div>
                 <div className="p-2 grid grid-cols-3 gap-1.5 bg-blue-50/10">
@@ -884,7 +912,7 @@ export const KalenderAkademikPrintModal: React.FC<KalenderAkademikPrintModalProp
 
             {/* Judul Dokumen */}
             <div className="text-center my-3 space-y-0.5">
-              <h1 className="text-sm font-black uppercase tracking-wider text-black">
+              <h1 className="text-sm font-black uppercase text-black">
                 KALENDER AKADEMIK &amp; PENDIDIKAN SEKOLAH
               </h1>
               <p className="text-xs font-bold text-black uppercase">
@@ -932,7 +960,7 @@ export const KalenderAkademikPrintModal: React.FC<KalenderAkademikPrintModalProp
 
             {/* Judul Dokumen */}
             <div className="text-center my-3 space-y-0.5">
-              <h1 className="text-sm font-black uppercase tracking-wider text-black">
+              <h1 className="text-sm font-black uppercase text-black">
                 KALENDER AKADEMIK &amp; PENDIDIKAN SEKOLAH
               </h1>
               <p className="text-xs font-bold text-black uppercase">
