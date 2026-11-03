@@ -605,12 +605,17 @@ export const RekapPresensiPrintModal: React.FC<RekapPresensiPrintModalProps> = (
                       <th className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold bg-purple-50 text-purple-800 w-5`}>
                         T
                       </th>
-                      <th className={`${matrixCellPy} ${matrixCellPx} text-center font-bold bg-slate-200 text-black w-7`}>POIN</th>
+                      <th className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold bg-slate-100 text-black w-6 font-mono text-[7px]`}>
+                        %
+                      </th>
+                      <th className={`${matrixCellPy} ${matrixCellPx} text-center font-bold bg-slate-200 text-black w-7 font-mono text-[7px]`}>POIN</th>
                     </tr>
                   </thead>
                   <tbody>
                     {pageRows.map((r, idx) => {
                       const rowNum = startRowNum + idx + 1;
+                      const totalRecorded = (r.HADIR || 0) + (r.SAKIT || 0) + (r.IZIN || 0) + (r.ALPA || 0) + (r.TERLAMBAT || 0);
+                      const pct = totalRecorded === 0 ? 0 : Math.round((((r.HADIR || 0) + (r.TERLAMBAT || 0)) / totalRecorded) * 100);
                       return (
                         <tr
                           key={r.siswa_id || idx}
@@ -649,7 +654,10 @@ export const RekapPresensiPrintModal: React.FC<RekapPresensiPrintModalProps> = (
                           <td className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold text-purple-700 bg-purple-50/40`}>
                             {r.TERLAMBAT || 0}
                           </td>
-                          <td className={`${matrixCellPy} ${matrixCellPx} text-center font-bold bg-slate-100`}>{r.total_poin || 0}</td>
+                          <td className={`${matrixCellPy} ${matrixCellPx} border-r border-black text-center font-bold font-mono text-[7px]`}>
+                            {pct}%
+                          </td>
+                          <td className={`${matrixCellPy} ${matrixCellPx} text-center font-bold bg-slate-100 font-mono text-[7px]`}>{r.total_poin || 0}</td>
                         </tr>
                       );
                     })}

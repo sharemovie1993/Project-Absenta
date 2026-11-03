@@ -689,18 +689,19 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
                     })}
 
                     {/* Kolom Total Kehadiran Ringkas */}
-                    <th className="text-center py-2 px-0 font-bold text-emerald-600 border-l border-slate-200 dark:border-slate-800 w-[2.8%] sm:w-[2.5%]" title="Hadir (H)">H</th>
-                    <th className="text-center py-2 px-0 font-bold text-amber-600 border-l border-slate-100 dark:border-slate-800/50 w-[2.8%] sm:w-[2.5%]" title="Sakit (S)">S</th>
-                    <th className="text-center py-2 px-0 font-bold text-blue-600 border-l border-slate-100 dark:border-slate-800/50 w-[2.8%] sm:w-[2.5%]" title="Izin (I)">I</th>
-                    <th className="text-center py-2 px-0 font-bold text-rose-600 border-l border-slate-100 dark:border-slate-800/50 w-[2.8%] sm:w-[2.5%]" title="Alpa (A)">A</th>
-                    <th className="text-center py-2 px-0 font-bold text-purple-600 border-l border-slate-100 dark:border-slate-800/50 w-[2.8%] sm:w-[2.5%]" title="Terlambat (T)">T</th>
-                    <th className="text-center py-2 px-0.5 font-bold text-slate-700 dark:text-slate-300 border-l border-slate-200 dark:border-slate-800 w-[4.5%] sm:w-[4%]" title="Persentase Kehadiran">%</th>
+                    <th className="text-center py-2 px-0 font-bold text-emerald-600 border-l border-slate-200 dark:border-slate-800 w-[2.6%] sm:w-[2.4%]" title="Hadir (H)">H</th>
+                    <th className="text-center py-2 px-0 font-bold text-amber-600 border-l border-slate-100 dark:border-slate-800/50 w-[2.6%] sm:w-[2.4%]" title="Sakit (S)">S</th>
+                    <th className="text-center py-2 px-0 font-bold text-blue-600 border-l border-slate-100 dark:border-slate-800/50 w-[2.6%] sm:w-[2.4%]" title="Izin (I)">I</th>
+                    <th className="text-center py-2 px-0 font-bold text-rose-600 border-l border-slate-100 dark:border-slate-800/50 w-[2.6%] sm:w-[2.4%]" title="Alpa (A)">A</th>
+                    <th className="text-center py-2 px-0 font-bold text-purple-600 border-l border-slate-100 dark:border-slate-800/50 w-[2.6%] sm:w-[2.4%]" title="Terlambat (T)">T</th>
+                    <th className="text-center py-2 px-0.5 font-bold text-slate-700 dark:text-slate-300 border-l border-slate-200 dark:border-slate-800 w-[3.8%] sm:w-[3.5%]" title="Persentase Kehadiran">%</th>
+                    <th className="text-center py-2 px-0.5 font-bold text-indigo-600 dark:text-indigo-400 border-l border-slate-200 dark:border-slate-800 w-[3.8%] sm:w-[3.5%]" title="Akumulasi Poin Kehadiran">POIN</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                   {pagedRows.length === 0 ? (
                     <tr>
-                      <td colSpan={fullMonthDays.length + 7} className="text-center py-12 text-xs text-slate-400 font-medium">
+                      <td colSpan={fullMonthDays.length + 8} className="text-center py-12 text-xs text-slate-400 font-medium">
                         {kelasId && mapelId ? 'Tidak ada catatan presensi KBM pada bulan ini.' : 'Silakan pilih kelas dan mata pelajaran yang Anda ampu.'}
                       </td>
                     </tr>
@@ -774,6 +775,11 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
                             }>
                               {pct}%
                             </span>
+                          </td>
+
+                          {/* Poin Kedisiplinan */}
+                          <td className="py-1 px-0.5 text-center font-mono font-bold text-xs border-l border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200">
+                            {row.total_poin ?? 0}
                           </td>
                         </tr>
                       );
