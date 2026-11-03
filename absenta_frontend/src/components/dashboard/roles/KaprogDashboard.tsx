@@ -406,19 +406,19 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
       { id: 'guru', label: 'Guru Produktif', shortLabel: 'Guru', category: 'jurusan', icon: Users },
       { id: 'sarana', label: 'Sarana & Lab', shortLabel: 'Sarana', category: 'jurusan', icon: Wrench, badge: saranaCounts.rusak > 0 ? saranaCounts.rusak : undefined },
 
-      // Kategori 2: PRAKTIK KERJA LAPANGAN (PKL)
+      // Kategori 2: PEMBINAAN ROMBEL (Operasional Harian)
+      { id: 'kehadiran', label: 'Presensi Rombel', shortLabel: 'Presensi', category: 'pembinaan', icon: CalendarCheck, badge: atRiskStudents.length > 0 ? atRiskStudents.length : undefined },
+      { id: 'pelanggaran', label: 'Pelanggaran Siswa', shortLabel: 'Pelanggaran', category: 'pembinaan', icon: ShieldAlert, badge: (pelanggaranList || []).length > 0 ? (pelanggaranList || []).length : undefined },
+      { id: 'prestasi', label: 'Prestasi Siswa', shortLabel: 'Prestasi', category: 'pembinaan', icon: Trophy },
+
+      // Kategori 3: PRAKTIK KERJA LAPANGAN (PKL)
       { id: 'pkl', label: 'PKL & Industri', shortLabel: 'PKL', category: 'pkl', icon: Briefcase, badge: tpStatus.pendingMitra > 0 ? tpStatus.pendingMitra : undefined },
       { id: 'nilai_pkl', label: 'Penilaian PKL', shortLabel: 'Nilai PKL', category: 'pkl', icon: ClipboardCheck, badge: belumNilaiDudiCount > 0 ? belumNilaiDudiCount : undefined },
       { id: 'sidang_pkl', label: 'Sidang PKL', shortLabel: 'Sidang', category: 'pkl', icon: Scale, badge: belumSidangCount > 0 ? belumSidangCount : undefined },
 
-      // Kategori 3: ASESMEN & SERTIFIKASI (Berdekatan dengan Fase PKL)
+      // Kategori 4: ASESMEN & SERTIFIKASI (Berdekatan dengan Fase PKL)
       { id: 'ukk', label: 'UKK & Sertifikasi', shortLabel: 'UKK', category: 'asesmen', icon: Award },
       { id: 'rapor', label: 'Cetak Rapor', shortLabel: 'Rapor', category: 'asesmen', icon: Printer },
-
-      // Kategori 4: PEMBINAAN KESISWAAN & ROMBEL
-      { id: 'kehadiran', label: 'Presensi Rombel', shortLabel: 'Presensi', category: 'pembinaan', icon: CalendarCheck, badge: atRiskStudents.length > 0 ? atRiskStudents.length : undefined },
-      { id: 'pelanggaran', label: 'Pelanggaran Siswa', shortLabel: 'Pelanggaran', category: 'pembinaan', icon: ShieldAlert, badge: (pelanggaranList || []).length > 0 ? (pelanggaranList || []).length : undefined },
-      { id: 'prestasi', label: 'Prestasi Siswa', shortLabel: 'Prestasi', category: 'pembinaan', icon: Trophy },
     ],
     [
       tpStatus.pendingMitra,
@@ -441,6 +441,14 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
         iconColor: 'text-indigo-600 dark:text-indigo-400',
       },
       {
+        id: 'pembinaan' as KaprogCategory,
+        label: 'Pembinaan Rombel',
+        badge: 'Harian',
+        badgeColor: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300',
+        icon: ShieldAlert,
+        iconColor: 'text-amber-600 dark:text-amber-400',
+      },
+      {
         id: 'pkl' as KaprogCategory,
         label: 'Praktik Kerja (PKL)',
         badge: 'DUDI',
@@ -455,14 +463,6 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
         badgeColor: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300',
         icon: Award,
         iconColor: 'text-emerald-600 dark:text-emerald-400',
-      },
-      {
-        id: 'pembinaan' as KaprogCategory,
-        label: 'Pembinaan Rombel',
-        badge: 'Karakter',
-        badgeColor: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300',
-        icon: ShieldAlert,
-        iconColor: 'text-amber-600 dark:text-amber-400',
       },
     ],
     []
