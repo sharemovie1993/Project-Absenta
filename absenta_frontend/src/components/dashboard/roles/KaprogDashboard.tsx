@@ -416,7 +416,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
       { id: 'prestasi', label: 'Prestasi Siswa', shortLabel: 'Prestasi', category: 'pembinaan', icon: Trophy },
 
       // Kategori 3: PRAKTIK KERJA LAPANGAN (PKL)
-      { id: 'pkl', label: 'Mitra & TP PKL', shortLabel: 'Mitra TP', category: 'pkl', icon: Briefcase, badge: tpStatus.pendingMitra > 0 ? tpStatus.pendingMitra : undefined },
+      { id: 'pkl', label: 'Formulasi TP PKL', shortLabel: 'TP PKL', category: 'pkl', icon: Briefcase, badge: tpStatus.pendingMitra > 0 ? tpStatus.pendingMitra : undefined },
       { id: 'ploting_pkl', label: 'Ploting Siswa PKL', shortLabel: 'Ploting Siswa', category: 'pkl', icon: UserCheck },
       { id: 'presensi_pkl', label: 'Rekap Presensi PKL', shortLabel: 'Presensi PKL', category: 'pkl', icon: CalendarCheck },
       { id: 'nilai_pkl', label: 'Penilaian PKL', shortLabel: 'Nilai PKL', category: 'pkl', icon: ClipboardCheck, badge: belumNilaiDudiCount > 0 ? belumNilaiDudiCount : undefined },

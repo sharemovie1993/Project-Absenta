@@ -115,26 +115,26 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
   }, [tpStatus, filteredMitraList]);
 
   return (
-    <div className="space-y-6">
-      {/* KPI Metrik: AnalyticsCard Premium */}
+    <div className="space-y-4">
+      {/* KPI Metrik: Khusus Fokus Formulasi TP PKL Mitra */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <AnalyticsCard
           variant="compact-premium"
           mobileCompact={true}
-          title="Siswa PKL"
-          value={totalSiswa}
+          title="Total Mitra DUDI"
+          value={totalCount}
           icon={<Building2 className="w-5 h-5 text-indigo-400" />}
-          description="Peserta aktif PKL"
+          description="Mitra aktif penempatan PKL"
           gradient="from-indigo-600 to-blue-600"
         />
 
         <AnalyticsCard
           variant="compact-premium"
           mobileCompact={true}
-          title="Nilai Industri"
-          value={sudahDinilaiDudi}
+          title="Sudah Diisi TP"
+          value={filledCount}
           icon={<CheckCircle2 className="w-5 h-5 text-emerald-400" />}
-          description={`${dudiPercent}% telah dinilai DUDI`}
+          description={`${tpStatus?.completionPercentage || 0}% mitra telah dirumuskan`}
           gradient="from-emerald-600 to-teal-700"
         />
 
@@ -142,108 +142,22 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
           variant="compact-premium"
           mobileCompact={true}
           title="Belum Diisi TP"
-          value={pendingMitra}
+          value={pendingCount}
           icon={<AlertCircle className="w-5 h-5 text-amber-400" />}
-          description={`${pendingMitra} mitra perlu rumusan`}
+          description={`${pendingCount} mitra perlu rumusan TP`}
           gradient="from-amber-500 to-orange-600"
         />
 
         <AnalyticsCard
           variant="compact-premium"
           mobileCompact={true}
-          title="Lulus Sidang"
-          value={sudahSidang}
-          icon={<Award className="w-5 h-5 text-purple-400" />}
-          description={`${sidangPercent}% selesai sidang`}
+          title="Siswa Terploting"
+          value={totalSiswa}
+          icon={<Users className="w-5 h-5 text-purple-400" />}
+          description="Total peserta PKL jurusan"
           gradient="from-purple-600 to-indigo-700"
-          onClick={onOpenSidangPkl || onOpenRekapNilai}
         />
       </div>
-
-      {/* Progress Capaian Penilaian (Simplified, Low Noise) */}
-      <Card noPadding className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          <div>
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-              Progres Penilaian PKL
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Monitoring capaian nilai industri dan kelulusan sidang peserta PKL {jurusanNama}.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-            {onOpenPlottingModal && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={onOpenPlottingModal}
-                className="text-xs font-bold rounded-xl gap-1.5 shadow-2xs bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
-              >
-                <Users className="w-3.5 h-3.5" />
-                <span>Plotting Siswa PKL</span>
-              </Button>
-            )}
-            {onOpenMonitoringPkl && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onOpenMonitoringPkl}
-                className="text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 gap-1.5 cursor-pointer text-indigo-600 dark:text-indigo-400"
-              >
-                <CalendarCheck className="w-3.5 h-3.5" />
-                <span>Monitoring Presensi</span>
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onOpenSidangPkl || onOpenRekapNilai || (() => navigate('/dashboard?tab=kaprog&subtab=sidang_pkl'))}
-              className="text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 gap-1.5 cursor-pointer text-purple-700 dark:text-purple-300"
-              title="Buka Lembar Penilaian Sidang PKL Jurusan"
-            >
-              <Award className="w-3.5 h-3.5 text-purple-500" />
-              <span>Nilai Sidang PKL</span>
-            </Button>
-          </div>
-        </div>
-
-        {/* 2-Column Progress Grid (Reduced Visual Noise) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
-          <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-medium text-slate-600 dark:text-slate-300">
-                Nilai Mentor Industri
-              </span>
-              <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                {sudahDinilaiDudi} / {totalSiswa} ({dudiPercent}%)
-              </span>
-            </div>
-            <div className="w-full bg-slate-200/70 dark:bg-slate-700/60 h-2 rounded-full overflow-hidden">
-              <div
-                className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                style={{ width: `${dudiPercent}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-medium text-slate-600 dark:text-slate-300">
-                Ujian Sidang PKL
-              </span>
-              <span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">
-                {sudahSidang} / {totalSiswa} ({sidangPercent}%)
-              </span>
-            </div>
-            <div className="w-full bg-slate-200/70 dark:bg-slate-700/60 h-2 rounded-full overflow-hidden">
-              <div
-                className="bg-indigo-600 h-full rounded-full transition-all duration-500"
-                style={{ width: `${sidangPercent}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      </Card>
 
       {/* Tabel & Kartu Mobile List Mitra Industri & Status TP */}
       <Card noPadding className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-4">
