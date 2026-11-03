@@ -2,11 +2,16 @@ import React from 'react';
 
 export type KaprogTabId = 'beranda' | 'siswa' | 'prestasi' | 'pkl' | 'nilai_pkl' | 'sidang_pkl' | 'kehadiran' | 'pelanggaran' | 'guru' | 'sarana' | 'ukk' | 'rapor';
 
+export type KaprogCategory = 'jurusan' | 'pkl' | 'pembinaan' | 'asesmen';
+
 export interface NavTabItem {
   id: KaprogTabId;
   label: string;
+  shortLabel?: string;
+  category: KaprogCategory;
   icon: React.ComponentType<{ className?: string }>;
   badge?: number | string;
+  badgeColor?: string;
 }
 
 export interface KelasKehadiranItem {

@@ -53,6 +53,7 @@ import { KaprogUkkTab } from './kaprog/tabs/KaprogUkkTab';
 import { KaprogCetakRaporTab } from './kaprog/tabs/KaprogCetakRaporTab';
 import { 
   KaprogTabId, 
+  KaprogCategory,
   NavTabItem, 
   KelasKehadiranItem, 
   SiswaAtRiskItem, 
@@ -396,65 +397,75 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
     return Math.max(0, total - sudah);
   }, [penilaianStatus]);
 
-  // Tabs Navigation Definition
+  // Tabs Navigation Definition (Dikategorisasi ala Kurikulum - Separation of Concerns)
   const navTabs: NavTabItem[] = useMemo(
     () => [
-      { id: 'beranda', label: 'Ringkasan', icon: LayoutDashboard },
-      { id: 'siswa', label: 'Data Siswa', icon: GraduationCap },
+      // Kategori 1: MANAJEMEN JURUSAN
+      { id: 'beranda', label: 'Ringkasan', shortLabel: 'Ringkasan', category: 'jurusan', icon: LayoutDashboard },
+      { id: 'siswa', label: 'Data Siswa', shortLabel: 'Siswa', category: 'jurusan', icon: GraduationCap },
+      { id: 'guru', label: 'Guru Produktif', shortLabel: 'Guru', category: 'jurusan', icon: Users },
+      { id: 'sarana', label: 'Sarana & Lab', shortLabel: 'Sarana', category: 'jurusan', icon: Wrench, badge: saranaCounts.rusak > 0 ? saranaCounts.rusak : undefined },
+
+      // Kategori 2: PRAKTIK KERJA LAPANGAN (PKL)
+      { id: 'pkl', label: 'PKL & Industri', shortLabel: 'PKL', category: 'pkl', icon: Briefcase, badge: tpStatus.pendingMitra > 0 ? tpStatus.pendingMitra : undefined },
+      { id: 'nilai_pkl', label: 'Penilaian PKL', shortLabel: 'Nilai PKL', category: 'pkl', icon: ClipboardCheck, badge: belumNilaiDudiCount > 0 ? belumNilaiDudiCount : undefined },
+      { id: 'sidang_pkl', label: 'Sidang PKL', shortLabel: 'Sidang', category: 'pkl', icon: Scale, badge: belumSidangCount > 0 ? belumSidangCount : undefined },
+
+      // Kategori 3: PEMBINAAN KESISWAAN
+      { id: 'kehadiran', label: 'Presensi Rombel', shortLabel: 'Presensi', category: 'pembinaan', icon: CalendarCheck, badge: atRiskStudents.length > 0 ? atRiskStudents.length : undefined },
+      { id: 'pelanggaran', label: 'Pelanggaran Siswa', shortLabel: 'Pelanggaran', category: 'pembinaan', icon: ShieldAlert, badge: (pelanggaranList || []).length > 0 ? (pelanggaranList || []).length : undefined },
+      { id: 'prestasi', label: 'Prestasi Siswa', shortLabel: 'Prestasi', category: 'pembinaan', icon: Trophy },
+
+      // Kategori 4: ASESMEN & SERTIFIKASI
+      { id: 'ukk', label: 'UKK & Sertifikasi', shortLabel: 'UKK', category: 'asesmen', icon: Award },
+      { id: 'rapor', label: 'Cetak Rapor', shortLabel: 'Rapor', category: 'asesmen', icon: Printer },
+    ],
+    [
+      tpStatus.pendingMitra,
+      belumNilaiDudiCount,
+      belumSidangCount,
+      atRiskStudents.length,
+      (pelanggaranList || []).length,
+      saranaCounts.rusak,
+    ]
+  );
+
+  const categories = useMemo(
+    () => [
       {
-        id: 'pkl',
-        label: 'PKL & Industri',
+        id: 'jurusan' as KaprogCategory,
+        label: 'Manajemen Jurusan',
+        badge: 'Utama',
+        badgeColor: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300',
+        icon: LayoutDashboard,
+        iconColor: 'text-indigo-600 dark:text-indigo-400',
+      },
+      {
+        id: 'pkl' as KaprogCategory,
+        label: 'Praktik Kerja (PKL)',
+        badge: 'DUDI',
+        badgeColor: 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300',
         icon: Briefcase,
-        badge: tpStatus.pendingMitra > 0 ? tpStatus.pendingMitra : undefined,
+        iconColor: 'text-blue-600 dark:text-blue-400',
       },
       {
-        id: 'nilai_pkl',
-        label: 'Penilaian PKL',
-        icon: ClipboardCheck,
-        badge: belumNilaiDudiCount > 0 ? belumNilaiDudiCount : undefined,
-      },
-      {
-        id: 'sidang_pkl',
-        label: 'Sidang PKL',
-        icon: Scale,
-        badge: belumSidangCount > 0 ? belumSidangCount : undefined,
-      },
-      {
-        id: 'kehadiran',
-        label: 'Presensi Rombel',
-        icon: CalendarCheck,
-        badge: atRiskStudents.length > 0 ? atRiskStudents.length : undefined,
-      },
-      {
-        id: 'pelanggaran',
-        label: 'Pelanggaran Siswa',
+        id: 'pembinaan' as KaprogCategory,
+        label: 'Pembinaan Rombel',
+        badge: 'Karakter',
+        badgeColor: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300',
         icon: ShieldAlert,
-        badge: (pelanggaranList || []).length > 0 ? (pelanggaranList || []).length : undefined,
+        iconColor: 'text-amber-600 dark:text-amber-400',
       },
       {
-        id: 'prestasi',
-        label: 'Prestasi Siswa',
-        icon: Trophy,
-      },
-      { id: 'guru', label: 'Guru Produktif', icon: Users },
-      {
-        id: 'sarana',
-        label: 'Sarana & Lab',
-        icon: Wrench,
-        badge: saranaCounts.rusak > 0 ? saranaCounts.rusak : undefined,
-      },
-      {
-        id: 'ukk',
-        label: 'UKK & Sertifikasi',
+        id: 'asesmen' as KaprogCategory,
+        label: 'Asesmen & Kelulusan',
+        badge: 'Akhir',
+        badgeColor: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300',
         icon: Award,
-      },
-      {
-        id: 'rapor',
-        label: 'Cetak Rapor',
-        icon: Printer,
+        iconColor: 'text-emerald-600 dark:text-emerald-400',
       },
     ],
-    [tpStatus.pendingMitra, belumSidangCount, atRiskStudents.length, (pelanggaranList || []).length, saranaCounts.rusak]
+    []
   );
 
   // Mutation: Simpan Deskripsi TP Inline
@@ -607,6 +618,40 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
           variant="compact"
           className="w-full"
         />
+
+        {/* Mobile Horizontal Subtab Scroller (Shopee-Grade Horizontal Scroller) */}
+        <div className="overflow-x-auto no-scrollbar flex items-center gap-1.5 pb-0.5">
+          {navTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleTabSelect(tab.id)}
+                className={cn(
+                  'px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all shrink-0 cursor-pointer',
+                  isActive
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-800'
+                )}
+              >
+                <Icon size={13} className="shrink-0" />
+                <span>{tab.shortLabel || tab.label}</span>
+                {tab.badge !== undefined && (
+                  <span
+                    className={cn(
+                      'px-1.5 py-0.2 rounded-full text-[9px] font-bold',
+                      isActive ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                    )}
+                  >
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* 2. Desktop 2-Column Layout (>= lg: Left Sidebar Controls + Wide Main Content Canvas) */}
@@ -652,40 +697,70 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
             variant="sidebar"
           />
 
-          {/* Navigasi Menu Vertikal */}
-          <nav className="p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1">
-            {(navTabs || [])?.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
+          {/* Navigasi Menu Vertikal Terkelompok (Separation of Concerns ala Kurikulum) */}
+          <nav className="p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2.5">
+            {categories.map((cat, idx) => {
+              const catTabs = navTabs.filter((t) => t.category === cat.id);
+              if (catTabs.length === 0) return null;
+              const CatIcon = cat.icon;
+
               return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => handleTabSelect(tab.id)}
-                  className={cn(
-                    'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left',
-                    isActive
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                <React.Fragment key={cat.id}>
+                  {idx > 0 && (
+                    <div className="border-t border-slate-100 dark:border-slate-800/80 mx-1.5" />
                   )}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Icon className="w-4 h-4 shrink-0" />
-                    <span>{tab.label}</span>
+
+                  <div className="space-y-0.5">
+                    {/* Header Kategori */}
+                    <div className="px-2.5 pt-1 pb-1 flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                      <span className={cn('flex items-center gap-1.5', cat.iconColor)}>
+                        <CatIcon className="w-3 h-3" />
+                        {cat.label}
+                      </span>
+                      <span className={cn('text-[9px] px-1.5 py-0.2 rounded font-bold', cat.badgeColor)}>
+                        {cat.badge}
+                      </span>
+                    </div>
+
+                    {/* Tombol Sub-tab dalam Kategori */}
+                    {catTabs.map((tab) => {
+                      const Icon = tab.icon;
+                      const isActive = activeTab === tab.id;
+
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => handleTabSelect(tab.id)}
+                          className={cn(
+                            'w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left',
+                            isActive
+                              ? 'bg-indigo-600 text-white shadow-xs font-bold'
+                              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                          )}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Icon className="w-4 h-4 shrink-0" />
+                            <span className="truncate">{tab.label}</span>
+                          </div>
+
+                          {tab.badge !== undefined && (
+                            <span
+                              className={cn(
+                                'px-2 py-0.5 rounded-full text-[10px] font-bold min-w-5 text-center transition-colors shrink-0',
+                                isActive
+                                  ? 'bg-white/20 text-white'
+                                  : 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
+                              )}
+                            >
+                              {tab.badge}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
-                  {tab.badge !== undefined && (
-                    <span
-                      className={cn(
-                        'px-2 py-0.5 rounded-full text-[11px] font-bold min-w-5 text-center transition-colors',
-                        isActive
-                          ? 'bg-white/20 text-white'
-                          : 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
-                      )}
-                    >
-                      {tab.badge}
-                    </span>
-                  )}
-                </button>
+                </React.Fragment>
               );
             })}
           </nav>
