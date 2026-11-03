@@ -461,7 +461,6 @@ const SettingsPage: React.FC<UniversalSettingsViewProps> = ({
       {tabContent}
     </AcademicPageLayout>
   );
-  );
 };
 
 export default SettingsPage;
