@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Plus, Trash2, RefreshCw, Clock3, Coffee } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { cn } from '@/lib/utils';
 import { Tabular, type TabularColumn } from '@/components/ui/Tabular';
 import {
   type ShiftConfig,
@@ -208,31 +209,6 @@ export default React.memo(function JamKBMShiftPanel({
     const newSlots = regenerateSlots(activePattern.start_time, activePattern.slot_duration, nextBreaks, count);
     savePatternUpdate(newSlots, nextBreaks, activePattern.slot_duration);
   }, [currentShift, activePattern, savePatternUpdate]);
-
-  const handleAddShift = useCallback(() => {
-    const newId = `shift_${Date.now()}`;
-    const newBreaks: BreakItem[] = [
-      { id: `brk-${Date.now()}-1`, afterSlot: 3, duration: 15 },
-      { id: `brk-${Date.now()}-2`, afterSlot: 6, duration: 15 },
-    ];
-    const newShift: ShiftItem = {
-      id: newId, name: `Shift Siang ${shiftConfig.shifts.length + 1}`,
-      start_time: '13:00', slot_duration: 45, breaks: newBreaks,
-      slots: regenerateSlots('13:00', 45, newBreaks),
-    };
-    onShiftConfigChange({ ...shiftConfig, shifts: [...shiftConfig.shifts, newShift] });
-    onActiveShiftChange(newId);
-    toast.success('Shift baru ditambahkan!');
-  }, [shiftConfig, onShiftConfigChange, onActiveShiftChange]);
-
-  const handleDeleteShift = useCallback(() => {
-    const nextShifts = shiftConfig.shifts.filter(s => s.id !== activeSelectedShiftId);
-    const nextAssignments = { ...shiftConfig.class_assignments };
-    Object.keys(nextAssignments).forEach(k => { if (nextAssignments[k] === activeSelectedShiftId) delete nextAssignments[k]; });
-    onShiftConfigChange({ shifts: nextShifts, class_assignments: nextAssignments });
-    onActiveShiftChange(nextShifts[0].id);
-    toast.success('Shift dihapus.');
-  }, [shiftConfig, activeSelectedShiftId, onShiftConfigChange, onActiveShiftChange]);
 
   const handleResetToJenjang = useCallback(async () => {
     const ok = await onConfirm({
@@ -472,49 +448,32 @@ export default React.memo(function JamKBMShiftPanel({
 
   return (
     <div className="space-y-2.5">
-      {/* ── Multi-Shift Bar (Hanya Muncul jika Multi-Shift) ─────────── */}
+      {/* ── Multi-Shift Bar (Hanya Muncul jika Multi-Shift: Saklar Pagi vs Siang) ─────────── */}
       {!isSingleShift && (
-        <div className="flex flex-wrap items-center justify-between gap-2 p-1.5 bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800 rounded-xl">
-          {/* Shift Pills */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {(shiftConfig?.shifts ?? []).map(s => (
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 rounded-xl w-fit">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider px-2">Shift:</span>
+          {(shiftConfig?.shifts ?? []).map(s => {
+            const displayName = s.name?.includes('Siang') ? 'Shift Siang' : (s.name || 'Shift Pagi');
+            const isActive = s.id === activeSelectedShiftId;
+            return (
               <button
                 key={s.id}
                 type="button"
                 onClick={() => onActiveShiftChange(s.id)}
-                className={`relative px-3 py-1 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${
-                  s.id === activeSelectedShiftId
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:text-indigo-600'
-                }`}
+                className={cn(
+                  "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
+                  isActive
+                    ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                    : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                )}
               >
-                {s.name}
-                {s.id === activeSelectedShiftId && (
-                  <span className="inline-block w-1.5 h-1.5 bg-emerald-400 rounded-full ml-1.5 align-middle" />
+                <span>{displayName}</span>
+                {isActive && (
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
                 )}
               </button>
-            ))}
-            {!readOnly && (
-              <button
-                type="button"
-                onClick={handleAddShift}
-                className="px-2.5 py-1 rounded-lg text-xs font-bold border border-dashed border-slate-300 dark:border-slate-700 text-slate-500 hover:border-indigo-400 hover:text-indigo-500 transition-all flex items-center gap-1 cursor-pointer"
-              >
-                <Plus className="w-3 h-3" /> Shift Baru
-              </button>
-            )}
-          </div>
-
-          {/* Delete shift action if > 1 shift */}
-          {!readOnly && shiftConfig?.shifts?.length > 1 && (
-            <button
-              type="button"
-              onClick={handleDeleteShift}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-rose-200/60 dark:border-rose-900/40 transition-all cursor-pointer"
-            >
-              <Trash2 className="w-3 h-3" /> Hapus Shift
-            </button>
-          )}
+            );
+          })}
         </div>
       )}
 
