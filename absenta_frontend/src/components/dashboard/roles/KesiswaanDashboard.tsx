@@ -212,8 +212,8 @@ export const KesiswaanDashboard: React.FC<KesiswaanDashboardProps> = ({ user }) 
       },
       {
         id: 'aturan_absensi',
-        label: 'Aturan Gerbang & Presensi',
-        shortLabel: 'Aturan Jam',
+        label: 'Aturan Jam & Presensi',
+        shortLabel: 'Aturan Presensi',
         icon: Clock,
       },
     ],
