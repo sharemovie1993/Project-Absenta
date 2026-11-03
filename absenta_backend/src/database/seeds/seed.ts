@@ -416,7 +416,11 @@ async function main() {
     // --- CBT ---
     {
       label: 'CBT', icon: 'Laptop', path: null, required_features: ['CORE'], order: 39, children: [
-        { label: 'Dashboard', icon: 'LayoutDashboard', path: '/cbt/dashboard', required_capability: 'academic.students.view.list' }
+        { label: 'Dashboard', icon: 'LayoutDashboard', path: '/cbt/dashboard', required_capability: 'cbt.bank.view, cbt.jadwal.view' },
+        { label: 'Bank Soal', icon: 'Database', path: '/cbt/bank-soal', required_capability: 'cbt.bank.view, cbt.bank.manage' },
+        { label: 'Jadwal Ujian', icon: 'Calendar', path: '/cbt/jadwal', required_capability: 'cbt.jadwal.view, cbt.jadwal.manage' },
+        { label: 'Sesi Ujian (Live)', icon: 'Activity', path: '/cbt/sesi', required_capability: 'cbt.sesi.monitor, cbt.jadwal.manage' },
+        { label: 'Analisis & Hasil', icon: 'BarChart2', path: '/cbt/analisis', required_capability: 'cbt.analisis.view, cbt.bank.view' }
       ]
     },
 

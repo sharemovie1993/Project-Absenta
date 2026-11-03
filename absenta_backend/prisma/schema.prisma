@@ -179,6 +179,10 @@ model Tenant {
   PermohonanIzinSiswa      PermohonanIzinSiswa[]
   PermohonanIzinGuru       PermohonanIzinGuru[]
   AcademicPlenoSession     AcademicPlenoSession[]
+  CbtBankSoal              CbtBankSoal[]
+  CbtSoal                  CbtSoal[]
+  CbtJadwalUjian           CbtJadwalUjian[]
+  CbtPesertaUjian          CbtPesertaUjian[]
 }
 
 enum BackupStatus {
@@ -911,6 +915,7 @@ model Guru {
   P5Fasilitator          P5Fasilitator[]
   pembinaUtamaUpacara    JadwalPembinaUpacara[]     @relation("PembinaUtamaUpacara")
   pembinaPenggantiUpacara JadwalPembinaUpacara[]    @relation("PembinaPenggantiUpacara")
+  CbtBankSoal             CbtBankSoal[]
 
   @@index([tenant_id])
   @@index([tenant_id, no_rfid])
@@ -937,6 +942,7 @@ model Mapel {
   PerangkatAjar          PerangkatAjar[]
   JadwalKontrakKbm       JadwalKontrakKbm[]
   AlurTujuanPembelajaran AlurTujuanPembelajaran[]
+  CbtBankSoal            CbtBankSoal[]
 
   @@unique([tenant_id, kode_mapel])
   @@index([tenant_id])
@@ -974,6 +980,7 @@ model TahunPelajaran {
   GuruTimeOff            GuruTimeOff[]
   JadwalKontrakKbm       JadwalKontrakKbm[]
   AlurTujuanPembelajaran AlurTujuanPembelajaran[]
+  CbtJadwalUjian         CbtJadwalUjian[]
   AcademicPlenoSession   AcademicPlenoSession[]
   SettingDeskripsiPkl    SettingDeskripsiPkl[]
 
@@ -1011,6 +1018,7 @@ model Semester {
   GuruTimeOff            GuruTimeOff[]
   JadwalKontrakKbm       JadwalKontrakKbm[]
   AlurTujuanPembelajaran AlurTujuanPembelajaran[]
+  CbtJadwalUjian         CbtJadwalUjian[]
   AcademicPlenoSession   AcademicPlenoSession[]
 
   @@index([tenant_id])
@@ -1132,6 +1140,7 @@ model Siswa {
   NilaiEskul          NilaiEskul[]
   BkKonsultasiBooking BkKonsultasiBooking[]
   AcademicPlenoDecision AcademicPlenoDecision[]
+  CbtPesertaUjian     CbtPesertaUjian[]
 
   @@unique([tenant_id, nis])
   @@index([tenant_id])
@@ -5686,4 +5695,146 @@ model AcademicPlenoMinute {
   Session      AcademicPlenoSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
 
   @@index([session_id])
+}
+
+// ==========================================
+// CBT (COMPUTER-BASED TEST) MODULE MODELS
+// ==========================================
+
+enum CbtBankStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CbtJenisSoal {
+  PG
+}
+
+enum CbtJadwalStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum CbtPesertaStatus {
+  STANDBY
+  IN_PROGRESS
+  FINISHED
+  DISQUALIFIED
+}
+
+model CbtBankSoal {
+  id              String        @id @default(uuid())
+  tenant_id       String
+  guru_id         String
+  mapel_id        String
+  kode_bank       String
+  judul           String
+  tingkat         String        // 'X' | 'XI' | 'XII' | 'SEMUA'
+  jurusan         String?       // Nama jurusan atau null untuk semua jurusan
+  jumlah_soal     Int           @default(0)
+  alokasi_menit   Int           @default(90)
+  acak_soal       Boolean       @default(true)
+  acak_opsi       Boolean       @default(true)
+  status          CbtBankStatus @default(DRAFT)
+  created_at      DateTime      @default(now())
+  updated_at      DateTime      @updatedAt
+
+  Tenant          Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Guru            Guru          @relation(fields: [guru_id], references: [id], onDelete: Cascade)
+  Mapel           Mapel         @relation(fields: [mapel_id], references: [id], onDelete: Cascade)
+  Soal            CbtSoal[]
+  JadwalUjian     CbtJadwalUjian[]
+
+  @@unique([tenant_id, kode_bank])
+  @@index([tenant_id])
+  @@index([guru_id])
+  @@index([mapel_id])
+}
+
+model CbtSoal {
+  id                   String       @id @default(uuid())
+  tenant_id            String
+  bank_soal_id         String
+  nomor_urut           Int          @default(1)
+  jenis_soal           CbtJenisSoal @default(PG)
+  konten_pertanyaan    String       @db.Text
+  gambar_stimulus_url  String?
+  bobot                Decimal      @default(1.0) @db.Decimal(5, 2)
+  opsi_jawaban_json    Json         // Array of { kode: 'A'|'B'|'C'|'D'|'E', teks: string, gambar_url?: string }
+  kunci_jawaban        String       // 'A' | 'B' | 'C' | 'D' | 'E'
+  pembahasan           String?      @db.Text
+  created_at           DateTime     @default(now())
+  updated_at           DateTime     @updatedAt
+
+  Tenant               Tenant       @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  BankSoal             CbtBankSoal  @relation(fields: [bank_soal_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([bank_soal_id])
+  @@index([bank_soal_id, nomor_urut])
+}
+
+model CbtJadwalUjian {
+  id                        String          @id @default(uuid())
+  tenant_id                 String
+  bank_soal_id              String
+  tahun_pelajaran_id        String
+  semester_id               String
+  nama_sesi                 String
+  token_ujian               String          @db.VarChar(10)
+  tanggal_mulai             DateTime        @db.Timestamptz
+  tanggal_selesai           DateTime        @db.Timestamptz
+  durasi_menit              Int             @default(90)
+  toleransi_terlambat_menit Int             @default(15)
+  status                    CbtJadwalStatus @default(DRAFT)
+  target_kelas_ids          Json            // Array of kelas_id UUID strings
+  setting_keamanan          Json?           // { lock_device, block_tab_switching, max_tab_switches, shuffle_questions, shuffle_options }
+  created_at                DateTime        @default(now())
+  updated_at                DateTime        @updatedAt
+
+  Tenant                    Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  BankSoal                  CbtBankSoal     @relation(fields: [bank_soal_id], references: [id], onDelete: Cascade)
+  TahunPelajaran            TahunPelajaran  @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: Cascade)
+  Semester                  Semester        @relation(fields: [semester_id], references: [id], onDelete: Cascade)
+  Peserta                   CbtPesertaUjian[]
+
+  @@index([tenant_id])
+  @@index([bank_soal_id])
+  @@index([token_ujian])
+  @@index([tenant_id, status])
+}
+
+model CbtPesertaUjian {
+  id                    String           @id @default(uuid())
+  tenant_id             String
+  jadwal_ujian_id       String
+  siswa_id              String
+  token_masuk           String           @db.VarChar(10)
+  waktu_mulai           DateTime?        @db.Timestamptz
+  waktu_selesai         DateTime?        @db.Timestamptz
+  sisa_waktu_detik      Int              @default(0)
+  status                CbtPesertaStatus @default(STANDBY)
+  status_sinkron        String           @default("IDLE") // 'IDLE' | 'SYNCED' | 'DISCONNECTED'
+  jawaban_json          Json?            // Array of { soal_id, jawaban_siswa, is_ragu, timestamp }
+  jumlah_benar          Int              @default(0)
+  jumlah_salah          Int              @default(0)
+  nilai_akhir           Decimal          @default(0.0) @db.Decimal(5, 2)
+  log_pelanggaran_json  Json?            // Array of { waktu, tipe_pelanggaran, detail }
+  metadata_perangkat    Json?            // { browser, os, ip, user_agent, screen_resolution }
+  created_at            DateTime         @default(now())
+  updated_at            DateTime         @updatedAt
+
+  Tenant                Tenant           @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  JadwalUjian           CbtJadwalUjian   @relation(fields: [jadwal_ujian_id], references: [id], onDelete: Cascade)
+  Siswa                 Siswa            @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
+
+  @@unique([jadwal_ujian_id, siswa_id])
+  @@index([tenant_id])
+  @@index([jadwal_ujian_id])
+  @@index([siswa_id])
+  @@index([jadwal_ujian_id, status])
 }

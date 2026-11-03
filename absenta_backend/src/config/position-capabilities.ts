@@ -533,6 +533,9 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     // Supervisi Akademik Guru
     'curriculum.supervision.manage', 'curriculum.supervision.view.report', 'curriculum.supervision.view.schedule', 'curriculum.supervision.create.record', 'curriculum.supervision.update.record', 'curriculum.supervision.delete.record',
 
+    // Computer-Based Test (CBT)
+    'cbt.bank.manage', 'cbt.bank.view', 'cbt.jadwal.manage', 'cbt.jadwal.view', 'cbt.sesi.monitor', 'cbt.analisis.view',
+
     // Presensi & Kegiatan Akademik
     'attendance.sessions.view.list', 'attendance.sessions.view.detail', 'attendance.reports.view',
     'attendance.events.view.list', 'attendance.events.create', 'attendance.events.delete',

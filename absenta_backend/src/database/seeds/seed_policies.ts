@@ -98,6 +98,10 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'bk.assessment.view.list',
     'bk.referrals.view.list',
     'bk.referrals.manage',
+    'cbt.bank.manage',
+    'cbt.bank.view',
+    'cbt.jadwal.view',
+    'cbt.analisis.view',
   ]);
 
   const siswa = uniqueStrings([
@@ -150,6 +154,7 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'cooperative.rat.vote',
     'sarpras.loans.view.list',
     'sarpras.loans.request',
+    'cbt.exam.take',
   ]);
 
   const anggotaKoperasiExternal = uniqueStrings([

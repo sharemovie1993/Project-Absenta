@@ -309,6 +309,16 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - cooperative.vouchers.manage
 - cooperative.vouchers.view.list
 
+## cbt
+
+- cbt.analisis.view
+- cbt.bank.manage
+- cbt.bank.view
+- cbt.exam.take
+- cbt.jadwal.manage
+- cbt.jadwal.view
+- cbt.sesi.monitor
+
 ## core
 
 - core.auth.logout

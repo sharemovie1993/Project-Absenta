@@ -755,6 +755,10 @@ export async function registerRoutes(fastify: any, prisma: any) {
       await fastify.register(piketModule, { prefix: '/kesiswaan/piket' });
       await fastify.register(piketModule, { prefix: '/piket' });
 
+      // CBT (Computer-Based Test) Module
+      const { cbtRoutes } = await import('../modules/cbt/routes/cbt.routes');
+      await fastify.register(cbtRoutes, { prefix: '/cbt' });
+
 
 
       // Moving business routes from root to /api
