@@ -184,7 +184,7 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
   });
 
   const data: Supervisi[] = useMemo(() => supervisiRes?.data?.list ?? [], [supervisiRes]);
-  const totalData: number = supervisiRes?.data?.total ?? 0;
+  const totalData: number = supervisiRes?.data?.pagination?.total ?? supervisiRes?.data?.total ?? data.length;
 
   const currentRecSlot = useMemo(
     () => recommendations.find((r) => r.id === selectedRecId),
