@@ -119,6 +119,7 @@ export const TenantSettingsView: React.FC<UniversalTenantSettingsViewProps> = ({
   });
   const [hoveredPresetId, setHoveredPresetId] = useState<string | null>(null);
   const [savingTheme, setSavingTheme] = useState(false);
+  const [savingShiftMode, setSavingShiftMode] = useState(false);
 
   // Shift states
   const [kelasList, setKelasList] = useState<any[]>([]);
@@ -435,6 +436,79 @@ export const TenantSettingsView: React.FC<UniversalTenantSettingsViewProps> = ({
       toast.error(err?.response?.data?.message || err.message || 'Gagal menyimpan perubahan');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleShiftModeToggle = async (mode: 'SINGLE' | 'MULTI') => {
+    if (readOnly || !tenant?.id) return;
+    const currentMode = shiftConfig?.operational_mode || (shiftConfig?.shifts?.length > 1 ? 'MULTI' : 'SINGLE');
+    if (currentMode === mode) return;
+
+    setSavingShiftMode(true);
+    const toastId = toast.loading(`Mengubah model shift ke ${mode === 'SINGLE' ? '1 Shift (Reguler)' : '2 Shift (Pagi & Siang)'}...`);
+    try {
+      let updatedShifts = [...(shiftConfig?.shifts || [])];
+      if (mode === 'SINGLE') {
+        const primary = updatedShifts[0] || {
+          id: 'pagi',
+          name: 'Shift Reguler (Pagi)',
+          slots: [
+            { slot: 1, start: '07:00', end: '07:45' },
+            { slot: 2, start: '07:45', end: '08:30' },
+            { slot: 3, start: '08:30', end: '09:15' },
+            { slot: 4, start: '09:35', end: '10:20' },
+            { slot: 5, start: '10:20', end: '11:05' },
+            { slot: 6, start: '11:05', end: '11:50' },
+            { slot: 7, start: '12:30', end: '13:15' },
+            { slot: 8, start: '13:15', end: '14:00' },
+          ],
+        };
+        updatedShifts = [{ ...primary, id: 'pagi', name: 'Shift Reguler (Pagi)' }];
+      } else {
+        if (updatedShifts.length < 2) {
+          updatedShifts.push({
+            id: 'siang',
+            name: 'Shift Siang',
+            start_time: '12:30',
+            slot_duration: 35,
+            slots: [
+              { slot: 1, start: '12:30', end: '13:05' },
+              { slot: 2, start: '13:05', end: '13:40' },
+              { slot: 3, start: '13:40', end: '14:15' },
+              { slot: 4, start: '14:30', end: '15:05' },
+              { slot: 5, start: '15:05', end: '15:40' },
+              { slot: 6, start: '15:40', end: '16:15' },
+            ],
+          });
+        }
+      }
+
+      const nextConfig = {
+        ...(shiftConfig || {}),
+        operational_mode: mode,
+        shifts: updatedShifts,
+        class_assignments: mode === 'SINGLE' ? {} : (shiftConfig?.class_assignments || {}),
+      };
+
+      setShiftConfig(nextConfig);
+
+      const res = await updateTenant(tenant.id, {
+        shift_jam_pelajaran: nextConfig,
+      });
+
+      if (res.success) {
+        toast.success(`Model operasional sekolah berhasil diubah ke ${mode === 'SINGLE' ? '1 Shift (Reguler)' : '2 Shift (Pagi & Siang)'}!`, { id: toastId });
+        queryClient.invalidateQueries({ queryKey: ['my-tenant-jam-kbm'] });
+        queryClient.invalidateQueries({ queryKey: ['tenant'] });
+        queryClient.invalidateQueries({ queryKey: ['tenant-info'] });
+        queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+      } else {
+        toast.error(res.message || 'Gagal mengubah model shift', { id: toastId });
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mengubah model shift', { id: toastId });
+    } finally {
+      setSavingShiftMode(false);
     }
   };
 
@@ -1356,40 +1430,36 @@ export const TenantSettingsView: React.FC<UniversalTenantSettingsViewProps> = ({
             <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl shrink-0">
               <button
                 type="button"
-                disabled={readOnly || !isEditing}
-                onClick={() => {
-                  setShiftConfig((prev: any) => ({
-                    ...(prev || {}),
-                    operational_mode: 'SINGLE',
-                  }));
-                }}
+                disabled={readOnly || savingShiftMode}
+                onClick={() => handleShiftModeToggle('SINGLE')}
                 className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                  (shiftConfig?.operational_mode || 'SINGLE') === 'SINGLE'
+                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
+                  (shiftConfig?.operational_mode || (shiftConfig?.shifts?.length > 1 ? 'MULTI' : 'SINGLE')) === 'SINGLE'
                     ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
                     : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200",
-                  (!isEditing || readOnly) && "opacity-80 cursor-not-allowed"
+                  (readOnly || savingShiftMode) && "opacity-70 cursor-not-allowed"
                 )}
               >
+                {savingShiftMode && (shiftConfig?.operational_mode || (shiftConfig?.shifts?.length > 1 ? 'MULTI' : 'SINGLE')) === 'SINGLE' && (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                )}
                 1 Shift (Reguler)
               </button>
               <button
                 type="button"
-                disabled={readOnly || !isEditing}
-                onClick={() => {
-                  setShiftConfig((prev: any) => ({
-                    ...(prev || {}),
-                    operational_mode: 'MULTI',
-                  }));
-                }}
+                disabled={readOnly || savingShiftMode}
+                onClick={() => handleShiftModeToggle('MULTI')}
                 className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                  shiftConfig?.operational_mode === 'MULTI'
+                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
+                  (shiftConfig?.operational_mode || (shiftConfig?.shifts?.length > 1 ? 'MULTI' : 'SINGLE')) === 'MULTI'
                     ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
                     : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200",
-                  (!isEditing || readOnly) && "opacity-80 cursor-not-allowed"
+                  (readOnly || savingShiftMode) && "opacity-70 cursor-not-allowed"
                 )}
               >
+                {savingShiftMode && (shiftConfig?.operational_mode || (shiftConfig?.shifts?.length > 1 ? 'MULTI' : 'SINGLE')) === 'MULTI' && (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                )}
                 2 Shift (Pagi/Siang)
               </button>
             </div>
