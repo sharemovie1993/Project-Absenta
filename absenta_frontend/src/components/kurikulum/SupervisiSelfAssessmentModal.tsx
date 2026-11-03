@@ -6,7 +6,7 @@ import { kurikulumApi } from '../../api/kurikulum.api';
 import { toast } from 'react-hot-toast';
 import { Target, Award, FileText, Sparkles, ShieldCheck, Calendar, BookOpen, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/layoutUtils';
 
 interface SupervisiSessionContext {
   id?: string;
