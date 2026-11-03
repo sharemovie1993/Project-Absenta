@@ -757,82 +757,82 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
             {/* 3. TABEL DISTRIBUSI JAM PELAJARAN */}
             {tableLayout === 'VERTICAL_2_COL' ? (
               /* ── FORMAT VERTIKAL 2 KOLOM (Kolom 1: HARI, Kolom 2: WAKTU) ── */
-              <div className="overflow-x-auto w-full mb-2.5">
-                <table className="w-full border-collapse border border-black text-[10px]">
-                  <thead>
-                    <tr className="bg-slate-100 border-b-2 border-black">
-                      <th className="border border-black px-3 py-1 text-center font-black uppercase w-44 text-[10.5px]">
-                        HARI
-                      </th>
-                      <th className="border border-black px-3 py-1 text-center font-black uppercase text-[10.5px]">
-                        WAKTU
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {verticalDayGroups.map((group, gIdx) => {
-                      const items = group.items;
-                      if (items.length === 0) return null;
+              /* Menggunakan Arsitektur Grid-Block murni agar Kolom Hari 100% Ter-merger tanpa celah garis horizontal */
+              <div className="w-full border border-black mb-2.5 overflow-hidden text-[10px]">
+                {/* Header Tabel */}
+                <div className="grid grid-cols-[176px_1fr] bg-slate-100 border-b-2 border-black font-black text-center text-[10.5px]">
+                  <div className="border-r border-black py-1 uppercase tracking-wider">
+                    HARI
+                  </div>
+                  <div className="py-1 uppercase tracking-wider">
+                    WAKTU
+                  </div>
+                </div>
 
-                      return items.map((item, idx) => (
-                        <tr
-                          key={`${group.dayLabel}-${idx}`}
-                          className={cn(
-                            item.type === 'BREAK' ? 'bg-amber-50/70' : 'hover:bg-slate-50/40',
-                            idx === items.length - 1 && gIdx !== verticalDayGroups.length - 1
-                              ? 'border-b-2 border-black'
-                              : 'border-b border-black/60'
-                          )}
-                        >
-                          {/* KOLOM PERTAMA: HARI (Rowspan untuk seluruh slot & istirahat hari ini) */}
-                          {idx === 0 && (
-                            <td
-                              rowSpan={items.length}
-                              className="border border-black px-2 py-1 text-center font-black uppercase align-middle bg-slate-50/90 text-xs w-44"
-                            >
-                              <div className="font-black text-xs tracking-wider">{group.dayLabel}</div>
-                              {group.subLabel && (
-                                <div className="text-[8px] text-slate-600 font-sans font-normal mt-0.5">
-                                  {group.subLabel}
-                                </div>
+                {/* Baris Kelompok Hari (Merger Murni Tanpa Garis di Kolom Hari) */}
+                {verticalDayGroups.map((group, gIdx) => {
+                  const items = group.items;
+                  if (items.length === 0) return null;
+
+                  return (
+                    <div
+                      key={`${group.dayLabel}-${gIdx}`}
+                      className={cn(
+                        "grid grid-cols-[176px_1fr] w-full",
+                        gIdx < verticalDayGroups.length - 1 && "border-b-2 border-black"
+                      )}
+                    >
+                      {/* KOLOM PERTAMA: HARI (1 Kotak Solid Ter-merger Utuh, Bebas Garis Horizontal) */}
+                      <div className="border-r border-black bg-slate-50/90 flex flex-col items-center justify-center p-2 text-center select-none">
+                        <div className="font-black text-xs tracking-wider text-black">{group.dayLabel}</div>
+                        {group.subLabel && (
+                          <div className="text-[8px] text-slate-600 font-sans font-normal mt-0.5">
+                            {group.subLabel}
+                          </div>
+                        )}
+                        <div className="text-[8.5px] text-slate-500 font-sans font-normal mt-1 pt-0.5 border-t border-slate-300 w-full">
+                          <div>{items.filter(x => x.type === 'SLOT').length} JP</div>
+                          <div>{group.duration} mnt / JP</div>
+                        </div>
+                      </div>
+
+                      {/* KOLOM KEDUA: WAKTU (Daftar Jam & Istirahat dengan Garis Pembatas Mandiri) */}
+                      <div className="flex flex-col w-full">
+                        {items.map((item, idx) => (
+                          <div
+                            key={idx}
+                            className={cn(
+                              "flex items-center justify-between px-3 py-0.5 text-[9.5px]",
+                              item.type === 'BREAK' ? 'bg-amber-50/70 font-bold' : 'hover:bg-slate-50/40',
+                              idx < items.length - 1 && "border-b border-black/60"
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                'font-bold',
+                                item.type === 'BREAK'
+                                  ? 'text-amber-900 uppercase text-[9px] tracking-wide'
+                                  : 'text-slate-900'
                               )}
-                              <div className="text-[8.5px] text-slate-500 font-sans font-normal mt-1 pt-0.5 border-t border-slate-300">
-                                <div>{items.filter(x => x.type === 'SLOT').length} JP</div>
-                                <div>{group.duration} mnt / JP</div>
-                              </div>
-                            </td>
-                          )}
-
-                          {/* KOLOM KEDUA: WAKTU */}
-                          <td className="border border-black px-3 py-0.5 text-[9.5px]">
-                            <div className="flex items-center justify-between">
-                              <span
-                                className={cn(
-                                  'font-bold',
-                                  item.type === 'BREAK'
-                                    ? 'text-amber-900 uppercase text-[9px] tracking-wide'
-                                    : 'text-slate-900'
-                                )}
-                              >
-                                {item.type === 'BREAK'
-                                  ? `ISTIRAHAT (${item.duration} Menit)`
-                                  : `Jam Pelajaran Ke-${item.slotNum} (JP ${item.slotNum})`}
-                              </span>
-                              <span
-                                className={cn(
-                                  'font-mono font-bold text-[10px]',
-                                  item.type === 'BREAK' ? 'text-amber-950 font-black' : 'text-slate-900'
-                                )}
-                              >
-                                {item.start} – {item.end}
-                              </span>
-                            </div>
-                          </td>
-                        </tr>
-                      ));
-                    })}
-                  </tbody>
-                </table>
+                            >
+                              {item.type === 'BREAK'
+                                ? `ISTIRAHAT (${item.duration} Menit)`
+                                : `Jam Pelajaran Ke-${item.slotNum} (JP ${item.slotNum})`}
+                            </span>
+                            <span
+                              className={cn(
+                                'font-mono font-bold text-[10px]',
+                                item.type === 'BREAK' ? 'text-amber-950 font-black' : 'text-slate-900'
+                              )}
+                            >
+                              {item.start} – {item.end}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               /* ── FORMAT MATRIKS MINGGUAN (HORIZONTAL) ── */
