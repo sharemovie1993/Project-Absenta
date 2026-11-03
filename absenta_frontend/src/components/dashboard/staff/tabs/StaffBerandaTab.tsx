@@ -353,15 +353,6 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
                   onSelectSubTab={handleSubTabChange}
                 />
 
-                {/* Pusat Tindakan & Peringatan Guru (Cross-Divisional Action Hub) */}
-                <TeacherActionHubWidget
-                  actions={actionHubData.actions || []}
-                  summary={actionHubData.summary || { total: 0, critical: 0, today: 0, upcoming: 0 }}
-                  isLoading={loadingActionHub}
-                  onOpenJournal={handleOpenJournal}
-                  onNavigateTab={onNavigateTab}
-                />
-
                 {/* Direct KBM Execution Feed (Sesi Mengajar Langsung di Layar) */}
                 <DirectKbmFeed
                   timelineItems={timelineItems}
