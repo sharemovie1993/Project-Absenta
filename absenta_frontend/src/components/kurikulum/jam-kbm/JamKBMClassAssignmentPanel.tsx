@@ -1,7 +1,8 @@
 import React, { useMemo, useCallback, useState } from 'react';
-import { Users, LayoutGrid, List } from 'lucide-react';
+import { Users, LayoutGrid, List, School, Sun, Moon, Check, Sparkles } from 'lucide-react';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Tabular, type TabularColumn } from '@/components/ui/Tabular';
+import { cn } from '@/lib/utils';
 import type { ShiftConfig, KelasOption } from './JamKBMTypes';
 
 interface JamKBMClassAssignmentPanelProps {
@@ -11,27 +12,73 @@ interface JamKBMClassAssignmentPanelProps {
   readOnly?: boolean;
 }
 
-// ── Tingkat color palette (mirrors LeadershipNode / CategoryNode logic) ───────
-const getTingkatColor = (tingkat: number): string => {
-  const remainder = (tingkat - 1) % 3;
-  if (remainder === 0) return 'bg-sky-600 dark:bg-sky-500';
-  if (remainder === 1) return 'bg-violet-600 dark:bg-violet-500';
-  return 'bg-rose-600 dark:bg-rose-500';
+// ── Roman numeral converter (Standar Absenta) ──────────────────────────────────
+const toRoman = (num: number): string => {
+  const lookup: Array<[string, number]> = [
+    ['M', 1000], ['CM', 900], ['D', 500], ['CD', 400],
+    ['C', 100], ['XC', 90], ['L', 50], ['XL', 40],
+    ['X', 10], ['IX', 9], ['VIII', 8], ['VII', 7],
+    ['VI', 6], ['V', 5], ['IV', 4], ['III', 3],
+    ['II', 2], ['I', 1]
+  ];
+  let res = '';
+  let val = num;
+  for (const [roman, limit] of lookup) {
+    while (val >= limit) {
+      res += roman;
+      val -= limit;
+    }
+  }
+  return res || String(num);
 };
 
-const getTingkatBorder = (tingkat: number): string => {
+// ── Tingkat Color Palette (Konsisten dengan NodeDesigns / Wali Kelas Tree) ─────
+const getTingkatTheme = (tingkat: number) => {
   const remainder = (tingkat - 1) % 3;
-  if (remainder === 0) return 'border-sky-200 dark:border-sky-900/40';
-  if (remainder === 1) return 'border-violet-200 dark:border-violet-900/40';
-  return 'border-rose-200 dark:border-rose-900/40';
+  if (remainder === 0) {
+    return {
+      headerBg: 'bg-sky-600 dark:bg-sky-500',
+      borderLight: 'border-sky-200 dark:border-sky-850',
+      connector: 'bg-sky-400 dark:bg-sky-600',
+      badge: 'bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 border-sky-200 dark:border-sky-800',
+    };
+  }
+  if (remainder === 1) {
+    return {
+      headerBg: 'bg-violet-600 dark:bg-violet-500',
+      borderLight: 'border-violet-200 dark:border-violet-850',
+      connector: 'bg-violet-400 dark:bg-violet-600',
+      badge: 'bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300 border-violet-200 dark:border-violet-800',
+    };
+  }
+  return {
+    headerBg: 'bg-rose-600 dark:bg-rose-500',
+    borderLight: 'border-rose-200 dark:border-rose-850',
+    connector: 'bg-rose-400 dark:bg-rose-600',
+    badge: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-rose-200 dark:border-rose-800',
+  };
 };
 
-// Shift color accents per index for badges/dots
-const SHIFT_COLORS = [
-  { dot: 'bg-indigo-500', badge: 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 border-indigo-200/60 dark:border-indigo-800/40' },
-  { dot: 'bg-violet-500', badge: 'bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 border-violet-200/60 dark:border-violet-800/40' },
-  { dot: 'bg-cyan-500',   badge: 'bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-300 border-cyan-200/60 dark:border-cyan-800/40' },
-  { dot: 'bg-amber-500',  badge: 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200/60 dark:border-amber-800/40' },
+// ── Shift Badges & Colors ──────────────────────────────────────────────────────
+const SHIFT_PALETTES = [
+  {
+    dot: 'bg-amber-500',
+    badge: 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200/70 dark:border-amber-800/40',
+    activeBtn: 'bg-amber-500 text-white shadow-xs',
+    icon: Sun,
+  },
+  {
+    dot: 'bg-indigo-600',
+    badge: 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 border-indigo-200/70 dark:border-indigo-800/40',
+    activeBtn: 'bg-indigo-600 text-white shadow-xs',
+    icon: Moon,
+  },
+  {
+    dot: 'bg-cyan-500',
+    badge: 'bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-300 border-cyan-200/70 dark:border-cyan-800/40',
+    activeBtn: 'bg-cyan-600 text-white shadow-xs',
+    icon: Sparkles,
+  },
 ];
 
 export default React.memo(function JamKBMClassAssignmentPanel({
@@ -40,7 +87,7 @@ export default React.memo(function JamKBMClassAssignmentPanel({
   onShiftConfigChange,
   readOnly = false,
 }: JamKBMClassAssignmentPanelProps) {
-  // ── View Mode: 'TREE' (Diagram) | 'TABLE' (Tabular) ──
+  // ── View Mode: 'TREE' (Diagram Struktur Pohon) | 'TABLE' (Tabular) ──
   const [viewMode, setViewMode] = useState<'TREE' | 'TABLE'>('TREE');
 
   // ── Shift options ──
@@ -51,33 +98,44 @@ export default React.memo(function JamKBMClassAssignmentPanel({
 
   const defaultShiftId = shiftConfig?.shifts?.[0]?.id ?? '';
 
-  const shiftColorMap = useMemo(() => {
-    const map: Record<string, typeof SHIFT_COLORS[0]> = {};
-    (shiftConfig?.shifts ?? []).forEach((s, i) => {
-      map[s.id] = SHIFT_COLORS[i % SHIFT_COLORS.length];
-    });
-    return map;
-  }, [shiftConfig]);
-
-  // ── Group kelas by tingkat ──
+  // ── Group kelas by tingkat (Smart Parser + Roman Numeral Detection) ──────────
   const groupedByTingkat = useMemo(() => {
     const groups: Record<number, KelasOption[]> = {};
     (kelasList ?? []).forEach(k => {
-      let tingkat = k.tingkat;
-      if (!tingkat) {
-        const match = k.label.match(/Tingkat\s+(\d+)/i);
-        tingkat = match ? Number(match[1]) : 0;
+      let t = k.tingkat;
+      if (!t && k.label) {
+        const matchRoman = k.label.match(/^(XII|XI|IX|X|VIII|VII|VI|IV|V|III|II|I)\b/i);
+        if (matchRoman) {
+          const r = matchRoman[1].toUpperCase();
+          const romanMap: Record<string, number> = {
+            'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6,
+            'VII': 7, 'VIII': 8, 'IX': 9, 'X': 10, 'XI': 11, 'XII': 12, 'XIII': 13
+          };
+          t = romanMap[r] || 0;
+        } else {
+          const matchNum = k.label.match(/^(\d+)\b/);
+          if (matchNum) t = Number(matchNum[1]);
+        }
       }
-      if (!groups[tingkat]) groups[tingkat] = [];
-      groups[tingkat].push(k);
+      const safeTingkat = t || 0;
+      if (!groups[safeTingkat]) groups[safeTingkat] = [];
+      groups[safeTingkat].push(k);
     });
+
+    // Urutkan kelas di dalam masing-masing tingkat secara alfabetis
+    Object.keys(groups).forEach(t => {
+      groups[Number(t)].sort((a, b) =>
+        a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: 'base' })
+      );
+    });
+
     return Object.entries(groups)
       .sort(([a], [b]) => {
         if (a === '0') return 1;
         if (b === '0') return -1;
         return Number(a) - Number(b);
       })
-      .map(([t, kelas]) => ({ tingkat: Number(t), kelas }));
+      .map(([t, items]) => ({ tingkat: Number(t), kelas: items }));
   }, [kelasList]);
 
   // ── Stats per shift ──
@@ -90,10 +148,22 @@ export default React.memo(function JamKBMClassAssignmentPanel({
     return counts;
   }, [shiftConfig]);
 
+  // ── Handlers ──
   const handleAssignmentChange = useCallback((kelasValue: string, shiftId: string) => {
     onShiftConfigChange({
       ...shiftConfig,
-      class_assignments: { ...shiftConfig.class_assignments, [kelasValue]: shiftId },
+      class_assignments: { ...(shiftConfig?.class_assignments || {}), [kelasValue]: shiftId },
+    });
+  }, [shiftConfig, onShiftConfigChange]);
+
+  const handleBulkAssignTingkat = useCallback((tingkatClasses: KelasOption[], shiftId: string) => {
+    const updated = { ...(shiftConfig?.class_assignments || {}) };
+    tingkatClasses.forEach(k => {
+      updated[k.value] = shiftId;
+    });
+    onShiftConfigChange({
+      ...shiftConfig,
+      class_assignments: updated,
     });
   }, [shiftConfig, onShiftConfigChange]);
 
@@ -102,7 +172,7 @@ export default React.memo(function JamKBMClassAssignmentPanel({
     {
       key: 'no',
       label: 'No',
-      className: 'w-16 text-slate-500',
+      className: 'w-14 text-slate-500',
       render: (_, idx) => idx + 1,
     },
     {
@@ -116,261 +186,313 @@ export default React.memo(function JamKBMClassAssignmentPanel({
       label: 'Tingkat',
       className: 'font-semibold text-slate-600 dark:text-slate-400',
       render: (k) => {
-        const match = k.label.match(/Tingkat\s+(\d+)/i);
-        const t = k.tingkat || (match ? Number(match[1]) : null);
-        return t ? `Tingkat ${t}` : 'Lainnya';
+        const t = k.tingkat;
+        return t ? `Tingkat ${toRoman(t)}` : 'Lainnya';
       },
     },
     {
       key: 'shift',
-      label: 'Shift Jam Pelajaran KBM',
-      className: 'w-64',
+      label: 'Alokasi Shift KBM',
+      className: 'w-72',
       render: (k) => {
         const assignedShiftId = shiftConfig?.class_assignments?.[k.value] ?? defaultShiftId;
-        const assignedShift = shiftConfig?.shifts?.find(s => s.id === assignedShiftId);
-        const color = shiftColorMap[assignedShiftId] ?? SHIFT_COLORS[0];
+        const shifts = shiftConfig?.shifts ?? [];
 
-        return readOnly ? (
-          assignedShift ? (
-            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${color.badge} text-[10px] font-bold w-fit`}>
-              <div className={`w-1.5 h-1.5 rounded-full ${color.dot}`} />
-              {assignedShift.name}
+        if (readOnly) {
+          const assignedShift = shifts.find(s => s.id === assignedShiftId);
+          return (
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+              {assignedShift?.name || '-'}
+            </span>
+          );
+        }
+
+        // Segmented button jika 2 shift
+        if (shifts.length === 2) {
+          return (
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-700 w-fit">
+              {shifts.map((s, sIdx) => {
+                const isActive = assignedShiftId === s.id;
+                const palette = SHIFT_PALETTES[sIdx % SHIFT_PALETTES.length];
+                const IconComponent = palette.icon;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => handleAssignmentChange(k.value, s.id)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1",
+                      isActive
+                        ? palette.activeBtn
+                        : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                    )}
+                  >
+                    <IconComponent className="w-3 h-3" />
+                    <span>{s.name}</span>
+                  </button>
+                );
+              })}
             </div>
-          ) : (
-            <span className="text-xs text-slate-400 font-semibold px-2.5">-</span>
-          )
-        ) : (
-          <div className="flex items-center gap-3">
-            <SearchableSelect
-              id={`select-shift-kelas-tabular-${k.value}`}
-              value={assignedShiftId}
-              onValueChange={val => handleAssignmentChange(k.value, val)}
-              options={shiftOptions}
-              placeholder="Pilih shift..."
-              triggerClassName="h-8 text-[11px] font-bold bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-750 rounded-xl w-44"
-            />
-            {assignedShift && (
-              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${color.badge} text-[10px] font-bold`}>
-                <div className={`w-1.5 h-1.5 rounded-full ${color.dot}`} />
-                {assignedShift.name}
-              </div>
-            )}
-          </div>
+          );
+        }
+
+        return (
+          <SearchableSelect
+            id={`select-shift-kelas-tabular-${k.value}`}
+            value={assignedShiftId}
+            onValueChange={val => handleAssignmentChange(k.value, val)}
+            options={shiftOptions}
+            placeholder="Pilih shift..."
+            triggerClassName="h-8 text-xs font-bold bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl w-52"
+          />
         );
       },
     },
-  ], [shiftConfig, defaultShiftId, shiftOptions, shiftColorMap, handleAssignmentChange, readOnly]);
+  ], [shiftConfig, defaultShiftId, shiftOptions, handleAssignmentChange, readOnly]);
 
   if (kelasList.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
-        <Users className="w-12 h-12 text-slate-200 dark:text-slate-800 mb-3" />
-        <p className="text-sm font-bold text-slate-500">Belum ada data kelas</p>
-        <p className="text-xs text-slate-400 mt-1">Buat kelas terlebih dahulu di modul Akademik</p>
+      <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+        <Users className="w-12 h-12 text-slate-300 dark:text-slate-700 mb-3" />
+        <p className="text-sm font-bold text-slate-600 dark:text-slate-300">Belum ada data rombel kelas</p>
+        <p className="text-xs text-slate-400 mt-1">Tambahkan kelas terlebih dahulu di modul Manajemen Akademik</p>
       </div>
     );
   }
 
+  const shifts = shiftConfig?.shifts ?? [];
+
   return (
-    <div className="space-y-6">
-      {/* ── Control Bar ── */}
-      <div className="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-slate-100 dark:border-slate-800/60">
-        {/* Left: Shift Legend */}
-        <div className="flex items-center gap-3 flex-wrap">
-          {(shiftConfig?.shifts ?? []).map((s, i) => {
-            const color = SHIFT_COLORS[i % SHIFT_COLORS.length];
+    <div className="space-y-4">
+      {/* ── Control & Legend Bar ── */}
+      <div className="flex items-center justify-between gap-3 flex-wrap pb-2 border-b border-slate-100 dark:border-slate-800">
+        {/* Left: Shift Legend Chips */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider mr-1">Distribusi:</span>
+          {shifts.map((s, i) => {
+            const palette = SHIFT_PALETTES[i % SHIFT_PALETTES.length];
+            const IconComponent = palette.icon;
             return (
-              <div key={s.id} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold ${color.badge}`}>
-                <div className={`w-2 h-2 rounded-full ${color.dot}`} />
-                {s.name}
-                <span className="opacity-60">·</span>
-                <span>{shiftStats[s.id] ?? 0} kelas</span>
+              <div
+                key={s.id}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs font-bold",
+                  palette.badge
+                )}
+              >
+                <IconComponent className="w-3.5 h-3.5" />
+                <span>{s.name}</span>
+                <span className="opacity-50">·</span>
+                <span className="font-extrabold">{shiftStats[s.id] ?? 0} Kelas</span>
               </div>
             );
           })}
         </div>
 
         {/* Right: View Mode Toggle */}
-        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 p-0.5 rounded-xl border border-slate-200/50 dark:border-slate-800">
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
           <button
             type="button"
             onClick={() => setViewMode('TREE')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 ${
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
               viewMode === 'TREE'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
+                ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+            )}
           >
             <LayoutGrid className="w-3.5 h-3.5" />
-            Diagram Tingkat
+            <span>Pohon Tingkat</span>
           </button>
           <button
             type="button"
             onClick={() => setViewMode('TABLE')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 ${
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
               viewMode === 'TABLE'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
+                ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+            )}
           >
             <List className="w-3.5 h-3.5" />
-            Tabel Daftar
+            <span>Tabel Ringkas</span>
           </button>
         </div>
       </div>
 
-      {/* ── Info note ── */}
-      <p className="text-xs text-slate-400 dark:text-slate-500 leading-relaxed">
-        Kelas yang tidak dipetakan menggunakan{' '}
-        <span className="font-bold text-slate-600 dark:text-slate-300">
-          {shiftConfig?.shifts?.[0]?.name ?? 'Shift Pertama'}
-        </span>{' '}
-        sebagai default.
-      </p>
-
-      {/* ── Render selected view mode ── */}
+      {/* ── Render View Mode ── */}
       {viewMode === 'TREE' ? (
-        <div className="w-full overflow-x-auto overflow-y-hidden rounded-xl border border-slate-200 dark:border-slate-800 shadow-inner bg-slate-50/50 dark:bg-slate-950 custom-scrollbar">
-          <div className="inline-block min-w-full p-10">
-            {/* ── Root Node: PENUGASAN SHIFT ──────────────────────────── */}
-            <div className="flex flex-col items-center mb-0">
-              <div
-                className="flex items-center justify-center gap-2 px-8 py-0 bg-slate-800 dark:bg-slate-900 border border-slate-700 dark:border-slate-700 shadow-lg"
-                style={{ minWidth: 220, height: 70 }}
-              >
-                <Users size={14} className="text-white/80 shrink-0" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-white">
-                  Penugasan Shift Kelas
+        <div className="w-full overflow-x-auto bg-slate-50/50 dark:bg-slate-950/40 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-inner custom-scrollbar p-6">
+          <div className="flex flex-col items-center min-w-[760px] py-2">
+            
+            {/* ── 1. ROOT NODE (PENUGASAN SHIFT KELAS) ────────────────────────── */}
+            <div className="relative flex flex-col items-center mb-0">
+              <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white px-8 py-3.5 rounded-2xl shadow-lg border border-slate-800 flex flex-col items-center justify-center min-w-[260px]">
+                <span className="text-[9px] font-black tracking-widest text-indigo-400 uppercase font-mono mb-0.5">
+                  Distribusi Operasional
                 </span>
+                <h3 className="font-extrabold text-xs tracking-wider uppercase flex items-center gap-2">
+                  <Users className="w-4 h-4 text-indigo-400" />
+                  <span>PENUGASAN SHIFT KELAS</span>
+                </h3>
               </div>
+              
+              {/* Vertical connector down from Root */}
+              {groupedByTingkat.length > 0 && (
+                <div className="w-[2px] h-8 bg-slate-300 dark:bg-slate-700" />
+              )}
+            </div>
 
-              {/* Vertical connector from root to horizontal bar */}
-              <div className="w-[2px] h-8 bg-slate-300 dark:bg-slate-700" />
+            {/* ── 2. TINGKAT COLUMNS WITH SEGMENTED HORIZONTAL BAR ─────────────── */}
+            <div className="relative w-full flex justify-center gap-8 flex-wrap lg:flex-nowrap">
+              
+              {/* Horizontal line connecting all Tingkat columns */}
+              {groupedByTingkat.length > 1 && (
+                <div className="absolute top-0 left-[12.5%] right-[12.5%] h-[2px] bg-slate-300 dark:bg-slate-700 hidden md:block" />
+              )}
 
-              {/* ── Horizontal connector bar ──────────────────────────── */}
-              <div className="relative flex items-start justify-center gap-0">
-                {/* Horizontal line spanning all columns */}
-                {groupedByTingkat.length > 1 && (
-                  <div
-                    className="absolute top-0 left-0 right-0 h-[2px] bg-slate-300 dark:bg-slate-700"
-                    style={{
-                      left: `calc(50% / ${groupedByTingkat.length})`,
-                      right: `calc(50% / ${groupedByTingkat.length})`,
-                    }}
-                  />
-                )}
+              {groupedByTingkat.map(({ tingkat, kelas }, colIdx) => {
+                const theme = getTingkatTheme(tingkat);
+                const tingkatTitle = tingkat === 0 ? 'LAINNYA' : `TINGKAT ${toRoman(tingkat)}`;
 
-                {/* ── Column per Tingkat ──────────────────────────────── */}
-                <div className="flex gap-8 justify-center">
-                  {groupedByTingkat.map(({ tingkat, kelas }, colIdx) => {
-                    const headerBg = tingkat === 0 ? 'bg-slate-600 dark:bg-slate-700' : getTingkatColor(tingkat);
-                    const cardBorder = tingkat === 0 ? 'border-slate-200 dark:border-slate-700' : getTingkatBorder(tingkat);
+                return (
+                  <div key={tingkat} className="relative flex flex-col items-center flex-1 min-w-[210px] max-w-[250px]">
+                    
+                    {/* Vertical connector down to Tingkat box */}
+                    {groupedByTingkat.length > 1 && (
+                      <div className="w-[2px] h-6 bg-slate-300 dark:bg-slate-700 hidden md:block" />
+                    )}
 
-                    return (
-                      <div key={tingkat} className="relative flex flex-col items-center">
-                        {/* Top connector dot + vertical line to tingkat header */}
-                        <div className="flex flex-col items-center">
-                          {groupedByTingkat.length > 1 && (
-                            <>
-                              {/* Horizontal segment */}
-                              <div className="relative w-full h-[2px]">
-                                <div className={`absolute top-0 h-[2px] bg-slate-300 dark:bg-slate-700 ${
-                                  colIdx === 0 ? 'left-1/2 right-0' :
-                                  colIdx === groupedByTingkat.length - 1 ? 'left-0 right-1/2' :
-                                  'left-0 right-0'
-                                }`} />
-                              </div>
-                              {/* Vertical drop to tingkat node */}
-                              <div className="w-[2px] h-8 bg-slate-300 dark:bg-slate-700" />
-                            </>
-                          )}
+                    {/* ── Tingkat Header Card (Mirip CategoryNode Wali Kelas) ── */}
+                    <div className={cn(
+                      "w-full text-white py-2.5 px-4 rounded-xl shadow-md border border-transparent font-black tracking-wider text-center mb-3",
+                      theme.headerBg
+                    )}>
+                      <div className="flex items-center justify-center gap-1.5 leading-tight">
+                        <School className="w-4 h-4 text-white/90" />
+                        <span className="text-xs font-black uppercase">{tingkatTitle}</span>
+                      </div>
+                      <div className="flex items-center justify-center gap-1 mt-1 text-[10px] font-bold text-white/80">
+                        <span>({kelas.length} Rombel)</span>
+                      </div>
+
+                      {/* Quick Bulk Action per Tingkat */}
+                      {!readOnly && shifts.length === 2 && (
+                        <div className="flex items-center justify-center gap-1 mt-2 pt-2 border-t border-white/20">
+                          <button
+                            type="button"
+                            onClick={() => handleBulkAssignTingkat(kelas, shifts[0].id)}
+                            className="text-[9px] font-bold px-2 py-0.5 rounded bg-white/20 hover:bg-white/30 text-white transition-all cursor-pointer"
+                            title={`Alokasikan semua kelas ${tingkatTitle} ke ${shifts[0].name}`}
+                          >
+                            Semua {shifts[0].name.replace(/shift\s*/i, '')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleBulkAssignTingkat(kelas, shifts[1].id)}
+                            className="text-[9px] font-bold px-2 py-0.5 rounded bg-white/20 hover:bg-white/30 text-white transition-all cursor-pointer"
+                            title={`Alokasikan semua kelas ${tingkatTitle} ke ${shifts[1].name}`}
+                          >
+                            Semua {shifts[1].name.replace(/shift\s*/i, '')}
+                          </button>
                         </div>
+                      )}
+                    </div>
 
-                        {/* ── Tingkat Header Node ──────────────────────── */}
-                        <div
-                          className={`flex items-center justify-center gap-2 px-4 ${headerBg} shadow-md`}
-                          style={{ minWidth: 200, maxWidth: 220, height: 70 }}
-                        >
-                          <Users size={13} className="text-white/80 shrink-0" />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-white text-center">
-                            {tingkat === 0 ? 'Lainnya' : `Tingkat ${tingkat}`}
-                          </span>
-                        </div>
+                    {/* Vertical connector from header to card stack */}
+                    {kelas.length > 0 && (
+                      <div className="w-[2px] h-4 bg-slate-300 dark:bg-slate-700 mb-1" />
+                    )}
 
-                        {/* Vertical connector to kelas cards */}
-                        <div className="w-[2px] h-6 bg-slate-300 dark:bg-slate-700" />
+                    {/* ── Vertical Stack of Class Cards (Two-Tone LeadershipNode Style) ── */}
+                    <div className="flex flex-col gap-2.5 w-full items-center relative">
+                      {kelas.map((k, kIdx) => {
+                        const assignedShiftId = shiftConfig?.class_assignments?.[k.value] ?? defaultShiftId;
+                        const cleanLabel = k.label.replace(/\s*-\s*Tingkat\s+\d+/i, '').trim();
 
-                        {/* ── Kelas Card Stack ─────────────────────────── */}
-                        <div className="flex flex-col gap-3 items-center" style={{ minWidth: 200, maxWidth: 220 }}>
-                          {kelas.map((k, kIdx) => {
-                            const assignedShiftId = shiftConfig?.class_assignments?.[k.value] ?? defaultShiftId;
-                            const assignedShift = shiftConfig?.shifts?.find(s => s.id === assignedShiftId);
-                            // Clean label: remove "- Tingkat N" suffix
-                            const cleanLabel = k.label.replace(/\s*-\s*Tingkat\s+\d+/i, '').trim();
+                        return (
+                          <div key={k.value} className="relative flex flex-col items-center w-full">
+                            {/* Connector line between cards */}
+                            {kIdx > 0 && (
+                              <div className="w-[2px] h-2.5 bg-slate-300 dark:bg-slate-700 -mt-2.5 mb-1" />
+                            )}
 
-                            return (
-                              <div key={k.value} className="relative flex flex-col items-center w-full">
-                                {/* Connector line (except first) */}
-                                {kIdx > 0 && (
-                                  <div className="w-[2px] h-3 bg-slate-200 dark:bg-slate-800 -mt-3" />
-                                )}
-
-                                {/* ── Kelas Node Card ───────────────────── */}
-                                <div
-                                  className={`w-full border ${cardBorder} shadow-sm bg-white dark:bg-slate-900 overflow-hidden`}
-                                  style={{ minWidth: 200, maxWidth: 220 }}
-                                >
-                                  {/* Kelas name header (colored) */}
-                                  <div className={`flex items-center justify-center gap-1.5 px-3 py-2 ${headerBg}`}>
-                                    <Users size={11} className="text-white/80 shrink-0" />
-                                    <span className="text-[10px] font-black text-white uppercase tracking-wider truncate">
-                                      {cleanLabel}
-                                    </span>
-                                  </div>
-
-                                  {/* Shift selector body */}
-                                  <div className="px-2 py-2 space-y-1.5 bg-white dark:bg-slate-900">
-                                    {readOnly ? (
-                                      <p className="text-[10px] font-bold text-center text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100/50 dark:border-indigo-900/30 py-1.5 rounded-lg select-none">
-                                        {assignedShift ? assignedShift.name : 'Default'}
-                                      </p>
-                                    ) : (
-                                      <>
-                                        <SearchableSelect
-                                          id={`select-shift-kelas-${k.value}`}
-                                          value={assignedShiftId}
-                                          onValueChange={val => handleAssignmentChange(k.value, val)}
-                                          options={shiftOptions}
-                                          placeholder="Pilih shift..."
-                                          triggerClassName="h-7 text-[10px] font-bold bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg w-full"
-                                        />
-                                        {assignedShift && (
-                                          <p className="text-[9px] font-black text-center text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                                            {assignedShift.name}
-                                          </p>
-                                        )}
-                                      </>
-                                    )}
-                                  </div>
+                            {/* Two-Tone Class Card */}
+                            <div className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden transition-all hover:border-slate-300 dark:hover:border-slate-700">
+                              
+                              {/* Top Half: Class Header with Tingkat Color */}
+                              <div className={cn(
+                                "px-3 py-1.5 flex items-center justify-between text-white",
+                                theme.headerBg
+                              )}>
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <Users className="w-3.5 h-3.5 text-white/90 shrink-0" />
+                                  <span className="text-[11px] font-black uppercase tracking-wide truncate">
+                                    {cleanLabel}
+                                  </span>
                                 </div>
                               </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+
+                              {/* Bottom Half: Shift Assignment Switcher */}
+                              <div className="p-2 bg-slate-50/50 dark:bg-slate-900/60">
+                                {readOnly ? (
+                                  <p className="text-[10px] font-bold text-center text-slate-700 dark:text-slate-300">
+                                    {shifts.find(s => s.id === assignedShiftId)?.name ?? '-'}
+                                  </p>
+                                ) : shifts.length === 2 ? (
+                                  /* 2-Shift Instant Toggle Pill */
+                                  <div className="grid grid-cols-2 gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/60 dark:border-slate-700/60">
+                                    {shifts.map((s, sIdx) => {
+                                      const isAssigned = assignedShiftId === s.id;
+                                      const palette = SHIFT_PALETTES[sIdx % SHIFT_PALETTES.length];
+                                      return (
+                                        <button
+                                          key={s.id}
+                                          type="button"
+                                          onClick={() => handleAssignmentChange(k.value, s.id)}
+                                          className={cn(
+                                            "py-1 px-1.5 rounded-md text-[10px] font-black uppercase transition-all cursor-pointer text-center truncate flex items-center justify-center gap-1",
+                                            isAssigned
+                                              ? palette.activeBtn
+                                              : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                                          )}
+                                        >
+                                          {isAssigned && <Check className="w-2.5 h-2.5 shrink-0" />}
+                                          <span className="truncate">{s.name.replace(/shift\s*/i, '')}</span>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  /* Multi-shift SearchableSelect (> 2 shifts) */
+                                  <SearchableSelect
+                                    id={`select-shift-kelas-${k.value}`}
+                                    value={assignedShiftId}
+                                    onValueChange={val => handleAssignmentChange(k.value, val)}
+                                    options={shiftOptions}
+                                    placeholder="Pilih shift..."
+                                    triggerClassName="h-7 text-[10px] font-bold bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg w-full"
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
       ) : (
-        /* Tabular View using the new shared Tabular component */
-        <div className="border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl overflow-hidden shadow-sm">
+        /* Tabular View */
+        <div className="border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl overflow-hidden shadow-xs">
           <Tabular
             columns={columns}
             data={kelasList}
+            compact={true}
             emptyMessage="Tidak ada data kelas yang terdaftar"
           />
         </div>

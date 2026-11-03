@@ -92,7 +92,28 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
   // ── useKelasOptions & useQuery ──────────────────────────────────────────────
   const { rawList: kelasRawList } = useKelasOptions();
   const kelasList = useMemo<KelasOption[]>(() => {
-    return (kelasRawList || []).map(k => ({ value: k.id, label: k.nama_kelas }));
+    return (kelasRawList || []).map(k => {
+      let t = k.tingkat ? Number(k.tingkat) : 0;
+      if (!t && k.nama_kelas) {
+        const matchRoman = k.nama_kelas.match(/^(XII|XI|IX|X|VIII|VII|VI|IV|V|III|II|I)\b/i);
+        if (matchRoman) {
+          const r = matchRoman[1].toUpperCase();
+          const romanMap: Record<string, number> = {
+            'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6,
+            'VII': 7, 'VIII': 8, 'IX': 9, 'X': 10, 'XI': 11, 'XII': 12, 'XIII': 13
+          };
+          t = romanMap[r] || 0;
+        } else {
+          const matchNum = k.nama_kelas.match(/^(\d+)\b/);
+          if (matchNum) t = Number(matchNum[1]);
+        }
+      }
+      return {
+        value: k.id,
+        label: k.nama_kelas,
+        tingkat: t || undefined,
+      };
+    });
   }, [kelasRawList]);
 
   const { data: tenantRes, isLoading: loading, refetch: fetchTenant } = useQuery({
@@ -404,8 +425,8 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
           isOpen={showClassAssignmentModal}
           onClose={() => setShowClassAssignmentModal(false)}
           title="Penugasan Shift Kelas"
-          description="Alokasikan setiap rombel/kelas ke Shift Pagi atau Shift Siang."
-          size="2xl"
+          description="Alokasikan setiap rombel/kelas ke Shift Pagi atau Shift Siang berdasarkan struktur pohon per tingkat."
+          size="5xl"
         >
           <div className="py-2 space-y-4">
             <Suspense fallback={<PanelLoader />}>
