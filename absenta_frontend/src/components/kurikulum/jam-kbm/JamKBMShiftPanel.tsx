@@ -53,11 +53,12 @@ export default React.memo(function JamKBMShiftPanel({
   );
 
   // ── Day Pattern state ──
-  const [selectedDayPattern, setSelectedDayPattern] = useState<'ALL' | 'SENIN' | 'SELASA' | 'RABU' | 'KAMIS' | 'JUMAT' | 'SABTU'>('ALL');
+  type DayKey = 'SENIN' | 'SELASA' | 'RABU' | 'KAMIS' | 'JUMAT' | 'SABTU';
+  const [selectedDayPattern, setSelectedDayPattern] = useState<DayKey>('SENIN');
 
   const activePattern = useMemo(() => {
     if (!currentShift) return { start_time: '07:00', slot_duration: 45, breaks: [] as BreakItem[], slots: [] as TimeSlot[] };
-    if (selectedDayPattern !== 'ALL' && currentShift.day_patterns?.[selectedDayPattern]) {
+    if (currentShift.day_patterns?.[selectedDayPattern]) {
       const dp = currentShift.day_patterns[selectedDayPattern];
       return {
         start_time: dp.start_time || currentShift.start_time || '07:00',
@@ -95,6 +96,41 @@ export default React.memo(function JamKBMShiftPanel({
     });
   }, [shiftConfig, activeSelectedShiftId, onShiftConfigChange]);
 
+  // ── Helper Penyimpanan Pattern Per Hari ──
+  const savePatternUpdate = useCallback((
+    newSlots: TimeSlot[],
+    newBreaks: BreakItem[],
+    newDuration: number,
+    newStartTime?: string
+  ) => {
+    const computedStart = newStartTime || newSlots[0]?.start || '07:00';
+    updateCurrentShiftInConfig(s => {
+      const updatedDayPatterns = {
+        ...(s.day_patterns || {}),
+        [selectedDayPattern]: {
+          start_time: computedStart,
+          slot_duration: newDuration,
+          breaks: newBreaks,
+          slots: newSlots,
+        },
+      };
+
+      // Sinkronkan ke slots utama shift jika SENIN atau slots utama belum ada
+      const shouldSyncMainSlots = selectedDayPattern === 'SENIN' || !s.slots || s.slots.length === 0;
+
+      return {
+        ...s,
+        ...(shouldSyncMainSlots ? {
+          start_time: computedStart,
+          slot_duration: newDuration,
+          breaks: newBreaks,
+          slots: newSlots,
+        } : {}),
+        day_patterns: updatedDayPatterns,
+      };
+    });
+  }, [selectedDayPattern, updateCurrentShiftInConfig]);
+
   // ── Handlers ──
   const handleTimeChange = useCallback((slotNum: number, field: 'start' | 'end', newValue: string) => {
     if (!currentShift) return;
@@ -130,48 +166,20 @@ export default React.memo(function JamKBMShiftPanel({
       updatedSlots[targetIdx] = { ...updatedSlots[targetIdx], end: newValue };
     }
 
-    if (selectedDayPattern === 'ALL') {
-      updateCurrentShiftInConfig(s => ({ ...s, slots: updatedSlots }));
-    } else {
-      updateCurrentShiftInConfig(s => ({
-        ...s,
-        day_patterns: {
-          ...(s.day_patterns || {}),
-          [selectedDayPattern]: {
-            start_time: activePattern.start_time,
-            slot_duration: activePattern.slot_duration,
-            breaks: activePattern.breaks,
-            slots: updatedSlots,
-          },
-        },
-      }));
-    }
-  }, [currentShift, activePattern, selectedDayPattern, toMins, toTimeStr, jenjang, cascadeEnabled, updateCurrentShiftInConfig]);
+    savePatternUpdate(
+      updatedSlots,
+      activePattern.breaks,
+      activePattern.slot_duration,
+      updatedSlots[0]?.start
+    );
+  }, [currentShift, activePattern, toMins, toTimeStr, jenjang, cascadeEnabled, savePatternUpdate]);
 
-  const handleBaseConfigChange = useCallback((field: 'start_time' | 'slot_duration', val: string | number) => {
+  const handleSlotDurationChange = useCallback((newDur: number) => {
     if (!currentShift) return;
-    const nextStart = field === 'start_time' ? String(val) : activePattern.start_time;
-    const nextDur = field === 'slot_duration' ? Number(val) : activePattern.slot_duration;
     const count = activePattern.slots?.length || 12;
-    const newSlots = regenerateSlots(nextStart, nextDur, activePattern.breaks, count);
-
-    if (selectedDayPattern === 'ALL') {
-      updateCurrentShiftInConfig(s => ({ ...s, start_time: nextStart, slot_duration: nextDur, breaks: activePattern.breaks, slots: newSlots }));
-    } else {
-      updateCurrentShiftInConfig(s => ({
-        ...s,
-        day_patterns: {
-          ...(s.day_patterns || {}),
-          [selectedDayPattern]: {
-            start_time: nextStart,
-            slot_duration: nextDur,
-            breaks: activePattern.breaks,
-            slots: newSlots,
-          },
-        },
-      }));
-    }
-  }, [currentShift, activePattern, selectedDayPattern, updateCurrentShiftInConfig]);
+    const newSlots = regenerateSlots(activePattern.start_time, newDur, activePattern.breaks, count);
+    savePatternUpdate(newSlots, activePattern.breaks, newDur);
+  }, [currentShift, activePattern, savePatternUpdate]);
 
   const handleAddBreak = useCallback((afterSlotNum: number) => {
     if (!currentShift) return;
@@ -180,74 +188,26 @@ export default React.memo(function JamKBMShiftPanel({
     const nextBreaks = [...activePattern.breaks, newBreak];
     const count = activePattern.slots?.length || 12;
     const newSlots = regenerateSlots(activePattern.start_time, activePattern.slot_duration, nextBreaks, count);
-
-    if (selectedDayPattern === 'ALL') {
-      updateCurrentShiftInConfig(s => ({ ...s, start_time: activePattern.start_time, slot_duration: activePattern.slot_duration, breaks: nextBreaks, slots: newSlots }));
-    } else {
-      updateCurrentShiftInConfig(s => ({
-        ...s,
-        day_patterns: {
-          ...(s.day_patterns || {}),
-          [selectedDayPattern]: {
-            start_time: activePattern.start_time,
-            slot_duration: activePattern.slot_duration,
-            breaks: nextBreaks,
-            slots: newSlots,
-          },
-        },
-      }));
-    }
+    savePatternUpdate(newSlots, nextBreaks, activePattern.slot_duration);
     toast.success(`Istirahat ditambahkan setelah Jam ${afterSlotNum}`);
-  }, [currentShift, activePattern, selectedDayPattern, updateCurrentShiftInConfig]);
+  }, [currentShift, activePattern, savePatternUpdate]);
 
   const handleDeleteBreak = useCallback((breakId: string) => {
     if (!currentShift) return;
     const nextBreaks = activePattern.breaks.filter(b => b.id !== breakId);
     const count = activePattern.slots?.length || 12;
     const newSlots = regenerateSlots(activePattern.start_time, activePattern.slot_duration, nextBreaks, count);
-
-    if (selectedDayPattern === 'ALL') {
-      updateCurrentShiftInConfig(s => ({ ...s, start_time: activePattern.start_time, slot_duration: activePattern.slot_duration, breaks: nextBreaks, slots: newSlots }));
-    } else {
-      updateCurrentShiftInConfig(s => ({
-        ...s,
-        day_patterns: {
-          ...(s.day_patterns || {}),
-          [selectedDayPattern]: {
-            start_time: activePattern.start_time,
-            slot_duration: activePattern.slot_duration,
-            breaks: nextBreaks,
-            slots: newSlots,
-          },
-        },
-      }));
-    }
+    savePatternUpdate(newSlots, nextBreaks, activePattern.slot_duration);
     toast.success('Istirahat dihapus.');
-  }, [currentShift, activePattern, selectedDayPattern, updateCurrentShiftInConfig]);
+  }, [currentShift, activePattern, savePatternUpdate]);
 
   const handleBreakDurationChange = useCallback((breakId: string, newDuration: number) => {
     if (!currentShift) return;
     const nextBreaks = activePattern.breaks.map(b => b.id === breakId ? { ...b, duration: newDuration } : b);
     const count = activePattern.slots?.length || 12;
     const newSlots = regenerateSlots(activePattern.start_time, activePattern.slot_duration, nextBreaks, count);
-
-    if (selectedDayPattern === 'ALL') {
-      updateCurrentShiftInConfig(s => ({ ...s, start_time: activePattern.start_time, slot_duration: activePattern.slot_duration, breaks: nextBreaks, slots: newSlots }));
-    } else {
-      updateCurrentShiftInConfig(s => ({
-        ...s,
-        day_patterns: {
-          ...(s.day_patterns || {}),
-          [selectedDayPattern]: {
-            start_time: activePattern.start_time,
-            slot_duration: activePattern.slot_duration,
-            breaks: nextBreaks,
-            slots: newSlots,
-          },
-        },
-      }));
-    }
-  }, [currentShift, activePattern, selectedDayPattern, updateCurrentShiftInConfig]);
+    savePatternUpdate(newSlots, nextBreaks, activePattern.slot_duration);
+  }, [currentShift, activePattern, savePatternUpdate]);
 
   const handleAddShift = useCallback(() => {
     const newId = `shift_${Date.now()}`;
@@ -299,25 +259,10 @@ export default React.memo(function JamKBMShiftPanel({
       endStr = toTimeStr(startMins + (activePattern.slot_duration || 45));
     }
     const newSlot: TimeSlot = { slot: newSlotNum, start: startStr, end: endStr };
-
-    if (selectedDayPattern === 'ALL') {
-      updateCurrentShiftInConfig(s => ({ ...s, slots: [...(s.slots ?? []), newSlot] }));
-    } else {
-      updateCurrentShiftInConfig(s => ({
-        ...s,
-        day_patterns: {
-          ...(s.day_patterns || {}),
-          [selectedDayPattern]: {
-            start_time: activePattern.start_time,
-            slot_duration: activePattern.slot_duration,
-            breaks: activePattern.breaks,
-            slots: [...(activePattern.slots ?? []), newSlot],
-          },
-        },
-      }));
-    }
+    const newSlots = [...slots, newSlot];
+    savePatternUpdate(newSlots, activePattern.breaks, activePattern.slot_duration);
     toast.success(`Slot Jam Pelajaran Ke-${newSlotNum} ditambahkan!`);
-  }, [currentShift, activePattern, selectedDayPattern, toMins, toTimeStr, updateCurrentShiftInConfig]);
+  }, [currentShift, activePattern, toMins, toTimeStr, savePatternUpdate]);
 
   const handleRemoveLastSlot = useCallback(() => {
     if (!currentShift) return;
@@ -327,25 +272,9 @@ export default React.memo(function JamKBMShiftPanel({
       return;
     }
     const newSlots = slots.slice(0, -1);
-
-    if (selectedDayPattern === 'ALL') {
-      updateCurrentShiftInConfig(s => ({ ...s, slots: newSlots }));
-    } else {
-      updateCurrentShiftInConfig(s => ({
-        ...s,
-        day_patterns: {
-          ...(s.day_patterns || {}),
-          [selectedDayPattern]: {
-            start_time: activePattern.start_time,
-            slot_duration: activePattern.slot_duration,
-            breaks: activePattern.breaks,
-            slots: newSlots,
-          },
-        },
-      }));
-    }
+    savePatternUpdate(newSlots, activePattern.breaks, activePattern.slot_duration);
     toast.success('Slot jam pelajaran terakhir dihapus.');
-  }, [currentShift, activePattern, selectedDayPattern, updateCurrentShiftInConfig]);
+  }, [currentShift, activePattern, savePatternUpdate]);
 
   // ── Transform timeline slots and breaks to a flat list for Tabular ──
   const tabularData = useMemo<TimelineItemRow[]>(() => {
@@ -589,129 +518,79 @@ export default React.memo(function JamKBMShiftPanel({
         </div>
       )}
 
-      {/* ── High-Density Unified Control Panel (Hemat Layar) ─────────── */}
-      <div className="bg-slate-50/70 dark:bg-slate-900/40 border border-slate-200/70 dark:border-slate-800 rounded-xl p-2.5 space-y-2">
-        {/* Baris 1: Tab Hari (Pola Jam) & Badges Live Stats */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200/50 dark:border-slate-800">
-          <div className="flex items-center gap-1 flex-wrap">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider mr-1">Pola Hari:</span>
-            {[
-              { key: 'ALL', label: 'Semua Hari (Default)' },
-              { key: 'SENIN', label: 'Senin' },
-              { key: 'SELASA', label: 'Selasa' },
-              { key: 'RABU', label: 'Rabu' },
-              { key: 'KAMIS', label: 'Kamis' },
-              { key: 'JUMAT', label: 'Jumat' },
-              { key: 'SABTU', label: 'Sabtu' },
-            ].map(pattern => (
-              <button
-                key={pattern.key}
-                type="button"
-                onClick={() => setSelectedDayPattern(pattern.key as any)}
-                className={`px-2.5 py-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  selectedDayPattern === pattern.key
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:border-indigo-300'
-                }`}
-              >
-                {pattern.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Badges Live Ringkasan Bel */}
-          <div className="flex items-center gap-1.5 flex-wrap text-xs">
-            <div className="flex items-center gap-1 px-2 py-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-200 font-bold text-[11px]">
-              <Clock3 className="w-3 h-3 text-indigo-500" />
-              <span>{timeRange}</span>
-              <span className="text-slate-400 font-normal">({Math.floor(totalDurationMin / 60)}j {totalDurationMin % 60}m)</span>
-            </div>
-            <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50 rounded-md text-amber-700 dark:text-amber-400 font-bold text-[11px]">
-              <Coffee className="w-3 h-3 text-amber-500" />
-              <span>{activePattern.breaks.length} Istirahat</span>
-            </div>
-            <div className="flex items-center gap-1 px-2 py-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md">
-              <div className={`w-1.5 h-1.5 rounded-full ${cascadeEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                {cascadeEnabled ? 'Cascade ON' : 'Cascade OFF'}
-              </span>
-            </div>
-          </div>
+      {/* ── High-Density Single-Row Control Panel (Hemat Layar & Ramping) ─────────── */}
+      <div className="bg-slate-50/70 dark:bg-slate-900/40 border border-slate-200/70 dark:border-slate-800 rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2.5">
+        {/* Left: Tab Pilihan Hari (Senin s/d Sabtu) */}
+        <div className="flex items-center gap-1 flex-wrap">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider mr-1">Hari:</span>
+          {[
+            { key: 'SENIN', label: 'Senin' },
+            { key: 'SELASA', label: 'Selasa' },
+            { key: 'RABU', label: 'Rabu' },
+            { key: 'KAMIS', label: 'Kamis' },
+            { key: 'JUMAT', label: 'Jumat' },
+            { key: 'SABTU', label: 'Sabtu' },
+          ].map(pattern => (
+            <button
+              key={pattern.key}
+              type="button"
+              onClick={() => setSelectedDayPattern(pattern.key as DayKey)}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                selectedDayPattern === pattern.key
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:border-indigo-300'
+              }`}
+            >
+              {pattern.label}
+            </button>
+          ))}
         </div>
 
-        {/* Baris 2: Input Parameter Cepat & Tombol Reset Standar */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5">
-          <div className="flex flex-wrap items-center gap-2.5 sm:gap-4">
-            {!isSingleShift && (
-              <div className="flex items-center gap-1.5">
-                <label htmlFor="input-nama-shift" className="text-[11px] font-bold text-slate-500 uppercase shrink-0">
-                  Nama Shift:
-                </label>
-                {readOnly ? (
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{currentShift.name ?? ''}</span>
-                ) : (
-                  <input
-                    id="input-nama-shift"
-                    type="text"
-                    aria-label="Nama shift KBM"
-                    value={currentShift.name ?? ''}
-                    onChange={e => updateCurrentShiftInConfig(s => ({ ...s, name: e.target.value }))}
-                    placeholder="Nama shift"
-                    className="h-7 px-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold text-slate-800 dark:text-slate-100 w-32 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                )}
-              </div>
-            )}
-
-            <div className="flex items-center gap-1.5">
-              <label htmlFor="input-jam-mulai" className="text-[11px] font-bold text-slate-500 uppercase shrink-0">
-                Jam Bel Masuk (JP 1):
-              </label>
-              {readOnly ? (
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{activePattern.start_time ?? '07:00'}</span>
-              ) : (
-                <div className="relative">
-                  <input
-                    id="input-jam-mulai"
-                    type="time"
-                    aria-label="Jam mulai KBM jam pertama"
-                    value={activePattern.start_time ?? '07:00'}
-                    onChange={e => handleBaseConfigChange('start_time', e.target.value)}
-                    className="h-7 pl-2 pr-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold text-slate-800 dark:text-slate-100 w-24 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-center"
-                  />
-                  <Clock3 className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
-                </div>
-              )}
+        {/* Center: Durasi per JP (Dipertahankan) */}
+        <div className="flex items-center gap-1.5">
+          <label htmlFor="input-durasi-slot" className="text-[11px] font-bold text-slate-500 uppercase shrink-0">
+            Durasi per JP:
+          </label>
+          {readOnly ? (
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{activePattern.slot_duration ?? 45} mnt</span>
+          ) : (
+            <div className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md px-1.5 h-7">
+              <input
+                id="input-durasi-slot"
+                type="number"
+                aria-label="Durasi per jam pelajaran dalam menit"
+                value={activePattern.slot_duration ?? 45}
+                onChange={e => handleSlotDurationChange(Number(e.target.value))}
+                min={20} max={120}
+                className="w-8 text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none text-center"
+              />
+              <span className="text-[10px] font-bold text-slate-400">mnt</span>
             </div>
+          )}
+        </div>
 
-            <div className="flex items-center gap-1.5">
-              <label htmlFor="input-durasi-slot" className="text-[11px] font-bold text-slate-500 uppercase shrink-0">
-                Durasi per JP:
-              </label>
-              {readOnly ? (
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{activePattern.slot_duration ?? 45} mnt</span>
-              ) : (
-                <div className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md px-1.5 h-7">
-                  <input
-                    id="input-durasi-slot"
-                    type="number"
-                    aria-label="Durasi per jam pelajaran dalam menit"
-                    value={activePattern.slot_duration ?? 45}
-                    onChange={e => handleBaseConfigChange('slot_duration', e.target.value)}
-                    min={20} max={120}
-                    className="w-8 text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none text-center"
-                  />
-                  <span className="text-[10px] font-bold text-slate-400">mnt</span>
-                </div>
-              )}
-            </div>
+        {/* Right: Badges Live Ringkasan Bel & Reset Standar */}
+        <div className="flex items-center gap-2 flex-wrap text-xs ml-auto">
+          <div className="flex items-center gap-1 px-2 py-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-200 font-bold text-[11px]">
+            <Clock3 className="w-3 h-3 text-indigo-500" />
+            <span>{timeRange}</span>
+            <span className="text-slate-400 font-normal">({Math.floor(totalDurationMin / 60)}j {totalDurationMin % 60}m)</span>
           </div>
-
+          <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50 rounded-md text-amber-700 dark:text-amber-400 font-bold text-[11px]">
+            <Coffee className="w-3 h-3 text-amber-500" />
+            <span>{activePattern.breaks.length} Istirahat</span>
+          </div>
+          <div className="flex items-center gap-1 px-2 py-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md">
+            <div className={`w-1.5 h-1.5 rounded-full ${cascadeEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+              {cascadeEnabled ? 'Cascade ON' : 'Cascade OFF'}
+            </span>
+          </div>
           {!readOnly && (
             <button
               type="button"
               onClick={handleResetToJenjang}
-              className="h-7 px-2.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/40 rounded-md flex items-center gap-1 transition-all cursor-pointer ml-auto"
+              className="h-7 px-2.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/40 rounded-md flex items-center gap-1 transition-all cursor-pointer"
             >
               <RefreshCw className="w-3 h-3" />
               <span>Reset Standar {jenjang || 'Sekolah'}</span>
