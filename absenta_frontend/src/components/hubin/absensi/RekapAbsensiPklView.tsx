@@ -68,6 +68,15 @@ export const RekapAbsensiPklView: React.FC<UniversalRekapAbsensiPklViewProps> = 
   const isMobile = useIsMobile();
   const [bulan, setBulan] = useState<string>(initialBulan || toLocalMonth());
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [selectedKelas, setSelectedKelas] = useState<string>(propKelasId || '');
+
+  // Sinkronisasi jika propKelasId berubah dari luar
+  React.useEffect(() => {
+    if (propKelasId) {
+      setSelectedKelas(propKelasId);
+    }
+  }, [propKelasId]);
+
   // Mode rekapitulasi permanen per hari (Matriks Harian 1..N)
   const viewMode: ViewMode = 'MATRIX';
   const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false);
@@ -119,17 +128,61 @@ export const RekapAbsensiPklView: React.FC<UniversalRekapAbsensiPklViewProps> = 
 
   const rawRows: RekapBulananPklRow[] = Array.isArray(responseData) ? responseData : [];
 
-  // Filtered rows by search term
+  // Derivasi opsi kelas dinamis dari data siswa PKL (Khusus scope jurusan / multi-kelas)
+  const kelasOptions = useMemo(() => {
+    const map = new Map<string, { id: string; nama: string; count: number }>();
+    rawRows.forEach((r) => {
+      const kId = r.kelas_id || (r as any).Siswa?.kelas_id || r.nama_kelas;
+      const kNama = r.nama_kelas || (r as any).Siswa?.Kelas?.nama_kelas || (r as any).SiswaAkademik?.kelas?.nama_kelas;
+      if (kNama) {
+        const key = kId || kNama;
+        const existing = map.get(key);
+        if (existing) {
+          existing.count += 1;
+        } else {
+          map.set(key, { id: key, nama: kNama, count: 1 });
+        }
+      }
+    });
+    return Array.from(map.values())
+      .sort((a, b) => a.nama.localeCompare(b.nama))
+      .map((k) => ({
+        value: k.id,
+        label: `${k.nama} (${k.count} Siswa)`,
+      }));
+  }, [rawRows]);
+
+  // Nama kelas terpilih untuk Kop Dokumen Cetak
+  const selectedKelasNama = useMemo(() => {
+    if (!selectedKelas) return undefined;
+    const match = kelasOptions.find(k => k.value === selectedKelas);
+    if (match) {
+      return match.label.replace(/\s*\(\d+\s*Siswa\)$/, '');
+    }
+    return selectedKelas;
+  }, [selectedKelas, kelasOptions]);
+
+  // Filtered rows by class and search term
   const filteredRows = useMemo(() => {
-    if (!searchTerm.trim()) return rawRows;
-    const term = searchTerm.toLowerCase();
-    return rawRows.filter(r => 
-      r.nama_siswa?.toLowerCase().includes(term) ||
-      r.nis?.toLowerCase().includes(term) ||
-      r.nama_mitra?.toLowerCase().includes(term) ||
-      r.nama_kelas?.toLowerCase().includes(term)
-    );
-  }, [rawRows, searchTerm]);
+    let rows = rawRows;
+    if (selectedKelas) {
+      rows = rows.filter((r) => {
+        const kId = r.kelas_id || (r as any).Siswa?.kelas_id || r.nama_kelas;
+        const kNama = r.nama_kelas || (r as any).Siswa?.Kelas?.nama_kelas || (r as any).SiswaAkademik?.kelas?.nama_kelas;
+        return kId === selectedKelas || kNama === selectedKelas;
+      });
+    }
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      rows = rows.filter(r => 
+        r.nama_siswa?.toLowerCase().includes(term) ||
+        r.nis?.toLowerCase().includes(term) ||
+        r.nama_mitra?.toLowerCase().includes(term) ||
+        r.nama_kelas?.toLowerCase().includes(term)
+      );
+    }
+    return rows;
+  }, [rawRows, selectedKelas, searchTerm]);
 
   // Aggregate Stats
   const stats = useMemo(() => {
@@ -341,6 +394,26 @@ export const RekapAbsensiPklView: React.FC<UniversalRekapAbsensiPklViewProps> = 
               />
             </div>
 
+            {/* Filter Kelas Rombel (Khusus jika multi-kelas / scope se-jurusan dan bukan dipaksa propKelasId) */}
+            {kelasOptions.length > 0 && !propKelasId && (
+              <div className="relative min-w-[150px] sm:min-w-[180px]">
+                <select
+                  id="filter-kelas-rekap-pkl"
+                  aria-label="Pilih Kelas Rombel"
+                  value={selectedKelas}
+                  onChange={(e) => setSelectedKelas(e.target.value)}
+                  className="w-full h-9 text-xs font-semibold rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-2.5 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none cursor-pointer truncate shadow-2xs"
+                >
+                  <option value="">-- Semua Kelas ({rawRows.length} Siswa) --</option>
+                  {kelasOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Search Input */}
             <div className="relative min-w-[180px] sm:min-w-[220px]">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -457,6 +530,8 @@ export const RekapAbsensiPklView: React.FC<UniversalRekapAbsensiPklViewProps> = 
             tahunPelajaran={currentTpLabel || propTpId}
             pembimbingId={propGuruId}
             pembimbingNama={propGuruNama}
+            jurusanNama={propJurusanNama}
+            kelasNama={selectedKelasNama}
             viewMode={viewMode}
             rows={filteredRows}
             dayNumbers={dayNumbers}
