@@ -31,6 +31,7 @@ const HubinPklKunjunganModal = lazy(() => import('@/components/hubin/HubinPklKun
 const KunjunganPrintModal = lazy(() => import('./KunjunganPrintModal').then(m => ({ default: m.KunjunganPrintModal })));
 const HubinPklKunjunganKolektifModal = lazy(() => import('./HubinPklKunjunganKolektifModal').then(m => ({ default: m.HubinPklKunjunganKolektifModal })));
 const KunjunganMitraPrintModal = lazy(() => import('./KunjunganMitraPrintModal').then(m => ({ default: m.KunjunganMitraPrintModal })));
+const KunjunganSiswaHistoryModal = lazy(() => import('./KunjunganSiswaHistoryModal').then(m => ({ default: m.KunjunganSiswaHistoryModal })));
 
 type ActiveViewMode = 'TARGET' | 'FEED';
 
@@ -79,6 +80,8 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [selectedBulkGroup, setSelectedBulkGroup] = useState<MitraTargetGroup | null>(null);
   const [printMitraGroup, setPrintMitraGroup] = useState<MitraTargetGroup | null>(null);
+  const [selectedHistoryTarget, setSelectedHistoryTarget] = useState<SiswaTargetItem | null>(null);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
   const resetVisitForm = useCallback(() => {
     setIsKunjunganModalOpen(false);
@@ -207,9 +210,14 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
   }, [resetVisitForm]);
 
   const handleViewHistoryForSiswa = useCallback((target: SiswaTargetItem) => {
-    setSearchTerm(target.nama_siswa);
-    setActiveViewMode('FEED');
+    setSelectedHistoryTarget(target);
+    setIsHistoryModalOpen(true);
   }, []);
+
+  const targetVisits = useMemo(() => {
+    if (!selectedHistoryTarget) return [];
+    return allVisits.filter((v) => v.penempatan_id === selectedHistoryTarget.penempatan_id);
+  }, [selectedHistoryTarget, allVisits]);
 
   const handlePrintForSiswa = useCallback((target: SiswaTargetItem) => {
     setPrintPkl(target.rawPkl);
@@ -513,6 +521,26 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
             isOpen={Boolean(printMitraGroup)}
             onClose={() => setPrintMitraGroup(null)}
             group={printMitraGroup}
+          />
+        </Suspense>
+      )}
+
+      {/* 11. Modal Riwayat Supervisi Siswa (Dialog Responsif Desktop & Mobile) */}
+      {isHistoryModalOpen && selectedHistoryTarget && (
+        <Suspense fallback={null}>
+          <KunjunganSiswaHistoryModal
+            isOpen={isHistoryModalOpen}
+            onClose={() => {
+              setIsHistoryModalOpen(false);
+              setSelectedHistoryTarget(null);
+            }}
+            target={selectedHistoryTarget}
+            visits={targetVisits}
+            readOnly={readOnly}
+            onRecordVisit={handleRecordVisitForSiswa}
+            onEditVisit={handleEditVisit}
+            onDeleteVisit={handleDeleteVisit}
+            onPrint={handlePrintForSiswa}
           />
         </Suspense>
       )}
