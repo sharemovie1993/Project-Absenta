@@ -121,4 +121,14 @@ export class SupervisiController {
       return sendError(reply, 500, error.message || 'Failed to retrieve scheduling recommendations', error);
     }
   }
+
+  static async getProgress(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const result = await SupervisiService.getProgress(tenant_id);
+      return sendResponse(reply, 200, true, 'Progress supervisi retrieved', result);
+    } catch (error) {
+      return sendError(reply, 500, 'Failed to retrieve supervisi progress', error);
+    }
+  }
 }

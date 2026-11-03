@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/Card';
 import { Button, Input, Badge, Loader } from '@/components/ui';
 import { dropdownApi, type DropdownOption } from '@/api/dropdown.api';
-import { getRekapBulananMapel } from '@/api/attendanceGerbang.api';
+import { getRekapBulananMapel, getRekapSemesterMapel } from '@/api/attendanceGerbang.api';
 import { guruApi } from '@/api/academic.api';
 import { listGuruMapel } from '@/api/kurikulum/guru-mapel.api';
 import { toLocalMonth } from '@/utils/attendance/time';
@@ -204,7 +204,7 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
   const maxTranslate = Math.max(0, trackWidth - capsuleWidth);
   const capsuleTranslateX = scrollProgress * maxTranslate;
 
-  // 4. Fetch Data Rekap Presensi Mapel
+  // 4a. Fetch Data Rekap Presensi Mapel Bulanan (Untuk Matriks Sesi)
   const rekapQuery = useQuery({
     queryKey: ['staff-rekap-mapel-content', kelasId, mapelId, bulan, tahunPelajaranId],
     queryFn: async () => {
@@ -216,21 +216,40 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
         tahun_pelajaran_id: tahunPelajaranId || undefined,
       });
     },
-    enabled: Boolean(kelasId && mapelId && bulan),
+    enabled: Boolean(kelasId && mapelId && bulan && viewMode === 'MATRIX'),
     staleTime: 2 * 60 * 1000,
   });
 
+  // 4b. Fetch Data Rekap Presensi Mapel 1 Semester Penuh (Untuk Akumulasi Rapor)
+  const semesterRekapQuery = useQuery({
+    queryKey: ['staff-rekap-mapel-semester', kelasId, mapelId, tahunPelajaranId],
+    queryFn: async () => {
+      if (!kelasId || !mapelId) return null;
+      return getRekapSemesterMapel({
+        kelas_id: kelasId,
+        mapel_id: mapelId,
+        tahun_pelajaran_id: tahunPelajaranId || undefined,
+      });
+    },
+    enabled: Boolean(kelasId && mapelId && viewMode === 'SUMMARY'),
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const activeQuery = viewMode === 'SUMMARY' ? semesterRekapQuery : rekapQuery;
+  const isLoadingData = activeQuery.isLoading;
+
   const rawRows: RekapBulananKelasRow[] = useMemo(() => {
-    return Array.isArray(rekapQuery.data?.data) ? (rekapQuery.data.data as RekapBulananKelasRow[]) : [];
-  }, [rekapQuery.data]);
+    return Array.isArray(activeQuery.data?.data) ? (activeQuery.data.data as RekapBulananKelasRow[]) : [];
+  }, [activeQuery.data]);
 
   const activeCard = useMemo(() => {
     return mapelCards.find(c => c.mapelId === mapelId && c.kelasId === kelasId) || null;
   }, [mapelCards, mapelId, kelasId]);
 
-  const totalSesi = rekapQuery.data?.total_sesi ?? 0;
-  const guruMapelInfo = rekapQuery.data?.guru_mapel || { nama_guru: myGuruData?.nama_guru || user?.full_name, nip: myGuruData?.nip };
-  const waliKelasInfo = rekapQuery.data?.wali_kelas || null;
+  const totalSesi = activeQuery.data?.total_sesi ?? 0;
+  const guruMapelInfo = activeQuery.data?.guru_mapel || { nama_guru: myGuruData?.nama_guru || user?.full_name, nip: myGuruData?.nip };
+  const waliKelasInfo = activeQuery.data?.wali_kelas || null;
+  const namaSemester = (semesterRekapQuery.data as any)?.nama_semester || 'Semester Aktif';
 
   // Matriks Tanggal 1 Bulan Penuh (1 s.d. 28/29/30/31 sesuai kalender bulan terpilih)
   const fullMonthDays = useMemo(() => {
@@ -299,10 +318,26 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
       toast.error('Tidak ada data presensi untuk diekspor');
       return;
     }
-    const title = `REKAPITULASI PRESENSI MAPEL ${activeCard.mapelName.toUpperCase()} - KELAS ${activeCard.kelasName.toUpperCase()} (${bulan})`;
-    const filename = `Rekap_Mapel_${activeCard.mapelName.replace(/[^a-zA-Z0-9]/g, '_')}_${activeCard.kelasName.replace(/[^a-zA-Z0-9]/g, '_')}_${bulan}`;
+    const isSemester = viewMode === 'SUMMARY';
+    const periodeTitle = isSemester ? `1 SEMESTER PENUH (${namaSemester.toUpperCase()})` : bulan;
+    const title = `REKAPITULASI PRESENSI MAPEL ${activeCard.mapelName.toUpperCase()} - KELAS ${activeCard.kelasName.toUpperCase()} (${periodeTitle})`;
+    const filename = `Rekap_Mapel_${activeCard.mapelName.replace(/[^a-zA-Z0-9]/g, '_')}_${activeCard.kelasName.replace(/[^a-zA-Z0-9]/g, '_')}_${isSemester ? '1_Semester' : bulan}`;
     
-    const excelCols = [
+    const excelCols = isSemester ? [
+      { header: 'No', accessor: (_: unknown, i?: number) => (i ?? 0) + 1, width: 6 },
+      { header: 'Nama Siswa', accessor: (r: RekapBulananKelasRow) => r.nama_siswa, width: 28 },
+      { header: 'NIS', accessor: (r: RekapBulananKelasRow) => r.nis ?? '-', width: 14 },
+      { header: 'Hadir (H)', accessor: (r: RekapBulananKelasRow) => r.HADIR ?? 0, width: 10 },
+      { header: 'Sakit (S)', accessor: (r: RekapBulananKelasRow) => r.SAKIT ?? 0, width: 10 },
+      { header: 'Izin (I)', accessor: (r: RekapBulananKelasRow) => r.IZIN ?? 0, width: 10 },
+      { header: 'Alpa (A)', accessor: (r: RekapBulananKelasRow) => r.ALPA ?? 0, width: 10 },
+      { header: 'Terlambat (T)', accessor: (r: RekapBulananKelasRow) => r.TERLAMBAT ?? 0, width: 12 },
+      { header: '% Kehadiran', accessor: (r: RekapBulananKelasRow) => {
+        const sum = (r.HADIR ?? 0) + (r.IZIN ?? 0) + (r.SAKIT ?? 0) + (r.ALPA ?? 0) + (r.TERLAMBAT ?? 0);
+        return sum === 0 ? '0%' : `${Math.round((((r.HADIR ?? 0) + (r.TERLAMBAT ?? 0)) / sum) * 100)}%`;
+      }, width: 12 },
+      { header: 'Total Poin', accessor: (r: RekapBulananKelasRow) => r.total_poin ?? 0, width: 10 },
+    ] : [
       { header: 'No', accessor: (_: unknown, i?: number) => (i ?? 0) + 1, width: 6 },
       { header: 'Nama Siswa', accessor: (r: RekapBulananKelasRow) => r.nama_siswa, width: 28 },
       { header: 'NIS', accessor: (r: RekapBulananKelasRow) => r.nis ?? '-', width: 14 },
@@ -325,7 +360,7 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
 
     exportDataToExcel<RekapBulananKelasRow>(rawRows, excelCols, filename, title);
     toast.success(`Berhasil mengunduh ${filename}.xlsx`);
-  }, [activeCard, rawRows, bulan, fullMonthDays]);
+  }, [activeCard, rawRows, viewMode, bulan, namaSemester, fullMonthDays]);
 
   // Kolom Tabel
   const tableColumns = useMemo(() => {
@@ -476,7 +511,7 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
           <div className="flex flex-wrap items-center justify-between lg:justify-end gap-2.5 sm:gap-4">
             {/* 4 Metrik Flat Hairline */}
             <div className="flex items-center divide-x divide-slate-100 dark:divide-slate-800/80 bg-slate-50 dark:bg-slate-800/50 rounded-xl px-2 py-1 border border-slate-100 dark:border-slate-800">
-              <div className="px-2 sm:px-2.5 flex items-center gap-1.5" title="Sesi Terlaksana Bulan Ini">
+              <div className="px-2 sm:px-2.5 flex items-center gap-1.5" title={viewMode === 'SUMMARY' ? 'Sesi Terlaksana 1 Semester Penuh' : 'Sesi Terlaksana Bulan Ini'}>
                 <CalendarCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">Sesi:</span>
                 <span className="text-xs font-bold font-mono text-slate-900 dark:text-white">{stats.totalSesi}</span>
@@ -498,15 +533,25 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
               </div>
             </div>
 
-            {/* Pemilih Periode Bulan */}
+            {/* Pemilih Periode / Semester Badge */}
             <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-[11px] font-semibold text-slate-400 hidden sm:inline">Bulan:</span>
-              <Input
-                type="month"
-                value={bulan}
-                onChange={e => setBulan(e.target.value)}
-                className="h-7 w-32 rounded-lg bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-xs font-bold shadow-2xs py-0"
-              />
+              {viewMode === 'SUMMARY' ? (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-bold shadow-2xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                  <span>1 Semester Penuh</span>
+                  <span className="text-[10px] font-mono opacity-75 font-semibold">({namaSemester})</span>
+                </div>
+              ) : (
+                <>
+                  <span className="text-[11px] font-semibold text-slate-400 hidden sm:inline">Bulan:</span>
+                  <Input
+                    type="month"
+                    value={bulan}
+                    onChange={e => setBulan(e.target.value)}
+                    className="h-7 w-32 rounded-lg bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-xs font-bold shadow-2xs py-0"
+                  />
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -654,7 +699,7 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
       {/* ────────────────────────────────────────────────────────────────── */}
       <Card className="bg-white dark:bg-slate-900 rounded-2xl border-slate-200/80 dark:border-slate-800 p-0 shadow-2xs overflow-hidden">
         <Suspense fallback={<div className="p-12 text-center"><Loader size="lg" /></div>}>
-          {rekapQuery.isLoading ? (
+          {isLoadingData ? (
             <div className="p-10 space-y-3 animate-pulse">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="h-8 bg-slate-100 dark:bg-slate-800/60 rounded-lg" />
@@ -833,8 +878,8 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
               <Table
                 columns={tableColumns}
                 data={pagedRows}
-                loading={rekapQuery.isLoading}
-                emptyMessage={kelasId && mapelId ? 'Tidak ada catatan presensi KBM pada bulan ini.' : 'Silakan pilih kelas dan mata pelajaran yang Anda ampu.'}
+                loading={isLoadingData}
+                emptyMessage={kelasId && mapelId ? (viewMode === 'SUMMARY' ? 'Tidak ada catatan presensi KBM pada semester ini.' : 'Tidak ada catatan presensi KBM pada bulan ini.') : 'Silakan pilih kelas dan mata pelajaran yang Anda ampu.'}
                 compact
                 className="border-none"
                 pagination={{
@@ -867,6 +912,7 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
           waliKelasNip={waliKelasInfo?.nip || undefined}
           tahunPelajaran={dropdownsQuery.data?.tahun.find(t => t.value === tahunPelajaranId)?.label}
           bulan={bulan}
+          periodeLabel={viewMode === 'SUMMARY' ? `1 Semester (${namaSemester})` : undefined}
           viewMode={viewMode}
           rows={rawRows}
           dayNumbers={fullMonthDays}

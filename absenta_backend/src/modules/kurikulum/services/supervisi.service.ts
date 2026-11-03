@@ -538,4 +538,19 @@ export class SupervisiService {
 
     return recommendations;
   }
+
+  static async getProgress(tenantId: string) {
+    const [totalGuru, totalSupervisiSelesai, totalSupervisiTerjadwal] = await Promise.all([
+      prisma.guru.count({ where: { tenant_id: tenantId, is_active: true } }),
+      prisma.supervisiGuru.count({ where: { tenant_id: tenantId, status: 'COMPLETED' } }),
+      prisma.supervisiGuru.count({ where: { tenant_id: tenantId, status: 'SCHEDULED' } }),
+    ]);
+    const percentage = totalGuru > 0 ? Math.round((totalSupervisiSelesai / totalGuru) * 100) : 0;
+    return {
+      total_guru: totalGuru,
+      total_supervisi: totalSupervisiSelesai,
+      total_terjadwal: totalSupervisiTerjadwal,
+      percentage: Math.min(100, percentage),
+    };
+  }
 }

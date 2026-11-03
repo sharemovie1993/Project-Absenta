@@ -368,6 +368,36 @@ export async function getRekapBulananMapel(
   });
 }
 
+export async function getRekapSemesterMapel(
+  params: { kelas_id: string; mapel_id: string; semester_id?: string; tahun_pelajaran_id?: string }
+): Promise<{
+  success: boolean;
+  message?: string;
+  semester_id?: string;
+  nama_semester?: string;
+  total_sesi?: number;
+  mapel?: { id: string; nama_mapel: string; kode_mapel?: string | null } | null;
+  guru_mapel?: { nama_guru: string; nip?: string | null } | null;
+  wali_kelas?: { nama_guru: string; nip?: string | null } | null;
+  data: Array<{
+    siswa_id: string;
+    nama_siswa: string;
+    nis?: string | null;
+    HADIR: number;
+    IZIN: number;
+    SAKIT: number;
+    ALPA: number;
+    TERLAMBAT: number;
+    persentase?: number;
+    total_poin?: number;
+  }>;
+}> {
+  return requestWithFallback('get', '/attendance/rekap/mapel/semester', {
+    params,
+    headers: { 'X-Skip-403-Redirect': 'true' }
+  });
+}
+
 export async function getRekapHarianKelas(
   kelas_id: string,
   params: { tanggal: string; tahun_pelajaran_id?: string }

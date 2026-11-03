@@ -26,6 +26,10 @@ export class KelasRekapService {
     return rekapImplService.getRekapBulananMapel(kelasId, mapelId, bulan, tenantId, tahunPelajaranId);
   }
 
+  async getRekapSemesterMapel(kelasId: string, mapelId: string, tenantId: string, semesterId?: string, tahunPelajaranId?: string) {
+    return rekapImplService.getRekapSemesterMapel(kelasId, mapelId, tenantId, semesterId, tahunPelajaranId);
+  }
+
   async getKelasCohortLineage(kelasId: string, tenantId: string, tahunPelajaranId?: string) {
     return rekapImplService.getKelasCohortLineage(kelasId, tenantId, tahunPelajaranId);
   }

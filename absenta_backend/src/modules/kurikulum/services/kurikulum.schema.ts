@@ -42,11 +42,11 @@ export const supervisiGuruCreateSchema = z.object({
   status: z.enum(['SCHEDULED', 'COMPLETED']).default('SCHEDULED').optional(),
   catatan: z.string().nullable().optional().transform(v => v === null ? undefined : v),
   nilai: z.number().int().min(0, 'Nilai minimal 0').max(100, 'Nilai maksimal 100').nullable().optional().transform(v => v === null ? undefined : v),
-  supervisor_id: z.string().uuid({
+  supervisor_id: z.preprocess((val) => (val === '' ? undefined : val), z.string().uuid({
     message: 'supervisor_id harus berupa UUID yang valid'
-  }).nullable().optional().transform(v => v === null ? undefined : v),
-  tahun_pelajaran_id: z.string().uuid().nullable().optional().transform(v => v === null ? undefined : v),
-  semester_id: z.string().uuid().nullable().optional().transform(v => v === null ? undefined : v)
+  }).nullable().optional().transform(v => v === null ? undefined : v)),
+  tahun_pelajaran_id: z.preprocess((val) => (val === '' ? undefined : val), z.string().uuid().nullable().optional().transform(v => v === null ? undefined : v)),
+  semester_id: z.preprocess((val) => (val === '' ? undefined : val), z.string().uuid().nullable().optional().transform(v => v === null ? undefined : v))
 });
 
 export const supervisiGuruUpdateSchema = z.object({
@@ -63,9 +63,9 @@ export const supervisiGuruUpdateSchema = z.object({
   status: z.enum(['SCHEDULED', 'COMPLETED']).optional(),
   catatan: z.string().nullable().optional().transform(v => v === null ? undefined : v).optional(),
   nilai: z.number().int().min(0, 'Nilai minimal 0').max(100, 'Nilai maksimal 100').nullable().optional().transform(v => v === null ? undefined : v),
-  supervisor_id: z.string().uuid({
+  supervisor_id: z.preprocess((val) => (val === '' ? undefined : val), z.string().uuid({
     message: 'supervisor_id harus berupa UUID yang valid'
-  }).nullable().optional().transform(v => v === null ? undefined : v).optional()
+  }).nullable().optional().transform(v => v === null ? undefined : v).optional())
 });
 
 export const supervisiSelfAssessmentSchema = z.object({

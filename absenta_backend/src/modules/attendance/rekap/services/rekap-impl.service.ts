@@ -188,6 +188,7 @@ export class RekapImplService {
 
   async getRekapBulananKelas(...args: any[]) { return (this.kelasCalc as any).getRekapBulananKelas(...args); }
   async getRekapBulananMapel(...args: any[]) { return (this.kelasCalc as any).getRekapBulananMapel(...args); }
+  async getRekapSemesterMapel(...args: any[]) { return (this.kelasCalc as any).getRekapSemesterMapel(...args); }
   async getRekapBulananSekolah(...args: any[]) { return (this.kelasCalc as any).getRekapBulananSekolah(...args); }
   async getRekapHarianKelas(...args: any[]) { return (this.kelasCalc as any).getRekapHarianKelas(...args); }
   async getKelasCohortLineage(...args: any[]) { return (this.kelasCalc as any).getKelasCohortLineage(...args); }

@@ -540,6 +540,48 @@ export async function getRekapBulananMapel(request: AuthenticatedRequest, reply:
   }
 }
 
+// GET /api/attendance/rekap/mapel/semester?kelas_id=...&mapel_id=...&semester_id=...
+export async function getRekapSemesterMapel(request: AuthenticatedRequest, reply: any) {
+  try {
+    const { kelas_id, mapel_id, semester_id, tahun_pelajaran_id } = request.query as {
+      kelas_id?: string;
+      mapel_id?: string;
+      semester_id?: string;
+      tahun_pelajaran_id?: string;
+    };
+    const tenantId = (request as any).tenantId ?? request.tenant?.id;
+    const userId = request.user?.id;
+
+    if (!tenantId || !userId) {
+      return reply.status(401).send({ success: false, message: 'Authentication required' });
+    }
+
+    if (!kelas_id || !mapel_id) {
+      return reply.status(400).send({
+        success: false,
+        message: 'Parameter kelas_id dan mapel_id wajib diisi',
+      });
+    }
+
+    const data = await rekapService.getRekapSemesterMapel(kelas_id, mapel_id, tenantId, semester_id, tahun_pelajaran_id);
+    await rekapService.logActivity(userId, tenantId, 'VIEW_REKAP_SEMESTER_MAPEL', mapel_id);
+
+    return reply.status(200).send({
+      success: true,
+      semester_id: data.semester_id,
+      nama_semester: data.nama_semester,
+      mapel: data.mapel,
+      guru_mapel: data.guru_mapel,
+      wali_kelas: data.wali_kelas,
+      total_sesi: data.total_sesi,
+      data: data.students,
+    });
+  } catch (error: any) {
+    console.error('Error getting semester mapel recap:', error);
+    return reply.status(500).send({ success: false, message: error.message || 'Failed to get semester mapel recap' });
+  }
+}
+
 export async function getLeaderboard(request: any, reply: any) {
   try {
     const tenantId = request.tenantId;

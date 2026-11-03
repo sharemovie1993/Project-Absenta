@@ -501,7 +501,6 @@ export class KelasRekapCalculator {
     return result;
   }
 
-
   async getRekapBulananMapel(
     kelasId: string,
     mapelId: string,
@@ -682,6 +681,176 @@ export class KelasRekapCalculator {
       kelas_id: kelasId,
       mapel_id: mapelId,
       bulan,
+      total_sesi: sesis.length,
+      mapel: mapelObj ? { id: mapelObj.id, nama_mapel: mapelObj.nama_mapel, kode_mapel: mapelObj.kode_mapel } : null,
+      guru_mapel: guruMapelData,
+      wali_kelas: waliKelasData,
+      students: studentList
+    };
+
+    await cacheService.set(cacheKey, result, 300);
+    return result;
+  }
+
+  async getRekapSemesterMapel(
+    kelasId: string,
+    mapelId: string,
+    tenantId: string,
+    semesterId?: string,
+    tahunPelajaranId?: string
+  ): Promise<any> {
+    // 1. Resolve Active Semester & TP jika belum ada
+    let semObj: any = semesterId
+      ? await prisma.semester.findFirst({ where: { id: semesterId, tenant_id: tenantId } })
+      : await prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true } });
+
+    const cacheKey = `rekap:mapel:semester:${tenantId}:${kelasId}:${mapelId}:${semObj?.id || 'ACTIVE'}:${tahunPelajaranId || 'ACTIVE'}`;
+    const cached = await cacheService.get<any>(cacheKey);
+    if (cached) return cached;
+
+    // 2. Fetch Students in Class (Strict Academic Year Alignment)
+    const students = await this.getStudentsForClass(kelasId, tenantId, tahunPelajaranId);
+
+    // 3. Fetch Mapel details
+    const mapelObj = await prisma.mapel.findFirst({
+      where: { id: mapelId, tenant_id: tenantId },
+      select: { id: true, nama_mapel: true, kode_mapel: true }
+    });
+
+    if (students.length === 0) {
+      const emptyResult = {
+        kelas_id: kelasId,
+        mapel_id: mapelId,
+        semester_id: semObj?.id || '',
+        nama_semester: semObj?.nama_semester || 'Semester Aktif',
+        nama_mapel: mapelObj?.nama_mapel || '',
+        kode_mapel: mapelObj?.kode_mapel || '',
+        total_sesi: 0,
+        total_siswa: 0,
+        rata_rata_kehadiran: 0,
+        students: []
+      };
+      await cacheService.set(cacheKey, emptyResult, 300);
+      return emptyResult;
+    }
+
+    const studentIds = students.map(s => s.id);
+
+    // 4. Fetch Sessions for this Mapel & Class across whole Semester
+    const sesis = await prisma.sesiAbsensi.findMany({
+      where: {
+        tenant_id: tenantId,
+        kelas_id: kelasId,
+        mapel_id: mapelId,
+        ...(semObj?.id ? { semester_id: semObj.id } : {}),
+        ...(tahunPelajaranId ? { tahun_pelajaran_id: tahunPelajaranId } : {})
+      },
+      include: {
+        AbsenSiswa: {
+          where: { siswa_id: { in: studentIds } },
+          select: { siswa_id: true, status: true, is_terlambat: true, poin_kehadiran: true }
+        },
+        AbsenGuru: {
+          take: 1,
+          include: { Guru: { select: { nama_guru: true, nip: true } } }
+        }
+      },
+      orderBy: { tanggal: 'asc' }
+    });
+
+    // 5. Resolve Guru Mapel info
+    let guruMapelData: { nama_guru: string; nip: string | null } | null = null;
+    const guruFromSesi = sesis.find(s => s.AbsenGuru?.[0]?.Guru?.nama_guru)?.AbsenGuru?.[0]?.Guru;
+    if (guruFromSesi?.nama_guru) {
+      guruMapelData = { nama_guru: guruFromSesi.nama_guru, nip: guruFromSesi.nip || null };
+    } else {
+      const guruMapelAssign = await prisma.guruMapel.findFirst({
+        where: { mapel_id: mapelId, tenant_id: tenantId },
+        include: { Guru: { select: { nama_guru: true, nip: true } } }
+      });
+      if (guruMapelAssign?.Guru?.nama_guru) {
+        guruMapelData = { nama_guru: guruMapelAssign.Guru.nama_guru, nip: guruMapelAssign.Guru.nip || null };
+      }
+    }
+
+    // 6. Resolve Wali Kelas
+    let waliKelasData: { nama_guru: string; nip: string | null } | null = null;
+    try {
+      const waliAssign = await prisma.organizationalAssignment.findFirst({
+        where: { kelas_id: kelasId, tenant_id: tenantId, is_active: true },
+        include: { User: { include: { Guru: true } } }
+      });
+      const g = Array.isArray(waliAssign?.User?.Guru) ? waliAssign?.User?.Guru[0] : waliAssign?.User?.Guru;
+      if (g?.nama_guru) {
+        waliKelasData = { nama_guru: g.nama_guru, nip: g.nip || null };
+      }
+    } catch (_) {}
+
+    // 7. Aggregate student stats for whole semester
+    const studentStats = new Map<string, {
+      hadir: number; sakit: number; izin: number; alpa: number; telat: number; poin: number;
+    }>();
+
+    students.forEach(s => {
+      studentStats.set(s.id, { hadir: 0, sakit: 0, izin: 0, alpa: 0, telat: 0, poin: 0 });
+    });
+
+    sesis.forEach(sesi => {
+      sesi.AbsenSiswa.forEach(absen => {
+        if (!absen.siswa_id) return;
+        const st = studentStats.get(absen.siswa_id);
+        if (!st) return;
+
+        const statusUpper = (absen.status || '').toUpperCase();
+        const calculatedPoin = AttendanceRuleEngine.calculateAttendancePoints(statusUpper, absen.is_terlambat);
+        st.poin += calculatedPoin;
+
+        if (statusUpper === 'HADIR') {
+          st.hadir++;
+          if (absen.is_terlambat) {
+            st.telat++;
+          }
+        } else if (statusUpper === 'SAKIT') {
+          st.sakit++;
+        } else if (statusUpper === 'IZIN' || statusUpper === 'DISPEN') {
+          st.izin++;
+        } else {
+          st.alpa++;
+        }
+
+        st.poin += (absen.poin_kehadiran || 0);
+      });
+    });
+
+    const studentList = students.map(s => {
+      const st = studentStats.get(s.id)!;
+      const totalRecorded = st.hadir + st.sakit + st.izin + st.alpa;
+      const persentase = totalRecorded > 0 ? Math.round(((st.hadir) / totalRecorded) * 100) : 0;
+
+      return {
+        id: s.id,
+        siswa_id: s.id,
+        nama_siswa: s.nama_siswa,
+        nis: s.nis || null,
+        hadir: st.hadir,
+        sakit: st.sakit,
+        izin: st.izin,
+        alpa: st.alpa,
+        HADIR: st.hadir,
+        IZIN: st.izin,
+        SAKIT: st.sakit,
+        ALPA: st.alpa,
+        TERLAMBAT: st.telat,
+        persentase,
+        total_poin: st.poin,
+      };
+    });
+
+    const result = {
+      kelas_id: kelasId,
+      mapel_id: mapelId,
+      semester_id: semObj?.id || '',
+      nama_semester: semObj?.nama_semester || 'Semester Aktif',
       total_sesi: sesis.length,
       mapel: mapelObj ? { id: mapelObj.id, nama_mapel: mapelObj.nama_mapel, kode_mapel: mapelObj.kode_mapel } : null,
       guru_mapel: guruMapelData,

@@ -18,6 +18,7 @@ import {
   getTrackingHarianGuruMe,
   getRekapHarianKelas,
   getRekapBulananMapel,
+  getRekapSemesterMapel,
   getLeaderboard,
   getLeaderboardGuru,
 } from '../controllers/rekap.controller';
@@ -489,6 +490,80 @@ export async function rekapRoutes(fastify: any) {
       },
     },
   }, getRekapBulananMapel);
+
+  // 3c. Rekap 1 Semester Penuh Siswa Per Mata Pelajaran (Mapel) - Akumulasi Rapor
+  fastify.get('/mapel/semester', {
+    preHandler: [allowBothModes, organizationalScopeMiddleware, requireCapability(['attendance.reports.view', 'academic.structures.view.list']), determineDataScope()],
+    schema: {
+      description: 'Get full semester attendance recap for a specific subject (Mapel) in a class for report cards',
+      tags: ['Rekap'],
+      querystring: {
+        type: 'object',
+        properties: {
+          kelas_id: { type: 'string', description: 'Class ID' },
+          mapel_id: { type: 'string', description: 'Subject (Mapel) ID' },
+          semester_id: { type: 'string', description: 'Optional Semester ID filter' },
+          tahun_pelajaran_id: { type: 'string', description: 'Optional Tahun Pelajaran filter' },
+        },
+        required: ['kelas_id', 'mapel_id'],
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+            semester_id: { type: 'string' },
+            nama_semester: { type: 'string' },
+            total_sesi: { type: 'number' },
+            mapel: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                id: { type: 'string' },
+                nama_mapel: { type: 'string' },
+                kode_mapel: { type: 'string', nullable: true },
+              },
+            },
+            guru_mapel: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                nama_guru: { type: 'string' },
+                nip: { type: 'string', nullable: true },
+              },
+            },
+            wali_kelas: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                nama_guru: { type: 'string' },
+                nip: { type: 'string', nullable: true },
+              },
+            },
+            data: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  siswa_id: { type: 'string' },
+                  nama_siswa: { type: 'string' },
+                  nis: { type: 'string', nullable: true },
+                  HADIR: { type: 'number' },
+                  SAKIT: { type: 'number' },
+                  ALPA: { type: 'number' },
+                  IZIN: { type: 'number' },
+                  TERLAMBAT: { type: 'number' },
+                  persentase: { type: 'number' },
+                  total_poin: { type: 'number' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, getRekapSemesterMapel);
 
   // 4. Rekap Harian Guru
   // GET /api/attendance/rekap/guru/harian?tanggal=YYYY-MM-DD

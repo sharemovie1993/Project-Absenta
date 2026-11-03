@@ -18,6 +18,7 @@ export interface RekapPresensiPrintModalProps {
   kelasNama?: string;
   tahunPelajaran?: string;
   bulan?: string;
+  periodeLabel?: string;
   waliKelasNama?: string;
   waliKelasNip?: string;
   mapelNama?: string;
@@ -35,6 +36,7 @@ export const RekapPresensiPrintModal: React.FC<RekapPresensiPrintModalProps> = (
   kelasNama = 'Kelas',
   tahunPelajaran,
   bulan,
+  periodeLabel,
   waliKelasNama = 'Wali Kelas',
   waliKelasNip = '',
   mapelNama,
@@ -71,8 +73,10 @@ export const RekapPresensiPrintModal: React.FC<RekapPresensiPrintModalProps> = (
     year: 'numeric',
   });
 
-  // Format Bulan Indonesia
+  // Format Periode / Bulan Indonesia
   const bulanFormatted = useMemo(() => {
+    if (periodeLabel) return periodeLabel;
+    if (viewMode === 'SUMMARY') return '1 Semester (Akumulasi Rapor)';
     if (!bulan) return 'Bulan Berjalan';
     if (/^\d{4}-\d{2}/.test(bulan)) {
       const [y, m] = bulan.split('-');
@@ -80,7 +84,7 @@ export const RekapPresensiPrintModal: React.FC<RekapPresensiPrintModalProps> = (
       return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
     }
     return bulan;
-  }, [bulan]);
+  }, [periodeLabel, viewMode, bulan]);
 
   // Resolve KM dari LocalStorage Struktur Kelas jika tersedia
   const resolvedKmNama = useMemo(() => {
@@ -522,7 +526,7 @@ export const RekapPresensiPrintModal: React.FC<RekapPresensiPrintModalProps> = (
                         ROMBEL {kelasNama.toUpperCase()} {mapelNama ? `• MAPEL ${mapelNama.toUpperCase()}` : ''}
                       </h4>
                       <p className="text-[10px] italic text-slate-600">
-                        Bulan: {bulanFormatted} — Tahun Pelajaran {tahunPelajaran || '2026/2027'}
+                        {viewMode === 'SUMMARY' ? 'Periode' : 'Bulan'}: {bulanFormatted} — Tahun Pelajaran {tahunPelajaran || '2026/2027'}
                       </p>
                     </>
                   )}
@@ -550,7 +554,7 @@ export const RekapPresensiPrintModal: React.FC<RekapPresensiPrintModalProps> = (
                       <span className="font-bold text-black">{guruMapelNama || activeWaliKelasNama}</span>
                     </div>
                     <div>
-                      <span className="font-semibold text-slate-600">Bulan: </span>
+                      <span className="font-semibold text-slate-600">{viewMode === 'SUMMARY' ? 'Periode: ' : 'Bulan: '}</span>
                       <span className="font-bold text-black">{bulanFormatted}</span>
                     </div>
                     <div>
