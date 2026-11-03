@@ -216,7 +216,7 @@ export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
                         : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                     }`}
                   >
-                    {isKaprog ? 'Semua Jurusan' : (isWaliKelas ? `Kelas ${walikelasKelas?.nama_kelas || ''}` : 'Semua Siswa')} ({allScopedCount})
+                    {isKaprog ? 'Semua Siswa Jurusan' : (isWaliKelas ? `Kelas ${walikelasKelas?.nama_kelas || ''}` : 'Semua Siswa')} ({allScopedCount})
                   </button>
                   <button
                     type="button"

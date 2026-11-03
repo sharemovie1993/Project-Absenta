@@ -39,7 +39,7 @@ export const KaprogNilaiSidangTab: React.FC<KaprogNilaiSidangTabProps> = React.m
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <span>Sidang &amp; Asesmen PKL Jurusan {jurusanNama}</span>
+              <span>Sidang &amp; Ujian PKL Jurusan {jurusanNama}</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Form penilaian sidang dapat diisi langsung oleh Kaprog maupun oleh Guru Penguji yang ditugaskan.
@@ -73,6 +73,7 @@ export const KaprogNilaiSidangTab: React.FC<KaprogNilaiSidangTabProps> = React.m
           jurusanNama={jurusanNama}
           tahunPelajaranId={tahunPelajaranId}
           semesterId={semesterId}
+          activeTabOnly="sidang"
           initialTab="sidang"
           layoutMode="hubin"
           className="w-full"

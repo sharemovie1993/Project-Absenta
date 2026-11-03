@@ -16,7 +16,8 @@ import {
   ShieldAlert,
   Trophy,
   Printer,
-  Scale
+  Scale,
+  ClipboardCheck
 } from 'lucide-react';
 import { Button, Badge, Loader } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
@@ -41,6 +42,7 @@ const KaprogGuruDetailModal = lazy(() => import('./kaprog/KaprogGuruDetailModal'
 import { KaprogBerandaTab } from './kaprog/tabs/KaprogBerandaTab';
 import { KaprogSiswaTab } from './kaprog/tabs/KaprogSiswaTab';
 import { KaprogPklTab } from './kaprog/tabs/KaprogPklTab';
+import { KaprogNilaiPklTab } from './kaprog/tabs/KaprogNilaiPklTab';
 import { KaprogNilaiSidangTab } from './kaprog/tabs/KaprogNilaiSidangTab';
 import { KaprogKehadiranTab } from './kaprog/tabs/KaprogKehadiranTab';
 import { KaprogPelanggaranTab } from './kaprog/tabs/KaprogPelanggaranTab';
@@ -82,9 +84,9 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
   const [searchParams, setSearchParams] = useSearchParams();
   const subtabParam = searchParams.get('subtab') as KaprogTabId | null;
 
-  // Active Tab State (beranda | siswa | pkl | sidang_pkl | kehadiran | pelanggaran | prestasi | guru | sarana | ukk | rapor)
+  // Active Tab State (beranda | siswa | pkl | nilai_pkl | sidang_pkl | kehadiran | pelanggaran | prestasi | guru | sarana | ukk | rapor)
   const [activeTab, setActiveTab] = useState<KaprogTabId>(() => {
-    if (subtabParam && ['beranda', 'siswa', 'prestasi', 'pkl', 'sidang_pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana', 'ukk', 'rapor'].includes(subtabParam)) {
+    if (subtabParam && ['beranda', 'siswa', 'prestasi', 'pkl', 'nilai_pkl', 'sidang_pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana', 'ukk', 'rapor'].includes(subtabParam)) {
       return subtabParam;
     }
     return 'beranda';
@@ -94,7 +96,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
   const [visitedTabs, setVisitedTabs] = useState<Set<KaprogTabId>>(() => new Set([activeTab]));
 
   useEffect(() => {
-    if (subtabParam && ['beranda', 'siswa', 'prestasi', 'pkl', 'sidang_pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana', 'ukk', 'rapor'].includes(subtabParam)) {
+    if (subtabParam && ['beranda', 'siswa', 'prestasi', 'pkl', 'nilai_pkl', 'sidang_pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana', 'ukk', 'rapor'].includes(subtabParam)) {
       setActiveTab((curr) => {
         if (curr !== subtabParam) return subtabParam;
         return curr;
@@ -374,6 +376,16 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
     ];
   }, []);
 
+  // Actionable Counter: Siswa Jurusan yang Belum Dinilai DUDI
+  const belumNilaiDudiCount = useMemo(() => {
+    if (penilaianStatus?.belumDinilaiDudi !== undefined && penilaianStatus?.belumDinilaiDudi !== null) {
+      return Number(penilaianStatus.belumDinilaiDudi);
+    }
+    const total = Number(penilaianStatus?.totalSiswaPkl || 0);
+    const sudah = Number(penilaianStatus?.sudahDinilaiDudi || 0);
+    return Math.max(0, total - sudah);
+  }, [penilaianStatus]);
+
   // Actionable Counter: Siswa Jurusan yang Belum Mengikuti / Dinilai Sidang PKL
   const belumSidangCount = useMemo(() => {
     if (penilaianStatus?.belumSidang !== undefined && penilaianStatus?.belumSidang !== null) {
@@ -396,8 +408,14 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
         badge: tpStatus.pendingMitra > 0 ? tpStatus.pendingMitra : undefined,
       },
       {
+        id: 'nilai_pkl',
+        label: 'Penilaian PKL',
+        icon: ClipboardCheck,
+        badge: belumNilaiDudiCount > 0 ? belumNilaiDudiCount : undefined,
+      },
+      {
         id: 'sidang_pkl',
-        label: 'Nilai Sidang PKL',
+        label: 'Sidang PKL',
         icon: Scale,
         badge: belumSidangCount > 0 ? belumSidangCount : undefined,
       },
@@ -733,7 +751,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                   filteredMitraList={filteredMitraList}
                   onSelectEditingSlot={handleSelectEditingSlot}
                   onOpenPlottingModal={() => setIsPlottingPklModalOpen(true)}
-                  onOpenRekapNilai={() => handleTabSelect('sidang_pkl')}
+                  onOpenRekapNilai={() => handleTabSelect('nilai_pkl')}
                   onOpenSidangPkl={() => handleTabSelect('sidang_pkl')}
                   onOpenMonitoringPkl={() => setIsMonitoringPklModalOpen(true)}
                   onOpenPrintMatriksModal={() => setIsPrintMatriksModalOpen(true)}
@@ -741,6 +759,20 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                   isRolloverLoading={rolloverTpMutation.isPending}
                   isReadOnly={isViewingHistorical}
                   jurusanNama={resolvedJurusan?.nama}
+                />
+              </div>
+            )}
+
+            {visitedTabs.has('nilai_pkl') && (
+              <div
+                key="tab-nilai-pkl"
+                className={cn('w-full', activeTab === 'nilai_pkl' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              >
+                <KaprogNilaiPklTab
+                  jurusanId={resolvedJurusan?.id}
+                  jurusanNama={resolvedJurusan?.nama || 'Kejuruan'}
+                  tahunPelajaranId={academic.selectedTahunPelajaran}
+                  semesterId={academic.selectedSemester}
                 />
               </div>
             )}
