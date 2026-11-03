@@ -650,26 +650,198 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
       </div>
 
       {/* ────────────────────────────────────────────────────────────────── */}
-      {/* 4. TABEL REKAP PRESENSI MAPEL                                      */}
+      {/* 4. TABEL REKAP PRESENSI MAPEL (RESPONSIVE NO-SCROLL MATRIX)        */}
       {/* ────────────────────────────────────────────────────────────────── */}
-      <Card className="bg-white dark:bg-slate-900 overflow-x-auto rounded-2xl border-slate-200/80 dark:border-slate-800 p-2 shadow-2xs">
+      <Card className="bg-white dark:bg-slate-900 rounded-2xl border-slate-200/80 dark:border-slate-800 p-0 shadow-2xs overflow-hidden">
         <Suspense fallback={<div className="p-12 text-center"><Loader size="lg" /></div>}>
-          <Table
-            columns={tableColumns}
-            data={pagedRows}
-            loading={rekapQuery.isLoading}
-            emptyMessage={kelasId && mapelId ? 'Tidak ada catatan presensi KBM pada bulan ini.' : 'Silakan pilih kelas dan mata pelajaran yang Anda ampu.'}
-            compact
-            className="border-none"
-            pagination={{
-              currentPage: page,
-              totalPages: Math.ceil(filteredRows.length / limit),
-              totalItems: filteredRows.length,
-              itemsPerPage: limit,
-              onPageChange: setPage,
-              onLimitChange: (l) => { setLimit(l); setPage(1); },
-            }}
-          />
+          {rekapQuery.isLoading ? (
+            <div className="p-10 space-y-3 animate-pulse">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-8 bg-slate-100 dark:bg-slate-800/60 rounded-lg" />
+              ))}
+            </div>
+          ) : viewMode === 'MATRIX' ? (
+            /* ── VIEW 1: MATRIX SESI (FIT 100% WIDTH TANPA SCROLL HORIZONTAL) ── */
+            <div className="w-full overflow-hidden">
+              <table className="w-full table-fixed border-collapse select-none">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 text-[10px] text-slate-500 dark:text-slate-400 font-bold">
+                    {/* Kolom Siswa (Nama + NIS) */}
+                    <th className="text-left py-2 px-2.5 font-bold uppercase tracking-wider w-[18%] sm:w-[20%]">
+                      Siswa
+                    </th>
+
+                    {/* 30/31 Kolom Tanggal Kalender (Propsional Rata 1 Bulan) */}
+                    {fullMonthDays.map(d => {
+                      const isSunday = getDayOfWeek(d) === 0;
+                      return (
+                        <th
+                          key={d}
+                          className={cn(
+                            "text-center py-2 px-0 font-mono font-bold border-l border-slate-100 dark:border-slate-800/50",
+                            isSunday && "bg-rose-50/70 dark:bg-rose-950/30 text-rose-500"
+                          )}
+                          title={`Tanggal ${d}`}
+                        >
+                          {d}
+                        </th>
+                      );
+                    })}
+
+                    {/* Kolom Total Kehadiran Ringkas */}
+                    <th className="text-center py-2 px-0 font-bold text-emerald-600 border-l border-slate-200 dark:border-slate-800 w-[2.8%] sm:w-[2.5%]" title="Hadir (H)">H</th>
+                    <th className="text-center py-2 px-0 font-bold text-amber-600 border-l border-slate-100 dark:border-slate-800/50 w-[2.8%] sm:w-[2.5%]" title="Sakit (S)">S</th>
+                    <th className="text-center py-2 px-0 font-bold text-blue-600 border-l border-slate-100 dark:border-slate-800/50 w-[2.8%] sm:w-[2.5%]" title="Izin (I)">I</th>
+                    <th className="text-center py-2 px-0 font-bold text-rose-600 border-l border-slate-100 dark:border-slate-800/50 w-[2.8%] sm:w-[2.5%]" title="Alpa (A)">A</th>
+                    <th className="text-center py-2 px-0 font-bold text-purple-600 border-l border-slate-100 dark:border-slate-800/50 w-[2.8%] sm:w-[2.5%]" title="Terlambat (T)">T</th>
+                    <th className="text-center py-2 px-0.5 font-bold text-slate-700 dark:text-slate-300 border-l border-slate-200 dark:border-slate-800 w-[4.5%] sm:w-[4%]" title="Persentase Kehadiran">%</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {pagedRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={fullMonthDays.length + 7} className="text-center py-12 text-xs text-slate-400 font-medium">
+                        {kelasId && mapelId ? 'Tidak ada catatan presensi KBM pada bulan ini.' : 'Silakan pilih kelas dan mata pelajaran yang Anda ampu.'}
+                      </td>
+                    </tr>
+                  ) : (
+                    pagedRows.map((row, idx) => {
+                      const sum = (row.HADIR ?? 0) + (row.IZIN ?? 0) + (row.SAKIT ?? 0) + (row.ALPA ?? 0) + (row.TERLAMBAT ?? 0);
+                      const pct = sum === 0 ? 0 : Math.round((((row.HADIR ?? 0) + (row.TERLAMBAT ?? 0)) / sum) * 100);
+                      return (
+                        <tr key={row.siswa_id || idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors">
+                          {/* Nama Siswa + NIS di bawahnya */}
+                          <td className="py-1 px-2.5 truncate">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${row.siswa_id}`)}
+                              className="group inline-flex items-center gap-1 font-bold text-xs text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer truncate max-w-full text-left"
+                              title={`Lacak presensi multi-channel: ${row.nama_siswa}`}
+                            >
+                              <span className="truncate">{row.nama_siswa}</span>
+                              <ArrowUpRight className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 text-indigo-500 shrink-0" />
+                            </button>
+                            <div className="font-mono text-[9px] text-slate-400 leading-none mt-0.5">
+                              {row.nis || '-'}
+                            </div>
+                          </td>
+
+                          {/* 30/31 Hari Kolom Grid */}
+                          {fullMonthDays.map(d => {
+                            const isSunday = getDayOfWeek(d) === 0;
+                            const code = row.dailyMap?.[d.toString()];
+                            const badgeCls = code ? (STATUS_BADGE[code] || 'bg-slate-100 text-slate-600') : '';
+                            return (
+                              <td
+                                key={d}
+                                className={cn(
+                                  "py-1 px-0 text-center border-l border-slate-100 dark:border-slate-800/40",
+                                  isSunday && "bg-rose-50/40 dark:bg-rose-950/20"
+                                )}
+                              >
+                                {code ? (
+                                  <span
+                                    className={cn(
+                                      "w-4 h-4 sm:w-4.5 sm:h-4.5 rounded text-[9px] font-bold inline-flex items-center justify-center mx-auto leading-none shadow-2xs",
+                                      badgeCls
+                                    )}
+                                    title={`Tgl ${d}: ${code}`}
+                                  >
+                                    {code}
+                                  </span>
+                                ) : (
+                                  <span className={cn("text-[9px]", isSunday ? "text-rose-200 dark:text-rose-900" : "text-slate-300 dark:text-slate-700")}>
+                                    {isSunday ? '·' : '—'}
+                                  </span>
+                                )}
+                              </td>
+                            );
+                          })}
+
+                          {/* Rekap H, S, I, A, T */}
+                          <td className="py-1 px-0 text-center font-mono font-bold text-xs text-emerald-600 border-l border-slate-200 dark:border-slate-800">{row.HADIR ?? 0}</td>
+                          <td className="py-1 px-0 text-center font-mono font-bold text-xs text-amber-600 border-l border-slate-100 dark:border-slate-800/40">{row.SAKIT ?? 0}</td>
+                          <td className="py-1 px-0 text-center font-mono font-bold text-xs text-blue-600 border-l border-slate-100 dark:border-slate-800/40">{row.IZIN ?? 0}</td>
+                          <td className="py-1 px-0 text-center font-mono font-bold text-xs text-rose-600 border-l border-slate-100 dark:border-slate-800/40">{row.ALPA ?? 0}</td>
+                          <td className="py-1 px-0 text-center font-mono font-bold text-xs text-purple-600 border-l border-slate-100 dark:border-slate-800/40">{row.TERLAMBAT ?? 0}</td>
+
+                          {/* % Kehadiran */}
+                          <td className="py-1 px-0.5 text-center font-mono font-bold text-xs border-l border-slate-200 dark:border-slate-800">
+                            <span className={
+                              pct >= 85 ? 'text-emerald-600 dark:text-emerald-400' :
+                              pct >= 75 ? 'text-amber-600 dark:text-amber-400' :
+                              'text-rose-600 dark:text-rose-400'
+                            }>
+                              {pct}%
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+
+              {/* Pagination Bar Ramping */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-3 py-2 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/30 text-xs">
+                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+                  <span>Menampilkan {filteredRows.length > 0 ? (page - 1) * limit + 1 : 0} - {Math.min(page * limit, filteredRows.length)} dari {filteredRows.length} Siswa</span>
+                  <select
+                    value={limit}
+                    onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}
+                    className="h-6.5 px-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold"
+                  >
+                    {[10, 25, 50, 100].map(opt => (
+                      <option key={opt} value={opt}>{opt} / hal</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page <= 1}
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    className="h-6.5 px-2 text-xs rounded-lg"
+                  >
+                    Sebelumnya
+                  </Button>
+                  <span className="font-mono text-xs px-2 font-bold text-slate-700 dark:text-slate-300">
+                    {page} / {Math.max(1, Math.ceil(filteredRows.length / limit))}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page >= Math.ceil(filteredRows.length / limit)}
+                    onClick={() => setPage(p => p + 1)}
+                    className="h-6.5 px-2 text-xs rounded-lg"
+                  >
+                    Berikutnya
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* ── VIEW 2: AKUMULASI RAPOR (TABLE BIASA DENGAN POIN & STATUS UJIAN) ── */
+            <div className="p-2">
+              <Table
+                columns={tableColumns}
+                data={pagedRows}
+                loading={rekapQuery.isLoading}
+                emptyMessage={kelasId && mapelId ? 'Tidak ada catatan presensi KBM pada bulan ini.' : 'Silakan pilih kelas dan mata pelajaran yang Anda ampu.'}
+                compact
+                className="border-none"
+                pagination={{
+                  currentPage: page,
+                  totalPages: Math.ceil(filteredRows.length / limit),
+                  totalItems: filteredRows.length,
+                  itemsPerPage: limit,
+                  onPageChange: setPage,
+                  onLimitChange: (l) => { setLimit(l); setPage(1); },
+                }}
+              />
+            </div>
+          )}
         </Suspense>
       </Card>
 
