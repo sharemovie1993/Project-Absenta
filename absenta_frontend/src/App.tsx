@@ -177,6 +177,10 @@ const NilaiEskulPage = lazy(() => import('./pages/rapor/NilaiEskulPage'));
 const RaporPklPage = lazy(() => import('./pages/rapor/RaporPklPage'));
 const RaporSettingsPage = lazy(() => import('./pages/rapor/RaporSettingsPage'));
 const CbtDashboard = lazy(() => import('./pages/cbt/Dashboard'));
+const CbtBankSoalPage = lazy(() => import('./pages/cbt/CbtBankSoalPage'));
+const CbtJadwalPage = lazy(() => import('./pages/cbt/CbtJadwalPage'));
+const CbtSesiPage = lazy(() => import('./pages/cbt/CbtSesiPage'));
+const CbtExamRoomPage = lazy(() => import('./pages/cbt/CbtExamRoomPage'));
 const TrackingSiswaPage = lazy(() => import('./pages/attendance/TrackingSiswaPage'));
 const JadwalKegiatanPage = lazy(() => import('./pages/attendance/JadwalKegiatanPage'));
 const JadwalPembinaUpacaraPage = lazy(() => import('./pages/attendance/JadwalPembinaUpacaraPage'));
@@ -1064,8 +1068,28 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/cbt/dashboard" element={
-                      <ProtectedRoute requiredCapability="academic.students.view.list">
+                      <ProtectedRoute requiredCapability={['cbt.bank.view', 'cbt.jadwal.view', 'academic.students.view.list']}>
                         <CbtDashboard />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/cbt/bank-soal" element={
+                      <ProtectedRoute requiredCapability={['cbt.bank.view', 'cbt.bank.manage']}>
+                        <CbtBankSoalPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/cbt/jadwal" element={
+                      <ProtectedRoute requiredCapability={['cbt.jadwal.view', 'cbt.jadwal.manage']}>
+                        <CbtJadwalPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/cbt/sesi" element={
+                      <ProtectedRoute requiredCapability={['cbt.sesi.monitor', 'cbt.jadwal.manage']}>
+                        <CbtSesiPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/cbt/ruang-ujian" element={
+                      <ProtectedRoute requiredCapability={['cbt.exam.take', 'core.auth.logout']}>
+                        <CbtExamRoomPage />
                       </ProtectedRoute>
                     } />
                     
