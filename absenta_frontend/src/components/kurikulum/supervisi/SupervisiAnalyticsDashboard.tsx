@@ -4,6 +4,7 @@ import { kurikulumApi } from '@/api/kurikulum.api';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Loader } from '@/components/ui/Loader';
+import { Badge } from '@/components/ui/Badge';
 import {
   ResponsiveContainer,
   LineChart,
