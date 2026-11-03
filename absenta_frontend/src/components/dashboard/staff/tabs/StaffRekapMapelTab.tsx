@@ -15,9 +15,11 @@ import {
   ChevronRight,
   Layers,
   GraduationCap,
-  Clock
+  Clock,
+  CheckCircle2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { cn } from '@/lib/utils';
 
 import { Card } from '@/components/ui/Card';
 import { Button, Input, Badge, Loader } from '@/components/ui';
@@ -426,61 +428,76 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
   return (
     <div className="space-y-3.5">
       {/* ────────────────────────────────────────────────────────────────── */}
-      {/* 1. HEADER & AUTO-SCOPED QUICK PILLS BAR                           */}
+      {/* 1. UNIFIED COMPACT CONTROL CARD (Shopee-Grade High Density)        */}
       {/* ────────────────────────────────────────────────────────────────── */}
-      <Card className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-slate-100 dark:border-slate-800/80">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
-              <BookOpen className="w-5 h-5" />
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs divide-y divide-slate-100 dark:divide-slate-800/80 overflow-hidden">
+        {/* BARIS 1: Header + Stat Mini Hairline + Pemilih Bulan */}
+        <div className="p-2.5 sm:p-3 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+          {/* Sisi Kiri: Title & Subtitle Kompak */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+              <BookOpen className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
                 Rekapitulasi Presensi Mengajar
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                Pantau kehadiran siswa khusus pada jam mata pelajaran yang Anda ampu per rombel kelas.
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
+                Kehadiran per rombel mapel yang diampu
               </p>
             </div>
           </div>
 
-          {/* Kontrol Periode: Bulan & Tahun */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">🗓️ Bulan:</span>
+          {/* Sisi Tengah / Kanan: Hairline Flat Bento Stats & Month Selector */}
+          <div className="flex flex-wrap items-center justify-between lg:justify-end gap-2.5 sm:gap-4">
+            {/* 4 Metrik Flat Hairline */}
+            <div className="flex items-center divide-x divide-slate-100 dark:divide-slate-800/80 bg-slate-50 dark:bg-slate-800/50 rounded-xl px-2 py-1 border border-slate-100 dark:border-slate-800">
+              <div className="px-2 sm:px-2.5 flex items-center gap-1.5" title="Sesi Terlaksana Bulan Ini">
+                <CalendarCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">Sesi:</span>
+                <span className="text-xs font-bold font-mono text-slate-900 dark:text-white">{stats.totalSesi}</span>
+              </div>
+              <div className="px-2 sm:px-2.5 flex items-center gap-1.5" title="Rata-rata Kehadiran Kelas">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">Rata2:</span>
+                <span className="text-xs font-bold font-mono text-emerald-600 dark:text-emerald-400">{stats.avgPresence}%</span>
+              </div>
+              <div className="px-2 sm:px-2.5 flex items-center gap-1.5" title="Siswa Perlu Perhatian Khusus (<75%)">
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">Perhatian:</span>
+                <span className="text-xs font-bold font-mono text-rose-600 dark:text-rose-400">{stats.criticalCount}</span>
+              </div>
+              <div className="px-2 sm:px-2.5 flex items-center gap-1.5" title="Total Siswa di Rombel">
+                <Users className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">Siswa:</span>
+                <span className="text-xs font-bold font-mono text-slate-900 dark:text-white">{stats.totalStudents}</span>
+              </div>
+            </div>
+
+            {/* Pemilih Periode Bulan */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[11px] font-semibold text-slate-400 hidden sm:inline">Bulan:</span>
               <Input
                 type="month"
                 value={bulan}
                 onChange={e => setBulan(e.target.value)}
-                className="h-8 w-36 rounded-lg bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-xs font-bold shadow-2xs"
+                className="h-7 w-32 rounded-lg bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-xs font-bold shadow-2xs py-0"
               />
             </div>
           </div>
         </div>
 
-        {/* Quick Switcher Shopee Action Slider (Mapel & Rombel Anda) */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-              PILIH KELAS & MAPEL YANG ANDA AMPU:
-            </span>
-            {canScroll && (
-              <span className="text-[9px] font-semibold text-slate-400 flex items-center gap-0.5 sm:hidden">
-                Geser <ChevronRight className="w-2.5 h-2.5 inline text-orange-500" />
-              </span>
-            )}
-          </div>
-
+        {/* BARIS 2: Horizontal Capsule Pill Slider (Mapel & Kelas Ramping) */}
+        <div className="px-2.5 sm:px-3 py-2 bg-slate-50/50 dark:bg-slate-800/20">
           {loadingAssignments ? (
-            <div className="h-20 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />
+            <div className="h-8 bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse" />
           ) : mapelCards.length > 0 ? (
             <div className="relative w-full">
-              {/* Scrollable Track dengan Content Peeking Affordance */}
               <div
                 ref={scrollContainerRef}
                 onScroll={handleSliderScroll}
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                className="flex items-start gap-2 sm:gap-3 overflow-x-auto no-scrollbar scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-1 px-0.5 scroll-smooth"
+                className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-0.5 scroll-smooth"
               >
                 {mapelCards.map(card => {
                   const isActive = card.mapelId === mapelId && card.kelasId === kelasId;
@@ -492,185 +509,121 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
                         setMapelId(card.mapelId);
                         setKelasId(card.kelasId);
                       }}
-                      className="group flex flex-col items-center justify-start py-1 px-0.5 rounded-2xl transition-all duration-150 text-center shrink-0 cursor-pointer w-[72px] sm:w-[80px] active:scale-95"
-                    >
-                      {/* Squircle Tile Ala Shopee (44x44px) */}
-                      <div
-                        className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center transition-all duration-150 relative mb-1.5 ${
-                          isActive
-                            ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400/50 scale-105'
-                            : 'bg-slate-50/90 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800/90 text-slate-700 dark:text-slate-200 shadow-[0_1px_2px_rgba(0,0,0,0.03)] group-hover:border-slate-200 dark:group-hover:border-slate-700 group-hover:scale-105'
-                        }`}
-                      >
-                        <GraduationCap size={22} className={`stroke-[1.8] ${isActive ? 'text-white' : 'text-indigo-600 dark:text-indigo-400'}`} />
-
-                        {/* Active Indicator Badge Ala Shopee di Pojok Kanan Atas */}
-                        {isActive && (
-                          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 text-white text-[9px] font-black flex items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-xs animate-in zoom-in-75">
-                            ✓
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Label Teks Shopee Style (Capitalize Ramping 1-baris) */}
-                      <span className={`text-[10px] sm:text-[10.5px] font-bold leading-tight block text-center line-clamp-1 max-w-[72px] sm:max-w-[80px] transition-colors ${
-                        isActive ? 'text-indigo-600 dark:text-indigo-400 font-extrabold' : 'text-slate-700 dark:text-slate-300'
-                      }`}>
-                        {card.mapelName}
-                      </span>
-
-                      {/* Sub-label Kelas */}
-                      <span className={`text-[8.5px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded-md mt-0.5 leading-tight block text-center truncate max-w-[72px] sm:max-w-[80px] ${
+                      className={cn(
+                        "group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-all duration-150 shrink-0 cursor-pointer select-none active:scale-95",
                         isActive
-                          ? 'bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-extrabold'
-                          : 'text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800/60'
-                      }`}>
+                          ? "bg-indigo-600 text-white font-bold shadow-xs ring-1 ring-indigo-500"
+                          : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium border border-slate-200/70 dark:border-slate-700/70 hover:border-indigo-200 dark:hover:border-indigo-800 hover:bg-slate-50 dark:hover:bg-slate-800/80 shadow-2xs"
+                      )}
+                    >
+                      <GraduationCap className={cn("w-3.5 h-3.5 shrink-0", isActive ? "text-white" : "text-indigo-500")} />
+                      <span className="truncate max-w-[120px]">{card.mapelName}</span>
+                      <span className={cn(
+                        "text-[10px] font-bold px-1.5 py-0.2 rounded-md leading-none",
+                        isActive ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
+                      )}>
                         {card.kelasName}
                       </span>
+                      {isActive && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300 shrink-0 animate-in zoom-in-75" />}
                     </button>
                   );
                 })}
               </div>
 
-              {/* ── Shopee Dynamic Capsule Scroll Indicator Bar (Seperti Gambar 2) ── */}
+              {/* Dynamic Capsule Scroll Indicator */}
               {canScroll && (
-                <div className="flex justify-center items-center pt-2 pb-0.5">
+                <div className="flex justify-center items-center pt-1.5">
                   <div
                     style={{ width: `${trackWidth}px` }}
-                    className="h-1 bg-slate-200 dark:bg-slate-700/80 rounded-full relative overflow-hidden"
+                    className="h-0.5 bg-slate-200 dark:bg-slate-700/80 rounded-full relative overflow-hidden"
                   >
                     <div
                       style={{
                         width: `${capsuleWidth}px`,
                         transform: `translateX(${capsuleTranslateX}px)`,
                       }}
-                      className="h-full rounded-full transition-transform duration-75 ease-out bg-orange-500 dark:bg-orange-400"
+                      className="h-full rounded-full transition-transform duration-75 ease-out bg-indigo-500 dark:bg-indigo-400"
                     />
                   </div>
                 </div>
               )}
             </div>
           ) : (
-            <div className="py-2 px-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300 text-xs font-semibold">
+            <div className="py-1.5 px-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300 text-xs font-medium">
               Belum ada data penugasan mengajar di sistem untuk akun Anda. Silakan hubungi bagian Kurikulum.
             </div>
           )}
         </div>
-      </Card>
 
-      {/* ────────────────────────────────────────────────────────────────── */}
-      {/* 2. BENTO SUMMARY METRICS STRIP                                     */}
-      {/* ────────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
-        <Card className="p-3 rounded-xl bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 shrink-0">
-            <CalendarCheck className="w-5 h-5" />
-          </div>
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Sesi Terlaksana</span>
-            <span className="text-lg font-black text-slate-900 dark:text-white font-mono">{stats.totalSesi} Sesi</span>
-          </div>
-        </Card>
+        {/* BARIS 3: Toolbar Kontrol View Mode, Search Siswa, & Ekspor */}
+        <div className="p-2 sm:p-2.5 flex flex-col md:flex-row md:items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Switcher Mode: Matriks Sesi vs Akumulasi Rapor */}
+            <div className="inline-flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 h-7.5">
+              <button
+                type="button"
+                onClick={() => setViewMode('MATRIX')}
+                className={cn(
+                  "px-2.5 py-1 text-[11px] rounded-md font-semibold transition-all cursor-pointer",
+                  viewMode === 'MATRIX'
+                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-bold"
+                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                )}
+              >
+                Matriks Sesi
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('SUMMARY')}
+                className={cn(
+                  "px-2.5 py-1 text-[11px] rounded-md font-semibold transition-all cursor-pointer",
+                  viewMode === 'SUMMARY'
+                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-bold"
+                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                )}
+              >
+                Akumulasi Rapor
+              </button>
+            </div>
 
-        <Card className="p-3 rounded-xl bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 shrink-0">
-            <TrendingUp className="w-5 h-5" />
+            {/* Input Search Siswa */}
+            <div className="relative min-w-[180px] sm:min-w-[220px] flex-1 sm:flex-initial">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Input
+                type="text"
+                placeholder="Cari siswa atau NIS..."
+                value={searchKeyword}
+                onChange={e => setSearchKeyword(e.target.value)}
+                className="h-7.5 pl-8 text-xs font-medium rounded-lg bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 shadow-2xs w-full py-0"
+              />
+            </div>
           </div>
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Rata-rata Kelas</span>
-            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono">{stats.avgPresence}%</span>
-          </div>
-        </Card>
 
-        <Card className="p-3 rounded-xl bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 shrink-0">
-            <AlertTriangle className="w-5 h-5" />
+          {/* Tombol Ekspor Excel & Cetak PDF */}
+          <div className="flex items-center gap-1.5 self-end md:self-auto">
+            <Button
+              onClick={handleExportExcel}
+              disabled={!rawRows.length}
+              variant="outline"
+              size="sm"
+              className="h-7.5 rounded-lg font-semibold text-xs px-2.5 shadow-2xs cursor-pointer border-slate-200 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-800"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+              <span>Excel</span>
+            </Button>
+            <Button
+              onClick={() => setIsPrintModalOpen(true)}
+              disabled={!rawRows.length}
+              variant="outline"
+              size="sm"
+              className="h-7.5 rounded-lg font-semibold text-xs px-2.5 shadow-2xs cursor-pointer border-rose-200 dark:border-rose-900/50 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+            >
+              <Printer className="w-3.5 h-3.5 mr-1" />
+              <span>Cetak PDF</span>
+            </Button>
           </div>
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Perhatian Khusus</span>
-            <span className="text-lg font-black text-rose-600 dark:text-rose-400 font-mono">{stats.criticalCount} Siswa</span>
-          </div>
-        </Card>
-
-        <Card className="p-3 rounded-xl bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 shrink-0">
-            <Users className="w-5 h-5" />
-          </div>
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Total Siswa</span>
-            <span className="text-lg font-black text-slate-900 dark:text-white font-mono">{stats.totalStudents} Orang</span>
-          </div>
-        </Card>
+        </div>
       </div>
-
-      {/* ────────────────────────────────────────────────────────────────── */}
-      {/* 3. TOOLBAR KONTROL AKSI & VIEW MODE                                */}
-      {/* ────────────────────────────────────────────────────────────────── */}
-      <Card className="p-3 rounded-2xl bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-2.5">
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Switcher Mode: Matriks vs Akumulasi */}
-          <div className="inline-flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 h-8">
-            <button
-              type="button"
-              onClick={() => setViewMode('MATRIX')}
-              className={`px-3 py-1 text-[10.5px] rounded-md font-bold uppercase tracking-tight transition-all cursor-pointer ${
-                viewMode === 'MATRIX'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-extrabold'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-            >
-              Matriks Sesi
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('SUMMARY')}
-              className={`px-3 py-1 text-[10.5px] rounded-md font-bold uppercase tracking-tight transition-all cursor-pointer ${
-                viewMode === 'SUMMARY'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-extrabold'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-            >
-              Akumulasi Rapor
-            </button>
-          </div>
-
-          {/* Input Search Siswa */}
-          <div className="relative min-w-[200px] flex-1 sm:flex-initial">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <Input
-              type="text"
-              placeholder="Cari siswa atau NIS..."
-              value={searchKeyword}
-              onChange={e => setSearchKeyword(e.target.value)}
-              className="h-8 pl-8 text-xs font-semibold rounded-lg bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 shadow-2xs w-full"
-            />
-          </div>
-        </div>
-
-        {/* Tombol Ekspor Excel & Cetak PDF */}
-        <div className="flex items-center gap-2 self-end md:self-auto">
-          <Button
-            onClick={handleExportExcel}
-            disabled={!rawRows.length}
-            variant="outline"
-            size="sm"
-            className="h-8 rounded-lg font-bold text-[10px] uppercase tracking-wider px-3 shadow-2xs cursor-pointer border-slate-200 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-800"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 mr-1 text-emerald-600" />
-            <span>Excel</span>
-          </Button>
-          <Button
-            onClick={() => setIsPrintModalOpen(true)}
-            disabled={!rawRows.length}
-            variant="outline"
-            size="sm"
-            className="h-8 rounded-lg font-bold text-[10px] uppercase tracking-wider px-3 shadow-2xs cursor-pointer border-rose-200 dark:border-rose-900/50 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
-          >
-            <Printer className="w-3.5 h-3.5 mr-1" />
-            <span>Cetak PDF</span>
-          </Button>
-        </div>
-      </Card>
 
       {/* ────────────────────────────────────────────────────────────────── */}
       {/* 4. TABEL REKAP PRESENSI MAPEL                                      */}
