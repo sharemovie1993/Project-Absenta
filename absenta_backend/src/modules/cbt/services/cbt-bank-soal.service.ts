@@ -20,10 +20,15 @@ export class CbtBankSoalService {
     const limit = Math.min(100, Math.max(1, Number(query.limit || 10)));
     const skip = (page - 1) * limit;
 
+    let normalizedTingkat = query.tingkat;
+    if (normalizedTingkat === '10') normalizedTingkat = 'X';
+    else if (normalizedTingkat === '11') normalizedTingkat = 'XI';
+    else if (normalizedTingkat === '12') normalizedTingkat = 'XII';
+
     const where: Prisma.CbtBankSoalWhereInput = {
       tenant_id: tenantId,
       ...(query.status ? { status: query.status } : {}),
-      ...(query.tingkat && query.tingkat !== 'SEMUA' ? { tingkat: query.tingkat } : {}),
+      ...(normalizedTingkat && normalizedTingkat !== 'SEMUA' ? { tingkat: normalizedTingkat } : {}),
       ...(query.mapel_id ? { mapel_id: query.mapel_id } : {}),
       ...(query.guru_id ? { guru_id: query.guru_id } : {}),
       ...(query.search

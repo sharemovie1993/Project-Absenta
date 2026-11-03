@@ -67,13 +67,23 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
     onFilterChange: () => setPage(1),
   });
 
+  // Normalisasi tingkat filter (misal: 10 -> 'X') agar presisi dengan schema DB CBT
+  const normalizedTingkat = useMemo(() => {
+    const raw = filter.values.tingkat;
+    if (!raw) return undefined;
+    if (raw === 10 || raw === '10' || raw === 'X') return 'X';
+    if (raw === 11 || raw === '11' || raw === 'XI') return 'XI';
+    if (raw === 12 || raw === '12' || raw === 'XII') return 'XII';
+    return String(raw);
+  }, [filter.values.tingkat]);
+
   // 2. Fetch Bank Soal via TanStack Query
   const { data, isLoading } = useQuery({
     queryKey: cbtQueryKeys.bankSoal({
       page,
       limit,
       search: filter.debouncedSearchQuery,
-      tingkat: filter.values.tingkat,
+      tingkat: normalizedTingkat,
       mapel_id: mapelId || filter.values.mapelId,
       guru_id: guruId,
     }),
@@ -82,7 +92,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
         page,
         limit,
         search: filter.debouncedSearchQuery,
-        tingkat: filter.values.tingkat,
+        tingkat: normalizedTingkat,
         mapel_id: mapelId || filter.values.mapelId,
         guru_id: guruId,
       }),
@@ -94,9 +104,13 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
   // Delete Mutation
   const deleteMutation = useMutation({
     mutationFn: (id: string) => cbtApi.deleteBankSoal(id),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Bank soal berhasil dihapus');
-      queryClient.invalidateQueries({ queryKey: cbtQueryKeys.bankSoal() });
+      await queryClient.invalidateQueries({
+        queryKey: cbtQueryKeys.bankSoal(),
+        exact: false,
+        refetchType: 'all',
+      });
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message || 'Gagal menghapus bank soal');
@@ -318,9 +332,14 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
           bankSoalToEdit={selectedBankSoal}
           defaultGuruId={guruId}
           defaultMapelId={mapelId || (filter.values.mapelId as string) || undefined}
-          onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: cbtQueryKeys.bankSoal() });
-          }}
+          onSuccess: async () => {
+            setPage(1);
+            await queryClient.invalidateQueries({
+              queryKey: cbtQueryKeys.bankSoal(),
+              exact: false,
+              refetchType: 'all',
+            });
+          },
         />
       )}
 

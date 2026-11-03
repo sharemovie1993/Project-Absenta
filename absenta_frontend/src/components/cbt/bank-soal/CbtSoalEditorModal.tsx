@@ -21,6 +21,8 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import axiosInstance from '@/lib/axiosInstance';
+import { useQueryClient } from '@tanstack/react-query';
+import { cbtQueryKeys } from '@/api/cbt.api';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
 import type { CbtSoal, OpsiJawaban } from '@/types/cbt.types';
@@ -59,6 +61,7 @@ export const CbtSoalEditorModal: React.FC<CbtSoalEditorModalProps> = ({
   nomorUrutSuggested = 1,
   onSuccess,
 }) => {
+  const queryClient = useQueryClient();
   const [nomorUrut, setNomorUrut] = useState<number>(nomorUrutSuggested);
   const [kontenPertanyaan, setKontenPertanyaan] = useState('');
   const [gambarStimulusUrl, setGambarStimulusUrl] = useState<string | null>(null);
@@ -256,6 +259,18 @@ export const CbtSoalEditorModal: React.FC<CbtSoalEditorModalProps> = ({
         await axiosInstance.post(`/cbt/bank-soal/${bankSoalId}/soal`, payload);
         toast.success('Butir soal berhasil ditambahkan ke bank soal');
       }
+
+      // 🛡️ Invalidate Cache secara agresif & refetch aktif
+      await queryClient.invalidateQueries({
+        queryKey: cbtQueryKeys.soalList(bankSoalId),
+        exact: false,
+        refetchType: 'all',
+      });
+      await queryClient.invalidateQueries({
+        queryKey: cbtQueryKeys.bankSoal(),
+        exact: false,
+        refetchType: 'all',
+      });
 
       onSuccess();
       onClose();

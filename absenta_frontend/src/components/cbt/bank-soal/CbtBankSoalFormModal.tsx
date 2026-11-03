@@ -6,11 +6,11 @@ import {
   SearchableSelect,
 } from '@/components/ui';
 import { useGuruOptions, useMapelOptions } from '@/components/common';
-import { cbtApi } from '@/api/cbt.api';
+import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import { kurikulumApi } from '@/api/kurikulum.api';
 import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CbtBankSoal } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
@@ -42,6 +42,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   defaultGuruId,
   defaultMapelId,
 }) => {
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const { isAdmin, isKurikulum } = useCapabilities();
 
@@ -182,6 +183,13 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         await cbtApi.createBankSoal(payload);
         toast.success('Bank soal berhasil dibuat');
       }
+
+      // 🛡️ Invalidate Cache secara agresif & refetch aktif (standar industri)
+      await queryClient.invalidateQueries({
+        queryKey: cbtQueryKeys.bankSoal(),
+        exact: false,
+        refetchType: 'all',
+      });
 
       onSuccess();
       onClose();

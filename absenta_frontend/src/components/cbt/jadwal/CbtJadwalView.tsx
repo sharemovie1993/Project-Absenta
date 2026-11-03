@@ -95,42 +95,42 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
   // Mutations
   const activateMutation = useMutation({
     mutationFn: (id: string) => cbtApi.activateJadwal(id),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Sesi ujian aktif & bundle soal berhasil di-cache ke Redis!');
-      queryClient.invalidateQueries({ queryKey: cbtQueryKeys.jadwal() });
+      await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.jadwal(), exact: false, refetchType: 'all' });
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal mengaktifkan ujian'),
   });
 
   const pauseMutation = useMutation({
     mutationFn: (id: string) => cbtApi.pauseJadwal(id),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Sesi ujian dijeda');
-      queryClient.invalidateQueries({ queryKey: cbtQueryKeys.jadwal() });
+      await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.jadwal(), exact: false, refetchType: 'all' });
     },
   });
 
   const completeMutation = useMutation({
     mutationFn: (id: string) => cbtApi.completeJadwal(id),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Sesi ujian diselesaikan');
-      queryClient.invalidateQueries({ queryKey: cbtQueryKeys.jadwal() });
+      await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.jadwal(), exact: false, refetchType: 'all' });
     },
   });
 
   const regenerateTokenMutation = useMutation({
     mutationFn: (id: string) => cbtApi.regenerateToken(id),
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
       toast.success(`Token baru berhasil dirilis: ${res.token_ujian}`);
-      queryClient.invalidateQueries({ queryKey: cbtQueryKeys.jadwal() });
+      await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.jadwal(), exact: false, refetchType: 'all' });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => cbtApi.updateJadwal(id, { status: 'ARCHIVED' }),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Jadwal ujian diarsipkan');
-      queryClient.invalidateQueries({ queryKey: cbtQueryKeys.jadwal() });
+      await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.jadwal(), exact: false, refetchType: 'all' });
     },
   });
 
@@ -452,9 +452,14 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
             setSelectedJadwal(null);
           }}
           jadwalToEdit={selectedJadwal}
-          onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: cbtQueryKeys.jadwal() });
-          }}
+          onSuccess: async () => {
+            setPage(1);
+            await queryClient.invalidateQueries({
+              queryKey: cbtQueryKeys.jadwal(),
+              exact: false,
+              refetchType: 'all',
+            });
+          },
         />
       )}
 

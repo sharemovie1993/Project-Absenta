@@ -5,7 +5,7 @@ import {
   Input,
   SearchableSelect,
 } from '@/components/ui';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useKelasOptions, useTahunPelajaranOptions, useSemesterOptions } from '@/components/common';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtJadwalUjian } from '@/types/cbt.types';
@@ -38,6 +38,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
   jadwalToEdit,
   onSuccess,
 }) => {
+  const queryClient = useQueryClient();
   const { options: tpOptions } = useTahunPelajaranOptions();
   const { options: semOptions } = useSemesterOptions();
   const { options: kelasOptions } = useKelasOptions();
@@ -176,6 +177,13 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
         await cbtApi.createJadwal(payload);
         toast.success('Jadwal ujian berhasil dibuat (Token 6 digit otomatis di-generate)');
       }
+
+      // 🛡️ Invalidate Cache secara agresif & refetch aktif
+      await queryClient.invalidateQueries({
+        queryKey: cbtQueryKeys.jadwal(),
+        exact: false,
+        refetchType: 'all',
+      });
 
       onSuccess();
       onClose();

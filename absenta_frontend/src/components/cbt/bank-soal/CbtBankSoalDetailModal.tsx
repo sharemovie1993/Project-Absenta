@@ -57,10 +57,18 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
   // Delete question mutation
   const deleteMutation = useMutation({
     mutationFn: (questionId: string) => cbtApi.deleteSoal(questionId),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Butir soal berhasil dihapus');
-      queryClient.invalidateQueries({ queryKey: cbtQueryKeys.soalList(bankSoal?.id || '') });
-      queryClient.invalidateQueries({ queryKey: cbtQueryKeys.bankSoal() });
+      await queryClient.invalidateQueries({
+        queryKey: cbtQueryKeys.soalList(bankSoal?.id || ''),
+        exact: false,
+        refetchType: 'all',
+      });
+      await queryClient.invalidateQueries({
+        queryKey: cbtQueryKeys.bankSoal(),
+        exact: false,
+        refetchType: 'all',
+      });
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message || 'Gagal menghapus butir soal');
@@ -333,10 +341,19 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
           bankSoalId={bankSoal.id}
           soalToEdit={soalToEdit}
           nomorUrutSuggested={soalList.length + 1}
-          onSuccess={() => {
+          onSuccess: async () => {
             refetch();
-            queryClient.invalidateQueries({ queryKey: cbtQueryKeys.bankSoal() });
-          }}
+            await queryClient.invalidateQueries({
+              queryKey: cbtQueryKeys.soalList(bankSoal?.id || ''),
+              exact: false,
+              refetchType: 'all',
+            });
+            await queryClient.invalidateQueries({
+              queryKey: cbtQueryKeys.bankSoal(),
+              exact: false,
+              refetchType: 'all',
+            });
+          },
         />
       )}
     </>

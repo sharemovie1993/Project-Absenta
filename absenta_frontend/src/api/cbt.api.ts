@@ -10,13 +10,32 @@ import type {
 // ─── Query Key Factory ──────────────────────────────────────────────────────
 export const cbtQueryKeys = {
   all: ['cbt'] as const,
-  bankSoal: (params?: Record<string, any>) => [...cbtQueryKeys.all, 'bank-soal', params] as const,
-  bankSoalDetail: (id: string) => [...cbtQueryKeys.all, 'bank-soal-detail', id] as const,
-  soalList: (bankSoalId: string) => [...cbtQueryKeys.all, 'soal-list', bankSoalId] as const,
-  jadwal: (params?: Record<string, any>) => [...cbtQueryKeys.all, 'jadwal', params] as const,
-  jadwalDetail: (id: string) => [...cbtQueryKeys.all, 'jadwal-detail', id] as const,
-  pesertaList: (jadwalId: string, params?: Record<string, any>) =>
-    [...cbtQueryKeys.all, 'peserta-list', jadwalId, params] as const,
+  bankSoal: (params?: Record<string, any>) =>
+    params !== undefined
+      ? ([...cbtQueryKeys.all, 'bank-soal', params] as const)
+      : ([...cbtQueryKeys.all, 'bank-soal'] as const),
+  bankSoalDetail: (id?: string) =>
+    id !== undefined
+      ? ([...cbtQueryKeys.all, 'bank-soal-detail', id] as const)
+      : ([...cbtQueryKeys.all, 'bank-soal-detail'] as const),
+  soalList: (bankSoalId?: string) =>
+    bankSoalId !== undefined
+      ? ([...cbtQueryKeys.all, 'soal-list', bankSoalId] as const)
+      : ([...cbtQueryKeys.all, 'soal-list'] as const),
+  jadwal: (params?: Record<string, any>) =>
+    params !== undefined
+      ? ([...cbtQueryKeys.all, 'jadwal', params] as const)
+      : ([...cbtQueryKeys.all, 'jadwal'] as const),
+  jadwalDetail: (id?: string) =>
+    id !== undefined
+      ? ([...cbtQueryKeys.all, 'jadwal-detail', id] as const)
+      : ([...cbtQueryKeys.all, 'jadwal-detail'] as const),
+  pesertaList: (jadwalId?: string, params?: Record<string, any>) =>
+    jadwalId !== undefined
+      ? params !== undefined
+        ? ([...cbtQueryKeys.all, 'peserta-list', jadwalId, params] as const)
+        : ([...cbtQueryKeys.all, 'peserta-list', jadwalId] as const)
+      : ([...cbtQueryKeys.all, 'peserta-list'] as const),
 };
 
 // ─── API Client ─────────────────────────────────────────────────────────────

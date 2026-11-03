@@ -69,9 +69,13 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   const resetMutation = useMutation({
     mutationFn: ({ jadwalId, siswaId }: { jadwalId: string; siswaId: string }) =>
       cbtApi.resetPeserta(jadwalId, siswaId),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Sesi login siswa berhasil di-reset. Siswa dapat login kembali.');
-      queryClient.invalidateQueries({ queryKey: cbtQueryKeys.pesertaList(selectedJadwalId) });
+      await queryClient.invalidateQueries({
+        queryKey: cbtQueryKeys.pesertaList(selectedJadwalId),
+        exact: false,
+        refetchType: 'all',
+      });
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal mereset sesi siswa'),
   });
