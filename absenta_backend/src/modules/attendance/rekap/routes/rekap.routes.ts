@@ -424,7 +424,7 @@ export async function rekapRoutes(fastify: any) {
     preHandler: [
       allowBothModes,
       organizationalScopeMiddleware,
-      requireCapability(['attendance.reports.view', 'academic.structures.view.list', 'academic.teaching.rekap'], { exemptRoles: [RoleName.GURU, RoleName.STAFF] }),
+      requireCapability(['attendance.reports.view', 'academic.structures.view.list', 'academic.teaching.rekap'], { exemptRoles: [RoleName.GURU] }),
       determineDataScope()
     ],
     schema: {
@@ -501,7 +501,7 @@ export async function rekapRoutes(fastify: any) {
     preHandler: [
       allowBothModes,
       organizationalScopeMiddleware,
-      requireCapability(['attendance.reports.view', 'academic.structures.view.list', 'academic.teaching.rekap'], { exemptRoles: [RoleName.GURU, RoleName.STAFF] }),
+      requireCapability(['attendance.reports.view', 'academic.structures.view.list', 'academic.teaching.rekap'], { exemptRoles: [RoleName.GURU] }),
       determineDataScope()
     ],
     schema: {

@@ -330,19 +330,23 @@ export class StatsRekapCalculator {
 
 
   async logActivity(userId: string, tenantId: string, action: string, entityId?: string) {
-    await prisma.activityLog.create({
-      data: {
-        tenant_id: tenantId,
-        user_id: userId,
-        action,
-        entity: 'RekapAbsensi',
-        entity_id: entityId || null,
-        metadata: JSON.stringify({
-          description: `User accessed ${action}`,
-          timestamp: new Date().toISOString(),
-        }),
-      },
-    });
+    try {
+      await prisma.activityLog.create({
+        data: {
+          tenant_id: tenantId,
+          user_id: userId,
+          action,
+          entity: 'RekapAbsensi',
+          entity_id: entityId || null,
+          metadata: JSON.stringify({
+            description: `User accessed ${action}`,
+            timestamp: new Date().toISOString(),
+          }),
+        },
+      });
+    } catch (err: any) {
+      // Non-blocking telemetry / audit log error
+    }
   }
 
   async getLeaderboard(tenantId: string, limit: number = 10) {
