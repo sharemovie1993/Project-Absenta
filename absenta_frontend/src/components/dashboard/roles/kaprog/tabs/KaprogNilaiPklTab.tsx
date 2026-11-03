@@ -49,7 +49,7 @@ export const KaprogNilaiPklTab: React.FC<KaprogNilaiPklTabProps> = React.memo(({
         <NilaiPklView
           hideScopeBanner={true}
           hideHeaderStats={false}
-          hideCetakRapor={false}
+          hideCetakRapor={true}
           jurusanId={jurusanId}
           jurusanNama={jurusanNama}
           tahunPelajaranId={tahunPelajaranId}

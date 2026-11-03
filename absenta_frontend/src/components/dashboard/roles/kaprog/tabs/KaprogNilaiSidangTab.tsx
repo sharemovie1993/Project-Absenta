@@ -1,15 +1,10 @@
-import React, { useState, Suspense, lazy } from 'react';
-import { UserCheck, ShieldCheck, Sparkles, GraduationCap } from 'lucide-react';
-import { Button, Loader } from '@/components/ui';
+import React, { Suspense, lazy } from 'react';
+import { GraduationCap } from 'lucide-react';
 import { GuruProduktifItem } from '../types';
 
-// Code-splitting heavy universal view & modal to reduce initial tab bundle (Pilar 21B & TBT Optimization)
+// Code-splitting heavy universal view to reduce initial tab bundle (Pilar 21B & TBT Optimization)
 const NilaiPklView = lazy(() =>
   import('@/components/hubin/nilai-pkl/NilaiPklView').then((m) => ({ default: m.NilaiPklView }))
-);
-
-const KaprogPlotingSidangModal = lazy(() =>
-  import('../modals/KaprogPlotingSidangModal').then((m) => ({ default: m.KaprogPlotingSidangModal }))
 );
 
 export interface KaprogNilaiSidangTabProps {
@@ -25,10 +20,7 @@ export const KaprogNilaiSidangTab: React.FC<KaprogNilaiSidangTabProps> = React.m
   jurusanNama = 'Kejuruan',
   tahunPelajaranId,
   semesterId,
-  guruProduktifList = [],
 }) => {
-  const [isPlotingModalOpen, setIsPlotingModalOpen] = useState(false);
-
   return (
     <div className="space-y-4">
       {/* ── Action Header ala Kaprog ── */}
@@ -46,15 +38,6 @@ export const KaprogNilaiSidangTab: React.FC<KaprogNilaiSidangTabProps> = React.m
             </p>
           </div>
         </div>
-
-        <Button
-          type="button"
-          onClick={() => setIsPlotingModalOpen(true)}
-          className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer h-9 px-3.5"
-        >
-          <UserCheck size={14} className="mr-1.5" />
-          Ploting Penguji Sidang
-        </Button>
       </div>
 
       <Suspense
@@ -68,7 +51,7 @@ export const KaprogNilaiSidangTab: React.FC<KaprogNilaiSidangTabProps> = React.m
         <NilaiPklView
           hideScopeBanner={true}
           hideHeaderStats={false}
-          hideCetakRapor={false}
+          hideCetakRapor={true}
           jurusanId={jurusanId}
           jurusanNama={jurusanNama}
           tahunPelajaranId={tahunPelajaranId}
@@ -79,21 +62,6 @@ export const KaprogNilaiSidangTab: React.FC<KaprogNilaiSidangTabProps> = React.m
           className="w-full"
         />
       </Suspense>
-
-      {/* Ploting Penguji Sidang Modal */}
-      {isPlotingModalOpen && (
-        <Suspense fallback={null}>
-          <KaprogPlotingSidangModal
-            isOpen={isPlotingModalOpen}
-            onClose={() => setIsPlotingModalOpen(false)}
-            jurusanId={jurusanId}
-            jurusanNama={jurusanNama}
-            tahunPelajaranId={tahunPelajaranId}
-            semesterId={semesterId}
-            guruProduktifList={guruProduktifList}
-          />
-        </Suspense>
-      )}
     </div>
   );
 });

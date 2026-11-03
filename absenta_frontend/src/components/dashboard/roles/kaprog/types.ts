@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type KaprogTabId = 'beranda' | 'siswa' | 'prestasi' | 'pkl' | 'ploting_pkl' | 'presensi_pkl' | 'nilai_pkl' | 'sidang_pkl' | 'kehadiran' | 'pelanggaran' | 'guru' | 'sarana' | 'ukk' | 'rapor';
+export type KaprogTabId = 'beranda' | 'siswa' | 'prestasi' | 'pkl' | 'ploting_pkl' | 'presensi_pkl' | 'nilai_pkl' | 'ploting_penguji' | 'sidang_pkl' | 'kehadiran' | 'pelanggaran' | 'guru' | 'sarana' | 'ukk' | 'rapor';
 
 export type KaprogCategory = 'jurusan' | 'pkl' | 'pembinaan' | 'asesmen';
 
