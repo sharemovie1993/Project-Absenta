@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, Suspense, lazy } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   LayoutDashboard,
   Users,
@@ -16,23 +16,27 @@ import {
   SlidersHorizontal,
   RefreshCw,
   Award,
-  ChevronRight,
-  Sparkles,
   Printer,
-  ChevronDown,
-  ChevronUp,
+  ArrowLeft,
+  ChevronRight,
+  Database,
+  Lock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { Button, Loader } from '@/components/ui';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAuthStore } from '@/store/authStore';
+import { getDashboardOverview, getAttendanceChart } from '@/api/dashboard.api';
+import { getAcademicStats } from '@/api/academic-stats.api';
+import toast from 'react-hot-toast';
 import { 
   AdminTabId, 
   AdminCategory, 
   AdminNavTabItem, 
   AdminCategoryConfig 
 } from './admin/types';
+import { AdminDashboardSkeleton } from './admin/AdminDashboardSkeleton';
 
 // Tab Subcomponents
 import { AdminRingkasanTab } from './admin/tabs/AdminRingkasanTab';
@@ -97,7 +101,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
     return 'ringkasan';
   });
 
-  // Keep-Alive Cache: Instant 0ms Tab Switching
+  // Keep-Alive Cache: Catat tab yang pernah dibuka agar TIDAK DIHANCURKAN saat pindah tab (Instant 0ms Switch)
   const [visitedTabs, setVisitedTabs] = useState<Set<AdminTabId>>(() => new Set([activeTab]));
 
   useEffect(() => {
@@ -134,25 +138,54 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
     [searchParams, setSearchParams]
   );
 
-  // Academic Filter SSOT
+  // Academic Filter SSOT (Sama persis dengan Kurikulum & Kaprog)
   const academicFilter = useAcademicFilter({
     enableTp: true,
     enableSemester: true,
   });
 
+  const semNama = academicFilter.selectedSemesterNama || academicFilter.activeSemester?.nama_semester?.replace(/\s*⭐\s*/g, '').trim() || '';
+  const tpTahun = academicFilter.selectedTahunPelajaranNama || academicFilter.activeTpYear?.tahun || '';
+
+  // Data Fetching dengan React Query (Pilar 31 Optimasi Data Fetching)
+  const { data: overviewRes, isLoading: isOverviewLoading } = useQuery({
+    queryKey: ['admin-overview-stats'],
+    queryFn: () => getDashboardOverview(),
+    staleTime: 60 * 1000,
+  });
+
+  const { data: chartRes, isLoading: isChartLoading } = useQuery({
+    queryKey: ['admin-attendance-chart'],
+    queryFn: () => getAttendanceChart(),
+    staleTime: 60 * 1000,
+  });
+
+  const { data: academicRes, isLoading: isAcademicLoading } = useQuery({
+    queryKey: ['academic-stats'],
+    queryFn: () => getAcademicStats(),
+    staleTime: 60 * 1000,
+  });
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await queryClient.invalidateQueries();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin-overview-stats'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-attendance-chart'] }),
+        queryClient.invalidateQueries({ queryKey: ['academic-stats'] }),
+      ]);
+      toast.success('Data dashboard admin berhasil diperbarui');
+    } catch {
+      toast.error('Gagal memperbarui data');
     } finally {
       setIsRefreshing(false);
     }
   };
 
-  // ── Kategorisasi Navigasi Admin Berstandar Industri ──
+  // Nav Tabs Definition (Dikategorisasi berdasarkan Separation of Concerns ala Kurikulum & Kaprog)
   const navTabs: AdminNavTabItem[] = useMemo(
     () => [
-      // Kategori 1: PUSAT KONTROL & ANALITIK
+      // ⚡ KATEGORI 1: PUSAT KONTROL & AUDIT
       {
         id: 'ringkasan',
         label: 'Ringkasan Eksekutif',
@@ -163,12 +196,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
       {
         id: 'audit',
         label: 'Audit & Log Aktivitas',
-        shortLabel: 'Audit Log',
+        shortLabel: 'Log Audit',
         category: 'kontrol',
         icon: History,
       },
 
-      // Kategori 2: DATA MASTER & AKADEMIK
+      // ⚙️ KATEGORI 2: DATA MASTER SEKOLAH
       {
         id: 'siswa',
         label: 'Data Master Siswa',
@@ -178,15 +211,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
       },
       {
         id: 'guru',
-        label: 'Data Guru & Tendik',
-        shortLabel: 'Guru',
+        label: 'Data Guru & PTK',
+        shortLabel: 'Guru & PTK',
         category: 'master',
         icon: GraduationCap,
       },
       {
         id: 'kelas',
         label: 'Rombel & Kelas',
-        shortLabel: 'Kelas',
+        shortLabel: 'Rombel',
         category: 'master',
         icon: Layers,
       },
@@ -212,11 +245,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
         icon: Calendar,
       },
 
-      // Kategori 3: HAK AKSES & PENGGUNA
+      // 🔒 KATEGORI 3: HAK AKSES & AKUN
       {
         id: 'users',
         label: 'Akun Pengguna',
-        shortLabel: 'Pengguna',
+        shortLabel: 'Akun User',
         category: 'keamanan',
         icon: Key,
       },
@@ -228,10 +261,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
         icon: Award,
       },
 
-      // Kategori 4: SISTEM & PENGATURAN
+      // 🛠️ KATEGORI 4: SISTEM & DOKUMEN
       {
         id: 'sekolah',
-        label: 'Identitas Sekolah & Kop',
+        label: 'Kop & Profil Sekolah',
         shortLabel: 'Kop Surat',
         category: 'sistem',
         icon: Printer,
@@ -247,6 +280,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
     []
   );
 
+  // Kategori Menu Sidebar
   const categories: AdminCategoryConfig[] = useMemo(
     () => [
       {
@@ -262,7 +296,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
         label: 'Data Master',
         badge: 'Akademik',
         badgeColor: 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300',
-        icon: Layers,
+        icon: Database,
         iconColor: 'text-blue-600 dark:text-blue-400',
       },
       {
@@ -270,7 +304,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
         label: 'Hak Akses & Akun',
         badge: 'IAM',
         badgeColor: 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300',
-        icon: ShieldCheck,
+        icon: Lock,
         iconColor: 'text-purple-600 dark:text-purple-400',
       },
       {
@@ -285,59 +319,92 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
     []
   );
 
-  return (
-    <div className="space-y-4">
-      {/* ── 1. Top Unified Academic Filter Toolbar (Sticky Top SSOT) ── */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
-        {/* Mobile Filter Toggle */}
-        <div className="p-3 sm:p-3.5 flex items-center justify-between sm:hidden border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <ShieldCheck size={16} className="text-indigo-600 dark:text-indigo-400" />
-            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-              Konteks Akademik Admin
-            </span>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowMobileFilter(!showMobileFilter)}
-            className="text-xs font-semibold h-8 px-2.5 rounded-xl gap-1 text-slate-600 dark:text-slate-300"
-          >
-            <span>{showMobileFilter ? 'Tutup Filter' : 'Buka Filter'}</span>
-            {showMobileFilter ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </Button>
-        </div>
+  const isInitialLoading = isOverviewLoading && isAcademicLoading;
 
-        {/* Filter Toolbar Body */}
-        <div className={cn('p-3 sm:p-3.5', !showMobileFilter && 'hidden sm:block')}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <AcademicFilterToolbar
-              filter={academicFilter}
-              showActiveBadge={true}
-              compact={true}
-              className="border-0 shadow-none p-0 bg-transparent"
-            />
-            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="h-9 px-3 rounded-xl gap-1.5 border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300"
-              >
-                <RefreshCw size={13} className={cn(isRefreshing && 'animate-spin text-indigo-600')} />
-                <span className="text-xs font-bold">Segarkan</span>
-              </Button>
+  if (isInitialLoading) {
+    return <AdminDashboardSkeleton />;
+  }
+
+  return (
+    <div className="space-y-4 w-full max-w-full min-w-0">
+      {/* ── 1. Header Toolbar Mobile & Desktop (Konsep Standar Kurikulum & Kaprog) ── */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xs">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <button
+              type="button"
+              onClick={() => {
+                if (window.history.state && window.history.state.idx > 0) {
+                  navigate(-1);
+                } else {
+                  navigate('/dashboard?tab=ringkasan');
+                }
+              }}
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition-all shrink-0 cursor-pointer"
+              title="Kembali ke Portal"
+              aria-label="Kembali"
+            >
+              <ArrowLeft size={18} className="stroke-[2.2]" />
+            </button>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100 truncate">
+                  Dashboard Administrator
+                </h1>
+                <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium truncate hidden sm:inline">
+                  &bull; {tpTahun ? `TP ${tpTahun}` : ''} {semNama}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate hidden md:block">
+                Pusat Kendali Data Master, Hak Akses Akun, & Operasional Sekolah
+              </p>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* ── 2. Mobile Horizontal Navigation Bar (Shopee-Grade Mobile Hub) ── */}
-      <div className="lg:hidden bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-2 shadow-xs overflow-x-auto no-scrollbar">
-        <div className="flex items-center gap-1.5 min-w-max">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Segarkan Data"
+            >
+              <RefreshCw size={13} className={cn(isRefreshing && 'animate-spin')} />
+              <span className="hidden sm:inline">Segarkan</span>
+            </button>
+
+            {/* Tombol Toggle Filter Periode (Khusus Mobile) */}
+            <button
+              type="button"
+              onClick={() => setShowMobileFilter((prev) => !prev)}
+              className={cn(
+                'lg:hidden p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer',
+                showMobileFilter
+                  ? 'bg-indigo-50 text-indigo-700 border-indigo-300 dark:bg-indigo-950/60 dark:border-indigo-800 dark:text-indigo-300'
+                  : 'bg-white dark:bg-slate-800 border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+              )}
+              title="Atur Periode Akademik"
+            >
+              <SlidersHorizontal size={13} />
+              <span className="hidden sm:inline">Periode</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Collapsible Academic Filter Toolbar Mobile */}
+        {showMobileFilter && (
+          <div className="lg:hidden mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2 duration-200">
+            <AcademicFilterToolbar
+              {...academicFilter.toolbarProps}
+              variant="compact"
+              className="w-full"
+            />
+          </div>
+        )}
+
+        {/* Mobile Horizontal Subtab Scroller (Shopee-Grade Horizontal Scroller) */}
+        <div className="lg:hidden mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 overflow-x-auto no-scrollbar flex items-center gap-1.5 pb-0.5">
           {navTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -347,16 +414,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
                 type="button"
                 onClick={() => handleTabSelect(tab.id)}
                 className={cn(
-                  'flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
+                  'px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all shrink-0 cursor-pointer',
                   isActive
                     ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-800'
                 )}
               >
-                <Icon size={14} />
+                <Icon size={13} className="shrink-0" />
                 <span>{tab.shortLabel || tab.label}</span>
-                {tab.badge && (
-                  <span className={cn('ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-black', tab.badgeColor || 'bg-rose-500 text-white')}>
+                {tab.badge !== undefined && (
+                  <span
+                    className={cn(
+                      'px-1.5 py-0.2 rounded-full text-[9px] font-bold',
+                      isActive ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300'
+                    )}
+                  >
                     {tab.badge}
                   </span>
                 )}
@@ -366,116 +438,147 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
         </div>
       </div>
 
-      {/* ── 3. Desktop Main Dashboard Layout (Sidebar + Content Workspace) ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-        {/* Left Sidebar Navigation (Desktop) */}
-        <aside className="hidden lg:block lg:col-span-3 space-y-3 sticky top-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 shadow-xs space-y-4">
-            {/* Header Profil Singkat Admin */}
-            <div className="flex items-center gap-3 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-teal-600 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
-                <ShieldCheck size={20} />
+      {/* ── 2. Desktop 2-Column Layout (>= lg: Left Sidebar Controls + Wide Main Content Canvas) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-6 items-start">
+        {/* Left Column: Sidebar Controls (Desktop sticky) */}
+        <aside className="hidden lg:block sticky top-20 space-y-3">
+          {/* Identitas Admin Ringkas & Minimalis */}
+          <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-xs tracking-wider shrink-0 overflow-hidden shadow-xs">
+                <ShieldCheck className="w-5 h-5" />
               </div>
-              <div className="min-w-0">
-                <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
-                  Administrator Sekolah
-                </div>
-                <div className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 truncate">
-                  Pusat Kendali Sistem
-                </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block leading-tight">
+                  Pusat Kendali
+                </span>
+                <h2 className="text-sm font-black text-slate-900 dark:text-slate-100 tracking-wider truncate uppercase">
+                  Administrator
+                </h2>
               </div>
             </div>
 
-            {/* Categorized Nav Groups */}
-            <nav className="space-y-4">
-              {categories.map((cat) => {
-                const categoryTabs = navTabs.filter((t) => t.category === cat.id);
-                if (categoryTabs.length === 0) return null;
-
-                const CatIcon = cat.icon;
-
-                return (
-                  <div key={cat.id} className="space-y-1">
-                    <div className="px-2.5 py-1 flex items-center justify-between text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                      <div className="flex items-center gap-1.5">
-                        <CatIcon size={12} className={cat.iconColor} />
-                        <span>{cat.label}</span>
-                      </div>
-                      {cat.badge && (
-                        <span className={cn('px-1.5 py-0.2 rounded text-[9.5px] font-semibold', cat.badgeColor)}>
-                          {cat.badge}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="space-y-0.5">
-                      {categoryTabs.map((tab) => {
-                        const Icon = tab.icon;
-                        const isActive = activeTab === tab.id;
-
-                        return (
-                          <button
-                            key={tab.id}
-                            type="button"
-                            onClick={() => handleTabSelect(tab.id)}
-                            className={cn(
-                              'w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer group text-left',
-                              isActive
-                                ? 'bg-indigo-600 text-white shadow-xs'
-                                : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-indigo-600 dark:hover:text-indigo-400'
-                            )}
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <Icon
-                                size={15}
-                                className={cn(
-                                  isActive
-                                    ? 'text-white'
-                                    : 'text-slate-400 dark:text-slate-500 group-hover:text-indigo-600 transition-colors'
-                                )}
-                              />
-                              <span className="truncate">{tab.label}</span>
-                            </div>
-                            {tab.badge && (
-                              <span
-                                className={cn(
-                                  'px-1.5 py-0.2 rounded-full text-[10px] font-black shrink-0',
-                                  tab.badgeColor || (isActive ? 'bg-white text-indigo-700' : 'bg-rose-500 text-white')
-                                )}
-                              >
-                                {tab.badge}
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </nav>
+            {/* Badge Info Periode */}
+            <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+              <span className="font-medium">Periode Aktif</span>
+              <span className="font-bold text-slate-700 dark:text-slate-200 text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md truncate max-w-[120px]">
+                {tpTahun ? `TP ${tpTahun}` : 'Aktif'}
+              </span>
+            </div>
           </div>
+
+          {/* Academic Filter Toolbar (Sidebar Variant SSOT) */}
+          <AcademicFilterToolbar
+            {...academicFilter.toolbarProps}
+            variant="sidebar"
+          />
+
+          {/* Navigasi Menu Vertikal Terkelompok (Separation of Concerns ala Kurikulum & Kaprog) */}
+          <nav className="p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2.5">
+            {categories.map((cat, idx) => {
+              const catTabs = navTabs.filter((t) => t.category === cat.id);
+              if (catTabs.length === 0) return null;
+              const CatIcon = cat.icon;
+
+              return (
+                <React.Fragment key={cat.id}>
+                  {idx > 0 && (
+                    <div className="border-t border-slate-100 dark:border-slate-800/80 mx-1.5" />
+                  )}
+
+                  <div className="space-y-0.5">
+                    {/* Header Kategori */}
+                    <div className="px-2.5 pt-1 pb-1 flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                      <span className={cn('flex items-center gap-1.5', cat.iconColor)}>
+                        <CatIcon className="w-3 h-3" />
+                        {cat.label}
+                      </span>
+                      <span className={cn('text-[9px] px-1.5 py-0.2 rounded font-bold', cat.badgeColor)}>
+                        {cat.badge}
+                      </span>
+                    </div>
+
+                    {/* Tombol Sub-tab dalam Kategori */}
+                    {catTabs.map((tab) => {
+                      const Icon = tab.icon;
+                      const isActive = activeTab === tab.id;
+
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => handleTabSelect(tab.id)}
+                          className={cn(
+                            'w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left',
+                            isActive
+                              ? 'bg-indigo-600 text-white shadow-xs font-bold'
+                              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                          )}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Icon className="w-4 h-4 shrink-0" />
+                            <span className="truncate">{tab.label}</span>
+                          </div>
+
+                          {tab.badge !== undefined && (
+                            <span
+                              className={cn(
+                                'px-2 py-0.5 rounded-full text-[10px] font-bold min-w-5 text-center transition-colors shrink-0',
+                                isActive
+                                  ? 'bg-white/20 text-white'
+                                  : 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300'
+                              )}
+                            >
+                              {tab.badge}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </React.Fragment>
+              );
+            })}
+          </nav>
         </aside>
 
-        {/* Right Main Content Workspace (9 Cols Desktop) */}
-        <main className="col-span-1 lg:col-span-9 space-y-4 min-w-0">
+        {/* Right Column: Main Content Canvas */}
+        <main className="min-w-0 space-y-4">
           {/* TAB 1: RINGKASAN EKSEKUTIF */}
           {visitedTabs.has('ringkasan') && (
             <div
-              key="tab-ringkasan"
-              className={cn('w-full', activeTab === 'ringkasan' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              role="tabpanel"
+              aria-hidden={activeTab !== 'ringkasan'}
+              className={cn('w-full min-w-0', activeTab === 'ringkasan' ? 'block' : 'hidden')}
             >
-              <AdminRingkasanTab user={currentUser} onNavigateSubtab={handleTabSelect} />
+              <AdminRingkasanTab
+                user={currentUser}
+                stats={overviewRes?.data}
+                academicStats={academicRes?.data}
+                chartData={chartRes?.data}
+                loading={isOverviewLoading || isAcademicLoading}
+                tpTahun={tpTahun}
+                semNama={semNama}
+                onNavigateSubtab={handleTabSelect}
+              />
             </div>
           )}
 
           {/* TAB 2: AUDIT & LOG AKTIVITAS */}
           {visitedTabs.has('audit') && (
             <div
-              key="tab-audit"
-              className={cn('w-full', activeTab === 'audit' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              role="tabpanel"
+              aria-hidden={activeTab !== 'audit'}
+              className={cn('w-full min-w-0', activeTab === 'audit' ? 'block' : 'hidden')}
             >
-              <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400"><Loader /></div>}>
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Log Audit...</span>
+                  </div>
+                }
+              >
                 <StaffActivityLogPage />
               </Suspense>
             </div>
@@ -484,22 +587,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
           {/* TAB 3: DATA MASTER SISWA */}
           {visitedTabs.has('siswa') && (
             <div
-              key="tab-siswa"
-              className={cn('w-full', activeTab === 'siswa' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              role="tabpanel"
+              aria-hidden={activeTab !== 'siswa'}
+              className={cn('w-full min-w-0', activeTab === 'siswa' ? 'block' : 'hidden')}
             >
-              <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400"><Loader /></div>}>
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Master Siswa...</span>
+                  </div>
+                }
+              >
                 <SiswaPage />
               </Suspense>
             </div>
           )}
 
-          {/* TAB 4: DATA MASTER GURU & TENDIK */}
+          {/* TAB 4: DATA GURU & TENDIK */}
           {visitedTabs.has('guru') && (
             <div
-              key="tab-guru"
-              className={cn('w-full', activeTab === 'guru' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              role="tabpanel"
+              aria-hidden={activeTab !== 'guru'}
+              className={cn('w-full min-w-0', activeTab === 'guru' ? 'block' : 'hidden')}
             >
-              <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400"><Loader /></div>}>
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Master Guru & Tendik...</span>
+                  </div>
+                }
+              >
                 <GuruPage />
               </Suspense>
             </div>
@@ -508,22 +627,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
           {/* TAB 5: ROMBEL & KELAS */}
           {visitedTabs.has('kelas') && (
             <div
-              key="tab-kelas"
-              className={cn('w-full', activeTab === 'kelas' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              role="tabpanel"
+              aria-hidden={activeTab !== 'kelas'}
+              className={cn('w-full min-w-0', activeTab === 'kelas' ? 'block' : 'hidden')}
             >
-              <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400"><Loader /></div>}>
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Data Kelas & Rombel...</span>
+                  </div>
+                }
+              >
                 <KelasPage />
               </Suspense>
             </div>
           )}
 
-          {/* TAB 6: PROGRAM & KONSENTRASI KEAHLIAN */}
+          {/* TAB 6: PROGRAM KEAHLIAN / JURUSAN */}
           {visitedTabs.has('jurusan') && (
             <div
-              key="tab-jurusan"
-              className={cn('w-full', activeTab === 'jurusan' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              role="tabpanel"
+              aria-hidden={activeTab !== 'jurusan'}
+              className={cn('w-full min-w-0', activeTab === 'jurusan' ? 'block' : 'hidden')}
             >
-              <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400"><Loader /></div>}>
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Program Keahlian...</span>
+                  </div>
+                }
+              >
                 <JurusanPage />
               </Suspense>
             </div>
@@ -532,22 +667,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
           {/* TAB 7: MATA PELAJARAN */}
           {visitedTabs.has('mapel') && (
             <div
-              key="tab-mapel"
-              className={cn('w-full', activeTab === 'mapel' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              role="tabpanel"
+              aria-hidden={activeTab !== 'mapel'}
+              className={cn('w-full min-w-0', activeTab === 'mapel' ? 'block' : 'hidden')}
             >
-              <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400"><Loader /></div>}>
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Kurikulum Mata Pelajaran...</span>
+                  </div>
+                }
+              >
                 <MapelPage />
               </Suspense>
             </div>
           )}
 
-          {/* TAB 8: TAHUN PELAJARAN & SEMESTER */}
+          {/* TAB 8: TAHUN PELAJARAN */}
           {visitedTabs.has('tahun_pelajaran') && (
             <div
-              key="tab-tahun_pelajaran"
-              className={cn('w-full', activeTab === 'tahun_pelajaran' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              role="tabpanel"
+              aria-hidden={activeTab !== 'tahun_pelajaran'}
+              className={cn('w-full min-w-0', activeTab === 'tahun_pelajaran' ? 'block' : 'hidden')}
             >
-              <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400"><Loader /></div>}>
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Tahun Pelajaran & Semester...</span>
+                  </div>
+                }
+              >
                 <TahunPelajaranPage />
               </Suspense>
             </div>
@@ -556,22 +707,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
           {/* TAB 9: AKUN PENGGUNA */}
           {visitedTabs.has('users') && (
             <div
-              key="tab-users"
-              className={cn('w-full', activeTab === 'users' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              role="tabpanel"
+              aria-hidden={activeTab !== 'users'}
+              className={cn('w-full min-w-0', activeTab === 'users' ? 'block' : 'hidden')}
             >
-              <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400"><Loader /></div>}>
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Manajemen Akun Pengguna...</span>
+                  </div>
+                }
+              >
                 <UserPage />
               </Suspense>
             </div>
           )}
 
-          {/* TAB 10: STRUKTUR ORGANISASI & HAK AKSES */}
+          {/* TAB 10: STRUKTUR ORGANISASI */}
           {visitedTabs.has('roles') && (
             <div
-              key="tab-roles"
-              className={cn('w-full', activeTab === 'roles' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              role="tabpanel"
+              aria-hidden={activeTab !== 'roles'}
+              className={cn('w-full min-w-0', activeTab === 'roles' ? 'block' : 'hidden')}
             >
-              <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400"><Loader /></div>}>
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Struktur Organisasi...</span>
+                  </div>
+                }
+              >
                 <StrukturOrganisasiPage />
               </Suspense>
             </div>
@@ -580,22 +747,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
           {/* TAB 11: IDENTITAS SEKOLAH & KOP SURAT */}
           {visitedTabs.has('sekolah') && (
             <div
-              key="tab-sekolah"
-              className={cn('w-full', activeTab === 'sekolah' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              role="tabpanel"
+              aria-hidden={activeTab !== 'sekolah'}
+              className={cn('w-full min-w-0', activeTab === 'sekolah' ? 'block' : 'hidden')}
             >
-              <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400"><Loader /></div>}>
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Format Kop Surat & Cetak Berkas...</span>
+                  </div>
+                }
+              >
                 <CetakBerkasPage />
               </Suspense>
             </div>
           )}
 
-          {/* TAB 12: PENGATURAN SISTEM & WHATSAPP */}
+          {/* TAB 12: PENGATURAN SISTEM */}
           {visitedTabs.has('pengaturan') && (
             <div
-              key="tab-pengaturan"
-              className={cn('w-full', activeTab === 'pengaturan' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              role="tabpanel"
+              aria-hidden={activeTab !== 'pengaturan'}
+              className={cn('w-full min-w-0', activeTab === 'pengaturan' ? 'block' : 'hidden')}
             >
-              <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400"><Loader /></div>}>
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Pengaturan Sistem...</span>
+                  </div>
+                }
+              >
                 <SettingsPage />
               </Suspense>
             </div>
@@ -605,6 +788,3 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
     </div>
   );
 };
-
-AdminDashboard.displayName = 'AdminDashboard';
-export default AdminDashboard;
