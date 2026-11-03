@@ -498,7 +498,9 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
                     pengujiGuruId={effectiveGuruId}
                     isPengujiOnly={true}
                     hideScopeBanner={true}
-                    hideHeaderStats={false}
+                    hideHeaderStats={true}
+                    hideCetakRapor={true}
+                    hideLocalFilters={true}
                     className="w-full"
                   />
                 </Suspense>

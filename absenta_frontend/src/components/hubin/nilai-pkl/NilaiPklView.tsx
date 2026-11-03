@@ -97,15 +97,20 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
   // Role Scoping & Multi-Tenant Isolation
   const { user } = useAuthStore();
   const tenantId = user?.tenant_id || 'default';
-  const { can, isKaprog, kaprogJurusan, isWaliKelas, walikelasKelas, activeGuruId: capActiveGuruId, isHubin } = useCapabilities();
+  const { can, isKaprog: capIsKaprog, kaprogJurusan, isWaliKelas: capIsWaliKelas, walikelasKelas, activeGuruId: capActiveGuruId, isHubin } = useCapabilities();
+
+  // Mode Penguji Sidang Murni: Abaikan hak Kaprog/Wali Kelas agar antarmuka fokus 100% sebagai penguji
+  const isKaprog = isPengujiOnly ? false : capIsKaprog;
+  const isWaliKelas = isPengujiOnly ? false : capIsWaliKelas;
 
   // Priority to explicit prop
-  const effectiveJurusanId = propJurusanId || (isKaprog && kaprogJurusan?.id ? kaprogJurusan.id : undefined);
+  const effectiveJurusanId = isPengujiOnly ? undefined : (propJurusanId || (isKaprog && kaprogJurusan?.id ? kaprogJurusan.id : undefined));
   const effectiveJurusanNama = propJurusanNama || kaprogJurusan?.nama || 'Kejuruan';
   const isJurusanScoped = Boolean(effectiveJurusanId);
 
-  const isPrivilegedHubin = !readOnly && (can('hubin.partners.manage') || user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN' || can('hubin.pkl.manage') || isKaprog || isHubin || Boolean(propJurusanId));
-  const canManageAll = isPrivilegedHubin || isWaliKelas;
+  const isPrivilegedHubin = !isPengujiOnly && !readOnly && (can('hubin.partners.manage') || user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN' || can('hubin.pkl.manage') || isKaprog || isHubin || Boolean(propJurusanId));
+  const canManageAll = !isPengujiOnly && (isPrivilegedHubin || isWaliKelas);
+  const effectiveHideCetakRapor = hideCetakRapor || isPengujiOnly;
   
   const typedUser = user as { guru_profile?: { id?: string }; guru_id?: string; Guru?: { id?: string } } | null;
   const activeGuruId = propGuruId || capActiveGuruId || typedUser?.guru_profile?.id || typedUser?.guru_id || typedUser?.Guru?.id || null;
@@ -309,7 +314,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
     if (guidanceScope === 'ALL' && isWaliKelas && !isPrivilegedHubin && walikelasKelas?.id && !effectiveJurusanId) {
       filtered = filtered.filter((s) => s.kelas_id === walikelasKelas.id);
     }
-    if (guidanceScope === 'MY_GUIDANCE' && activeGuruId && !propPengujiGuruId) {
+    if (guidanceScope === 'MY_GUIDANCE' && activeGuruId && !propPengujiGuruId && !isPengujiOnly) {
       filtered = filtered.filter((s) => s.pembimbing_id === activeGuruId);
     }
     if (propPengujiGuruId || isPengujiOnly) {
@@ -554,57 +559,59 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
           </div>
         )}
 
-        {/* Unified Control Toolbar Container */}
-        <PklUnifiedToolbar
-          selectedTp={selectedTp}
-          selectedSemester={selectedSemester}
-          setSelectedTp={setSelectedTp}
-          setSelectedSemester={setSelectedSemester}
-          tpOptions={tpOptions}
-          semesterOptions={semesterOptions}
-          isLoadingTp={isLoadingTp}
-          isLoadingSem={isLoadingSem}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          tabs={tabs}
-          canViewScheme={canViewScheme}
-          canEditScheme={canEditScheme}
-          isCompositeMode={isCompositeMode}
-          effectiveSettings={effectiveSettings ? {
-            assessmentMode: effectiveSettings.assessmentMode || 'DUDI_ONLY',
-            weightDudi: effectiveSettings.weightDudi ?? 70,
-            weightLaporan: effectiveSettings.weightLaporan ?? 15,
-            weightSidang: effectiveSettings.weightSidang ?? 15,
-          } : undefined}
-          onOpenSettings={() => {
-            setFormMode(effectiveSettings?.assessmentMode || 'DUDI_ONLY');
-            setFormWeightDudi(effectiveSettings?.weightDudi ?? 70);
-            setFormWeightLaporan(effectiveSettings?.weightLaporan ?? 15);
-            setFormWeightSidang(effectiveSettings?.weightSidang ?? 15);
-            setShowSettingsModal(true);
-          }}
-          canManageAll={canManageAll}
-          activeGuruId={activeGuruId}
-          isKaprog={isKaprog || isJurusanScoped}
-          isWaliKelas={isWaliKelas}
-          walikelasKelas={walikelasKelas}
-          allScopedCount={allScopedCount}
-          myGuidanceCountNilai={myGuidanceCountNilai}
-          guidanceScope={guidanceScope}
-          setGuidanceScope={setGuidanceScope}
-          isMobile={isMobile}
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-          selectedKelas={selectedKelas}
-          setSelectedKelas={setSelectedKelas}
-          smartClassOptions={smartClassOptions}
-          scoresCount={isJurusanScoped || isWaliKelas ? allScopedCount : scores.length}
-          isLoadingRekap={isLoadingRekap}
-          onSaveBatch={handleSaveBatch}
-          isSavingBatch={saveBatchMutation.isPending}
-          displayedScoresLength={displayedScores.length}
-          hideLocalFilters={hideLocalFilters}
-        />
+        {/* Unified Control Toolbar Container: Sembunyikan dalam mode penguji sidang atau hideLocalFilters */}
+        {!isPengujiOnly && !hideLocalFilters && (
+          <PklUnifiedToolbar
+            selectedTp={selectedTp}
+            selectedSemester={selectedSemester}
+            setSelectedTp={setSelectedTp}
+            setSelectedSemester={setSelectedSemester}
+            tpOptions={tpOptions}
+            semesterOptions={semesterOptions}
+            isLoadingTp={isLoadingTp}
+            isLoadingSem={isLoadingSem}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            tabs={tabs}
+            canViewScheme={canViewScheme}
+            canEditScheme={canEditScheme}
+            isCompositeMode={isCompositeMode}
+            effectiveSettings={effectiveSettings ? {
+              assessmentMode: effectiveSettings.assessmentMode || 'DUDI_ONLY',
+              weightDudi: effectiveSettings.weightDudi ?? 70,
+              weightLaporan: effectiveSettings.weightLaporan ?? 15,
+              weightSidang: effectiveSettings.weightSidang ?? 15,
+            } : undefined}
+            onOpenSettings={() => {
+              setFormMode(effectiveSettings?.assessmentMode || 'DUDI_ONLY');
+              setFormWeightDudi(effectiveSettings?.weightDudi ?? 70);
+              setFormWeightLaporan(effectiveSettings?.weightLaporan ?? 15);
+              setFormWeightSidang(effectiveSettings?.weightSidang ?? 15);
+              setShowSettingsModal(true);
+            }}
+            canManageAll={canManageAll}
+            activeGuruId={activeGuruId}
+            isKaprog={isKaprog || isJurusanScoped}
+            isWaliKelas={isWaliKelas}
+            walikelasKelas={walikelasKelas}
+            allScopedCount={allScopedCount}
+            myGuidanceCountNilai={myGuidanceCountNilai}
+            guidanceScope={guidanceScope}
+            setGuidanceScope={setGuidanceScope}
+            isMobile={isMobile}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            selectedKelas={selectedKelas}
+            setSelectedKelas={setSelectedKelas}
+            smartClassOptions={smartClassOptions}
+            scoresCount={isJurusanScoped || isWaliKelas ? allScopedCount : scores.length}
+            isLoadingRekap={isLoadingRekap}
+            onSaveBatch={handleSaveBatch}
+            isSavingBatch={saveBatchMutation.isPending}
+            displayedScoresLength={displayedScores.length}
+            hideLocalFilters={hideLocalFilters}
+          />
+        )}
 
         <Suspense fallback={<PklSpreadsheetSkeleton isMobile={isMobile} />}>
           {(activeTab === 'dudi' || activeTab === 'nilai') && (
@@ -647,7 +654,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
               handleScoreChange={handleScoreChange}
               handleApplyToSameMitra={handleApplyToSameMitra}
               handleSyncFromDailyAttendance={handleSyncFromDailyAttendance}
-              onNavigateCetakRapor={hideCetakRapor ? undefined : handleNavigateCetakRapor}
+              onNavigateCetakRapor={effectiveHideCetakRapor ? undefined : handleNavigateCetakRapor}
             />
           )}
 
@@ -696,7 +703,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
               setItemsPerPage={setItemsPerPage}
               setCurrentPage={setCurrentPage}
               handleScoreChange={handleScoreChange}
-              onNavigateCetakRapor={hideCetakRapor ? undefined : handleNavigateCetakRapor}
+              onNavigateCetakRapor={effectiveHideCetakRapor ? undefined : handleNavigateCetakRapor}
               jurusanId={effectiveJurusanId}
             />
           )}

@@ -691,6 +691,11 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
           headerTitle="Lembar Penilaian Laporan & Sidang PKL"
           headerActions={
             <div className="flex items-center gap-2">
+              {isCompositeMode && (
+                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-900/40 text-xs font-semibold shadow-2xs">
+                  Bobot: DUDI {effectiveSettings?.weightDudi ?? 70}% • Laporan {effectiveSettings?.weightLaporan ?? 15}% • Sidang {effectiveSettings?.weightSidang ?? 15}%
+                </span>
+              )}
               <Button
                 type="button"
                 aria-label="Simpan perubahan nilai"

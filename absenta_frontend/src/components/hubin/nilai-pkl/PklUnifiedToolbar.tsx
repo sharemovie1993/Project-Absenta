@@ -113,11 +113,13 @@ export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
       {/* Baris 1: TabSwitcher Navigasi Utama di Kiri & Bobot / Collapse Toggle di Kanan */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
-          <TabSwitcher
-            activeTab={activeTab}
-            onChange={(t) => setActiveTab(t as string)}
-            tabs={tabs}
-          />
+          {tabs.length > 1 && (
+            <TabSwitcher
+              activeTab={activeTab}
+              onChange={(t) => setActiveTab(t as string)}
+              tabs={tabs}
+            />
+          )}
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0 ml-auto">
