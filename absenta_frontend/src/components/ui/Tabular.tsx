@@ -18,6 +18,7 @@ interface TabularProps<T> {
   emptyMessage?: string;
   rowKey?: (row: T, index: number) => string | number;
   className?: string;
+  compact?: boolean;
 }
 
 export function TabularInner<T>({
@@ -27,6 +28,7 @@ export function TabularInner<T>({
   emptyMessage = 'Tidak ada data ditemukan',
   rowKey,
   className,
+  compact = false,
 }: TabularProps<T>) {
   const getRowKey = (row: T, index: number): string | number => {
     if (rowKey) return rowKey(row, index);
@@ -66,7 +68,8 @@ export function TabularInner<T>({
                 <th
                   key={col.key}
                   className={cn(
-                    'px-6 py-3.5 font-semibold text-slate-600 dark:text-slate-400',
+                    'font-semibold text-slate-600 dark:text-slate-400',
+                    compact ? 'px-3.5 py-2 text-[11px]' : 'px-6 py-3.5',
                     getAlignClass(col.align),
                     col.headerClassName
                   )}
@@ -88,7 +91,8 @@ export function TabularInner<T>({
                   <td
                     key={col.key}
                     className={cn(
-                      'px-6 py-4 text-slate-700 dark:text-slate-300',
+                      'text-slate-700 dark:text-slate-300',
+                      compact ? 'px-3.5 py-1.5 text-xs' : 'px-6 py-4',
                       getAlignClass(col.align),
                       col.className
                     )}

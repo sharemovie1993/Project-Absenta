@@ -341,7 +341,7 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
           )}
         </div>
 
-        <div className="p-4 sm:p-6">
+        <div className="p-3 sm:p-4">
           {activeShiftTab === 'SHIFTS' ? (
             <Suspense fallback={<PanelLoader />}>
               <JamKBMShiftPanel
@@ -396,32 +396,9 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
       toolbar={
         canManage && (
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl border border-slate-200/60 dark:border-slate-700/60 text-xs">
-              <button
-                type="button"
-                onClick={() => handleModeChange('SINGLE')}
-                className={cn(
-                  "px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer",
-                  !isMultiShift
-                    ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
-                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                )}
-              >
-                1 Shift (Reguler)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleModeChange('MULTI')}
-                className={cn(
-                  "px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer",
-                  isMultiShift
-                    ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
-                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                )}
-              >
-                2 Shift (Pagi/Siang)
-              </button>
-            </div>
+            <span className="hidden sm:inline-flex items-center px-2.5 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700/60 rounded-xl text-[11px] font-bold text-slate-600 dark:text-slate-300">
+              {isMultiShift ? '2 Shift' : '1 Shift'}
+            </span>
             <Button
               variant="primary"
               size="sm"
@@ -430,7 +407,7 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
               className="flex items-center gap-1.5 rounded-xl px-3.5 h-8 text-xs font-bold"
             >
               {saving ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-              <span>Simpan Perubahan</span>
+              <span>Simpan</span>
             </Button>
           </div>
         )
