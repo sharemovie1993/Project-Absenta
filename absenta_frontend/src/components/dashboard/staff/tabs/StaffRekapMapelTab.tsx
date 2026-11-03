@@ -232,19 +232,25 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
   const guruMapelInfo = rekapQuery.data?.guru_mapel || { nama_guru: myGuruData?.nama_guru || user?.full_name, nip: myGuruData?.nip };
   const waliKelasInfo = rekapQuery.data?.wali_kelas || null;
 
-  // Tanggal unik yang memiliki log presensi pada bulan ini
-  const dayNumbers = useMemo(() => {
-    const daySet = new Set<number>();
-    rawRows.forEach(r => {
-      if (r.dailyMap) {
-        Object.keys(r.dailyMap).forEach(d => {
-          const num = parseInt(d, 10);
-          if (!isNaN(num)) daySet.add(num);
-        });
-      }
-    });
-    return Array.from(daySet).sort((a, b) => a - b);
-  }, [rawRows]);
+  // Matriks Tanggal 1 Bulan Penuh (1 s.d. 28/29/30/31 sesuai kalender bulan terpilih)
+  const fullMonthDays = useMemo(() => {
+    if (!bulan) return Array.from({ length: 30 }, (_, i) => i + 1);
+    const [yStr, mStr] = bulan.split('-');
+    const year = parseInt(yStr, 10);
+    const month = parseInt(mStr, 10);
+    if (isNaN(year) || isNaN(month)) return Array.from({ length: 30 }, (_, i) => i + 1);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    return Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  }, [bulan]);
+
+  // Deteksi Hari dalam Seminggu (0 = Minggu)
+  const getDayOfWeek = useCallback((day: number) => {
+    if (!bulan) return 1;
+    const [yStr, mStr] = bulan.split('-');
+    const year = parseInt(yStr, 10);
+    const month = parseInt(mStr, 10);
+    return new Date(year, month - 1, day).getDay();
+  }, [bulan]);
 
   // Filtered Rows berdasarkan Keyword Pencarian
   const filteredRows = useMemo(() => {
@@ -300,7 +306,7 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
       { header: 'No', accessor: (_: unknown, i?: number) => (i ?? 0) + 1, width: 6 },
       { header: 'Nama Siswa', accessor: (r: RekapBulananKelasRow) => r.nama_siswa, width: 28 },
       { header: 'NIS', accessor: (r: RekapBulananKelasRow) => r.nis ?? '-', width: 14 },
-      ...dayNumbers.map(d => ({
+      ...fullMonthDays.map(d => ({
         header: `Tgl ${d}`,
         accessor: (r: RekapBulananKelasRow) => r.dailyMap?.[d.toString()] ?? '-',
         width: 6,
@@ -319,7 +325,7 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
 
     exportDataToExcel<RekapBulananKelasRow>(rawRows, excelCols, filename, title);
     toast.success(`Berhasil mengunduh ${filename}.xlsx`);
-  }, [activeCard, rawRows, bulan, dayNumbers]);
+  }, [activeCard, rawRows, bulan, fullMonthDays]);
 
   // Kolom Tabel
   const tableColumns = useMemo(() => {
@@ -389,25 +395,43 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
       ];
     }
 
-    // MATRIX MODE
-    const dayCols = dayNumbers.map(d => ({
-      label: d.toString(),
-      key: `day_${d}`,
-      className: 'text-center p-1',
-      render: (_: unknown, row: RekapBulananKelasRow) => {
-        const code = row.dailyMap?.[d.toString()];
-        if (!code) return <span className="text-slate-300 dark:text-slate-700 text-[10px]">—</span>;
-        const cls = STATUS_BADGE[code] || 'bg-slate-100 text-slate-600';
-        return (
-          <span 
-            className={`inline-flex items-center justify-center w-5 h-5 rounded text-[10px] ${cls}`}
-            title={`Pertemuan Tgl ${d}: ${code}`}
-          >
-            {code}
-          </span>
-        );
-      }
-    }));
+    // MATRIX MODE (Kalender 1 Bulan Penuh: Tanggal 1 s.d. 28/29/30/31)
+    const dayCols = fullMonthDays.map(d => {
+      const isSunday = getDayOfWeek(d) === 0;
+      return {
+        label: d.toString(),
+        key: `day_${d}`,
+        className: cn(
+          'text-center p-0.5 sm:p-1 w-6 sm:w-7 min-w-[24px] sm:min-w-[28px] font-mono text-[11px]',
+          isSunday ? 'bg-rose-50/50 dark:bg-rose-950/20 text-rose-500 font-bold' : ''
+        ),
+        render: (_: unknown, row: RekapBulananKelasRow) => {
+          const code = row.dailyMap?.[d.toString()];
+          if (!code) {
+            return (
+              <span className={cn(
+                "inline-flex items-center justify-center w-5 h-5 text-[10px]",
+                isSunday ? "text-rose-300 dark:text-rose-800" : "text-slate-300 dark:text-slate-700"
+              )}>
+                {isSunday ? '·' : '—'}
+              </span>
+            );
+          }
+          const cls = STATUS_BADGE[code] || 'bg-slate-100 text-slate-600';
+          return (
+            <span 
+              className={cn(
+                "inline-flex items-center justify-center w-5 h-5 rounded text-[10px] shadow-2xs font-bold",
+                cls
+              )}
+              title={`Pertemuan Tgl ${d}: ${code}`}
+            >
+              {code}
+            </span>
+          );
+        }
+      };
+    });
 
     return [
       { label: 'Nama Siswa', key: 'nama_siswa', render: NamaCell },
@@ -423,7 +447,7 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
       { label: 'POIN', key: 'total_poin', className: 'text-center font-mono text-xs font-black' },
       { label: 'Aksi', key: 'aksi', className: 'text-center w-14', render: AksiCell },
     ];
-  }, [viewMode, dayNumbers, navigate]);
+  }, [viewMode, fullMonthDays, getDayOfWeek, navigate]);
 
   return (
     <div className="space-y-3.5">
@@ -667,7 +691,7 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
           bulan={bulan}
           viewMode={viewMode}
           rows={rawRows}
-          dayNumbers={dayNumbers}
+          dayNumbers={fullMonthDays}
         />
       )}
     </div>
