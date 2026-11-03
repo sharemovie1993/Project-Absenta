@@ -69,4 +69,5 @@ export interface PklDashboardStats {
   siswa_belum_dinilai?: number;
   siswa_sudah_dinilai?: number;
   siswa_belum_dikunjungi?: number;
+  siswa_overdue?: number;
 }

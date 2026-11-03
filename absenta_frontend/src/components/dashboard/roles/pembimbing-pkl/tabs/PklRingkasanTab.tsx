@@ -96,7 +96,7 @@ export const PklRingkasanTab: React.FC<PklRingkasanTabProps> = ({
         label: 'Siswa Bimbingan',
         icon: Users,
         iconColorClass: 'text-teal-600 dark:text-teal-400',
-        badge: stats.total_siswa_bimbingan,
+        badge: (stats.siswa_overdue ?? 0) > 0 ? stats.siswa_overdue : undefined,
         onClick: () => onSelectTab('bimbingan'),
       },
       {
@@ -112,7 +112,6 @@ export const PklRingkasanTab: React.FC<PklRingkasanTabProps> = ({
         label: 'Rekap Presensi',
         icon: CalendarCheck,
         iconColorClass: 'text-emerald-600 dark:text-emerald-400',
-        badge: stats.siswa_aktif || stats.total_siswa_bimbingan,
         onClick: () => onSelectTab('absensi'),
       },
       {
@@ -120,7 +119,7 @@ export const PklRingkasanTab: React.FC<PklRingkasanTabProps> = ({
         label: 'Verifikasi Jurnal',
         icon: Clock,
         iconColorClass: 'text-amber-600 dark:text-amber-400',
-        badge: stats.jurnal_pending_review > 0 ? stats.jurnal_pending_review : undefined,
+        badge: (stats.jurnal_pending_review ?? 0) > 0 ? stats.jurnal_pending_review : undefined,
         onClick: () => onSelectTab('jurnal'),
       },
       {
@@ -128,7 +127,7 @@ export const PklRingkasanTab: React.FC<PklRingkasanTabProps> = ({
         label: 'Supervisi DU/DI',
         icon: Calendar,
         iconColorClass: 'text-indigo-600 dark:text-indigo-400',
-        badge: (stats.siswa_belum_dikunjungi ?? 0) > 0 ? stats.siswa_belum_dikunjungi : stats.total_kunjungan_terlaksana,
+        badge: (stats.siswa_belum_dikunjungi ?? 0) > 0 ? stats.siswa_belum_dikunjungi : undefined,
         onClick: () => onSelectTab('monitoring'),
       },
       {
@@ -144,17 +143,14 @@ export const PklRingkasanTab: React.FC<PklRingkasanTabProps> = ({
         label: 'Cetak Lembar PKL',
         icon: Printer,
         iconColorClass: 'text-purple-600 dark:text-purple-400',
-        badge: stats.total_siswa_bimbingan,
         onClick: () => onSelectTab('rekap'),
       },
     ],
     [
-      stats.total_siswa_bimbingan,
+      stats.siswa_overdue,
       stats.absensi_pending_verification,
-      stats.siswa_aktif,
       stats.jurnal_pending_review,
       stats.siswa_belum_dikunjungi,
-      stats.total_kunjungan_terlaksana,
       stats.siswa_belum_dinilai,
       onSelectTab,
     ]

@@ -222,6 +222,14 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
       return list.length === 0;
     }).length;
 
+    // Hitung siswa overdue: tanggal selesai PKL sudah lewat tapi status masih AKTIF (PR Penarikan/Selesai)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const overdueCount = rawList.filter((p: any) => {
+      if (p.status !== 'AKTIF' || !p.tanggal_selesai) return false;
+      return new Date(p.tanggal_selesai) < today;
+    }).length;
+
     const computedStats: PklDashboardStats = {
       total_siswa_bimbingan: mappedSiswa.length,
       siswa_aktif: activeCount,
@@ -236,6 +244,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
       siswa_belum_dinilai: belumDinilaiCount,
       siswa_sudah_dinilai: sudahDinilaiCount,
       siswa_belum_dikunjungi: belumDikunjungiCount,
+      siswa_overdue: overdueCount,
     };
 
     return { stats: computedStats, siswaList: mappedSiswa, logbookList: realLogbooks, kunjunganList: uniqueVisitSessions };
@@ -252,84 +261,81 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
     };
   }, [selectedDetailSiswa, penempatanRes]);
 
-  // Navigation Items dengan Badge Lengkap di Seluruh Subtab
+  // Navigation Items: Badge HANYA untuk item yang MEMERLUKAN TINDAKAN (Actionable To-Do), BUKAN informasi statis
   const navTabs: PklNavTabItem[] = useMemo(
     () => [
-      { id: 'ringkasan', label: 'Ringkasan Beranda', shortLabel: 'Beranda', icon: Briefcase },
+      {
+        id: 'ringkasan',
+        label: 'Ringkasan Beranda',
+        shortLabel: 'Beranda',
+        icon: Briefcase,
+        // Beranda bersih dari badge counter
+      },
       {
         id: 'bimbingan',
         label: 'Siswa Bimbingan',
         shortLabel: 'Bimbingan',
         icon: Users,
-        badge: stats.total_siswa_bimbingan,
-        badgeColor: 'bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300',
+        // Tindakan: Siswa overdue (lewat tanggal PKL tapi belum ditandai selesai)
+        badge: (stats.siswa_overdue ?? 0) > 0 ? stats.siswa_overdue : undefined,
+        badgeColor: 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-bold',
       },
       {
         id: 'verifikasi_absensi',
         label: 'Verifikasi Absensi',
         shortLabel: 'Verif Absen',
         icon: ShieldCheck,
-        badge: stats.absensi_pending_verification ?? 0,
-        badgeColor: (stats.absensi_pending_verification ?? 0) > 0
-          ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-400 font-black'
-          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400',
+        // Tindakan: Presensi harian yang menunggu verifikasi pembimbing
+        badge: (stats.absensi_pending_verification ?? 0) > 0 ? stats.absensi_pending_verification : undefined,
+        badgeColor: 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-400 font-black',
       },
       {
         id: 'absensi',
         label: 'Rekap Presensi',
         shortLabel: 'Presensi',
         icon: CalendarCheck,
-        badge: stats.siswa_aktif || stats.total_siswa_bimbingan,
-        badgeColor: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300',
+        // Rekap analitik bersih dari badge counter
       },
       {
         id: 'jurnal',
         label: 'Verifikasi Jurnal',
         shortLabel: 'Jurnal',
         icon: Clock,
-        badge: stats.jurnal_pending_review ?? 0,
-        badgeColor: (stats.jurnal_pending_review ?? 0) > 0
-          ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400 font-black'
-          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400',
+        // Tindakan: Jurnal siswa yang menunggu review pembimbing
+        badge: (stats.jurnal_pending_review ?? 0) > 0 ? stats.jurnal_pending_review : undefined,
+        badgeColor: 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-bold',
       },
       {
         id: 'monitoring',
         label: 'Supervisi DU/DI',
         shortLabel: 'Supervisi',
         icon: Calendar,
-        badge: (stats.siswa_belum_dikunjungi ?? 0) > 0
-          ? `${stats.siswa_belum_dikunjungi} Belum`
-          : stats.total_kunjungan_terlaksana,
-        badgeColor: (stats.siswa_belum_dikunjungi ?? 0) > 0
-          ? 'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400'
-          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400',
+        // Tindakan: Siswa/DU/DI yang BELUM PERNAH dikunjungi supervisi
+        badge: (stats.siswa_belum_dikunjungi ?? 0) > 0 ? stats.siswa_belum_dikunjungi : undefined,
+        badgeColor: 'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400 font-bold',
       },
       {
         id: 'penilaian',
         label: 'Penilaian PKL',
         shortLabel: 'Nilai PKL',
         icon: Award,
-        badge: stats.siswa_belum_dinilai ?? 0,
-        badgeColor: (stats.siswa_belum_dinilai ?? 0) > 0
-          ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-400 font-black'
-          : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300',
+        // Tindakan: Siswa bimbingan yang BELUM DINILAI (PR Utama Penilaian)
+        badge: (stats.siswa_belum_dinilai ?? 0) > 0 ? stats.siswa_belum_dinilai : undefined,
+        badgeColor: 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-400 font-black',
       },
       {
         id: 'rekap',
         label: 'Cetak Dokumen',
         shortLabel: 'Cetak',
         icon: Printer,
-        badge: stats.total_siswa_bimbingan,
-        badgeColor: 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300',
+        // Pusat cetak utilitas on-demand, bersih dari badge counter
       },
     ],
     [
-      stats.total_siswa_bimbingan,
+      stats.siswa_overdue,
       stats.absensi_pending_verification,
-      stats.siswa_aktif,
       stats.jurnal_pending_review,
       stats.siswa_belum_dikunjungi,
-      stats.total_kunjungan_terlaksana,
       stats.siswa_belum_dinilai,
     ]
   );
