@@ -55,8 +55,8 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
   // Table Format: 'VERTICAL_2_COL' (Kolom 1: Hari, Kolom 2: Waktu) vs 'HORIZONTAL_MATRIX'
   const [tableLayout, setTableLayout] = useState<'VERTICAL_2_COL' | 'HORIZONTAL_MATRIX'>('VERTICAL_2_COL');
 
-  // Group identical days toggle (e.g. Senin – Kamis)
-  const [groupIdenticalDays, setGroupIdenticalDays] = useState(false);
+  // Group identical days toggle (e.g. Senin – Kamis atau Selasa, Rabu, Kamis yang polanya sama di-merger)
+  const [groupIdenticalDays, setGroupIdenticalDays] = useState(true);
 
   // Active Shift selection for 2-shift schools
   const shifts = shiftConfig?.shifts ?? [];
@@ -140,25 +140,37 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
     return items;
   }, [getDaySchedule]);
 
-  // Helper untuk membandingkan apakah 2 hari memiliki timeline identik
-  const areDaysIdentical = useCallback((dayA: string, dayB: string): boolean => {
-    const itemsA = getDayTimelineItems(dayA);
-    const itemsB = getDayTimelineItems(dayB);
-    if (itemsA.length !== itemsB.length) return false;
-    for (let i = 0; i < itemsA.length; i++) {
-      if (itemsA[i].type !== itemsB[i].type) return false;
-      if (itemsA[i].start !== itemsB[i].start || itemsA[i].end !== itemsB[i].end) return false;
-      if (itemsA[i].slotNum !== itemsB[i].slotNum) return false;
+  // Helper untuk memformat label hari gabungan secara cerdas & resmi
+  const formatDayGroupLabel = (days: Array<{ key: string; label: string }>): string => {
+    if (days.length === 1) return days[0].label.toUpperCase();
+    if (days.length === 2) return `${days[0].label.toUpperCase()} & ${days[1].label.toUpperCase()}`;
+
+    // Cek apakah hari-hari tersebut berurutan dalam sepekan
+    const dayIndices = days.map(d => ALL_DAYS.findIndex(ad => ad.key === d.key));
+    let isConsecutive = true;
+    for (let i = 1; i < dayIndices.length; i++) {
+      if (dayIndices[i] !== dayIndices[i - 1] + 1) {
+        isConsecutive = false;
+        break;
+      }
     }
-    return true;
-  }, [getDayTimelineItems]);
+
+    if (isConsecutive) {
+      return `${days[0].label.toUpperCase()} – ${days[days.length - 1].label.toUpperCase()}`;
+    }
+
+    return days.map(d => d.label.toUpperCase()).join(', ');
+  };
 
   // Kelompok hari untuk format vertikal 2 kolom
   interface DayGroup {
+    id: string;
     dayLabel: string;
     subLabel?: string;
+    dayCount: number;
     items: DayTimelineItem[];
     duration: number;
+    slotsCount: number;
   }
 
   const verticalDayGroups = useMemo<DayGroup[]>(() => {
@@ -166,46 +178,59 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
       return activeDays.map(d => {
         const sch = getDaySchedule(d.key);
         return {
+          id: d.key,
           dayLabel: d.label.toUpperCase(),
+          dayCount: 1,
           items: getDayTimelineItems(d.key),
           duration: sch.duration,
+          slotsCount: sch.slots.length,
         };
       });
     }
 
-    // Gabungkan hari-hari yang identik berurutan
-    const groups: DayGroup[] = [];
-    let i = 0;
-    while (i < activeDays.length) {
-      const currentDay = activeDays[i];
-      let j = i + 1;
-      while (j < activeDays.length && areDaysIdentical(currentDay.key, activeDays[j].key)) {
-        j++;
-      }
+    // ── Smart Auto-Merger: Deteksi & Merger Hari dengan Pola Waktu yang Sama ──
+    const dayDataList = activeDays.map(d => {
+      const sch = getDaySchedule(d.key);
+      const items = getDayTimelineItems(d.key);
+      const signature = items
+        .map(it => `${it.type}:${it.slotNum ?? ''}:${it.start}-${it.end}:${it.duration ?? ''}`)
+        .join('|');
+      return { day: d, sch, items, signature };
+    });
 
-      const sch = getDaySchedule(currentDay.key);
-      const items = getDayTimelineItems(currentDay.key);
+    const clusterMap = new Map<string, { days: Array<{ key: string; label: string }>; items: DayTimelineItem[]; duration: number; slotsCount: number }>();
 
-      if (j === i + 1) {
-        groups.push({
-          dayLabel: currentDay.label.toUpperCase(),
-          items,
-          duration: sch.duration,
-        });
+    dayDataList.forEach(({ day, sch, items, signature }) => {
+      const existing = clusterMap.get(signature);
+      if (existing) {
+        existing.days.push(day);
       } else {
-        const startLabel = currentDay.label;
-        const endLabel = activeDays[j - 1].label;
-        groups.push({
-          dayLabel: `${startLabel.toUpperCase()} – ${endLabel.toUpperCase()}`,
-          subLabel: `(${j - i} Hari Sama)`,
+        clusterMap.set(signature, {
+          days: [day],
           items,
           duration: sch.duration,
+          slotsCount: sch.slots.length,
         });
       }
-      i = j;
-    }
+    });
+
+    const groups: DayGroup[] = [];
+    clusterMap.forEach((val, sig) => {
+      const label = formatDayGroupLabel(val.days);
+      const isSingle = val.days.length === 1;
+      groups.push({
+        id: sig,
+        dayLabel: label,
+        subLabel: isSingle ? undefined : `(${val.days.length} Hari: ${val.days.map(d => d.label).join(', ')})`,
+        dayCount: val.days.length,
+        items: val.items,
+        duration: val.duration,
+        slotsCount: val.slotsCount,
+      });
+    });
+
     return groups;
-  }, [activeDays, groupIdenticalDays, getDaySchedule, getDayTimelineItems, areDaysIdentical]);
+  }, [activeDays, groupIdenticalDays, getDaySchedule, getDayTimelineItems]);
 
   // Untuk mode matriks horizontal (jika user beralih)
   const maxSlotNum = useMemo(() => {
