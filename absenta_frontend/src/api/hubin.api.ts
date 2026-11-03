@@ -242,7 +242,7 @@ export const hubinApi = {
     importDataFromExcel('/hubin/mitra/import', file, onProgress, socketId),
 
   // Penempatan
-  getPenempatan: (params?: { search?: string; page?: number; limit?: number; tahun_pelajaran_id?: string; semester_id?: string; status?: string; mitra_id?: string; pembimbing_id?: string; kelas_id?: string }) => 
+  getPenempatan: (params?: { search?: string; page?: number; limit?: number; tahun_pelajaran_id?: string; semester_id?: string; status?: string; mitra_id?: string; pembimbing_id?: string; kelas_id?: string; jurusan_id?: string; penguji_id?: string }) => 
     requestWithFallback<any>('get', '/hubin/penempatan', { params }),
   getMyPenempatan: () => requestWithFallback<any>('get', '/hubin/penempatan/me'),
   createPenempatan: (data: any) => requestWithFallback<any>('post', '/hubin/penempatan', { data }),

@@ -39,6 +39,7 @@ export interface ScoreRow {
   soft_tanggung_jawab: number | null;
   nilai_laporan: number | null;
   nilai_sidang: number | null;
+  penguji_id?: string | null;
   penguji_nama: string;
   catatan_sidang: string;
   file_portofolio?: string | null;

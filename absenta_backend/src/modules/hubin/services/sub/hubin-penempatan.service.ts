@@ -11,7 +11,7 @@ import { CACHE_KEYS, CACHE_TTL } from '@/constants/cache-keys';
 import { HubinCommonHelper } from './hubin-common.helper';
 
 export class HubinPenempatanService extends HubinCommonHelper {
-  async getPenempatan(tenantId: string, userId?: string, params?: { search?: string; page?: number; limit?: number; tahun_pelajaran_id?: string; semester_id?: string; status?: string; mitra_id?: string; pembimbing_id?: string; kelas_id?: string }, org?: any) {
+  async getPenempatan(tenantId: string, userId?: string, params?: { search?: string; page?: number; limit?: number; tahun_pelajaran_id?: string; semester_id?: string; status?: string; mitra_id?: string; pembimbing_id?: string; kelas_id?: string; penguji_id?: string }, org?: any) {
     const page = params?.page || 1;
     const limit = params?.limit || 100;
     const skip = (page - 1) * limit;
@@ -98,9 +98,14 @@ export class HubinPenempatanService extends HubinCommonHelper {
         }
         andConditions.push({ OR: scopeOr });
       } else if (currentGuruId) {
-        // Prioritas 3: Guru Pembimbing biasa (atau guru struktural lain seperti Gerbang/Piket yang kebetulan punya akun Guru)
-        // Hanya boleh melihat penempatan di mana guru ini adalah PEMBIMBING!
-        andConditions.push({ pembimbing_id: currentGuruId });
+        // Prioritas 3: Guru Pembimbing biasa ATAU Penguji Sidang PKL
+        // Guru boleh melihat penempatan di mana guru ini adalah PEMBIMBING atau PENGUJI SIDANG!
+        andConditions.push({
+          OR: [
+            { pembimbing_id: currentGuruId },
+            { nilai_json: { path: ['penguji_id'], equals: currentGuruId } }
+          ]
+        });
       } else {
         // Staf non-guru tanpa jabatan Hubin: Tidak memiliki hak akses ke data penempatan PKL siswa
         andConditions.push({ id: '__unauthorized_no_guru__' });
@@ -146,6 +151,15 @@ export class HubinPenempatanService extends HubinCommonHelper {
 
     if (params?.pembimbing_id) {
       andConditions.push({ pembimbing_id: params.pembimbing_id });
+    }
+
+    if (params?.penguji_id) {
+      andConditions.push({
+        nilai_json: {
+          path: ['penguji_id'],
+          equals: params.penguji_id
+        }
+      });
     }
 
     if (params?.kelas_id) {

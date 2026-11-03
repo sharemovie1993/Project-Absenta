@@ -439,7 +439,16 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
                           disabled={!isCompositeMode}
                           placeholder={!isCompositeMode ? 'Terkunci' : 'Ketik nama manual / pilih guru...'}
                           value={!isCompositeMode ? '' : (score.penguji_nama || '')}
-                          onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'penguji_nama', val)}
+                          onChange={(val) => {
+                            handleScoreChange(score.siswa_pkl_id, 'penguji_nama', val);
+                            const matched = guruList.find(g => g.nama_guru === val);
+                            if (matched) {
+                              handleScoreChange(score.siswa_pkl_id, 'penguji_id', matched.id);
+                            }
+                          }}
+                          onSelectGuru={(g) => {
+                            handleScoreChange(score.siswa_pkl_id, 'penguji_id', g.id);
+                          }}
                           guruList={guruList}
                           isLoadingGuru={isLoadingGuru}
                           size="md"

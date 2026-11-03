@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type TeacherSubTabId = 'agenda' | 'tugas' | 'perangkat' | 'nilai' | 'remedial' | 'rekap' | 'supervisi';
+export type TeacherSubTabId = 'agenda' | 'tugas' | 'perangkat' | 'nilai' | 'remedial' | 'rekap' | 'supervisi' | 'sidang_guru';
 
 export interface TeacherSubTabItem {
   id: TeacherSubTabId;
@@ -26,6 +26,8 @@ interface TeacherSubNavPillsProps {
   perangkatRejectedCount?: number;
   unfilledJournalsCount?: number;
   remedialAlertCount?: number;
+  isPengujiSidang?: boolean;
+  pengujiSidangUnexaminedCount?: number;
   className?: string;
 }
 
@@ -35,6 +37,8 @@ export const TeacherSubNavPills: React.FC<TeacherSubNavPillsProps> = React.memo(
   perangkatRejectedCount = 0,
   unfilledJournalsCount = 0,
   remedialAlertCount = 0,
+  isPengujiSidang = false,
+  pengujiSidangUnexaminedCount = 0,
   className,
 }) => {
   const tabs: TeacherSubTabItem[] = [
@@ -74,6 +78,15 @@ export const TeacherSubNavPills: React.FC<TeacherSubNavPillsProps> = React.memo(
       label: 'Supervisi Saya',
       icon: ShieldCheck,
     },
+    ...(isPengujiSidang ? [
+      {
+        id: 'sidang_guru' as const,
+        label: 'Sidang PKL',
+        icon: GraduationCap,
+        badgeCount: pengujiSidangUnexaminedCount > 0 ? pengujiSidangUnexaminedCount : undefined,
+        badgeVariant: 'rose' as const,
+      }
+    ] : []),
   ];
 
   return (

@@ -16,7 +16,7 @@ export class HubinPenempatanController {
   private hubinService = new HubinService();
   async getPenempatan(request: AuthenticatedRequest, reply: any) {
     try {
-      const { search, page, limit, tahun_pelajaran_id, semester_id, status, mitra_id, pembimbing_id, kelas_id } = request.query;
+      const { search, page, limit, tahun_pelajaran_id, semester_id, status, mitra_id, pembimbing_id, kelas_id, penguji_id } = request.query;
       const data = await this.hubinService.getPenempatan(
         request.tenantId!, 
         request.user.id, 
@@ -29,7 +29,8 @@ export class HubinPenempatanController {
           status: status || undefined,
           mitra_id: mitra_id || undefined,
           pembimbing_id: pembimbing_id || undefined,
-          kelas_id: kelas_id || undefined
+          kelas_id: kelas_id || undefined,
+          penguji_id: penguji_id || undefined
         },
         request.organizationalScope
       );

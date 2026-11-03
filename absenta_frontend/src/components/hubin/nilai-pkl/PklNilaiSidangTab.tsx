@@ -124,10 +124,14 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
     }));
   }, [rawGuruList]);
 
-  const handleApplyPengujiToAll = (namaPenguji: string) => {
+  const handleApplyPengujiToAll = (namaPenguji: string, guruId?: string) => {
     if (!namaPenguji) return;
+    const matchGuru = guruId ? guruList.find((g) => g.id === guruId) : guruList.find((g) => g.nama_guru === namaPenguji);
     (displayedScores || []).forEach((score) => {
       handleScoreChange(score.siswa_pkl_id, 'penguji_nama', namaPenguji);
+      if (matchGuru) {
+        handleScoreChange(score.siswa_pkl_id, 'penguji_id', matchGuru.id);
+      }
     });
   };
 
@@ -329,7 +333,16 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
             disabled={!isCompositeMode}
             placeholder={!isCompositeMode ? 'Terkunci' : 'Ketik / pilih guru...'}
             value={!isCompositeMode ? '' : (score.penguji_nama || '')}
-            onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'penguji_nama', val)}
+            onChange={(val) => {
+              handleScoreChange(score.siswa_pkl_id, 'penguji_nama', val);
+              const matched = guruList.find(g => g.nama_guru === val);
+              if (matched) {
+                handleScoreChange(score.siswa_pkl_id, 'penguji_id', matched.id);
+              }
+            }}
+            onSelectGuru={(g) => {
+              handleScoreChange(score.siswa_pkl_id, 'penguji_id', g.id);
+            }}
             guruList={guruList}
             isLoadingGuru={isLoadingGuru}
             size="sm"

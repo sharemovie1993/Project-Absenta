@@ -20,7 +20,8 @@ export interface PengujiComboboxProps {
   className?: string;
   inputClassName?: string;
   size?: 'sm' | 'md';
-  onApplyToAll?: (namaPenguji: string) => void;
+  onApplyToAll?: (namaPenguji: string, guruId?: string) => void;
+  onSelectGuru?: (guru: GuruItem) => void;
   'aria-label'?: string;
 }
 
@@ -36,6 +37,7 @@ export const PengujiCombobox: React.FC<PengujiComboboxProps> = ({
   inputClassName,
   size = 'sm',
   onApplyToAll,
+  onSelectGuru,
   'aria-label': ariaLabel,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -137,9 +139,12 @@ export const PengujiCombobox: React.FC<PengujiComboboxProps> = ({
     if (!isOpen) setIsOpen(true);
   };
 
-  const handleSelectOption = (chosenName: string) => {
+  const handleSelectOption = (chosenName: string, selectedGuruObj?: GuruItem) => {
     setInputValue(chosenName);
     onChange(chosenName);
+    if (selectedGuruObj) {
+      onSelectGuru?.(selectedGuruObj);
+    }
     setIsOpen(false);
   };
 
@@ -275,7 +280,7 @@ export const PengujiCombobox: React.FC<PengujiComboboxProps> = ({
                       type="button"
                       onMouseDown={(e) => {
                         e.preventDefault();
-                        handleSelectOption(g.nama_guru);
+                        handleSelectOption(g.nama_guru, g);
                       }}
                       className={cn(
                         'w-full text-left px-3 py-2 text-xs flex items-center justify-between gap-2 hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors cursor-pointer',

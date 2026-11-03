@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback, Suspense, lazy } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { BookOpen, Users, ClipboardList, Clock, ArrowRight, CheckCircle2, ShieldCheck, Loader } from 'lucide-react';
+import { BookOpen, Users, ClipboardList, Clock, ArrowRight, CheckCircle2, ShieldCheck, Loader, GraduationCap } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { piketApi } from '../../../../api/piket.api';
 import { kurikulumApi } from '../../../../api/kurikulum.api';
@@ -26,6 +26,7 @@ import { TeacherSubTabId } from '../beranda/TeacherSubNavPills';
 import { TeacherBukuNilaiSubTab } from '../beranda/TeacherBukuNilaiSubTab';
 import { TeacherRadarRemedialSubTab } from '../beranda/TeacherRadarRemedialSubTab';
 import { raporApi } from '@/api/rapor.api';
+import { hubinApi } from '@/api/hubin.api';
 
 // Universal Role-Ready Views (In-Place Sub-Tab)
 const PerangkatAjarView = lazy(() =>
@@ -36,6 +37,9 @@ const SupervisiAkademikView = lazy(() =>
 );
 const StaffRekapMapelTab = lazy(() =>
   import('./StaffRekapMapelTab').then((m) => ({ default: m.StaffRekapMapelTab }))
+);
+const NilaiPklView = lazy(() =>
+  import('@/components/hubin/nilai-pkl/NilaiPklView').then((m) => ({ default: m.NilaiPklView }))
 );
 
 // Lazy load GateInputModule untuk satpam
@@ -90,8 +94,6 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
 
   // Sub-tab Navigation State via Search Params (DRY & Direct-Linkable)
   const subTabParam = (searchParams.get('subtab') as TeacherSubTabId) || 'agenda';
-  const validSubTabs: TeacherSubTabId[] = ['agenda', 'tugas', 'perangkat', 'nilai', 'remedial', 'rekap', 'supervisi'];
-  const activeSubTab = validSubTabs.includes(subTabParam) ? subTabParam : 'agenda';
 
   const handleSubTabChange = useCallback((newSubTab: TeacherSubTabId) => {
     setSearchParams((prev) => {
@@ -160,6 +162,50 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
   });
 
   const remedialCount = radarRes?.data?.stats?.total_perlu_remedial || 0;
+
+  // ── Query Adaptif: Guru Sebagai Penguji Sidang PKL ──
+  const effectiveGuruId = guruId || user?.guru_profile?.id || user?.id;
+  const { data: mySidangData } = useQuery({
+    queryKey: ['my-penguji-sidang-students', effectiveGuruId],
+    queryFn: async () => {
+      if (!effectiveGuruId) return [];
+      const res = await hubinApi.getRekapPklSiswa({
+        status: 'ELIGIBLE',
+      }).catch(() => null);
+      const list: any[] = Array.isArray(res) ? res : res?.data?.list || res?.data || [];
+      return list.filter((item: any) => {
+        const pId = item.nilai_json?.penguji_id;
+        const pNama = item.nilai_json?.penguji_nama;
+        if (pId && pId === effectiveGuruId) return true;
+        if (!pId && pNama && guruNama && pNama.trim().toLowerCase() === guruNama.trim().toLowerCase()) return true;
+        return false;
+      });
+    },
+    enabled: Boolean(effectiveGuruId) && isActualTeachingStaff,
+    staleTime: 60 * 1000,
+  });
+
+  const isPengujiSidang = (mySidangData?.length ?? 0) > 0;
+  const pengujiSidangUnexaminedCount = useMemo(() => {
+    if (!mySidangData) return 0;
+    return mySidangData.filter((item: any) => {
+      const n = item.nilai_json?.nilai_sidang;
+      return n === null || n === undefined || n === '' || Number(n) === 0;
+    }).length;
+  }, [mySidangData]);
+
+  const validSubTabs: TeacherSubTabId[] = useMemo(() => [
+    'agenda',
+    'tugas',
+    'perangkat',
+    'nilai',
+    'remedial',
+    'rekap',
+    'supervisi',
+    ...(isPengujiSidang ? ['sidang_guru' as const] : []),
+  ], [isPengujiSidang]);
+
+  const activeSubTab = validSubTabs.includes(subTabParam) ? subTabParam : 'agenda';
 
   const teacherBeban = useMemo(() => {
     const list = Array.isArray(bebanGuruRes?.data)
@@ -262,6 +308,8 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
               totalJp={totalJp}
               currentBebanJp={teacherBeban?.total_calculated_jp ?? teacherBeban?.current_jp ?? 0}
               targetBebanJp={teacherBeban?.max_jp ?? 24}
+              isPengujiSidang={isPengujiSidang}
+              pengujiSidangUnexaminedCount={pengujiSidangUnexaminedCount}
             />
           </aside>
 
@@ -411,6 +459,50 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
               >
                 <SupervisiAkademikView guruId={guruId} hideLayout={true} readOnly={true} />
               </Suspense>
+            )}
+
+            {/* SUB-TAB 6: MEJA PENGUJI SIDANG PKL (ADAPTIF - HANYA MUNCUL JIKA TERPLOTING) */}
+            {activeSubTab === 'sidang_guru' && isPengujiSidang && (
+              <div className="space-y-4">
+                <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold shadow-xs shrink-0">
+                      <GraduationCap size={20} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <span>Meja Penguji Sidang PKL</span>
+                      </h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Menampilkan {mySidangData?.length ?? 0} siswa PKL yang diploting kepada Anda untuk dinilai sidang &amp; laporannya.
+                      </p>
+                    </div>
+                  </div>
+                  {pengujiSidangUnexaminedCount > 0 && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-900/60 shrink-0">
+                      {pengujiSidangUnexaminedCount} Siswa Belum Dinilai
+                    </span>
+                  )}
+                </div>
+
+                <Suspense
+                  fallback={
+                    <div className="p-12 text-center text-xs text-slate-400">
+                      <div className="animate-spin w-8 h-8 mx-auto text-indigo-600 mb-2 border-2 border-current border-t-transparent rounded-full" />
+                      Memuat lembar penilaian sidang PKL...
+                    </div>
+                  }
+                >
+                  <NilaiPklView
+                    initialTab="sidang"
+                    pengujiGuruId={effectiveGuruId}
+                    isPengujiOnly={true}
+                    hideScopeBanner={true}
+                    hideHeaderStats={false}
+                    className="w-full"
+                  />
+                </Suspense>
+              </div>
             )}
           </main>
         </div>

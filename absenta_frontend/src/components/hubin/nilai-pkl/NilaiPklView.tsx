@@ -33,6 +33,8 @@ export interface UniversalNilaiPklViewProps {
   jurusanNama?: string;
   kelasId?: string;
   guruId?: string;
+  pengujiGuruId?: string;
+  isPengujiOnly?: boolean;
   tahunPelajaranId?: string;
   semesterId?: string;
   initialTab?: 'dudi' | 'sidang';
@@ -52,6 +54,8 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
   jurusanNama: propJurusanNama,
   kelasId: propKelasId,
   guruId: propGuruId,
+  pengujiGuruId: propPengujiGuruId,
+  isPengujiOnly = false,
   tahunPelajaranId: propTpId,
   semesterId: propSemesterId,
   initialTab = 'dudi',
@@ -234,6 +238,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
         soft_tanggung_jawab: item.soft_tanggung_jawab ?? null,
         nilai_laporan: item.nilai_json?.nilai_laporan ?? null,
         nilai_sidang: item.nilai_json?.nilai_sidang ?? null,
+        penguji_id: item.nilai_json?.penguji_id || null,
         penguji_nama: item.nilai_json?.penguji_nama || item.Pembimbing?.nama_guru || '',
         catatan_sidang: item.nilai_json?.catatan_sidang || '',
         file_portofolio: item.jurnal_json?.file_url || null,
@@ -304,8 +309,16 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
     if (guidanceScope === 'ALL' && isWaliKelas && !isPrivilegedHubin && walikelasKelas?.id && !effectiveJurusanId) {
       filtered = filtered.filter((s) => s.kelas_id === walikelasKelas.id);
     }
-    if (guidanceScope === 'MY_GUIDANCE' && activeGuruId) {
+    if (guidanceScope === 'MY_GUIDANCE' && activeGuruId && !propPengujiGuruId) {
       filtered = filtered.filter((s) => s.pembimbing_id === activeGuruId);
+    }
+    if (propPengujiGuruId || isPengujiOnly) {
+      const pIdTarget = propPengujiGuruId || activeGuruId;
+      filtered = filtered.filter((s) => {
+        if (s.penguji_id && s.penguji_id === pIdTarget) return true;
+        if (!s.penguji_id && s.penguji_nama && user?.full_name && s.penguji_nama.toLowerCase().includes(user.full_name.toLowerCase())) return true;
+        return false;
+      });
     }
     if (isJurusanScoped) {
       const jIdTarget = effectiveJurusanId;
@@ -471,6 +484,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
         soft_tanggung_jawab: s.soft_tanggung_jawab,
         nilai_laporan: s.nilai_laporan,
         nilai_sidang: s.nilai_sidang,
+        penguji_id: s.penguji_id,
         penguji_nama: s.penguji_nama,
         catatan_sidang: s.catatan_sidang,
         nilai_akhir_pkl: s.nilai_akhir_pkl,
@@ -488,11 +502,16 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
     });
   }, [scores, selectedTp, selectedSemester, saveBatchMutation, readOnly]);
 
-  const isSidangAvailable = isCompositeMode || initialTab === 'sidang' || isKaprog || isPrivilegedHubin;
-  const tabs = useMemo(() => [
-    { id: 'dudi', label: `🏢 DUDI (${displayedScores.length})` },
-    ...(isSidangAvailable ? [{ id: 'sidang', label: `🎓 Sidang (${displayedScores.length})` }] : []),
-  ], [displayedScores.length, isSidangAvailable]);
+  const isSidangAvailable = isCompositeMode || initialTab === 'sidang' || isKaprog || isPrivilegedHubin || isPengujiOnly;
+  const tabs = useMemo(() => {
+    if (isPengujiOnly) {
+      return [{ id: 'sidang', label: `🎓 Sidang PKL (${displayedScores.length})` }];
+    }
+    return [
+      { id: 'dudi', label: `🏢 DUDI (${displayedScores.length})` },
+      ...(isSidangAvailable ? [{ id: 'sidang', label: `🎓 Sidang (${displayedScores.length})` }] : []),
+    ];
+  }, [displayedScores.length, isSidangAvailable, isPengujiOnly]);
 
   return (
     <div className={cn('space-y-4', className)}>

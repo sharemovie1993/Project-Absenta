@@ -26,6 +26,8 @@ interface TeacherSidebarNavProps {
   totalJp?: number;
   currentBebanJp?: number;
   targetBebanJp?: number;
+  isPengujiSidang?: boolean;
+  pengujiSidangUnexaminedCount?: number;
   className?: string;
 }
 
@@ -41,6 +43,8 @@ export const TeacherSidebarNav: React.FC<TeacherSidebarNavProps> = React.memo(({
   totalJp = 0,
   currentBebanJp = 0,
   targetBebanJp = 24,
+  isPengujiSidang = false,
+  pengujiSidangUnexaminedCount = 0,
   className,
 }) => {
   const tabs: TeacherSubTabItem[] = [
@@ -87,6 +91,15 @@ export const TeacherSidebarNav: React.FC<TeacherSidebarNavProps> = React.memo(({
       label: 'Supervisi Saya',
       icon: ShieldCheck,
     },
+    ...(isPengujiSidang ? [
+      {
+        id: 'sidang_guru' as const,
+        label: 'Sidang PKL',
+        icon: GraduationCap,
+        badgeCount: pengujiSidangUnexaminedCount > 0 ? pengujiSidangUnexaminedCount : undefined,
+        badgeVariant: 'rose' as const,
+      }
+    ] : []),
   ];
 
   return (
