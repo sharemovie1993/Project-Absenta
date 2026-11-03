@@ -29,6 +29,7 @@ import { BebanMengajarWidget } from '../widgets/BebanMengajarWidget';
 import { PengajuanIzinGuruModal } from '../profil/PengajuanIzinGuruModal';
 import { useTenant } from '../../../../hooks/useTenant';
 import { toLocalDate } from '../../../../utils/attendance/time';
+import { cn } from '@/lib/utils';
 import { safeArr } from '@/components/kurikulum/dashboard/DashboardComponents';
 import { HubCard, HubActionGrid, type HubActionItem } from '@/components/ui/hub';
 
