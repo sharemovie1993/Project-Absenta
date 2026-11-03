@@ -12,6 +12,9 @@ import {
   Info,
   Printer,
   CalendarDays,
+  RotateCcw,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { Button, SectionCard, Label } from '@/components/ui';
@@ -28,12 +31,12 @@ import {
   CalendarPreset, 
   CalendarStats 
 } from './EventFormModal';
-import { SharedAcademicCalendarGrid } from './SharedAcademicCalendarGrid';
+import { AcademicCalendarMini } from './AcademicCalendarMini';
 import { KalenderAkademikPrintModal } from './KalenderAkademikPrintModal';
+import { getJenisOption } from './constants';
 
 // Lazy load subcomponents
 const EventFormModal = lazy(() => import('./EventFormModal'));
-const EventListCard = lazy(() => import('./EventListCard'));
 
 const hardeningModuleKey = 'kalender_akademik_page';
 
@@ -102,6 +105,21 @@ function buildCalendarDays(year: number, month: number): (number | null)[] {
   return days;
 }
 
+function dateInRange(date: Date, mulai: Date | string, selesai: Date | string): boolean {
+  const dateFormatted = formatDateToYYYYMMDD(date);
+  const mulaiStr = formatDateToYYYYMMDD(mulai);
+  const selesaiStr = formatDateToYYYYMMDD(selesai);
+  return dateFormatted >= mulaiStr && dateFormatted <= selesaiStr;
+}
+
+function eventInMonth(ev: CalendarEvent, year: number, month: number): boolean {
+  const monthStart = formatDateToYYYYMMDD(new Date(year, month, 1));
+  const monthEnd = formatDateToYYYYMMDD(new Date(year, month + 1, 0));
+  const mulaiStr = formatDateToYYYYMMDD(ev.tanggal_mulai);
+  const selesaiStr = formatDateToYYYYMMDD(ev.tanggal_selesai);
+  return selesaiStr >= monthStart && mulaiStr <= monthEnd;
+}
+
 export interface UniversalKalenderAkademikViewProps {
   hideLayout?: boolean;
   isModal?: boolean;
@@ -136,6 +154,9 @@ export const KalenderAkademikView: React.FC<UniversalKalenderAkademikViewProps> 
   const [defaultDateValue, setDefaultDateValue] = useState<string>('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false);
+
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [agendaCategoryFilter, setAgendaCategoryFilter] = useState<string>('ALL');
 
   useEffect(() => {
     if (propTahunPelajaranId) {
@@ -442,8 +463,62 @@ export const KalenderAkademikView: React.FC<UniversalKalenderAkademikViewProps> 
     }));
   }, [tpList]);
 
+  const handlePrevMonth = useCallback(() => {
+    if (calMonth === 0) {
+      setCalMonth(11);
+      setCalYear(y => y - 1);
+    } else {
+      setCalMonth(m => m - 1);
+    }
+  }, [calMonth]);
+
+  const handleNextMonth = useCallback(() => {
+    if (calMonth === 11) {
+      setCalMonth(0);
+      setCalYear(y => y + 1);
+    } else {
+      setCalMonth(m => m + 1);
+    }
+  }, [calMonth]);
+
+  const handleGoToToday = useCallback(() => {
+    const now = new Date();
+    setCalYear(now.getFullYear());
+    setCalMonth(now.getMonth());
+    setSelectedDate(formatDateToYYYYMMDD(now));
+  }, []);
+
+  const activeMonthName = useMemo(() => {
+    return new Date(calYear, calMonth, 1).toLocaleDateString('id-ID', { month: 'long' });
+  }, [calYear, calMonth]);
+
+  // Events filtered for compact mode (by selectedDate if selected, or by active calMonth & calYear)
+  const compactEvents = useMemo(() => {
+    if (selectedDate) {
+      const targetDate = new Date(selectedDate);
+      return events.filter(e => dateInRange(targetDate, e.tanggal_mulai, e.tanggal_selesai));
+    }
+    return events
+      .filter(e => eventInMonth(e, calYear, calMonth))
+      .sort((a, b) => new Date(a.tanggal_mulai).getTime() - new Date(b.tanggal_mulai).getTime());
+  }, [events, selectedDate, calYear, calMonth]);
+
+  const filteredAgendaEvents = useMemo(() => {
+    if (agendaCategoryFilter === 'ALL') return compactEvents;
+    if (agendaCategoryFilter === 'LIBUR') {
+      return compactEvents.filter(e => e.jenis === 'LIBUR_NASIONAL' || e.jenis === 'LIBUR_SEKOLAH');
+    }
+    if (agendaCategoryFilter === 'UJIAN') {
+      return compactEvents.filter(e => e.jenis === 'PTS' || e.jenis === 'PAS');
+    }
+    if (agendaCategoryFilter === 'KEGIATAN') {
+      return compactEvents.filter(e => e.jenis === 'KEGIATAN');
+    }
+    return compactEvents;
+  }, [compactEvents, agendaCategoryFilter]);
+
   const content = (
-    <div className="space-y-4 w-full min-w-0">
+    <div className="space-y-3.5 w-full min-w-0">
       {/* Action Bar saat di dalam Dashboard Tab atau Modal (hideLayout = true) */}
       {hideLayout && (
         <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs">
@@ -475,7 +550,7 @@ export const KalenderAkademikView: React.FC<UniversalKalenderAkademikViewProps> 
               variant="outline"
               size="sm"
               onClick={handleExportICal}
-              className="flex items-center gap-1.5 rounded-xl text-xs px-3 hidden sm:flex"
+              className="flex items-center gap-1.5 rounded-xl text-xs px-2.5 hidden sm:flex"
             >
               <span>iCal</span>
             </Button>
@@ -486,7 +561,7 @@ export const KalenderAkademikView: React.FC<UniversalKalenderAkademikViewProps> 
                   size="sm"
                   onClick={handleBulkSeed}
                   disabled={bulkSeedMutation.isPending}
-                  className="rounded-xl text-xs px-3 hidden md:flex"
+                  className="rounded-xl text-xs px-2.5 hidden md:flex"
                 >
                   Auto-Seed Libur
                 </Button>
@@ -504,104 +579,268 @@ export const KalenderAkademikView: React.FC<UniversalKalenderAkademikViewProps> 
         </div>
       )}
 
-      {/* Legenda Warna */}
-      <div className="flex flex-wrap items-center gap-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 text-[11px] font-medium text-slate-600 dark:text-slate-400 shadow-xs">
-        <span className="font-bold text-slate-700 dark:text-slate-300 mr-1 uppercase text-[10px] tracking-wider flex items-center gap-1">
-          <Info size={13} className="text-emerald-500" /> Keterangan:
-        </span>
-        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 font-semibold">
-          <span className="w-2 h-2 rounded-full bg-red-500"></span>
-          <span>Libur Nasional</span>
-        </div>
-        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-semibold">
-          <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-          <span>Libur Sekolah</span>
-        </div>
-        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-semibold">
-          <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-          <span>Ujian (STS / SAS)</span>
-        </div>
-        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-semibold">
-          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span>Kegiatan Sekolah</span>
-        </div>
-        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20 font-semibold">
-          <span className="w-2 h-2 rounded-full bg-slate-400"></span>
-          <span>Libur Rutin</span>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
+      {/* High-Density Metrics Bento Strip (Shopee-Grade UI Primitives) */}
       {statsData && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {[
-            { label: 'Total Event', value: statsData.total_events, icon: <Flag size={14} />, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-900/50' },
-            { label: 'Hari Libur', value: statsData.hari_libur, icon: <AlertCircle size={14} />, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900/50' },
-            { label: 'Hari Ujian', value: statsData.hari_ujian, icon: <BookOpen size={14} />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-900/50' },
-            { label: 'Kegiatan', value: statsData.hari_kegiatan, icon: <Calendar size={14} />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/50' },
-            { 
-              label: 'Minggu Efektif', 
-              value: statsData.calculated_minggu_efektif !== undefined ? statsData.calculated_minggu_efektif : statsData.minggu_efektif, 
-              icon: <Clock size={14} />, 
-              color: 'text-amber-600 dark:text-amber-400', 
-              bg: 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900/50',
-              subtitle: statsData.calculated_minggu_efektif_s1 !== undefined && statsData.calculated_minggu_efektif_s2 !== undefined
-                ? `S1: ${statsData.calculated_minggu_efektif_s1} | S2: ${statsData.calculated_minggu_efektif_s2}`
-                : undefined
-            },
-          ].map(s => (
-            <div key={s.label} className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 shadow-xs flex flex-col justify-between">
-              <div className="flex items-center justify-between gap-1 mb-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">{s.label}</span>
-                <div className={`w-6 h-6 rounded-lg flex items-center justify-center border ${s.bg} ${s.color} shrink-0`}>
-                  {s.icon}
-                </div>
+        <div className="w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-2 sm:p-2.5 shadow-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 dark:divide-slate-800/80 gap-2 sm:gap-0">
+            {/* 1. Total Event */}
+            <div className="flex items-center gap-2.5 px-3 py-1">
+              <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                <Flag size={13} />
               </div>
-              <div>
-                <div className="text-xl font-black text-slate-800 dark:text-slate-100">
-                  {s.value}
+              <div className="min-w-0">
+                <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider truncate">Total Event</div>
+                <div className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100 leading-none mt-0.5">
+                  {statsData.total_events}
                 </div>
-                {s.subtitle && (
-                  <div className="text-[9px] text-slate-400 dark:text-slate-500 font-bold mt-0.5 uppercase tracking-wider truncate">
-                    {s.subtitle}
-                  </div>
-                )}
               </div>
             </div>
-          ))}
+
+            {/* 2. Hari Libur */}
+            <div className="flex items-center gap-2.5 px-3 py-1">
+              <div className="w-7 h-7 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+                <AlertCircle size={13} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider truncate">Hari Libur</div>
+                <div className="text-sm sm:text-base font-black text-red-600 dark:text-red-400 leading-none mt-0.5">
+                  {statsData.hari_libur} <span className="text-[10px] font-semibold text-slate-400">Hari</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Hari Ujian */}
+            <div className="flex items-center gap-2.5 px-3 py-1">
+              <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                <BookOpen size={13} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider truncate">Hari Ujian</div>
+                <div className="text-sm sm:text-base font-black text-blue-600 dark:text-blue-400 leading-none mt-0.5">
+                  {statsData.hari_ujian} <span className="text-[10px] font-semibold text-slate-400">Hari</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Kegiatan Sekolah */}
+            <div className="flex items-center gap-2.5 px-3 py-1">
+              <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <Calendar size={13} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider truncate">Kegiatan</div>
+                <div className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 leading-none mt-0.5">
+                  {statsData.hari_kegiatan} <span className="text-[10px] font-semibold text-slate-400">Agenda</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 5. Minggu Efektif */}
+            <div className="flex items-center gap-2.5 px-3 py-1">
+              <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <Clock size={13} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider truncate">Minggu Efektif</div>
+                <div className="text-sm sm:text-base font-black text-amber-600 dark:text-amber-400 leading-none mt-0.5">
+                  {statsData.calculated_minggu_efektif !== undefined ? statsData.calculated_minggu_efektif : statsData.minggu_efektif}{' '}
+                  {statsData.calculated_minggu_efektif_s1 !== undefined && statsData.calculated_minggu_efektif_s2 !== undefined && (
+                    <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 ml-1">
+                      (S1: {statsData.calculated_minggu_efektif_s1} · S2: {statsData.calculated_minggu_efektif_s2})
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Shared Calendar Grid */}
-      <SharedAcademicCalendarGrid
-        calYear={calYear}
-        calMonth={calMonth}
-        onPrevMonth={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); } else setCalMonth(m => m - 1); }}
-        onNextMonth={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); } else setCalMonth(m => m + 1); }}
-        events={events}
-        hariSekolah={tenantRes?.hari_sekolah}
-        canManage={canManage}
-        onAddEventOnDate={(day) => openCreateModalWithDate(day)}
-        showLegend={false}
-        showMonthHeaderNav={true}
-      />
+      {/* ─── MINI CALENDAR + AGENDA SPLIT VIEW ───────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
+        {/* Kolom Kiri: Mini Calendar Widget */}
+        <div className="lg:col-span-5 xl:col-span-4 space-y-3">
+          <AcademicCalendarMini
+            calYear={calYear}
+            calMonth={calMonth}
+            onPrevMonth={handlePrevMonth}
+            onNextMonth={handleNextMonth}
+            onGoToToday={handleGoToToday}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            events={events}
+            hariSekolah={tenantRes?.hari_sekolah}
+            canManage={canManage}
+            onAddEventOnDate={(day) => openCreateModalWithDate(day)}
+          />
+        </div>
 
-      {/* Event List Card */}
-      <Suspense fallback={<div className="p-4 text-center text-xs text-slate-400">Memuat daftar event...</div>}>
-        <EventListCard
-          events={events}
-          isLoading={isLoading}
-          canManage={canManage}
-          selectedIds={selectedIds}
-          onToggleSelect={handleToggleSelect}
-          onToggleSelectAll={handleToggleSelectAll}
-          onBulkDelete={handleBulkDelete}
-          onClearAll={handleClearAll}
-          onEdit={openEditModal}
-          onDelete={handleDelete}
-          onEventClick={handleEventClick}
-        />
-      </Suspense>
+        {/* Kolom Kanan: Compact Agenda Panel */}
+        <div className="lg:col-span-7 xl:col-span-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden flex flex-col min-w-0">
+          {/* Header Agenda */}
+          <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 py-3 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/50">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs sm:text-[13px] font-bold text-slate-900 dark:text-slate-100 capitalize truncate">
+                  {selectedDate ? (
+                    <>
+                      Agenda: {new Date(selectedDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    </>
+                  ) : (
+                    <>
+                      Agenda {activeMonthName} {calYear}
+                    </>
+                  )}
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
+                  {filteredAgendaEvents.length} Event
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate mt-0.5">
+                {selectedDate ? 'Menampilkan agenda yang aktif pada tanggal terpilih' : `Seluruh agenda pada bulan ${activeMonthName}`}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              {selectedDate && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate(null)}
+                  className="flex items-center gap-1 text-[11px] font-bold text-slate-500 hover:text-emerald-600 dark:text-slate-400 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-emerald-400 transition-colors bg-white dark:bg-slate-800 cursor-pointer"
+                >
+                  <RotateCcw size={11} />
+                  <span>Lihat Seluruh Bulan</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Category Filter Chips */}
+          <div className="flex items-center gap-1.5 px-4 py-2 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/20 overflow-x-auto text-[11px]">
+            {[
+              { id: 'ALL', label: 'Semua Event' },
+              { id: 'LIBUR', label: 'Libur' },
+              { id: 'UJIAN', label: 'Ujian' },
+              { id: 'KEGIATAN', label: 'Kegiatan' },
+            ].map(cat => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setAgendaCategoryFilter(cat.id)}
+                className={cn(
+                  "px-2.5 py-0.5 rounded-lg font-bold text-[10px] transition-colors whitespace-nowrap cursor-pointer",
+                  agendaCategoryFilter === cat.id
+                    ? "bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 shadow-xs"
+                    : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                )}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Agenda List Body */}
+          <div className="p-3 sm:p-4 flex-1 overflow-y-auto max-h-[420px] space-y-2">
+            {isLoading ? (
+              <div className="py-8 text-center text-xs text-slate-400">Memuat agenda...</div>
+            ) : filteredAgendaEvents.length === 0 ? (
+              <div className="py-10 text-center flex flex-col items-center justify-center text-slate-400">
+                <CalendarDays size={28} className="opacity-30 mb-1.5" />
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                  {selectedDate ? 'Tidak ada agenda di tanggal ini.' : `Tidak ada agenda pada bulan ${activeMonthName}.`}
+                </p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  {canManage ? 'Klik "+ Tambah Event" pada toolbar di atas untuk membuat event baru.' : 'Pilih tanggal lain di mini kalender.'}
+                </p>
+              </div>
+            ) : (
+              filteredAgendaEvents.map(ev => {
+                const j = getJenisOption(ev.jenis);
+                const isSelected = selectedIds.includes(ev.id);
+                return (
+                  <div
+                    key={ev.id}
+                    className="group flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-50/60 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 hover:border-emerald-200 dark:hover:border-emerald-800/60 transition-all"
+                  >
+                    {canManage && (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelect(ev.id)}
+                        className="mt-1 rounded border-slate-300 dark:border-slate-700 text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer shrink-0"
+                        aria-label={`Pilih event ${ev.judul}`}
+                      />
+                    )}
+                    <div className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", j.dotColorClass)} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-xs text-slate-800 dark:text-slate-100 leading-snug">
+                          {ev.judul}
+                        </span>
+                        <span className={cn("text-[9px] font-extrabold px-1.5 py-0.5 rounded-md", j.bgColorClass, j.textColorClass)}>
+                          {j.label}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500 mt-1">
+                        <Clock size={10} />
+                        <span>
+                          {new Date(ev.tanggal_mulai).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}
+                          {' — '}
+                          {new Date(ev.tanggal_selesai).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
+                      {ev.keterangan && (
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 italic line-clamp-2">
+                          {ev.keterangan}
+                        </p>
+                      )}
+                    </div>
+                    {canManage && (
+                      <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditModal(ev)}
+                          className="h-6 w-6 p-0 text-slate-400 hover:text-indigo-600 rounded-lg"
+                          title="Edit event"
+                        >
+                          <Pencil size={11} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(ev)}
+                          className="h-6 w-6 p-0 text-slate-400 hover:text-red-600 rounded-lg"
+                          title="Hapus event"
+                        >
+                          <Trash2 size={11} />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Footer Bulk Actions */}
+          {canManage && selectedIds.length > 0 && (
+            <div className="px-4 py-2 bg-rose-50/70 dark:bg-rose-950/30 border-t border-rose-200/60 dark:rose-900/50 flex items-center justify-between">
+              <span className="text-[11px] font-bold text-rose-700 dark:text-rose-300">
+                {selectedIds.length} event terpilih
+              </span>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={handleBulkDelete}
+                className="h-6 text-[10px] px-2 rounded-lg"
+              >
+                Hapus Terpilih
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Modal Form Event */}
       <Suspense fallback={null}>
@@ -653,7 +892,7 @@ export const KalenderAkademikView: React.FC<UniversalKalenderAkademikViewProps> 
         ]
       }}
       toolbar={
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="toolbarOutline"
             size="toolbar"
