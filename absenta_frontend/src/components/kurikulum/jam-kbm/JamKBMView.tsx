@@ -221,12 +221,12 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
   const tabOptions = useMemo(() => {
     if (!isMultiShift) {
       return [
-        { id: 'SHIFTS', label: 'Struktur Jam Belajar (JP)', icon: Clock, colorClass: 'text-indigo-600 dark:text-indigo-400' },
+        { id: 'SHIFTS', label: 'Distribusi Jam Pelajaran', icon: Clock, colorClass: 'text-indigo-600 dark:text-indigo-400' },
         { id: 'DAILY_MAX_JP', label: 'Batas Beban Harian Guru', icon: Zap, colorClass: 'text-amber-600 dark:text-amber-400' },
       ];
     }
     return [
-      { id: 'SHIFTS', label: 'Pengaturan Waktu Shift', icon: Clock, colorClass: 'text-indigo-600 dark:text-indigo-400' },
+      { id: 'SHIFTS', label: 'Distribusi Jam Pelajaran', icon: Clock, colorClass: 'text-indigo-600 dark:text-indigo-400' },
       { id: 'CLASSES', label: 'Penugasan Shift Kelas', icon: Users, colorClass: 'text-purple-600 dark:text-purple-400' },
       { id: 'DAILY_MAX_JP', label: 'Batas Beban Harian Guru', icon: Zap, colorClass: 'text-amber-600 dark:text-amber-400' },
     ];
@@ -235,14 +235,14 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
   // ── Breadcrumbs & Instructions for Standalone Mode ──
   const breadcrumbs = useMemo(() => [
     { label: 'Kurikulum', path: '/kurikulum/jam-kbm' },
-    { label: isMultiShift ? 'Atur JP/Shift' : 'Struktur Jam Belajar' },
+    { label: isMultiShift ? 'Distribusi JP / Shift' : 'Distribusi Jam Pelajaran' },
   ], [isMultiShift]);
 
   const instruction = useMemo(() => ({
-    title: isMultiShift ? 'Panduan Atur Jam Pelajaran (JP) & Multi-Shift' : 'Panduan Struktur Jam Pelajaran (JP)',
+    title: isMultiShift ? 'Panduan Distribusi Jam Pelajaran & Shift' : 'Panduan Distribusi Jam Pelajaran',
     description: isMultiShift
-      ? 'Modul ini digunakan untuk menentukan durasi tiap slot jam pelajaran (JP), jeda istirahat, serta alokasi shift kelas (Pagi/Siang).'
-      : 'Modul ini digunakan untuk menentukan jam bel masuk, durasi tiap slot JP, dan jeda istirahat harian sekolah.',
+      ? 'Pedoman alokasi slot jam pelajaran harian (Senin – Jumat/Sabtu), jeda istirahat, serta alokasi shift kelas.'
+      : 'Pedoman alokasi slot waktu jam pelajaran harian (Senin – Jumat/Sabtu), jam bel masuk, dan jeda istirahat sekolah.',
     items: [
       { text: 'Atur jam mulai (JP ke-1) dan durasi menit per JP.' },
       { text: 'Gunakan tombol "Sisipkan Istirahat" untuk menambahkan jeda antar jam pelajaran.' },
@@ -385,10 +385,10 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
 
   return (
     <AcademicPageLayout
-      title={isMultiShift ? "Pengaturan Jam KBM & Shift" : "Pengaturan Jam Pelajaran (JP)"}
+      title={isMultiShift ? "Distribusi Jam Pelajaran & Shift" : "Distribusi Jam Pelajaran"}
       description={isMultiShift 
-        ? "Konfigurasi slot jam pelajaran, pembagian shift pagi/siang, dan jeda istirahat."
-        : "Konfigurasi slot waktu jam pelajaran (JP), jam bel masuk, dan jeda istirahat sekolah."
+        ? "Pedoman alokasi slot waktu jam pelajaran harian (Senin – Jumat/Sabtu), pembagian shift rombel, dan jeda istirahat."
+        : "Pedoman alokasi slot waktu jam pelajaran harian (Senin – Jumat/Sabtu), jam bel masuk, dan jeda istirahat sekolah."
       }
       hardeningModuleKey={HARDENING_KEY}
       breadcrumbs={breadcrumbs}

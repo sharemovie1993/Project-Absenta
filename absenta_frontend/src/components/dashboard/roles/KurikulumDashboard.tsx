@@ -415,8 +415,8 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
       },
       {
         id: 'jam_kbm',
-        label: 'Jam KBM & Waktu',
-        shortLabel: 'Jam KBM',
+        label: 'Distribusi Jam Pelajaran',
+        shortLabel: 'Distribusi JP',
         category: 'persiapan',
         icon: Clock,
       },
