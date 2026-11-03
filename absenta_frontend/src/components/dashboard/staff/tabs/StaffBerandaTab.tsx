@@ -1,7 +1,23 @@
 import React, { useMemo, useState, useCallback, Suspense, lazy } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { BookOpen, Users, ClipboardList, Clock, ArrowRight, CheckCircle2, ShieldCheck, Loader, GraduationCap } from 'lucide-react';
+import { 
+  BookOpen, 
+  Users, 
+  ClipboardList, 
+  Clock, 
+  ArrowRight, 
+  CheckCircle2, 
+  ShieldCheck, 
+  Loader, 
+  GraduationCap,
+  FileEdit,
+  FileText,
+  Radio,
+  BarChart2,
+  CheckSquare,
+  Award
+} from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { piketApi } from '../../../../api/piket.api';
 import { kurikulumApi } from '../../../../api/kurikulum.api';
@@ -14,11 +30,11 @@ import { PengajuanIzinGuruModal } from '../profil/PengajuanIzinGuruModal';
 import { useTenant } from '../../../../hooks/useTenant';
 import { toLocalDate } from '../../../../utils/attendance/time';
 import { safeArr } from '@/components/kurikulum/dashboard/DashboardComponents';
+import { HubCard, HubActionGrid, type HubActionItem } from '@/components/ui/hub';
 
 // Subkomponen High-Density Beranda
 import { TeacherDailyStatusStrip } from '../beranda/TeacherDailyStatusStrip';
 import { TeacherOpsMicroGrid } from '../beranda/TeacherOpsMicroGrid';
-import { TeacherCoreWorkspaceBento } from '../beranda/TeacherCoreWorkspaceBento';
 import { TeacherActionHubWidget } from '../beranda/TeacherActionHubWidget';
 import { DirectKbmFeed } from '../beranda/DirectKbmFeed';
 import { TeacherSidebarNav } from '../beranda/TeacherSidebarNav';
@@ -279,6 +295,91 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
     }
   }, [onOpenJournal, navigate]);
 
+  // Pintasan Aksi Operasional Guru (Shopee-Grade Headerless Quick Action Slider)
+  const teacherQuickActions: HubActionItem[] = useMemo(() => [
+    {
+      id: 'jurnal',
+      label: 'Isi Jurnal KBM',
+      icon: FileEdit,
+      iconColorClass: unfilledJournalsCount > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400',
+      badge: unfilledJournalsCount > 0 ? unfilledJournalsCount : undefined,
+      onClick: () => {
+        const targetSession = timelineItems.find((i: any) => !i.isFinished || !i.session?.jurnal_kbm) || timelineItems[0];
+        if (targetSession) {
+          handleOpenJournal(targetSession);
+        } else {
+          navigate('/kurikulum/jurnal');
+        }
+      },
+    },
+    {
+      id: 'perangkat',
+      label: 'Perangkat Ajar',
+      icon: FileText,
+      iconColorClass: 'text-teal-600 dark:text-teal-400',
+      badge: rejectedPerangkatCount > 0 ? rejectedPerangkatCount : undefined,
+      onClick: () => handleSubTabChange('perangkat'),
+    },
+    {
+      id: 'nilai',
+      label: 'Buku Nilai',
+      icon: GraduationCap,
+      iconColorClass: 'text-blue-600 dark:text-blue-400',
+      onClick: () => handleSubTabChange('nilai'),
+    },
+    {
+      id: 'remedial',
+      label: 'Radar Remedial',
+      icon: Radio,
+      iconColorClass: 'text-rose-600 dark:text-rose-400',
+      badge: remedialCount > 0 ? remedialCount : undefined,
+      onClick: () => handleSubTabChange('remedial'),
+    },
+    {
+      id: 'rekap',
+      label: 'Rekap Mapel',
+      icon: BarChart2,
+      iconColorClass: 'text-indigo-600 dark:text-indigo-400',
+      onClick: () => handleSubTabChange('rekap'),
+    },
+    {
+      id: 'supervisi',
+      label: 'Supervisi Saya',
+      icon: ShieldCheck,
+      iconColorClass: 'text-purple-600 dark:text-purple-400',
+      onClick: () => handleSubTabChange('supervisi'),
+    },
+    {
+      id: 'tugas',
+      label: 'Tugas Saya',
+      icon: CheckSquare,
+      iconColorClass: 'text-amber-600 dark:text-amber-400',
+      badge: (actionHubData.summary?.total || 0) > 0 ? actionHubData.summary?.total : undefined,
+      onClick: () => handleSubTabChange('tugas'),
+    },
+    ...(isPengujiSidang ? [
+      {
+        id: 'sidang_guru',
+        label: 'Sidang PKL',
+        icon: Award,
+        iconColorClass: 'text-violet-600 dark:text-violet-400',
+        badge: pengujiSidangUnexaminedCount > 0 ? pengujiSidangUnexaminedCount : undefined,
+        onClick: () => handleSubTabChange('sidang_guru'),
+      }
+    ] : []),
+  ], [
+    unfilledJournalsCount,
+    timelineItems,
+    handleOpenJournal,
+    navigate,
+    rejectedPerangkatCount,
+    remedialCount,
+    actionHubData.summary?.total,
+    isPengujiSidang,
+    pengujiSidangUnexaminedCount,
+    handleSubTabChange,
+  ]);
+
   return (
     <motion.div
       key="tab-ringkasan-kbm-integrated"
@@ -341,17 +442,10 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
                   onOpenRekapMapel={() => handleSubTabChange('rekap')}
                 />
 
-                {/* Meja Kerja Pendidik (4 Pilar Terpadu) */}
-                <TeacherCoreWorkspaceBento
-                  guruId={guruId}
-                  guruNama={guruNama}
-                  timelineItems={timelineItems}
-                  unfilledJournalsCount={unfilledJournalsCount}
-                  totalJpToday={totalJp}
-                  onOpenJournal={handleOpenJournal}
-                  onNavigateTab={onNavigateTab}
-                  onSelectSubTab={handleSubTabChange}
-                />
+                {/* Pintasan Aksi Operasional Guru (Shopee-Grade Quick Action Slider) */}
+                <HubCard bodyClassName="py-2.5 sm:py-3 px-2 sm:px-3">
+                  <HubActionGrid items={teacherQuickActions} variant="slider" />
+                </HubCard>
 
                 {/* Direct KBM Execution Feed (Sesi Mengajar Langsung di Layar) */}
                 <DirectKbmFeed
