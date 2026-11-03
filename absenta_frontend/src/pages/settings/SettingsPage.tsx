@@ -63,7 +63,7 @@ const SettingsPage: React.FC<UniversalSettingsViewProps> = ({
   const isValidParamTab = searchTab && !reservedDashboardTabs.includes(searchTab.toLowerCase());
   const initialTab = (
     defaultTab ||
-    (isValidParamTab ? searchTab : (isTenantUser ? (hideLayout ? 'attendance' : 'tenant_profile') : 'general'))
+    (isValidParamTab ? searchTab : (isTenantUser ? (hideLayout ? (defaultTab || 'easy_tunnel') : 'tenant_profile') : 'general'))
   ).toLowerCase();
   const [activeTab, setActiveTab] = useState(initialTab);
 
@@ -272,7 +272,7 @@ const SettingsPage: React.FC<UniversalSettingsViewProps> = ({
     if (isTenantUser) {
       if (hideLayout) {
         const list = [
-          ...(canViewAttendanceSettings ? [{ id: 'attendance', label: 'Aturan Absensi' }] : []),
+          ...(defaultTab === 'attendance' && canViewAttendanceSettings ? [{ id: 'attendance', label: 'Aturan Absensi' }] : []),
           ...(!isCloudVpsPublic ? [{ id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' }] : []),
         ];
         if (can('core.sekolah.update.profile') || isAdmin) {

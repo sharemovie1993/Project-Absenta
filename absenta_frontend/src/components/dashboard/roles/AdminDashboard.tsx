@@ -21,6 +21,7 @@ import {
   ChevronRight,
   Database,
   Lock,
+  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -54,6 +55,7 @@ const StaffActivityLogPage = lazy(() => import('@/pages/academic/StaffActivityLo
 const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'));
 const CetakBerkasPage = lazy(() => import('@/pages/academic/CetakBerkasPage').then((m) => ({ default: m.CetakBerkasPage })));
 const TenantSettingsView = lazy(() => import('@/components/tenant/TenantSettingsView').then((m) => ({ default: m.TenantSettingsView })));
+const TenantAttendanceForm = lazy(() => import('@/components/attendance/settings/TenantAttendanceForm'));
 
 export interface AdminDashboardProps {
   user?: {
@@ -87,6 +89,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
     'users',
     'roles',
     'sekolah',
+    'aturan_absensi',
     'pengaturan',
   ];
 
@@ -269,6 +272,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
         shortLabel: 'Kop Surat',
         category: 'sistem',
         icon: Printer,
+      },
+      {
+        id: 'aturan_absensi',
+        label: 'Aturan Jam & Presensi',
+        shortLabel: 'Aturan Presensi',
+        category: 'sistem',
+        icon: Clock,
       },
       {
         id: 'pengaturan',
@@ -765,7 +775,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
             </div>
           )}
 
-          {/* TAB 12: PENGATURAN SISTEM */}
+          {/* TAB 12: ATURAN JAM & PRESENSI SEKOLAH (SUBTAB KHUSUS) */}
+          {visitedTabs.has('aturan_absensi') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'aturan_absensi'}
+              className={cn('w-full min-w-0', activeTab === 'aturan_absensi' ? 'block' : 'hidden')}
+            >
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Pengaturan Jam Absensi...</span>
+                  </div>
+                }
+              >
+                <TenantAttendanceForm hideLayout={true} />
+              </Suspense>
+            </div>
+          )}
+
+          {/* TAB 13: PENGATURAN SISTEM */}
           {visitedTabs.has('pengaturan') && (
             <div
               role="tabpanel"
@@ -780,7 +810,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
                   </div>
                 }
               >
-                <SettingsPage hideLayout={true} defaultTab="attendance" />
+                <SettingsPage hideLayout={true} />
               </Suspense>
             </div>
           )}

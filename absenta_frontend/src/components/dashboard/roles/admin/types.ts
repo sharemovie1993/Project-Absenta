@@ -12,6 +12,7 @@ export type AdminTabId =
   | 'users'
   | 'roles'
   | 'sekolah'
+  | 'aturan_absensi'
   | 'pengaturan';
 
 export type AdminCategory = 'kontrol' | 'master' | 'keamanan' | 'sistem';
