@@ -18,6 +18,31 @@ export interface SupervisiBeritaAcaraPrintModalProps {
   semesterNama?: string;
 }
 
+// ── Resolusi Nama Kota/Kabupaten Sekolah secara Dinamis & Cerdas (SSOT Multi-Tenant) ──
+function resolveDynamicCity(rawSekolah?: any, tenantInfo?: any): string {
+  if (rawSekolah?.kota?.trim()) return rawSekolah.kota.trim();
+  if (rawSekolah?.kabupaten?.trim()) return rawSekolah.kabupaten.trim();
+  if (tenantInfo?.kabupaten?.trim()) return tenantInfo.kabupaten.trim();
+  if (tenantInfo?.kota?.trim()) return tenantInfo.kota.trim();
+
+  // Ekstraksi cerdas dari alamat sekolah (misal: "Kec. Plered, Kab. Purwakarta" -> "Purwakarta")
+  const fullAddress = `${rawSekolah?.alamat || ''} ${tenantInfo?.address || ''}`;
+  const kabMatch = fullAddress.match(/(?:Kab\.?|Kabupaten|Kota)\s+([A-Za-z\s]+?)(?:[0-9]|\,|$)/i);
+  if (kabMatch && kabMatch[1]) {
+    return kabMatch[1].trim();
+  }
+
+  // Ekstraksi cerdas dari nama sekolah (misal: "SMKN 1 PLERED - PURWAKARTA" -> "Purwakarta")
+  const schoolName = `${rawSekolah?.nama || ''} ${tenantInfo?.name || ''}`;
+  const nameMatch = schoolName.match(/[-–]\s*([A-Za-z\s]+)$/);
+  if (nameMatch && nameMatch[1]) {
+    return nameMatch[1].trim();
+  }
+
+  // Fallback jika tidak terdeteksi
+  return 'Purwakarta';
+}
+
 export const SupervisiBeritaAcaraPrintModal: React.FC<SupervisiBeritaAcaraPrintModalProps> = ({
   isOpen,
   onClose,
@@ -38,13 +63,33 @@ export const SupervisiBeritaAcaraPrintModal: React.FC<SupervisiBeritaAcaraPrintM
   // Resolving SSOT Tenant & School Data
   const { tenantInfo, logoDaerahBase64, logoSekolahBase64, rawSekolah } = usePrintHeaderData();
 
-  // Penandatangan Default dari Sistem
-  const defaultKota = (rawSekolah as any)?.kota || tenantInfo?.kabupaten || tenantInfo?.kota || 'Bandung';
-  const defaultTanggal = new Date().toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  // Penandatangan Default Dinamis dari Sistem & Tenant
+  const defaultKota = useMemo(() => {
+    return resolveDynamicCity(rawSekolah, tenantInfo);
+  }, [rawSekolah, tenantInfo]);
+
+  const defaultTanggal = useMemo(() => {
+    if (supervisi?.tanggal) {
+      try {
+        const d = new Date(supervisi.tanggal);
+        if (!isNaN(d.getTime())) {
+          return d.toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          });
+        }
+      } catch {
+        // fallback
+      }
+    }
+    return new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+  }, [supervisi?.tanggal]);
+
   const defaultGuruNama = supervisi?.Guru?.nama_guru || '';
   const defaultGuruNip = supervisi?.Guru?.nip || '';
   const defaultSupervisorNama = supervisi?.Supervisor?.nama_guru || 'Tim Pengembang Kurikulum';
@@ -62,7 +107,7 @@ export const SupervisiBeritaAcaraPrintModal: React.FC<SupervisiBeritaAcaraPrintM
   const [activeKepsekNama, setActiveKepsekNama] = useState(defaultKepsekNama);
   const [activeKepsekNip, setActiveKepsekNip] = useState(defaultKepsekNip);
 
-  // Sinkronisasi data saat supervisi berubah
+  // Sinkronisasi data saat supervisi, rawSekolah, atau tenant berubah
   useEffect(() => {
     if (supervisi) {
       setActiveGuruNama(supervisi.Guru?.nama_guru || '');
