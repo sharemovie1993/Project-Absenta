@@ -82,13 +82,37 @@ Menghasilkan file PDF yang **100% identik** dengan tampilan di layar monitor sec
      logging: false,
    });
    ```
-5. **Anti-Bloat Guard (PENTING - Mencegah Ukuran File Gembrot 20MB+)**:
+5. **Anti-Bloat Guard & Aspect Ratio Preservation (PENTING - Mencegah File 20MB+ & Mencegah Teks Gepeng/Terpadatkan)**:
    > **DILARANG KERAS** menggunakan `image/png` untuk embedding canvas lembar penuh ke jsPDF! PNG tanpa kompresi akan menghasilkan file PDF raksasa (15–25 MB per lembar).
-   > **WAJIB** gunakan format `image/jpeg` dengan kualitas `0.88`:
+   > **WAJIB** gunakan format `image/jpeg` dengan kualitas `0.88`.
+   > **DILARANG KERAS** memaksa `pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight)` tanpa menghitung rasio aspek canvas! Memaksa tinggi `pdfHeight` saat tinggi canvas berbeda akan membuat logo pemda/sekolah menjadi lonjong/oval dan teks/tabel terdistorsi vertikal ("terpadatkan/gepeng").
+   > **WAJIB** hitung rasio canvas dan render secara proporsional presisi:
    ```typescript
-   // Menghasilkan kompresi 98% (dari 24 MB turun ke ~400 KB) dengan teks tetap jernih dan tajam
+   // Kompresi 98% (dari 24 MB turun ke ~400 KB) dengan teks dan logo tajam
    const imgData = canvas.toDataURL('image/jpeg', 0.88);
-   pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+
+   // Preservasi Rasio Aspek 100% True WYSIWYG
+   const canvasRatio = canvas.height / canvas.width;
+   const imgHeight = pdfWidth * canvasRatio;
+
+   if (imgHeight <= pdfHeight + 1) {
+     // Pas 1 lembar utuh tanpa distorsi apapun
+     pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, imgHeight, undefined, 'FAST');
+   } else {
+     // Jika konten melebihi 1 lembar fisik, lakukan slicing proporsional antar halaman
+     let heightLeft = imgHeight;
+     let position = 0;
+
+     pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+     heightLeft -= pdfHeight;
+
+     while (heightLeft > 0) {
+       position -= pdfHeight;
+       pdf.addPage('a4', isLandscape ? 'landscape' : 'portrait');
+       pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+       heightLeft -= pdfHeight;
+     }
+   }
    ```
 6. Unduh otomatis melalui `pdf.save(filename)`.
 
@@ -149,6 +173,6 @@ Sebelum fitur cetak dirilis ke produksi:
 - [ ] Kop surat menggunakan `PrintHeader` + `usePrintHeaderData()`.
 - [ ] Tombol cetak memanggil `window.print()` dan format lembar rapi di print preview browser.
 - [ ] Tombol unduh PDF menghasilkan dokumen presisi 1:1 (*True WYSIWYG*).
-- [ ] **Anti-Bloat Guard**: Ekspor PDF menggunakan `scale: 2`, `image/jpeg` kualitas `0.88`, dan `compress: true` (ukuran file wajib < 1 MB per lembar, dilarang PNG tanpa kompresi).
+- [ ] **Anti-Bloat & Anti-Distortion Guard**: Ekspor PDF menggunakan `scale: 2`, `image/jpeg` kualitas `0.88`, `compress: true`, serta **wajib** menghitung `canvasRatio` agar aspek rasio visual 1:1 identik dengan layar modal (ukuran file < 1 MB per lembar dan dilarang memaksakan `pdfHeight` yang menyebabkan gambar gepeng/terpadatkan).
 - [ ] Tata letak tanda tangan memenuhi standar 2-tier dan tidak terpotong batas margin bawah kertas.
 - [ ] Lolos verifikasi build TypeScript (`npx tsc --noEmit`).

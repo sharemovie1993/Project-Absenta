@@ -476,7 +476,30 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
       // Optimasi ukuran file: gunakan JPEG 88% kualitas tinggi + compression flag
       // Mengurangi ukuran file dari 24 MB ke < 500 KB tanpa mengurangi ketajaman teks/tabel
       const imgData = canvas.toDataURL('image/jpeg', 0.88);
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+
+      // PRESERVE 100% TRUE WYSIWYG ASPECT RATIO (ANTI-DISTORTION & ANTI-SQUASH)
+      // Mencegah gambar dipadatkan/gepeng secara vertikal oleh jsPDF
+      const canvasRatio = canvas.height / canvas.width;
+      const imgHeight = pdfWidth * canvasRatio;
+
+      if (imgHeight <= pdfHeight + 1) {
+        // Pas 1 lembar utuh tanpa distorsi
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, imgHeight, undefined, 'FAST');
+      } else {
+        // Jika konten melebihi 1 lembar fisik A4, split proporsional antar halaman tanpa kompresi gepeng
+        let heightLeft = imgHeight;
+        let position = 0;
+
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= pdfHeight;
+
+        while (heightLeft > 0) {
+          position -= pdfHeight;
+          pdf.addPage('a4', isLandscape ? 'landscape' : 'portrait');
+          pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+          heightLeft -= pdfHeight;
+        }
+      }
 
       const shiftSlug = currentShift?.name ? currentShift.name.replace(/[^a-zA-Z0-9]/g, '_') : 'Reguler';
       pdf.save(`Distribusi_Jam_Pelajaran_2Kolom_${shiftSlug}_${todayStr.replace(/\s+/g, '_')}.pdf`);
@@ -711,7 +734,7 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
             pageNumber={1}
             totalPages={1}
             footerText={`Pedoman Resmi Distribusi Jam Pelajaran KBM - ${tenantInfo?.name || 'Sekolah'}`}
-            className="text-black font-serif"
+            className="text-black font-serif !p-5 sm:!p-6"
           >
             {/* 1. KOP SURAT DINAS & SEKOLAH RESMI */}
             <PrintHeader
@@ -719,19 +742,19 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
               showLogoDaerah={showLogoDaerah}
               showLogoSekolah={showLogoSekolah}
               tenantInfo={tenantInfo}
-              className="mb-4"
+              className="mb-2"
             />
 
             {/* 2. JUDUL DOKUMEN RESMI */}
-            <div className="text-center mb-5">
-              <h2 className="text-sm font-black tracking-wider uppercase underline">
+            <div className="text-center mb-2.5">
+              <h2 className="text-xs sm:text-sm font-black tracking-wider uppercase underline">
                 DISTRIBUSI JAM PELAJARAN (JP) &amp; WAKTU BEL KBM
               </h2>
-              <p className="text-[11px] font-bold uppercase mt-0.5 tracking-wide">
+              <p className="text-[10px] font-bold uppercase mt-0.5 tracking-wide">
                 TAHUN PELAJARAN {resolvedTahunPelajaran} {resolvedSemester ? `– SEMESTER ${resolvedSemester.toUpperCase()}` : ''}
               </p>
               {shifts.length > 1 && currentShift && (
-                <div className="inline-block mt-1 px-3 py-0.5 rounded-md border border-black text-[10px] font-black uppercase tracking-wider bg-slate-50">
+                <div className="inline-block mt-0.5 px-2.5 py-0.5 rounded-md border border-black text-[9px] font-black uppercase tracking-wider bg-slate-50">
                   {currentShift.name}
                 </div>
               )}
@@ -740,14 +763,14 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
             {/* 3. TABEL DISTRIBUSI JAM PELAJARAN */}
             {tableLayout === 'VERTICAL_2_COL' ? (
               /* ── FORMAT VERTIKAL 2 KOLOM (Kolom 1: HARI, Kolom 2: WAKTU) ── */
-              <div className="overflow-x-auto w-full mb-4">
-                <table className="w-full border-collapse border border-black text-[10.5px]">
+              <div className="overflow-x-auto w-full mb-2.5">
+                <table className="w-full border-collapse border border-black text-[10px]">
                   <thead>
                     <tr className="bg-slate-100 border-b-2 border-black">
-                      <th className="border border-black px-4 py-2 text-center font-black uppercase w-48 text-[11px]">
+                      <th className="border border-black px-3 py-1 text-center font-black uppercase w-44 text-[10.5px]">
                         HARI
                       </th>
-                      <th className="border border-black px-4 py-2 text-center font-black uppercase text-[11px]">
+                      <th className="border border-black px-3 py-1 text-center font-black uppercase text-[10.5px]">
                         WAKTU
                       </th>
                     </tr>
@@ -771,15 +794,15 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
                           {idx === 0 && (
                             <td
                               rowSpan={items.length}
-                              className="border border-black px-3 py-2 text-center font-black uppercase align-middle bg-slate-50/90 text-xs w-48"
+                              className="border border-black px-2 py-1 text-center font-black uppercase align-middle bg-slate-50/90 text-xs w-44"
                             >
                               <div className="font-black text-xs tracking-wider">{group.dayLabel}</div>
                               {group.subLabel && (
-                                <div className="text-[8.5px] text-slate-600 font-sans font-normal mt-0.5">
+                                <div className="text-[8px] text-slate-600 font-sans font-normal mt-0.5">
                                   {group.subLabel}
                                 </div>
                               )}
-                              <div className="text-[9px] text-slate-500 font-sans font-normal mt-1 pt-1 border-t border-slate-300">
+                              <div className="text-[8.5px] text-slate-500 font-sans font-normal mt-1 pt-0.5 border-t border-slate-300">
                                 <div>{items.filter(x => x.type === 'SLOT').length} JP</div>
                                 <div>{group.duration} mnt / JP</div>
                               </div>
@@ -787,13 +810,13 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
                           )}
 
                           {/* KOLOM KEDUA: WAKTU */}
-                          <td className="border border-black px-4 py-1 text-xs">
+                          <td className="border border-black px-3 py-0.5 text-[9.5px]">
                             <div className="flex items-center justify-between">
                               <span
                                 className={cn(
                                   'font-bold',
                                   item.type === 'BREAK'
-                                    ? 'text-amber-900 uppercase text-[10px] tracking-wide'
+                                    ? 'text-amber-900 uppercase text-[9px] tracking-wide'
                                     : 'text-slate-900'
                                 )}
                               >
@@ -803,7 +826,7 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
                               </span>
                               <span
                                 className={cn(
-                                  'font-mono font-bold text-[11px]',
+                                  'font-mono font-bold text-[10px]',
                                   item.type === 'BREAK' ? 'text-amber-950 font-black' : 'text-slate-900'
                                 )}
                               >
@@ -919,9 +942,9 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
             )}
 
             {/* 4. CATATAN & KETENTUAN KBM */}
-            <div className="border border-black rounded-sm p-2 mb-6 text-[9.5px] leading-relaxed bg-slate-50/40">
+            <div className="border border-black rounded-sm p-2 mb-3 text-[8.5px] leading-snug bg-slate-50/40">
               <span className="font-bold uppercase tracking-wider block mb-0.5">Ketentuan Pelaksanaan KBM:</span>
-              <ol className="list-decimal pl-4 space-y-0.5">
+              <ol className="list-decimal pl-4 space-y-0">
                 <li>
                   Durasi standar 1 Jam Pelajaran (JP) = <strong>{currentShift?.slot_duration ?? 45} Menit</strong>.
                 </li>
@@ -938,14 +961,14 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
             </div>
 
             {/* 5. TANDA TANGAN RESMI 2-TIER (KAPATUHAN SKILL UNIVERSAL DOCUMENT PRINTING) */}
-            <div className="flex justify-between items-start text-[11px] leading-normal page-break-inside-avoid">
+            <div className="flex justify-between items-start text-[10px] leading-normal page-break-inside-avoid">
               {/* Kolom Kiri: Wakasek Kurikulum */}
               <div className="text-center w-64">
                 <div>Mengetahui,</div>
                 <div className="font-bold">Wakil Kepala Sekolah Bidang Kurikulum</div>
-                <div className="h-16" />
+                <div className="h-10" />
                 <div className="font-bold underline">{wakaKurikulumNama}</div>
-                <div className="text-[10px] font-mono">
+                <div className="text-[9.5px] font-mono">
                   {wakaKurikulumNip && wakaKurikulumNip !== '-' ? `NIP. ${wakaKurikulumNip}` : 'NIP. –'}
                 </div>
               </div>
@@ -956,9 +979,9 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
                   {kotaTitimangsa}, {tanggalTitimangsa}
                 </div>
                 <div className="font-bold">Kepala Sekolah</div>
-                <div className="h-16" />
+                <div className="h-10" />
                 <div className="font-bold underline">{kepalaSekolahNama}</div>
-                <div className="text-[10px] font-mono">
+                <div className="text-[9.5px] font-mono">
                   {kepalaSekolahNip && kepalaSekolahNip !== '-' ? `NIP. ${kepalaSekolahNip}` : 'NIP. –'}
                 </div>
               </div>
