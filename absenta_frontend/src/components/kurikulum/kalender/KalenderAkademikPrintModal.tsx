@@ -81,7 +81,8 @@ function buildMonthDays(year: number, monthIndex: number): (number | null)[] {
   for (let d = 1; d <= daysInMonth; d++) {
     days.push(d);
   }
-  while (days.length % 7 !== 0) {
+  // Standarisasi Simetri Visual: Selalu 42 sel (6 pekan) agar tinggi setiap kartu bulan 100% seragam & presisi
+  while (days.length < 42) {
     days.push(null);
   }
   return days;
@@ -603,17 +604,17 @@ export const KalenderAkademikPrintModal: React.FC<KalenderAkademikPrintModalProp
     borderColorClass: string,
     headerBgClass: string
   ) => (
-    <div className={cn("border-t bg-white flex flex-col", borderColorClass)}>
-      <div className={cn("text-white px-2 py-0.5 text-[8.5px] font-bold uppercase flex items-center justify-between", headerBgClass)}>
+    <div className={cn("border-t bg-white flex flex-col flex-1", borderColorClass)}>
+      <div className={cn("text-white px-2 py-0.5 text-[8.5px] font-bold uppercase flex items-center justify-between shrink-0", headerBgClass)}>
         <span>Agenda &amp; Keterangan Kegiatan — {semesterLabel}</span>
         <span className="text-[7.5px] font-medium opacity-90">{agendaEvents.length} Agenda Terjadwal</span>
       </div>
       {agendaEvents.length === 0 ? (
-        <div className="py-1 px-2 text-center text-[8px] text-slate-500 italic bg-white">
+        <div className="py-1 px-2 text-center text-[8px] text-slate-500 italic bg-white flex-1 flex items-center justify-center min-h-[50px]">
           Tidak ada agenda khusus tercatat pada {semesterLabel}
         </div>
       ) : (
-        <div className="p-1.5 grid grid-cols-2 gap-x-2.5 gap-y-1 bg-slate-50/20">
+        <div className="p-1.5 grid grid-cols-2 gap-x-2.5 gap-y-1 bg-slate-50/20 flex-1 content-start min-h-[50px]">
           {agendaEvents.map((ev, i) => (
             <div key={ev.id || i} className="flex items-center gap-1 min-w-0 text-[7.5px] leading-tight">
               <span className={cn("px-1 py-0.5 rounded-[2px] font-bold shrink-0 text-[6.5px]", getEventBadgeColor(ev.jenis))}>
@@ -944,14 +945,14 @@ export const KalenderAkademikPrintModal: React.FC<KalenderAkademikPrintModalProp
               </p>
             </div>
 
-            {/* Dua Blok Berdampingan: Semester Ganjil (Kiri) & Semester Genap (Kanan) */}
-            <div className="grid grid-cols-2 gap-3.5 my-1.5 items-start">
+            {/* Dua Blok Berdampingan: Semester Ganjil (Kiri) & Semester Genap (Kanan) - Presisi Simetris 100% */}
+            <div className="grid grid-cols-2 gap-3.5 my-1.5 items-stretch">
               {/* Kolom Kiri: SEMESTER GANJIL */}
-              <div className="border border-emerald-800/40 rounded-lg overflow-hidden bg-white flex flex-col">
-                <div className="bg-emerald-800 text-white text-center py-1 font-bold text-[9.5px] uppercase">
+              <div className="border border-emerald-800/40 rounded-lg overflow-hidden bg-white flex flex-col h-full shadow-2xs">
+                <div className="bg-emerald-800 text-white text-center py-1 font-bold text-[9.5px] uppercase shrink-0">
                   SEMESTER GANJIL (JULI - DESEMBER {startYear})
                 </div>
-                <div className="p-1.5 grid grid-cols-3 gap-1.5 bg-emerald-50/10">
+                <div className="p-1.5 grid grid-cols-3 gap-1.5 bg-emerald-50/10 shrink-0">
                   {ganjilMonths.map((m) => (
                     <PrintMonthGrid key={`land-ganjil-${m.name}`} month={m} events={events} compact={true} />
                   ))}
@@ -962,11 +963,11 @@ export const KalenderAkademikPrintModal: React.FC<KalenderAkademikPrintModalProp
               </div>
 
               {/* Kolom Kanan: SEMESTER GENAP */}
-              <div className="border border-blue-800/40 rounded-lg overflow-hidden bg-white flex flex-col">
-                <div className="bg-blue-800 text-white text-center py-1 font-bold text-[9.5px] uppercase">
+              <div className="border border-blue-800/40 rounded-lg overflow-hidden bg-white flex flex-col h-full shadow-2xs">
+                <div className="bg-blue-800 text-white text-center py-1 font-bold text-[9.5px] uppercase shrink-0">
                   SEMESTER GENAP (JANUARI - JUNI {endYear})
                 </div>
-                <div className="p-1.5 grid grid-cols-3 gap-1.5 bg-blue-50/10">
+                <div className="p-1.5 grid grid-cols-3 gap-1.5 bg-blue-50/10 shrink-0">
                   {genapMonths.map((m) => (
                     <PrintMonthGrid key={`land-genap-${m.name}`} month={m} events={events} compact={true} />
                   ))}
