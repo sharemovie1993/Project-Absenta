@@ -477,29 +477,23 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
       // Mengurangi ukuran file dari 24 MB ke < 500 KB tanpa mengurangi ketajaman teks/tabel
       const imgData = canvas.toDataURL('image/jpeg', 0.88);
 
-      // PRESERVE 100% TRUE WYSIWYG ASPECT RATIO (ANTI-DISTORTION & ANTI-SQUASH)
-      // Mencegah gambar dipadatkan/gepeng secara vertikal oleh jsPDF
+      // STRICT 1-PAGE AUTO-FIT & TRUE WYSIWYG ASPECT RATIO (ANTI-DISTORTION & ANTI-SPLIT)
+      // Menjamin dokumen selalu pas tepat 1 halaman A4 tanpa gepeng dan tanpa terpotong ke halaman 2
       const canvasRatio = canvas.height / canvas.width;
-      const imgHeight = pdfWidth * canvasRatio;
+      let finalWidth = pdfWidth;
+      let finalHeight = pdfWidth * canvasRatio;
+      let posX = 0;
+      let posY = 0;
 
-      if (imgHeight <= pdfHeight + 1) {
-        // Pas 1 lembar utuh tanpa distorsi
-        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, imgHeight, undefined, 'FAST');
-      } else {
-        // Jika konten melebihi 1 lembar fisik A4, split proporsional antar halaman tanpa kompresi gepeng
-        let heightLeft = imgHeight;
-        let position = 0;
-
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
-        heightLeft -= pdfHeight;
-
-        while (heightLeft > 0) {
-          position -= pdfHeight;
-          pdf.addPage('a4', isLandscape ? 'landscape' : 'portrait');
-          pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
-          heightLeft -= pdfHeight;
-        }
+      if (finalHeight > pdfHeight) {
+        // Skala proporsional presisi (lebar & tinggi berkurang dengan rasio sama persis, aspek 1:1 terkunci)
+        const scale = pdfHeight / finalHeight;
+        finalHeight = pdfHeight;
+        finalWidth = pdfWidth * scale;
+        posX = (pdfWidth - finalWidth) / 2; // Rata tengah secara horizontal
       }
+
+      pdf.addImage(imgData, 'JPEG', posX, posY, finalWidth, finalHeight, undefined, 'FAST');
 
       const shiftSlug = currentShift?.name ? currentShift.name.replace(/[^a-zA-Z0-9]/g, '_') : 'Reguler';
       pdf.save(`Distribusi_Jam_Pelajaran_2Kolom_${shiftSlug}_${todayStr.replace(/\s+/g, '_')}.pdf`);
@@ -734,7 +728,7 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
             pageNumber={1}
             totalPages={1}
             footerText={`Pedoman Resmi Distribusi Jam Pelajaran KBM - ${tenantInfo?.name || 'Sekolah'}`}
-            className="text-black font-serif !p-5 sm:!p-6"
+            className="text-black font-serif !p-4 sm:!p-5"
           >
             {/* 1. KOP SURAT DINAS & SEKOLAH RESMI */}
             <PrintHeader
@@ -966,7 +960,7 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
               <div className="text-center w-64">
                 <div>Mengetahui,</div>
                 <div className="font-bold">Wakil Kepala Sekolah Bidang Kurikulum</div>
-                <div className="h-10" />
+                <div className="h-8 sm:h-9" />
                 <div className="font-bold underline">{wakaKurikulumNama}</div>
                 <div className="text-[9.5px] font-mono">
                   {wakaKurikulumNip && wakaKurikulumNip !== '-' ? `NIP. ${wakaKurikulumNip}` : 'NIP. –'}
@@ -979,7 +973,7 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
                   {kotaTitimangsa}, {tanggalTitimangsa}
                 </div>
                 <div className="font-bold">Kepala Sekolah</div>
-                <div className="h-10" />
+                <div className="h-8 sm:h-9" />
                 <div className="font-bold underline">{kepalaSekolahNama}</div>
                 <div className="text-[9.5px] font-mono">
                   {kepalaSekolahNip && kepalaSekolahNip !== '-' ? `NIP. ${kepalaSekolahNip}` : 'NIP. –'}
