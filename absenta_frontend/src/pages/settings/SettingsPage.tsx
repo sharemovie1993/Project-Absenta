@@ -271,7 +271,6 @@ const SettingsPage: React.FC<UniversalSettingsViewProps> = ({
         if (can('core.sekolah.update.profile') || isAdmin) {
           list.push({ id: 'system_update', label: 'Peralatan Sistem' });
         }
-        list.push({ id: 'tenant_profile', label: 'Profil & Kop Surat' });
         return list;
       }
 
