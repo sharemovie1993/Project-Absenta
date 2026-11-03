@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Modal,
   Button,
@@ -8,16 +8,19 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useKelasOptions, useTahunPelajaranOptions, useSemesterOptions } from '@/components/common';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
+import { useAuthStore } from '@/store/authStore';
+import { useCapabilities } from '@/hooks/useCapabilities';
 import type { CbtJadwalUjian } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
-import { ShieldAlert, Clock, Calendar, CheckSquare } from 'lucide-react';
+import { ShieldAlert, Clock, Calendar, CheckSquare, BookOpen, CheckCircle2 } from 'lucide-react';
 
 interface CbtJadwalFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   jadwalToEdit?: CbtJadwalUjian | null;
   onSuccess: () => void;
+  defaultGuruId?: string;
 }
 
 const jadwalSchema = z.object({
@@ -37,23 +40,46 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
   onClose,
   jadwalToEdit,
   onSuccess,
+  defaultGuruId,
 }) => {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const { isAdmin, isKurikulum } = useCapabilities();
+
   const { options: tpOptions } = useTahunPelajaranOptions();
   const { options: semOptions } = useSemesterOptions();
   const { options: kelasOptions } = useKelasOptions();
 
-  // Fetch available bank soal
-  const { data: bankSoalData } = useQuery({
-    queryKey: cbtQueryKeys.bankSoal({ limit: 100 }),
-    queryFn: () => cbtApi.getBankSoalList({ limit: 100 }),
+  // Mode filter bank soal: default hanya bank soal milik guru yang sedang aktif
+  const [showAllSchoolBank, setShowAllSchoolBank] = useState(false);
+
+  const teacherGuruId = useMemo(() => {
+    if (defaultGuruId) return defaultGuruId;
+    if (user?.guru_profile?.id) return user.guru_profile.id;
+    return undefined;
+  }, [defaultGuruId, user?.guru_profile?.id]);
+
+  const activeGuruFilter = useMemo(() => {
+    if (showAllSchoolBank) return undefined;
+    if (isAdmin || isKurikulum) {
+      return defaultGuruId || undefined;
+    }
+    return teacherGuruId;
+  }, [showAllSchoolBank, isAdmin, isKurikulum, defaultGuruId, teacherGuruId]);
+
+  // Fetch available bank soal terisolasi per guru
+  const { data: bankSoalData, isLoading: isBankSoalLoading } = useQuery({
+    queryKey: cbtQueryKeys.bankSoal({ limit: 100, guru_id: activeGuruFilter }),
+    queryFn: () => cbtApi.getBankSoalList({ limit: 100, guru_id: activeGuruFilter }),
     enabled: isOpen,
   });
 
-  const bankSoalOptions = (bankSoalData?.items || []).map((b) => ({
-    value: b.id,
-    label: `${b.kode_bank} - ${b.judul} (${b.Mapel?.nama_mapel || '-'})`,
-  }));
+  const bankSoalOptions = useMemo(() => {
+    return (bankSoalData?.items || []).map((b) => ({
+      value: b.id,
+      label: `${b.kode_bank} - ${b.judul} (${b.Mapel?.nama_mapel || '-'})`,
+    }));
+  }, [bankSoalData?.items]);
 
   const [bankSoalId, setBankSoalId] = useState('');
   const [tpId, setTpId] = useState('');
@@ -112,6 +138,19 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
       setShowResultInstant(false);
     }
   }, [jadwalToEdit, isOpen, tpOptions, semOptions]);
+
+  // Auto-select bank soal jika guru hanya punya 1 paket bank soal
+  useEffect(() => {
+    if (isOpen && !jadwalToEdit && bankSoalOptions.length === 1 && !bankSoalId) {
+      setBankSoalId(bankSoalOptions[0].value);
+    }
+  }, [isOpen, jadwalToEdit, bankSoalOptions, bankSoalId]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setShowAllSchoolBank(false);
+    }
+  }, [isOpen]);
 
   const toggleKelas = (id: string) => {
     setTargetKelasIds((prev) =>
@@ -205,16 +244,46 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
       <form onSubmit={handleSubmit} className="space-y-3.5 sm:space-y-4">
         {/* Pilih Bank Soal */}
         <div>
-          <label htmlFor="jadwal-bank-soal" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-            Pilih Bank Soal <span className="text-rose-500">*</span>
-          </label>
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <label htmlFor="jadwal-bank-soal" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+              Pilih Bank Soal <span className="text-rose-500">*</span>
+            </label>
+            {teacherGuruId && (
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-50 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300 border border-violet-200/60 dark:border-violet-800/60">
+                  <BookOpen className="w-2.5 h-2.5" />
+                  {showAllSchoolBank ? 'Semua Bank Soal Sekolah' : `Bank Soal Saya (${bankSoalOptions.length})`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowAllSchoolBank((prev) => !prev)}
+                  className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
+                >
+                  {showAllSchoolBank ? '(Hanya Bank Soal Saya)' : '(Lihat Semua Bank Soal)'}
+                </button>
+              </div>
+            )}
+          </div>
           <SearchableSelect
+            id="jadwal-bank-soal"
             options={bankSoalOptions}
             value={bankSoalId}
             onChange={setBankSoalId}
-            placeholder="Pilih bank soal yang sudah dibuat..."
+            placeholder={
+              isBankSoalLoading
+                ? 'Memuat bank soal...'
+                : bankSoalOptions.length === 0
+                ? 'Belum ada bank soal tersedia'
+                : 'Pilih bank soal yang sudah dibuat...'
+            }
             aria-label="Pilih Bank Soal"
           />
+          {bankSoalOptions.length === 1 && !showAllSchoolBank && (
+            <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+              <span>Otomatis terpilih 1 paket bank soal milik Anda.</span>
+            </p>
+          )}
         </div>
 
         {/* Nama Sesi */}

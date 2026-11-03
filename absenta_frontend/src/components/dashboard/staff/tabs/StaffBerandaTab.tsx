@@ -567,7 +567,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
                   {teacherCbtMode === 'bank' ? (
                     <CbtBankSoalView guruId={effectiveGuruId} hideLayout={true} />
                   ) : (
-                    <CbtJadwalView hideLayout={true} />
+                    <CbtJadwalView guruId={effectiveGuruId} hideLayout={true} />
                   )}
                 </Suspense>
               </div>

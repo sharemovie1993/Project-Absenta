@@ -86,6 +86,7 @@ export const queryJadwalUjianSchema = z.object({
   search: z.string().optional(),
   status: z.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED', 'ARCHIVED']).optional(),
   bank_soal_id: z.string().optional(),
+  guru_id: z.string().optional(),
 });
 
 // Siswa Engine Schemas

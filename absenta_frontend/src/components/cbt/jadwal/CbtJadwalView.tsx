@@ -34,6 +34,7 @@ import useConfirm from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
 
 export interface UniversalCbtJadwalViewProps {
+  guruId?: string;
   isModal?: boolean;
   hideLayout?: boolean;
   readOnly?: boolean;
@@ -42,6 +43,7 @@ export interface UniversalCbtJadwalViewProps {
 }
 
 export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo(({
+  guruId,
   readOnly = false,
   onNavigateMonitor,
 }) => {
@@ -72,12 +74,14 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
       page,
       limit,
       search: filter.debouncedSearchQuery,
+      guru_id: guruId,
     }),
     queryFn: () =>
       cbtApi.getJadwalList({
         page,
         limit,
         search: filter.debouncedSearchQuery,
+        guru_id: guruId,
       }),
   });
 
@@ -452,6 +456,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
             setSelectedJadwal(null);
           }}
           jadwalToEdit={selectedJadwal}
+          defaultGuruId={guruId}
           onSuccess={async () => {
             setPage(1);
             await queryClient.invalidateQueries({

@@ -29,6 +29,7 @@ export class CbtJadwalService {
       tenant_id: tenantId,
       ...(query.status ? { status: query.status } : {}),
       ...(query.bank_soal_id ? { bank_soal_id: query.bank_soal_id } : {}),
+      ...(query.guru_id ? { BankSoal: { guru_id: query.guru_id } } : {}),
       ...(query.search
         ? {
             OR: [
