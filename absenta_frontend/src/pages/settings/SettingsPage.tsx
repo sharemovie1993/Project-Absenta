@@ -46,7 +46,14 @@ const SettingsPage: React.FC<UniversalSettingsViewProps> = ({
   const queryClient = useQueryClient();
   const { user, isLoading, can } = useAuth();
   const { isAdmin, caps } = useCapabilities();
-  const canManageAttendanceSettings = isAdmin || caps.isKepsek || caps.isTUKepala || caps.isKurikulum;
+
+  // ── Wewenang Rapat Pleno Awal Tahun ──
+  // Siapa yang berhak MENGUBAH aturan absensi? (Kepsek, Kurikulum, Kesiswaan, TU Kepala, Admin)
+  const canEditAttendanceSettings = isAdmin || caps.isKepsek || caps.isTUKepala || caps.isKurikulum || caps.isKesiswaan;
+  // Siapa yang berhak MELIHAT aturan absensi? (Seluruh tim manajemen & operasional KBM: Kaprog, Walas, BK, dll)
+  const canViewAttendanceSettings = canEditAttendanceSettings || caps.isKaprog || caps.isWalas || caps.isBpbk;
+  const isAttendanceReadOnly = !canEditAttendanceSettings && canViewAttendanceSettings;
+
   const isSuperAdminUser = isSystemSuperAdmin(user?.role?.name, user?.tenant_id);
   const isTenantUser = !isSuperAdminUser;
 
@@ -265,7 +272,7 @@ const SettingsPage: React.FC<UniversalSettingsViewProps> = ({
     if (isTenantUser) {
       if (hideLayout) {
         const list = [
-          ...(canManageAttendanceSettings ? [{ id: 'attendance', label: 'Aturan Absensi' }] : []),
+          ...(canViewAttendanceSettings ? [{ id: 'attendance', label: 'Aturan Absensi' }] : []),
           ...(!isCloudVpsPublic ? [{ id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' }] : []),
         ];
         if (can('core.sekolah.update.profile') || isAdmin) {
@@ -276,8 +283,8 @@ const SettingsPage: React.FC<UniversalSettingsViewProps> = ({
 
       const list = [
         { id: 'tenant_profile', label: 'Profil Sekolah' },
-        // Tab "Aturan Absensi" hanya ditampilkan untuk Admin, Kepsek, TU Kepala, dan Kurikulum
-        ...(canManageAttendanceSettings ? [{ id: 'attendance', label: 'Aturan Absensi' }] : []),
+        // Tab "Aturan Absensi" dapat diakses oleh Manajemen (edit) dan Tim Operasional (read-only)
+        ...(canViewAttendanceSettings ? [{ id: 'attendance', label: 'Aturan Absensi' }] : []),
         ...(!isCloudVpsPublic ? [{ id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' }] : []),
       ];
       if (can('core.sekolah.update.profile') || isAdmin) {
@@ -298,11 +305,11 @@ const SettingsPage: React.FC<UniversalSettingsViewProps> = ({
       { id: 'system_update', label: 'Peralatan Sistem' },
     ];
     return list;
-  }, [isTenantUser, can, isAdmin, isCloudVpsPublic, canManageAttendanceSettings]);
+  }, [isTenantUser, can, isAdmin, isCloudVpsPublic, canViewAttendanceSettings, hideLayout]);
 
   const showSaveButton = canEdit && (
     (isSuperAdminUser && activeTab !== 'easy_tunnel' && activeTab !== 'system_update') ||
-    (isTenantUser && activeTab === 'attendance')
+    (isTenantUser && activeTab === 'attendance' && canEditAttendanceSettings)
   );
 
   const toolbar = useMemo(() => (
@@ -356,9 +363,9 @@ const SettingsPage: React.FC<UniversalSettingsViewProps> = ({
       />
 
       {activeTab === 'attendance' && isTenantUser ? (
-        canManageAttendanceSettings ? (
+        canViewAttendanceSettings ? (
           <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
-            <TenantAttendanceForm />
+            <TenantAttendanceForm readOnly={isAttendanceReadOnly} hideLayout={hideLayout} />
           </Suspense>
         ) : (
           <SectionCard fullWidth>
@@ -368,7 +375,7 @@ const SettingsPage: React.FC<UniversalSettingsViewProps> = ({
               </div>
               <h3 className="text-sm font-black text-slate-800 dark:text-slate-200">Akses Tidak Diizinkan</h3>
               <p className="text-xs text-slate-500 max-w-sm">
-                Tab <strong>Aturan Absensi</strong> hanya dapat diakses oleh <strong>Admin, Kepala Sekolah, TU Kepala, dan Kurikulum</strong>. Hubungi admin sekolah jika Anda memerlukan perubahan pengaturan ini.
+                Tab <strong>Aturan Absensi</strong> hanya dapat diakses oleh Manajemen Sekolah dan Tim Akademik. Hubungi admin sekolah jika Anda memerlukan perubahan pengaturan ini.
               </p>
             </div>
           </SectionCard>

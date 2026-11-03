@@ -4,11 +4,25 @@ import { useAuthStore } from '../../../store/authStore';
 import { getTenantById, updateTenant, type UpdateTenantRequest } from '../../../api/tenants.api';
 import { Button, Input, Label, Loader, Alert, Switch } from '../../ui';
 import { toast } from 'react-hot-toast';
-import { Settings2, Save, RefreshCw, CalendarDays, GraduationCap, Briefcase, Clock, ShieldCheck } from 'lucide-react';
+import { Settings2, Save, RefreshCw, CalendarDays, GraduationCap, Briefcase, Clock, ShieldCheck, Lock, ShieldAlert } from 'lucide-react';
 
 import { HARI_LIST } from '../../../constants/day.constants';
 
-const TenantAttendanceFormComponent: React.FC = () => {
+export interface UniversalAttendanceSettingsViewProps {
+  hideLayout?: boolean;
+  readOnly?: boolean;
+  isModal?: boolean;
+  onClose?: () => void;
+  onSaveSuccess?: () => void;
+}
+
+const TenantAttendanceFormComponent: React.FC<UniversalAttendanceSettingsViewProps> = ({
+  hideLayout = false,
+  readOnly = false,
+  isModal = false,
+  onClose,
+  onSaveSuccess,
+}) => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
@@ -71,7 +85,7 @@ const TenantAttendanceFormComponent: React.FC = () => {
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?.tenant_id) return;
+    if (readOnly || !user?.tenant_id) return;
     try {
       setLoading(true);
       const updateData: UpdateTenantRequest = {
@@ -96,6 +110,7 @@ const TenantAttendanceFormComponent: React.FC = () => {
         queryClient.invalidateQueries({ queryKey: ['tenant-info'] });
         queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
         queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi'] });
+        onSaveSuccess?.();
       } else {
         toast.error(response.message || 'Gagal menyimpan pengaturan');
       }
@@ -106,7 +121,7 @@ const TenantAttendanceFormComponent: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [user?.tenant_id, formData, queryClient]);
+  }, [user?.tenant_id, formData, queryClient, readOnly, onSaveSuccess]);
 
   if (loadingData) {
     return (
@@ -117,9 +132,31 @@ const TenantAttendanceFormComponent: React.FC = () => {
   }
 
   return (
-    <div className="pb-32 sm:pb-12 max-w-4xl mx-auto space-y-6">
+    <div className={hideLayout ? "w-full space-y-6 pb-6" : "pb-32 sm:pb-12 max-w-4xl mx-auto space-y-6"}>
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && <Alert variant="destructive">{error}</Alert>}
+
+        {/* ── BANNER MODE READ-ONLY (HASIL RAPAT AWAL TAHUN) ── */}
+        {readOnly && (
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 flex items-center justify-between gap-3 flex-wrap animate-fadeIn">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0 shadow-xs">
+                <Lock size={18} />
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-bold text-amber-900 dark:text-amber-200">
+                  Mode Hanya Lihat &bull; Hasil Rapat Pleno Awal Tahun
+                </h4>
+                <p className="text-[11px] text-amber-700/90 dark:text-amber-400">
+                  Aturan absensi ini berlaku untuk seluruh civitas sekolah. Perubahan hanya dapat diputuskan oleh Kepala Sekolah, Tim Kurikulum, Kesiswaan, &amp; Kepala TU.
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-200/70 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 shrink-0">
+              Read-Only
+            </span>
+          </div>
+        )}
 
         {/* ── CARD 1: ATURAN PRESENSI SISWA ── */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs overflow-hidden transition-all">
@@ -147,10 +184,11 @@ const TenantAttendanceFormComponent: React.FC = () => {
                 <Input
                   id="jam-masuk-default-field"
                   type="time"
+                  disabled={readOnly}
                   value={formData.jam_masuk_default}
                   onChange={(e) => setFormData(prev => ({ ...prev, jam_masuk_default: e.target.value }))}
                   required
-                  className="h-10 text-sm font-medium bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl focus:bg-white dark:focus:bg-slate-900 transition-all"
+                  className="h-10 text-sm font-medium bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl focus:bg-white dark:focus:bg-slate-900 transition-all disabled:opacity-80 disabled:cursor-not-allowed"
                 />
                 <p className="text-[11px] text-slate-400">Bel masuk gerbang</p>
               </div>
@@ -162,10 +200,11 @@ const TenantAttendanceFormComponent: React.FC = () => {
                 <Input
                   id="jam-pulang-default-field"
                   type="time"
+                  disabled={readOnly}
                   value={formData.jam_pulang_default}
                   onChange={(e) => setFormData(prev => ({ ...prev, jam_pulang_default: e.target.value }))}
                   required
-                  className="h-10 text-sm font-medium bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl focus:bg-white dark:focus:bg-slate-900 transition-all"
+                  className="h-10 text-sm font-medium bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl focus:bg-white dark:focus:bg-slate-900 transition-all disabled:opacity-80 disabled:cursor-not-allowed"
                 />
                 <p className="text-[11px] text-slate-400">Tap kepulangan siswa</p>
               </div>
@@ -182,10 +221,11 @@ const TenantAttendanceFormComponent: React.FC = () => {
                     id="toleransi-field"
                     type="number"
                     min="0"
+                    disabled={readOnly}
                     value={formData.toleransi_keterlambatan_menit}
                     onChange={(e) => setFormData(prev => ({ ...prev, toleransi_keterlambatan_menit: Number(e.target.value) }))}
                     required
-                    className="h-10 pr-14 text-sm font-medium bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl focus:bg-white dark:focus:bg-slate-900 transition-all"
+                    className="h-10 pr-14 text-sm font-medium bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl focus:bg-white dark:focus:bg-slate-900 transition-all disabled:opacity-80 disabled:cursor-not-allowed"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none">
                     Menit
@@ -203,10 +243,11 @@ const TenantAttendanceFormComponent: React.FC = () => {
                     id="toleransi-kbm-siswa-field"
                     type="number"
                     min="0"
+                    disabled={readOnly}
                     value={formData.toleransi_kbm_siswa_menit}
                     onChange={(e) => setFormData(prev => ({ ...prev, toleransi_kbm_siswa_menit: Number(e.target.value) }))}
                     required
-                    className="h-10 pr-14 text-sm font-medium bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl focus:bg-white dark:focus:bg-slate-900 transition-all"
+                    className="h-10 pr-14 text-sm font-medium bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl focus:bg-white dark:focus:bg-slate-900 transition-all disabled:opacity-80 disabled:cursor-not-allowed"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none">
                     Menit
@@ -244,10 +285,11 @@ const TenantAttendanceFormComponent: React.FC = () => {
                 <Input
                   id="jam-masuk-guru-field"
                   type="time"
+                  disabled={readOnly}
                   value={formData.jam_masuk_guru_default}
                   onChange={(e) => setFormData(prev => ({ ...prev, jam_masuk_guru_default: e.target.value }))}
                   required
-                  className="h-10 text-sm font-medium bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl focus:bg-white dark:focus:bg-slate-900 transition-all"
+                  className="h-10 text-sm font-medium bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl focus:bg-white dark:focus:bg-slate-900 transition-all disabled:opacity-80 disabled:cursor-not-allowed"
                 />
                 <p className="text-[11px] text-slate-400">Batas kehadiran dinas</p>
               </div>
@@ -259,10 +301,11 @@ const TenantAttendanceFormComponent: React.FC = () => {
                 <Input
                   id="jam-pulang-guru-field"
                   type="time"
+                  disabled={readOnly}
                   value={formData.jam_pulang_guru_default}
                   onChange={(e) => setFormData(prev => ({ ...prev, jam_pulang_guru_default: e.target.value }))}
                   required
-                  className="h-10 text-sm font-medium bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl focus:bg-white dark:focus:bg-slate-900 transition-all"
+                  className="h-10 text-sm font-medium bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl focus:bg-white dark:focus:bg-slate-900 transition-all disabled:opacity-80 disabled:cursor-not-allowed"
                 />
                 <p className="text-[11px] text-slate-400">Akhir jam kerja dinas</p>
               </div>
@@ -279,10 +322,11 @@ const TenantAttendanceFormComponent: React.FC = () => {
                     id="toleransi-guru-field"
                     type="number"
                     min="0"
+                    disabled={readOnly}
                     value={formData.toleransi_keterlambatan_guru_menit}
                     onChange={(e) => setFormData(prev => ({ ...prev, toleransi_keterlambatan_guru_menit: Number(e.target.value) }))}
                     required
-                    className="h-10 pr-14 text-sm font-medium bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl focus:bg-white dark:focus:bg-slate-900 transition-all"
+                    className="h-10 pr-14 text-sm font-medium bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl focus:bg-white dark:focus:bg-slate-900 transition-all disabled:opacity-80 disabled:cursor-not-allowed"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none">
                     Menit
@@ -300,10 +344,11 @@ const TenantAttendanceFormComponent: React.FC = () => {
                     id="toleransi-guru-inval-field"
                     type="number"
                     min="0"
+                    disabled={readOnly}
                     value={formData.toleransi_kbm_guru_inval_menit}
                     onChange={(e) => setFormData(prev => ({ ...prev, toleransi_kbm_guru_inval_menit: Number(e.target.value) }))}
                     required
-                    className="h-10 pr-14 text-sm font-medium bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl focus:bg-white dark:focus:bg-slate-900 transition-all"
+                    className="h-10 pr-14 text-sm font-medium bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl focus:bg-white dark:focus:bg-slate-900 transition-all disabled:opacity-80 disabled:cursor-not-allowed"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none">
                     Menit
@@ -339,7 +384,9 @@ const TenantAttendanceFormComponent: React.FC = () => {
                   <button
                     key={day.value}
                     type="button"
+                    disabled={readOnly}
                     onClick={() => {
+                      if (readOnly) return;
                       setFormData(prev => {
                         const current = [...prev.hari_sekolah];
                         if (current.includes(day.value)) {
@@ -349,9 +396,9 @@ const TenantAttendanceFormComponent: React.FC = () => {
                         }
                       });
                     }}
-                    className={`px-3.5 py-2 sm:py-2.5 rounded-xl text-xs font-bold transition-all border text-center cursor-pointer ${
+                    className={`px-3.5 py-2 sm:py-2.5 rounded-xl text-xs font-bold transition-all border text-center ${readOnly ? 'cursor-default' : 'cursor-pointer'} ${
                       isActive 
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs active:scale-95' 
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' 
                         : 'bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                     }`}
                   >
@@ -394,28 +441,42 @@ const TenantAttendanceFormComponent: React.FC = () => {
               </div>
               <Switch
                 id="allow-manual-hadir-field"
+                disabled={readOnly}
                 checked={formData.allow_manual_hadir_gate}
-                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, allow_manual_hadir_gate: checked }))}
+                onCheckedChange={(checked) => {
+                  if (readOnly) return;
+                  setFormData(prev => ({ ...prev, allow_manual_hadir_gate: checked }));
+                }}
               />
             </div>
           </div>
         </div>
 
         {/* ── SUBMIT ACTION (CLEAN & VISIBLE) ── */}
-        <div className="pt-2">
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full sm:w-auto px-8 py-2.5 h-11 text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-md shadow-indigo-600/20 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer border-none"
-          >
-            {loading ? (
-              <RefreshCw size={16} className="animate-spin" />
-            ) : (
-              <Save size={16} />
-            )}
-            <span>Simpan Pengaturan Absensi</span>
-          </Button>
-        </div>
+        {!readOnly ? (
+          <div className="pt-2">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full sm:w-auto px-8 py-2.5 h-11 text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-md shadow-indigo-600/20 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer border-none"
+            >
+              {loading ? (
+                <RefreshCw size={16} className="animate-spin" />
+              ) : (
+                <Save size={16} />
+              )}
+              <span>Simpan Pengaturan Absensi</span>
+            </Button>
+          </div>
+        ) : (
+          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
+            <span className="flex items-center gap-2">
+              <ShieldCheck size={16} className="text-emerald-500" />
+              Tersinkronisasi otomatis dengan gerbang RFID, mesin barcode, dan jurnal KBM kelas.
+            </span>
+            <span className="text-[11px] font-semibold text-slate-400">Standar Absenta SSOT</span>
+          </div>
+        )}
       </form>
     </div>
   );
