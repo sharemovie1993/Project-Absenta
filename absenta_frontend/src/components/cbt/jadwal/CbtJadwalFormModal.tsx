@@ -8,12 +8,14 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useKelasOptions, useTahunPelajaranOptions, useSemesterOptions } from '@/components/common';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
+import { kurikulumApi } from '@/api/kurikulum.api';
 import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import type { CbtJadwalUjian } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
-import { ShieldAlert, Clock, Calendar, CheckSquare, BookOpen, CheckCircle2 } from 'lucide-react';
+import { ShieldAlert, Clock, Calendar, CheckSquare, BookOpen, CheckCircle2, Users } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface CbtJadwalFormModalProps {
   isOpen: boolean;
@@ -48,10 +50,11 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
 
   const { options: tpOptions } = useTahunPelajaranOptions();
   const { options: semOptions } = useSemesterOptions();
-  const { options: kelasOptions } = useKelasOptions();
+  const { options: kelasOptions, rawList: rawKelasList } = useKelasOptions();
 
-  // Mode filter bank soal: default hanya bank soal milik guru yang sedang aktif
+  // Mode filter bank soal & rombel
   const [showAllSchoolBank, setShowAllSchoolBank] = useState(false);
+  const [showAllGradeClasses, setShowAllGradeClasses] = useState(false);
 
   const teacherGuruId = useMemo(() => {
     if (defaultGuruId) return defaultGuruId;
@@ -82,6 +85,65 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
   }, [bankSoalData?.items]);
 
   const [bankSoalId, setBankSoalId] = useState('');
+
+  // Bank Soal Terpilih
+  const selectedBankSoal = useMemo(() => {
+    return (bankSoalData?.items || []).find((b) => b.id === bankSoalId);
+  }, [bankSoalData?.items, bankSoalId]);
+
+  // Ambil penugasan mengajar guru untuk mengetahui rombel/kelas yang diampu
+  const { data: teacherAssignmentsData } = useQuery({
+    queryKey: ['guru-assigned-mapels', teacherGuruId],
+    queryFn: () => (teacherGuruId ? kurikulumApi.getGuruMapel(teacherGuruId).catch(() => null) : null),
+    enabled: isOpen && !!teacherGuruId,
+  });
+
+  // Ekstrak ID kelas yang diampu guru untuk mapel bank soal ini
+  const teacherTaughtClassIds = useMemo(() => {
+    const list = teacherAssignmentsData?.data || [];
+    const targetMapelId = selectedBankSoal?.mapel_id;
+
+    const relevant = targetMapelId
+      ? list.filter((item: any) => item.mapel_id === targetMapelId || item.Mapel?.id === targetMapelId)
+      : list;
+
+    const pool = relevant.length > 0 ? relevant : list;
+    const set = new Set<string>();
+    pool.forEach((item: any) => {
+      const kId = item.kelas_id || item.Kelas?.id;
+      if (kId) set.add(kId);
+    });
+    return Array.from(set);
+  }, [teacherAssignmentsData?.data, selectedBankSoal?.mapel_id]);
+
+  // Konversi tingkat bank soal (X -> 10, XI -> 11, XII -> 12)
+  const bankTingkatNumber = useMemo(() => {
+    if (!selectedBankSoal) return undefined;
+    if (selectedBankSoal.tingkat === 'X') return 10;
+    if (selectedBankSoal.tingkat === 'XI') return 11;
+    if (selectedBankSoal.tingkat === 'XII') return 12;
+    return undefined;
+  }, [selectedBankSoal]);
+
+  // Lapis 1: Filter kelas berdasarkan tingkat bank soal
+  const classesInTingkat = useMemo(() => {
+    if (!bankTingkatNumber) return rawKelasList;
+    return rawKelasList.filter((k) => Number(k.tingkat) === bankTingkatNumber);
+  }, [rawKelasList, bankTingkatNumber]);
+
+  // Lapis 2: Filter kelas yang diampu oleh guru tersebut
+  const teacherClasses = useMemo(() => {
+    if (teacherTaughtClassIds.length === 0) return [];
+    return classesInTingkat.filter((k) => teacherTaughtClassIds.includes(k.id));
+  }, [classesInTingkat, teacherTaughtClassIds]);
+
+  // Daftar kelas yang ditampilkan pada checklist
+  const displayedKelasList = useMemo(() => {
+    if (!showAllGradeClasses && teacherClasses.length > 0) {
+      return teacherClasses;
+    }
+    return classesInTingkat;
+  }, [showAllGradeClasses, teacherClasses, classesInTingkat]);
   const [tpId, setTpId] = useState('');
   const [semId, setSemId] = useState('');
   const [namaSesi, setNamaSesi] = useState('');
@@ -149,8 +211,16 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
   useEffect(() => {
     if (!isOpen) {
       setShowAllSchoolBank(false);
+      setShowAllGradeClasses(false);
     }
   }, [isOpen]);
+
+  // Auto-select kelas jika guru mengampu rombel tertentu saat bank soal dipilih
+  useEffect(() => {
+    if (isOpen && !jadwalToEdit && teacherClasses.length > 0 && targetKelasIds.length === 0) {
+      setTargetKelasIds(teacherClasses.map((k) => k.id));
+    }
+  }, [isOpen, jadwalToEdit, teacherClasses, bankSoalId]);
 
   const toggleKelas = (id: string) => {
     setTargetKelasIds((prev) =>
@@ -159,10 +229,12 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
   };
 
   const selectAllKelas = () => {
-    if (targetKelasIds.length === kelasOptions.length) {
-      setTargetKelasIds([]);
+    const displayedIds = displayedKelasList.map((k) => k.id);
+    const allSelected = displayedIds.length > 0 && displayedIds.every((id) => targetKelasIds.includes(id));
+    if (allSelected) {
+      setTargetKelasIds((prev) => prev.filter((id) => !displayedIds.includes(id)));
     } else {
-      setTargetKelasIds(kelasOptions.map((k) => k.value));
+      setTargetKelasIds((prev) => Array.from(new Set([...prev, ...displayedIds])));
     }
   };
 
@@ -397,36 +469,87 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
 
         {/* Target Kelas */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-              Sasaran Rombongan Belajar / Kelas ({targetKelasIds.length} dipilih) <span className="text-rose-500">*</span>
-            </label>
-            <button
-              type="button"
-              onClick={selectAllKelas}
-              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700"
-            >
-              {targetKelasIds.length === kelasOptions.length ? 'Batal Pilih Semua' : 'Pilih Semua Kelas'}
-            </button>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Sasaran Rombongan Belajar / Kelas ({targetKelasIds.length} dipilih) <span className="text-rose-500">*</span>
+              </label>
+              {selectedBankSoal?.tingkat && selectedBankSoal.tingkat !== 'SEMUA' && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60">
+                  Tingkat {selectedBankSoal.tingkat}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {teacherClasses.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllGradeClasses((prev) => !prev)}
+                  className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
+                >
+                  {showAllGradeClasses
+                    ? `(Batasi ke ${teacherClasses.length} Kelas Diampu)`
+                    : `(Tampilkan Semua Kelas Tingkat ${selectedBankSoal?.tingkat || ''}: ${classesInTingkat.length})`}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={selectAllKelas}
+                className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+              >
+                {displayedKelasList.length > 0 &&
+                displayedKelasList.every((k) => targetKelasIds.includes(k.id))
+                  ? 'Batal Pilih Semua'
+                  : teacherClasses.length > 0 && !showAllGradeClasses
+                  ? `Pilih Semua Kelas Saya (${displayedKelasList.length})`
+                  : `Pilih Semua (${displayedKelasList.length})`}
+              </button>
+            </div>
           </div>
 
           <div className="p-3 border border-slate-200 dark:border-slate-800 rounded-xl max-h-36 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-50/50 dark:bg-slate-900/50">
-            {kelasOptions.map((k) => (
-              <label
-                key={k.value}
-                className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 cursor-pointer text-xs font-medium"
-              >
-                <input
-                  type="checkbox"
-                  checked={targetKelasIds.includes(k.value)}
-                  onChange={() => toggleKelas(k.value)}
-                  className="w-3.5 h-3.5 text-indigo-600 rounded focus:ring-indigo-500"
-                  aria-label={`Target Kelas ${k.label}`}
-                />
-                <span className="truncate">{k.label}</span>
-              </label>
-            ))}
+            {displayedKelasList.map((k) => {
+              const isChecked = targetKelasIds.includes(k.id);
+              const isMyClass = teacherTaughtClassIds.includes(k.id);
+              return (
+                <label
+                  key={k.id}
+                  className={cn(
+                    "flex items-center gap-2 p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 cursor-pointer text-xs font-medium transition-colors",
+                    isChecked && "bg-violet-50/70 dark:bg-violet-950/40 border border-violet-200/60 dark:border-violet-800/60"
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => toggleKelas(k.id)}
+                    className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 cursor-pointer"
+                    aria-label={`Target Kelas ${k.nama_kelas}`}
+                  />
+                  <div className="flex flex-col min-w-0">
+                    <span className="truncate font-semibold text-slate-800 dark:text-slate-200">{k.nama_kelas}</span>
+                    <span className="text-[10px] text-slate-400">
+                      Tingkat {k.tingkat} {isMyClass && '• Rombel Anda'}
+                    </span>
+                  </div>
+                </label>
+              );
+            })}
           </div>
+
+          {displayedKelasList.length === 0 && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 py-1">
+              Tidak ditemukan rombel/kelas yang cocok dengan tingkat bank soal ini.
+            </p>
+          )}
+
+          {teacherClasses.length > 0 && !showAllGradeClasses && (
+            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+              <span>Daftar kelas otomatis difilter hanya kelas yang Anda ajar untuk mata pelajaran ini.</span>
+            </p>
+          )}
         </div>
 
         {/* Pengaturan Keamanan Anti-Cheat */}
