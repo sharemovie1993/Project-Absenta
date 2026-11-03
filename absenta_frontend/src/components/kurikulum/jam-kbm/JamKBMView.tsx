@@ -156,54 +156,17 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
     }
   }, [isMultiShift, activeShiftTab]);
 
-  // Handler Beralih Mode Shift Operasional Sekolah
+  // Handler Beralih Mode Shift Operasional Sekolah (Murni Toggle Flag Saja)
   const handleModeChange = useCallback((mode: 'SINGLE' | 'MULTI') => {
-    setShiftConfig(prev => {
-      if (mode === 'SINGLE') {
-        const primaryShift = prev.shifts[0] || {
-          id: 'pagi',
-          name: 'Shift Reguler (Pagi)',
-          slots: getPresetSlotsForJenjang(jenjang ?? ''),
-        };
-        return {
-          ...prev,
-          operational_mode: 'SINGLE',
-          shifts: [{ ...primaryShift, id: 'pagi', name: 'Shift Reguler (Pagi)' }],
-          class_assignments: {},
-        };
-      } else {
-        const shifts = [...(prev.shifts || [])];
-        if (shifts.length < 2) {
-          shifts.push({
-            id: 'siang',
-            name: 'Shift Siang',
-            start_time: '12:30',
-            slot_duration: 35,
-            slots: [
-              { slot: 1, start: '12:30', end: '13:05' },
-              { slot: 2, start: '13:05', end: '13:40' },
-              { slot: 3, start: '13:40', end: '14:15' },
-              { slot: 4, start: '14:30', end: '15:05' },
-              { slot: 5, start: '15:05', end: '15:40' },
-              { slot: 6, start: '15:40', end: '16:15' },
-            ],
-          });
-        }
-        return {
-          ...prev,
-          operational_mode: 'MULTI',
-          shifts,
-        };
-      }
-    });
+    setShiftConfig(prev => ({
+      ...prev,
+      operational_mode: mode,
+    }));
 
-    if (mode === 'SINGLE') {
-      setActiveSelectedShiftId('pagi');
-      if (activeShiftTab === 'CLASSES') {
-        setActiveShiftTab('SHIFTS');
-      }
+    if (mode === 'SINGLE' && activeShiftTab === 'CLASSES') {
+      setActiveShiftTab('SHIFTS');
     }
-  }, [jenjang, activeShiftTab]);
+  }, [activeShiftTab]);
 
   // Handler Update Batas Maksimal JP Harian Guru
   const handleDailyMaxJpChange = useCallback((dayKey: string, val: number) => {
@@ -391,7 +354,6 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
                 onConfirm={handleConfirm}
                 readOnly={!canManage}
                 isSingleShift={!isMultiShift}
-                hideDailyMaxJp={true}
               />
             </Suspense>
           ) : activeShiftTab === 'CLASSES' && isMultiShift ? (

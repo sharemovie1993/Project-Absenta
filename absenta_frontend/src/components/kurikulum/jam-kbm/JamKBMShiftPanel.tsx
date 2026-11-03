@@ -22,7 +22,6 @@ interface JamKBMShiftPanelProps {
   onConfirm: (opts: { title: string; description: string; confirmText: string; cancelText: string; style: string }) => Promise<boolean>;
   readOnly?: boolean;
   isSingleShift?: boolean;
-  hideDailyMaxJp?: boolean;
 }
 
 // ── Item interface for the Tabular representation ──
@@ -46,7 +45,6 @@ export default React.memo(function JamKBMShiftPanel({
   onConfirm,
   readOnly = false,
   isSingleShift = false,
-  hideDailyMaxJp = true,
 }: JamKBMShiftPanelProps) {
   // ── Derived data ──
   const currentShift = useMemo<ShiftItem | undefined>(
@@ -54,27 +52,8 @@ export default React.memo(function JamKBMShiftPanel({
     [shiftConfig, activeSelectedShiftId]
   );
 
-  // ── Day Pattern & Daily Max JP state ──
+  // ── Day Pattern state ──
   const [selectedDayPattern, setSelectedDayPattern] = useState<'ALL' | 'SENIN' | 'SELASA' | 'RABU' | 'KAMIS' | 'JUMAT' | 'SABTU'>('ALL');
-
-  const DEFAULT_DAILY_MAX_JP: Record<string, number> = useMemo(() => ({
-    SENIN: 10,
-    SELASA: 12,
-    RABU: 12,
-    KAMIS: 12,
-    JUMAT: 6,
-    SABTU: 6,
-  }), []);
-
-  const dailyMaxJp = useMemo(() => ({
-    ...DEFAULT_DAILY_MAX_JP,
-    ...(shiftConfig.daily_max_jp || {}),
-  }), [DEFAULT_DAILY_MAX_JP, shiftConfig.daily_max_jp]);
-
-  const handleDailyMaxJpChange = useCallback((dayKey: string, val: number) => {
-    const updated = { ...dailyMaxJp, [dayKey]: Math.max(1, Math.min(20, val)) };
-    onShiftConfigChange({ ...shiftConfig, daily_max_jp: updated });
-  }, [dailyMaxJp, shiftConfig, onShiftConfigChange]);
 
   const activePattern = useMemo(() => {
     if (!currentShift) return { start_time: '07:00', slot_duration: 45, breaks: [] as BreakItem[], slots: [] as TimeSlot[] };
@@ -754,48 +733,6 @@ export default React.memo(function JamKBMShiftPanel({
           </div>
         </div>
       </div>
-
-      {/* ── Daily Max JP Config Card (Hanya jika tidak dipisah ke tab mandiri) ── */}
-      {!hideDailyMaxJp && (
-        <div className="p-4 mb-6 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 rounded-2xl">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-amber-600 dark:text-amber-400 font-bold text-xs">⚡ Batas Maksimal JP Harian Mengajar Guru Sekolah</span>
-              <span className="text-[10px] font-medium text-amber-700/70 dark:text-amber-300/60">(Validasi Overload Harian Jadwal Builder)</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-            {[
-              { key: 'SENIN', label: 'Senin' },
-              { key: 'SELASA', label: 'Selasa' },
-              { key: 'RABU', label: 'Rabu' },
-              { key: 'KAMIS', label: 'Kamis' },
-              { key: 'JUMAT', label: 'Jumat' },
-              { key: 'SABTU', label: 'Sabtu' },
-            ].map(day => (
-              <div key={day.key} className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-amber-200/40 dark:border-amber-900/30">
-                <label htmlFor={`input-max-jp-${day.key}`} className="block text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase mb-1">{day.label}</label>
-                {readOnly ? (
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{dailyMaxJp[day.key]} JP</span>
-                ) : (
-                  <div className="flex items-center gap-1">
-                    <input
-                      id={`input-max-jp-${day.key}`}
-                      type="number"
-                      aria-label={`Batas max JP ${day.label}`}
-                      value={dailyMaxJp[day.key]}
-                      onChange={e => handleDailyMaxJpChange(day.key, Number(e.target.value))}
-                      min={1} max={20}
-                      className="w-full px-2 py-1 text-xs font-black bg-amber-50/50 dark:bg-slate-800 border border-amber-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500 text-center"
-                    />
-                    <span className="text-[10px] font-bold text-amber-600">JP</span>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ── Timeline Tabular ───────────────────────────────────────────── */}
       <div className="space-y-3">

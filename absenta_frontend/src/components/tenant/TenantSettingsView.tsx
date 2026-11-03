@@ -447,47 +447,10 @@ export const TenantSettingsView: React.FC<UniversalTenantSettingsViewProps> = ({
     setSavingShiftMode(true);
     const toastId = toast.loading(`Mengubah model shift ke ${mode === 'SINGLE' ? '1 Shift (Reguler)' : '2 Shift (Pagi & Siang)'}...`);
     try {
-      let updatedShifts = [...(shiftConfig?.shifts || [])];
-      if (mode === 'SINGLE') {
-        const primary = updatedShifts[0] || {
-          id: 'pagi',
-          name: 'Shift Reguler (Pagi)',
-          slots: [
-            { slot: 1, start: '07:00', end: '07:45' },
-            { slot: 2, start: '07:45', end: '08:30' },
-            { slot: 3, start: '08:30', end: '09:15' },
-            { slot: 4, start: '09:35', end: '10:20' },
-            { slot: 5, start: '10:20', end: '11:05' },
-            { slot: 6, start: '11:05', end: '11:50' },
-            { slot: 7, start: '12:30', end: '13:15' },
-            { slot: 8, start: '13:15', end: '14:00' },
-          ],
-        };
-        updatedShifts = [{ ...primary, id: 'pagi', name: 'Shift Reguler (Pagi)' }];
-      } else {
-        if (updatedShifts.length < 2) {
-          updatedShifts.push({
-            id: 'siang',
-            name: 'Shift Siang',
-            start_time: '12:30',
-            slot_duration: 35,
-            slots: [
-              { slot: 1, start: '12:30', end: '13:05' },
-              { slot: 2, start: '13:05', end: '13:40' },
-              { slot: 3, start: '13:40', end: '14:15' },
-              { slot: 4, start: '14:30', end: '15:05' },
-              { slot: 5, start: '15:05', end: '15:40' },
-              { slot: 6, start: '15:40', end: '16:15' },
-            ],
-          });
-        }
-      }
-
+      // MURNI HANYA MENGUBAH FLAG operational_mode — TIDAK MENGOTAK-ATIK SHIFTS / SLOTS WAKTU SAMA SEKALI
       const nextConfig = {
         ...(shiftConfig || {}),
         operational_mode: mode,
-        shifts: updatedShifts,
-        class_assignments: mode === 'SINGLE' ? {} : (shiftConfig?.class_assignments || {}),
       };
 
       setShiftConfig(nextConfig);
