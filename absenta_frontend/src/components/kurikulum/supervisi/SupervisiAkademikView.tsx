@@ -15,6 +15,7 @@ import { z } from 'zod';
 import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { SupervisiSelfAssessmentModal } from '../SupervisiSelfAssessmentModal';
+import { SupervisiPenilaianModal } from '../SupervisiPenilaianModal';
 import { SupervisiAnalyticsDashboard } from './SupervisiAnalyticsDashboard';
 import type { SupervisiFormState, RecommendationSlot } from '../SupervisiFormModal';
 import { useGuruOptions, useKelasOptions, useMapelOptions } from '../../common';
@@ -118,6 +119,10 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [detailItem, setDetailItem] = useState<Supervisi | null>(null);
 
+  // ── Penilaian Supervisor Modal ─────────────────────────────────────────────
+  const [penilaianModalOpen, setPenilaianModalOpen] = useState(false);
+  const [penilaianItem, setPenilaianItem] = useState<Supervisi | null>(null);
+
   // ── Data state ─────────────────────────────────────────────────────────────
   const [modalOpen, setModalOpen] = useState(false);
   const [formData, setFormData] = useState<SupervisiFormState>(DEFAULT_FORM);
@@ -145,6 +150,21 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
   const initialGuruId = isGuruContext
     ? (propGuruId || userGuruProfileId || currentGuru?.id)
     : propGuruId;
+
+  const isSupervisorOf = useCallback(
+    (item: Supervisi) => {
+      const myGuruId = currentGuru?.id || userGuruProfileId;
+      return Boolean(item.supervisor_id && myGuruId && item.supervisor_id === myGuruId);
+    },
+    [currentGuru?.id, userGuruProfileId]
+  );
+
+  const canGradeSupervisi = useCallback(
+    (item: Supervisi) => {
+      return Boolean(canManage || isSupervisorOf(item));
+    },
+    [canManage, isSupervisorOf]
+  );
 
   // ── Konteks Akademik SSOT (AcademicFilterToolbar) ──────────────────────────
   const academicFilter = useAcademicFilter({
@@ -534,6 +554,22 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
                 </Button>
               )}
 
+              {canGradeSupervisi(item) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setPenilaianItem(item);
+                    setPenilaianModalOpen(true);
+                  }}
+                  className="text-[11px] h-7 px-2 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 font-bold bg-indigo-50/50 hover:bg-indigo-100"
+                  title="Isi Penilaian & Catatan Observasi"
+                >
+                  <Award className="w-3.5 h-3.5 mr-1" />
+                  {item.status === 'COMPLETED' ? 'Edit Nilai' : 'Nilai'}
+                </Button>
+              )}
+
               {canManage && (
                 <>
                   <Button
@@ -850,21 +886,41 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
 
               {/* Footer Actions */}
               <div className="flex justify-between items-center pt-3 border-t border-slate-100 dark:border-slate-800">
-                {detailItem.guru_id === (propGuruId || currentGuru?.id) && detailItem.status === 'SCHEDULED' ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setDetailModalOpen(false);
-                      setSelfAssessmentSupervisiId(detailItem.id);
-                      setSelfAssessmentItem(detailItem);
-                      setSelfAssessmentModalOpen(true);
-                    }}
-                    className="rounded-xl text-indigo-600 font-bold border-indigo-200"
-                  >
-                    Isi Evaluasi Diri
-                  </Button>
-                ) : <div />}
+                <div className="flex items-center gap-2">
+                  {detailItem.guru_id === (propGuruId || currentGuru?.id) && detailItem.status === 'SCHEDULED' && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setDetailModalOpen(false);
+                        setSelfAssessmentSupervisiId(detailItem.id);
+                        setSelfAssessmentItem(detailItem);
+                        setSelfAssessmentModalOpen(true);
+                      }}
+                      className="rounded-xl text-indigo-600 font-bold border-indigo-200"
+                    >
+                      Isi Evaluasi Diri
+                    </Button>
+                  )}
+
+                  {canGradeSupervisi(detailItem) && (
+                    <Button
+                      type="button"
+                      variant="default"
+                      onClick={() => {
+                        const target = detailItem;
+                        setDetailModalOpen(false);
+                        setPenilaianItem(target);
+                        setPenilaianModalOpen(true);
+                      }}
+                      className="rounded-xl text-xs h-9 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-1.5 shadow-xs"
+                    >
+                      <Award className="w-3.5 h-3.5" />
+                      <span>{detailItem.status === 'COMPLETED' ? 'Edit Penilaian & Umpan Balik' : 'Mulai Penilaian Observasi'}</span>
+                    </Button>
+                  )}
+                </div>
+
                 <Button
                   type="button"
                   variant="outline"
@@ -879,6 +935,22 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
               </div>
             </div>
           </Modal>
+        )}
+
+        {/* 7. Supervisor Penilaian Modal */}
+        {penilaianModalOpen && penilaianItem && (
+          <SupervisiPenilaianModal
+            isOpen={penilaianModalOpen}
+            onClose={() => {
+              setPenilaianModalOpen(false);
+              setPenilaianItem(null);
+            }}
+            supervisi={penilaianItem}
+            onSuccess={() => {
+              invalidateSupervisiCache();
+              fetchData();
+            }}
+          />
         )}
       </Suspense>
     </div>

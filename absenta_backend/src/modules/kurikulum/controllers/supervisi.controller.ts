@@ -26,9 +26,36 @@ export class SupervisiController {
 
   static async update(req: any, reply: any) {
     try {
-      const { tenant_id } = req.user!;
+      const { tenant_id, id: userId } = req.user!;
       const { id } = req.params;
       const parsed = supervisiGuruUpdateSchema.parse(req.body);
+
+      // Verifikasi hak akses: Admin/Superadmin/Kurikulum ATAU supervisor yang ditugaskan
+      const rawRole = req.user.roleName || req.user.Role?.name || (typeof req.user.role === 'string' ? req.user.role : req.user.role?.name);
+      const roleName = String(rawRole || '').trim().toUpperCase();
+      const isPrivileged = roleName === 'ADMIN' || roleName === 'SUPERADMIN';
+
+      if (!isPrivileged) {
+        const authCheck = await authorizationService.isUserAuthorized(String(userId), ['curriculum.supervision.update.record', 'curriculum.supervision.manage'], { user: req.user });
+        if (!authCheck.allowed) {
+          const guruProfile = await prisma.guru.findFirst({
+            where: { user_id: userId, tenant_id },
+            select: { id: true },
+          });
+          const existing = await prisma.supervisiGuru.findFirst({
+            where: { id, tenant_id },
+            select: { supervisor_id: true },
+          });
+          if (!existing) {
+            return sendError(reply, 404, 'Supervisi not found');
+          }
+          const isAssignedSupervisor = Boolean(guruProfile && existing.supervisor_id === guruProfile.id);
+          if (!isAssignedSupervisor) {
+            return sendError(reply, 403, 'Forbidden: Anda bukan supervisor yang ditugaskan untuk sesi observasi ini');
+          }
+        }
+      }
+
       const result = await SupervisiService.update(tenant_id, id, parsed);
       return sendResponse(reply, 200, true, 'Data supervisi updated', result);
     } catch (error: any) {
