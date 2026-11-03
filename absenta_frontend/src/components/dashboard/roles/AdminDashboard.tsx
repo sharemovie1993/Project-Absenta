@@ -780,7 +780,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
                   </div>
                 }
               >
-                <SettingsPage />
+                <SettingsPage hideLayout={true} />
               </Suspense>
             </div>
           )}

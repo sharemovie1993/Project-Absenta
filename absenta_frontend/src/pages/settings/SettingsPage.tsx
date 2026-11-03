@@ -27,7 +27,21 @@ const TenantAttendanceForm = lazy(() => import('@/components/attendance/settings
 const EasyTunnelPage = lazy(() => import('../system/EasyTunnelPage'));
 const SystemUpdatePage = lazy(() => import('./SystemUpdatePage'));
 
-const SettingsPage: React.FC = () => {
+export interface UniversalSettingsViewProps {
+  hideLayout?: boolean;
+  isModal?: boolean;
+  readOnly?: boolean;
+  defaultTab?: string;
+  onClose?: () => void;
+}
+
+const SettingsPage: React.FC<UniversalSettingsViewProps> = ({
+  hideLayout = false,
+  isModal = false,
+  readOnly = false,
+  defaultTab,
+  onClose,
+}) => {
   const queryClient = useQueryClient();
   const { user, isLoading, can } = useAuth();
   const { isAdmin, caps } = useCapabilities();
@@ -36,7 +50,13 @@ const SettingsPage: React.FC = () => {
   const isTenantUser = !isSuperAdminUser;
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = (searchParams.get('tab') || (isTenantUser ? 'tenant_profile' : 'general')).toLowerCase();
+  const searchTab = searchParams.get('tab');
+  const reservedDashboardTabs = ['admin', 'kurikulum', 'kaprog', 'walikelas', 'kesiswaan', 'sarpras', 'hubin', 'bkk', 'bpbk', 'toolman', 'tu', 'guru'];
+  const isValidParamTab = searchTab && !reservedDashboardTabs.includes(searchTab.toLowerCase());
+  const initialTab = (
+    defaultTab ||
+    (isValidParamTab ? searchTab : (isTenantUser ? (hideLayout ? 'attendance' : 'tenant_profile') : 'general'))
+  ).toLowerCase();
   const [activeTab, setActiveTab] = useState(initialTab);
 
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
@@ -242,6 +262,18 @@ const SettingsPage: React.FC = () => {
 
   const tabs = useMemo(() => {
     if (isTenantUser) {
+      if (hideLayout) {
+        const list = [
+          ...(canManageAttendanceSettings ? [{ id: 'attendance', label: 'Aturan Absensi' }] : []),
+          ...(!isCloudVpsPublic ? [{ id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' }] : []),
+        ];
+        if (can('core.sekolah.update.profile') || isAdmin) {
+          list.push({ id: 'system_update', label: 'Peralatan Sistem' });
+        }
+        list.push({ id: 'tenant_profile', label: 'Profil & Kop Surat' });
+        return list;
+      }
+
       const list = [
         { id: 'tenant_profile', label: 'Profil Sekolah' },
         // Tab "Aturan Absensi" hanya ditampilkan untuk Admin, Kepsek, TU Kepala, dan Kurikulum
@@ -292,6 +324,14 @@ const SettingsPage: React.FC = () => {
   if (isLoading) return <div className="flex justify-center items-center min-h-screen"><Loader size="lg" /></div>;
 
   if (!canView) {
+    if (hideLayout) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[300px] p-4 text-center">
+          <h2 className="text-lg font-bold mb-1">Akses Ditolak</h2>
+          <p className="text-xs text-gray-500">Anda tidak memiliki izin untuk melihat pengaturan sistem.</p>
+        </div>
+      );
+    }
     return (
       <AcademicPageLayout title="Akses Ditolak" hardeningModuleKey="settingspage">
         <div className="flex flex-col items-center justify-center min-h-[400px] p-4 text-center">
@@ -302,7 +342,103 @@ const SettingsPage: React.FC = () => {
     );
   }
 
+  const tabContent = (
+    <div className={cn('space-y-6', hideLayout ? 'w-full' : 'max-w-5xl mx-auto pb-20')}>
+      <TabSwitcher
+        options={(tabs ?? [])?.map(t => ({ id: t.id, label: t.label }))}
+        activeTab={activeTab}
+        onChange={(id) => {
+          setActiveTab(id);
+          if (!hideLayout) {
+            setSearchParams({ tab: id });
+          }
+        }}
+      />
 
+      {activeTab === 'attendance' && isTenantUser ? (
+        canManageAttendanceSettings ? (
+          <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
+            <TenantAttendanceForm />
+          </Suspense>
+        ) : (
+          <SectionCard fullWidth>
+            <div className="flex flex-col items-center justify-center min-h-[300px] p-8 text-center space-y-3">
+              <div className="w-14 h-14 rounded-3xl bg-rose-50 dark:bg-rose-950/50 flex items-center justify-center text-rose-500">
+                <Settings className="w-7 h-7" />
+              </div>
+              <h3 className="text-sm font-black text-slate-800 dark:text-slate-200">Akses Tidak Diizinkan</h3>
+              <p className="text-xs text-slate-500 max-w-sm">
+                Tab <strong>Aturan Absensi</strong> hanya dapat diakses oleh <strong>Admin, Kepala Sekolah, TU Kepala, dan Kurikulum</strong>. Hubungi admin sekolah jika Anda memerlukan perubahan pengaturan ini.
+              </p>
+            </div>
+          </SectionCard>
+        )
+      ) : activeTab === 'tenant_profile' ? (
+        <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
+          <TenantSettings hideLayout={hideLayout} />
+        </Suspense>
+      ) : activeTab === 'easy_tunnel' ? (
+        isCloudVpsPublic ? (
+          <SectionCard fullWidth>
+            <div className="flex flex-col items-center justify-center min-h-[300px] p-8 text-center space-y-3">
+              <div className="w-14 h-14 rounded-3xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                <Globe className="w-7 h-7" />
+              </div>
+              <h3 className="text-sm font-black text-slate-800 dark:text-slate-200">Server Cloud VPS Publik Terdeteksi</h3>
+              <p className="text-xs text-slate-500 max-w-md leading-relaxed">
+                Platform Absenta ini berjalan langsung pada Cloud VPS dengan IP Publik Statis. Akses domain publik dan sertifikat SSL telah dikelola otomatis oleh Web Server Cloud, sehingga server ini <strong>tidak memerlukan terowongan Easy Tunnel</strong>.
+              </p>
+            </div>
+          </SectionCard>
+        ) : (
+          <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
+            <EasyTunnelPage />
+          </Suspense>
+        )
+      ) : activeTab === 'system_update' ? (
+        <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
+          <SystemUpdatePage isTab={true} />
+        </Suspense>
+      ) : (
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0">
+          {!loadingConfig && !config.app_name && activeTab === 'general' ? (
+            <EmptyState icon={Settings} title="Konfigurasi Kosong" description="Belum ada data konfigurasi yang dimuat." />
+          ) : null}
+
+          <React.Fragment>
+            <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
+              {activeTab === 'general' && <GeneralSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
+              {activeTab === 'branding' && <BrandingSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
+              {activeTab === 'company' && <CompanySettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
+              {activeTab === 'payment' && <PaymentSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
+              {activeTab === 'security' && <SecuritySettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
+              {activeTab === 'notifications' && <NotificationSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
+              {activeTab === 'attendance' && <AttendanceSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
+            </Suspense>
+          </React.Fragment>
+        </SectionCard>
+      )}
+    </div>
+  );
+
+  if (hideLayout) {
+    return (
+      <div className="space-y-4 w-full min-w-0 animate-fadeIn">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100">
+              Pengaturan Sistem &amp; Operasional Sekolah
+            </h2>
+            <p className="text-[11px] text-slate-500">
+              Konfigurasi jam absensi, toleransi keterlambatan, terowongan akses online, dan peralatan sistem
+            </p>
+          </div>
+          {toolbar}
+        </div>
+        {tabContent}
+      </div>
+    );
+  }
 
   return (
     <AcademicPageLayout
@@ -322,81 +458,9 @@ const SettingsPage: React.FC = () => {
       canView={canView}
       isLoading={isLoading}
     >
-      <div className="space-y-6 max-w-5xl mx-auto pb-20">
-        <TabSwitcher
-          options={(tabs ?? [])?.map(t => ({ id: t.id, label: t.label }))}
-          activeTab={activeTab}
-          onChange={(id) => {
-            setActiveTab(id);
-            setSearchParams({ tab: id });
-          }}
-        />
-
-        {activeTab === 'attendance' && isTenantUser ? (
-          canManageAttendanceSettings ? (
-            <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
-              <TenantAttendanceForm />
-            </Suspense>
-          ) : (
-            <SectionCard fullWidth>
-              <div className="flex flex-col items-center justify-center min-h-[300px] p-8 text-center space-y-3">
-                <div className="w-14 h-14 rounded-3xl bg-rose-50 dark:bg-rose-950/50 flex items-center justify-center text-rose-500">
-                  <Settings className="w-7 h-7" />
-                </div>
-                <h3 className="text-sm font-black text-slate-800 dark:text-slate-200">Akses Tidak Diizinkan</h3>
-                <p className="text-xs text-slate-500 max-w-sm">
-                  Tab <strong>Aturan Absensi</strong> hanya dapat diakses oleh <strong>Admin, Kepala Sekolah, TU Kepala, dan Kurikulum</strong>. Hubungi admin sekolah jika Anda memerlukan perubahan pengaturan ini.
-                </p>
-              </div>
-            </SectionCard>
-          )
-        ) : activeTab === 'tenant_profile' ? (
-          <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
-            <TenantSettings />
-          </Suspense>
-        ) : activeTab === 'easy_tunnel' ? (
-          isCloudVpsPublic ? (
-            <SectionCard fullWidth>
-              <div className="flex flex-col items-center justify-center min-h-[300px] p-8 text-center space-y-3">
-                <div className="w-14 h-14 rounded-3xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center text-blue-600 dark:text-blue-400">
-                  <Globe className="w-7 h-7" />
-                </div>
-                <h3 className="text-sm font-black text-slate-800 dark:text-slate-200">Server Cloud VPS Publik Terdeteksi</h3>
-                <p className="text-xs text-slate-500 max-w-md leading-relaxed">
-                  Platform Absenta ini berjalan langsung pada Cloud VPS dengan IP Publik Statis. Akses domain publik dan sertifikat SSL telah dikelola otomatis oleh Web Server Cloud, sehingga server ini <strong>tidak memerlukan terowongan Easy Tunnel</strong>.
-                </p>
-              </div>
-            </SectionCard>
-          ) : (
-            <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
-              <EasyTunnelPage />
-            </Suspense>
-          )
-        ) : activeTab === 'system_update' ? (
-          <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
-            <SystemUpdatePage isTab={true} />
-          </Suspense>
-        ) : (
-          <SectionCard fullWidth className="flex flex-col w-full min-w-0">
-            {!loadingConfig && !config.app_name && activeTab === 'general' ? (
-              <EmptyState icon={Settings} title="Konfigurasi Kosong" description="Belum ada data konfigurasi yang dimuat." />
-            ) : null}
-
-            <React.Fragment>
-              <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
-                {activeTab === 'general' && <GeneralSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
-                {activeTab === 'branding' && <BrandingSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
-                {activeTab === 'company' && <CompanySettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
-                {activeTab === 'payment' && <PaymentSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
-                {activeTab === 'security' && <SecuritySettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
-                {activeTab === 'notifications' && <NotificationSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
-                {activeTab === 'attendance' && <AttendanceSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
-              </Suspense>
-            </React.Fragment>
-          </SectionCard>
-        )}
-      </div>
+      {tabContent}
     </AcademicPageLayout>
+  );
   );
 };
 
