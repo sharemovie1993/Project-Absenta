@@ -530,6 +530,7 @@ export const RekapAbsensiPklView: React.FC<UniversalRekapAbsensiPklViewProps> = 
             tahunPelajaran={currentTpLabel || propTpId}
             pembimbingId={propGuruId}
             pembimbingNama={propGuruNama}
+            jurusanId={propJurusanId}
             jurusanNama={propJurusanNama}
             kelasNama={selectedKelasNama}
             viewMode={viewMode}

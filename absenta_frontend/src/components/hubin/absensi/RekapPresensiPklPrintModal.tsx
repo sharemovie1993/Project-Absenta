@@ -24,6 +24,7 @@ export interface RekapPresensiPklPrintModalProps {
   pembimbingId?: string;
   pembimbingNama?: string;
   pembimbingNip?: string;
+  jurusanId?: string;
   jurusanNama?: string;
   kelasNama?: string;
   mitraNama?: string;
@@ -40,6 +41,7 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
   pembimbingId,
   pembimbingNama: propPembimbingNama,
   pembimbingNip: propPembimbingNip,
+  jurusanId,
   jurusanNama,
   kelasNama,
   mitraNama,
@@ -53,11 +55,14 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [showTtdConfig, setShowTtdConfig] = useState<boolean>(false);
 
+  // Konteks Laporan Jurusan (Kaprog): tidak ada pembimbing spesifik dari props
+  const isJurusanContext = Boolean(jurusanNama && !propPembimbingNama && !pembimbingId);
+
   // 1. Hook SSOT Kop Surat Dinas & Sekolah
   const { tenantInfo, rawSekolah } = usePrintHeaderData();
 
-  // 2. Hook SSOT Struktur Organisasi (Waka Hubin & Kepala Sekolah)
-  const autoSigners = usePklMatriksSigners(undefined, jurusanNama);
+  // 2. Hook SSOT Struktur Organisasi (Kaprog, Waka Hubin & Kepala Sekolah)
+  const autoSigners = usePklMatriksSigners(jurusanId, jurusanNama);
 
   // 3. Hook SSOT Master Tahun Pelajaran (Resolving UUID ke Human-Readable Label)
   const { rawList: tpList, activeYear } = useTahunPelajaranOptions();
@@ -94,32 +99,44 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
       }
     }
 
-    // B. Guru Pembimbing PKL
-    let resolvedPembimbingNama = propPembimbingNama || '';
-    let resolvedPembimbingNip = propPembimbingNip || '';
+    // B. Pihak Sisi Kanan: Ketua Program Keahlian (Konteks Jurusan) vs Guru Pembimbing (Konteks Guru)
+    let resolvedRightTitle = 'Guru Pembimbing PKL';
+    let resolvedRightNama = propPembimbingNama || '';
+    let resolvedRightNip = propPembimbingNip || '';
 
-    // Cek dari rows jika belum ada dari props
-    if (!resolvedPembimbingNama && rows.length > 0) {
-      const firstWithTeacher = rows.find((r) => r.nama_pembimbing && r.nama_pembimbing !== '-');
-      if (firstWithTeacher) {
-        resolvedPembimbingNama = firstWithTeacher.nama_pembimbing || '';
+    if (isJurusanContext) {
+      resolvedRightTitle =
+        autoSigners?.kaprog?.jabatan ||
+        (jurusanNama ? `Ketua Program Keahlian ${jurusanNama}` : 'Ketua Program Keahlian');
+      if (autoSigners?.kaprog?.isAssigned) {
+        resolvedRightNama = autoSigners.kaprog.nama || '';
+        resolvedRightNip =
+          autoSigners.kaprog.nip && autoSigners.kaprog.nip !== '-' ? autoSigners.kaprog.nip : '';
       }
-    }
+    } else {
+      // Hanya fallback ke guru pertama di rows jika BUKAN konteks jurusan
+      if (!resolvedRightNama && rows.length > 0) {
+        const firstWithTeacher = rows.find((r) => r.nama_pembimbing && r.nama_pembimbing !== '-');
+        if (firstWithTeacher) {
+          resolvedRightNama = firstWithTeacher.nama_pembimbing || '';
+        }
+      }
 
-    // Cari NIP guru pembimbing dari guruList
-    const targetGuruId = pembimbingId || rows.find((r) => r.pembimbing_id)?.pembimbing_id;
-    if (targetGuruId) {
-      const matchGuru = guruList.find((g) => g.id === targetGuruId);
-      if (matchGuru) {
-        if (!resolvedPembimbingNama) resolvedPembimbingNama = matchGuru.nama_guru || matchGuru.nama || '';
-        if (!resolvedPembimbingNip) resolvedPembimbingNip = matchGuru.nip || '';
-      }
-    } else if (resolvedPembimbingNama && !resolvedPembimbingNip) {
-      const matchByName = guruList.find(
-        (g) => (g.nama_guru || g.nama || '').toLowerCase() === resolvedPembimbingNama.toLowerCase()
-      );
-      if (matchByName?.nip) {
-        resolvedPembimbingNip = matchByName.nip;
+      // Cari NIP guru pembimbing dari guruList
+      const targetGuruId = pembimbingId || rows.find((r) => r.pembimbing_id)?.pembimbing_id;
+      if (targetGuruId) {
+        const matchGuru = guruList.find((g) => g.id === targetGuruId);
+        if (matchGuru) {
+          if (!resolvedRightNama) resolvedRightNama = matchGuru.nama_guru || matchGuru.nama || '';
+          if (!resolvedRightNip) resolvedRightNip = matchGuru.nip || '';
+        }
+      } else if (resolvedRightNama && !resolvedRightNip) {
+        const matchByName = guruList.find(
+          (g) => (g.nama_guru || g.nama || '').toLowerCase() === resolvedRightNama.toLowerCase()
+        );
+        if (matchByName?.nip) {
+          resolvedRightNip = matchByName.nip;
+        }
       }
     }
 
@@ -161,12 +178,24 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
       hubinTitle: resolvedHubinTitle,
       hubinNama: resolvedHubinNama,
       hubinNip: resolvedHubinNip,
-      pembimbingNama: resolvedPembimbingNama,
-      pembimbingNip: resolvedPembimbingNip,
+      pembimbingTitle: resolvedRightTitle,
+      pembimbingNama: resolvedRightNama,
+      pembimbingNip: resolvedRightNip,
       kota: resolvedKota,
       tanggal: resolvedTanggal,
     };
-  }, [autoSigners, guruList, rawSekolah, tenantInfo, propPembimbingNama, propPembimbingNip, pembimbingId, rows]);
+  }, [
+    autoSigners,
+    guruList,
+    rawSekolah,
+    tenantInfo,
+    propPembimbingNama,
+    propPembimbingNip,
+    pembimbingId,
+    rows,
+    isJurusanContext,
+    jurusanNama,
+  ]);
 
   // Form State Penandatangan (Dapat disesuaikan sementara oleh pengguna via drawer)
   const [hubinTitle, setHubinTitle] = useState('');
@@ -187,6 +216,7 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
     setHubinTitle(resolvedSigners.hubinTitle);
     setActiveHubinNama(resolvedSigners.hubinNama);
     setActiveHubinNip(resolvedSigners.hubinNip);
+    setPembimbingTitle(resolvedSigners.pembimbingTitle);
     setActivePembimbingNama(resolvedSigners.pembimbingNama);
     setActivePembimbingNip(resolvedSigners.pembimbingNip);
     setActiveKepsekNama(resolvedSigners.kepsekNama);
@@ -199,6 +229,7 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
     setHubinTitle(resolvedSigners.hubinTitle);
     setActiveHubinNama(resolvedSigners.hubinNama);
     setActiveHubinNip(resolvedSigners.hubinNip);
+    setPembimbingTitle(resolvedSigners.pembimbingTitle);
     setActivePembimbingNama(resolvedSigners.pembimbingNama);
     setActivePembimbingNip(resolvedSigners.pembimbingNip);
     setActiveKepsekNama(resolvedSigners.kepsekNama);
@@ -428,21 +459,28 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
               </div>
               <div>
                 <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                  Guru Pembimbing (Sisi Kanan)
+                  {isJurusanContext ? 'Ketua Program Keahlian (Kanan Atas)' : 'Guru Pembimbing (Sisi Kanan)'}
                 </label>
+                <input
+                  type="text"
+                  value={pembimbingTitle}
+                  onChange={(e) => setPembimbingTitle(e.target.value)}
+                  className="w-full p-2 border rounded-md dark:bg-slate-900 mb-1"
+                  placeholder="Jabatan Penandatangan"
+                />
                 <input
                   type="text"
                   value={activePembimbingNama}
                   onChange={(e) => setActivePembimbingNama(e.target.value)}
                   className="w-full p-2 border rounded-md dark:bg-slate-900"
-                  placeholder="Nama Lengkap & Gelar"
+                  placeholder={isJurusanContext ? 'Nama Ketua Program Keahlian' : 'Nama Lengkap & Gelar'}
                 />
                 <input
                   type="text"
                   value={activePembimbingNip}
                   onChange={(e) => setActivePembimbingNip(e.target.value)}
                   className="w-full p-2 border rounded-md mt-1 dark:bg-slate-900"
-                  placeholder="NIP"
+                  placeholder="NIP (kosongkan jika belum ada)"
                 />
               </div>
               <div>
@@ -493,12 +531,18 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
               <p className="text-xs font-semibold text-slate-800 mt-0.5">
                 Periode: {bulanFormatted} {resolvedTahunPelajaran ? `• Tahun Pelajaran ${resolvedTahunPelajaran}` : ''}
               </p>
-              {activePembimbingNama && (
+              {isJurusanContext ? (
+                <p className="text-[11px] text-slate-700 mt-0.5">
+                  Program Keahlian: <span className="font-bold">{jurusanNama}</span>
+                  {kelasNama ? <span> • Kelas: <span className="font-bold">{kelasNama}</span></span> : ''}
+                </p>
+              ) : activePembimbingNama ? (
                 <p className="text-[11px] text-slate-700 mt-0.5">
                   Guru Pembimbing: <span className="font-bold">{activePembimbingNama}</span>
                   {activePembimbingNip ? ` (NIP. ${activePembimbingNip})` : ''}
+                  {kelasNama ? <span> • Kelas: <span className="font-bold">{kelasNama}</span></span> : ''}
                 </p>
-              )}
+              ) : null}
             </div>
 
             {/* Matriks Tabel Kehadiran */}
@@ -615,12 +659,12 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
                     </div>
                   </div>
 
-                  {/* Kolom Kanan: Guru Pembimbing PKL */}
+                  {/* Kolom Kanan: Guru Pembimbing PKL / Ketua Program Keahlian */}
                   <div className="flex flex-col justify-between h-[125px] text-center">
                     <div>
                       <p className="font-semibold text-slate-800">Mengetahui,</p>
                       <p className="font-bold text-black min-h-[24px] flex items-center justify-center leading-snug">
-                        {pembimbingTitle || 'Guru Pembimbing PKL'}
+                        {pembimbingTitle || (isJurusanContext ? (jurusanNama ? `Ketua Program Keahlian ${jurusanNama}` : 'Ketua Program Keahlian') : 'Guru Pembimbing PKL')}
                       </p>
                     </div>
                     <div>
