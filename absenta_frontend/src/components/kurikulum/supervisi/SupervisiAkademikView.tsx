@@ -112,6 +112,7 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
   // ── Self-assessment modal ──────────────────────────────────────────────────
   const [selfAssessmentModalOpen, setSelfAssessmentModalOpen] = useState(false);
   const [selfAssessmentSupervisiId, setSelfAssessmentSupervisiId] = useState<string | null>(null);
+  const [selfAssessmentItem, setSelfAssessmentItem] = useState<Supervisi | null>(null);
 
   // ── Detail & Feedback Modal (Guru / Review) ────────────────────────────────
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -522,6 +523,7 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
                   size="sm"
                   onClick={() => {
                     setSelfAssessmentSupervisiId(item.id);
+                    setSelfAssessmentItem(item);
                     setSelfAssessmentModalOpen(true);
                   }}
                   className="text-[11px] h-7 px-2 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 font-bold bg-indigo-50/50 hover:bg-indigo-100"
@@ -739,8 +741,10 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
             onClose={() => {
               setSelfAssessmentModalOpen(false);
               setSelfAssessmentSupervisiId(null);
+              setSelfAssessmentItem(null);
             }}
             supervisiId={selfAssessmentSupervisiId}
+            item={selfAssessmentItem}
             onSuccess={() => {
               invalidateSupervisiCache();
               fetchData();
@@ -851,6 +855,7 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
                     onClick={() => {
                       setDetailModalOpen(false);
                       setSelfAssessmentSupervisiId(detailItem.id);
+                      setSelfAssessmentItem(detailItem);
                       setSelfAssessmentModalOpen(true);
                     }}
                     className="rounded-xl text-indigo-600 font-bold border-indigo-200"
