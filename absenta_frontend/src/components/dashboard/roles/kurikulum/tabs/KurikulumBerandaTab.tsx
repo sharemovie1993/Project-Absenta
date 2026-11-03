@@ -12,6 +12,7 @@ import {
   Award,
   ChevronRight,
   Clock,
+  Laptop,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -197,6 +198,13 @@ export const KurikulumBerandaTab: React.FC<KurikulumBerandaTabProps> = React.mem
         iconColorClass: 'text-purple-600 dark:text-purple-400',
         badge: supBelum > 0 ? supBelum : undefined,
         onClick: () => onTabSelect('supervisi'),
+      },
+      {
+        id: 'cbt',
+        label: 'CBT & Asesmen',
+        icon: Laptop,
+        iconColorClass: 'text-violet-600 dark:text-violet-400',
+        onClick: () => onTabSelect('cbt'),
       },
       {
         id: 'rapor',

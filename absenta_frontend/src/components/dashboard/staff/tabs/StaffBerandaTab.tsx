@@ -57,6 +57,12 @@ const StaffRekapMapelTab = lazy(() =>
 const NilaiPklView = lazy(() =>
   import('@/components/hubin/nilai-pkl/NilaiPklView').then((m) => ({ default: m.NilaiPklView }))
 );
+const CbtBankSoalView = lazy(() =>
+  import('@/components/cbt/bank-soal/CbtBankSoalView').then((m) => ({ default: m.CbtBankSoalView }))
+);
+const CbtJadwalView = lazy(() =>
+  import('@/components/cbt/jadwal/CbtJadwalView').then((m) => ({ default: m.CbtJadwalView }))
+);
 
 // Lazy load GateInputModule untuk satpam
 const GateInputModule = lazy(() =>
@@ -213,12 +219,15 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
     'agenda',
     'tugas',
     'perangkat',
+    'cbt',
     'nilai',
     'remedial',
     'rekap',
     'supervisi',
     ...(isPengujiSidang ? ['sidang_guru' as const] : []),
   ], [isPengujiSidang]);
+
+  const [teacherCbtMode, setTeacherCbtMode] = useState<'bank' | 'jadwal'>('bank');
 
   const activeSubTab = validSubTabs.includes(subTabParam) ? subTabParam : 'agenda';
 
@@ -505,6 +514,62 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
               >
                 <PerangkatAjarView guruId={effectiveGuruId} hideLayout={true} roleContext="GURU" />
               </Suspense>
+            )}
+
+            {/* SUB-TAB CBT: BANK SOAL & JADWAL UJIAN GURU */}
+            {activeSubTab === 'cbt' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTeacherCbtMode('bank')}
+                      className={cn(
+                        "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                        teacherCbtMode === 'bank'
+                          ? "bg-violet-600 text-white shadow-xs"
+                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      )}
+                    >
+                      Bank Soal Saya
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTeacherCbtMode('jadwal')}
+                      className={cn(
+                        "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                        teacherCbtMode === 'jadwal'
+                          ? "bg-violet-600 text-white shadow-xs"
+                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      )}
+                    >
+                      Jadwal Ujian Aktif
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/cbt/dashboard')}
+                    className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Pusat CBT Utama ↗</span>
+                  </button>
+                </div>
+
+                <Suspense
+                  fallback={
+                    <div className="p-12 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-col items-center justify-center gap-3">
+                      <Loader className="animate-spin text-violet-600" size={32} />
+                      <p className="text-xs text-slate-500 font-semibold">Memuat Modul CBT Guru...</p>
+                    </div>
+                  }
+                >
+                  {teacherCbtMode === 'bank' ? (
+                    <CbtBankSoalView guruId={effectiveGuruId} hideLayout={true} />
+                  ) : (
+                    <CbtJadwalView hideLayout={true} />
+                  )}
+                </Suspense>
+              </div>
             )}
 
             {/* SUB-TAB 3: BUKU NILAI & ASESMEN SISWA */}

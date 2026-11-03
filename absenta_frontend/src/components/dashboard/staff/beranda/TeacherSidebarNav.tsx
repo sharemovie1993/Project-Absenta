@@ -10,7 +10,8 @@ import {
   ShieldCheck,
   UserCheck,
   Clock,
-  BookOpen
+  BookOpen,
+  Laptop
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TeacherSubTabId, TeacherSubTabItem } from './TeacherSubNavPills';
@@ -69,6 +70,11 @@ export const TeacherSidebarNav: React.FC<TeacherSidebarNavProps> = React.memo(({
       icon: FileText,
       badgeCount: perangkatRejectedCount > 0 ? perangkatRejectedCount : undefined,
       badgeVariant: 'rose',
+    },
+    {
+      id: 'cbt',
+      label: 'Bank Soal CBT',
+      icon: Laptop,
     },
     {
       id: 'nilai',

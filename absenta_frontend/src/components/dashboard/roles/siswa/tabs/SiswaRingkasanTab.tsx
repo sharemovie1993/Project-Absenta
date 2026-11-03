@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   CheckCircle2,
   Clock,
@@ -14,6 +15,8 @@ import {
   LogOut,
   FileText,
   Briefcase,
+  Laptop,
+  PlayCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SiswaMonthStats, SiswaGamification, SiswaDisciplineItem } from '../types';
@@ -77,6 +80,7 @@ export const SiswaRingkasanTab: React.FC<SiswaRingkasanTabProps> = ({
   onOpenPklModal,
   onNavigateTab,
 }) => {
+  const navigate = useNavigate();
   const topStudents = kelasLeaderboardStudents?.slice(0, 3) || [];
 
   return (
@@ -258,6 +262,43 @@ export const SiswaRingkasanTab: React.FC<SiswaRingkasanTabProps> = ({
           </div>
         </div>
       )}
+
+      {/* 🚀 CBT ACTIVE EXAM & ASESMEN HERO LAUNCHER */}
+      <div className="relative overflow-hidden rounded-3xl p-4 sm:p-5 bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-700 text-white shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 text-white flex items-center justify-center shrink-0 shadow-inner">
+            <Laptop size={24} className="text-white animate-pulse" />
+          </div>
+          <div className="space-y-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/20 text-violet-100 border border-white/20">
+                Ujian Berbasis Komputer
+              </span>
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-300"></span>
+              </span>
+              <span className="text-[10px] font-bold text-emerald-200">Sistem CBT Aktif</span>
+            </div>
+            <h3 className="text-base sm:text-lg font-black tracking-tight text-white leading-tight">
+              Ruang Ujian &amp; Asesmen Online (CBT)
+            </h3>
+            <p className="text-xs text-violet-100/80 font-medium">
+              Siap mengikuti Penilaian Akhir Semester (SAS / UAS) &amp; Ujian Harian dengan token resmi.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => navigate('/cbt/ruang-ujian')}
+          className="w-full md:w-auto px-5 py-3 rounded-2xl bg-white hover:bg-violet-50 text-violet-900 text-xs font-black shadow-lg hover:shadow-xl flex items-center justify-center gap-2 shrink-0 cursor-pointer transition-all active:scale-98"
+        >
+          <PlayCircle size={16} className="text-violet-700" />
+          <span>Masuk Ruang Ujian CBT</span>
+          <ChevronRight size={14} className="text-violet-400" />
+        </button>
+      </div>
 
       {/* 2. 4 STAT CARDS SUMMARY */}
       {isAktifPkl ? (

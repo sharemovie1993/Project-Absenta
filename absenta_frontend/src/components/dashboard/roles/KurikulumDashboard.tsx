@@ -23,6 +23,7 @@ import {
   BarChart2,
   UserCheck,
   Settings2,
+  Laptop,
 } from 'lucide-react';
 import { Loader } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -63,6 +64,7 @@ import { KurikulumDelegasiTab } from './kurikulum/tabs/KurikulumDelegasiTab';
 import { KurikulumCetakTab } from './kurikulum/tabs/KurikulumCetakTab';
 import { KurikulumRekapKbmTab } from './kurikulum/tabs/KurikulumRekapKbmTab';
 import { KurikulumWaliKelasTab } from './kurikulum/tabs/KurikulumWaliKelasTab';
+import { KurikulumCbtTab } from './kurikulum/tabs/KurikulumCbtTab';
 const TenantAttendanceForm = React.lazy(() => import('@/components/attendance/settings/TenantAttendanceForm'));
 
 export interface KurikulumDashboardProps {
@@ -85,6 +87,7 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
     'rekap_kbm',
     'perangkat',
     'supervisi',
+    'cbt',
     'rapor',
     'kalender',
     'jam_kbm',
@@ -396,6 +399,13 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
         shortLabel: 'Supervisi',
         category: 'operasional',
         icon: CheckCircle2,
+      },
+      {
+        id: 'cbt',
+        label: 'CBT & Asesmen Ujian',
+        shortLabel: 'CBT Ujian',
+        category: 'operasional',
+        icon: Laptop,
       },
       {
         id: 'rapor',
@@ -874,6 +884,18 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
                 supPct={supPct}
                 loading={lSup}
               />
+            </div>
+          )}
+
+          {/* TAB CBT & ASESMEN UJIAN */}
+          {visitedTabs.has('cbt') && (
+            <div
+              key="tab-cbt"
+              role="tabpanel"
+              aria-hidden={activeTab !== 'cbt'}
+              className={cn('w-full min-w-0', activeTab === 'cbt' ? 'block' : 'hidden')}
+            >
+              <KurikulumCbtTab />
             </div>
           )}
 

@@ -7,11 +7,12 @@ import {
   BarChart2, 
   ShieldCheck,
   AlertCircle,
-  Radio
+  Radio,
+  Laptop
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type TeacherSubTabId = 'agenda' | 'tugas' | 'perangkat' | 'nilai' | 'remedial' | 'rekap' | 'supervisi' | 'sidang_guru';
+export type TeacherSubTabId = 'agenda' | 'tugas' | 'perangkat' | 'cbt' | 'nilai' | 'remedial' | 'rekap' | 'supervisi' | 'sidang_guru';
 
 export interface TeacherSubTabItem {
   id: TeacherSubTabId;
@@ -56,6 +57,11 @@ export const TeacherSubNavPills: React.FC<TeacherSubNavPillsProps> = React.memo(
       icon: FileText,
       badgeCount: perangkatRejectedCount > 0 ? perangkatRejectedCount : undefined,
       badgeVariant: 'rose',
+    },
+    {
+      id: 'cbt',
+      label: 'Bank Soal CBT',
+      icon: Laptop,
     },
     {
       id: 'nilai',

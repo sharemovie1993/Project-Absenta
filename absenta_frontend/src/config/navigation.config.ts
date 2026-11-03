@@ -180,6 +180,10 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     targetGroupKeywords: ['AKADEMIK', 'DATA MASTER', 'MASTER', 'SISTEM'],
     crossModulePaths: [
       '/kurikulum/dashboard',
+      '/cbt/dashboard',
+      '/cbt/bank-soal',
+      '/cbt/jadwal',
+      '/cbt/sesi',
       '/kesiswaan/monitoring',
       '/sarpras/dashboard',
       '/hubin/dashboard',
@@ -204,6 +208,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     defaultPath: '/dashboard',
     crossModulePaths: [
       '/attendance/my-attendance',
+      '/cbt/ruang-ujian',
       '/kurikulum/jadwal',
       '/bpbk/konseling',
       '/rapor/nilai',
@@ -227,6 +232,10 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     requiredRoleName: 'GURU',
     defaultPath: '/attendance/riwayat-ajar',
     crossModulePaths: [
+      '/cbt/dashboard',
+      '/cbt/bank-soal',
+      '/cbt/jadwal',
+      '/cbt/sesi',
       '/kesiswaan/pelanggaran',
       '/cooperative/savings',
       '/cooperative/rat',
@@ -250,6 +259,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     defaultPath: '/dashboard?tab=binaan',
     crossModulePaths: [
       '/dashboard',
+      '/cbt/sesi',
       '/bpbk/cases',
       '/kesiswaan/pelanggaran',
       '/rapor/input-nilai',
@@ -290,6 +300,10 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     defaultPath: '/kurikulum/dashboard',
     targetGroupKeywords: ['KURIKULUM'],
     crossModulePaths: [
+      '/cbt/dashboard',
+      '/cbt/bank-soal',
+      '/cbt/jadwal',
+      '/cbt/sesi',
       '/attendance/monitoring',
       '/attendance/guru-monitoring',
       '/attendance/rekap',
@@ -390,6 +404,8 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     requiredPositionCode: 'KEPALA_SEKOLAH',
     defaultPath: '/kurikulum/dashboard',
     crossModulePaths: [
+      '/cbt/sesi',
+      '/cbt/dashboard',
       '/hubin/monitoring',
       '/bpbk/cases',
       '/sarpras/inventory'

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
   UserCheck, 
@@ -9,9 +10,10 @@ import {
   Award, 
   Clock, 
   AlertTriangle, 
-  GraduationCap,
-  FileText,
-  Shield
+  GraduationCap, 
+  FileText, 
+  Shield,
+  Laptop
 } from 'lucide-react';
 import { Badge } from '@/components/ui';
 import { 
@@ -38,6 +40,7 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
   onSelectTab,
   onOpenJurnalModal,
 }) => {
+  const navigate = useNavigate();
   const isHistorical = data?.academicContext?.isHistoricalPeriod ?? false;
   const kehadiran = data?.kehadiranStats;
   const totalSiswa = data?.kelasInfo?.totalSiswa ?? 0;
@@ -238,6 +241,14 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
       icon: Award,
       iconColorClass: 'text-emerald-600 dark:text-emerald-400',
       onClick: () => onSelectTab('prestasi'),
+    },
+    // Slot 9: Live Monitoring Ujian CBT
+    {
+      id: 'cbt_monitoring',
+      label: 'Monitoring CBT',
+      icon: Laptop,
+      iconColorClass: 'text-violet-600 dark:text-violet-400',
+      onClick: () => navigate('/cbt/sesi'),
     },
   ];
 

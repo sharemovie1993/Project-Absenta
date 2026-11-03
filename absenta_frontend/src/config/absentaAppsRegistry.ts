@@ -1,6 +1,7 @@
 import { 
   GraduationCap, Clock, BookOpen, Shield, HeartHandshake, 
   Mail, MessageSquare, ShoppingCart, Building2, Globe, Settings, FileText,
+  Laptop,
   LucideIcon
 } from 'lucide-react';
 
@@ -76,11 +77,30 @@ export const ABSENTA_APPS_REGISTRY: AbsentaApp[] = [
       gradient: 'from-indigo-600 to-violet-600',
     },
     defaultPath: '/kurikulum/jadwal',
-    pathPrefixes: ['/kurikulum', '/cbt', '/jadwal', '/jam-kbm', '/supervisi', '/kosp'],
+    pathPrefixes: ['/kurikulum', '/jadwal', '/jam-kbm', '/supervisi', '/kosp'],
     category: 'KURIKULUM',
   },
 
-  // 4. Rapor
+  // 4. CBT & Asesmen Ujian
+  {
+    id: 'cbt',
+    name: 'CBT Ujian',
+    description: 'Bank soal, jadwal ujian online, proctoring live monitoring, dan berita acara',
+    icon: Laptop,
+    iconName: 'Laptop',
+    color: {
+      bg: 'bg-violet-500/10 dark:bg-violet-500/20',
+      text: 'text-violet-600 dark:text-violet-400',
+      badge: 'bg-violet-100 text-violet-800 dark:bg-violet-900/50 dark:text-violet-200',
+      hover: 'hover:border-violet-300 dark:hover:border-violet-700 hover:bg-violet-50/50 dark:hover:bg-violet-950/20',
+      gradient: 'from-violet-600 to-purple-600',
+    },
+    defaultPath: '/cbt/dashboard',
+    pathPrefixes: ['/cbt'],
+    category: 'CBT',
+  },
+
+  // 5. Rapor
   {
     id: 'rapor',
     name: 'Rapor',
@@ -322,6 +342,12 @@ export function getVisibleApps(
           hasCap('academic.teaching.') ||
           (normalizedRole === 'GURU' && hasCap('academic.schedules.')) ||
           (normalizedRole === 'SISWA' && hasCap('academic.schedules.view.list'));
+
+      // CBT & Ujian Berbasis Komputer
+      case 'cbt':
+        return hasPos('KURIKULUM', 'KEPALA_SEKOLAH', 'WALIKELAS') ||
+          hasCap('cbt.') ||
+          normalizedRole === 'GURU' || normalizedRole === 'SISWA';
 
       // E-Rapor
       case 'rapor':

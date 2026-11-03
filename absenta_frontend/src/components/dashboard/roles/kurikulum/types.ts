@@ -15,6 +15,7 @@ export type KurikulumTabId =
   | 'wali_kelas'
   | 'jadwal'
   | 'piket'
+  | 'cbt'
   | 'cetak';
 
 export interface KurikulumNavTabItem {

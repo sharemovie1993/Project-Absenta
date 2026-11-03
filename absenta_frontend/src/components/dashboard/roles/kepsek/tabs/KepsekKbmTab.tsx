@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, CheckCircle, PlayCircle, Award, Activity, Trophy, ArrowUpRight } from 'lucide-react';
+import { Users, CheckCircle, PlayCircle, Award, Activity, Trophy, ArrowUpRight, Laptop } from 'lucide-react';
 import { HubCard } from '@/components/ui/hub';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -77,6 +77,53 @@ export const KepsekKbmTab: React.FC<KepsekKbmTabProps> = React.memo(({
         }
       >
         <MonitoringKbmWidget isExecutive={true} />
+      </HubCard>
+
+      {/* 2b. Monitoring Asesmen & Ujian CBT */}
+      <HubCard
+        title="Monitoring Asesmen & Ujian Berbasis Komputer (CBT)"
+        headerAction={
+          <Button
+            size="toolbar"
+            variant="toolbarOutline"
+            onClick={() => navigate('/cbt/sesi')}
+            className="text-xs font-semibold gap-1.5 cursor-pointer text-violet-600 dark:text-violet-400"
+          >
+            <Laptop size={14} />
+            <span>Pengawasan Sesi CBT Live</span>
+            <ArrowUpRight size={14} />
+          </Button>
+        }
+      >
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-2">
+          <div className="space-y-1">
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Infrastruktur &amp; Engine Asesmen Siap Operasional</span>
+            </h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Mendukung monitoring ruang ujian, anti-kecurangan token browser, autosave jawaban berkala, dan rekap nilai otomatis.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate('/cbt/bank-soal')}
+              className="text-xs"
+            >
+              Bank Soal
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate('/cbt/jadwal')}
+              className="text-xs"
+            >
+              Jadwal Ujian
+            </Button>
+          </div>
+        </div>
       </HubCard>
 
       {/* 3. Klasemen Kedisiplinan & Kinerja PTK (Guru) */}
