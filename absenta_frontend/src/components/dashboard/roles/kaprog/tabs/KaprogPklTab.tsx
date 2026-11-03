@@ -53,6 +53,7 @@ interface KaprogPklTabProps {
   onSelectEditingSlot: (slot: EditingMitraSlot) => void;
   onOpenPlottingModal?: () => void;
   onOpenRekapNilai?: () => void;
+  onOpenSidangPkl?: () => void;
   onOpenMonitoringPkl?: () => void;
   onOpenPrintMatriksModal?: () => void;
   onRolloverAllTp?: () => void;
@@ -70,6 +71,7 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
   onSelectEditingSlot,
   onOpenPlottingModal,
   onOpenRekapNilai,
+  onOpenSidangPkl,
   onOpenMonitoringPkl,
   onOpenPrintMatriksModal,
   onRolloverAllTp,
@@ -154,6 +156,7 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
           icon={<Award className="w-5 h-5 text-purple-400" />}
           description={`${sidangPercent}% selesai sidang`}
           gradient="from-purple-600 to-indigo-700"
+          onClick={onOpenSidangPkl || onOpenRekapNilai}
         />
       </div>
 
@@ -194,11 +197,12 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
             <Button
               variant="outline"
               size="sm"
-              onClick={onOpenRekapNilai || (() => navigate('/hubin/nilai-pkl?tab=dudi'))}
-              className="text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 gap-1.5 cursor-pointer"
+              onClick={onOpenSidangPkl || onOpenRekapNilai || (() => navigate('/dashboard?tab=kaprog&subtab=sidang_pkl'))}
+              className="text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 gap-1.5 cursor-pointer text-purple-700 dark:text-purple-300"
+              title="Buka Lembar Penilaian Sidang PKL Jurusan"
             >
-              <span>Rekap Nilai</span>
-              <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
+              <Award className="w-3.5 h-3.5 text-purple-500" />
+              <span>Nilai Sidang PKL</span>
             </Button>
           </div>
         </div>

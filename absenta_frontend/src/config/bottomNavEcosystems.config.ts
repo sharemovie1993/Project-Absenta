@@ -329,6 +329,7 @@ export function getKaprogTabs(kaprogJurusan: any, currentSubtab: string | null):
         { id: 'beranda', label: 'Ringkasan Beranda', icon: Home, targetPath: '/dashboard?tab=kaprog&subtab=beranda', color: 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400' },
         { id: 'siswa', label: 'Data Siswa', icon: GraduationCap, targetPath: '/dashboard?tab=kaprog&subtab=siswa', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
         { id: 'pkl', label: 'PKL & Mitra', icon: Briefcase, targetPath: '/dashboard?tab=kaprog&subtab=pkl', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
+        { id: 'sidang_pkl', label: 'Nilai Sidang PKL', icon: Award, targetPath: '/dashboard?tab=kaprog&subtab=sidang_pkl', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
         { id: 'kehadiran', label: 'Presensi Rombel', icon: CalendarCheck, targetPath: '/dashboard?tab=kaprog&subtab=kehadiran', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
         { id: 'pelanggaran', label: 'Pelanggaran Siswa', icon: ShieldAlert, targetPath: '/dashboard?tab=kaprog&subtab=pelanggaran', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
         { id: 'prestasi', label: 'Prestasi Siswa', icon: Trophy, targetPath: '/dashboard?tab=kaprog&subtab=prestasi', color: 'bg-yellow-50 dark:bg-yellow-950/70 text-yellow-600 dark:text-yellow-400' },

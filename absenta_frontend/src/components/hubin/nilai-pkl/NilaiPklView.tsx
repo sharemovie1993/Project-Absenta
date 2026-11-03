@@ -78,6 +78,12 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
     if (propKelasId) setSelectedKelas(propKelasId);
   }, [propKelasId]);
 
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab === 'sidang' ? 'sidang' : 'dudi');
+    }
+  }, [initialTab]);
+
   // Settings Form State
   const [formMode, setFormMode] = useState<'DUDI_ONLY' | 'COMPOSITE'>('DUDI_ONLY');
   const [formWeightDudi, setFormWeightDudi] = useState<number>(70);
@@ -482,10 +488,11 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
     });
   }, [scores, selectedTp, selectedSemester, saveBatchMutation, readOnly]);
 
+  const isSidangAvailable = isCompositeMode || initialTab === 'sidang' || isKaprog || isPrivilegedHubin;
   const tabs = useMemo(() => [
     { id: 'dudi', label: `🏢 DUDI (${displayedScores.length})` },
-    ...(isCompositeMode ? [{ id: 'sidang', label: `🎓 Sidang (${displayedScores.length})` }] : []),
-  ], [displayedScores.length, isCompositeMode]);
+    ...(isSidangAvailable ? [{ id: 'sidang', label: `🎓 Sidang (${displayedScores.length})` }] : []),
+  ], [displayedScores.length, isSidangAvailable]);
 
   return (
     <div className={cn('space-y-4', className)}>
