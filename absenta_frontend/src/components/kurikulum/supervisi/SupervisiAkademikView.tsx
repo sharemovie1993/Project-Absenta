@@ -142,9 +142,9 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
     [guruItems, user, userGuruProfileId]
   );
 
-  const resolvedGuruId = isGuruContext
+  const initialGuruId = isGuruContext
     ? (propGuruId || userGuruProfileId || currentGuru?.id)
-    : (propGuruId || academicFilter.values.guruId);
+    : propGuruId;
 
   // ── Konteks Akademik SSOT (AcademicFilterToolbar) ──────────────────────────
   const academicFilter = useAcademicFilter({
@@ -154,12 +154,14 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
     enableSearch: true,
     initialTpId: propTpId,
     initialSemesterId: propSemId,
-    initialGuruId: resolvedGuruId,
+    initialGuruId,
   });
 
   const activeTpId = propTpId || academicFilter.values.tahunPelajaranId;
   const activeSemId = propSemId || academicFilter.values.semesterId;
-  const activeGuruId = resolvedGuruId;
+  const activeGuruId = isGuruContext
+    ? (propGuruId || userGuruProfileId || currentGuru?.id)
+    : (propGuruId || academicFilter.values.guruId);
   const debouncedSearch = academicFilter.debouncedSearchQuery;
 
   // 🛡️ Academic Context Guard: Deteksi apakah user sedang melihat tahun ajaran arsip/lampau
