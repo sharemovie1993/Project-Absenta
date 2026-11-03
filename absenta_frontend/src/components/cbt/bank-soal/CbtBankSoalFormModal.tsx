@@ -122,9 +122,10 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={bankSoalToEdit ? 'Edit Bank Soal' : 'Buat Bank Soal Baru'}
+      title={bankSoalToEdit ? 'Edit Paket Bank Soal' : 'Buat Paket Bank Soal Baru'}
       size="md"
     >
+      <div className="-mt-6 -mx-6 mb-4 h-2 bg-[#673ab7]" />
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Kode & Tingkat */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -258,7 +259,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
             variant="primary"
             size="sm"
             disabled={isSubmitting}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+            className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold"
           >
             {isSubmitting ? 'Menyimpan...' : bankSoalToEdit ? 'Simpan Perubahan' : 'Buat Bank Soal'}
           </Button>

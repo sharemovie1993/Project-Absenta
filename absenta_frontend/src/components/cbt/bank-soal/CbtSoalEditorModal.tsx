@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal,
   Button,
-  Input,
   Badge,
 } from '@/components/ui';
 import {
@@ -15,12 +14,23 @@ import {
   Sparkles,
   HelpCircle,
   AlertCircle,
+  Copy,
+  Plus,
+  Check,
+  Circle,
+  ChevronDown,
+  X,
+  MessageSquare,
+  ListPlus,
+  Save,
+  ArrowRight,
 } from 'lucide-react';
 import axiosInstance from '@/lib/axiosInstance';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
 import type { CbtSoal, OpsiJawaban } from '@/types/cbt.types';
 import { CbtContentRenderer } from '../common/CbtContentRenderer';
+import { cn } from '@/lib/utils';
 
 interface CbtSoalEditorModalProps {
   isOpen: boolean;
@@ -66,6 +76,10 @@ export const CbtSoalEditorModal: React.FC<CbtSoalEditorModalProps> = ({
   const [uploadingStimulus, setUploadingStimulus] = useState(false);
   const [uploadingOpsiIndex, setUploadingOpsiIndex] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isWajibDiisi, setIsWajibDiisi] = useState(true);
+  const [showPembahasanBox, setShowPembahasanBox] = useState(false);
+
+  const fileInputStimulusRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (soalToEdit) {
@@ -75,6 +89,7 @@ export const CbtSoalEditorModal: React.FC<CbtSoalEditorModalProps> = ({
       setBobot(Number(soalToEdit.bobot) || 1.0);
       setKunciJawaban(soalToEdit.kunci_jawaban);
       setPembahasan(soalToEdit.pembahasan || '');
+      setShowPembahasanBox(Boolean(soalToEdit.pembahasan));
 
       if (Array.isArray(soalToEdit.opsi_jawaban_json) && soalToEdit.opsi_jawaban_json.length > 0) {
         setOpsiJawaban(soalToEdit.opsi_jawaban_json);
@@ -88,6 +103,7 @@ export const CbtSoalEditorModal: React.FC<CbtSoalEditorModalProps> = ({
       setBobot(1.0);
       setKunciJawaban('A');
       setPembahasan('');
+      setShowPembahasanBox(false);
       setOpsiJawaban(DEFAULT_OPTIONS);
     }
     setActiveTab('editor');
@@ -115,12 +131,15 @@ export const CbtSoalEditorModal: React.FC<CbtSoalEditorModalProps> = ({
       const url = res.data?.data?.url || res.data?.url;
       if (url) {
         setGambarStimulusUrl(url);
-        toast.success('Gambar stimulus soal berhasil diunggah');
+        toast.success('Gambar stimulus soal berhasil disisipkan');
       }
     } catch {
       toast.error('Gagal mengunggah gambar stimulus');
     } finally {
       setUploadingStimulus(false);
+      if (fileInputStimulusRef.current) {
+        fileInputStimulusRef.current.value = '';
+      }
     }
   };
 
@@ -145,7 +164,7 @@ export const CbtSoalEditorModal: React.FC<CbtSoalEditorModalProps> = ({
         setOpsiJawaban((prev) =>
           prev.map((opt, i) => (i === index ? { ...opt, gambar_url: url } : opt))
         );
-        toast.success(`Gambar opsi ${opsiJawaban[index].kode} berhasil diunggah`);
+        toast.success(`Gambar opsi ${opsiJawaban[index].kode} berhasil disisipkan`);
       }
     } catch {
       toast.error('Gagal mengunggah gambar opsi');
@@ -166,8 +185,41 @@ export const CbtSoalEditorModal: React.FC<CbtSoalEditorModalProps> = ({
     );
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddOption = () => {
+    if (opsiJawaban.length >= 5) {
+      toast.error('Maksimal 5 opsi jawaban (A–E)');
+      return;
+    }
+    const nextCodes: ('A' | 'B' | 'C' | 'D' | 'E')[] = ['A', 'B', 'C', 'D', 'E'];
+    const nextCode = nextCodes[opsiJawaban.length];
+    setOpsiJawaban((prev) => [...prev, { kode: nextCode, teks: '', gambar_url: null }]);
+  };
+
+  const handleRemoveOption = (index: number) => {
+    if (opsiJawaban.length <= 2) {
+      toast.error('Minimal harus ada 2 opsi jawaban');
+      return;
+    }
+    const targetCode = opsiJawaban[index].kode;
+    const remaining = opsiJawaban.filter((_, i) => i !== index);
+    // Re-index codes A, B, C...
+    const reindexed = remaining.map((opt, i) => ({
+      ...opt,
+      kode: (['A', 'B', 'C', 'D', 'E'][i]) as 'A' | 'B' | 'C' | 'D' | 'E',
+    }));
+    setOpsiJawaban(reindexed);
+    if (kunciJawaban === targetCode) {
+      setKunciJawaban('A');
+    }
+  };
+
+  const handleDuplicateCurrent = () => {
+    setNomorUrut((prev) => prev + 1);
+    toast.success('Soal berhasil diduplikasi ke nomor urut berikutnya');
+  };
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
 
     // 1. Zod Validation
     const validation = soalSchema.safeParse({
@@ -224,330 +276,480 @@ export const CbtSoalEditorModal: React.FC<CbtSoalEditorModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={soalToEdit ? `Edit Butir Soal Nomor ${soalToEdit.nomor_urut}` : 'Tambah Butir Soal Baru (PG)'}
+      title=""
       size="xl"
     >
-      <div className="space-y-4">
-        {/* Tab Switcher: Editor vs Live Preview */}
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
-            <button
-              type="button"
-              onClick={() => setActiveTab('editor')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                activeTab === 'editor'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              <Edit3 size={14} />
-              <span>Editor Soal</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('preview')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                activeTab === 'preview'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              <Eye size={14} />
-              <span>Pratinjau Siswa</span>
-            </button>
-          </div>
+      <div className="-m-6 bg-[#f0ebf8] dark:bg-slate-950 min-h-[580px] p-3 sm:p-6 transition-colors">
+        {/* ── 1. GOOGLE FORMS PURPLE TOP HEADER CARD ── */}
+        <div className="max-w-3xl mx-auto mb-4 bg-white dark:bg-slate-900 rounded-2xl shadow-xs border border-slate-200/80 dark:border-slate-800 overflow-hidden relative">
+          {/* Signature Google Forms Top Strip */}
+          <div className="h-2.5 bg-[#673ab7] w-full" />
 
-          <Badge variant="default" className="text-[10px] font-bold">
-            Pilihan Ganda (5 Opsi A–E)
-          </Badge>
+          <div className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2.5 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-purple-100 text-[#673ab7] dark:bg-purple-950/70 dark:text-purple-300">
+                  Mode Kuis Google Form
+                </span>
+                <span className="text-xs text-slate-400 font-medium">•</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Butir Soal #{nomorUrut}
+                </span>
+              </div>
+              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                {soalToEdit ? `Edit Butir Soal Nomor ${soalToEdit.nomor_urut}` : 'Pembuatan Soal Pilihan Ganda'}
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Pilih opsi jawaban yang benar untuk mengunci penilaian otomatis (*auto-grading*).
+              </p>
+            </div>
+
+            {/* Google Forms Navigation Tabs */}
+            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0 self-end sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setActiveTab('editor')}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                  activeTab === 'editor'
+                    ? "bg-white dark:bg-slate-900 text-[#673ab7] dark:text-purple-400 shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                )}
+              >
+                <Edit3 size={13} />
+                <span>Pertanyaan</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('preview')}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                  activeTab === 'preview'
+                    ? "bg-white dark:bg-slate-900 text-[#673ab7] dark:text-purple-400 shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                )}
+              >
+                <Eye size={13} />
+                <span>Pratinjau Kuis</span>
+              </button>
+            </div>
+          </div>
         </div>
 
-        {activeTab === 'preview' ? (
-          /* Live Preview Mode (WYSIWYG Tampilan Siswa) */
-          <div className="p-4 rounded-xl border border-indigo-100 dark:border-indigo-950/60 bg-indigo-50/20 dark:bg-slate-900/50 space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-wider">
-                Simulasi Nomor {nomorUrut}
-              </span>
-              <span className="text-[11px] font-bold text-slate-500">Bobot: {bobot}</span>
-            </div>
+        {/* ── 2. MAIN WORKSPACE CANVAS ── */}
+        <div className="max-w-3xl mx-auto relative">
+          {activeTab === 'preview' ? (
+            /* WYSIWYG Pratinjau Kuis Google Form */
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200/80 dark:border-slate-800 space-y-5 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-sm font-black text-slate-900 dark:text-white">
+                  Soal Nomor {nomorUrut} <span className="text-rose-500">*</span>
+                </span>
+                <span className="text-xs font-bold font-mono px-2.5 py-1 rounded-md bg-purple-50 text-[#673ab7] dark:bg-purple-950/60 dark:text-purple-300">
+                  {bobot} Poin
+                </span>
+              </div>
 
-            <CbtContentRenderer
-              content={kontenPertanyaan || '(Teks pertanyaan belum diisi)'}
-              imageUrl={gambarStimulusUrl}
-              imageAlt="Stimulus Soal"
-            />
+              <CbtContentRenderer
+                content={kontenPertanyaan || '(Teks pertanyaan belum diisi)'}
+                imageUrl={gambarStimulusUrl}
+                imageAlt="Stimulus Soal"
+              />
 
-            <div className="space-y-2 pt-2 border-t border-slate-200/60 dark:border-slate-800">
-              {opsiJawaban.map((opt) => (
-                <div
-                  key={opt.kode}
-                  className={`p-3 rounded-xl border flex items-start gap-3 transition-all ${
-                    kunciJawaban === opt.kode
-                      ? 'border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20'
-                      : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
-                  }`}
-                >
+              <div className="space-y-2.5 pt-2">
+                {opsiJawaban.map((opt) => (
                   <div
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
+                    key={opt.kode}
+                    className={cn(
+                      "p-3 rounded-xl border flex items-start gap-3 transition-all",
                       kunciJawaban === opt.kode
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                    }`}
+                        ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30"
+                        : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+                    )}
                   >
-                    {opt.kode}
-                  </div>
-                  <div className="flex-1 space-y-2">
-                    <p className="text-xs text-slate-800 dark:text-slate-200 font-medium pt-1">
-                      {opt.teks || '(Teks opsi belum diisi)'}
-                    </p>
-                    {opt.gambar_url && (
-                      <img
-                        src={opt.gambar_url}
-                        alt={`Opsi ${opt.kode}`}
-                        className="max-h-32 object-contain rounded-lg border border-slate-200 dark:border-slate-800"
-                      />
+                    <div
+                      className={cn(
+                        "w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 mt-0.5",
+                        kunciJawaban === opt.kode
+                          ? "bg-emerald-600 text-white"
+                          : "border-2 border-slate-300 dark:border-slate-600 text-slate-600"
+                      )}
+                    >
+                      {kunciJawaban === opt.kode ? <Check size={14} /> : opt.kode}
+                    </div>
+
+                    <div className="flex-1 space-y-1.5 min-w-0">
+                      <p className="text-xs text-slate-800 dark:text-slate-200 font-medium">
+                        {opt.teks || <span className="italic text-slate-400">(Teks opsi belum diisi)</span>}
+                      </p>
+                      {opt.gambar_url && (
+                        <img
+                          src={opt.gambar_url}
+                          alt={`Opsi ${opt.kode}`}
+                          className="max-h-28 object-contain rounded-lg border border-slate-200 dark:border-slate-800"
+                        />
+                      )}
+                    </div>
+
+                    {kunciJawaban === opt.kode && (
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200 shrink-0 flex items-center gap-1">
+                        <CheckCircle2 size={12} />
+                        <span>Kunci Jawaban</span>
+                      </span>
                     )}
                   </div>
-                  {kunciJawaban === opt.kode && (
-                    <Badge variant="success" className="text-[10px] shrink-0 font-bold">
-                      Kunci Jawaban
-                    </Badge>
+                ))}
+              </div>
+
+              {pembahasan && (
+                <div className="p-3.5 bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-900/40 rounded-xl text-xs space-y-1">
+                  <div className="font-bold text-[#673ab7] dark:text-purple-300 flex items-center gap-1.5">
+                    <MessageSquare size={13} />
+                    <span>Masukan Jawaban (Pembahasan):</span>
+                  </div>
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{pembahasan}</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* ── GOOGLE FORMS SIGNATURE QUESTION CARD ── */
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-slate-200/90 dark:border-slate-800 border-l-[6px] border-l-[#673ab7] p-5 sm:p-6 space-y-5 transition-all">
+                {/* ── QUESTION HEADER ROW (Textarea + Image Icon + Type Dropdown) ── */}
+                <div className="flex flex-col sm:flex-row items-start gap-3">
+                  {/* Question Text with Google Forms Underline Style */}
+                  <div className="flex-1 w-full min-w-0">
+                    <textarea
+                      id="soal-konten"
+                      rows={2}
+                      value={kontenPertanyaan}
+                      onChange={(e) => setKontenPertanyaan(e.target.value)}
+                      placeholder="Tuliskan pertanyaan soal di sini..."
+                      className="w-full px-3.5 py-3 text-sm font-semibold rounded-xl bg-slate-50 hover:bg-slate-100/70 focus:bg-white dark:bg-slate-800/60 dark:hover:bg-slate-800 dark:focus:bg-slate-900 text-slate-900 dark:text-white border-b-2 border-b-slate-200 dark:border-b-slate-700 focus:border-b-[#673ab7] dark:focus:border-b-purple-400 focus:outline-none transition-all resize-y"
+                      aria-label="Pertanyaan Soal"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end sm:self-start shrink-0">
+                    {/* Google Forms Question Image Button */}
+                    <button
+                      type="button"
+                      onClick={() => fileInputStimulusRef.current?.click()}
+                      className={cn(
+                        "p-2.5 rounded-xl border transition-colors cursor-pointer flex items-center justify-center",
+                        gambarStimulusUrl
+                          ? "bg-purple-50 text-[#673ab7] border-purple-300 dark:bg-purple-950/60 dark:border-purple-800"
+                          : "border-slate-200 dark:border-slate-700 text-slate-500 hover:text-[#673ab7] hover:bg-slate-50 dark:hover:bg-slate-800"
+                      )}
+                      title="Sisipkan gambar pada pertanyaan"
+                      aria-label="Sisipkan gambar pertanyaan"
+                    >
+                      <ImageIcon size={18} />
+                    </button>
+                    <input
+                      ref={fileInputStimulusRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleUploadStimulus}
+                      disabled={uploadingStimulus}
+                      className="hidden"
+                      aria-label="Unggah Gambar Stimulus Soal"
+                    />
+
+                    {/* Google Forms Question Type Dropdown Indicator */}
+                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 shadow-2xs select-none">
+                      <span className="w-3.5 h-3.5 rounded-full border-2 border-[#673ab7] flex items-center justify-center">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#673ab7]"></span>
+                      </span>
+                      <span>Pilihan ganda</span>
+                      <ChevronDown size={14} className="text-slate-400" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stimulus Image Preview Box (If Attached) */}
+                {uploadingStimulus ? (
+                  <div className="p-4 rounded-xl border border-dashed border-purple-300 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20 flex items-center justify-center gap-2 text-xs font-bold text-[#673ab7]">
+                    <UploadCloud size={16} className="animate-bounce" />
+                    <span>Mengunggah gambar stimulus...</span>
+                  </div>
+                ) : gambarStimulusUrl ? (
+                  <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Gambar Stimulus Soal</span>
+                      <img
+                        src={gambarStimulusUrl}
+                        alt="Stimulus preview"
+                        className="max-h-44 object-contain rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-950"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setGambarStimulusUrl(null)}
+                      className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 text-xs h-7 px-2"
+                    >
+                      <Trash2 size={13} className="mr-1" /> Hapus
+                    </Button>
+                  </div>
+                ) : null}
+
+                {/* ── GOOGLE FORMS OPTIONS LIST (A s.d. E) ── */}
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                    <span className="font-bold text-slate-700 dark:text-slate-300">
+                      Opsi Pilihan Jawaban ({opsiJawaban.length} Opsi)
+                    </span>
+                    <span className="text-[11px] italic">
+                      Klik lingkaran (A–E) untuk menandai kunci jawaban
+                    </span>
+                  </div>
+
+                  {opsiJawaban.map((opt, index) => {
+                    const isKey = kunciJawaban === opt.kode;
+                    return (
+                      <div
+                        key={opt.kode}
+                        className={cn(
+                          "group rounded-xl p-2.5 transition-all flex flex-col gap-2",
+                          isKey
+                            ? "bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-300/80 dark:border-emerald-800/80"
+                            : "hover:bg-slate-50 dark:hover:bg-slate-800/40 border border-transparent"
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          {/* Google Forms Radio Key Toggle */}
+                          <button
+                            type="button"
+                            onClick={() => setKunciJawaban(opt.kode)}
+                            className={cn(
+                              "w-6 h-6 rounded-full flex items-center justify-center font-black text-xs shrink-0 cursor-pointer transition-all",
+                              isKey
+                                ? "bg-emerald-600 text-white shadow-xs scale-105"
+                                : "border-2 border-slate-300 dark:border-slate-600 text-slate-600 hover:border-[#673ab7] hover:text-[#673ab7]"
+                            )}
+                            title={`Jadikan Opsi ${opt.kode} sebagai Kunci Jawaban`}
+                            aria-label={`Jadikan Opsi ${opt.kode} sebagai Kunci Jawaban`}
+                          >
+                            {isKey ? <Check size={14} /> : opt.kode}
+                          </button>
+
+                          {/* Google Forms Underlined Option Input */}
+                          <div className="flex-1 min-w-0">
+                            <input
+                              type="text"
+                              value={opt.teks}
+                              onChange={(e) => handleOpsiTeksChange(index, e.target.value)}
+                              placeholder={`Opsi ${opt.kode}`}
+                              className={cn(
+                                "w-full py-1.5 px-2 text-xs font-medium bg-transparent border-b border-b-slate-200 dark:border-b-slate-700 focus:border-b-[#673ab7] dark:focus:border-b-purple-400 focus:outline-none transition-colors",
+                                isKey && "font-bold text-emerald-900 dark:text-emerald-200"
+                              )}
+                              aria-label={`Teks Pilihan Jawaban ${opt.kode}`}
+                            />
+                          </div>
+
+                          {/* Right Controls: Option Image & Remove Option */}
+                          <div className="flex items-center gap-1 shrink-0">
+                            {/* Upload Option Image Button */}
+                            <label
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-[#673ab7] hover:bg-purple-50 dark:hover:bg-purple-950/60 cursor-pointer transition-colors"
+                              title={`Sisipkan gambar untuk Opsi ${opt.kode}`}
+                              aria-label={`Sisipkan gambar untuk Opsi ${opt.kode}`}
+                            >
+                              <ImageIcon size={15} />
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleUploadOpsi(index, file);
+                                }}
+                                disabled={uploadingOpsiIndex === index}
+                                className="hidden"
+                                aria-label={`Unggah Gambar Opsi ${opt.kode}`}
+                              />
+                            </label>
+
+                            {/* Remove Option Button */}
+                            {opsiJawaban.length > 2 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveOption(index)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
+                                title="Hapus opsi ini"
+                                aria-label={`Hapus Opsi ${opt.kode}`}
+                              >
+                                <X size={15} />
+                              </button>
+                            )}
+
+                            {isKey && (
+                              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
+                                <Check size={11} /> Kunci
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Option Attached Image Preview */}
+                        {opt.gambar_url && (
+                          <div className="ml-9 flex items-center gap-2">
+                            <img
+                              src={opt.gambar_url}
+                              alt={`Opsi ${opt.kode}`}
+                              className="h-14 w-auto object-contain rounded border border-slate-200 dark:border-slate-800 bg-white"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveOpsiGambar(index)}
+                              className="p-1 text-slate-400 hover:text-rose-500 rounded text-[10px] flex items-center gap-1"
+                              title="Hapus gambar opsi"
+                            >
+                              <Trash2 size={12} /> Hapus
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Add Option Button (Google Forms Style) */}
+                  {opsiJawaban.length < 5 && (
+                    <div className="flex items-center gap-3 pt-1 pl-2.5">
+                      <Circle size={18} className="text-slate-300 dark:text-slate-600" />
+                      <button
+                        type="button"
+                        onClick={handleAddOption}
+                        className="text-xs font-bold text-slate-500 hover:text-[#673ab7] dark:hover:text-purple-400 transition-colors flex items-center gap-1.5 cursor-pointer py-1"
+                      >
+                        <Plus size={14} />
+                        <span>Tambahkan opsi</span>
+                      </button>
+                    </div>
                   )}
                 </div>
-              ))}
-            </div>
 
-            {pembahasan && (
-              <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/40 rounded-xl text-xs space-y-1">
-                <div className="font-bold text-amber-800 dark:text-amber-300">Pembahasan:</div>
-                <div className="text-slate-600 dark:text-slate-400">{pembahasan}</div>
-              </div>
-            )}
-          </div>
-        ) : (
-          /* Editor Mode */
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Meta Soal: Nomor Urut & Bobot */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="soal-nomor-urut" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Nomor Urut Soal <span className="text-rose-500">*</span>
-                </label>
-                <Input
-                  id="soal-nomor-urut"
-                  type="number"
-                  min={1}
-                  value={nomorUrut}
-                  onChange={(e) => setNomorUrut(Number(e.target.value))}
-                  aria-label="Nomor Urut Soal"
-                  required
-                />
-              </div>
+                {/* ── GOOGLE FORMS QUIZ FOOTER BAR (Kunci Jawaban, Bobot Poin & Pembahasan) ── */}
+                <div className="pt-4 border-t border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  {/* Left: Google Forms Answer Key Pill */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-1.5">
+                      <CheckCircle2 size={14} className="text-emerald-600" />
+                      <span>Kunci Jawaban: <strong>Opsi {kunciJawaban}</strong></span>
+                    </div>
 
-              <div>
-                <label htmlFor="soal-bobot" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Bobot Nilai <span className="text-rose-500">*</span>
-                </label>
-                <Input
-                  id="soal-bobot"
-                  type="number"
-                  step="0.1"
-                  min={0.1}
-                  value={bobot}
-                  onChange={(e) => setBobot(Number(e.target.value))}
-                  aria-label="Bobot Nilai Soal"
-                  required
-                />
-              </div>
-            </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowPembahasanBox((prev) => !prev)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5",
+                        showPembahasanBox
+                          ? "bg-purple-50 text-[#673ab7] border-purple-200 dark:bg-purple-950/60 dark:border-purple-800"
+                          : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50"
+                      )}
+                    >
+                      <MessageSquare size={13} />
+                      <span>{showPembahasanBox ? 'Tutup Pembahasan' : 'Tambah Pembahasan'}</span>
+                    </button>
+                  </div>
 
-            {/* Pertanyaan / Teks Stimulus */}
-            <div>
-              <label htmlFor="soal-konten" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Isi Pertanyaan / Narasi Soal <span className="text-rose-500">*</span>
-              </label>
-              <textarea
-                id="soal-konten"
-                rows={4}
-                value={kontenPertanyaan}
-                onChange={(e) => setKontenPertanyaan(e.target.value)}
-                placeholder="Tuliskan pertanyaan soal di sini... (Mendukung rumus matematika atau baris baru)"
-                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                aria-label="Isi Pertanyaan Soal"
-                required
-              />
-            </div>
+                  {/* Right: Points, Duplication & Required Switch */}
+                  <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
+                    {/* Points Input (Google Forms Point Badge) */}
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <input
+                        type="number"
+                        step="0.1"
+                        min={0.1}
+                        value={bobot}
+                        onChange={(e) => setBobot(Number(e.target.value))}
+                        className="w-14 px-2 py-1 text-center font-mono font-black text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:border-[#673ab7]"
+                        aria-label="Bobot Nilai"
+                        title="Bobot Nilai Soal"
+                        required
+                      />
+                      <span className="text-[11px] text-slate-500">Poin</span>
+                    </div>
 
-            {/* Upload Gambar Stimulus Soal */}
-            <div className="p-3 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-950/30 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <ImageIcon size={14} className="text-indigo-500" />
-                  <span>Gambar / Diagram Stimulus Soal (Opsional)</span>
-                </span>
-                {gambarStimulusUrl && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setGambarStimulusUrl(null)}
-                    className="text-rose-500 hover:text-rose-600 h-6 px-2 text-[10px]"
-                  >
-                    <Trash2 size={12} className="mr-1" /> Hapus Gambar
-                  </Button>
+                    <span className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
+
+                    {/* Google Forms Duplicate Button */}
+                    <button
+                      type="button"
+                      onClick={handleDuplicateCurrent}
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-[#673ab7] hover:bg-purple-50 dark:hover:bg-purple-950/60 transition-colors cursor-pointer"
+                      title="Duplikasi Butir Soal"
+                      aria-label="Duplikasi Soal"
+                    >
+                      <Copy size={16} />
+                    </button>
+
+                    <span className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
+
+                    {/* Required / Wajib Toggle */}
+                    <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                      <span className="text-[11px]">Wajib</span>
+                      <input
+                        type="checkbox"
+                        checked={isWajibDiisi}
+                        onChange={(e) => setIsWajibDiisi(e.target.checked)}
+                        className="w-3.5 h-3.5 accent-[#673ab7] rounded cursor-pointer"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Collapsible Feedback / Pembahasan Box */}
+                {showPembahasanBox && (
+                  <div className="pt-2 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <label htmlFor="soal-pembahasan" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Masukan Jawaban / Penjelasan Pembahasan:
+                    </label>
+                    <textarea
+                      id="soal-pembahasan"
+                      rows={2}
+                      value={pembahasan}
+                      onChange={(e) => setPembahasan(e.target.value)}
+                      placeholder="Tuliskan alasan mengapa kunci jawaban tersebut benar (akan tampil pada sesi telaah hasil)..."
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#673ab7]"
+                      aria-label="Catatan Pembahasan Soal"
+                    />
+                  </div>
                 )}
               </div>
 
-              {gambarStimulusUrl ? (
-                <div className="relative inline-block rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 max-h-40">
-                  <img src={gambarStimulusUrl} alt="Stimulus preview" className="max-h-40 object-contain rounded" />
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center p-4 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer hover:bg-slate-100/50 dark:hover:bg-slate-900/50 transition-colors">
-                  <UploadCloud size={20} className="text-slate-400 mb-1" />
-                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-                    {uploadingStimulus ? 'Mengunggah gambar...' : 'Klik untuk unggah gambar stimulus (PNG/JPG maks 5MB)'}
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleUploadStimulus}
-                    disabled={uploadingStimulus}
-                    className="hidden"
-                    aria-label="Unggah Gambar Stimulus Soal"
-                  />
-                </label>
-              )}
-            </div>
-
-            {/* 5 Opsi Pilihan Ganda (A s.d. E) */}
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                  Pilihan Jawaban & Kunci Jawaban <span className="text-rose-500">*</span>
-                </span>
-                <span className="text-[11px] text-slate-500">Pilih radio button untuk menentukan kunci jawaban</span>
-              </div>
-
-              {opsiJawaban.map((opt, index) => (
-                <div
-                  key={opt.kode}
-                  className={`p-3 rounded-xl border transition-all ${
-                    kunciJawaban === opt.kode
-                      ? 'border-indigo-500/80 bg-indigo-50/20 dark:bg-indigo-950/20'
-                      : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
-                  }`}
+              {/* ── GOOGLE FORMS BOTTOM ACTION BAR ── */}
+              <div className="flex items-center justify-between pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onClose}
+                  disabled={isSubmitting}
+                  className="text-xs"
                 >
-                  <div className="flex items-center gap-3">
-                    {/* Radio Button Kunci */}
-                    <input
-                      type="radio"
-                      name="kunci_jawaban_group"
-                      id={`kunci-jawaban-${opt.kode}`}
-                      checked={kunciJawaban === opt.kode}
-                      onChange={() => setKunciJawaban(opt.kode)}
-                      className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                      aria-label={`Pilih Opsi ${opt.kode} sebagai Kunci Jawaban`}
-                    />
+                  Batal
+                </Button>
 
-                    <label
-                      htmlFor={`kunci-jawaban-${opt.kode}`}
-                      className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 flex items-center justify-center text-xs font-black shrink-0 cursor-pointer"
-                    >
-                      {opt.kode}
-                    </label>
-
-                    {/* Input Teks Opsi */}
-                    <div className="flex-1">
-                      <Input
-                        value={opt.teks}
-                        onChange={(e) => handleOpsiTeksChange(index, e.target.value)}
-                        placeholder={`Teks pilihan jawaban ${opt.kode}...`}
-                        aria-label={`Teks Pilihan Jawaban ${opt.kode}`}
-                        className="text-xs h-9"
-                      />
-                    </div>
-
-                    {/* Tombol Upload Gambar Opsi */}
-                    <label className="cursor-pointer p-2 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-indigo-600 transition-colors shrink-0">
-                      <ImageIcon size={16} />
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleUploadOpsi(index, file);
-                        }}
-                        disabled={uploadingOpsiIndex === index}
-                        className="hidden"
-                        aria-label={`Unggah Gambar Opsi ${opt.kode}`}
-                      />
-                    </label>
-
-                    {kunciJawaban === opt.kode && (
-                      <Badge variant="success" className="text-[10px] font-bold shrink-0">
-                        Kunci
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Pratinjau Gambar Opsi jika ada */}
-                  {opt.gambar_url && (
-                    <div className="mt-2 ml-14 flex items-center gap-3">
-                      <img
-                        src={opt.gambar_url}
-                        alt={`Opsi ${opt.kode}`}
-                        className="h-16 w-auto object-contain rounded border border-slate-200 dark:border-slate-800"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveOpsiGambar(index)}
-                        className="text-rose-500 h-6 px-2 text-[10px]"
-                      >
-                        <Trash2 size={12} className="mr-1" /> Hapus Gambar
-                      </Button>
-                    </div>
-                  )}
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="sm"
+                    disabled={isSubmitting}
+                    className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold text-xs shadow-md px-5 py-2.5 h-auto rounded-xl flex items-center gap-2"
+                  >
+                    <Save size={14} />
+                    <span>{isSubmitting ? 'Menyimpan...' : soalToEdit ? 'Simpan Perubahan' : 'Tambahkan Butir Soal'}</span>
+                  </Button>
                 </div>
-              ))}
-            </div>
-
-            {/* Pembahasan (Opsional) */}
-            <div>
-              <label htmlFor="soal-pembahasan" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Catatan Pembahasan / Kunci Telaah (Opsional)
-              </label>
-              <textarea
-                id="soal-pembahasan"
-                rows={2}
-                value={pembahasan}
-                onChange={(e) => setPembahasan(e.target.value)}
-                placeholder="Penjelasan mengapa kunci jawaban tersebut benar..."
-                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                aria-label="Catatan Pembahasan Soal"
-              />
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-              <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isSubmitting}>
-                Batal
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                size="sm"
-                disabled={isSubmitting}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
-              >
-                {isSubmitting ? 'Menyimpan...' : soalToEdit ? 'Simpan Perubahan' : 'Tambahkan Butir Soal'}
-              </Button>
-            </div>
-          </form>
-        )}
+              </div>
+            </form>
+          )}
+        </div>
       </div>
     </Modal>
   );
