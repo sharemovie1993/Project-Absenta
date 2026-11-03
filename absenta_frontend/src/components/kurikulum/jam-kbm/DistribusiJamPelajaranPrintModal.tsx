@@ -8,7 +8,7 @@ import {
 import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
 import { toast } from 'react-hot-toast';
-import { Printer, Calendar, Clock, Sun, Moon, SlidersHorizontal, Check, Edit3 } from 'lucide-react';
+import { Calendar, Edit3, Columns2, LayoutList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ShiftConfig, ShiftItem, TimeSlot, BreakItem } from './JamKBMTypes';
 
@@ -30,6 +30,14 @@ const ALL_DAYS = [
   { key: 'SABTU', label: 'Sabtu' },
 ] as const;
 
+interface DayTimelineItem {
+  type: 'SLOT' | 'BREAK';
+  slotNum?: number;
+  duration?: number;
+  start: string;
+  end: string;
+}
+
 export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPrintModalProps> = ({
   isOpen,
   onClose,
@@ -38,11 +46,17 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
   tahunPelajaranNama = '2026/2027',
   semesterNama = 'Ganjil',
 }) => {
-  const { tenantInfo, logoDaerahBase64, logoSekolahBase64 } = usePrintHeaderData();
-  const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('landscape');
+  const { tenantInfo } = usePrintHeaderData();
+  const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
   const [showLogoDaerah, setShowLogoDaerah] = useState(true);
   const [showLogoSekolah, setShowLogoSekolah] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+
+  // Table Format: 'VERTICAL_2_COL' (Kolom 1: Hari, Kolom 2: Waktu) vs 'HORIZONTAL_MATRIX'
+  const [tableLayout, setTableLayout] = useState<'VERTICAL_2_COL' | 'HORIZONTAL_MATRIX'>('VERTICAL_2_COL');
+
+  // Group identical days toggle (e.g. Senin – Kamis)
+  const [groupIdenticalDays, setGroupIdenticalDays] = useState(false);
 
   // Active Shift selection for 2-shift schools
   const shifts = shiftConfig?.shifts ?? [];
@@ -78,9 +92,9 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
     return includeSaturday ? ALL_DAYS : ALL_DAYS.filter(d => d.key !== 'SABTU');
   }, [includeSaturday]);
 
-  // Helper untuk mendapatkan pola hari tertentu
+  // Helper untuk mendapatkan jadwal hari tertentu
   const getDaySchedule = useCallback((dayKey: string) => {
-    if (!currentShift) return { slots: [], breaks: [], duration: 45 };
+    if (!currentShift) return { slots: [] as TimeSlot[], breaks: [] as BreakItem[], duration: 45 };
     if (currentShift.day_patterns?.[dayKey]) {
       const dp = currentShift.day_patterns[dayKey];
       return {
@@ -96,7 +110,104 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
     };
   }, [currentShift]);
 
-  // Hitung jumlah slot maksimal di antara seluruh hari aktif
+  // Helper untuk membuat daftar urutan jam + istirahat untuk 1 hari
+  const getDayTimelineItems = useCallback((dayKey: string): DayTimelineItem[] => {
+    const sch = getDaySchedule(dayKey);
+    const items: DayTimelineItem[] = [];
+    const slots = sch.slots || [];
+
+    slots.forEach((slot, idx) => {
+      items.push({
+        type: 'SLOT',
+        slotNum: slot.slot,
+        start: slot.start,
+        end: slot.end,
+        duration: sch.duration,
+      });
+
+      const brk = sch.breaks.find(b => b.afterSlot === slot.slot);
+      if (brk) {
+        const nextSlot = slots[idx + 1];
+        items.push({
+          type: 'BREAK',
+          duration: brk.duration,
+          start: slot.end,
+          end: nextSlot ? nextSlot.start : '',
+        });
+      }
+    });
+
+    return items;
+  }, [getDaySchedule]);
+
+  // Helper untuk membandingkan apakah 2 hari memiliki timeline identik
+  const areDaysIdentical = useCallback((dayA: string, dayB: string): boolean => {
+    const itemsA = getDayTimelineItems(dayA);
+    const itemsB = getDayTimelineItems(dayB);
+    if (itemsA.length !== itemsB.length) return false;
+    for (let i = 0; i < itemsA.length; i++) {
+      if (itemsA[i].type !== itemsB[i].type) return false;
+      if (itemsA[i].start !== itemsB[i].start || itemsA[i].end !== itemsB[i].end) return false;
+      if (itemsA[i].slotNum !== itemsB[i].slotNum) return false;
+    }
+    return true;
+  }, [getDayTimelineItems]);
+
+  // Kelompok hari untuk format vertikal 2 kolom
+  interface DayGroup {
+    dayLabel: string;
+    subLabel?: string;
+    items: DayTimelineItem[];
+    duration: number;
+  }
+
+  const verticalDayGroups = useMemo<DayGroup[]>(() => {
+    if (!groupIdenticalDays) {
+      return activeDays.map(d => {
+        const sch = getDaySchedule(d.key);
+        return {
+          dayLabel: d.label.toUpperCase(),
+          items: getDayTimelineItems(d.key),
+          duration: sch.duration,
+        };
+      });
+    }
+
+    // Gabungkan hari-hari yang identik berurutan
+    const groups: DayGroup[] = [];
+    let i = 0;
+    while (i < activeDays.length) {
+      const currentDay = activeDays[i];
+      let j = i + 1;
+      while (j < activeDays.length && areDaysIdentical(currentDay.key, activeDays[j].key)) {
+        j++;
+      }
+
+      const sch = getDaySchedule(currentDay.key);
+      const items = getDayTimelineItems(currentDay.key);
+
+      if (j === i + 1) {
+        groups.push({
+          dayLabel: currentDay.label.toUpperCase(),
+          items,
+          duration: sch.duration,
+        });
+      } else {
+        const startLabel = currentDay.label;
+        const endLabel = activeDays[j - 1].label;
+        groups.push({
+          dayLabel: `${startLabel.toUpperCase()} – ${endLabel.toUpperCase()}`,
+          subLabel: `(${j - i} Hari Sama)`,
+          items,
+          duration: sch.duration,
+        });
+      }
+      i = j;
+    }
+    return groups;
+  }, [activeDays, groupIdenticalDays, getDaySchedule, getDayTimelineItems, areDaysIdentical]);
+
+  // Untuk mode matriks horizontal (jika user beralih)
   const maxSlotNum = useMemo(() => {
     let max = 0;
     activeDays.forEach(day => {
@@ -106,34 +217,25 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
     return Math.max(max, 10);
   }, [activeDays, getDaySchedule]);
 
-  // Buat deretan baris gabungan (Slots & Istirahat)
-  interface TimetablePrintRow {
+  interface TimetableMatrixRow {
     type: 'SLOT' | 'BREAK';
     slotNum?: number;
     afterSlot?: number;
-    breakLabel?: string;
   }
 
-  const timetableRows = useMemo<TimetablePrintRow[]>(() => {
-    const rows: TimetablePrintRow[] = [];
+  const matrixRows = useMemo<TimetableMatrixRow[]>(() => {
+    const rows: TimetableMatrixRow[] = [];
     const breaksHandled = new Set<number>();
 
     for (let s = 1; s <= maxSlotNum; s++) {
       rows.push({ type: 'SLOT', slotNum: s });
-
-      // Cek apakah ada hari yang memiliki istirahat setelah slot s
       const hasBreakAfterSlot = activeDays.some(day => {
         const sch = getDaySchedule(day.key);
         return sch.breaks.some(b => b.afterSlot === s);
       });
-
       if (hasBreakAfterSlot && !breaksHandled.has(s)) {
         breaksHandled.add(s);
-        rows.push({
-          type: 'BREAK',
-          afterSlot: s,
-          breakLabel: `ISTIRAHAT SETELAH JP KE-${s}`,
-        });
+        rows.push({ type: 'BREAK', afterSlot: s });
       }
     }
     return rows;
@@ -181,7 +283,7 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
 
       const shiftSlug = currentShift?.name ? currentShift.name.replace(/[^a-zA-Z0-9]/g, '_') : 'Reguler';
-      pdf.save(`Distribusi_Jam_Pelajaran_${shiftSlug}_${todayStr.replace(/\s+/g, '_')}.pdf`);
+      pdf.save(`Distribusi_Jam_Pelajaran_2Kolom_${shiftSlug}_${todayStr.replace(/\s+/g, '_')}.pdf`);
       toast.success('PDF Distribusi Jam Pelajaran berhasil diunduh!', { id: toastId });
     } catch (err) {
       console.error('Failed to generate PDF', err);
@@ -192,14 +294,12 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
     }
   };
 
-  const documentTitle = `Distribusi Jam Pelajaran ${currentShift?.name || ''} - TP ${tahunPelajaranNama}`;
-
   return (
     <UniversalDocumentModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Pratinjau Cetak Distribusi Jam Pelajaran (Pedoman KBM)"
-      subtitle="Dokumen Pedoman Resmi Alokasi Jam Bel Masuk dan Jeda Istirahat untuk Dewan Guru"
+      title="Pratinjau Cetak Distribusi Jam Pelajaran"
+      subtitle="Dokumen Pedoman Resmi Format Vertikal (Kolom 1: Hari, Kolom 2: Waktu)"
       orientation={orientation}
       allowOrientationToggle={true}
       onOrientationChange={setOrientation}
@@ -214,7 +314,44 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
       printButtonText="Cetak Dokumen"
       size="5xl"
       extraActions={
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Format Selector: Vertikal 2 Kolom vs Matriks Mingguan */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700">
+            <button
+              type="button"
+              onClick={() => {
+                setTableLayout('VERTICAL_2_COL');
+                setOrientation('portrait');
+              }}
+              className={cn(
+                "px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1",
+                tableLayout === 'VERTICAL_2_COL'
+                  ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                  : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+              )}
+            >
+              <Columns2 className="w-3.5 h-3.5" />
+              <span>Vertikal 2 Kolom</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTableLayout('HORIZONTAL_MATRIX');
+                setOrientation('landscape');
+              }}
+              className={cn(
+                "px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1",
+                tableLayout === 'HORIZONTAL_MATRIX'
+                  ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                  : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+              )}
+            >
+              <LayoutList className="w-3.5 h-3.5" />
+              <span>Matriks Mingguan</span>
+            </button>
+          </div>
+
+          {/* Shift Selector jika sekolah 2 shift */}
           {shifts.length > 1 && (
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700">
               {shifts.map(s => {
@@ -236,6 +373,22 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
                 );
               })}
             </div>
+          )}
+
+          {/* Toggle Gabung Hari Sama (Khusus Vertikal 2 Kolom) */}
+          {tableLayout === 'VERTICAL_2_COL' && (
+            <button
+              type="button"
+              onClick={() => setGroupIdenticalDays(prev => !prev)}
+              className={cn(
+                "px-2.5 py-1 rounded-xl text-xs font-bold border transition-all cursor-pointer",
+                groupIdenticalDays
+                  ? "bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-800 dark:text-indigo-300"
+                  : "bg-white border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300"
+              )}
+            >
+              {groupIdenticalDays ? 'Hari Identik Digabung' : 'Rinci Setiap Hari'}
+            </button>
           )}
 
           <button
@@ -351,108 +504,186 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
               )}
             </div>
 
-            {/* 3. TABEL MATRIKS DISTRIBUSI JAM PELAJARAN MINGGUAN */}
-            <div className="overflow-x-auto w-full mb-4">
-              <table className="w-full border-collapse border border-black text-[10.5px]">
-                <thead>
-                  <tr className="bg-slate-100">
-                    <th className="border border-black px-2 py-1.5 text-center font-black uppercase w-24">
-                      JAM KE-
-                    </th>
-                    {activeDays.map(day => (
-                      <th
-                        key={day.key}
-                        className="border border-black px-2 py-1.5 text-center font-black uppercase"
-                      >
-                        {day.label}
+            {/* 3. TABEL DISTRIBUSI JAM PELAJARAN */}
+            {tableLayout === 'VERTICAL_2_COL' ? (
+              /* ── FORMAT VERTIKAL 2 KOLOM (Kolom 1: HARI, Kolom 2: WAKTU) ── */
+              <div className="overflow-x-auto w-full mb-4">
+                <table className="w-full border-collapse border border-black text-[10.5px]">
+                  <thead>
+                    <tr className="bg-slate-100 border-b-2 border-black">
+                      <th className="border border-black px-4 py-2 text-center font-black uppercase w-48 text-[11px]">
+                        HARI
                       </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {timetableRows.map((row, rIdx) => {
-                    // Baris Istirahat
-                    if (row.type === 'BREAK') {
-                      return (
-                        <tr key={`break-${row.afterSlot}-${rIdx}`} className="bg-amber-50/60 font-bold">
-                          <td className="border border-black px-2 py-1 text-center font-black bg-amber-100/70 text-[10px] uppercase">
-                            ISTIRAHAT
+                      <th className="border border-black px-4 py-2 text-center font-black uppercase text-[11px]">
+                        WAKTU
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {verticalDayGroups.map((group, gIdx) => {
+                      const items = group.items;
+                      if (items.length === 0) return null;
+
+                      return items.map((item, idx) => (
+                        <tr
+                          key={`${group.dayLabel}-${idx}`}
+                          className={cn(
+                            item.type === 'BREAK' ? 'bg-amber-50/70' : 'hover:bg-slate-50/40',
+                            idx === items.length - 1 && gIdx !== verticalDayGroups.length - 1
+                              ? 'border-b-2 border-black'
+                              : 'border-b border-black/60'
+                          )}
+                        >
+                          {/* KOLOM PERTAMA: HARI (Rowspan untuk seluruh slot & istirahat hari ini) */}
+                          {idx === 0 && (
+                            <td
+                              rowSpan={items.length}
+                              className="border border-black px-3 py-2 text-center font-black uppercase align-middle bg-slate-50/90 text-xs w-48"
+                            >
+                              <div className="font-black text-xs tracking-wider">{group.dayLabel}</div>
+                              {group.subLabel && (
+                                <div className="text-[9px] text-slate-500 font-sans font-normal mt-0.5">
+                                  {group.subLabel}
+                                </div>
+                              )}
+                              <div className="text-[9px] text-slate-500 font-sans font-normal mt-1 pt-1 border-t border-slate-300">
+                                <div>{items.filter(x => x.type === 'SLOT').length} JP</div>
+                                <div>{group.duration} mnt / JP</div>
+                              </div>
+                            </td>
+                          )}
+
+                          {/* KOLOM KEDUA: WAKTU */}
+                          <td className="border border-black px-4 py-1 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span
+                                className={cn(
+                                  'font-bold',
+                                  item.type === 'BREAK'
+                                    ? 'text-amber-900 uppercase text-[10px] tracking-wide'
+                                    : 'text-slate-900'
+                                )}
+                              >
+                                {item.type === 'BREAK'
+                                  ? `ISTIRAHAT (${item.duration} Menit)`
+                                  : `Jam Pelajaran Ke-${item.slotNum} (JP ${item.slotNum})`}
+                              </span>
+                              <span
+                                className={cn(
+                                  'font-mono font-bold text-[11px]',
+                                  item.type === 'BREAK' ? 'text-amber-950 font-black' : 'text-slate-900'
+                                )}
+                              >
+                                {item.start} – {item.end}
+                              </span>
+                            </div>
                           </td>
-                          {activeDays.map(day => {
-                            const sch = getDaySchedule(day.key);
-                            const brk = sch.breaks.find(b => b.afterSlot === row.afterSlot);
-                            if (!brk) {
+                        </tr>
+                      ));
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              /* ── FORMAT MATRIKS MINGGUAN (HORIZONTAL) ── */
+              <div className="overflow-x-auto w-full mb-4">
+                <table className="w-full border-collapse border border-black text-[10.5px]">
+                  <thead>
+                    <tr className="bg-slate-100">
+                      <th className="border border-black px-2 py-1.5 text-center font-black uppercase w-24">
+                        JAM KE-
+                      </th>
+                      {activeDays.map(day => (
+                        <th
+                          key={day.key}
+                          className="border border-black px-2 py-1.5 text-center font-black uppercase"
+                        >
+                          {day.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {matrixRows.map((row, rIdx) => {
+                      if (row.type === 'BREAK') {
+                        return (
+                          <tr key={`break-${row.afterSlot}-${rIdx}`} className="bg-amber-50/60 font-bold">
+                            <td className="border border-black px-2 py-1 text-center font-black bg-amber-100/70 text-[10px] uppercase">
+                              ISTIRAHAT
+                            </td>
+                            {activeDays.map(day => {
+                              const sch = getDaySchedule(day.key);
+                              const brk = sch.breaks.find(b => b.afterSlot === row.afterSlot);
+                              if (!brk) {
+                                return (
+                                  <td
+                                    key={`break-${day.key}-${rIdx}`}
+                                    className="border border-black px-2 py-1 text-center text-slate-400 italic text-[9.5px]"
+                                  >
+                                    –
+                                  </td>
+                                );
+                              }
+                              const slotPrev = sch.slots.find(s => s.slot === row.afterSlot);
+                              const slotNext = sch.slots.find(s => s.slot === row.afterSlot + 1);
+                              const breakStart = slotPrev ? slotPrev.end : '';
+                              const breakEnd = slotNext ? slotNext.start : '';
+
                               return (
                                 <td
                                   key={`break-${day.key}-${rIdx}`}
-                                  className="border border-black px-2 py-1 text-center text-slate-400 italic text-[9.5px]"
+                                  className="border border-black px-2 py-1 text-center text-[10px]"
+                                >
+                                  <div>
+                                    {breakStart && breakEnd ? `${breakStart} – ${breakEnd}` : `${brk.duration} menit`}
+                                  </div>
+                                  <div className="text-[8.5px] text-slate-600 font-sans font-normal">
+                                    ({brk.duration} mnt)
+                                  </div>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      }
+
+                      const sNum = row.slotNum!;
+                      return (
+                        <tr key={`slot-${sNum}`} className="hover:bg-slate-50/40">
+                          <td className="border border-black px-2 py-1 text-center font-black bg-slate-50/80">
+                            JP {sNum}
+                          </td>
+                          {activeDays.map(day => {
+                            const sch = getDaySchedule(day.key);
+                            const slot = sch.slots.find(s => s.slot === sNum);
+
+                            if (!slot) {
+                              return (
+                                <td
+                                  key={`slot-${day.key}-${sNum}`}
+                                  className="border border-black px-2 py-1 text-center text-slate-300 italic text-[9.5px]"
                                 >
                                   –
                                 </td>
                               );
                             }
 
-                            // Temukan jam mulai & selesai istirahat
-                            const slotPrev = sch.slots.find(s => s.slot === row.afterSlot);
-                            const slotNext = sch.slots.find(s => s.slot === row.afterSlot + 1);
-                            const breakStart = slotPrev ? slotPrev.end : '';
-                            const breakEnd = slotNext ? slotNext.start : '';
-
                             return (
                               <td
-                                key={`break-${day.key}-${rIdx}`}
-                                className="border border-black px-2 py-1 text-center text-[10px]"
+                                key={`slot-${day.key}-${sNum}`}
+                                className="border border-black px-2 py-1 text-center font-mono text-[10px] font-semibold"
                               >
-                                <div>
-                                  {breakStart && breakEnd ? `${breakStart} – ${breakEnd}` : `${brk.duration} menit`}
-                                </div>
-                                <div className="text-[8.5px] text-slate-600 font-sans font-normal">
-                                  ({brk.duration} mnt)
-                                </div>
+                                {slot.start} – {slot.end}
                               </td>
                             );
                           })}
                         </tr>
                       );
-                    }
-
-                    // Baris Jam Pelajaran (Slot JP)
-                    const sNum = row.slotNum!;
-                    return (
-                      <tr key={`slot-${sNum}`} className="hover:bg-slate-50/40">
-                        <td className="border border-black px-2 py-1 text-center font-black bg-slate-50/80">
-                          JP {sNum}
-                        </td>
-                        {activeDays.map(day => {
-                          const sch = getDaySchedule(day.key);
-                          const slot = sch.slots.find(s => s.slot === sNum);
-
-                          if (!slot) {
-                            return (
-                              <td
-                                key={`slot-${day.key}-${sNum}`}
-                                className="border border-black px-2 py-1 text-center text-slate-300 italic text-[9.5px]"
-                              >
-                                –
-                              </td>
-                            );
-                          }
-
-                          return (
-                            <td
-                              key={`slot-${day.key}-${sNum}`}
-                              className="border border-black px-2 py-1 text-center font-mono text-[10px] font-semibold"
-                            >
-                              {slot.start} – {slot.end}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             {/* 4. CATATAN & KETENTUAN KBM */}
             <div className="border border-black rounded-sm p-2 mb-6 text-[9.5px] leading-relaxed bg-slate-50/40">
