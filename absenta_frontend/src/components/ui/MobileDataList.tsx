@@ -10,12 +10,14 @@ export interface MobileDataListProps<T> {
   title?: string;
   data: T[];
   loading?: boolean;
+  isLoading?: boolean;
   onRefresh?: () => void;
   onAdd?: () => void;
   canManage?: boolean;
   totalItems?: number;
   renderCard?: (item: T, index: number) => React.ReactNode;
   onView?: (item: T) => void;
+  onItemClick?: (item: T) => void;
   pagination?: {
     currentPage: number;
     totalPages: number;
@@ -29,22 +31,29 @@ export interface MobileDataListProps<T> {
   emptyMessage?: React.ReactNode;
   toolbar?: React.ReactNode;
   className?: string;
+  [key: string]: any;
 }
 
 export function MobileDataList<T>({
   title,
   data = [],
   loading = false,
+  isLoading = false,
   onRefresh,
   onAdd,
   canManage = false,
   totalItems,
   renderCard,
+  onView,
+  onItemClick,
   pagination,
   emptyMessage = "Tidak ada data ditemukan",
   toolbar,
   className
 }: MobileDataListProps<T>) {
+  const isCurrentlyLoading = Boolean(loading || isLoading);
+  const handleItemClick = onView || onItemClick;
+
   // Progressive rendering to prevent mobile main-thread blocking (TBT 0ms optimization)
   const [visibleCount, setVisibleCount] = React.useState(15);
 
@@ -77,7 +86,7 @@ export function MobileDataList<T>({
                 aria-label={`Refresh Data ${title || ''}`}
                 className="h-9 w-9 p-0 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 active:scale-95 transition-transform"
               >
-                <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} aria-hidden="true" />
+                <RefreshCw className={cn("w-4 h-4", isCurrentlyLoading && "animate-spin")} aria-hidden="true" />
               </Button>
             )}
             {canManage && onAdd && (
@@ -103,7 +112,7 @@ export function MobileDataList<T>({
       )}
 
       {/* Content Rendering: Loading / Empty / Cards List */}
-      {loading ? (
+      {isCurrentlyLoading ? (
         <div className="flex flex-col gap-3">
           {[...Array(3)].map((_, i) => (
             <div 
@@ -153,7 +162,7 @@ export function MobileDataList<T>({
             }
 
             const itemObj = (item || {}) as Record<string, any>;
-            const title = itemObj.nama || itemObj.nama_siswa || itemObj.nama_guru || itemObj.nama_kelas || itemObj.title || itemObj.judul || itemObj.name || `Item #${index + 1}`;
+            const title = itemObj.mapel || itemObj.nama || itemObj.nama_siswa || itemObj.nama_guru || itemObj.nama_kelas || itemObj.title || itemObj.judul || itemObj.name || `Item #${index + 1}`;
             const subtitle = itemObj.nis || itemObj.nip || itemObj.kode || itemObj.tingkat || itemObj.kelas || itemObj.keterangan || itemObj.description || itemObj.email || itemObj.category;
             const badge = itemObj.status ? <Badge>{String(itemObj.status)}</Badge> : undefined;
 
@@ -163,8 +172,8 @@ export function MobileDataList<T>({
                 title={title}
                 subtitle={subtitle}
                 badge={badge}
-                onClick={onView ? () => onView(item) : undefined}
-                onDetail={onView ? () => onView(item) : undefined}
+                onClick={handleItemClick ? () => handleItemClick(item) : undefined}
+                onDetail={handleItemClick ? () => handleItemClick(item) : undefined}
               />
             );
           })}
