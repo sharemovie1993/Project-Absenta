@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { kurikulumApi, type PerangkatAjar } from '@/api/kurikulum.api';
 import { toast } from 'sonner';
@@ -12,13 +12,26 @@ export const usePerangkatAjarMutations = (params: any) => {
     setIsAIModalOpen, setActiveTab, setFilterJenis, setFilterMapel, setPage
   } = params || {};
 
+  // Real-time Upload Progress State (0 - 100%)
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+
   // Mutations
   const uploadMutation = useMutation({
-    mutationFn: (formData: FormData) => kurikulumApi.uploadPerangkatAjar(formData),
+    mutationFn: (formData: FormData) =>
+      kurikulumApi.uploadPerangkatAjar(formData, (percent) => {
+        setUploadProgress(percent);
+      }),
+    onMutate: () => {
+      setUploadProgress(5);
+    },
     onSuccess: () => {
+      setUploadProgress(100);
       toast.success('Perangkat ajar berhasil diunggah');
-      setIsUploadModalOpen(false);
-      setUploadForm({ judul: '', jenis: '', mapel_id: '', guru_id: '', file: null });
+      setTimeout(() => {
+        setIsUploadModalOpen(false);
+        setUploadProgress(0);
+        setUploadForm({ judul: '', jenis: '', mapel_id: '', guru_id: '', file: null });
+      }, 500);
       queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-list'] });
       queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-stats-all'] });
       queryClient.invalidateQueries({ queryKey: ['global-topik-presets'] });
@@ -27,6 +40,7 @@ export const usePerangkatAjarMutations = (params: any) => {
       queryClient.invalidateQueries({ queryKey: ['evaluasi-kinerja-guru'] });
     },
     onError: (err: unknown) => {
+      setUploadProgress(0);
       const msg = err instanceof Error ? err.message : 'Gagal mengunggah berkas';
       toast.error(msg);
     }
@@ -170,6 +184,7 @@ export const usePerangkatAjarMutations = (params: any) => {
 
   return {
     uploadMutation,
+    uploadProgress,
     reviewMutation,
     deleteMutation,
     bulkDeleteMutation,

@@ -142,32 +142,47 @@ export const kurikulumApi = {
     const response = await api.get('/kurikulum/perangkat', { params });
     return response.data;
   },
-  uploadPerangkatAjar: async (data: {
-    guru_id: string;
-    mapel_id: string;
-    tahun_pelajaran_id: string;
-    semester_id: string;
-    judul: string;
-    jenis: string;
-    file: File;
-    onProgress?: (percent: number) => void;
-  }) => {
-    const formData = new FormData();
-    formData.append('file', data.file);
-    formData.append('guru_id', data.guru_id);
-    formData.append('mapel_id', data.mapel_id);
-    formData.append('tahun_pelajaran_id', data.tahun_pelajaran_id);
-    formData.append('semester_id', data.semester_id);
-    formData.append('judul', data.judul);
-    formData.append('jenis', data.jenis);
+  uploadPerangkatAjar: async (
+    data:
+      | FormData
+      | {
+          guru_id: string;
+          mapel_id: string;
+          tahun_pelajaran_id: string;
+          semester_id: string;
+          judul: string;
+          jenis: string;
+          file: File;
+          onProgress?: (percent: number) => void;
+        },
+    onProgressCallback?: (percent: number) => void
+  ) => {
+    let body: FormData;
+    let progressCallback = onProgressCallback;
 
-    const response = await api.post('/kurikulum/perangkat', formData, {
+    if (data instanceof FormData) {
+      body = data;
+    } else {
+      progressCallback = data.onProgress || onProgressCallback;
+      body = new FormData();
+      if (data.file) body.append('file', data.file);
+      if (data.guru_id) body.append('guru_id', data.guru_id);
+      if (data.mapel_id) body.append('mapel_id', data.mapel_id);
+      if (data.tahun_pelajaran_id) body.append('tahun_pelajaran_id', data.tahun_pelajaran_id);
+      if (data.semester_id) body.append('semester_id', data.semester_id);
+      if (data.judul) body.append('judul', data.judul);
+      if (data.jenis) body.append('jenis', data.jenis);
+    }
+
+    const response = await api.post('/kurikulum/perangkat', body, {
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: (evt: any) => {
-        if (!data.onProgress) return;
+        if (!progressCallback) return;
         const total = Number(evt?.total || 0);
         const loaded = Number(evt?.loaded || 0);
-        if (total > 0) data.onProgress(Math.round((loaded * 100) / total));
+        if (total > 0) {
+          progressCallback(Math.round((loaded * 100) / total));
+        }
       },
     });
     return response.data;

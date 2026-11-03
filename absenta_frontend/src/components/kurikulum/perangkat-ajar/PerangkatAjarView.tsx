@@ -344,6 +344,7 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
 
   const {
     uploadMutation,
+    uploadProgress,
     reviewMutation,
     deleteMutation,
     bulkDeleteMutation,
@@ -446,7 +447,9 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
 
   const handleUploadSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const result = uploadPerangkatSchema.safeParse(uploadForm);
+    const effectiveGuruId = uploadForm.guru_id || (isGuruContext ? currentGuru?.id : '') || currentGuru?.id || '';
+    const submitPayload = { ...uploadForm, guru_id: effectiveGuruId };
+    const result = uploadPerangkatSchema.safeParse(submitPayload);
     if (!result.success) {
       const firstIssue = result.error.issues[0];
       toast.error(firstIssue.message);
@@ -870,6 +873,9 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
         setUploadForm={setUploadForm}
         handleUploadSubmit={handleUploadSubmit}
         uploadMutation={uploadMutation}
+        uploadProgress={uploadProgress}
+        isGuruContext={isGuruContext}
+        currentTeacherName={currentGuru?.nama_guru}
         uploadLoading={uploadMutation.isPending}
         isReviewModalOpen={isReviewModalOpen}
         setIsReviewModalOpen={setIsReviewModalOpen}

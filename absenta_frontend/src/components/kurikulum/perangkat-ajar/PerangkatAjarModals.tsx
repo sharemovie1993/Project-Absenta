@@ -70,6 +70,9 @@ interface PerangkatAjarModalsProps {
   setIsStudioModalOpen: (v: boolean) => void;
   studioPerangkat: any;
   setStudioPerangkat: (v: any) => void;
+  uploadProgress?: number;
+  isGuruContext?: boolean;
+  currentTeacherName?: string;
 }
 
 export const PerangkatAjarModals: React.FC<PerangkatAjarModalsProps> = React.memo((props: any) => {
@@ -86,7 +89,8 @@ export const PerangkatAjarModals: React.FC<PerangkatAjarModalsProps> = React.mem
     selectedWordEditItem, setSelectedWordEditItem, queryClient,
     isReaderModalOpen, setIsReaderModalOpen, readerPerangkatId,
     isStudioModalOpen, setIsStudioModalOpen, studioPerangkat, setStudioPerangkat,
-    uploadLoading, reviewLoading, generateAILoading, saveAILoading, canonicalGuruOptions
+    uploadLoading, reviewLoading, generateAILoading, saveAILoading, canonicalGuruOptions,
+    uploadProgress, isGuruContext, currentTeacherName
   } = props;
 
   const resolvedTeacherOptions = teacherOptions || canonicalGuruOptions || [];
@@ -107,6 +111,9 @@ export const PerangkatAjarModals: React.FC<PerangkatAjarModalsProps> = React.mem
               mapelOptions={mapelOptions}
               teacherOptions={resolvedTeacherOptions}
               isSubmitting={isUploadSubmitting}
+              uploadProgress={uploadProgress}
+              isGuruContext={isGuruContext}
+              currentTeacherName={currentTeacherName || currentGuru?.nama_guru}
               onSubmit={handleUploadSubmit}
             />
           )}
