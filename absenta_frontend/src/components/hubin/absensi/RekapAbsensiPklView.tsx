@@ -35,6 +35,7 @@ export interface UniversalRekapAbsensiPklViewProps {
   guruNama?: string;
   kelasId?: string;
   jurusanId?: string;
+  jurusanNama?: string;
   mitraId?: string;
   tahunPelajaranId?: string;
   semesterId?: string;
@@ -52,6 +53,7 @@ export const RekapAbsensiPklView: React.FC<UniversalRekapAbsensiPklViewProps> = 
   guruNama: propGuruNama,
   kelasId: propKelasId,
   jurusanId: propJurusanId,
+  jurusanNama: propJurusanNama,
   mitraId: propMitraId,
   tahunPelajaranId: propTpId,
   semesterId: propSemesterId,
@@ -243,7 +245,7 @@ export const RekapAbsensiPklView: React.FC<UniversalRekapAbsensiPklViewProps> = 
                 Rekapitulasi Presensi PKL (Matriks Bulanan)
               </h3>
               <p className="text-xs text-slate-500">
-                {propGuruNama ? `Pembimbing: ${propGuruNama}` : 'Seluruh Siswa PKL'} • Bulan {bulan}
+                {propGuruNama ? `Pembimbing: ${propGuruNama}` : (propJurusanNama ? `Jurusan ${propJurusanNama}` : 'Seluruh Siswa PKL')} • Bulan {bulan}
               </p>
             </div>
           </div>

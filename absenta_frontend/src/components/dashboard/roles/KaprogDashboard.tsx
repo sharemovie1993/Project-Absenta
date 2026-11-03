@@ -17,7 +17,8 @@ import {
   Trophy,
   Printer,
   Scale,
-  ClipboardCheck
+  ClipboardCheck,
+  UserCheck
 } from 'lucide-react';
 import { Button, Badge, Loader } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
@@ -42,6 +43,8 @@ const KaprogGuruDetailModal = lazy(() => import('./kaprog/KaprogGuruDetailModal'
 import { KaprogBerandaTab } from './kaprog/tabs/KaprogBerandaTab';
 import { KaprogSiswaTab } from './kaprog/tabs/KaprogSiswaTab';
 import { KaprogPklTab } from './kaprog/tabs/KaprogPklTab';
+import { KaprogPlotingPklTab } from './kaprog/tabs/KaprogPlotingPklTab';
+import { KaprogRekapPresensiPklTab } from './kaprog/tabs/KaprogRekapPresensiPklTab';
 import { KaprogNilaiPklTab } from './kaprog/tabs/KaprogNilaiPklTab';
 import { KaprogNilaiSidangTab } from './kaprog/tabs/KaprogNilaiSidangTab';
 import { KaprogKehadiranTab } from './kaprog/tabs/KaprogKehadiranTab';
@@ -85,9 +88,9 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
   const [searchParams, setSearchParams] = useSearchParams();
   const subtabParam = searchParams.get('subtab') as KaprogTabId | null;
 
-  // Active Tab State (beranda | siswa | pkl | nilai_pkl | sidang_pkl | kehadiran | pelanggaran | prestasi | guru | sarana | ukk | rapor)
+  // Active Tab State (beranda | siswa | pkl | ploting_pkl | presensi_pkl | nilai_pkl | sidang_pkl | kehadiran | pelanggaran | prestasi | guru | sarana | ukk | rapor)
   const [activeTab, setActiveTab] = useState<KaprogTabId>(() => {
-    if (subtabParam && ['beranda', 'siswa', 'prestasi', 'pkl', 'nilai_pkl', 'sidang_pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana', 'ukk', 'rapor'].includes(subtabParam)) {
+    if (subtabParam && ['beranda', 'siswa', 'prestasi', 'pkl', 'ploting_pkl', 'presensi_pkl', 'nilai_pkl', 'sidang_pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana', 'ukk', 'rapor'].includes(subtabParam)) {
       return subtabParam;
     }
     return 'beranda';
@@ -97,7 +100,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
   const [visitedTabs, setVisitedTabs] = useState<Set<KaprogTabId>>(() => new Set([activeTab]));
 
   useEffect(() => {
-    if (subtabParam && ['beranda', 'siswa', 'prestasi', 'pkl', 'nilai_pkl', 'sidang_pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana', 'ukk', 'rapor'].includes(subtabParam)) {
+    if (subtabParam && ['beranda', 'siswa', 'prestasi', 'pkl', 'ploting_pkl', 'presensi_pkl', 'nilai_pkl', 'sidang_pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana', 'ukk', 'rapor'].includes(subtabParam)) {
       setActiveTab((curr) => {
         if (curr !== subtabParam) return subtabParam;
         return curr;
@@ -412,7 +415,9 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
       { id: 'prestasi', label: 'Prestasi Siswa', shortLabel: 'Prestasi', category: 'pembinaan', icon: Trophy },
 
       // Kategori 3: PRAKTIK KERJA LAPANGAN (PKL)
-      { id: 'pkl', label: 'PKL & Industri', shortLabel: 'PKL', category: 'pkl', icon: Briefcase, badge: tpStatus.pendingMitra > 0 ? tpStatus.pendingMitra : undefined },
+      { id: 'pkl', label: 'Mitra & TP PKL', shortLabel: 'Mitra TP', category: 'pkl', icon: Briefcase, badge: tpStatus.pendingMitra > 0 ? tpStatus.pendingMitra : undefined },
+      { id: 'ploting_pkl', label: 'Ploting Siswa PKL', shortLabel: 'Ploting Siswa', category: 'pkl', icon: UserCheck },
+      { id: 'presensi_pkl', label: 'Rekap Presensi PKL', shortLabel: 'Presensi PKL', category: 'pkl', icon: CalendarCheck },
       { id: 'nilai_pkl', label: 'Penilaian PKL', shortLabel: 'Nilai PKL', category: 'pkl', icon: ClipboardCheck, badge: belumNilaiDudiCount > 0 ? belumNilaiDudiCount : undefined },
       { id: 'sidang_pkl', label: 'Sidang PKL', shortLabel: 'Sidang', category: 'pkl', icon: Scale, badge: belumSidangCount > 0 ? belumSidangCount : undefined },
 
@@ -789,10 +794,10 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                   kaprogStatsData={kaprogStatsData}
                   recentActivities={recentActivities}
                   agendaHariIni={agendaHariIni}
-                  onOpenPenempatan={() => setIsPlottingPklModalOpen(true)}
+                  onOpenPenempatan={() => handleTabSelect('ploting_pkl')}
                   onOpenStrukturKelas={() => setIsStrukturKelasModalOpen(true)}
-                  onOpenRekapNilai={() => setIsRekapNilaiModalOpen(true)}
-                  onOpenMonitoringPkl={() => setIsMonitoringPklModalOpen(true)}
+                  onOpenRekapNilai={() => handleTabSelect('nilai_pkl')}
+                  onOpenMonitoringPkl={() => handleTabSelect('presensi_pkl')}
                   onSelectTab={handleTabSelect}
                 />
               </div>
@@ -825,15 +830,43 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                   setMitraFilter={setMitraFilter}
                   filteredMitraList={filteredMitraList}
                   onSelectEditingSlot={handleSelectEditingSlot}
-                  onOpenPlottingModal={() => setIsPlottingPklModalOpen(true)}
+                  onOpenPlottingModal={() => handleTabSelect('ploting_pkl')}
                   onOpenRekapNilai={() => handleTabSelect('nilai_pkl')}
                   onOpenSidangPkl={() => handleTabSelect('sidang_pkl')}
-                  onOpenMonitoringPkl={() => setIsMonitoringPklModalOpen(true)}
+                  onOpenMonitoringPkl={() => handleTabSelect('presensi_pkl')}
                   onOpenPrintMatriksModal={() => setIsPrintMatriksModalOpen(true)}
                   onRolloverAllTp={() => rolloverTpMutation.mutate()}
                   isRolloverLoading={rolloverTpMutation.isPending}
                   isReadOnly={isViewingHistorical}
                   jurusanNama={resolvedJurusan?.nama}
+                />
+              </div>
+            )}
+
+            {visitedTabs.has('ploting_pkl') && (
+              <div
+                key="tab-ploting-pkl"
+                className={cn('w-full', activeTab === 'ploting_pkl' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              >
+                <KaprogPlotingPklTab
+                  jurusanId={resolvedJurusan?.id}
+                  jurusanNama={resolvedJurusan?.nama || 'Kejuruan'}
+                  tahunPelajaranId={academic.selectedTahunPelajaran}
+                  semesterId={academic.selectedSemester}
+                />
+              </div>
+            )}
+
+            {visitedTabs.has('presensi_pkl') && (
+              <div
+                key="tab-presensi-pkl"
+                className={cn('w-full', activeTab === 'presensi_pkl' ? 'block animate-in fade-in duration-100' : 'hidden')}
+              >
+                <KaprogRekapPresensiPklTab
+                  jurusanId={resolvedJurusan?.id}
+                  jurusanNama={resolvedJurusan?.nama || 'Kejuruan'}
+                  tahunPelajaranId={academic.selectedTahunPelajaran}
+                  semesterId={academic.selectedSemester}
                 />
               </div>
             )}

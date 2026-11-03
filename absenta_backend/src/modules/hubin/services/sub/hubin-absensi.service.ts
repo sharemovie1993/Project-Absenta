@@ -812,7 +812,7 @@ export class HubinAbsensiService extends HubinCommonHelper {
     const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0));
     const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
 
-    const cacheKey = `hubin:${tenantId}:pkl_rekap_bulanan:${rawBulan}:${params?.pembimbing_id || 'all'}:${params?.kelas_id || 'all'}:${params?.mitra_id || 'all'}:${params?.search || 'all'}`;
+    const cacheKey = `hubin:${tenantId}:pkl_rekap_bulanan:${rawBulan}:${params?.pembimbing_id || 'all'}:${params?.kelas_id || 'all'}:${params?.jurusan_id || 'all'}:${params?.mitra_id || 'all'}:${params?.search || 'all'}`;
 
     return await cacheService.getOrSet(
       cacheKey,
@@ -823,6 +823,17 @@ export class HubinAbsensiService extends HubinCommonHelper {
         };
 
         const andConditions: any[] = [];
+
+        if (params?.jurusan_id) {
+          andConditions.push({
+            Siswa: {
+              OR: [
+                { jurusan_id: params.jurusan_id },
+                { Kelas: { jurusan_id: params.jurusan_id } }
+              ]
+            }
+          });
+        }
 
         if (params?.pembimbing_id) {
           where.pembimbing_id = params.pembimbing_id;
