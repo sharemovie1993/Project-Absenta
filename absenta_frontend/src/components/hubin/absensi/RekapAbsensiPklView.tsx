@@ -66,7 +66,8 @@ export const RekapAbsensiPklView: React.FC<UniversalRekapAbsensiPklViewProps> = 
   const isMobile = useIsMobile();
   const [bulan, setBulan] = useState<string>(initialBulan || toLocalMonth());
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [viewMode, setViewMode] = useState<ViewMode>('MATRIX');
+  // Mode rekapitulasi permanen per hari (Matriks Harian 1..N)
+  const viewMode: ViewMode = 'MATRIX';
   const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false);
 
   // Days in month calculation
@@ -338,43 +339,27 @@ export const RekapAbsensiPklView: React.FC<UniversalRekapAbsensiPklViewProps> = 
               />
             </div>
 
-            {/* View Mode Switcher */}
-            <div className="inline-flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 h-9 shrink-0">
-              <button
-                type="button"
-                onClick={() => setViewMode('SUMMARY')}
-                className={`px-2.5 py-1 text-[11px] rounded-md font-bold uppercase tracking-tight transition-all cursor-pointer ${
-                  viewMode === 'SUMMARY'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-extrabold'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                Akumulasi
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('MATRIX')}
-                className={`px-2.5 py-1 text-[11px] rounded-md font-bold uppercase tracking-tight transition-all cursor-pointer ${
-                  viewMode === 'MATRIX'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-extrabold'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                Per Hari
-              </button>
-            </div>
-
             {/* Search Input */}
-            <div className="relative min-w-[160px] sm:min-w-[200px]">
+            <div className="relative min-w-[180px] sm:min-w-[220px]">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <Input
                 type="text"
                 placeholder="Cari siswa / mitra..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 h-9 text-xs rounded-xl"
+                className="pl-8 pr-7 h-9 text-xs rounded-xl"
                 aria-label="Cari nama siswa atau mitra industri"
               />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 cursor-pointer"
+                  title="Hapus pencarian"
+                >
+                  <X size={12} />
+                </button>
+              )}
             </div>
           </div>
 
