@@ -307,10 +307,10 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
       },
       {
         id: 'monitoring',
-        label: 'Supervisi DU/DI',
-        shortLabel: 'Supervisi',
+        label: 'Monitoring PKL',
+        shortLabel: 'Monitoring',
         icon: Calendar,
-        // Tindakan: Siswa/DU/DI yang BELUM PERNAH dikunjungi supervisi
+        // Tindakan: Siswa/DU/DI yang BELUM PERNAH dikunjungi monitoring
         badge: (stats.siswa_belum_dikunjungi ?? 0) > 0 ? stats.siswa_belum_dikunjungi : undefined,
         badgeColor: 'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400 font-bold',
       },
@@ -403,7 +403,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                   </Badge>
                 </div>
                 <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
-                  {activeTab === 'ringkasan' ? 'Monitoring Bimbingan & Supervisi Industri' : 'Pembimbing PKL'}
+                  {activeTab === 'ringkasan' ? 'Monitoring & Pembimbingan PKL' : 'Pembimbing PKL'}
                 </p>
               </div>
             </div>

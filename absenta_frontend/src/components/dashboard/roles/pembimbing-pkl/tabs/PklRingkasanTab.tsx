@@ -77,7 +77,7 @@ export const PklRingkasanTab: React.FC<PklRingkasanTabProps> = ({
       },
       {
         id: 'supervisi',
-        title: 'Supervisi Terlaksana',
+        title: 'Monitoring Terlaksana',
         value: `${stats.total_kunjungan_terlaksana ?? 0} Sesi`,
         subtext: 'Kunjungan Lapangan',
         icon: CheckCircle2,
@@ -124,7 +124,7 @@ export const PklRingkasanTab: React.FC<PklRingkasanTabProps> = ({
       },
       {
         id: 'act-monitoring',
-        label: 'Supervisi DU/DI',
+        label: 'Monitoring PKL',
         icon: Calendar,
         iconColorClass: 'text-indigo-600 dark:text-indigo-400',
         badge: (stats.siswa_belum_dikunjungi ?? 0) > 0 ? stats.siswa_belum_dikunjungi : undefined,
@@ -248,7 +248,7 @@ export const PklRingkasanTab: React.FC<PklRingkasanTabProps> = ({
               </div>
               <div className="min-w-0">
                 <h3 className="text-xs sm:text-[13px] font-bold text-slate-900 dark:text-white truncate">
-                  Supervisi &amp; Monitoring DU/DI
+                  Monitoring &amp; Kunjungan PKL
                 </h3>
                 <p className="text-[10px] sm:text-[11px] text-slate-400 dark:text-slate-500 font-medium truncate">
                   Riwayat Kunjungan Pembimbing Sekolah
@@ -256,14 +256,14 @@ export const PklRingkasanTab: React.FC<PklRingkasanTabProps> = ({
               </div>
             </div>
           }
-          actionLabel="Lihat Agenda"
+          actionLabel="Lihat Target"
           onAction={() => onSelectTab('monitoring')}
           noPadding
         >
           {kunjunganList.length === 0 ? (
             <div className="p-8 text-center text-xs text-slate-400">
               <Calendar className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-700 mb-1.5" />
-              <p className="font-semibold text-slate-600 dark:text-slate-300">Belum Ada Catatan Supervisi</p>
+              <p className="font-semibold text-slate-600 dark:text-slate-300">Belum Ada Catatan Monitoring</p>
               <p className="text-[11px] text-slate-400 mt-0.5">Catat kunjungan industri untuk memulai log.</p>
             </div>
           ) : (

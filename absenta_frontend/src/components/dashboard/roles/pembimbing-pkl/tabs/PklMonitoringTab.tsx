@@ -24,7 +24,7 @@ export const PklMonitoringTab: React.FC<PklMonitoringTabProps> = ({
         fallback={
           <div className="p-12 text-center text-xs text-slate-400">
             <div className="animate-spin w-6 h-6 mx-auto text-indigo-600 mb-2 border-2 border-current border-t-transparent rounded-full" />
-            Memuat modul supervisi kunjungan...
+            Memuat modul monitoring PKL...
           </div>
         }
       >

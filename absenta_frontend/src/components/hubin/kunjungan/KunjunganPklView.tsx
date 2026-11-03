@@ -253,11 +253,11 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800">
           <div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Calendar className="text-indigo-600 dark:text-indigo-400" size={24} />
-              Supervisi &amp; Kunjungan Industri DU/DI
+              <Calendar className="text-teal-600 dark:text-teal-400" size={24} />
+              Monitoring &amp; Kunjungan PKL
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-              Peta monitoring target, checklist siswa bimbingan, geotagging GPS, dan dokumentasi supervisi berkala.
+              Peta monitoring target, checklist siswa bimbingan, geotagging GPS, dan dokumentasi berkala.
             </p>
           </div>
           {isModal && onClose && (

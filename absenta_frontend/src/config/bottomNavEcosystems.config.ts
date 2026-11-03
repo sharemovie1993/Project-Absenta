@@ -923,7 +923,7 @@ export function getPklPembimbingTabs(currentSubtab?: string): MobileBottomTabIte
       targetPath: '/dashboard?tab=pembimbing_pkl',
       isActive: (p, t) => t === 'pembimbing_pkl' && ['monitoring', 'penilaian', 'rekap'].includes(currentSubtab || ''),
       children: [
-        { id: 'monitoring', label: 'Supervisi DU/DI', icon: Calendar, targetPath: '/dashboard?tab=pembimbing_pkl&subtab=monitoring', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
+        { id: 'monitoring', label: 'Monitoring PKL', icon: Calendar, targetPath: '/dashboard?tab=pembimbing_pkl&subtab=monitoring', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
         { id: 'penilaian', label: 'Penilaian PKL', icon: Award, targetPath: '/dashboard?tab=pembimbing_pkl&subtab=penilaian', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
         { id: 'rekap', label: 'Cetak Lembar PKL', icon: Printer, targetPath: '/dashboard?tab=pembimbing_pkl&subtab=rekap', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
         { id: 'mitra-full', label: 'Katalog Mitra DU/DI', icon: Building2, targetPath: '/hubin/mitra', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },

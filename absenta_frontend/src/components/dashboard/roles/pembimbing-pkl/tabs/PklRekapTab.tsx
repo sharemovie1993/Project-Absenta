@@ -37,11 +37,11 @@ export const PklRekapTab: React.FC<PklRekapTabProps> = ({
     },
     {
       id: 'doc-monitoring',
-      title: 'Buku Log Supervisi Industri',
+      title: 'Buku Log Monitoring PKL',
       description: 'Rekapitulasi riwayat kunjungan monitoring guru pembimbing ke mitra DU/DI beserta tindak lanjut kendala.',
       icon: Calendar,
       colorVariant: 'indigo',
-      actionLabel: 'Cetak Log Supervisi',
+      actionLabel: 'Cetak Log Monitoring',
     },
     {
       id: 'doc-bimbingan',
