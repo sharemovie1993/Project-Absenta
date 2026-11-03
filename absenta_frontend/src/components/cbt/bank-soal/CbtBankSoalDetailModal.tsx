@@ -341,7 +341,7 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
           bankSoalId={bankSoal.id}
           soalToEdit={soalToEdit}
           nomorUrutSuggested={soalList.length + 1}
-          onSuccess: async () => {
+          onSuccess={async () => {
             refetch();
             await queryClient.invalidateQueries({
               queryKey: cbtQueryKeys.soalList(bankSoal?.id || ''),
@@ -353,7 +353,7 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
               exact: false,
               refetchType: 'all',
             });
-          },
+          }}
         />
       )}
     </>
