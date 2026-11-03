@@ -12,7 +12,7 @@ import { useCapabilities } from '@/hooks/useCapabilities';
 import type { CalendarEvent } from './EventFormModal';
 import { formatDate } from '@/utils/layoutUtils';
 import { cn } from '@/lib/utils';
-import { Edit3, RotateCcw, LayoutTemplate, Layers } from 'lucide-react';
+import { Edit3, RotateCcw, LayoutTemplate, Layers, CalendarDays } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 interface KalenderAkademikPrintModalProps {
@@ -224,6 +224,7 @@ export const KalenderAkademikPrintModal: React.FC<KalenderAkademikPrintModalProp
 
   // Mode Layout: 1 Halaman 12 Bulan (Landscape) vs 2 Halaman Per Semester (Portrait)
   const [printLayoutMode, setPrintLayoutMode] = useState<PrintLayoutMode>('1-page-landscape');
+  const [showLandscapeAgenda, setShowLandscapeAgenda] = useState<boolean>(true);
   const [isEditingSigners, setIsEditingSigners] = useState<boolean>(false);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -557,6 +558,77 @@ export const KalenderAkademikPrintModal: React.FC<KalenderAkademikPrintModalProp
     </div>
   );
 
+  // Helper Warna Indikator Kategori Event
+  const getEventBadgeColor = (jenis: string) => {
+    switch (jenis) {
+      case 'LIBUR_NASIONAL':
+        return 'bg-red-500 text-white';
+      case 'LIBUR_SEKOLAH':
+        return 'bg-amber-400 text-slate-950';
+      case 'PTS':
+      case 'PAS':
+        return 'bg-blue-600 text-white';
+      case 'KEGIATAN':
+        return 'bg-emerald-600 text-white';
+      default:
+        return 'bg-slate-500 text-white';
+    }
+  };
+
+  const formatShortDateRange = (mulai: Date | string, selesai: Date | string) => {
+    const d1 = new Date(mulai);
+    const d2 = new Date(selesai);
+    if (isNaN(d1.getTime())) return '';
+    const day1 = d1.getDate();
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+    const m1 = monthNames[d1.getMonth()];
+
+    const isSameDay = isNaN(d2.getTime()) || formatDateToYYYYMMDD(d1) === formatDateToYYYYMMDD(d2);
+    if (isSameDay) {
+      return `${day1} ${m1}`;
+    }
+
+    const day2 = d2.getDate();
+    const m2 = monthNames[d2.getMonth()];
+    if (m1 === m2) {
+      return `${day1}-${day2} ${m1}`;
+    }
+    return `${day1} ${m1} - ${day2} ${m2}`;
+  };
+
+  // Render Keterangan Agenda Kompak Khusus Poster 1 Halaman Landscape
+  const renderLandscapeCompactAgenda = (
+    agendaEvents: CalendarEvent[],
+    semesterLabel: string,
+    borderColorClass: string,
+    headerBgClass: string
+  ) => (
+    <div className={cn("border-t bg-white flex flex-col", borderColorClass)}>
+      <div className={cn("text-white px-2 py-0.5 text-[8.5px] font-bold uppercase flex items-center justify-between", headerBgClass)}>
+        <span>Agenda &amp; Keterangan Kegiatan — {semesterLabel}</span>
+        <span className="text-[7.5px] font-medium opacity-90">{agendaEvents.length} Agenda Terjadwal</span>
+      </div>
+      {agendaEvents.length === 0 ? (
+        <div className="py-1 px-2 text-center text-[8px] text-slate-500 italic bg-white">
+          Tidak ada agenda khusus tercatat pada {semesterLabel}
+        </div>
+      ) : (
+        <div className="p-1.5 grid grid-cols-2 gap-x-2.5 gap-y-1 bg-slate-50/20">
+          {agendaEvents.map((ev, i) => (
+            <div key={ev.id || i} className="flex items-center gap-1 min-w-0 text-[7.5px] leading-tight">
+              <span className={cn("px-1 py-0.5 rounded-[2px] font-bold shrink-0 text-[6.5px]", getEventBadgeColor(ev.jenis))}>
+                {formatShortDateRange(ev.tanggal_mulai, ev.tanggal_selesai)}
+              </span>
+              <span className="font-semibold text-black truncate" title={ev.judul}>
+                {ev.judul}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   // Render Tabel Agenda Semester
   const renderAgendaTable = (agendaEvents: CalendarEvent[], semesterLabel: string) => (
     <div className="border border-black/30 rounded overflow-hidden">
@@ -713,6 +785,24 @@ export const KalenderAkademikPrintModal: React.FC<KalenderAkademikPrintModalProp
             </button>
           </div>
 
+          {/* Toggle Keterangan Agenda (Khusus Mode 1 Halaman Landscape) */}
+          {printLayoutMode === '1-page-landscape' && (
+            <button
+              type="button"
+              onClick={() => setShowLandscapeAgenda(prev => !prev)}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors cursor-pointer shadow-xs",
+                showLandscapeAgenda
+                  ? "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300"
+                  : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50"
+              )}
+              title="Tampilkan / Sembunyikan Keterangan Agenda di Bawah Kalender"
+            >
+              <CalendarDays size={13} className={showLandscapeAgenda ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"} />
+              <span>{showLandscapeAgenda ? 'Agenda: Aktif' : 'Agenda: Sembunyi'}</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setIsEditingSigners(prev => !prev)}
@@ -833,7 +923,7 @@ export const KalenderAkademikPrintModal: React.FC<KalenderAkademikPrintModalProp
             pageLabel="1 Halaman 12 Bulan Lengkap"
             footerText={`Kalender Pendidikan & Akademik Sekolah TP ${tahunPelajaranNama} (12 Bulan Lengkap)`}
             orientation="landscape"
-            className="p-6 sm:p-8"
+            className="p-5 sm:p-6"
           >
             {/* Kop Surat Resmi Landscape */}
             <PrintHeader
@@ -855,29 +945,35 @@ export const KalenderAkademikPrintModal: React.FC<KalenderAkademikPrintModalProp
             </div>
 
             {/* Dua Blok Berdampingan: Semester Ganjil (Kiri) & Semester Genap (Kanan) */}
-            <div className="grid grid-cols-2 gap-4 my-2 items-start">
+            <div className="grid grid-cols-2 gap-3.5 my-1.5 items-start">
               {/* Kolom Kiri: SEMESTER GANJIL */}
-              <div className="border border-emerald-800/40 rounded-lg overflow-hidden bg-white">
-                <div className="bg-emerald-800 text-white text-center py-1 font-bold text-[10px] uppercase">
+              <div className="border border-emerald-800/40 rounded-lg overflow-hidden bg-white flex flex-col">
+                <div className="bg-emerald-800 text-white text-center py-1 font-bold text-[9.5px] uppercase">
                   SEMESTER GANJIL (JULI - DESEMBER {startYear})
                 </div>
-                <div className="p-2 grid grid-cols-3 gap-1.5 bg-emerald-50/10">
+                <div className="p-1.5 grid grid-cols-3 gap-1.5 bg-emerald-50/10">
                   {ganjilMonths.map((m) => (
                     <PrintMonthGrid key={`land-ganjil-${m.name}`} month={m} events={events} compact={true} />
                   ))}
                 </div>
+                {showLandscapeAgenda && (
+                  renderLandscapeCompactAgenda(ganjilEvents, 'Semester Ganjil', 'border-emerald-800/30', 'bg-emerald-800')
+                )}
               </div>
 
               {/* Kolom Kanan: SEMESTER GENAP */}
-              <div className="border border-blue-800/40 rounded-lg overflow-hidden bg-white">
-                <div className="bg-blue-800 text-white text-center py-1 font-bold text-[10px] uppercase">
+              <div className="border border-blue-800/40 rounded-lg overflow-hidden bg-white flex flex-col">
+                <div className="bg-blue-800 text-white text-center py-1 font-bold text-[9.5px] uppercase">
                   SEMESTER GENAP (JANUARI - JUNI {endYear})
                 </div>
-                <div className="p-2 grid grid-cols-3 gap-1.5 bg-blue-50/10">
+                <div className="p-1.5 grid grid-cols-3 gap-1.5 bg-blue-50/10">
                   {genapMonths.map((m) => (
                     <PrintMonthGrid key={`land-genap-${m.name}`} month={m} events={events} compact={true} />
                   ))}
                 </div>
+                {showLandscapeAgenda && (
+                  renderLandscapeCompactAgenda(genapEvents, 'Semester Genap', 'border-blue-800/30', 'bg-blue-800')
+                )}
               </div>
             </div>
 
