@@ -57,21 +57,40 @@ Komponen kop surat dinas dan sekolah terpadu:
 Untuk mencegah isu *discrepancy* (tampilan layar berbeda dengan hasil unduh PDF), wajib gunakan strategi **Dual-Engine**:
 
 ### Engine 1: Primary True WYSIWYG DOM Capture (`html2canvas-pro` + `jsPDF`)
-Menghasilkan file PDF yang **100% identik** dengan tampilan di layar monitor:
+Menghasilkan file PDF yang **100% identik** dengan tampilan di layar monitor secara ringan dan efisien:
+
 1. Pasang ref `useRef<HTMLDivElement>(null)` pada container yang membungkus `PrintDocumentSheet`.
 2. Bidik elemen dengan selektor `.print-sheet`.
-3. Render canvas menggunakan `html2canvas-pro` dengan konfigurasi resolusi tinggi:
+3. Inisialisasi dokumen jsPDF dengan **Stream Compression**:
+   ```typescript
+   const pdf = new jsPDF({
+     orientation: isLandscape ? 'landscape' : 'portrait',
+     unit: 'mm',
+     format: 'a4',
+     compress: true, // Wajib: Mengaktifkan kompresi stream PDF
+   });
+   const pdfWidth = isLandscape ? 297 : 210;
+   const pdfHeight = isLandscape ? 210 : 297;
+   ```
+4. Render canvas menggunakan `html2canvas-pro` dengan skala optimal:
    ```typescript
    const canvas = await html2canvas(sheetElement, {
-     scale: 2.5, // Menghasilkan ~300 DPI jernih
+     scale: 2, // Wajib: 2.0 (setara ~200 DPI Retina, tajam dan hemat RAM). DILARANG > 2.5
      useCORS: true,
      allowTaint: true,
      backgroundColor: '#ffffff',
      logging: false,
    });
    ```
-4. Tambahkan image data ke dokumen jsPDF A4 (`orientation: 'portrait'`, `unit: 'mm'`, `format: 'a4'`).
-5. Unduh otomatis melalui `pdf.save(filename)`.
+5. **Anti-Bloat Guard (PENTING - Mencegah Ukuran File Gembrot 20MB+)**:
+   > **DILARANG KERAS** menggunakan `image/png` untuk embedding canvas lembar penuh ke jsPDF! PNG tanpa kompresi akan menghasilkan file PDF raksasa (15–25 MB per lembar).
+   > **WAJIB** gunakan format `image/jpeg` dengan kualitas `0.88`:
+   ```typescript
+   // Menghasilkan kompresi 98% (dari 24 MB turun ke ~400 KB) dengan teks tetap jernih dan tajam
+   const imgData = canvas.toDataURL('image/jpeg', 0.88);
+   pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+   ```
+6. Unduh otomatis melalui `pdf.save(filename)`.
 
 ### Engine 2: Fallback Programmatic Vector Generator (`jsPDF` + `autotable`)
 Modul terisolasi di `src/utils/print/modules/pdf<NamaModul>.ts` yang digunakan jika rendering canvas mengalami kendala:
@@ -130,5 +149,6 @@ Sebelum fitur cetak dirilis ke produksi:
 - [ ] Kop surat menggunakan `PrintHeader` + `usePrintHeaderData()`.
 - [ ] Tombol cetak memanggil `window.print()` dan format lembar rapi di print preview browser.
 - [ ] Tombol unduh PDF menghasilkan dokumen presisi 1:1 (*True WYSIWYG*).
+- [ ] **Anti-Bloat Guard**: Ekspor PDF menggunakan `scale: 2`, `image/jpeg` kualitas `0.88`, dan `compress: true` (ukuran file wajib < 1 MB per lembar, dilarang PNG tanpa kompresi).
 - [ ] Tata letak tanda tangan memenuhi standar 2-tier dan tidak terpotong batas margin bawah kertas.
 - [ ] Lolos verifikasi build TypeScript (`npx tsc --noEmit`).
