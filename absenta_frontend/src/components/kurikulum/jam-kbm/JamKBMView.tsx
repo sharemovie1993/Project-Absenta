@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { Button, SectionCard } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
-import { Save, RefreshCw, Clock, Users, Zap, Sliders } from 'lucide-react';
+import { Save, RefreshCw, Clock, Users, Zap, Sliders, Printer } from 'lucide-react';
 import { getTenantById, updateTenant } from '@/api/tenants.api';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { useJenjang } from '@/hooks/useJenjang';
@@ -24,6 +24,7 @@ import {
 const JamKBMShiftPanel = lazy(() => import('./JamKBMShiftPanel'));
 const JamKBMClassAssignmentPanel = lazy(() => import('./JamKBMClassAssignmentPanel'));
 const JamKBMDailyMaxJpPanel = lazy(() => import('./JamKBMDailyMaxJpPanel'));
+const DistribusiJamPelajaranPrintModal = lazy(() => import('./DistribusiJamPelajaranPrintModal'));
 
 const HARDENING_KEY = 'jam_kbm_page';
 
@@ -88,6 +89,7 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
   const [showDailyMaxJpModal, setShowDailyMaxJpModal] = useState(false);
   const [showClassAssignmentModal, setShowClassAssignmentModal] = useState(false);
   const [showShiftConfigModal, setShowShiftConfigModal] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
 
   // ── useKelasOptions & useQuery ──────────────────────────────────────────────
   const { rawList: kelasRawList } = useKelasOptions();
@@ -290,6 +292,16 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
       </Button>
 
       <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setShowPrintModal(true)}
+        className="flex items-center gap-1.5 rounded-xl h-8 text-xs font-semibold cursor-pointer border-indigo-200 hover:border-indigo-300 text-indigo-700 dark:text-indigo-300 bg-indigo-50/50 dark:bg-indigo-950/30"
+      >
+        <Printer className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+        <span>Cetak Distribusi JP</span>
+      </Button>
+
+      <Button
         variant="primary"
         size="sm"
         onClick={handleSave}
@@ -479,6 +491,18 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
           </div>
         </div>
       </Modal>
+
+      {/* ── Modal 4: Cetak Distribusi Jam Pelajaran (Dokumen Resmi) ── */}
+      {showPrintModal && (
+        <Suspense fallback={<PanelLoader />}>
+          <DistribusiJamPelajaranPrintModal
+            isOpen={showPrintModal}
+            onClose={() => setShowPrintModal(false)}
+            shiftConfig={shiftConfig}
+            jenjang={jenjang ?? ''}
+          />
+        </Suspense>
+      )}
     </div>
   );
 

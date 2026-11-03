@@ -505,8 +505,8 @@ export default React.memo(function JamKBMShiftPanel({
           ))}
         </div>
 
-        {/* Center: Durasi per JP (Dipertahankan) */}
-        <div className="flex items-center gap-1.5">
+        {/* Right: Durasi per JP (Dipertahankan) */}
+        <div className="flex items-center gap-1.5 ml-auto">
           <label htmlFor="input-durasi-slot" className="text-[11px] font-bold text-slate-500 uppercase shrink-0">
             Durasi per JP:
           </label>
@@ -525,35 +525,6 @@ export default React.memo(function JamKBMShiftPanel({
               />
               <span className="text-[10px] font-bold text-slate-400">mnt</span>
             </div>
-          )}
-        </div>
-
-        {/* Right: Badges Live Ringkasan Bel & Reset Standar */}
-        <div className="flex items-center gap-2 flex-wrap text-xs ml-auto">
-          <div className="flex items-center gap-1 px-2 py-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-200 font-bold text-[11px]">
-            <Clock3 className="w-3 h-3 text-indigo-500" />
-            <span>{timeRange}</span>
-            <span className="text-slate-400 font-normal">({Math.floor(totalDurationMin / 60)}j {totalDurationMin % 60}m)</span>
-          </div>
-          <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50 rounded-md text-amber-700 dark:text-amber-400 font-bold text-[11px]">
-            <Coffee className="w-3 h-3 text-amber-500" />
-            <span>{activePattern.breaks.length} Istirahat</span>
-          </div>
-          <div className="flex items-center gap-1 px-2 py-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md">
-            <div className={`w-1.5 h-1.5 rounded-full ${cascadeEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-              {cascadeEnabled ? 'Cascade ON' : 'Cascade OFF'}
-            </span>
-          </div>
-          {!readOnly && (
-            <button
-              type="button"
-              onClick={handleResetToJenjang}
-              className="h-7 px-2.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/40 rounded-md flex items-center gap-1 transition-all cursor-pointer"
-            >
-              <RefreshCw className="w-3 h-3" />
-              <span>Reset Standar {jenjang || 'Sekolah'}</span>
-            </button>
           )}
         </div>
       </div>

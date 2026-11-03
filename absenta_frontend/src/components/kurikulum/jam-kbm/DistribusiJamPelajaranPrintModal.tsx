@@ -1,0 +1,505 @@
+import React, { useState, useMemo, useCallback } from 'react';
+import {
+  UniversalDocumentModal,
+  PrintDocumentSheet,
+  PrintHeader,
+  usePrintHeaderData,
+} from '@/components/ui/PrintHeader';
+import html2canvas from 'html2canvas-pro';
+import { jsPDF } from 'jspdf';
+import { toast } from 'react-hot-toast';
+import { Printer, Calendar, Clock, Sun, Moon, SlidersHorizontal, Check, Edit3 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import type { ShiftConfig, ShiftItem, TimeSlot, BreakItem } from './JamKBMTypes';
+
+export interface DistribusiJamPelajaranPrintModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  shiftConfig: ShiftConfig;
+  jenjang?: string;
+  tahunPelajaranNama?: string;
+  semesterNama?: string;
+}
+
+const ALL_DAYS = [
+  { key: 'SENIN', label: 'Senin' },
+  { key: 'SELASA', label: 'Selasa' },
+  { key: 'RABU', label: 'Rabu' },
+  { key: 'KAMIS', label: 'Kamis' },
+  { key: 'JUMAT', label: "Jum'at" },
+  { key: 'SABTU', label: 'Sabtu' },
+] as const;
+
+export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPrintModalProps> = ({
+  isOpen,
+  onClose,
+  shiftConfig,
+  jenjang = 'SMK',
+  tahunPelajaranNama = '2026/2027',
+  semesterNama = 'Ganjil',
+}) => {
+  const { tenantInfo, logoDaerahBase64, logoSekolahBase64 } = usePrintHeaderData();
+  const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('landscape');
+  const [showLogoDaerah, setShowLogoDaerah] = useState(true);
+  const [showLogoSekolah, setShowLogoSekolah] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Active Shift selection for 2-shift schools
+  const shifts = shiftConfig?.shifts ?? [];
+  const [selectedShiftId, setSelectedShiftId] = useState<string>(shifts[0]?.id || 'pagi');
+
+  // Days configuration
+  const [includeSaturday, setIncludeSaturday] = useState<boolean>(false);
+
+  // Custom Signers State (Editable)
+  const [isEditingSigners, setIsEditingSigners] = useState(false);
+  const [wakaKurikulumNama, setWakaKurikulumNama] = useState(
+    (tenantInfo as any)?.waka_kurikulum_nama || 'Wakasek Bidang Kurikulum'
+  );
+  const [wakaKurikulumNip, setWakaKurikulumNip] = useState(
+    (tenantInfo as any)?.waka_kurikulum_nip || '-'
+  );
+  const [kepalaSekolahNama, setKepalaSekolahNama] = useState(
+    (tenantInfo as any)?.kepala_sekolah_nama || 'Kepala Sekolah'
+  );
+  const [kepalaSekolahNip, setKepalaSekolahNip] = useState(
+    (tenantInfo as any)?.kepala_sekolah_nip || '-'
+  );
+  const [kotaTitimangsa, setKotaTitimangsa] = useState(
+    (tenantInfo as any)?.kabupaten || 'Purwakarta'
+  );
+
+  const currentShift = useMemo<ShiftItem | undefined>(() => {
+    return shifts.find(s => s.id === selectedShiftId) || shifts[0];
+  }, [shifts, selectedShiftId]);
+
+  // Active days to display in table
+  const activeDays = useMemo(() => {
+    return includeSaturday ? ALL_DAYS : ALL_DAYS.filter(d => d.key !== 'SABTU');
+  }, [includeSaturday]);
+
+  // Helper untuk mendapatkan pola hari tertentu
+  const getDaySchedule = useCallback((dayKey: string) => {
+    if (!currentShift) return { slots: [], breaks: [], duration: 45 };
+    if (currentShift.day_patterns?.[dayKey]) {
+      const dp = currentShift.day_patterns[dayKey];
+      return {
+        slots: dp.slots && dp.slots.length > 0 ? dp.slots : currentShift.slots || [],
+        breaks: dp.breaks ?? currentShift.breaks ?? [],
+        duration: dp.slot_duration ?? currentShift.slot_duration ?? 45,
+      };
+    }
+    return {
+      slots: currentShift.slots || [],
+      breaks: currentShift.breaks || [],
+      duration: currentShift.slot_duration || 45,
+    };
+  }, [currentShift]);
+
+  // Hitung jumlah slot maksimal di antara seluruh hari aktif
+  const maxSlotNum = useMemo(() => {
+    let max = 0;
+    activeDays.forEach(day => {
+      const sch = getDaySchedule(day.key);
+      if (sch.slots.length > max) max = sch.slots.length;
+    });
+    return Math.max(max, 10);
+  }, [activeDays, getDaySchedule]);
+
+  // Buat deretan baris gabungan (Slots & Istirahat)
+  interface TimetablePrintRow {
+    type: 'SLOT' | 'BREAK';
+    slotNum?: number;
+    afterSlot?: number;
+    breakLabel?: string;
+  }
+
+  const timetableRows = useMemo<TimetablePrintRow[]>(() => {
+    const rows: TimetablePrintRow[] = [];
+    const breaksHandled = new Set<number>();
+
+    for (let s = 1; s <= maxSlotNum; s++) {
+      rows.push({ type: 'SLOT', slotNum: s });
+
+      // Cek apakah ada hari yang memiliki istirahat setelah slot s
+      const hasBreakAfterSlot = activeDays.some(day => {
+        const sch = getDaySchedule(day.key);
+        return sch.breaks.some(b => b.afterSlot === s);
+      });
+
+      if (hasBreakAfterSlot && !breaksHandled.has(s)) {
+        breaksHandled.add(s);
+        rows.push({
+          type: 'BREAK',
+          afterSlot: s,
+          breakLabel: `ISTIRAHAT SETELAH JP KE-${s}`,
+        });
+      }
+    }
+    return rows;
+  }, [maxSlotNum, activeDays, getDaySchedule]);
+
+  const todayStr = useMemo(() => {
+    return new Intl.DateTimeFormat('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(new Date());
+  }, []);
+
+  // Dual-Engine True WYSIWYG PDF Download
+  const handleDownloadPdf = async () => {
+    setIsExporting(true);
+    const toastId = toast.loading('Sedang merender PDF Distribusi Jam Pelajaran (True WYSIWYG)...');
+    try {
+      const sheetElement = document.querySelector('.print-sheet') as HTMLElement;
+      if (!sheetElement) {
+        window.print();
+        toast.dismiss(toastId);
+        return;
+      }
+
+      const isLandscape = orientation === 'landscape';
+      const pdf = new jsPDF({
+        orientation: isLandscape ? 'landscape' : 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const pdfWidth = isLandscape ? 297 : 210;
+      const pdfHeight = isLandscape ? 210 : 297;
+
+      const canvas = await html2canvas(sheetElement, {
+        scale: 2.5,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+
+      const shiftSlug = currentShift?.name ? currentShift.name.replace(/[^a-zA-Z0-9]/g, '_') : 'Reguler';
+      pdf.save(`Distribusi_Jam_Pelajaran_${shiftSlug}_${todayStr.replace(/\s+/g, '_')}.pdf`);
+      toast.success('PDF Distribusi Jam Pelajaran berhasil diunduh!', { id: toastId });
+    } catch (err) {
+      console.error('Failed to generate PDF', err);
+      toast.error('Gagal merender PDF, beralih ke print browser...', { id: toastId });
+      window.print();
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const documentTitle = `Distribusi Jam Pelajaran ${currentShift?.name || ''} - TP ${tahunPelajaranNama}`;
+
+  return (
+    <UniversalDocumentModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Pratinjau Cetak Distribusi Jam Pelajaran (Pedoman KBM)"
+      subtitle="Dokumen Pedoman Resmi Alokasi Jam Bel Masuk dan Jeda Istirahat untuk Dewan Guru"
+      orientation={orientation}
+      allowOrientationToggle={true}
+      onOrientationChange={setOrientation}
+      allowLogoToggles={true}
+      showLogoDaerah={showLogoDaerah}
+      showLogoSekolah={showLogoSekolah}
+      onToggleLogoDaerah={setShowLogoDaerah}
+      onToggleLogoSekolah={setShowLogoSekolah}
+      onPrint={() => window.print()}
+      onDownloadPdf={handleDownloadPdf}
+      downloadPdfText={isExporting ? 'Merender...' : 'Unduh PDF'}
+      printButtonText="Cetak Dokumen"
+      size="5xl"
+      extraActions={
+        <div className="flex items-center gap-2">
+          {shifts.length > 1 && (
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700">
+              {shifts.map(s => {
+                const isActive = s.id === selectedShiftId;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setSelectedShiftId(s.id)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                      isActive
+                        ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                        : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                    )}
+                  >
+                    {s.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setIncludeSaturday(prev => !prev)}
+            className={cn(
+              "px-2.5 py-1 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1",
+              includeSaturday
+                ? "bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-800 dark:text-indigo-300"
+                : "bg-white border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300"
+            )}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>{includeSaturday ? 'Termasuk Sabtu' : 'Senin – Jumat'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsEditingSigners(prev => !prev)}
+            className="px-2.5 py-1 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 text-slate-700 dark:text-slate-200 transition-all cursor-pointer flex items-center gap-1"
+          >
+            <Edit3 className="w-3.5 h-3.5 text-slate-500" />
+            <span>{isEditingSigners ? 'Tutup Pengesah' : 'Ubah Pengesah'}</span>
+          </button>
+        </div>
+      }
+    >
+      <div className="space-y-4">
+        {/* Drawer Edit Pengesah (no-print) */}
+        {isEditingSigners && (
+          <div className="no-print bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-3">
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+              Penyesuaian Pejabat Penandatangan Dokumen
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-500 block mb-1">Wakasek Kurikulum:</label>
+                <input
+                  type="text"
+                  value={wakaKurikulumNama}
+                  onChange={e => setWakaKurikulumNama(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium"
+                />
+                <input
+                  type="text"
+                  placeholder="NIP Wakasek"
+                  value={wakaKurikulumNip}
+                  onChange={e => setWakaKurikulumNip(e.target.value)}
+                  className="w-full mt-1 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px]"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-500 block mb-1">Kepala Sekolah:</label>
+                <input
+                  type="text"
+                  value={kepalaSekolahNama}
+                  onChange={e => setKepalaSekolahNama(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium"
+                />
+                <input
+                  type="text"
+                  placeholder="NIP Kepala Sekolah"
+                  value={kepalaSekolahNip}
+                  onChange={e => setKepalaSekolahNip(e.target.value)}
+                  className="w-full mt-1 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px]"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-500 block mb-1">Kota Titimangsa:</label>
+                <input
+                  type="text"
+                  value={kotaTitimangsa}
+                  onChange={e => setKotaTitimangsa(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Lembar Dokumen Fisik A4 (PrintDocumentSheet) ── */}
+        <div className="flex justify-center w-full overflow-x-auto p-2">
+          <PrintDocumentSheet
+            orientation={orientation}
+            pageNumber={1}
+            totalPages={1}
+            footerText={`Pedoman Resmi Distribusi Jam Pelajaran KBM - ${tenantInfo?.name || 'Sekolah'}`}
+            className="text-black font-serif"
+          >
+            {/* 1. KOP SURAT DINAS & SEKOLAH RESMI */}
+            <PrintHeader
+              variant={orientation}
+              showLogoDaerah={showLogoDaerah}
+              showLogoSekolah={showLogoSekolah}
+              tenantInfo={tenantInfo}
+              className="mb-4"
+            />
+
+            {/* 2. JUDUL DOKUMEN RESMI */}
+            <div className="text-center mb-5">
+              <h2 className="text-sm font-black tracking-wider uppercase underline">
+                DISTRIBUSI JAM PELAJARAN (JP) &amp; WAKTU BEL KBM
+              </h2>
+              <p className="text-[11px] font-bold uppercase mt-0.5 tracking-wide">
+                TAHUN PELAJARAN {tahunPelajaranNama} {semesterNama ? `– SEMESTER ${semesterNama.toUpperCase()}` : ''}
+              </p>
+              {shifts.length > 1 && currentShift && (
+                <div className="inline-block mt-1 px-3 py-0.5 rounded-md border border-black text-[10px] font-black uppercase tracking-wider bg-slate-50">
+                  {currentShift.name}
+                </div>
+              )}
+            </div>
+
+            {/* 3. TABEL MATRIKS DISTRIBUSI JAM PELAJARAN MINGGUAN */}
+            <div className="overflow-x-auto w-full mb-4">
+              <table className="w-full border-collapse border border-black text-[10.5px]">
+                <thead>
+                  <tr className="bg-slate-100">
+                    <th className="border border-black px-2 py-1.5 text-center font-black uppercase w-24">
+                      JAM KE-
+                    </th>
+                    {activeDays.map(day => (
+                      <th
+                        key={day.key}
+                        className="border border-black px-2 py-1.5 text-center font-black uppercase"
+                      >
+                        {day.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {timetableRows.map((row, rIdx) => {
+                    // Baris Istirahat
+                    if (row.type === 'BREAK') {
+                      return (
+                        <tr key={`break-${row.afterSlot}-${rIdx}`} className="bg-amber-50/60 font-bold">
+                          <td className="border border-black px-2 py-1 text-center font-black bg-amber-100/70 text-[10px] uppercase">
+                            ISTIRAHAT
+                          </td>
+                          {activeDays.map(day => {
+                            const sch = getDaySchedule(day.key);
+                            const brk = sch.breaks.find(b => b.afterSlot === row.afterSlot);
+                            if (!brk) {
+                              return (
+                                <td
+                                  key={`break-${day.key}-${rIdx}`}
+                                  className="border border-black px-2 py-1 text-center text-slate-400 italic text-[9.5px]"
+                                >
+                                  –
+                                </td>
+                              );
+                            }
+
+                            // Temukan jam mulai & selesai istirahat
+                            const slotPrev = sch.slots.find(s => s.slot === row.afterSlot);
+                            const slotNext = sch.slots.find(s => s.slot === row.afterSlot + 1);
+                            const breakStart = slotPrev ? slotPrev.end : '';
+                            const breakEnd = slotNext ? slotNext.start : '';
+
+                            return (
+                              <td
+                                key={`break-${day.key}-${rIdx}`}
+                                className="border border-black px-2 py-1 text-center text-[10px]"
+                              >
+                                <div>
+                                  {breakStart && breakEnd ? `${breakStart} – ${breakEnd}` : `${brk.duration} menit`}
+                                </div>
+                                <div className="text-[8.5px] text-slate-600 font-sans font-normal">
+                                  ({brk.duration} mnt)
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    }
+
+                    // Baris Jam Pelajaran (Slot JP)
+                    const sNum = row.slotNum!;
+                    return (
+                      <tr key={`slot-${sNum}`} className="hover:bg-slate-50/40">
+                        <td className="border border-black px-2 py-1 text-center font-black bg-slate-50/80">
+                          JP {sNum}
+                        </td>
+                        {activeDays.map(day => {
+                          const sch = getDaySchedule(day.key);
+                          const slot = sch.slots.find(s => s.slot === sNum);
+
+                          if (!slot) {
+                            return (
+                              <td
+                                key={`slot-${day.key}-${sNum}`}
+                                className="border border-black px-2 py-1 text-center text-slate-300 italic text-[9.5px]"
+                              >
+                                –
+                              </td>
+                            );
+                          }
+
+                          return (
+                            <td
+                              key={`slot-${day.key}-${sNum}`}
+                              className="border border-black px-2 py-1 text-center font-mono text-[10px] font-semibold"
+                            >
+                              {slot.start} – {slot.end}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* 4. CATATAN & KETENTUAN KBM */}
+            <div className="border border-black rounded-sm p-2 mb-6 text-[9.5px] leading-relaxed bg-slate-50/40">
+              <span className="font-bold uppercase tracking-wider block mb-0.5">Ketentuan Pelaksanaan KBM:</span>
+              <ol className="list-decimal pl-4 space-y-0.5">
+                <li>
+                  Durasi standar 1 Jam Pelajaran (JP) = <strong>{currentShift?.slot_duration ?? 45} Menit</strong>.
+                </li>
+                <li>
+                  Setiap hari Senin wajib mengikuti Upacara Bendera / Apel Pagi sebelum KBM JP ke-1 dimulai.
+                </li>
+                <li>
+                  Bapak/Ibu Guru dimohon hadir di dalam ruang kelas tepat waktu pada saat bel pergantian jam berbunyi.
+                </li>
+                <li>
+                  Waktu istirahat digunakan untuk pemulihan energi dan ibadah, tidak diperkenankan memperpanjang waktu di luar jadwal resmi.
+                </li>
+              </ol>
+            </div>
+
+            {/* 5. TANDA TANGAN RESMI 2-TIER (KAPATUHAN SKILL UNIVERSAL DOCUMENT PRINTING) */}
+            <div className="flex justify-between items-start text-[11px] leading-normal page-break-inside-avoid">
+              {/* Kolom Kiri: Wakasek Kurikulum */}
+              <div className="text-center w-64">
+                <div>Mengetahui,</div>
+                <div className="font-bold">Wakil Kepala Sekolah Bidang Kurikulum</div>
+                <div className="h-16" />
+                <div className="font-bold underline">{wakaKurikulumNama}</div>
+                <div className="text-[10px] font-mono">NIP. {wakaKurikulumNip}</div>
+              </div>
+
+              {/* Kolom Kanan: Kepala Sekolah */}
+              <div className="text-center w-64">
+                <div>
+                  {kotaTitimangsa}, {todayStr}
+                </div>
+                <div className="font-bold">Kepala Sekolah</div>
+                <div className="h-16" />
+                <div className="font-bold underline">{kepalaSekolahNama}</div>
+                <div className="text-[10px] font-mono">NIP. {kepalaSekolahNip}</div>
+              </div>
+            </div>
+          </PrintDocumentSheet>
+        </div>
+      </div>
+    </UniversalDocumentModal>
+  );
+};
+
+export default DistribusiJamPelajaranPrintModal;
