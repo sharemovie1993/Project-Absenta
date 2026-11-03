@@ -21,6 +21,8 @@ interface JamKBMShiftPanelProps {
   onActiveShiftChange: (id: string) => void;
   onConfirm: (opts: { title: string; description: string; confirmText: string; cancelText: string; style: string }) => Promise<boolean>;
   readOnly?: boolean;
+  isSingleShift?: boolean;
+  hideDailyMaxJp?: boolean;
 }
 
 // ── Item interface for the Tabular representation ──
@@ -43,6 +45,8 @@ export default React.memo(function JamKBMShiftPanel({
   onActiveShiftChange,
   onConfirm,
   readOnly = false,
+  isSingleShift = false,
+  hideDailyMaxJp = true,
 }: JamKBMShiftPanelProps) {
   // ── Derived data ──
   const currentShift = useMemo<ShiftItem | undefined>(
@@ -559,60 +563,74 @@ export default React.memo(function JamKBMShiftPanel({
 
   return (
     <div className="space-y-0">
-      {/* ── Hero Shift Selector ─────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        {/* Left: Shift Tabs */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {(shiftConfig?.shifts ?? []).map(s => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => onActiveShiftChange(s.id)}
-              className={`relative px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 border ${
-                s.id === activeSelectedShiftId
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-500/25'
-                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-800 hover:text-indigo-600'
-              }`}
-            >
-              {s.name}
-              {s.id === activeSelectedShiftId && (
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-white dark:border-slate-900" />
-              )}
-            </button>
-          ))}
-          {!readOnly && (
-            <button
-              type="button"
-              onClick={handleAddShift}
-              className="px-3 py-2 rounded-xl text-xs font-bold border border-dashed border-slate-300 dark:border-slate-700 text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-all flex items-center gap-1.5"
-            >
-              <Plus className="w-3.5 h-3.5" /> Shift Baru
-            </button>
-          )}
-        </div>
-
-        {/* Right: Actions */}
-        {!readOnly && (
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleResetToJenjang}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 transition-all"
-            >
-              <RefreshCw className="w-3 h-3" /> Reset {jenjang || 'SMA/SMK'}
-            </button>
-            {shiftConfig?.shifts?.length > 1 && (
+      {/* ── Hero Shift Selector (Hanya Muncul jika Multi-Shift) ─────────── */}
+      {!isSingleShift ? (
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          {/* Left: Shift Tabs */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {(shiftConfig?.shifts ?? []).map(s => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => onActiveShiftChange(s.id)}
+                className={`relative px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 border ${
+                  s.id === activeSelectedShiftId
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-500/25'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-800 hover:text-indigo-600'
+                }`}
+              >
+                {s.name}
+                {s.id === activeSelectedShiftId && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-white dark:border-slate-900" />
+                )}
+              </button>
+            ))}
+            {!readOnly && (
               <button
                 type="button"
-                onClick={handleDeleteShift}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 border border-red-200/60 dark:border-red-900/40 transition-all"
+                onClick={handleAddShift}
+                className="px-3 py-2 rounded-xl text-xs font-bold border border-dashed border-slate-300 dark:border-slate-700 text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-all flex items-center gap-1.5"
               >
-                <Trash2 className="w-3 h-3" /> Hapus
+                <Plus className="w-3.5 h-3.5" /> Shift Baru
               </button>
             )}
           </div>
-        )}
-      </div>
+
+          {/* Right: Actions */}
+          {!readOnly && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleResetToJenjang}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 transition-all"
+              >
+                <RefreshCw className="w-3 h-3" /> Reset {jenjang || 'SMA/SMK'}
+              </button>
+              {shiftConfig?.shifts?.length > 1 && (
+                <button
+                  type="button"
+                  onClick={handleDeleteShift}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 border border-red-200/60 dark:border-red-900/40 transition-all"
+                >
+                  <Trash2 className="w-3 h-3" /> Hapus
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
+        !readOnly && (
+          <div className="flex justify-end mb-4">
+            <button
+              type="button"
+              onClick={handleResetToJenjang}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 transition-all cursor-pointer"
+            >
+              <RefreshCw className="w-3 h-3" /> Reset Standar {jenjang || 'Sekolah'}
+            </button>
+          </div>
+        )
+      )}
 
       {/* ── Day Pattern Pills ───────────────────────────────────────────── */}
       <div className="flex items-center justify-between flex-wrap gap-3 mb-4 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200/60 dark:border-slate-800">
@@ -737,45 +755,47 @@ export default React.memo(function JamKBMShiftPanel({
         </div>
       </div>
 
-      {/* ── Daily Max JP Config Card ───────────────────────────────────── */}
-      <div className="p-4 mb-6 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 rounded-2xl">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <span className="text-amber-600 dark:text-amber-400 font-bold text-xs">⚡ Batas Maksimal JP Harian Mengajar Guru Sekolah</span>
-            <span className="text-[10px] font-medium text-amber-700/70 dark:text-amber-300/60">(Validasi Overload Harian Jadwal Builder)</span>
+      {/* ── Daily Max JP Config Card (Hanya jika tidak dipisah ke tab mandiri) ── */}
+      {!hideDailyMaxJp && (
+        <div className="p-4 mb-6 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 rounded-2xl">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-amber-600 dark:text-amber-400 font-bold text-xs">⚡ Batas Maksimal JP Harian Mengajar Guru Sekolah</span>
+              <span className="text-[10px] font-medium text-amber-700/70 dark:text-amber-300/60">(Validasi Overload Harian Jadwal Builder)</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+            {[
+              { key: 'SENIN', label: 'Senin' },
+              { key: 'SELASA', label: 'Selasa' },
+              { key: 'RABU', label: 'Rabu' },
+              { key: 'KAMIS', label: 'Kamis' },
+              { key: 'JUMAT', label: 'Jumat' },
+              { key: 'SABTU', label: 'Sabtu' },
+            ].map(day => (
+              <div key={day.key} className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-amber-200/40 dark:border-amber-900/30">
+                <label htmlFor={`input-max-jp-${day.key}`} className="block text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase mb-1">{day.label}</label>
+                {readOnly ? (
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{dailyMaxJp[day.key]} JP</span>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <input
+                      id={`input-max-jp-${day.key}`}
+                      type="number"
+                      aria-label={`Batas max JP ${day.label}`}
+                      value={dailyMaxJp[day.key]}
+                      onChange={e => handleDailyMaxJpChange(day.key, Number(e.target.value))}
+                      min={1} max={20}
+                      className="w-full px-2 py-1 text-xs font-black bg-amber-50/50 dark:bg-slate-800 border border-amber-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500 text-center"
+                    />
+                    <span className="text-[10px] font-bold text-amber-600">JP</span>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-          {[
-            { key: 'SENIN', label: 'Senin' },
-            { key: 'SELASA', label: 'Selasa' },
-            { key: 'RABU', label: 'Rabu' },
-            { key: 'KAMIS', label: 'Kamis' },
-            { key: 'JUMAT', label: 'Jumat' },
-            { key: 'SABTU', label: 'Sabtu' },
-          ].map(day => (
-            <div key={day.key} className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-amber-200/40 dark:border-amber-900/30">
-              <label htmlFor={`input-max-jp-${day.key}`} className="block text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase mb-1">{day.label}</label>
-              {readOnly ? (
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{dailyMaxJp[day.key]} JP</span>
-              ) : (
-                <div className="flex items-center gap-1">
-                  <input
-                    id={`input-max-jp-${day.key}`}
-                    type="number"
-                    aria-label={`Batas max JP ${day.label}`}
-                    value={dailyMaxJp[day.key]}
-                    onChange={e => handleDailyMaxJpChange(day.key, Number(e.target.value))}
-                    min={1} max={20}
-                    className="w-full px-2 py-1 text-xs font-black bg-amber-50/50 dark:bg-slate-800 border border-amber-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500 text-center"
-                  />
-                  <span className="text-[10px] font-bold text-amber-600">JP</span>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
 
       {/* ── Timeline Tabular ───────────────────────────────────────────── */}
       <div className="space-y-3">

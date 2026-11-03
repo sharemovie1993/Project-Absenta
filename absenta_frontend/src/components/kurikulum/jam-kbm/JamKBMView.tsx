@@ -3,13 +3,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { Button, SectionCard } from '@/components/ui';
 import { TabSwitcher } from '@/components/ui/TabSwitcher';
-import { Save, RefreshCw, Clock, Users } from 'lucide-react';
+import { Save, RefreshCw, Clock, Users, Zap } from 'lucide-react';
 import { getTenantById, updateTenant } from '@/api/tenants.api';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { useJenjang } from '@/hooks/useJenjang';
 import { useKelasOptions } from '@/components/common';
 import { toast } from 'react-hot-toast';
 import useConfirm from '@/hooks/useConfirm';
+import { cn } from '@/lib/utils';
 import {
   type ShiftConfig,
   type KelasOption,
@@ -22,14 +23,16 @@ import {
 // Lazy-loaded heavy subcomponents
 const JamKBMShiftPanel = lazy(() => import('./JamKBMShiftPanel'));
 const JamKBMClassAssignmentPanel = lazy(() => import('./JamKBMClassAssignmentPanel'));
+const JamKBMDailyMaxJpPanel = lazy(() => import('./JamKBMDailyMaxJpPanel'));
 
 const HARDENING_KEY = 'jam_kbm_page';
 
 const DEFAULT_SHIFT_CONFIG: ShiftConfig = {
+  operational_mode: 'SINGLE',
   shifts: [
     {
       id: 'pagi',
-      name: 'Shift Pagi',
+      name: 'Shift Reguler (Pagi)',
       slots: [
         { slot: 1, start: '07:00', end: '07:45' },
         { slot: 2, start: '07:45', end: '08:30' },
@@ -78,7 +81,7 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
 
   // ── State ──
   const [saving, setSaving] = useState(false);
-  const [activeShiftTab, setActiveShiftTab] = useState<'SHIFTS' | 'CLASSES'>('SHIFTS');
+  const [activeShiftTab, setActiveShiftTab] = useState<'SHIFTS' | 'CLASSES' | 'DAILY_MAX_JP'>('SHIFTS');
   const [activeSelectedShiftId, setActiveSelectedShiftId] = useState<string>('pagi');
   const [shiftConfig, setShiftConfig] = useState<ShiftConfig>(DEFAULT_SHIFT_CONFIG);
 
@@ -132,7 +135,8 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
     } else {
       const slots = getPresetSlotsForJenjang(tenant.jenjang ?? '');
       const preset: ShiftConfig = {
-        shifts: [{ id: 'pagi', name: 'Shift Pagi', slots }],
+        operational_mode: 'SINGLE',
+        shifts: [{ id: 'pagi', name: 'Shift Reguler (Pagi)', slots }],
         class_assignments: {},
       };
       setShiftConfig(preset);
@@ -140,11 +144,77 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
     }
   }, [tenant]);
 
+  // Mode Operasional Sekolah: 1 Shift vs 2 Shift
+  const isMultiShift = useMemo(() => {
+    return shiftConfig.operational_mode === 'MULTI' || 
+      (shiftConfig.operational_mode !== 'SINGLE' && (shiftConfig.shifts?.length || 0) > 1);
+  }, [shiftConfig.operational_mode, shiftConfig.shifts]);
+
   useEffect(() => {
-    if ((shiftConfig.shifts?.length || 0) <= 1 && activeShiftTab === 'CLASSES') {
+    if (!isMultiShift && activeShiftTab === 'CLASSES') {
       setActiveShiftTab('SHIFTS');
     }
-  }, [shiftConfig.shifts, activeShiftTab]);
+  }, [isMultiShift, activeShiftTab]);
+
+  // Handler Beralih Mode Shift Operasional Sekolah
+  const handleModeChange = useCallback((mode: 'SINGLE' | 'MULTI') => {
+    setShiftConfig(prev => {
+      if (mode === 'SINGLE') {
+        const primaryShift = prev.shifts[0] || {
+          id: 'pagi',
+          name: 'Shift Reguler (Pagi)',
+          slots: getPresetSlotsForJenjang(jenjang ?? ''),
+        };
+        return {
+          ...prev,
+          operational_mode: 'SINGLE',
+          shifts: [{ ...primaryShift, id: 'pagi', name: 'Shift Reguler (Pagi)' }],
+          class_assignments: {},
+        };
+      } else {
+        const shifts = [...(prev.shifts || [])];
+        if (shifts.length < 2) {
+          shifts.push({
+            id: 'siang',
+            name: 'Shift Siang',
+            start_time: '12:30',
+            slot_duration: 35,
+            slots: [
+              { slot: 1, start: '12:30', end: '13:05' },
+              { slot: 2, start: '13:05', end: '13:40' },
+              { slot: 3, start: '13:40', end: '14:15' },
+              { slot: 4, start: '14:30', end: '15:05' },
+              { slot: 5, start: '15:05', end: '15:40' },
+              { slot: 6, start: '15:40', end: '16:15' },
+            ],
+          });
+        }
+        return {
+          ...prev,
+          operational_mode: 'MULTI',
+          shifts,
+        };
+      }
+    });
+
+    if (mode === 'SINGLE') {
+      setActiveSelectedShiftId('pagi');
+      if (activeShiftTab === 'CLASSES') {
+        setActiveShiftTab('SHIFTS');
+      }
+    }
+  }, [jenjang, activeShiftTab]);
+
+  // Handler Update Batas Maksimal JP Harian Guru
+  const handleDailyMaxJpChange = useCallback((dayKey: string, val: number) => {
+    setShiftConfig(prev => ({
+      ...prev,
+      daily_max_jp: {
+        ...(prev.daily_max_jp || {}),
+        [dayKey]: val,
+      },
+    }));
+  }, []);
 
   // ── Save with Zod validation ──
   const handleSave = useCallback(async () => {
@@ -172,9 +242,9 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
       await queryClient.invalidateQueries({ queryKey: ['attendance'] });
       await fetchTenant();
 
-      toast.success('Konfigurasi Shift & Jam KBM berhasil disimpan');
+      toast.success('Konfigurasi Jam Pelajaran berhasil disimpan');
     } catch {
-      toast.error('Gagal menyimpan konfigurasi shift');
+      toast.error('Gagal menyimpan konfigurasi jam pelajaran');
     } finally {
       setSaving(false);
     }
@@ -184,55 +254,105 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
     return confirm({ title, message });
   }, [confirm]);
 
+  // Tab Switcher Options dinamis
+  const tabOptions = useMemo(() => {
+    if (!isMultiShift) {
+      return [
+        { id: 'SHIFTS', label: 'Struktur Jam Belajar (JP)', icon: Clock, colorClass: 'text-indigo-600 dark:text-indigo-400' },
+        { id: 'DAILY_MAX_JP', label: 'Batas Beban Harian Guru', icon: Zap, colorClass: 'text-amber-600 dark:text-amber-400' },
+      ];
+    }
+    return [
+      { id: 'SHIFTS', label: 'Pengaturan Waktu Shift', icon: Clock, colorClass: 'text-indigo-600 dark:text-indigo-400' },
+      { id: 'CLASSES', label: 'Penugasan Shift Kelas', icon: Users, colorClass: 'text-purple-600 dark:text-purple-400' },
+      { id: 'DAILY_MAX_JP', label: 'Batas Beban Harian Guru', icon: Zap, colorClass: 'text-amber-600 dark:text-amber-400' },
+    ];
+  }, [isMultiShift]);
+
   // ── Breadcrumbs & Instructions for Standalone Mode ──
   const breadcrumbs = useMemo(() => [
     { label: 'Kurikulum', path: '/kurikulum/jam-kbm' },
-    { label: 'Atur JP/Shift' },
-  ], []);
+    { label: isMultiShift ? 'Atur JP/Shift' : 'Struktur Jam Belajar' },
+  ], [isMultiShift]);
 
   const instruction = useMemo(() => ({
-    title: 'Panduan Atur Jam Pelajaran (JP) & Shift',
-    description: 'Modul ini digunakan untuk menentukan durasi tiap slot jam pelajaran (JP), jam istirahat, serta pembagian shift kelas (Pagi/Siang).',
+    title: isMultiShift ? 'Panduan Atur Jam Pelajaran (JP) & Multi-Shift' : 'Panduan Struktur Jam Pelajaran (JP)',
+    description: isMultiShift
+      ? 'Modul ini digunakan untuk menentukan durasi tiap slot jam pelajaran (JP), jeda istirahat, serta alokasi shift kelas (Pagi/Siang).'
+      : 'Modul ini digunakan untuk menentukan jam bel masuk, durasi tiap slot JP, dan jeda istirahat harian sekolah.',
     items: [
-      { text: 'Pilih shift yang ingin dikonfigurasi, lalu atur jam mulai dan durasi per JP.' },
-      { text: 'Tambahkan jam istirahat jika terdapat jeda antar jam pelajaran.' },
-      { text: 'Jika sekolah memiliki lebih dari 1 shift, petakan masing-masing kelas pada tab Penugasan Shift Kelas.' },
-      { text: 'Klik "Simpan Perubahan" untuk memberlakukan jadwal jam pelajaran pada sistem presensi & jadwal KBM.' },
+      { text: 'Atur jam mulai (JP ke-1) dan durasi menit per JP.' },
+      { text: 'Gunakan tombol "Sisipkan Istirahat" untuk menambahkan jeda antar jam pelajaran.' },
+      { text: 'Konfigurasi batas maksimal JP mengajar guru per hari telah dipisahkan pada tab tersendiri.' },
+      { text: 'Klik "Simpan" untuk memberlakukan perubahan ke sistem jadwal dan presensi KBM.' },
     ],
-  }), []);
+  }), [isMultiShift]);
 
   const content = (
     <div className="w-full space-y-4">
       {/* Action Bar saat di dalam Dashboard Tab atau Modal (hideLayout = true) */}
       {hideLayout && (
-        <div className="flex items-center justify-between gap-3 p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-3.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
               <Clock className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
-                Pengaturan Jam KBM & Shift
+                {isMultiShift ? 'Pengaturan Jam KBM & Shift' : 'Pengaturan Jam Pelajaran (JP)'}
               </h2>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate hidden sm:block">
-                Atur durasi per JP, jeda istirahat, dan alokasi shift rombel
+                {isMultiShift 
+                  ? 'Atur durasi per JP, alokasi shift rombel, dan jeda istirahat'
+                  : 'Atur durasi per JP, jam bel masuk, dan jeda istirahat harian sekolah'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
+            {/* Mode Operasional Selector (1 Shift vs 2 Shift) */}
+            {canManage && (
+              <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl border border-slate-200/60 dark:border-slate-700/60 text-xs">
+                <button
+                  type="button"
+                  onClick={() => handleModeChange('SINGLE')}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer",
+                    !isMultiShift
+                      ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                      : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                  )}
+                >
+                  1 Shift (Reguler)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleModeChange('MULTI')}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer",
+                    isMultiShift
+                      ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                      : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                  )}
+                >
+                  2 Shift (Pagi/Siang)
+                </button>
+              </div>
+            )}
+
             {jenjang && (
-              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 rounded-xl text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">
+              <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 rounded-xl text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">
                 {jenjang}
               </div>
             )}
+
             {canManage && (
               <Button
                 variant="primary"
                 size="sm"
                 onClick={handleSave}
                 disabled={saving}
-                className="flex items-center gap-1.5 rounded-xl px-3 text-xs"
+                className="flex items-center gap-1.5 rounded-xl px-3.5 h-8 text-xs font-bold"
               >
                 {saving ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                 <span>Simpan</span>
@@ -244,16 +364,11 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
 
       <SectionCard fullWidth noPadding>
         {/* Tab pills + jenjang badge */}
-        <div className="flex items-center justify-between px-4 sm:px-6 pt-4 pb-0 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between px-4 sm:px-6 pt-4 pb-0 border-b border-slate-100 dark:border-slate-800 flex-wrap gap-2">
           <TabSwitcher
-            options={[
-              { id: 'SHIFTS', label: 'Pengaturan Waktu Shift', icon: Clock, colorClass: 'text-indigo-600 dark:text-indigo-400' },
-              ...((shiftConfig.shifts?.length || 0) > 1 ? [
-                { id: 'CLASSES', label: 'Penugasan Shift Kelas', icon: Users, colorClass: 'text-purple-600 dark:text-purple-400' }
-              ] : [])
-            ]}
+            options={tabOptions}
             activeTab={activeShiftTab}
-            onChange={(id) => setActiveShiftTab(id as 'SHIFTS' | 'CLASSES')}
+            onChange={(id) => setActiveShiftTab(id as 'SHIFTS' | 'CLASSES' | 'DAILY_MAX_JP')}
           />
           {jenjang && !hideLayout && (
             <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-600/10 dark:bg-indigo-500/10 border border-indigo-200/60 dark:border-indigo-800/40 rounded-xl">
@@ -275,14 +390,24 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
                 onActiveShiftChange={setActiveSelectedShiftId}
                 onConfirm={handleConfirm}
                 readOnly={!canManage}
+                isSingleShift={!isMultiShift}
+                hideDailyMaxJp={true}
               />
             </Suspense>
-          ) : (
+          ) : activeShiftTab === 'CLASSES' && isMultiShift ? (
             <Suspense fallback={<PanelLoader />}>
               <JamKBMClassAssignmentPanel
                 shiftConfig={shiftConfig}
                 kelasList={kelasList}
                 onShiftConfigChange={setShiftConfig}
+                readOnly={!canManage}
+              />
+            </Suspense>
+          ) : (
+            <Suspense fallback={<PanelLoader />}>
+              <JamKBMDailyMaxJpPanel
+                dailyMaxJp={shiftConfig.daily_max_jp}
+                onChange={handleDailyMaxJpChange}
                 readOnly={!canManage}
               />
             </Suspense>
@@ -298,31 +423,61 @@ export const JamKBMView: React.FC<UniversalJamKBMViewProps> = React.memo(({
 
   return (
     <AcademicPageLayout
+      title={isMultiShift ? "Pengaturan Jam KBM & Shift" : "Pengaturan Jam Pelajaran (JP)"}
+      description={isMultiShift 
+        ? "Konfigurasi slot jam pelajaran, pembagian shift pagi/siang, dan jeda istirahat."
+        : "Konfigurasi slot waktu jam pelajaran (JP), jam bel masuk, dan jeda istirahat sekolah."
+      }
       hardeningModuleKey={HARDENING_KEY}
-      title="Atur JP/Shift"
-      description="Atur durasi jam pelajaran KBM per shift dan petakan kelas masing-masing."
       breadcrumbs={breadcrumbs}
       instruction={instruction}
-      {...{
-        ['tool' + 'bar']: canManage && (
-          <Button
-            variant="toolbarPrimary"
-            size="toolbar"
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2"
-          >
-            {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Simpan Perubahan
-          </Button>
+      toolbar={
+        canManage && (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl border border-slate-200/60 dark:border-slate-700/60 text-xs">
+              <button
+                type="button"
+                onClick={() => handleModeChange('SINGLE')}
+                className={cn(
+                  "px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer",
+                  !isMultiShift
+                    ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                )}
+              >
+                1 Shift (Reguler)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeChange('MULTI')}
+                className={cn(
+                  "px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer",
+                  isMultiShift
+                    ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                )}
+              >
+                2 Shift (Pagi/Siang)
+              </button>
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-1.5 rounded-xl px-3.5 h-8 text-xs font-bold"
+            >
+              {saving ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              <span>Simpan Perubahan</span>
+            </Button>
+          </div>
         )
-      }}
+      }
     >
-      <div className="max-w-5xl">
-        {content}
-      </div>
+      {content}
     </AcademicPageLayout>
   );
 });
 
 JamKBMView.displayName = 'JamKBMView';
+export default JamKBMView;

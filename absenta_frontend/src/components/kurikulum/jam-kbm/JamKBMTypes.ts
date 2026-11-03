@@ -31,6 +31,7 @@ export interface ShiftItem {
 }
 
 export interface ShiftConfig {
+  operational_mode?: 'SINGLE' | 'MULTI';
   shifts: ShiftItem[];
   class_assignments: Record<string, string>;
   daily_max_jp?: Record<string, number>;
@@ -73,6 +74,7 @@ export const shiftItemSchema = z.object({
 });
 
 export const shiftConfigSchema = z.object({
+  operational_mode: z.enum(['SINGLE', 'MULTI']).optional(),
   shifts: z.array(shiftItemSchema).min(1, 'Harus ada setidaknya 1 shift'),
   class_assignments: z.record(z.string(), z.string()),
   daily_max_jp: z.record(z.string(), z.number()).optional(),

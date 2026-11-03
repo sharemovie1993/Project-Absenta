@@ -1340,25 +1340,59 @@ export const TenantSettingsView: React.FC<UniversalTenantSettingsViewProps> = ({
             <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl text-indigo-600 dark:text-indigo-400 shrink-0">
               <Clock className="h-4 w-4" />
             </div>
-            Konfigurasi Shift & Waktu Kegiatan Belajar Mengajar (KBM)
+            Sistem Operasional Shift &amp; Jam Belajar Mengajar (KBM)
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 border border-slate-100 dark:border-slate-800 rounded-2xl bg-slate-50/30 dark:bg-slate-900/10 gap-4 sm:gap-6">
             <div className="space-y-1 max-w-lg">
               <Label className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200">
-                Pengaturan Jam Pelajaran (KBM) & Shift
+                Model Operasional Shift Sekolah
               </Label>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Konfigurasi pembagian shift (Pagi/Siang), pengaturan jam pelajaran per-slot, dan pemetaan kelas dikelola langsung oleh tim **Kurikulum**.
+                Tentukan apakah sekolah ini menjalankan <strong>1 Shift (Pagi Saja)</strong> atau <strong>2 Shift (Pagi &amp; Siang)</strong>. Jika 1 shift dipilih, tim Kurikulum akan disajikan antarmuka sederhana dan fokus tanpa kerumitan multi-shift.
               </p>
             </div>
-            <Link
-              to="/kurikulum/jam-kbm"
-              className="w-full sm:w-auto px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-950/50 text-indigo-650 dark:text-indigo-400 text-xs font-bold rounded-xl border border-indigo-100 dark:border-indigo-900/40 text-center inline-block shrink-0 transition-colors"
-            >
-              Buka Atur JP / Shift
-            </Link>
+            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl shrink-0">
+              <button
+                type="button"
+                disabled={readOnly || !isEditing}
+                onClick={() => {
+                  setShiftConfig((prev: any) => ({
+                    ...(prev || {}),
+                    operational_mode: 'SINGLE',
+                  }));
+                }}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                  (shiftConfig?.operational_mode || 'SINGLE') === 'SINGLE'
+                    ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200",
+                  (!isEditing || readOnly) && "opacity-80 cursor-not-allowed"
+                )}
+              >
+                1 Shift (Reguler)
+              </button>
+              <button
+                type="button"
+                disabled={readOnly || !isEditing}
+                onClick={() => {
+                  setShiftConfig((prev: any) => ({
+                    ...(prev || {}),
+                    operational_mode: 'MULTI',
+                  }));
+                }}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                  shiftConfig?.operational_mode === 'MULTI'
+                    ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200",
+                  (!isEditing || readOnly) && "opacity-80 cursor-not-allowed"
+                )}
+              >
+                2 Shift (Pagi/Siang)
+              </button>
+            </div>
           </div>
         </CardContent>
       </Card>
