@@ -1,14 +1,18 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
   PrintHeader,
   usePrintHeaderData,
 } from '@/components/ui/PrintHeader';
+import { useQuery } from '@tanstack/react-query';
+import { getStrukturTree, getStrukturList } from '@/api/academic/strukturOrganisasi.api';
+import { sekolahApi } from '@/api/academic/sekolah.api';
+import { useCapabilities } from '@/hooks/useCapabilities';
 import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
 import { toast } from 'react-hot-toast';
-import { Calendar, Edit3, Columns2, LayoutList } from 'lucide-react';
+import { Calendar, Edit3, Columns2, LayoutList, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ShiftConfig, ShiftItem, TimeSlot, BreakItem } from './JamKBMTypes';
 
@@ -38,6 +42,19 @@ interface DayTimelineItem {
   end: string;
 }
 
+const cleanNip = (rawDetails?: string | null): string => {
+  if (!rawDetails) return '-';
+  const match = rawDetails.match(/NIP[:\s]+([0-9\s]+)/i);
+  if (match && match[1]) {
+    return match[1].trim();
+  }
+  const digitsOnly = rawDetails.replace(/[^0-9]/g, '');
+  if (digitsOnly.length >= 8) {
+    return digitsOnly;
+  }
+  return rawDetails === 'GURU' || rawDetails === 'SISWA' ? '-' : rawDetails;
+};
+
 export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPrintModalProps> = ({
   isOpen,
   onClose,
@@ -47,6 +64,8 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
   semesterNama = 'Ganjil',
 }) => {
   const { tenantInfo } = usePrintHeaderData();
+  const { user, isKurikulum } = useCapabilities();
+
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
   const [showLogoDaerah, setShowLogoDaerah] = useState(true);
   const [showLogoSekolah, setShowLogoSekolah] = useState(true);
@@ -65,23 +84,143 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
   // Days configuration
   const [includeSaturday, setIncludeSaturday] = useState<boolean>(false);
 
+  // ── Auto-Resolving Queries for Official Signers ──
+  const { data: treeRes } = useQuery({
+    queryKey: ['academic-struktur-tree'],
+    queryFn: () => getStrukturTree().catch(() => null),
+    enabled: isOpen,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: listRes } = useQuery({
+    queryKey: ['academic-struktur-list-active'],
+    queryFn: () => getStrukturList({ is_active: true }).catch(() => null),
+    enabled: isOpen,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: sekolahRes } = useQuery({
+    queryKey: ['sekolah-profile-signers'],
+    queryFn: () => sekolahApi.getProfile().catch(() => null),
+    enabled: isOpen,
+    staleTime: 10 * 60 * 1000,
+  });
+
+  // Resolve official signer names from Struktur Organisasi / Profil Sekolah
+  const resolvedSigners = useMemo(() => {
+    const tree = (treeRes as any)?.data || treeRes || {};
+    const list = Array.isArray((listRes as any)?.data)
+      ? (listRes as any).data
+      : Array.isArray(listRes)
+      ? listRes
+      : [];
+    const sekolah = (sekolahRes as any)?.data || sekolahRes || {};
+
+    // 1. RESOLVE KEPALA SEKOLAH
+    let kepsekNama = sekolah?.kepala_sekolah || '';
+    let kepsekNip = cleanNip(sekolah?.nip_kepala);
+
+    const kepsekNodes = Array.isArray(tree['KEPALA_SEKOLAH']) ? tree['KEPALA_SEKOLAH'] : [];
+    const activeKepsek = kepsekNodes.find((n: any) => n.members && n.members.length > 0);
+    if (activeKepsek && activeKepsek.members[0]?.name) {
+      kepsekNama = activeKepsek.members[0].name;
+      const parsedNip = cleanNip(activeKepsek.members[0].details);
+      if (parsedNip !== '-') kepsekNip = parsedNip;
+    }
+
+    if (!kepsekNama) {
+      const kepsekPos = list.find((p: any) => {
+        const code = (p.kode || p.code || '').toUpperCase();
+        return code === 'KEPALA_SEKOLAH' || code === 'KEPSEK';
+      });
+      const assign = kepsekPos?.organizationalAssigns?.find((a: any) => a.is_active !== false) || kepsekPos?.organizationalAssigns?.[0];
+      if (assign?.User?.Guru) {
+        kepsekNama = assign.User.Guru.nama_guru;
+        kepsekNip = assign.User.Guru.nip || kepsekNip;
+      }
+    }
+
+    // 2. RESOLVE WAKASEK KURIKULUM
+    let kurikulumNama = '';
+    let kurikulumNip = '-';
+
+    const kurikulumNodes = [
+      ...(Array.isArray(tree['KURIKULUM']) ? tree['KURIKULUM'] : []),
+      ...(Array.isArray(tree['WAKA_KURIKULUM']) ? tree['WAKA_KURIKULUM'] : []),
+    ];
+    const activeKurikulum = kurikulumNodes.find((n: any) => n.members && n.members.length > 0);
+    if (activeKurikulum && activeKurikulum.members[0]?.name) {
+      kurikulumNama = activeKurikulum.members[0].name;
+      const parsedNip = cleanNip(activeKurikulum.members[0].details);
+      if (parsedNip !== '-') kurikulumNip = parsedNip;
+    }
+
+    if (!kurikulumNama) {
+      const kurikulumPos = list.find((p: any) => {
+        const code = (p.kode || p.code || '').toUpperCase();
+        const name = (p.nama || p.name || '').toUpperCase();
+        return code === 'KURIKULUM' || code === 'WAKA_KURIKULUM' || name.includes('KURIKULUM');
+      });
+      const assign = kurikulumPos?.organizationalAssigns?.find((a: any) => a.is_active !== false) || kurikulumPos?.organizationalAssigns?.[0];
+      if (assign?.User?.Guru) {
+        kurikulumNama = assign.User.Guru.nama_guru;
+        kurikulumNip = assign.User.Guru.nip || '-';
+      }
+    }
+
+    // Fallback: jika user yang sedang login adalah personil kurikulum
+    if (!kurikulumNama && isKurikulum && user?.name) {
+      kurikulumNama = user.name;
+      kurikulumNip = (user as any).nip || (user as any).Guru?.nip || '-';
+    }
+
+    // 3. RESOLVE KOTA TITIMANGSA
+    const kota = sekolah?.kota || tenantInfo?.kabupaten || tenantInfo?.address?.match(/Purwakarta|Bandung|Jakarta|Bogor|Bekasi|Subang|Cimahi|Depok/i)?.[0] || 'Purwakarta';
+
+    return {
+      kepsekNama: kepsekNama || 'Kepala Sekolah',
+      kepsekNip: kepsekNip || '-',
+      kurikulumNama: kurikulumNama || 'Wakasek Bidang Kurikulum',
+      kurikulumNip: kurikulumNip || '-',
+      kota,
+    };
+  }, [treeRes, listRes, sekolahRes, tenantInfo, isKurikulum, user]);
+
   // Custom Signers State (Editable)
   const [isEditingSigners, setIsEditingSigners] = useState(false);
-  const [wakaKurikulumNama, setWakaKurikulumNama] = useState(
-    (tenantInfo as any)?.waka_kurikulum_nama || 'Wakasek Bidang Kurikulum'
-  );
-  const [wakaKurikulumNip, setWakaKurikulumNip] = useState(
-    (tenantInfo as any)?.waka_kurikulum_nip || '-'
-  );
-  const [kepalaSekolahNama, setKepalaSekolahNama] = useState(
-    (tenantInfo as any)?.kepala_sekolah_nama || 'Kepala Sekolah'
-  );
-  const [kepalaSekolahNip, setKepalaSekolahNip] = useState(
-    (tenantInfo as any)?.kepala_sekolah_nip || '-'
-  );
-  const [kotaTitimangsa, setKotaTitimangsa] = useState(
-    (tenantInfo as any)?.kabupaten || 'Purwakarta'
-  );
+  const [wakaKurikulumNama, setWakaKurikulumNama] = useState(resolvedSigners.kurikulumNama);
+  const [wakaKurikulumNip, setWakaKurikulumNip] = useState(resolvedSigners.kurikulumNip);
+  const [kepalaSekolahNama, setKepalaSekolahNama] = useState(resolvedSigners.kepsekNama);
+  const [kepalaSekolahNip, setKepalaSekolahNip] = useState(resolvedSigners.kepsekNip);
+  const [kotaTitimangsa, setKotaTitimangsa] = useState(resolvedSigners.kota);
+
+  // Re-sync saat data struktur organisasi selesai dimuat
+  useEffect(() => {
+    if (resolvedSigners.kurikulumNama) {
+      setWakaKurikulumNama(resolvedSigners.kurikulumNama);
+    }
+    if (resolvedSigners.kurikulumNip) {
+      setWakaKurikulumNip(resolvedSigners.kurikulumNip);
+    }
+    if (resolvedSigners.kepsekNama) {
+      setKepalaSekolahNama(resolvedSigners.kepsekNama);
+    }
+    if (resolvedSigners.kepsekNip) {
+      setKepalaSekolahNip(resolvedSigners.kepsekNip);
+    }
+    if (resolvedSigners.kota) {
+      setKotaTitimangsa(resolvedSigners.kota);
+    }
+  }, [resolvedSigners]);
+
+  const handleResetSignersToStructure = () => {
+    setWakaKurikulumNama(resolvedSigners.kurikulumNama);
+    setWakaKurikulumNip(resolvedSigners.kurikulumNip);
+    setKepalaSekolahNama(resolvedSigners.kepsekNama);
+    setKepalaSekolahNip(resolvedSigners.kepsekNip);
+    setKotaTitimangsa(resolvedSigners.kota);
+    toast.success('Pengesah di-reset ke data Struktur Organisasi');
+  };
 
   const currentShift = useMemo<ShiftItem | undefined>(() => {
     return shifts.find(s => s.id === selectedShiftId) || shifts[0];
@@ -412,7 +551,7 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
                   : "bg-white border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300"
               )}
             >
-              {groupIdenticalDays ? 'Hari Identik Digabung' : 'Rinci Setiap Hari'}
+              {groupIdenticalDays ? 'Pola Sama: Di-merger' : 'Rinci Setiap Hari'}
             </button>
           )}
 
@@ -445,9 +584,20 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
         {/* Drawer Edit Pengesah (no-print) */}
         {isEditingSigners && (
           <div className="no-print bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-3">
-            <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
-              Penyesuaian Pejabat Penandatangan Dokumen
-            </h4>
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                Penyesuaian Pejabat Penandatangan Dokumen (Terhubung Otomatis)
+              </h4>
+              <button
+                type="button"
+                onClick={handleResetSignersToStructure}
+                className="flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-indigo-600 dark:text-indigo-400 rounded-lg text-[11px] font-bold transition-all cursor-pointer"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Reset ke Data Struktur</span>
+              </button>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
               <div>
                 <label className="font-bold text-slate-500 block mb-1">Wakasek Kurikulum:</label>
@@ -567,7 +717,7 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
                             >
                               <div className="font-black text-xs tracking-wider">{group.dayLabel}</div>
                               {group.subLabel && (
-                                <div className="text-[9px] text-slate-500 font-sans font-normal mt-0.5">
+                                <div className="text-[8.5px] text-slate-600 font-sans font-normal mt-0.5">
                                   {group.subLabel}
                                 </div>
                               )}
@@ -737,7 +887,9 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
                 <div className="font-bold">Wakil Kepala Sekolah Bidang Kurikulum</div>
                 <div className="h-16" />
                 <div className="font-bold underline">{wakaKurikulumNama}</div>
-                <div className="text-[10px] font-mono">NIP. {wakaKurikulumNip}</div>
+                <div className="text-[10px] font-mono">
+                  {wakaKurikulumNip && wakaKurikulumNip !== '-' ? `NIP. ${wakaKurikulumNip}` : 'NIP. –'}
+                </div>
               </div>
 
               {/* Kolom Kanan: Kepala Sekolah */}
@@ -748,7 +900,9 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
                 <div className="font-bold">Kepala Sekolah</div>
                 <div className="h-16" />
                 <div className="font-bold underline">{kepalaSekolahNama}</div>
-                <div className="text-[10px] font-mono">NIP. {kepalaSekolahNip}</div>
+                <div className="text-[10px] font-mono">
+                  {kepalaSekolahNip && kepalaSekolahNip !== '-' ? `NIP. ${kepalaSekolahNip}` : 'NIP. –'}
+                </div>
               </div>
             </div>
           </PrintDocumentSheet>
