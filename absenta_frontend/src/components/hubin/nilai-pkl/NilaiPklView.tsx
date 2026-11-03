@@ -325,9 +325,8 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
     if (propPengujiGuruId || isPengujiOnly) {
       const pIdTarget = propPengujiGuruId || activeGuruId;
       filtered = filtered.filter((s) => {
-        if (s.penguji_id && s.penguji_id === pIdTarget) return true;
-        if (!s.penguji_id && s.penguji_nama && user?.full_name && s.penguji_nama.toLowerCase().includes(user.full_name.toLowerCase())) return true;
-        return false;
+        // KETAT: Meja penguji HANYA menampilkan siswa yang benar-benar terdaftar di ploting penguji
+        return Boolean(s.penguji_id && s.penguji_id === pIdTarget);
       });
     }
     if (isJurusanScoped) {

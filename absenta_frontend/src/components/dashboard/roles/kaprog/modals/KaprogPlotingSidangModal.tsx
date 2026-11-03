@@ -136,8 +136,7 @@ export const KaprogPlotingSidangModal: React.FC<KaprogPlotingSidangModalProps> =
       const nis = item.Siswa?.nis || '';
       const kelas = item.Siswa?.Kelas?.nama_kelas || item.SiswaAkademik?.kelas?.nama_kelas || '';
       const pengujiId = item.nilai_json?.penguji_id;
-      const pengujiNama = item.nilai_json?.penguji_nama;
-      const isAssigned = Boolean(pengujiId || (pengujiNama && pengujiNama.trim() !== ''));
+      const isAssigned = Boolean(pengujiId);
 
       // Filter Status Ploting
       if (plotFilter === 'UNASSIGNED' && isAssigned) return false;
@@ -439,7 +438,7 @@ export const KaprogPlotingSidangModal: React.FC<KaprogPlotingSidangModalProps> =
 
                 {/* Kolom Kanan: Status Penguji Sidang */}
                 <div className="shrink-0 text-right">
-                  {currentPengujiNama ? (
+                  {item.nilai_json?.penguji_id && currentPengujiNama ? (
                     <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800 shadow-2xs">
                       <UserCheck size={11} className="text-indigo-600 dark:text-indigo-400" />
                       <span className="max-w-[120px] sm:max-w-[160px] truncate">

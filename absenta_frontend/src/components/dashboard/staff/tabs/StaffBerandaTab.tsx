@@ -175,10 +175,9 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
       const list: any[] = Array.isArray(res) ? res : res?.data?.list || res?.data || [];
       return list.filter((item: any) => {
         const pId = item.nilai_json?.penguji_id;
-        const pNama = item.nilai_json?.penguji_nama;
-        if (pId && pId === effectiveGuruId) return true;
-        if (!pId && pNama && guruNama && pNama.trim().toLowerCase() === guruNama.trim().toLowerCase()) return true;
-        return false;
+        // KETAT: Sub-tab Sidang PKL HANYA muncul untuk guru yang BENAR-BENAR terdaftar di ploting penguji (penguji_id).
+        // Tidak boleh ada fallback ke pembimbing penempatan PKL maupun pencocokan nama tekstual longgar.
+        return Boolean(pId && pId === effectiveGuruId);
       });
     },
     enabled: Boolean(effectiveGuruId) && isActualTeachingStaff,
