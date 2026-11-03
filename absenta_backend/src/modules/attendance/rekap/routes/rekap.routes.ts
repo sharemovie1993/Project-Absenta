@@ -421,7 +421,12 @@ export async function rekapRoutes(fastify: any) {
 
   // 3b. Rekap Bulanan Siswa Per Mata Pelajaran (Mapel)
   fastify.get('/mapel/bulanan', {
-    preHandler: [allowBothModes, organizationalScopeMiddleware, requireCapability(['attendance.reports.view', 'academic.structures.view.list']), determineDataScope()],
+    preHandler: [
+      allowBothModes,
+      organizationalScopeMiddleware,
+      requireCapability(['attendance.reports.view', 'academic.structures.view.list', 'academic.teaching.rekap'], { exemptRoles: [RoleName.GURU, RoleName.STAFF] }),
+      determineDataScope()
+    ],
     schema: {
       description: 'Get monthly attendance recap for a specific subject (Mapel) in a class',
       tags: ['Rekap'],
@@ -493,7 +498,12 @@ export async function rekapRoutes(fastify: any) {
 
   // 3c. Rekap 1 Semester Penuh Siswa Per Mata Pelajaran (Mapel) - Akumulasi Rapor
   fastify.get('/mapel/semester', {
-    preHandler: [allowBothModes, organizationalScopeMiddleware, requireCapability(['attendance.reports.view', 'academic.structures.view.list']), determineDataScope()],
+    preHandler: [
+      allowBothModes,
+      organizationalScopeMiddleware,
+      requireCapability(['attendance.reports.view', 'academic.structures.view.list', 'academic.teaching.rekap'], { exemptRoles: [RoleName.GURU, RoleName.STAFF] }),
+      determineDataScope()
+    ],
     schema: {
       description: 'Get full semester attendance recap for a specific subject (Mapel) in a class for report cards',
       tags: ['Rekap'],

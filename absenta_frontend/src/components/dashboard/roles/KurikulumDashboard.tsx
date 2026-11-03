@@ -868,6 +868,8 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               className={cn('w-full min-w-0', activeTab === 'supervisi' ? 'block' : 'hidden')}
             >
               <KurikulumSupervisiTab
+                tahunPelajaranId={resolvedTahunPelajaranId}
+                semesterId={resolvedSemesterId}
                 supRows={supRows}
                 supPct={supPct}
                 loading={lSup}
