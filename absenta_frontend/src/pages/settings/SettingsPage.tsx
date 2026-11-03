@@ -11,6 +11,7 @@ import { isSystemSuperAdmin } from '@/utils/rbac';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { formatDate } from '../../utils/layoutUtils';
 import { easyTunnelApi, SystemInfo } from '@/api/easyTunnel.api';
+import { cn } from '@/lib/utils';
 
 // Lazy loaded sub-components
 const TenantSettings = lazy(() => import('@/components/tenant/TenantSettings').then(module => ({ default: module.TenantSettings })));
