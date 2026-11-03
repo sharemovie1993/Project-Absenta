@@ -15,7 +15,9 @@ import {
 } from 'lucide-react';
 import { Modal, Button, Input } from '@/components/ui';
 import { hubinApi } from '@/api/hubin.api';
+import { getKaprogStats } from '@/api/dashboard.api';
 import { useGuruOptions } from '@/hooks/useGuruOptions';
+import { GuruProduktifItem } from '../types';
 import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +28,7 @@ export interface KaprogPlotingSidangModalProps {
   jurusanNama?: string;
   tahunPelajaranId?: string;
   semesterId?: string;
+  guruProduktifList?: GuruProduktifItem[];
   onSuccess?: () => void;
 }
 
@@ -36,6 +39,7 @@ export const KaprogPlotingSidangModal: React.FC<KaprogPlotingSidangModalProps> =
   jurusanNama = 'Kejuruan',
   tahunPelajaranId,
   semesterId,
+  guruProduktifList: propGuruProduktif,
   onSuccess,
 }) => {
   const queryClient = useQueryClient();
@@ -47,11 +51,45 @@ export const KaprogPlotingSidangModal: React.FC<KaprogPlotingSidangModalProps> =
   const [plotFilter, setPlotFilter] = useState<'ALL' | 'UNASSIGNED' | 'ASSIGNED'>('ALL');
   const [selectedSiswaIds, setSelectedSiswaIds] = useState<Set<string>>(new Set());
 
-  // 1. Ambil Opsi Seluruh Guru
-  const { rawList: guruList, isLoading: loadingGuru } = useGuruOptions({
+  // 1. Ambil Data Guru Produktif Jurusan (Prioritas SSOT Khusus Guru Kejuruan)
+  const { data: statsData, isLoading: loadingStats } = useQuery({
+    queryKey: ['kaprog-stats-guru-produktif-modal', jurusanId],
+    queryFn: () => getKaprogStats({ jurusan_id: jurusanId }).catch(() => null),
+    enabled: isOpen && Boolean(jurusanId) && (!propGuruProduktif || propGuruProduktif.length === 0),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { rawList: allGuruList, isLoading: loadingAllGuru } = useGuruOptions({
     jenisPtk: 'ALL',
     onlyActive: false,
   });
+
+  // Resolusi Daftar Guru Penguji Khusus Produktif Jurusan
+  const examinerOptions = useMemo(() => {
+    const listProduktif: GuruProduktifItem[] =
+      (propGuruProduktif && propGuruProduktif.length > 0)
+        ? propGuruProduktif
+        : (statsData?.data?.guruProduktif || statsData?.guruProduktif || []);
+
+    if (listProduktif.length > 0) {
+      return listProduktif.map((g) => ({
+        id: g.id,
+        nama_guru: g.nama,
+        nip: g.nip || null,
+        mapel: g.mapel || 'Guru Produktif Kejuruan',
+        isProduktif: true,
+      }));
+    }
+
+    // Fallback jika belum ada jadwal KBM produktif terdata di database
+    return (allGuruList || []).map((g) => ({
+      id: g.id,
+      nama_guru: g.nama_guru,
+      nip: g.nip || null,
+      mapel: 'Guru Pengajar',
+      isProduktif: false,
+    }));
+  }, [propGuruProduktif, statsData, allGuruList]);
 
   // 2. Query Siswa PKL Jurusan
   const { data: pklData, isLoading: loadingSiswa, refetch } = useQuery({
@@ -151,8 +189,8 @@ export const KaprogPlotingSidangModal: React.FC<KaprogPlotingSidangModalProps> =
 
   // Selected Guru Meta
   const selectedGuru = useMemo(() => {
-    return guruList?.find((g) => g.id === selectedGuruId) || null;
-  }, [guruList, selectedGuruId]);
+    return examinerOptions.find((g) => g.id === selectedGuruId) || null;
+  }, [examinerOptions, selectedGuruId]);
 
   // Mutation Assign Penguji Batch
   const plotingMutation = useMutation({
@@ -219,11 +257,17 @@ export const KaprogPlotingSidangModal: React.FC<KaprogPlotingSidangModalProps> =
 
       {/* ── Modal Body (Scrollable) ── */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-slate-50/50 dark:bg-slate-950/30">
-        {/* Section 1: Target Penguji Card */}
+        {/* Section 1: Target Penguji Card (Khusus Guru Produktif Jurusan) */}
         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs space-y-3">
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-            1. Pilih Guru Penguji Sidang PKL <span className="text-rose-500">*</span>
-          </label>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+              1. Pilih Guru Penguji Sidang PKL <span className="text-rose-500">*</span>
+            </label>
+            <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2.5 py-0.5 rounded-full border border-indigo-200/60 dark:border-indigo-900/40">
+              Khusus Guru Produktif {jurusanNama} ({examinerOptions.length} Guru)
+            </span>
+          </div>
+
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <div className="relative flex-1">
               <select
@@ -232,10 +276,10 @@ export const KaprogPlotingSidangModal: React.FC<KaprogPlotingSidangModalProps> =
                 onChange={(e) => setSelectedGuruId(e.target.value)}
                 className="w-full text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3.5 py-2.5 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none transition-all cursor-pointer"
               >
-                <option value="">-- Pilih Guru Penyidang --</option>
-                {guruList?.map((g) => (
+                <option value="">-- Pilih Guru Produktif Penguji Sidang --</option>
+                {examinerOptions.map((g) => (
                   <option key={g.id} value={g.id}>
-                    {g.nama_guru} {g.nip ? `(NIP. ${g.nip})` : ''}
+                    {g.nama_guru} {g.nip ? `(NIP. ${g.nip})` : ''} - [{g.mapel}]
                   </option>
                 ))}
               </select>
@@ -243,7 +287,10 @@ export const KaprogPlotingSidangModal: React.FC<KaprogPlotingSidangModalProps> =
             {selectedGuru && (
               <div className="flex items-center gap-2 px-3 py-2 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/40 rounded-xl text-xs text-indigo-800 dark:text-indigo-300 font-bold shrink-0">
                 <UserCheck size={16} className="text-indigo-600 dark:text-indigo-400" />
-                <span className="truncate max-w-[200px]">{selectedGuru.nama_guru}</span>
+                <div className="min-w-0">
+                  <div className="truncate max-w-[200px]">{selectedGuru.nama_guru}</div>
+                  <div className="text-[10px] text-indigo-600/80 dark:text-indigo-400/80 font-normal truncate max-w-[200px]">{selectedGuru.mapel}</div>
+                </div>
               </div>
             )}
           </div>
@@ -370,26 +417,34 @@ export const KaprogPlotingSidangModal: React.FC<KaprogPlotingSidangModalProps> =
                             {sKelas}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                           <span>NIS: {sNis}</span>
                           <span>•</span>
                           <span className="truncate flex items-center gap-1">
                             <Building2 size={11} className="text-slate-400 shrink-0" />
                             {mitraNama}
                           </span>
+                          {item.Pembimbing?.nama_guru && (
+                            <>
+                              <span>•</span>
+                              <span className="text-slate-400 truncate">
+                                Pembimbing DU/DI: {item.Pembimbing.nama_guru}
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
 
                     <div className="shrink-0 text-right">
                       {currentPengujiNama ? (
-                        <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800">
+                        <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800">
                           <UserCheck size={11} />
-                          <span className="max-w-[130px] truncate">{currentPengujiNama}</span>
+                          <span className="max-w-[130px] truncate">Penguji: {currentPengujiNama}</span>
                         </div>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
-                          Belum Diploting
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/40">
+                          Penguji Belum Diploting
                         </span>
                       )}
                     </div>

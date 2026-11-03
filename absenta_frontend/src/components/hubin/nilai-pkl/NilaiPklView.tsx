@@ -239,7 +239,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
         nilai_laporan: item.nilai_json?.nilai_laporan ?? null,
         nilai_sidang: item.nilai_json?.nilai_sidang ?? null,
         penguji_id: item.nilai_json?.penguji_id || null,
-        penguji_nama: item.nilai_json?.penguji_nama || item.Pembimbing?.nama_guru || '',
+        penguji_nama: item.nilai_json?.penguji_nama || '',
         catatan_sidang: item.nilai_json?.catatan_sidang || '',
         file_portofolio: item.jurnal_json?.file_url || null,
         nilai_akhir_pkl: item.nilai_akhir_pkl ?? null,
@@ -697,6 +697,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
               setCurrentPage={setCurrentPage}
               handleScoreChange={handleScoreChange}
               onNavigateCetakRapor={hideCetakRapor ? undefined : handleNavigateCetakRapor}
+              jurusanId={effectiveJurusanId}
             />
           )}
         </Suspense>

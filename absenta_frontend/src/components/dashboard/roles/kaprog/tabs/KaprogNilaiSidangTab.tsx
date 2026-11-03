@@ -1,6 +1,7 @@
 import React, { useState, Suspense, lazy } from 'react';
 import { UserCheck, ShieldCheck, Sparkles, GraduationCap } from 'lucide-react';
 import { Button, Loader } from '@/components/ui';
+import { GuruProduktifItem } from '../types';
 
 // Code-splitting heavy universal view & modal to reduce initial tab bundle (Pilar 21B & TBT Optimization)
 const NilaiPklView = lazy(() =>
@@ -16,6 +17,7 @@ export interface KaprogNilaiSidangTabProps {
   jurusanNama?: string;
   tahunPelajaranId?: string;
   semesterId?: string;
+  guruProduktifList?: GuruProduktifItem[];
 }
 
 export const KaprogNilaiSidangTab: React.FC<KaprogNilaiSidangTabProps> = React.memo(({
@@ -23,6 +25,7 @@ export const KaprogNilaiSidangTab: React.FC<KaprogNilaiSidangTabProps> = React.m
   jurusanNama = 'Kejuruan',
   tahunPelajaranId,
   semesterId,
+  guruProduktifList = [],
 }) => {
   const [isPlotingModalOpen, setIsPlotingModalOpen] = useState(false);
 
@@ -86,6 +89,7 @@ export const KaprogNilaiSidangTab: React.FC<KaprogNilaiSidangTabProps> = React.m
             jurusanNama={jurusanNama}
             tahunPelajaranId={tahunPelajaranId}
             semesterId={semesterId}
+            guruProduktifList={guruProduktifList}
           />
         </Suspense>
       )}

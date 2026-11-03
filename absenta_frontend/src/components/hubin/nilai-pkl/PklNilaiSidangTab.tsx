@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, Button, SearchableSelect } from '@/components/ui';
 import { AcademicFilterToolbar } from '@/components/common/academic-filter';
 import { Info, Lock, Save, FileText, Check, Printer } from 'lucide-react';
@@ -7,6 +8,7 @@ import { ScoreRow } from './types';
 import { PklNilaiSidangMobileCards } from './PklNilaiSidangMobileCards';
 import { PengujiCombobox } from './PengujiCombobox';
 import { useGuruOptions } from '@/hooks/useGuruOptions';
+import { getKaprogStats } from '@/api/dashboard.api';
 import {
   SpreadsheetGridTable,
   SpreadsheetCellInput,
@@ -62,6 +64,7 @@ export interface PklNilaiSidangTabProps {
   handleScoreChange: (siswaPklId: string, field: keyof ScoreRow, value: string | number | null) => void;
   onNavigateCetakRapor?: () => void;
   hideFilterCard?: boolean;
+  jurusanId?: string;
 }
 
 export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
@@ -104,11 +107,20 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
   handleScoreChange,
   onNavigateCetakRapor,
   hideFilterCard = false,
+  jurusanId,
 }) => {
   const { handleKeyDown: handleKeyDownScore } = useSpreadsheetNavigation({
     totalRows: paginatedScores?.length || 0,
     totalCols: 2,
     idPrefix: 'sidang-score',
+  });
+
+  // Query Khusus Guru Produktif Kejuruan jika scoped Jurusan (Kaprog / Jurusan)
+  const { data: statsData } = useQuery({
+    queryKey: ['sidang-tab-guru-produktif', jurusanId],
+    queryFn: () => getKaprogStats({ jurusan_id: jurusanId }).catch(() => null),
+    enabled: Boolean(jurusanId),
+    staleTime: 5 * 60 * 1000,
   });
 
   const { rawList: rawGuruList, isLoading: isLoadingGuru } = useGuruOptions({
@@ -117,12 +129,20 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
   });
 
   const guruList = useMemo(() => {
+    const listProduktif = statsData?.data?.guruProduktif || statsData?.guruProduktif || [];
+    if (listProduktif.length > 0) {
+      return listProduktif.map((g: any) => ({
+        id: g.id,
+        nama_guru: g.nama,
+        nip: g.nip || null,
+      }));
+    }
     return (rawGuruList || [])?.map((g) => ({
       id: g.id,
       nama_guru: g.nama_guru || '',
       nip: g.nip || null,
     }));
-  }, [rawGuruList]);
+  }, [statsData, rawGuruList]);
 
   const handleApplyPengujiToAll = (namaPenguji: string, guruId?: string) => {
     if (!namaPenguji) return;
