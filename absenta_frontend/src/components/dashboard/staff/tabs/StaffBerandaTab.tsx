@@ -314,7 +314,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
 
           {/* Kolom Kanan: Main Content Canvas */}
           <main className="min-w-0 space-y-4">
-            {/* SUB-TAB 1: AGENDA & KBM HARI INI */}
+            {/* SUB-TAB 1: RINGKASAN & BERANDA PENDIDIK */}
             {activeSubTab === 'agenda' && (
               <div className="space-y-3 sm:space-y-4">
                 {/* Daily Status Strip */}

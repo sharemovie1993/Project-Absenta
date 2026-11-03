@@ -1,5 +1,6 @@
 import React from 'react';
 import { 
+  LayoutDashboard,
   CalendarDays, 
   FileText, 
   GraduationCap, 
@@ -44,8 +45,8 @@ export const TeacherSubNavPills: React.FC<TeacherSubNavPillsProps> = React.memo(
   const tabs: TeacherSubTabItem[] = [
     {
       id: 'agenda',
-      label: 'Agenda & KBM',
-      icon: CalendarDays,
+      label: 'Ringkasan',
+      icon: LayoutDashboard,
       badgeCount: unfilledJournalsCount > 0 ? unfilledJournalsCount : undefined,
       badgeVariant: 'amber',
     },

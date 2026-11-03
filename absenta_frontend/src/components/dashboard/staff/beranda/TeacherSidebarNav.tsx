@@ -1,5 +1,6 @@
 import React from 'react';
 import { 
+  LayoutDashboard,
   CalendarDays, 
   CheckSquare,
   FileText, 
@@ -50,8 +51,8 @@ export const TeacherSidebarNav: React.FC<TeacherSidebarNavProps> = React.memo(({
   const tabs: TeacherSubTabItem[] = [
     {
       id: 'agenda',
-      label: 'Agenda & KBM',
-      icon: CalendarDays,
+      label: 'Ringkasan',
+      icon: LayoutDashboard,
       badgeCount: unfilledJournalsCount > 0 ? unfilledJournalsCount : undefined,
       badgeVariant: 'amber',
     },
