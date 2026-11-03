@@ -780,7 +780,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
                   </div>
                 }
               >
-                <SettingsPage hideLayout={true} />
+                <SettingsPage hideLayout={true} defaultTab="attendance" />
               </Suspense>
             </div>
           )}

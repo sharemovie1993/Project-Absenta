@@ -24,7 +24,7 @@ const PaymentSettingsForm = lazy(() => import('@/components/settings/PaymentSett
 const SecuritySettingsForm = lazy(() => import('@/components/settings/SecuritySettingsForm').then(m => ({ default: m.SecuritySettingsForm })));
 const NotificationSettingsForm = lazy(() => import('@/components/settings/NotificationSettingsForm').then(m => ({ default: m.NotificationSettingsForm })));
 const AttendanceSettingsForm = lazy(() => import('@/components/settings/AttendanceSettingsForm').then(m => ({ default: m.AttendanceSettingsForm })));
-const TenantAttendanceForm = lazy(() => import('@/components/attendance/settings/TenantAttendanceForm').then(m => ({ default: m.TenantAttendanceForm })));
+const TenantAttendanceForm = lazy(() => import('@/components/attendance/settings/TenantAttendanceForm'));
 const EasyTunnelPage = lazy(() => import('../system/EasyTunnelPage'));
 const SystemUpdatePage = lazy(() => import('./SystemUpdatePage'));
 
@@ -306,6 +306,13 @@ const SettingsPage: React.FC<UniversalSettingsViewProps> = ({
     ];
     return list;
   }, [isTenantUser, can, isAdmin, isCloudVpsPublic, canViewAttendanceSettings, hideLayout]);
+
+  // Jamin activeTab selalu valid terhadap tabs yang tersedia untuk mencegah empty container
+  useEffect(() => {
+    if (tabs.length > 0 && !tabs.some(t => t.id === activeTab)) {
+      setActiveTab(tabs[0].id);
+    }
+  }, [tabs, activeTab]);
 
   const showSaveButton = canEdit && (
     (isSuperAdminUser && activeTab !== 'easy_tunnel' && activeTab !== 'system_update') ||

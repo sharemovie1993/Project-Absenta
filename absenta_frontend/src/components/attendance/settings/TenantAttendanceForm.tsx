@@ -484,3 +484,4 @@ const TenantAttendanceFormComponent: React.FC<UniversalAttendanceSettingsViewPro
 
 TenantAttendanceFormComponent.displayName = 'TenantAttendanceForm';
 export const TenantAttendanceForm = React.memo(TenantAttendanceFormComponent);
+export default TenantAttendanceForm;

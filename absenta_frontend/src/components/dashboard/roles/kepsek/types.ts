@@ -1,7 +1,7 @@
 import React from 'react';
 import type { ExecutivePillar } from '@/store/executivePillarStore';
 
-export type KepsekTabId = 'ringkasan' | 'kbm' | 'kesiswaan' | 'bk' | 'sarpras' | 'hubin' | 'tu';
+export type KepsekTabId = 'ringkasan' | 'kbm' | 'kesiswaan' | 'bk' | 'sarpras' | 'hubin' | 'tu' | 'aturan_absensi';
 
 export interface KepsekNavTabItem {
   id: KepsekTabId;

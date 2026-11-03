@@ -14,7 +14,9 @@ import {
   RefreshCw,
   Activity,
   Tv,
+  Clock,
 } from 'lucide-react';
+import { Loader } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { kesiswaanApi, type Pelanggaran } from '@/api/kesiswaan.api';
@@ -30,6 +32,7 @@ import { KesiswaanDhuhaTab } from './kesiswaan/tabs/KesiswaanDhuhaTab';
 import { KesiswaanKetarunaanTab } from './kesiswaan/tabs/KesiswaanKetarunaanTab';
 import { KesiswaanTatibTab } from './kesiswaan/tabs/KesiswaanTatibTab';
 import { KesiswaanRekapTab } from './kesiswaan/tabs/KesiswaanRekapTab';
+const TenantAttendanceForm = React.lazy(() => import('@/components/attendance/settings/TenantAttendanceForm'));
 
 export interface KesiswaanDashboardProps {
   user?: {
@@ -53,6 +56,7 @@ export const KesiswaanDashboard: React.FC<KesiswaanDashboardProps> = ({ user }) 
     'ketarunaan',
     'tatib',
     'rekap',
+    'aturan_absensi',
   ];
 
   // Mobile Filter Collapsible State
@@ -205,6 +209,12 @@ export const KesiswaanDashboard: React.FC<KesiswaanDashboardProps> = ({ user }) 
         label: 'Cetak Berkas',
         shortLabel: 'Cetak',
         icon: Printer,
+      },
+      {
+        id: 'aturan_absensi',
+        label: 'Aturan Gerbang & Presensi',
+        shortLabel: 'Aturan Jam',
+        icon: Clock,
       },
     ],
     [stats.today, leaderboard?.data]
@@ -477,6 +487,26 @@ export const KesiswaanDashboard: React.FC<KesiswaanDashboardProps> = ({ user }) 
               className={cn('w-full min-w-0', activeTab === 'rekap' ? 'block' : 'hidden')}
             >
               <KesiswaanRekapTab />
+            </div>
+          )}
+
+          {/* TAB 8: ATURAN GERBANG & PRESENSI (HASIL PLENO) */}
+          {visitedTabs.has('aturan_absensi') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'aturan_absensi'}
+              className={cn('w-full min-w-0', activeTab === 'aturan_absensi' ? 'block' : 'hidden')}
+            >
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Pengaturan Jam Absensi...</span>
+                  </div>
+                }
+              >
+                <TenantAttendanceForm hideLayout={true} />
+              </Suspense>
             </div>
           )}
         </main>

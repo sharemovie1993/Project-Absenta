@@ -7,7 +7,8 @@ export type KesiswaanTabId =
   | 'dhuha'
   | 'ketarunaan'
   | 'tatib'
-  | 'rekap';
+  | 'rekap'
+  | 'aturan_absensi';
 
 export interface KesiswaanNavTabItem {
   id: KesiswaanTabId;

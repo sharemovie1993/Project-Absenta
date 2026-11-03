@@ -13,7 +13,9 @@ import {
   RefreshCw,
   ArrowLeft,
   LayoutDashboard,
+  Settings2,
 } from 'lucide-react';
+import { Loader } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { useExecutivePillarStore, type ExecutivePillar } from '@/store/executivePillarStore';
@@ -43,6 +45,7 @@ import { KepsekBkTab } from './kepsek/tabs/KepsekBkTab';
 import { KepsekSarprasTab } from './kepsek/tabs/KepsekSarprasTab';
 import { KepsekHubinTab } from './kepsek/tabs/KepsekHubinTab';
 import { KepsekTuTab } from './kepsek/tabs/KepsekTuTab';
+const TenantAttendanceForm = lazy(() => import('@/components/attendance/settings/TenantAttendanceForm'));
 
 export interface KepalaSekolahDashboardProps {
   user?: {
@@ -61,7 +64,7 @@ export const KepalaSekolahDashboard: React.FC<KepalaSekolahDashboardProps> = Rea
   // Zustand Global Store: 0ms Synchronous Mobile & Desktop Synchronization
   const { currentPillar, setPillar } = useExecutivePillarStore();
 
-  const validTabs: KepsekTabId[] = ['ringkasan', 'kbm', 'kesiswaan', 'bk', 'sarpras', 'hubin', 'tu'];
+  const validTabs: KepsekTabId[] = ['ringkasan', 'kbm', 'kesiswaan', 'bk', 'sarpras', 'hubin', 'tu', 'aturan_absensi'];
   const subtabParam = searchParams.get('subtab') as KepsekTabId | null;
 
   // Mobile Filter Collapsible & Refresh State
@@ -278,6 +281,14 @@ export const KepalaSekolahDashboard: React.FC<KepalaSekolahDashboardProps> = Rea
         icon: FileText,
         badge: 'SURAT',
         badgeColor: 'bg-blue-500 text-white',
+      },
+      {
+        id: 'aturan_absensi',
+        label: 'Kebijakan & Aturan Presensi',
+        shortLabel: 'Aturan Presensi',
+        icon: Settings2,
+        badge: 'PLENO',
+        badgeColor: 'bg-emerald-600 text-white',
       },
     ],
     [stats?.total_sesi_aktif, violationData?.data?.total_today]
@@ -551,6 +562,26 @@ export const KepalaSekolahDashboard: React.FC<KepalaSekolahDashboardProps> = Rea
               className={cn('w-full min-w-0', activeTab === 'tu' ? 'block' : 'hidden')}
             >
               <KepsekTuTab tuData={tuData} stats={stats} />
+            </div>
+          )}
+
+          {/* TAB 8: KEBIJAKAN & ATURAN PRESENSI (HASIL PLENO) */}
+          {visitedTabs.has('aturan_absensi') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'aturan_absensi'}
+              className={cn('w-full min-w-0', activeTab === 'aturan_absensi' ? 'block' : 'hidden')}
+            >
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Kebijakan Presensi Sekolah...</span>
+                  </div>
+                }
+              >
+                <TenantAttendanceForm hideLayout={true} />
+              </Suspense>
             </div>
           )}
         </main>
