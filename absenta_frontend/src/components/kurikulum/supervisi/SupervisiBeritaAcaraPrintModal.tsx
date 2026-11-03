@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
@@ -7,6 +7,8 @@ import {
 } from '@/components/ui/PrintHeader';
 import type { Supervisi } from '@/api/kurikulum.api';
 import { formatDate } from '@/utils/layoutUtils';
+import toast from 'react-hot-toast';
+import { SlidersHorizontal, RotateCcw, UserCheck, Calendar, MapPin } from 'lucide-react';
 
 export interface SupervisiBeritaAcaraPrintModalProps {
   isOpen: boolean;
@@ -23,7 +25,68 @@ export const SupervisiBeritaAcaraPrintModal: React.FC<SupervisiBeritaAcaraPrintM
   tahunPelajaranNama,
   semesterNama,
 }) => {
+  const printSheetRef = useRef<HTMLDivElement>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  // 1. Toggle Kop Surat (Logo Daerah & Sekolah)
+  const [showLogoDaerah, setShowLogoDaerah] = useState(true);
+  const [showLogoSekolah, setShowLogoSekolah] = useState(true);
+
+  // 2. Panel Pengaturan TTD State
+  const [showTtdConfig, setShowTtdConfig] = useState(false);
+
+  // Resolving SSOT Tenant & School Data
   const { tenantInfo, logoDaerahBase64, logoSekolahBase64, rawSekolah } = usePrintHeaderData();
+
+  // Penandatangan Default dari Sistem
+  const defaultKota = (rawSekolah as any)?.kota || tenantInfo?.kabupaten || tenantInfo?.kota || 'Bandung';
+  const defaultTanggal = new Date().toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  const defaultGuruNama = supervisi?.Guru?.nama_guru || '';
+  const defaultGuruNip = supervisi?.Guru?.nip || '';
+  const defaultSupervisorNama = supervisi?.Supervisor?.nama_guru || 'Tim Pengembang Kurikulum';
+  const defaultSupervisorNip = supervisi?.Supervisor?.nip || '';
+  const defaultKepsekNama = (rawSekolah as any)?.kepala_sekolah || (tenantInfo as any)?.kepala_sekolah || 'Dra. Hj. Siti Rahma, M.Pd';
+  const defaultKepsekNip = (rawSekolah as any)?.nip_kepala || (tenantInfo as any)?.nip_kepala || '197001011995032001';
+
+  // Customizable Penandatangan State
+  const [activeKota, setActiveKota] = useState(defaultKota);
+  const [activeTanggal, setActiveTanggal] = useState(defaultTanggal);
+  const [activeGuruNama, setActiveGuruNama] = useState(defaultGuruNama);
+  const [activeGuruNip, setActiveGuruNip] = useState(defaultGuruNip);
+  const [activeSupervisorNama, setActiveSupervisorNama] = useState(defaultSupervisorNama);
+  const [activeSupervisorNip, setActiveSupervisorNip] = useState(defaultSupervisorNip);
+  const [activeKepsekNama, setActiveKepsekNama] = useState(defaultKepsekNama);
+  const [activeKepsekNip, setActiveKepsekNip] = useState(defaultKepsekNip);
+
+  // Sinkronisasi data saat supervisi berubah
+  useEffect(() => {
+    if (supervisi) {
+      setActiveGuruNama(supervisi.Guru?.nama_guru || '');
+      setActiveGuruNip(supervisi.Guru?.nip || '');
+      setActiveSupervisorNama(supervisi.Supervisor?.nama_guru || 'Tim Pengembang Kurikulum');
+      setActiveSupervisorNip(supervisi.Supervisor?.nip || '');
+      setActiveKepsekNama((rawSekolah as any)?.kepala_sekolah || (tenantInfo as any)?.kepala_sekolah || 'Dra. Hj. Siti Rahma, M.Pd');
+      setActiveKepsekNip((rawSekolah as any)?.nip_kepala || (tenantInfo as any)?.nip_kepala || '197001011995032001');
+      setActiveKota(defaultKota);
+      setActiveTanggal(defaultTanggal);
+    }
+  }, [supervisi, rawSekolah, tenantInfo, defaultKota, defaultTanggal]);
+
+  const handleResetTtd = () => {
+    setActiveGuruNama(defaultGuruNama);
+    setActiveGuruNip(defaultGuruNip);
+    setActiveSupervisorNama(defaultSupervisorNama);
+    setActiveSupervisorNip(defaultSupervisorNip);
+    setActiveKepsekNama(defaultKepsekNama);
+    setActiveKepsekNip(defaultKepsekNip);
+    setActiveKota(defaultKota);
+    setActiveTanggal(defaultTanggal);
+    toast.success('Pengaturan penandatangan dikembalikan ke default');
+  };
 
   const formattedDate = useMemo(() => {
     if (!supervisi?.tanggal) return '-';
@@ -40,52 +103,247 @@ export const SupervisiBeritaAcaraPrintModal: React.FC<SupervisiBeritaAcaraPrintM
     }
   }, [supervisi?.tanggal]);
 
-  const titimangsa = useMemo(() => {
-    const kota = (rawSekolah as any)?.kota || tenantInfo?.kabupaten || tenantInfo?.kota || 'Bandung';
-    const today = new Date().toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-    return `${kota}, ${today}`;
-  }, [rawSekolah, tenantInfo]);
-
-  const kepsekNama = useMemo(() => {
-    return (rawSekolah as any)?.kepala_sekolah || (tenantInfo as any)?.kepala_sekolah || 'Dra. Hj. Siti Rahma, M.Pd';
-  }, [rawSekolah, tenantInfo]);
-
-  const kepsekNip = useMemo(() => {
-    return (rawSekolah as any)?.nip_kepala || (tenantInfo as any)?.nip_kepala || '197001011995032001';
-  }, [rawSekolah, tenantInfo]);
-
-  if (!supervisi) return null;
-
   const scoreTier = useMemo(() => {
-    const n = supervisi.nilai;
+    const n = supervisi?.nilai;
     if (n == null) return { label: 'Belum Dinilai', grade: '-' };
     if (n >= 91) return { label: 'Amat Baik / Sangat Memuaskan', grade: 'A' };
     if (n >= 81) return { label: 'Baik / Memenuhi Standar', grade: 'B' };
     if (n >= 71) return { label: 'Cukup / Perlu Bimbingan', grade: 'C' };
     return { label: 'Kurang / Perlu Pembinaan Khusus', grade: 'D' };
-  }, [supervisi.nilai]);
+  }, [supervisi?.nilai]);
+
+  if (!supervisi) return null;
+
+  // ── Engine 1: True WYSIWYG DOM Capture (html2canvas-pro + jsPDF) ─────────────
+  const handleDownloadPdf = async () => {
+    setIsExportingPdf(true);
+    const toastId = toast.loading('Sedang merender PDF Berita Acara Supervisi...');
+    try {
+      const sheetElement = (printSheetRef.current?.querySelector('.print-sheet') as HTMLElement) || printSheetRef.current;
+      if (!sheetElement) {
+        window.print();
+        toast.dismiss(toastId);
+        return;
+      }
+
+      const html2canvas = (await import('html2canvas-pro')).default;
+      const { jsPDF } = await import('jspdf');
+
+      const canvas = await html2canvas(sheetElement, {
+        scale: 2, // Setara ~200 DPI Retina
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        onclone: (clonedDoc) => {
+          // Bersihkan border dan shadow lembar agar tepi PDF bersih
+          const sheets = clonedDoc.querySelectorAll('.print-sheet');
+          sheets.forEach((s: any) => {
+            s.style.border = 'none';
+            s.style.boxShadow = 'none';
+            s.style.outline = 'none';
+          });
+        },
+      });
+
+      // Anti-Bloat & Aspect Ratio Preservation
+      const imgData = canvas.toDataURL('image/jpeg', 0.88);
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true,
+      });
+
+      const pdfWidth = 210;
+      const pdfHeight = 297;
+      const canvasRatio = canvas.height / canvas.width;
+      const imgHeight = pdfWidth * canvasRatio;
+
+      if (imgHeight <= pdfHeight + 1) {
+        // Pas 1 lembar utuh tanpa distorsi
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, imgHeight, undefined, 'FAST');
+      } else {
+        // Multi-page slicing jika melebihi 1 halaman
+        let heightLeft = imgHeight;
+        let position = 0;
+
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= pdfHeight;
+
+        while (heightLeft > 0) {
+          position -= pdfHeight;
+          pdf.addPage('a4', 'portrait');
+          pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+          heightLeft -= pdfHeight;
+        }
+      }
+
+      const cleanGuruName = (activeGuruNama || 'Guru').replace(/[^a-zA-Z0-9]/g, '_');
+      const cleanDate = (supervisi.tanggal || 'tanggal').replace(/[^a-zA-Z0-9]/g, '_');
+      pdf.save(`BERITA_ACARA_SUPERVISI_${cleanGuruName}_${cleanDate}.pdf`);
+      toast.success('PDF Berita Acara Supervisi berhasil diunduh (True WYSIWYG)', { id: toastId });
+    } catch (err: any) {
+      console.error('[PDF Export Error]', err);
+      toast.error('Gagal mengekspor PDF, silakan gunakan tombol Cetak Dokumen', { id: toastId });
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
+  const handleBrowserPrint = () => {
+    window.print();
+  };
 
   return (
     <UniversalDocumentModal
       isOpen={isOpen}
       onClose={onClose}
       title="Cetak Berita Acara & Instrumen Supervisi"
-      subtitle={`Dokumen Hasil Observasi Pembelajaran: ${supervisi.Guru?.nama_guru || 'Guru'}`}
-      allowLogoToggles={true}
+      subtitle={`Dokumen Hasil Observasi Pembelajaran: ${activeGuruNama || 'Guru'}`}
       orientation="portrait"
+      allowOrientationToggle={false}
+      showLogoDaerah={showLogoDaerah}
+      showLogoSekolah={showLogoSekolah}
+      onToggleLogoDaerah={setShowLogoDaerah}
+      onToggleLogoSekolah={setShowLogoSekolah}
+      allowLogoToggles={true}
+      onPrint={handleBrowserPrint}
+      onDownloadPdf={handleDownloadPdf}
+      downloadPdfText={isExportingPdf ? 'Memproses PDF...' : 'Unduh PDF'}
+      printButtonText="Cetak Dokumen"
+      size="5xl"
+      extraActions={
+        <button
+          type="button"
+          onClick={() => setShowTtdConfig((prev) => !prev)}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border cursor-pointer ${
+            showTtdConfig
+              ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-50'
+          }`}
+          title="Sesuaikan nama penandatangan (TTD) sebelum cetak"
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          <span>{showTtdConfig ? 'Tutup Pengaturan TTD' : 'Pengaturan TTD'}</span>
+        </button>
+      }
     >
-      <div className="flex flex-col items-center justify-center p-2 sm:p-4">
+      {/* ── PANEL KONTROL PENGATURAN TTD (PRINT:HIDDEN) ── */}
+      {showTtdConfig && (
+        <div className="print:hidden mb-4 p-4 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/30 text-xs space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center justify-between pb-2 border-b border-amber-200/80 dark:border-amber-900/40">
+            <div className="flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <span className="font-bold text-slate-900 dark:text-white uppercase tracking-wider text-[11px]">
+                Kustomisasi Nama & NIP Penandatangan (TTD)
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleResetTtd}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300 hover:underline"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Reset Default</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            {/* Guru */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400">Guru yang Disupervisi</label>
+              <input
+                type="text"
+                value={activeGuruNama}
+                onChange={(e) => setActiveGuruNama(e.target.value)}
+                placeholder="Nama Guru"
+                className="w-full text-xs p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+              />
+              <input
+                type="text"
+                value={activeGuruNip}
+                onChange={(e) => setActiveGuruNip(e.target.value)}
+                placeholder="NIP Guru"
+                className="w-full text-[11px] p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+              />
+            </div>
+
+            {/* Supervisor */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400">Guru Supervisor / Penilai</label>
+              <input
+                type="text"
+                value={activeSupervisorNama}
+                onChange={(e) => setActiveSupervisorNama(e.target.value)}
+                placeholder="Nama Supervisor"
+                className="w-full text-xs p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+              />
+              <input
+                type="text"
+                value={activeSupervisorNip}
+                onChange={(e) => setActiveSupervisorNip(e.target.value)}
+                placeholder="NIP Supervisor"
+                className="w-full text-[11px] p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+              />
+            </div>
+
+            {/* Kepala Sekolah */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400">Kepala Sekolah</label>
+              <input
+                type="text"
+                value={activeKepsekNama}
+                onChange={(e) => setActiveKepsekNama(e.target.value)}
+                placeholder="Nama Kepala Sekolah"
+                className="w-full text-xs p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+              />
+              <input
+                type="text"
+                value={activeKepsekNip}
+                onChange={(e) => setActiveKepsekNip(e.target.value)}
+                placeholder="NIP Kepala Sekolah"
+                className="w-full text-[11px] p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+              />
+            </div>
+
+            {/* Titimangsa */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400">Titimangsa (Kota & Tanggal)</label>
+              <div className="relative">
+                <MapPin className="w-3 h-3 text-slate-400 absolute left-2 top-2" />
+                <input
+                  type="text"
+                  value={activeKota}
+                  onChange={(e) => setActiveKota(e.target.value)}
+                  placeholder="Kota"
+                  className="w-full text-xs p-1.5 pl-6 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                />
+              </div>
+              <div className="relative">
+                <Calendar className="w-3 h-3 text-slate-400 absolute left-2 top-2" />
+                <input
+                  type="text"
+                  value={activeTanggal}
+                  onChange={(e) => setActiveTanggal(e.target.value)}
+                  placeholder="Tanggal Titimangsa"
+                  className="w-full text-[11px] p-1.5 pl-6 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── PRINT SHEET CONTAINER ── */}
+      <div ref={printSheetRef} className="flex flex-col items-center justify-center p-2 sm:p-4">
         <PrintDocumentSheet pageNumber={1} totalPages={1} orientation="portrait">
           {/* 1. KOP SURAT RESMI */}
           <PrintHeader
             sekolah={rawSekolah as any}
             tenantInfo={tenantInfo}
-            logoDaerahBase64={logoDaerahBase64}
-            logoSekolahBase64={logoSekolahBase64}
+            logoDaerahBase64={showLogoDaerah ? logoDaerahBase64 : null}
+            logoSekolahBase64={showLogoSekolah ? logoSekolahBase64 : null}
           />
 
           {/* 2. JUDUL DOKUMEN RESMI */}
@@ -114,7 +372,7 @@ export const SupervisiBeritaAcaraPrintModal: React.FC<SupervisiBeritaAcaraPrintM
                 <tr className="leading-5">
                   <td className="w-36 font-semibold text-black">Nama Guru (Pendidik)</td>
                   <td className="w-3">:</td>
-                  <td className="font-bold text-black">{supervisi.Guru?.nama_guru || '-'}</td>
+                  <td className="font-bold text-black">{activeGuruNama || '-'}</td>
                   <td className="w-32 font-semibold text-black">Mata Pelajaran</td>
                   <td className="w-3">:</td>
                   <td className="font-bold text-black">{supervisi.mapel || '-'}</td>
@@ -122,7 +380,7 @@ export const SupervisiBeritaAcaraPrintModal: React.FC<SupervisiBeritaAcaraPrintM
                 <tr className="leading-5">
                   <td className="font-semibold text-black">NIP / NUPTK</td>
                   <td>:</td>
-                  <td className="text-black">{supervisi.Guru?.nip || '-'}</td>
+                  <td className="text-black">{activeGuruNip || '-'}</td>
                   <td className="font-semibold text-black">Kelas / Jam Ke</td>
                   <td>:</td>
                   <td className="text-black">{supervisi.kelas || '-'} / Jam ke-{supervisi.jam_ke || '-'}</td>
@@ -130,7 +388,7 @@ export const SupervisiBeritaAcaraPrintModal: React.FC<SupervisiBeritaAcaraPrintM
                 <tr className="leading-5">
                   <td className="font-semibold text-black">Supervisor / Penilai</td>
                   <td>:</td>
-                  <td className="font-bold text-black">{supervisi.Supervisor?.nama_guru || 'Tim Pengembang Kurikulum'}</td>
+                  <td className="font-bold text-black">{activeSupervisorNama || 'Tim Pengembang Kurikulum'}</td>
                   <td className="font-semibold text-black">Status Observasi</td>
                   <td>:</td>
                   <td className="text-black font-semibold">
@@ -219,27 +477,29 @@ export const SupervisiBeritaAcaraPrintModal: React.FC<SupervisiBeritaAcaraPrintM
             </div>
           )}
 
-          {/* 8. TANDA TANGAN 3-PIHAK RESMI */}
+          {/* 8. TANDA TANGAN 3-PIHAK RESMI (2-TIER BIROKRASI) */}
           <div className="mt-5 pt-2 text-[10.5px]">
-            <div className="text-right mb-2">{titimangsa}</div>
+            <div className="text-right mb-2 font-medium">
+              {activeKota}, {activeTanggal}
+            </div>
 
             <div className="grid grid-cols-2 gap-4 text-center">
               <div>
                 <p className="text-slate-800">Guru yang Disupervisi,</p>
                 <div className="h-16" />
                 <p className="font-bold text-black uppercase underline">
-                  {supervisi.Guru?.nama_guru || '........................................'}
+                  {activeGuruNama || '........................................'}
                 </p>
-                <p className="text-[9.5px] text-slate-700">NIP. {supervisi.Guru?.nip || '-'}</p>
+                <p className="text-[9.5px] text-slate-700">NIP. {activeGuruNip || '-'}</p>
               </div>
 
               <div>
                 <p className="text-slate-800">Supervisor / Penilai,</p>
                 <div className="h-16" />
                 <p className="font-bold text-black uppercase underline">
-                  {supervisi.Supervisor?.nama_guru || '........................................'}
+                  {activeSupervisorNama || '........................................'}
                 </p>
-                <p className="text-[9.5px] text-slate-700">NIP. {supervisi.Supervisor?.nip || '-'}</p>
+                <p className="text-[9.5px] text-slate-700">NIP. {activeSupervisorNip || '-'}</p>
               </div>
             </div>
 
@@ -247,8 +507,8 @@ export const SupervisiBeritaAcaraPrintModal: React.FC<SupervisiBeritaAcaraPrintM
               <p className="text-slate-800">Mengetahui,</p>
               <p className="font-semibold text-slate-900">Kepala Sekolah</p>
               <div className="h-16" />
-              <p className="font-bold text-black uppercase underline">{kepsekNama}</p>
-              <p className="text-[9.5px] text-slate-700">NIP. {kepsekNip}</p>
+              <p className="font-bold text-black uppercase underline">{activeKepsekNama}</p>
+              <p className="text-[9.5px] text-slate-700">NIP. {activeKepsekNip}</p>
             </div>
           </div>
         </PrintDocumentSheet>
