@@ -16,6 +16,7 @@ import {
   List,
   Search,
   AlertCircle,
+  ChevronDown,
 } from 'lucide-react';
 
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
@@ -23,6 +24,7 @@ import { Card, Button, Badge, SectionCard, TabSwitcher } from '@/components/ui';
 import { Table, Column } from '@/components/ui/Table';
 import { kurikulumApi } from '@/api/kurikulum.api';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { useAuthStore } from '@/store/authStore';
 import useConfirm from '@/hooks/useConfirm';
@@ -56,6 +58,7 @@ export interface UniversalPerangkatAjarViewProps {
   hideLayout?: boolean;
   isModal?: boolean;
   readOnly?: boolean;
+  roleContext?: 'GURU' | 'KURIKULUM' | 'AUTO';
   onClose?: () => void;
 }
 
@@ -67,6 +70,7 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
   hideLayout = false,
   isModal = false,
   readOnly = false,
+  roleContext = 'AUTO',
   onClose,
 }) => {
   const queryClient = useQueryClient();
@@ -75,9 +79,19 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
   const { isKurikulum, isAdmin, can } = useCapabilities();
   const isMobile = useIsMobile();
 
+  // 🛡️ Isolasi Konteks Peran (Mematuhi universal-role-ready-view)
+  // Ketika berada di Dashboard Guru (propGuruId terisi atau roleContext='GURU'),
+  // fitur supervisi/approval kurikulum & filter guru lain dinonaktifkan secara ketat.
+  const isGuruContext = useMemo(() => {
+    if (roleContext === 'GURU') return true;
+    if (roleContext === 'KURIKULUM') return false;
+    return Boolean(propGuruId);
+  }, [roleContext, propGuruId]);
+
   const isKurikulumOrAdmin = useMemo(() => {
+    if (isGuruContext) return false;
     return isAdmin || isKurikulum || (typeof can === 'function' && can('academic.manage.academic'));
-  }, [isAdmin, isKurikulum, can]);
+  }, [isGuruContext, isAdmin, isKurikulum, can]);
 
   // Modal States
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -85,6 +99,7 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
   const [isLibraryModalOpen, setIsLibraryModalOpen] = useState(false);
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [isWizardModalOpen, setIsWizardModalOpen] = useState(false);
+  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
   const [selectedPerangkatId, setSelectedPerangkatId] = useState<string | null>(null);
 
   // Word Editor Modal States
@@ -183,7 +198,7 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
   const academicFilter = useAcademicFilter({
     enableTp: !hideLayout,
     enableSemester: !hideLayout,
-    enableGuru: isKurikulumOrAdmin,
+    enableGuru: !isGuruContext && isKurikulumOrAdmin,
     enableMapel: true,
     enableSearch: true,
     initialTpId: propTpId,
@@ -194,7 +209,7 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
 
   const activeTpId = propTpId || academicFilter.values.tahunPelajaranId;
   const activeSemId = propSemId || academicFilter.values.semesterId;
-  const activeGuruId = propGuruId || academicFilter.values.guruId;
+  const activeGuruId = isGuruContext ? (propGuruId || currentGuru?.id) : (propGuruId || academicFilter.values.guruId);
   const activeMapelId = propMapelId || academicFilter.values.mapelId;
   const activeSearch = academicFilter.debouncedSearchQuery;
 
@@ -255,11 +270,12 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
   });
 
   const { data: allPerangkatForStats } = useQuery({
-    queryKey: ['perangkat-ajar-stats-all', activeTpId, activeSemId],
+    queryKey: ['perangkat-ajar-stats-all', activeTpId, activeSemId, isGuruContext ? activeGuruId : 'all'],
     queryFn: () =>
       kurikulumApi.getPerangkatAjar({
         tahun_pelajaran_id: activeTpId || undefined,
         semester_id: activeSemId || undefined,
+        guru_id: isGuruContext ? (activeGuruId || undefined) : undefined,
         limit: 1000,
       }),
   });
@@ -554,11 +570,16 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
   const tabOptions = useMemo(
     () => [
       { id: 'ALL', label: 'Semua Berkas', icon: FileText, colorClass: 'text-blue-600 dark:text-blue-400' },
-      { id: 'PENDING', label: 'Perlu Review', icon: Clock, colorClass: 'text-amber-600 dark:text-amber-400' },
+      {
+        id: 'PENDING',
+        label: isGuruContext ? 'Menunggu Verifikasi' : 'Perlu Review',
+        icon: Clock,
+        colorClass: 'text-amber-600 dark:text-amber-400'
+      },
       { id: 'APPROVED', label: 'Disetujui', icon: CheckCircle, colorClass: 'text-emerald-600 dark:text-emerald-400' },
       { id: 'REJECTED', label: 'Perlu Revisi', icon: XCircle, colorClass: 'text-rose-600 dark:text-rose-400' },
     ],
-    []
+    [isGuruContext]
   );
 
   const tableColumns = useMemo(
@@ -569,6 +590,7 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
         JENIS_LABELS,
         currentGuru,
         isKurikulumOrAdmin,
+        isGuruContext,
         handleOpenStudio,
         handleOpenReader,
         handleOpenWordEditor,
@@ -581,6 +603,7 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
       limit,
       currentGuru,
       isKurikulumOrAdmin,
+      isGuruContext,
       handleOpenStudio,
       handleOpenReader,
       handleOpenWordEditor,
@@ -618,11 +641,15 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
           <AcademicFilterToolbar
             {...academicFilter.toolbarProps}
             variant="plain"
-            searchPlaceholder="Cari judul perangkat, topik, atau nama guru..."
+            searchPlaceholder={
+              isGuruContext
+                ? "Cari judul berkas atau topik pembelajaran..."
+                : "Cari judul perangkat, topik, atau nama guru..."
+            }
             actionsRight={
               <div className="flex flex-wrap items-center gap-2">
                 {/* Filter Jenis Dokumen */}
-                <div className="w-44">
+                <div className="w-40 sm:w-44">
                   <SearchableSelect
                     value={filterJenis}
                     onValueChange={(v) => {
@@ -663,65 +690,99 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
                   </button>
                 </div>
 
-                {/* Katalog Nasional */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsLibraryModalOpen(true)}
-                  className="rounded-xl text-xs font-bold gap-1.5 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 h-9"
-                >
-                  <BookOpen className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Katalog Nasional</span>
-                </Button>
-
-                {/* Studio Modul */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCreateNewStudio}
-                  className="rounded-xl text-xs font-bold gap-1.5 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 h-9"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Studio Modul</span>
-                </Button>
-
-                {/* Unggah Berkas */}
+                {/* 1. Tombol Utama: Unggah Berkas */}
                 <Button
                   type="button"
                   variant="default"
                   size="sm"
                   onClick={handleOpenUploadModal}
-                  className="rounded-xl text-xs font-bold gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs h-9"
+                  className="rounded-xl text-xs font-bold gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs h-9 px-3.5 cursor-pointer"
                 >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Unggah</span>
+                  <Upload className="w-4 h-4" />
+                  <span>Unggah Berkas</span>
                 </Button>
 
-                {/* AI Generator */}
+                {/* 2. Studio Modul Ajar */}
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setIsAIModalOpen(true)}
-                  className="rounded-xl text-xs font-bold gap-1.5 bg-linear-to-r from-purple-500/10 to-indigo-500/10 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800 hover:from-purple-500/20 hover:to-indigo-500/20 h-9"
+                  onClick={handleCreateNewStudio}
+                  className="rounded-xl text-xs font-bold gap-1.5 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 h-9 cursor-pointer"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                  <span className="hidden md:inline">AI Generator</span>
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Studio Modul</span>
                 </Button>
 
-                {/* Wizard Bulk */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsWizardModalOpen(true)}
-                  className="rounded-xl text-xs font-bold gap-1.5 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 h-9"
-                >
-                  <Wand2 className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Wizard (Bulk)</span>
-                </Button>
+                {/* 3. Menu Alat Bantu & AI Generator (Clean Ergonomic Dropdown) */}
+                <div className="relative">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsToolsMenuOpen(prev => !prev)}
+                    className="rounded-xl text-xs font-bold gap-1.5 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 h-9 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                    <span className="hidden md:inline">Alat Bantu &amp; AI</span>
+                    <ChevronDown size={13} className={cn("transition-transform text-slate-400", isToolsMenuOpen && "rotate-180")} />
+                  </Button>
+
+                  {isToolsMenuOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setIsToolsMenuOpen(false)}
+                      />
+                      <div className="absolute right-0 top-full mt-1.5 w-56 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-1.5 z-50 text-xs font-semibold animate-in fade-in zoom-in-95 duration-100">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsToolsMenuOpen(false);
+                            setIsAIModalOpen(true);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-600 transition-colors text-left cursor-pointer"
+                        >
+                          <Sparkles size={15} className="text-purple-600 shrink-0" />
+                          <div>
+                            <div className="font-bold">AI Generator Modul</div>
+                            <div className="text-[10px] text-slate-400 font-normal">Buat modul via asisten AI</div>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsToolsMenuOpen(false);
+                            setIsLibraryModalOpen(true);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-600 transition-colors text-left cursor-pointer"
+                        >
+                          <BookOpen size={15} className="text-indigo-600 shrink-0" />
+                          <div>
+                            <div className="font-bold">Katalog Nasional</div>
+                            <div className="text-[10px] text-slate-400 font-normal">Adopsi template Kemdikbud</div>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsToolsMenuOpen(false);
+                            setIsWizardModalOpen(true);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-600 transition-colors text-left cursor-pointer"
+                        >
+                          <Wand2 size={15} className="text-amber-600 shrink-0" />
+                          <div>
+                            <div className="font-bold">Wizard (Bulk)</div>
+                            <div className="text-[10px] text-slate-400 font-normal">Generate perangkat massal</div>
+                          </div>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             }
           />

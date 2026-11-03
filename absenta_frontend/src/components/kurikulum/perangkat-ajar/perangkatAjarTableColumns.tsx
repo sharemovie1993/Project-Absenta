@@ -11,6 +11,7 @@ interface GetPerangkatAjarColumnsParams {
   JENIS_LABELS: Record<string, string>;
   currentGuru: any;
   isKurikulumOrAdmin: boolean;
+  isGuruContext?: boolean;
   handleOpenStudio: (item: PerangkatAjar) => void;
   handleOpenReader: (item: PerangkatAjar) => void;
   handleOpenWordEditor: (item: PerangkatAjar) => void;
@@ -21,12 +22,12 @@ interface GetPerangkatAjarColumnsParams {
 
 export const getPerangkatAjarTableColumns = (params: GetPerangkatAjarColumnsParams): Column[] => {
   const {
-    page, limit, JENIS_LABELS, currentGuru, isKurikulumOrAdmin,
+    page, limit, JENIS_LABELS, currentGuru, isKurikulumOrAdmin, isGuruContext = false,
     handleOpenStudio, handleOpenReader, handleOpenWordEditor,
     setSelectedPerangkatId, setIsReviewModalOpen, handleDelete
   } = params;
 
-  return [
+  const columns: Column[] = [
     {
       key: 'no',
       label: 'NO',
@@ -52,7 +53,11 @@ export const getPerangkatAjarTableColumns = (params: GetPerangkatAjarColumnsPara
         </div>
       )
     },
-    {
+  ];
+
+  // Kolom GURU PENGAJAR hanya relevan pada konteks pengawasan Kurikulum / Admin
+  if (!isGuruContext) {
+    columns.push({
       key: 'guru',
       label: 'GURU PENGAJAR',
       render: (_: unknown, item: PerangkatAjar) => (
@@ -61,7 +66,10 @@ export const getPerangkatAjarTableColumns = (params: GetPerangkatAjarColumnsPara
           <div className="text-[10px] text-slate-400 font-medium">NIP. {item.Guru?.nip || '-'}</div>
         </div>
       )
-    },
+    });
+  }
+
+  columns.push(
     {
       key: 'periode',
       label: 'PERIODE',
@@ -76,11 +84,25 @@ export const getPerangkatAjarTableColumns = (params: GetPerangkatAjarColumnsPara
       label: 'STATUS',
       render: (_: unknown, item: PerangkatAjar) => (
         <div className="space-y-1">
-          {item.status === 'APPROVED' && <Badge className="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 border-emerald-200 text-[10px] font-black"><Check size={11} className="mr-1" /> APPROVED</Badge>}
-          {item.status === 'REJECTED' && <Badge className="bg-rose-50 text-rose-600 dark:bg-rose-950/20 border-rose-200 text-[10px] font-black"><XCircle size={11} className="mr-1" /> REJECTED</Badge>}
-          {item.status === 'PENDING' && <Badge className="bg-amber-50 text-amber-600 dark:bg-amber-950/20 border-amber-200 text-[10px] font-black"><Clock size={11} className="mr-1" /> PENDING</Badge>}
+          {item.status === 'APPROVED' && (
+            <Badge className="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 border-emerald-200 text-[10px] font-black">
+              <Check size={11} className="mr-1" /> {isGuruContext ? 'DISETUJUI' : 'APPROVED'}
+            </Badge>
+          )}
+          {item.status === 'REJECTED' && (
+            <Badge className="bg-rose-50 text-rose-600 dark:bg-rose-950/20 border-rose-200 text-[10px] font-black">
+              <XCircle size={11} className="mr-1" /> {isGuruContext ? 'PERLU REVISI' : 'REJECTED'}
+            </Badge>
+          )}
+          {item.status === 'PENDING' && (
+            <Badge className="bg-amber-50 text-amber-600 dark:bg-amber-950/20 border-amber-200 text-[10px] font-black">
+              <Clock size={11} className="mr-1" /> {isGuruContext ? 'MENUNGGU VERIFIKASI' : 'PENDING'}
+            </Badge>
+          )}
           {item.catatan_reviewer && (
-            <div className="text-[10px] text-slate-400 italic line-clamp-1">"{item.catatan_reviewer}"</div>
+            <div className="text-[10px] text-rose-600 dark:text-rose-400 italic line-clamp-1 bg-rose-50/50 dark:bg-rose-950/30 px-1.5 py-0.5 rounded">
+              Catatan: "{item.catatan_reviewer}"
+            </div>
           )}
         </div>
       )
@@ -91,7 +113,7 @@ export const getPerangkatAjarTableColumns = (params: GetPerangkatAjarColumnsPara
       className: 'text-right',
       render: (_: unknown, item: PerangkatAjar) => {
         const isOwner = Boolean(currentGuru && item.Guru?.id === currentGuru.id);
-        const canUserDelete = isKurikulumOrAdmin || isOwner;
+        const canUserDelete = isKurikulumOrAdmin || isOwner || isGuruContext;
 
         return (
           <div className="flex items-center justify-end gap-1.5">
@@ -130,7 +152,7 @@ export const getPerangkatAjarTableColumns = (params: GetPerangkatAjarColumnsPara
               Edit
             </Button>
 
-            {isKurikulumOrAdmin && (
+            {!isGuruContext && isKurikulumOrAdmin && (
               <Button
                 type="button"
                 onClick={() => {
@@ -161,5 +183,7 @@ export const getPerangkatAjarTableColumns = (params: GetPerangkatAjarColumnsPara
         );
       }
     }
-  ];
+  );
+
+  return columns;
 };

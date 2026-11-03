@@ -503,7 +503,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
                   </div>
                 }
               >
-                <PerangkatAjarView guruId={guruId} hideLayout={true} />
+                <PerangkatAjarView guruId={guruId} hideLayout={true} roleContext="GURU" />
               </Suspense>
             )}
 
