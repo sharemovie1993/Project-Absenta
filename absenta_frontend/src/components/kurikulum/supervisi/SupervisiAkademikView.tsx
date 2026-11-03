@@ -135,10 +135,15 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
   const { options: kelasSelectOptions, rawList: kelasItems } = useKelasOptions();
   const { options: mapelSelectOptions, rawList: mapelItems } = useMapelOptions();
 
+  const userGuruProfileId = (user?.guru_profile as { id?: string })?.id;
   const currentGuru = useMemo(
-    () => (guruItems || [])?.find((g) => g.user_id === user?.id || g.id === (user?.guru_profile as { id?: string })?.id),
-    [guruItems, user]
+    () => (guruItems || [])?.find((g) => g.user_id === user?.id || g.id === userGuruProfileId),
+    [guruItems, user, userGuruProfileId]
   );
+
+  const resolvedGuruId = isGuruContext
+    ? (propGuruId || userGuruProfileId || currentGuru?.id)
+    : (propGuruId || academicFilter.values.guruId);
 
   // ── Konteks Akademik SSOT (AcademicFilterToolbar) ──────────────────────────
   const academicFilter = useAcademicFilter({
@@ -148,12 +153,12 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
     enableSearch: true,
     initialTpId: propTpId,
     initialSemesterId: propSemId,
-    initialGuruId: propGuruId || (isGuruContext ? currentGuru?.id : undefined),
+    initialGuruId: resolvedGuruId,
   });
 
   const activeTpId = propTpId || academicFilter.values.tahunPelajaranId;
   const activeSemId = propSemId || academicFilter.values.semesterId;
-  const activeGuruId = isGuruContext ? (propGuruId || currentGuru?.id) : (propGuruId || academicFilter.values.guruId);
+  const activeGuruId = resolvedGuruId;
   const debouncedSearch = academicFilter.debouncedSearchQuery;
 
   // 🛡️ Academic Context Guard: Deteksi apakah user sedang melihat tahun ajaran arsip/lampau

@@ -209,7 +209,8 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
 
   const activeTpId = propTpId || academicFilter.values.tahunPelajaranId;
   const activeSemId = propSemId || academicFilter.values.semesterId;
-  const activeGuruId = isGuruContext ? (propGuruId || currentGuru?.id) : (propGuruId || academicFilter.values.guruId);
+  const userGuruProfileId = (user?.guru_profile as { id?: string })?.id;
+  const activeGuruId = isGuruContext ? (propGuruId || userGuruProfileId || currentGuru?.id) : (propGuruId || academicFilter.values.guruId);
   const activeMapelId = propMapelId || academicFilter.values.mapelId;
   const activeSearch = academicFilter.debouncedSearchQuery;
 

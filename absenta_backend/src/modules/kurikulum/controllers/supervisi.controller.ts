@@ -2,6 +2,8 @@ import { SupervisiService } from '../services/supervisi.service';
 import { sendResponse, sendError } from '../../../utils/response';
 import { supervisiGuruCreateSchema, supervisiGuruUpdateSchema, supervisiSelfAssessmentSchema } from '../services/kurikulum.schema';
 import { z } from 'zod';
+import { prisma } from '@/utils/prisma';
+import { authorizationService } from '@/modules/auth/services/authorization.service';
 
 export class SupervisiController {
   static async create(req: any, reply: any) {
@@ -54,8 +56,29 @@ export class SupervisiController {
 
   static async getAll(req: any, reply: any) {
     try {
-      const { tenant_id } = req.user!;
-      const result = await SupervisiService.getAll(tenant_id, req.query);
+      const { tenant_id, id: userId } = req.user!;
+      const query = { ...req.query };
+
+      // 🛡️ Guru Data Isolation: Jika pengguna adalah GURU/WALIKELAS biasa (bukan admin/superadmin & tidak memegang capability supervisi kurikulum),
+      // maka batasi query hanya untuk guru_id milik dirinya sendiri.
+      const rawRole = req.user.roleName || req.user.Role?.name || (typeof req.user.role === 'string' ? req.user.role : req.user.role?.name);
+      const roleName = String(rawRole || '').trim().toUpperCase();
+
+      const isPrivileged = roleName === 'ADMIN' || roleName === 'SUPERADMIN';
+      if (!isPrivileged) {
+        const authCheck = await authorizationService.isUserAuthorized(String(userId), ['curriculum.supervision.manage', 'curriculum.supervision.view.schedule'], { user: req.user });
+        if (!authCheck.allowed) {
+          const guruProfile = await prisma.guru.findFirst({
+            where: { user_id: userId, tenant_id },
+            select: { id: true },
+          });
+          if (guruProfile) {
+            query.guru_id = guruProfile.id;
+          }
+        }
+      }
+
+      const result = await SupervisiService.getAll(tenant_id, query);
       return sendResponse(reply, 200, true, 'Data supervisi retrieved', result);
     } catch (error) {
       return sendError(reply, 500, 'Failed to retrieve supervisi data', error);
@@ -64,9 +87,30 @@ export class SupervisiController {
 
   static async getById(req: any, reply: any) {
     try {
-      const { tenant_id } = req.user!;
+      const { tenant_id, id: userId } = req.user!;
       const { id } = req.params;
       const result = await SupervisiService.getById(tenant_id, id);
+      if (!result) {
+        return sendError(reply, 404, 'Supervisi not found');
+      }
+
+      // Pastikan guru biasa hanya bisa melihat supervisi miliknya sendiri
+      const rawRole = req.user.roleName || req.user.Role?.name || (typeof req.user.role === 'string' ? req.user.role : req.user.role?.name);
+      const roleName = String(rawRole || '').trim().toUpperCase();
+      const isPrivileged = roleName === 'ADMIN' || roleName === 'SUPERADMIN';
+      if (!isPrivileged) {
+        const authCheck = await authorizationService.isUserAuthorized(String(userId), ['curriculum.supervision.view.report', 'curriculum.supervision.manage'], { user: req.user });
+        if (!authCheck.allowed) {
+          const guruProfile = await prisma.guru.findFirst({
+            where: { user_id: userId, tenant_id },
+            select: { id: true },
+          });
+          if (!guruProfile || result.guru_id !== guruProfile.id) {
+            return sendError(reply, 403, 'Forbidden: Anda hanya dapat melihat supervisi milik sendiri');
+          }
+        }
+      }
+
       return sendResponse(reply, 200, true, 'Data supervisi retrieved', result);
     } catch (error) {
       return sendError(reply, 500, 'Failed to retrieve supervisi data', error);

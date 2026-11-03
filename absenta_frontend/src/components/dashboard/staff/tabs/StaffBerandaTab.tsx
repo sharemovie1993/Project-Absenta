@@ -503,18 +503,18 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
                   </div>
                 }
               >
-                <PerangkatAjarView guruId={guruId} hideLayout={true} roleContext="GURU" />
+                <PerangkatAjarView guruId={effectiveGuruId} hideLayout={true} roleContext="GURU" />
               </Suspense>
             )}
 
             {/* SUB-TAB 3: BUKU NILAI & ASESMEN SISWA */}
             {activeSubTab === 'nilai' && (
-              <TeacherBukuNilaiSubTab guruId={guruId} guruNama={guruNama} />
+              <TeacherBukuNilaiSubTab guruId={effectiveGuruId} guruNama={guruNama} />
             )}
 
             {/* SUB-TAB 4: RADAR REMEDIAL SISWA (EARLY DETECTION HUB) */}
             {activeSubTab === 'remedial' && (
-              <TeacherRadarRemedialSubTab guruId={guruId} />
+              <TeacherRadarRemedialSubTab guruId={effectiveGuruId} />
             )}
 
             {/* SUB-TAB 4: REKAPITULASI PRESENSI MAPEL */}
@@ -541,7 +541,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
                   </div>
                 }
               >
-                <SupervisiAkademikView guruId={guruId} hideLayout={true} readOnly={true} roleContext="GURU" />
+                <SupervisiAkademikView guruId={effectiveGuruId} hideLayout={true} readOnly={true} roleContext="GURU" />
               </Suspense>
             )}
 
