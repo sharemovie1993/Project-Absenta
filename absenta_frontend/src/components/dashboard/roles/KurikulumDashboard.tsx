@@ -22,7 +22,9 @@ import {
   Settings,
   BarChart2,
   UserCheck,
+  Settings2,
 } from 'lucide-react';
+import { Loader } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { useJenjang } from '@/hooks/useJenjang';
@@ -61,6 +63,7 @@ import { KurikulumDelegasiTab } from './kurikulum/tabs/KurikulumDelegasiTab';
 import { KurikulumCetakTab } from './kurikulum/tabs/KurikulumCetakTab';
 import { KurikulumRekapKbmTab } from './kurikulum/tabs/KurikulumRekapKbmTab';
 import { KurikulumWaliKelasTab } from './kurikulum/tabs/KurikulumWaliKelasTab';
+const TenantAttendanceForm = React.lazy(() => import('@/components/attendance/settings/TenantAttendanceForm'));
 
 export interface KurikulumDashboardProps {
   user?: {
@@ -85,6 +88,7 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
     'rapor',
     'kalender',
     'jam_kbm',
+    'aturan_absensi',
     'struktur',
     'guru_mapel',
     'wali_kelas',
@@ -415,6 +419,15 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
         shortLabel: 'Jam KBM',
         category: 'persiapan',
         icon: Clock,
+      },
+      {
+        id: 'aturan_absensi',
+        label: 'Aturan Jam & Presensi',
+        shortLabel: 'Aturan Presensi',
+        category: 'persiapan',
+        icon: Settings2,
+        badge: 'PLENO',
+        badgeColor: 'bg-emerald-600 text-white',
       },
       {
         id: 'struktur',
@@ -936,6 +949,26 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               className={cn('w-full min-w-0', activeTab === 'jam_kbm' ? 'block' : 'hidden')}
             >
               <KurikulumJamKbmTab />
+            </div>
+          )}
+
+          {/* TAB: ATURAN JAM & PRESENSI SEKOLAH (SUBTAB KHUSUS) */}
+          {visitedTabs.has('aturan_absensi') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'aturan_absensi'}
+              className={cn('w-full min-w-0', activeTab === 'aturan_absensi' ? 'block' : 'hidden')}
+            >
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Kebijakan Presensi Sekolah...</span>
+                  </div>
+                }
+              >
+                <TenantAttendanceForm hideLayout={true} />
+              </Suspense>
             </div>
           )}
 

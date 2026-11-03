@@ -9,6 +9,7 @@ export type KurikulumTabId =
   | 'rapor'
   | 'kalender'
   | 'jam_kbm'
+  | 'aturan_absensi'
   | 'struktur'
   | 'guru_mapel'
   | 'wali_kelas'
