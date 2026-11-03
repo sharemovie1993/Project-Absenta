@@ -2,6 +2,7 @@ import React, { useMemo, useCallback, useState } from 'react';
 import { Users, LayoutGrid, List, School, Sun, Moon, Check, Sparkles } from 'lucide-react';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Tabular, type TabularColumn } from '@/components/ui/Tabular';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { cn } from '@/lib/utils';
 import type { ShiftConfig, KelasOption } from './JamKBMTypes';
 
@@ -87,6 +88,8 @@ export default React.memo(function JamKBMClassAssignmentPanel({
   onShiftConfigChange,
   readOnly = false,
 }: JamKBMClassAssignmentPanelProps) {
+  const isMobile = useIsMobile(768);
+
   // ── View Mode: 'TREE' (Diagram Struktur Pohon) | 'TABLE' (Tabular) ──
   const [viewMode, setViewMode] = useState<'TREE' | 'TABLE'>('TREE');
 
@@ -289,39 +292,141 @@ export default React.memo(function JamKBMClassAssignmentPanel({
           })}
         </div>
 
-        {/* Right: View Mode Toggle */}
-        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
-          <button
-            type="button"
-            onClick={() => setViewMode('TREE')}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
-              viewMode === 'TREE'
-                ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
-                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-            )}
-          >
-            <LayoutGrid className="w-3.5 h-3.5" />
-            <span>Pohon Tingkat</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('TABLE')}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
-              viewMode === 'TABLE'
-                ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
-                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-            )}
-          >
-            <List className="w-3.5 h-3.5" />
-            <span>Tabel Ringkas</span>
-          </button>
-        </div>
+        {/* Right: View Mode Toggle (Hanya ditampilkan pada Tablet/Desktop, sembunyikan di HP) */}
+        {!isMobile && (
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
+            <button
+              type="button"
+              onClick={() => setViewMode('TREE')}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                viewMode === 'TREE'
+                  ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                  : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+              )}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Pohon Tingkat</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('TABLE')}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                viewMode === 'TABLE'
+                  ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                  : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+              )}
+            >
+              <List className="w-3.5 h-3.5" />
+              <span>Tabel Ringkas</span>
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* ── Render View Mode ── */}
-      {viewMode === 'TREE' ? (
+      {/* ── Mode HP: Khusus Tampilan Vertikal Responsif (Tanpa Diagram Pohon) ── */}
+      {isMobile ? (
+        <div className="space-y-3.5">
+          {groupedByTingkat.map(({ tingkat, kelas }) => {
+            const theme = getTingkatTheme(tingkat);
+            const tingkatTitle = tingkat === 0 ? 'Lainnya' : `Tingkat ${toRoman(tingkat)}`;
+
+            return (
+              <div
+                key={tingkat}
+                className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 shadow-xs space-y-2"
+              >
+                {/* Header Tingkat dengan Alokasi Cepat */}
+                <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <span className={cn("px-2.5 py-0.5 rounded-lg text-xs font-black text-white", theme.headerBg)}>
+                      {tingkatTitle}
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-400">
+                      {kelas.length} Rombel
+                    </span>
+                  </div>
+
+                  {!readOnly && shifts.length === 2 && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleBulkAssignTingkat(kelas, shifts[0].id)}
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40 cursor-pointer"
+                      >
+                        Semua {shifts[0].name.replace(/shift\s*/i, '')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleBulkAssignTingkat(kelas, shifts[1].id)}
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/40 cursor-pointer"
+                      >
+                        Semua {shifts[1].name.replace(/shift\s*/i, '')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Daftar Rombel Kelas dalam Tingkat */}
+                <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {kelas.map((k) => {
+                    const assignedShiftId = shiftConfig?.class_assignments?.[k.value] ?? defaultShiftId;
+                    const cleanLabel = k.label.replace(/\s*-\s*Tingkat\s+\d+/i, '').trim();
+
+                    return (
+                      <div key={k.value} className="py-2 flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                          {cleanLabel}
+                        </span>
+
+                        {readOnly ? (
+                          <span className="text-xs font-bold text-slate-500">
+                            {shifts.find(s => s.id === assignedShiftId)?.name ?? '-'}
+                          </span>
+                        ) : shifts.length === 2 ? (
+                          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/60 dark:border-slate-700/60 shrink-0">
+                            {shifts.map((s, sIdx) => {
+                              const isAssigned = assignedShiftId === s.id;
+                              const palette = SHIFT_PALETTES[sIdx % SHIFT_PALETTES.length];
+                              return (
+                                <button
+                                  key={s.id}
+                                  type="button"
+                                  onClick={() => handleAssignmentChange(k.value, s.id)}
+                                  className={cn(
+                                    "py-1 px-2 rounded-md text-[10px] font-black uppercase transition-all cursor-pointer flex items-center gap-1",
+                                    isAssigned
+                                      ? palette.activeBtn
+                                      : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                                  )}
+                                >
+                                  {isAssigned && <Check className="w-2.5 h-2.5 shrink-0" />}
+                                  <span>{s.name.replace(/shift\s*/i, '')}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <SearchableSelect
+                            id={`select-shift-kelas-mob-${k.value}`}
+                            value={assignedShiftId}
+                            onValueChange={val => handleAssignmentChange(k.value, val)}
+                            options={shiftOptions}
+                            placeholder="Pilih shift..."
+                            triggerClassName="h-7 text-[10px] font-bold bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg w-36"
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : viewMode === 'TREE' ? (
+        /* ── Mode Desktop: Diagram Pohon Tingkat ── */
         <div className="w-full overflow-x-auto bg-slate-50/50 dark:bg-slate-950/40 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-inner custom-scrollbar p-6">
           <div className="flex flex-col items-center min-w-[760px] py-2">
             
@@ -487,7 +592,7 @@ export default React.memo(function JamKBMClassAssignmentPanel({
           </div>
         </div>
       ) : (
-        /* Tabular View */
+        /* ── Mode Desktop: Tabular View ── */
         <div className="border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl overflow-hidden shadow-xs">
           <Tabular
             columns={columns}
