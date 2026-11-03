@@ -9,6 +9,8 @@ import { useQuery } from '@tanstack/react-query';
 import { getStrukturTree, getStrukturList } from '@/api/academic/strukturOrganisasi.api';
 import { sekolahApi } from '@/api/academic/sekolah.api';
 import { useCapabilities } from '@/hooks/useCapabilities';
+import { useTahunPelajaranOptions } from '@/hooks/useTahunPelajaranOptions';
+import { useSemesterOptions } from '@/hooks/useSemesterOptions';
 import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
 import { toast } from 'react-hot-toast';
@@ -186,6 +188,34 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
     };
   }, [treeRes, listRes, sekolahRes, tenantInfo, isKurikulum, user]);
 
+  // ── Auto-Resolving Academic Year & Semester ──
+  const { activeTahunPelajaran } = useTahunPelajaranOptions();
+  const { activeSemester } = useSemesterOptions({ tahunPelajaranId: activeTahunPelajaran?.id });
+
+  const resolvedTahunPelajaran = tahunPelajaranNama || activeTahunPelajaran?.tahun || '2026/2027';
+  const resolvedSemester = semesterNama || activeSemester?.nama_semester || (activeSemester as any)?.nama || 'Ganjil';
+
+  // Menghitung default tanggal titimangsa akademik (1 Juli untuk Ganjil, 2 Januari untuk Genap)
+  const defaultAcademicDate = useMemo(() => {
+    const yearMatch = resolvedTahunPelajaran.match(/\b(20\d{2})\b/);
+    const startYear = yearMatch ? parseInt(yearMatch[1], 10) : new Date().getFullYear();
+    const semLower = resolvedSemester.toLowerCase();
+    const isGenap = semLower.includes('genap') || semLower.includes('2');
+
+    if (isGenap) {
+      return `2 Januari ${startYear + 1}`;
+    }
+    return `1 Juli ${startYear}`;
+  }, [resolvedTahunPelajaran, resolvedSemester]);
+
+  const todayStr = useMemo(() => {
+    return new Intl.DateTimeFormat('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(new Date());
+  }, []);
+
   // Custom Signers State (Editable)
   const [isEditingSigners, setIsEditingSigners] = useState(false);
   const [wakaKurikulumNama, setWakaKurikulumNama] = useState(resolvedSigners.kurikulumNama);
@@ -193,6 +223,12 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
   const [kepalaSekolahNama, setKepalaSekolahNama] = useState(resolvedSigners.kepsekNama);
   const [kepalaSekolahNip, setKepalaSekolahNip] = useState(resolvedSigners.kepsekNip);
   const [kotaTitimangsa, setKotaTitimangsa] = useState(resolvedSigners.kota);
+  const [tanggalTitimangsa, setTanggalTitimangsa] = useState(defaultAcademicDate);
+
+  // Sync saat defaultAcademicDate berubah
+  useEffect(() => {
+    setTanggalTitimangsa(defaultAcademicDate);
+  }, [defaultAcademicDate]);
 
   // Re-sync saat data struktur organisasi selesai dimuat
   useEffect(() => {
@@ -219,7 +255,8 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
     setKepalaSekolahNama(resolvedSigners.kepsekNama);
     setKepalaSekolahNip(resolvedSigners.kepsekNip);
     setKotaTitimangsa(resolvedSigners.kota);
-    toast.success('Pengesah di-reset ke data Struktur Organisasi');
+    setTanggalTitimangsa(defaultAcademicDate);
+    toast.success('Pengesah & titimangsa di-reset ke standar akademik');
   };
 
   const currentShift = useMemo<ShiftItem | undefined>(() => {
@@ -404,14 +441,6 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
     }
     return rows;
   }, [maxSlotNum, activeDays, getDaySchedule]);
-
-  const todayStr = useMemo(() => {
-    return new Intl.DateTimeFormat('id-ID', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    }).format(new Date());
-  }, []);
 
   // Dual-Engine True WYSIWYG PDF Download
   const handleDownloadPdf = async () => {
@@ -634,13 +663,39 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
               </div>
 
               <div>
-                <label className="font-bold text-slate-500 block mb-1">Kota Titimangsa:</label>
-                <input
-                  type="text"
-                  value={kotaTitimangsa}
-                  onChange={e => setKotaTitimangsa(e.target.value)}
-                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium"
-                />
+                <label className="font-bold text-slate-500 block mb-1">Titimangsa (Kota &amp; Tanggal):</label>
+                <div className="space-y-1.5">
+                  <input
+                    type="text"
+                    placeholder="Kota (contoh: Purwakarta)"
+                    value={kotaTitimangsa}
+                    onChange={e => setKotaTitimangsa(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Tanggal Titimangsa"
+                    value={tanggalTitimangsa}
+                    onChange={e => setTanggalTitimangsa(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setTanggalTitimangsa(defaultAcademicDate)}
+                    className="px-2 py-1 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60 text-[10px] font-bold hover:bg-indigo-100 transition-colors cursor-pointer"
+                  >
+                    Awal Semester ({defaultAcademicDate})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTanggalTitimangsa(todayStr)}
+                    className="px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[10px] font-bold hover:bg-slate-200 transition-colors cursor-pointer"
+                  >
+                    Hari Ini ({todayStr})
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -670,7 +725,7 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
                 DISTRIBUSI JAM PELAJARAN (JP) &amp; WAKTU BEL KBM
               </h2>
               <p className="text-[11px] font-bold uppercase mt-0.5 tracking-wide">
-                TAHUN PELAJARAN {tahunPelajaranNama} {semesterNama ? `– SEMESTER ${semesterNama.toUpperCase()}` : ''}
+                TAHUN PELAJARAN {resolvedTahunPelajaran} {resolvedSemester ? `– SEMESTER ${resolvedSemester.toUpperCase()}` : ''}
               </p>
               {shifts.length > 1 && currentShift && (
                 <div className="inline-block mt-1 px-3 py-0.5 rounded-md border border-black text-[10px] font-black uppercase tracking-wider bg-slate-50">
@@ -895,7 +950,7 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
               {/* Kolom Kanan: Kepala Sekolah */}
               <div className="text-center w-64">
                 <div>
-                  {kotaTitimangsa}, {todayStr}
+                  {kotaTitimangsa}, {tanggalTitimangsa}
                 </div>
                 <div className="font-bold">Kepala Sekolah</div>
                 <div className="h-16" />
