@@ -16,6 +16,7 @@ export interface PklNavTabItem {
   shortLabel: string;
   icon: LucideIcon;
   badge?: number | string;
+  badgeColor?: string;
 }
 
 export interface SiswaBimbinganItem {
@@ -65,4 +66,7 @@ export interface PklDashboardStats {
   persentase_dinilai: number;
   siswa_bimbingan_list?: SiswaBimbinganItem[];
   kunjungan_terbaru?: KunjunganMonitoringItem[];
+  siswa_belum_dinilai?: number;
+  siswa_sudah_dinilai?: number;
+  siswa_belum_dikunjungi?: number;
 }

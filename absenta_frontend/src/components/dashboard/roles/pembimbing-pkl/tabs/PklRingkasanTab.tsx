@@ -96,6 +96,7 @@ export const PklRingkasanTab: React.FC<PklRingkasanTabProps> = ({
         label: 'Siswa Bimbingan',
         icon: Users,
         iconColorClass: 'text-teal-600 dark:text-teal-400',
+        badge: stats.total_siswa_bimbingan,
         onClick: () => onSelectTab('bimbingan'),
       },
       {
@@ -111,6 +112,7 @@ export const PklRingkasanTab: React.FC<PklRingkasanTabProps> = ({
         label: 'Rekap Presensi',
         icon: CalendarCheck,
         iconColorClass: 'text-emerald-600 dark:text-emerald-400',
+        badge: stats.siswa_aktif || stats.total_siswa_bimbingan,
         onClick: () => onSelectTab('absensi'),
       },
       {
@@ -123,16 +125,18 @@ export const PklRingkasanTab: React.FC<PklRingkasanTabProps> = ({
       },
       {
         id: 'act-monitoring',
-        label: 'Catat Supervisi',
+        label: 'Supervisi DU/DI',
         icon: Calendar,
         iconColorClass: 'text-indigo-600 dark:text-indigo-400',
+        badge: (stats.siswa_belum_dikunjungi ?? 0) > 0 ? stats.siswa_belum_dikunjungi : stats.total_kunjungan_terlaksana,
         onClick: () => onSelectTab('monitoring'),
       },
       {
         id: 'act-nilai',
-        label: 'Input Penilaian',
+        label: 'Penilaian PKL',
         icon: Award,
         iconColorClass: 'text-emerald-600 dark:text-emerald-400',
+        badge: (stats.siswa_belum_dinilai ?? 0) > 0 ? stats.siswa_belum_dinilai : undefined,
         onClick: () => onSelectTab('penilaian'),
       },
       {
@@ -140,10 +144,20 @@ export const PklRingkasanTab: React.FC<PklRingkasanTabProps> = ({
         label: 'Cetak Lembar PKL',
         icon: Printer,
         iconColorClass: 'text-purple-600 dark:text-purple-400',
+        badge: stats.total_siswa_bimbingan,
         onClick: () => onSelectTab('rekap'),
       },
     ],
-    [stats.absensi_pending_verification, stats.jurnal_pending_review, onSelectTab]
+    [
+      stats.total_siswa_bimbingan,
+      stats.absensi_pending_verification,
+      stats.siswa_aktif,
+      stats.jurnal_pending_review,
+      stats.siswa_belum_dikunjungi,
+      stats.total_kunjungan_terlaksana,
+      stats.siswa_belum_dinilai,
+      onSelectTab,
+    ]
   );
 
   const siswaList = stats.siswa_bimbingan_list || [];

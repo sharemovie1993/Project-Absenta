@@ -201,6 +201,27 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
 
     const realLogbooks = extractLogbooksFromPenempatan(rawList);
 
+    // Hitung siswa yang belum dinilai (PR Utama Penilaian PKL)
+    const belumDinilaiCount = rawList.filter((p: any) => {
+      const n =
+        p.nilai_akhir_pkl ??
+        p.hard_kompetensi_teknis ??
+        p.nilai_json?.nilai_akhir ??
+        p.nilai_json?.nilai_akhir_pkl;
+      return n === null || n === undefined || n === '' || Number(n) === 0;
+    }).length;
+    const sudahDinilaiCount = rawList.length - belumDinilaiCount;
+
+    // Hitung siswa yang belum pernah dikunjungi (PR Supervisi DU/DI)
+    const belumDikunjungiCount = rawList.filter((p: any) => {
+      let list: any[] = [];
+      if (Array.isArray(p.kunjungan_json)) list = p.kunjungan_json;
+      else if (typeof p.kunjungan_json === 'string') {
+        try { list = JSON.parse(p.kunjungan_json); } catch { list = []; }
+      }
+      return list.length === 0;
+    }).length;
+
     const computedStats: PklDashboardStats = {
       total_siswa_bimbingan: mappedSiswa.length,
       siswa_aktif: activeCount,
@@ -209,9 +230,12 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
       absensi_pending_verification: pendingAbsensiCount,
       jurnal_pending_review: realLogbooks.filter((l) => l.status_verifikasi === 'MENUNGGU_REVIEW').length,
       total_kunjungan_terlaksana: uniqueVisitSessions.length,
-      persentase_dinilai: 75,
+      persentase_dinilai: mappedSiswa.length > 0 ? Math.round((sudahDinilaiCount / mappedSiswa.length) * 100) : 0,
       siswa_bimbingan_list: mappedSiswa,
       kunjungan_terbaru: uniqueVisitSessions,
+      siswa_belum_dinilai: belumDinilaiCount,
+      siswa_sudah_dinilai: sudahDinilaiCount,
+      siswa_belum_dikunjungi: belumDikunjungiCount,
     };
 
     return { stats: computedStats, siswaList: mappedSiswa, logbookList: realLogbooks, kunjunganList: uniqueVisitSessions };
@@ -228,19 +252,86 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
     };
   }, [selectedDetailSiswa, penempatanRes]);
 
-  // Navigation Items
+  // Navigation Items dengan Badge Lengkap di Seluruh Subtab
   const navTabs: PklNavTabItem[] = useMemo(
     () => [
       { id: 'ringkasan', label: 'Ringkasan Beranda', shortLabel: 'Beranda', icon: Briefcase },
-      { id: 'bimbingan', label: 'Siswa Bimbingan', shortLabel: 'Bimbingan', icon: Users, badge: stats.total_siswa_bimbingan },
-      { id: 'verifikasi_absensi', label: 'Verifikasi Absensi', shortLabel: 'Verif Absen', icon: ShieldCheck, badge: stats.absensi_pending_verification },
-      { id: 'absensi', label: 'Rekap Presensi', shortLabel: 'Presensi', icon: CalendarCheck },
-      { id: 'jurnal', label: 'Verifikasi Jurnal', shortLabel: 'Jurnal', icon: Clock, badge: stats.jurnal_pending_review },
-      { id: 'monitoring', label: 'Supervisi DU/DI', shortLabel: 'Supervisi', icon: Calendar },
-      { id: 'penilaian', label: 'Penilaian PKL', shortLabel: 'Nilai PKL', icon: Award },
-      { id: 'rekap', label: 'Cetak Dokumen', shortLabel: 'Cetak', icon: Printer },
+      {
+        id: 'bimbingan',
+        label: 'Siswa Bimbingan',
+        shortLabel: 'Bimbingan',
+        icon: Users,
+        badge: stats.total_siswa_bimbingan,
+        badgeColor: 'bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300',
+      },
+      {
+        id: 'verifikasi_absensi',
+        label: 'Verifikasi Absensi',
+        shortLabel: 'Verif Absen',
+        icon: ShieldCheck,
+        badge: stats.absensi_pending_verification ?? 0,
+        badgeColor: (stats.absensi_pending_verification ?? 0) > 0
+          ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-400 font-black'
+          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400',
+      },
+      {
+        id: 'absensi',
+        label: 'Rekap Presensi',
+        shortLabel: 'Presensi',
+        icon: CalendarCheck,
+        badge: stats.siswa_aktif || stats.total_siswa_bimbingan,
+        badgeColor: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300',
+      },
+      {
+        id: 'jurnal',
+        label: 'Verifikasi Jurnal',
+        shortLabel: 'Jurnal',
+        icon: Clock,
+        badge: stats.jurnal_pending_review ?? 0,
+        badgeColor: (stats.jurnal_pending_review ?? 0) > 0
+          ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400 font-black'
+          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400',
+      },
+      {
+        id: 'monitoring',
+        label: 'Supervisi DU/DI',
+        shortLabel: 'Supervisi',
+        icon: Calendar,
+        badge: (stats.siswa_belum_dikunjungi ?? 0) > 0
+          ? `${stats.siswa_belum_dikunjungi} Belum`
+          : stats.total_kunjungan_terlaksana,
+        badgeColor: (stats.siswa_belum_dikunjungi ?? 0) > 0
+          ? 'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400'
+          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400',
+      },
+      {
+        id: 'penilaian',
+        label: 'Penilaian PKL',
+        shortLabel: 'Nilai PKL',
+        icon: Award,
+        badge: stats.siswa_belum_dinilai ?? 0,
+        badgeColor: (stats.siswa_belum_dinilai ?? 0) > 0
+          ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-400 font-black'
+          : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300',
+      },
+      {
+        id: 'rekap',
+        label: 'Cetak Dokumen',
+        shortLabel: 'Cetak',
+        icon: Printer,
+        badge: stats.total_siswa_bimbingan,
+        badgeColor: 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300',
+      },
     ],
-    [stats.total_siswa_bimbingan, stats.absensi_pending_verification, stats.jurnal_pending_review]
+    [
+      stats.total_siswa_bimbingan,
+      stats.absensi_pending_verification,
+      stats.siswa_aktif,
+      stats.jurnal_pending_review,
+      stats.siswa_belum_dikunjungi,
+      stats.total_kunjungan_terlaksana,
+      stats.siswa_belum_dinilai,
+    ]
   );
 
   const activeTabMeta = useMemo(() => {
@@ -342,6 +433,40 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
           </div>
         </div>
 
+        {/* Mobile Horizontal Subtab Strip */}
+        <div className="lg:hidden flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          {navTabs.map((tab) => {
+            const IconComp = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleTabSelect(tab.id)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer',
+                  isActive
+                    ? 'bg-teal-600 text-white shadow-2xs font-black'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-800'
+                )}
+              >
+                <IconComp size={13} className={isActive ? 'text-white' : 'text-slate-400'} />
+                <span>{tab.shortLabel}</span>
+                {tab.badge !== undefined && tab.badge !== null && (
+                  <span
+                    className={cn(
+                      'text-[9px] px-1.5 py-0.2 rounded-full font-bold',
+                      isActive ? 'bg-white/25 text-white' : tab.badgeColor || 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                    )}
+                  >
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
         {/* 2. Desktop 2-Column Sidebar Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-4 sm:gap-5 items-start">
           {/* Left Sidebar (Desktop Only) */}
@@ -382,8 +507,13 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                         <IconComp size={16} className={cn(isActive ? 'text-white' : 'text-slate-400')} />
                         <span className="truncate">{tab.label}</span>
                       </div>
-                      {typeof tab.badge === 'number' && tab.badge > 0 && (
-                        <span className={cn('text-[10px] px-1.5 py-0.2 rounded-full font-bold', isActive ? 'bg-white/25 text-white' : 'bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300')}>
+                      {tab.badge !== undefined && tab.badge !== null && (
+                        <span
+                          className={cn(
+                            'text-[10px] px-2 py-0.5 rounded-full font-bold',
+                            isActive ? 'bg-white/25 text-white' : tab.badgeColor || 'bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300'
+                          )}
+                        >
                           {tab.badge}
                         </span>
                       )}
