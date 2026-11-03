@@ -106,7 +106,7 @@ export const UkkRabPrintModal: React.FC<UkkRabPrintModalProps> = ({
         const { jsPDF } = await import('jspdf');
 
         const canvas = await html2canvas(sheetElement, {
-          scale: 2.5,
+          scale: 2,
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#ffffff',
@@ -117,10 +117,11 @@ export const UkkRabPrintModal: React.FC<UkkRabPrintModalProps> = ({
           orientation: 'portrait',
           unit: 'mm',
           format: 'a4',
+          compress: true,
         });
 
-        const imgData = canvas.toDataURL('image/png');
-        pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+        const imgData = canvas.toDataURL('image/jpeg', 0.88);
+        pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
         const filename = `RAB_UKK_${(rabData.jurusanNama || jurusanNama).replace(/\s+/g, '_')}_TA_${(tahunPelajaran || 'TA').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
         pdf.save(filename);
         toast.success('Dokumen PDF berhasil diunduh (Presisi 100% Layar)', { id: 'pdf-rab-export' });

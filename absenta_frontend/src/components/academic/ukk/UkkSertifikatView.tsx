@@ -314,23 +314,24 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
           orientation: orientation,
           unit: 'mm',
           format: 'a4',
+          compress: true,
         });
 
         for (let i = 0; i < sheets.length; i++) {
           const sheet = sheets[i] as HTMLElement;
           const canvas = await html2canvas(sheet, {
-            scale: 2.5,
+            scale: 2,
             useCORS: true,
             allowTaint: true,
             backgroundColor: '#ffffff',
             logging: false,
           });
 
-          const imgData = canvas.toDataURL('image/png');
+          const imgData = canvas.toDataURL('image/jpeg', 0.88);
           if (i > 0) {
             pdf.addPage('a4', orientation);
           }
-          pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+          pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
         }
 
         pdf.save(filename);

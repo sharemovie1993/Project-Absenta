@@ -243,6 +243,7 @@ export const RekapPresensiPrintModal: React.FC<RekapPresensiPrintModalProps> = (
         orientation: isLandscape ? 'landscape' : 'portrait',
         unit: 'mm',
         format: 'a4',
+        compress: true,
       });
 
       const pdfWidth = isLandscape ? 297 : 210;
@@ -255,15 +256,15 @@ export const RekapPresensiPrintModal: React.FC<RekapPresensiPrintModalProps> = (
 
         const sheet = sheetElements[i] as HTMLElement;
         const canvas = await html2canvas(sheet, {
-          scale: 2.5,
+          scale: 2,
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#ffffff',
           logging: false,
         });
 
-        const imgData = canvas.toDataURL('image/png');
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        const imgData = canvas.toDataURL('image/jpeg', 0.88);
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
       }
 
       const modeSlug = viewMode === 'MATRIX' ? 'Leger_Presensi' : 'Rekap_Presensi';

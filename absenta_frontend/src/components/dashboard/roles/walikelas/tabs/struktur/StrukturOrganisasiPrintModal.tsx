@@ -149,21 +149,22 @@ export const StrukturOrganisasiPrintModal: React.FC<StrukturOrganisasiPrintModal
       }
 
       const canvas = await html2canvas(sheetElement, {
-        scale: 2.5,
+        scale: 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
         logging: false,
       });
 
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = canvas.toDataURL('image/jpeg', 0.88);
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4',
+        compress: true,
       });
 
-      pdf.addImage(imgData, 'PNG', 0, 0, 210, 297);
+      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
       pdf.save(`Struktur_Organisasi_${kelasNama.replace(/\s+/g, '_')}.pdf`);
       toast.success('PDF Struktur Organisasi berhasil diunduh!', { id: toastId });
     } catch (err) {

@@ -156,21 +156,22 @@ export const TrackingSiswaPrintModal: React.FC<TrackingSiswaPrintModalProps> = (
         orientation: isLandscape ? 'landscape' : 'portrait',
         unit: 'mm',
         format: 'a4',
+        compress: true,
       });
 
       const pdfWidth = isLandscape ? 297 : 210;
       const pdfHeight = isLandscape ? 210 : 297;
 
       const canvas = await html2canvas(sheet, {
-        scale: 2.5,
+        scale: 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
         logging: false,
       });
 
-      const imgData = canvas.toDataURL('image/png');
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      const imgData = canvas.toDataURL('image/jpeg', 0.88);
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
 
       const safeSiswa = siswaNama.replace(/[^a-zA-Z0-9]/g, '_');
       pdf.save(`Tracking_Presensi_${safeSiswa}_${bulan || 'Bulan'}.pdf`);

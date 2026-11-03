@@ -175,25 +175,26 @@ export const JadwalPiketPrintModal: React.FC<JadwalPiketPrintModalProps> = ({
       }
 
       const canvas = await html2canvas(sheetElement, {
-        scale: 2.5,
+        scale: 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
         logging: false,
       });
 
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = canvas.toDataURL('image/jpeg', 0.88);
       const isLandscape = orientation === 'landscape';
       const pdf = new jsPDF({
         orientation: isLandscape ? 'landscape' : 'portrait',
         unit: 'mm',
         format: 'a4',
+        compress: true,
       });
 
       const pdfWidth = isLandscape ? 297 : 210;
       const pdfHeight = isLandscape ? 210 : 297;
 
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
       pdf.save(`Jadwal_Piket_${kelasNama.replace(/\s+/g, '_')}.pdf`);
       toast.success('PDF Jadwal Piket berhasil diunduh!', { id: toastId });
     } catch (err) {
