@@ -21,7 +21,6 @@ import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import { KunjunganStatsCards } from './KunjunganStatsCards';
-import { KunjunganFeedItem } from './KunjunganFeedItem';
 import { KunjunganTargetList } from './KunjunganTargetList';
 import { useKunjunganData } from './useKunjunganData';
 import type { UniversalKunjunganPklViewProps, KunjunganItemDetail, SiswaTargetItem, MitraTargetGroup } from './types';
@@ -32,8 +31,6 @@ const KunjunganPrintModal = lazy(() => import('./KunjunganPrintModal').then(m =>
 const HubinPklKunjunganKolektifModal = lazy(() => import('./HubinPklKunjunganKolektifModal').then(m => ({ default: m.HubinPklKunjunganKolektifModal })));
 const KunjunganMitraPrintModal = lazy(() => import('./KunjunganMitraPrintModal').then(m => ({ default: m.KunjunganMitraPrintModal })));
 const KunjunganSiswaHistoryModal = lazy(() => import('./KunjunganSiswaHistoryModal').then(m => ({ default: m.KunjunganSiswaHistoryModal })));
-
-type ActiveViewMode = 'TARGET' | 'FEED';
 
 export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.memo(({
   guruId: propGuruId,
@@ -60,8 +57,7 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
   const effectiveTpId = propTpId || academicFilter.activeTpYear?.id;
   const effectiveJurusanId = propJurusanId;
 
-  // 2. View Mode & Filter State
-  const [activeViewMode, setActiveViewMode] = useState<ActiveViewMode>('TARGET');
+  // 2. Filter State
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMitraFilter, setSelectedMitraFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'UNVISITED' | 'VISITED'>('ALL');
@@ -143,20 +139,6 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
       })
       .filter((g) => g.siswaList.length > 0);
   }, [targetGroups, selectedMitraFilter, statusFilter, searchTerm]);
-
-  // Filtered Feed List
-  const filteredVisits = useMemo(() => {
-    return allVisits.filter((v) => {
-      const matchSearch =
-        v.nama_siswa.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        v.nama_mitra.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        v.catatan.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (v.catatan_dudi && v.catatan_dudi.toLowerCase().includes(searchTerm.toLowerCase()));
-
-      const matchMitra = selectedMitraFilter === 'ALL' || v.mitra_id === selectedMitraFilter;
-      return matchSearch && matchMitra;
-    });
-  }, [allVisits, searchTerm, selectedMitraFilter]);
 
   // 5. Mutations
   const addVisitMutation = useMutation({
@@ -240,14 +222,6 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
     deleteVisitMutation.mutate({ id: item.penempatan_id, kunjunganId: item.rawKunjunganId });
   }, [deleteVisitMutation]);
 
-  const handlePrintVisit = useCallback((item: KunjunganItemDetail) => {
-    const targetPkl = rawList.find((p) => p.id === item.penempatan_id);
-    if (targetPkl) {
-      setPrintPkl(targetPkl);
-      setIsPrintModalOpen(true);
-    }
-  }, [rawList]);
-
   const handleKunjunganSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>, editId?: string) => {
       e.preventDefault();
@@ -305,84 +279,68 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
       {/* 3. Bento Metric Stats */}
       {!hideHeaderStats && <KunjunganStatsCards stats={stats} />}
 
-      {/* 4. Dual-View Mode Switcher */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="inline-flex p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 max-w-full overflow-x-auto no-scrollbar">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveViewMode('TARGET');
-              if (searchTerm) setSearchTerm('');
-            }}
-            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
-              activeViewMode === 'TARGET'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <Users size={14} />
-            <span>Target &amp; Siswa<span className="hidden sm:inline"> Bimbingan</span></span>
-            {stats.unvisitedSiswaCount > 0 && (
-              <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-rose-500 text-white">
-                {stats.unvisitedSiswaCount}
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveViewMode('FEED')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
-              activeViewMode === 'FEED'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <History size={14} />
-            <span>Riwayat<span className="hidden sm:inline"> Log Supervisi</span></span>
-            <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-              {allVisits.length}
-            </span>
-          </button>
-        </div>
-
-        {activeViewMode === 'TARGET' && (
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-            {(['ALL', 'UNVISITED', 'VISITED'] as const).map((st) => (
+      {/* 4. Streamlined Filter & Search Toolbar */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 sm:p-3.5 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        {/* Sisi Kiri: Status Filter Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+          {(['ALL', 'UNVISITED', 'VISITED'] as const).map((st) => {
+            const isActive = statusFilter === st;
+            return (
               <Button
                 key={st}
                 size="sm"
-                variant={statusFilter === st ? 'primary' : 'outline'}
+                variant={isActive ? 'primary' : 'outline'}
                 onClick={() => setStatusFilter(st)}
-                className="text-xs font-bold rounded-xl h-8 shrink-0"
+                className={cn(
+                  'text-xs font-bold rounded-xl h-9 shrink-0 px-3 cursor-pointer transition-all',
+                  isActive
+                    ? 'bg-teal-600 hover:bg-teal-700 text-white shadow-xs border-transparent'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                )}
               >
-                {st === 'ALL' ? 'Semua Target' : st === 'UNVISITED' ? 'Belum Dikunjungi' : 'Sudah Dikunjungi'}
+                <span>
+                  {st === 'ALL'
+                    ? 'Semua Target'
+                    : st === 'UNVISITED'
+                    ? 'Belum Dikunjungi'
+                    : 'Sudah Dikunjungi'}
+                </span>
+                {st === 'UNVISITED' && stats.unvisitedSiswaCount > 0 && (
+                  <span
+                    className={cn(
+                      'ml-1.5 text-[10px] font-black px-1.5 py-0.2 rounded-full',
+                      isActive
+                        ? 'bg-white text-rose-600'
+                        : 'bg-rose-500 text-white'
+                    )}
+                  >
+                    {stats.unvisitedSiswaCount}
+                  </span>
+                )}
               </Button>
-            ))}
-          </div>
-        )}
-      </div>
+            );
+          })}
+        </div>
 
-      {/* 5. Filter Toolbar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 max-w-2xl">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+        {/* Sisi Kanan: Search & Mitra Selector */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1 md:justify-end min-w-0">
+          <div className="relative flex-1 sm:max-w-xs min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={15} />
             <Input
               type="text"
-              placeholder={activeViewMode === 'TARGET' ? 'Cari nama siswa, NIS, kelas, atau mitra...' : 'Cari catatan observasi, umpan balik DU/DI...'}
+              placeholder="Cari nama siswa, NIS, kelas, atau mitra..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 pr-8 text-xs sm:text-sm rounded-xl h-10 w-full"
+              className="pl-9 pr-8 text-xs sm:text-sm rounded-xl h-9 w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
             />
             {searchTerm && (
               <button
                 type="button"
                 onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
                 title="Hapus filter pencarian"
               >
-                <X size={14} />
+                <X size={13} />
               </button>
             )}
           </div>
@@ -391,7 +349,7 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
             <select
               value={selectedMitraFilter}
               onChange={(e) => setSelectedMitraFilter(e.target.value)}
-              className="p-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 h-10 shrink-0 font-medium"
+              className="px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 h-9 shrink-0 font-medium cursor-pointer"
             >
               <option value="ALL">Semua Mitra Industri</option>
               {mitraFilterOptions.map((m) => (
@@ -402,14 +360,18 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
             </select>
           )}
 
-          {searchTerm && (
+          {(searchTerm || selectedMitraFilter !== 'ALL' || statusFilter !== 'ALL') && (
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setSearchTerm('')}
-              className="h-10 px-3 text-xs font-bold text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl shrink-0 gap-1"
-              title="Reset pencarian agar menampilkan seluruh siswa"
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedMitraFilter('ALL');
+                setStatusFilter('ALL');
+              }}
+              className="h-9 px-3 text-xs font-bold text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl shrink-0 gap-1 cursor-pointer"
+              title="Reset seluruh filter"
             >
               <X size={13} />
               <span>Reset</span>
@@ -418,13 +380,13 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
         </div>
       </div>
 
-      {/* 6. Body Content: TARGET vs FEED */}
+      {/* 5. Target List Workspace */}
       {isLoading ? (
         <div className="p-12 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
-          <div className="animate-spin w-8 h-8 mx-auto text-indigo-600 mb-2 border-2 border-current border-t-transparent rounded-full" />
-          <p className="text-xs text-slate-400">Memuat data supervisi bimbingan...</p>
+          <div className="animate-spin w-8 h-8 mx-auto text-teal-600 mb-2 border-2 border-current border-t-transparent rounded-full" />
+          <p className="text-xs text-slate-400 font-medium">Memuat data target supervisi bimbingan...</p>
         </div>
-      ) : activeViewMode === 'TARGET' ? (
+      ) : (
         <KunjunganTargetList
           groups={filteredTargetGroups}
           readOnly={readOnly}
@@ -434,29 +396,6 @@ export const KunjunganPklView: React.FC<UniversalKunjunganPklViewProps> = React.
           onBulkRecordVisit={(group) => setSelectedBulkGroup(group)}
           onPrintMitraGroup={(group) => setPrintMitraGroup(group)}
         />
-      ) : filteredVisits.length === 0 ? (
-        <div className="p-12 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <History className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
-          <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">
-            Belum Ada Riwayat Kunjungan
-          </h4>
-          <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-            Beralihlah ke tab &apos;Target &amp; Siswa Bimbingan&apos; untuk mulai mencatat supervisi pertama Anda.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredVisits.map((item) => (
-            <KunjunganFeedItem
-              key={item.id}
-              item={item}
-              readOnly={readOnly}
-              onEdit={handleEditVisit}
-              onDelete={handleDeleteVisit}
-              onPrint={handlePrintVisit}
-            />
-          ))}
-        </div>
       )}
 
       {/* 7. Modal Form Catat / Edit Kunjungan (HubinPklKunjunganModal) */}
