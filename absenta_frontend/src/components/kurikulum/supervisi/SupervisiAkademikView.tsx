@@ -10,12 +10,13 @@ import type { Supervisi } from '../../../api/kurikulum.api';
 import { AcademicPageLayout } from '../../academic/AcademicPageLayout';
 import { TabSwitcher } from '../../ui/TabSwitcher';
 import { cn } from '../../../lib/utils';
-import { ClipboardList, Plus, Clock, Award, BookOpen, User, Calendar, List, BarChart2, ShieldCheck, AlertCircle, Eye, CheckCircle2 } from 'lucide-react';
+import { ClipboardList, Plus, Clock, Award, BookOpen, User, Calendar, List, BarChart2, ShieldCheck, AlertCircle, Eye, CheckCircle2, Printer, Camera } from 'lucide-react';
 import { z } from 'zod';
 import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { SupervisiSelfAssessmentModal } from '../SupervisiSelfAssessmentModal';
 import { SupervisiPenilaianModal } from '../SupervisiPenilaianModal';
+import { SupervisiBeritaAcaraPrintModal } from './SupervisiBeritaAcaraPrintModal';
 import { SupervisiAnalyticsDashboard } from './SupervisiAnalyticsDashboard';
 import type { SupervisiFormState, RecommendationSlot } from '../SupervisiFormModal';
 import { useGuruOptions, useKelasOptions, useMapelOptions } from '../../common';
@@ -122,6 +123,10 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
   // ── Penilaian Supervisor Modal ─────────────────────────────────────────────
   const [penilaianModalOpen, setPenilaianModalOpen] = useState(false);
   const [penilaianItem, setPenilaianItem] = useState<Supervisi | null>(null);
+
+  // ── Print Berita Acara Modal ───────────────────────────────────────────────
+  const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [printItem, setPrintItem] = useState<Supervisi | null>(null);
 
   // ── Data state ─────────────────────────────────────────────────────────────
   const [modalOpen, setModalOpen] = useState(false);
@@ -570,6 +575,21 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
                 </Button>
               )}
 
+              {(item.status === 'COMPLETED' || item.nilai != null) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setPrintItem(item);
+                    setPrintModalOpen(true);
+                  }}
+                  className="text-[11px] h-7 px-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  title="Cetak Berita Acara Supervisi"
+                >
+                  <Printer className="w-3.5 h-3.5 mr-1 text-slate-500" /> Cetak
+                </Button>
+              )}
+
               {canManage && (
                 <>
                   <Button
@@ -884,9 +904,31 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
                 </div>
               )}
 
+              {/* Foto Eviden Dokumentasi KBM (Jika ada) */}
+              {detailItem.foto_kegiatan && (
+                <div className="space-y-1.5 pt-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Dokumentasi Foto KBM (Eviden Lapangan)
+                  </label>
+                  <div className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/50 flex items-center gap-3">
+                    <img
+                      src={detailItem.foto_kegiatan}
+                      alt="Dokumentasi KBM"
+                      className="w-24 h-16 object-cover rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs"
+                    />
+                    <div className="text-[11px] text-slate-600 dark:text-slate-400">
+                      <span className="font-bold text-slate-800 dark:text-slate-200 block">
+                        Foto Kegiatan Belajar Mengajar
+                      </span>
+                      Bukti otentik pendampingan observasi kelas untuk pemenuhan instrumen akreditasi sekolah & PKG.
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Footer Actions */}
-              <div className="flex justify-between items-center pt-3 border-t border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-wrap justify-between items-center gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex flex-wrap items-center gap-2">
                   {detailItem.guru_id === (propGuruId || currentGuru?.id) && detailItem.status === 'SCHEDULED' && (
                     <Button
                       type="button"
@@ -919,6 +961,24 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
                       <span>{detailItem.status === 'COMPLETED' ? 'Edit Penilaian & Umpan Balik' : 'Mulai Penilaian Observasi'}</span>
                     </Button>
                   )}
+
+                  {(detailItem.status === 'COMPLETED' || detailItem.nilai != null) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        const target = detailItem;
+                        setDetailModalOpen(false);
+                        setPrintItem(target);
+                        setPrintModalOpen(true);
+                      }}
+                      className="rounded-xl text-xs h-9 px-3.5 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-bold gap-1.5 hover:bg-slate-100"
+                      title="Cetak Berita Acara & Instrumen Supervisi"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Cetak Berita Acara</span>
+                    </Button>
+                  )}
                 </div>
 
                 <Button
@@ -928,7 +988,7 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
                     setDetailModalOpen(false);
                     setDetailItem(null);
                   }}
-                  className="rounded-xl font-bold"
+                  className="rounded-xl font-bold ml-auto"
                 >
                   TUTUP
                 </Button>
@@ -950,6 +1010,20 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
               invalidateSupervisiCache();
               fetchData();
             }}
+          />
+        )}
+
+        {/* 8. Berita Acara & Instrumen Print Modal */}
+        {printModalOpen && printItem && (
+          <SupervisiBeritaAcaraPrintModal
+            isOpen={printModalOpen}
+            onClose={() => {
+              setPrintModalOpen(false);
+              setPrintItem(null);
+            }}
+            supervisi={printItem}
+            tahunPelajaranNama={academicFilter.activeAcademicYear?.nama}
+            semesterNama={academicFilter.activeSemester?.nama}
           />
         )}
       </Suspense>

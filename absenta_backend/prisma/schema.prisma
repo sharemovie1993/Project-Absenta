@@ -376,6 +376,7 @@ model SupervisiGuru {
   nilai_self          Int?
   catatan_self        String?  @db.Text
   is_self_evaluated   Boolean  @default(false)
+  foto_kegiatan       String?  @db.Text
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
 

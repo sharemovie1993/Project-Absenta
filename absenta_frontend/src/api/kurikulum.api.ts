@@ -57,6 +57,7 @@ export interface Supervisi {
   target_pembelajaran?: string;
   nilai_self?: number | null;
   catatan_self?: string;
+  foto_kegiatan?: string | null;
   Guru?: {
     nama_guru: string;
     nip?: string;

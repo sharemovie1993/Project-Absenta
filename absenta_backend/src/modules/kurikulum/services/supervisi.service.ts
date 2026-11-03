@@ -108,6 +108,7 @@ export class SupervisiService {
     supervisor_id?: string;
     tahun_pelajaran_id?: string;
     semester_id?: string;
+    foto_kegiatan?: string;
   }) {
     let tpId = data.tahun_pelajaran_id;
     let semId = data.semester_id;
@@ -133,6 +134,7 @@ export class SupervisiService {
         catatan: data.catatan,
         nilai: data.nilai,
         supervisor_id: data.supervisor_id,
+        foto_kegiatan: data.foto_kegiatan,
         tahun_pelajaran_id: tpId || null,
         semester_id: semId || null,
       },
@@ -151,6 +153,7 @@ export class SupervisiService {
     catatan?: string;
     nilai?: number;
     supervisor_id?: string;
+    foto_kegiatan?: string;
   }) {
     // Verify ownership
     const existing = await prisma.supervisiGuru.findFirst({

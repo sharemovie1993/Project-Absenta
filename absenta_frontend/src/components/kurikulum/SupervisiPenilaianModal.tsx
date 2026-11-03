@@ -4,9 +4,10 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { kurikulumApi, type Supervisi } from '../../api/kurikulum.api';
 import { toast } from 'react-hot-toast';
-import { Award, CheckCircle2, FileText, Sparkles, User, Calendar, BookOpen, Clock, Target, HelpCircle } from 'lucide-react';
+import { Award, CheckCircle2, FileText, Sparkles, User, Calendar, BookOpen, Clock, Target, HelpCircle, Camera, UploadCloud, Trash2, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/utils/layoutUtils';
+import axiosInstance from '@/lib/axiosInstance';
 
 interface SupervisiPenilaianModalProps {
   isOpen: boolean;
@@ -45,6 +46,8 @@ export const SupervisiPenilaianModal: React.FC<SupervisiPenilaianModalProps> = R
   const [nilai, setNilai] = useState<number | ''>(supervisi?.nilai ?? 85);
   const [catatan, setCatatan] = useState<string>(supervisi?.catatan || '');
   const [status, setStatus] = useState<string>(supervisi?.status === 'COMPLETED' ? 'COMPLETED' : 'COMPLETED');
+  const [fotoKegiatan, setFotoKegiatan] = useState<string>(supervisi?.foto_kegiatan || '');
+  const [uploadingFoto, setUploadingFoto] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -52,6 +55,7 @@ export const SupervisiPenilaianModal: React.FC<SupervisiPenilaianModalProps> = R
       setNilai(supervisi.nilai ?? 85);
       setCatatan(supervisi.catatan || '');
       setStatus(supervisi.status || 'COMPLETED');
+      setFotoKegiatan(supervisi.foto_kegiatan || '');
     }
   }, [supervisi]);
 
@@ -97,6 +101,32 @@ export const SupervisiPenilaianModal: React.FC<SupervisiPenilaianModalProps> = R
     });
   };
 
+  const handleUploadFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Ukuran foto maksimal 5 MB');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      setUploadingFoto(true);
+      const res = await axiosInstance.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const url = res.data?.data?.url || res.data?.url;
+      if (url) {
+        setFotoKegiatan(url);
+        toast.success('Foto dokumentasi KBM berhasil diunggah');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Gagal mengunggah foto');
+    } finally {
+      setUploadingFoto(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supervisi?.id) return;
@@ -112,6 +142,7 @@ export const SupervisiPenilaianModal: React.FC<SupervisiPenilaianModalProps> = R
         nilai: Number(nilai),
         catatan: catatan.trim(),
         status,
+        foto_kegiatan: fotoKegiatan || undefined,
       });
 
       toast.success('Penilaian dan umpan balik supervisi berhasil disimpan.');
@@ -336,6 +367,73 @@ export const SupervisiPenilaianModal: React.FC<SupervisiPenilaianModalProps> = R
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* 6. Foto Dokumentasi Eviden KBM */}
+          <div className="space-y-1.5 pt-1">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Camera size={14} className="text-indigo-600 dark:text-indigo-400" />
+                <span>Foto Eviden KBM (Dokumentasi Pelaksanaan)</span>
+              </span>
+              <span className="text-[10px] font-normal text-slate-400">Maks. 5 MB</span>
+            </label>
+
+            {fotoKegiatan ? (
+              <div className="relative rounded-xl border border-slate-200 dark:border-slate-800 p-2.5 bg-slate-50 dark:bg-slate-900/60 flex items-center gap-3">
+                <img
+                  src={fotoKegiatan}
+                  alt="Dokumentasi KBM"
+                  className="w-20 h-16 object-cover rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                    Foto Observasi Terlampir
+                  </p>
+                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
+                    <CheckCircle2 size={12} /> Siap dicetak pada Berita Acara Supervisi
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFotoKegiatan('')}
+                  className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                  title="Hapus Foto"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ) : (
+              <div>
+                <label className="border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-600 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 cursor-pointer bg-white dark:bg-slate-900/40 transition-all group">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleUploadFoto}
+                    disabled={uploadingFoto}
+                    className="hidden"
+                  />
+                  {uploadingFoto ? (
+                    <div className="flex items-center gap-2 text-xs font-semibold text-indigo-600 py-1">
+                      <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                      <span>Mengunggah foto eviden...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform">
+                        <UploadCloud size={16} />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                        Klik untuk unggah foto kegiatan pembelajaran
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        Format JPG, PNG, atau WebP (Bukti otentik akreditasi & PKG)
+                      </span>
+                    </>
+                  )}
+                </label>
+              </div>
+            )}
           </div>
 
         </div>
