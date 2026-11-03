@@ -286,9 +286,10 @@ export const CbtSoalEditorModal: React.FC<CbtSoalEditorModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title=""
-      size="2xl"
+      size="full"
+      disableClose={true}
       className="p-0 border-0 bg-transparent shadow-2xl"
-      contentClassName="p-0 overflow-hidden flex flex-col bg-[#f0ebf8] dark:bg-slate-950 max-h-[96vh] sm:max-h-[90vh]"
+      contentClassName="p-0 overflow-hidden flex flex-col bg-[#f0ebf8] dark:bg-slate-950 max-h-[96vh] sm:max-h-[92vh]"
     >
       <div className="flex flex-col h-full max-h-[96vh] sm:max-h-[90vh] overflow-hidden text-slate-800 dark:text-slate-100">
         {/* ── 1. STICKY GOOGLE FORMS TOP HEADER ── */}
@@ -356,7 +357,7 @@ export const CbtSoalEditorModal: React.FC<CbtSoalEditorModalProps> = ({
 
         {/* ── 2. SCROLLABLE MIDDLE CANVAS (DESKTOP & HP COMFORT) ── */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-6 custom-scrollbar">
-          <div className="max-w-2xl mx-auto space-y-4">
+          <div className="max-w-4xl lg:max-w-5xl mx-auto space-y-4">
             {activeTab === 'preview' ? (
               /* WYSIWYG Pratinjau Kuis Google Form */
               <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-6 shadow-xs border border-slate-200/90 dark:border-slate-800 space-y-4 animate-in fade-in duration-150">
@@ -745,7 +746,7 @@ export const CbtSoalEditorModal: React.FC<CbtSoalEditorModalProps> = ({
 
         {/* ── 3. STICKY GOOGLE FORMS BOTTOM ACTION BAR (RESPONSIVE FOR DESKTOP & MOBILE) ── */}
         <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-3.5 py-2.5 sm:px-6 sm:py-3.5 shrink-0 z-20 shadow-md">
-          <div className="max-w-2xl mx-auto flex items-center justify-between gap-3">
+          <div className="max-w-4xl lg:max-w-5xl mx-auto flex items-center justify-between gap-3">
             {/* Status Kunci Jawaban Aktif */}
             <div className="flex items-center gap-2 min-w-0">
               <div className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-center gap-1.5 shrink-0">

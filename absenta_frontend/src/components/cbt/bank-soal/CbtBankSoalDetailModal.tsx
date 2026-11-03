@@ -97,6 +97,7 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
         onClose={onClose}
         title=""
         size="full"
+        disableClose={true}
         className="p-0 border-0 bg-transparent shadow-2xl"
         contentClassName="p-0 overflow-hidden flex flex-col bg-[#f0ebf8] dark:bg-slate-950 max-h-[96vh] sm:max-h-[92vh]"
       >
@@ -169,7 +170,7 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
 
           {/* ── 2. SCROLLABLE QUESTIONS CANVAS (DESKTOP & HP COMFORT) ── */}
           <div className="flex-1 overflow-y-auto p-3 sm:p-6 custom-scrollbar">
-            <div className="max-w-3xl mx-auto space-y-3.5 sm:space-y-4">
+            <div className="max-w-4xl lg:max-w-5xl mx-auto space-y-3.5 sm:space-y-4">
               {isLoading ? (
                 <div className="py-20 flex flex-col items-center justify-center space-y-3 bg-white dark:bg-slate-900 rounded-2xl shadow-xs border border-slate-200/80 dark:border-slate-800">
                   <Loader size="lg" className="text-[#673ab7]" />
