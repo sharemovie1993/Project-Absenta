@@ -434,14 +434,16 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
         ? [
             {
               key: 'guru',
-              title: 'Guru yang Disupervisi',
+              label: 'Guru / Pendidik',
+              title: 'Guru / Pendidik',
+              className: 'min-w-[200px] whitespace-nowrap',
               render: (_val: unknown, item: Supervisi) => (
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0 border border-indigo-100/60 dark:border-indigo-900/40">
                     {item.Guru?.nama_guru?.substring(0, 2).toUpperCase() || 'GU'}
                   </div>
-                  <div>
-                    <div className="font-bold text-xs text-slate-900 dark:text-slate-100">{item.Guru?.nama_guru || '-'}</div>
+                  <div className="min-w-0">
+                    <div className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">{item.Guru?.nama_guru || '-'}</div>
                     <div className="text-[10px] text-slate-400">NIP: {item.Guru?.nip || '-'}</div>
                   </div>
                 </div>
@@ -451,44 +453,52 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
         : []),
       {
         key: 'kbm',
+        label: 'Mata Pelajaran & Kelas',
         title: 'Mata Pelajaran & Kelas',
+        className: 'min-w-[220px]',
         render: (_val: unknown, item: Supervisi) => (
-          <div>
-            <div className="font-bold text-xs text-slate-800 dark:text-slate-200">{item.mapel || '-'}</div>
-            <div className="text-[10px] text-slate-400">
-              Kelas {item.kelas || '-'} • Jam ke-{item.jam_ke || '-'}
+          <div className="space-y-0.5">
+            <div className="font-bold text-xs text-slate-800 dark:text-slate-200 leading-snug">{item.mapel || '-'}</div>
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
+              Kelas {item.kelas || '-'} • <span className="text-indigo-600 dark:text-indigo-400 font-semibold">Jam ke-{item.jam_ke || '-'}</span>
             </div>
           </div>
         ),
       },
       {
         key: 'tanggal',
+        label: 'Jadwal Observasi',
         title: 'Jadwal Observasi',
+        className: 'min-w-[130px] whitespace-nowrap',
         render: (_val: unknown, item: Supervisi) => (
-          <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+          <span className="text-xs text-slate-700 dark:text-slate-300 font-semibold whitespace-nowrap">
             {formatDate(item.tanggal)}
           </span>
         ),
       },
       {
         key: 'supervisor',
+        label: 'Supervisor / Penilai',
         title: 'Supervisor / Penilai',
+        className: 'min-w-[160px] whitespace-nowrap',
         render: (_val: unknown, item: Supervisi) => (
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 whitespace-nowrap">
             <ShieldCheck className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
             <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-              {item.Supervisor?.nama_guru || 'Kepala Sekolah / Tim Kurikulum'}
+              {item.Supervisor?.nama_guru || 'Tim Kurikulum'}
             </span>
           </div>
         ),
       },
       {
         key: 'status',
+        label: 'Status',
         title: 'Status',
+        className: 'min-w-[130px] whitespace-nowrap text-center',
         render: (_val: unknown, item: Supervisi) => (
           <Badge
             variant={item.status === 'COMPLETED' ? 'success' : 'warning'}
-            className="text-[10px] font-bold"
+            className="text-[10px] font-bold px-2.5 py-0.5 whitespace-nowrap"
           >
             {item.status === 'COMPLETED' ? 'Selesai Diobservasi' : 'Terjadwal'}
           </Badge>
@@ -496,12 +506,14 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
       },
       {
         key: 'nilai',
-        title: 'Skor / Nilai',
+        label: 'Nilai',
+        title: 'Nilai',
+        className: 'min-w-[80px] whitespace-nowrap text-center',
         render: (_val: unknown, item: Supervisi) =>
           item.nilai != null ? (
             <span
               className={cn(
-                'font-black text-xs px-2 py-0.5 rounded-md inline-block',
+                'font-black text-xs px-2.5 py-0.5 rounded-lg inline-block',
                 item.nilai >= 85
                   ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
                   : item.nilai >= 70
@@ -512,25 +524,29 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
               {item.nilai}
             </span>
           ) : (
-            <span className="text-slate-400 text-xs italic">Belum dinilai</span>
+            <span className="text-slate-400 text-xs italic whitespace-nowrap">Belum dinilai</span>
           ),
       },
       {
         key: 'catatan',
+        label: 'Catatan & Rekomendasi',
         title: 'Catatan & Rekomendasi',
+        className: 'min-w-[200px] max-w-[260px]',
         render: (_val: unknown, item: Supervisi) => (
-          <div className="max-w-[180px] truncate text-xs text-slate-600 dark:text-slate-400" title={item.catatan || 'Belum ada catatan'}>
+          <div className="max-w-[240px] truncate text-xs text-slate-600 dark:text-slate-400 font-normal" title={item.catatan || 'Belum ada catatan'}>
             {item.catatan || '-'}
           </div>
         ),
       },
       {
         key: 'aksi',
+        label: 'Aksi',
         title: 'Aksi',
+        className: 'min-w-[240px] whitespace-nowrap text-right',
         render: (_val: unknown, item: Supervisi) => {
           const isMySupervisi = item.guru_id === (propGuruId || currentGuru?.id);
           return (
-            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-end gap-1.5 flex-nowrap shrink-0" onClick={(e) => e.stopPropagation()}>
               <Button
                 variant="ghost"
                 size="sm"
@@ -538,10 +554,10 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
                   setDetailItem(item);
                   setDetailModalOpen(true);
                 }}
-                className="text-[11px] h-7 px-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                className="text-xs h-7 px-2.5 text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-indigo-50/60 dark:hover:bg-indigo-950/40 rounded-lg whitespace-nowrap"
                 title="Lihat Detail Observasi"
               >
-                <Eye className="w-3.5 h-3.5 mr-1" /> Detail
+                <Eye className="w-3.5 h-3.5 mr-1 text-slate-400" /> Detail
               </Button>
 
               {isMySupervisi && item.status === 'SCHEDULED' && (
@@ -553,7 +569,7 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
                     setSelfAssessmentItem(item);
                     setSelfAssessmentModalOpen(true);
                   }}
-                  className="text-[11px] h-7 px-2 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 font-bold bg-indigo-50/50 hover:bg-indigo-100"
+                  className="text-xs h-7 px-2.5 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 font-bold bg-indigo-50/50 hover:bg-indigo-100 rounded-lg whitespace-nowrap"
                 >
                   Evaluasi Diri
                 </Button>
@@ -567,11 +583,11 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
                     setPenilaianItem(item);
                     setPenilaianModalOpen(true);
                   }}
-                  className="text-[11px] h-7 px-2 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 font-bold bg-indigo-50/50 hover:bg-indigo-100"
+                  className="text-xs h-7 px-2.5 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 font-bold bg-indigo-50/50 hover:bg-indigo-100 rounded-lg whitespace-nowrap shrink-0"
                   title="Isi Penilaian & Catatan Observasi"
                 >
                   <Award className="w-3.5 h-3.5 mr-1" />
-                  {item.status === 'COMPLETED' ? 'Edit Nilai' : 'Nilai'}
+                  <span>{item.status === 'COMPLETED' ? 'Edit Nilai' : 'Nilai'}</span>
                 </Button>
               )}
 
@@ -583,10 +599,10 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
                     setPrintItem(item);
                     setPrintModalOpen(true);
                   }}
-                  className="text-[11px] h-7 px-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="text-xs h-7 px-2.5 text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg whitespace-nowrap shrink-0"
                   title="Cetak Berita Acara Supervisi"
                 >
-                  <Printer className="w-3.5 h-3.5 mr-1 text-slate-500" /> Cetak
+                  <Printer className="w-3.5 h-3.5 mr-1 text-slate-400" /> Cetak
                 </Button>
               )}
 
@@ -596,7 +612,7 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
                     variant="ghost"
                     size="sm"
                     onClick={() => handleOpenModal(item)}
-                    className="text-[11px] h-7 px-2 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="text-xs h-7 px-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
                   >
                     Edit
                   </Button>
@@ -604,7 +620,7 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
                     variant="ghost"
                     size="sm"
                     onClick={() => handleDelete(item)}
-                    className="text-[11px] h-7 px-2 text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20"
+                    className="text-xs h-7 px-2 text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg"
                   >
                     Hapus
                   </Button>
@@ -615,7 +631,7 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
         },
       },
     ],
-    [isGuruContext, currentGuru, propGuruId, canManage, handleOpenModal, handleDelete]
+    [isGuruContext, currentGuru, propGuruId, canGradeSupervisi, canManage, handleOpenModal, handleDelete]
   );
 
   const content = (
@@ -744,6 +760,8 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
                   data={data ?? []}
                   columns={columns}
                   isLoading={loading}
+                  hoverable={true}
+                  className="border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden shadow-2xs"
                   pagination={{
                     currentPage,
                     totalPages: Math.ceil(totalData / pageLimit) || 1,

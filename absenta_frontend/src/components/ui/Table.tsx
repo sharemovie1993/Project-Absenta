@@ -10,7 +10,8 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 
 export interface Column {
   key: string;
-  label: React.ReactNode;
+  label?: React.ReactNode;
+  title?: React.ReactNode;
   sortable?: boolean;
   render?: (value: any, row: any, index: number) => React.ReactNode;
   className?: string;
@@ -400,14 +401,14 @@ export function Table({
                     onClick={() => column.sortable && handleSort(column.key)}
                     aria-sort={isSorted ? (isAsc ? 'ascending' : 'descending') : undefined}
                     className={cn(
-                      compact ? 'px-3 py-2.5 text-[11px]' : 'px-8 py-4 text-[12px]',
+                      compact ? 'px-3 py-2.5 text-[11px]' : 'px-4 sm:px-5 py-3 text-[11px]',
                       'text-left font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider transition-colors duration-200',
                       column.sortable && 'cursor-pointer select-none hover:bg-gray-100/50 dark:hover:bg-slate-800/50',
                       column.className
                     )}
                   >
                     <div className="flex items-center gap-1.5">
-                      <span>{column.label}</span>
+                      <span>{column.label ?? column.title}</span>
                       {column.sortable && (
                         <span className="shrink-0" aria-hidden="true">
                           {isSorted ? (
@@ -487,7 +488,7 @@ export function Table({
                       <td
                         key={column.key}
                         className={cn(
-                          compact ? 'px-3 py-2 text-[13px]' : 'px-8 py-5 text-sm',
+                          compact ? 'px-3 py-2 text-[12px]' : 'px-4 sm:px-5 py-3 text-xs',
                           'font-medium text-gray-700 dark:text-gray-200 transition-colors',
                           column.className
                         )}
