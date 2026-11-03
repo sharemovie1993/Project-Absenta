@@ -43,11 +43,14 @@ export interface RecommendationSlot {
 
 interface SupervisiFormModalProps {
   isOpen: boolean;
-  isEditMode: boolean;
+  isEditMode?: boolean;
+  isEditing?: boolean;
   formData: SupervisiFormState;
-  onFormChange: (data: SupervisiFormState) => void;
+  onFormChange?: (data: SupervisiFormState) => void;
+  setFormData?: React.Dispatch<React.SetStateAction<SupervisiFormState>>;
   onClose: () => void;
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit?: (e: React.FormEvent) => void;
+  onSave?: (e?: React.FormEvent) => void;
   guruOptions: SelectOption[];
   kelasOptions: SelectOption[];
   mapelOptions: SelectOption[];
@@ -55,7 +58,8 @@ interface SupervisiFormModalProps {
   recommendations: RecommendationSlot[];
   loadingRecs: boolean;
   selectedRecId: string | null;
-  onSelectRec: (rec: RecommendationSlot) => void;
+  onSelectRec?: (rec: RecommendationSlot) => void;
+  onSelectSlot?: (rec: RecommendationSlot) => void;
   onFetchRecommendations: () => void;
 }
 
@@ -64,10 +68,13 @@ interface SupervisiFormModalProps {
 export const SupervisiFormModal: React.FC<SupervisiFormModalProps> = React.memo(({
   isOpen,
   isEditMode,
+  isEditing,
   formData,
   onFormChange,
+  setFormData,
   onClose,
   onSubmit,
+  onSave,
   guruOptions,
   kelasOptions,
   mapelOptions,
@@ -76,19 +83,48 @@ export const SupervisiFormModal: React.FC<SupervisiFormModalProps> = React.memo(
   loadingRecs,
   selectedRecId,
   onSelectRec,
+  onSelectSlot,
   onFetchRecommendations,
 }) => {
-  const set = (partial: Partial<SupervisiFormState>) => onFormChange({ ...formData, ...partial });
+  const isEdit = Boolean(isEditMode ?? isEditing);
+
+  const updateForm = useCallback(
+    (partial: Partial<SupervisiFormState>) => {
+      const next = { ...formData, ...partial };
+      if (typeof onFormChange === 'function') {
+        onFormChange(next);
+      } else if (typeof setFormData === 'function') {
+        setFormData(next);
+      }
+    },
+    [formData, onFormChange, setFormData]
+  );
+
+  const handleFormSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      if (typeof onSubmit === 'function') {
+        onSubmit(e);
+      } else if (typeof onSave === 'function') {
+        onSave(e);
+      }
+    },
+    [onSubmit, onSave]
+  );
+
+  const handleSelectSlot = onSelectRec || onSelectSlot || (() => {});
+
+  const set = updateForm;
 
   return (
     <Suspense fallback={null}>
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        title={isEditMode ? 'Edit Jadwal Supervisi' : 'Tambah Jadwal Supervisi'}
+        title={isEdit ? 'Edit Jadwal Supervisi' : 'Tambah Jadwal Supervisi'}
         size="lg"
       >
-        <form onSubmit={onSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
+        <form onSubmit={handleFormSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
 
           {/* Guru & Supervisor Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -150,7 +186,7 @@ export const SupervisiFormModal: React.FC<SupervisiFormModalProps> = React.memo(
           </div>
 
           {/* Automasi Rekomendasi Jadwal */}
-          {formData.guru_id && formData.tanggal && !isEditMode && (
+          {formData.guru_id && formData.tanggal && !isEdit && (
             <div className="space-y-2 border border-indigo-100 dark:border-indigo-900/50 rounded-2xl p-3 sm:p-4 bg-indigo-50/20 dark:bg-indigo-950/10">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                 <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1">
@@ -178,7 +214,7 @@ export const SupervisiFormModal: React.FC<SupervisiFormModalProps> = React.memo(
                       <div
                         key={rec.id}
                         onClick={() => {
-                          onSelectRec(rec);
+                          handleSelectSlot(rec);
                           toast.success(`Slot dipilih: Jam Ke-${rec.jam_ke} - Kelas ${rec.kelas}`);
                         }}
                         className={cn(

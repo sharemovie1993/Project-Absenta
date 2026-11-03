@@ -709,8 +709,11 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
             onClose={handleCloseModal}
             formData={formData}
             setFormData={setFormData}
+            onFormChange={(data) => setFormData(data)}
             onSave={handleSave}
+            onSubmit={handleSave}
             isEditing={!!selectedId}
+            isEditMode={!!selectedId}
             guruOptions={guruOptions}
             kelasOptions={kelasOptions}
             mapelOptions={mapelOptions}
@@ -720,6 +723,7 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
             selectedRecId={selectedRecId}
             onFetchRecommendations={handleFetchRecommendations}
             onSelectSlot={handleSelectSlot}
+            onSelectRec={handleSelectSlot}
           />
         )}
 
