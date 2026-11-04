@@ -19,7 +19,9 @@ import {
   Award,
   Eye,
   MapPin,
+  Lock,
 } from 'lucide-react';
+import { useCbtOperationMode } from '@/components/cbt/cbtModeHelper';
 import { useQuery } from '@tanstack/react-query';
 import { piketApi } from '../../../../api/piket.api';
 import { kurikulumApi } from '../../../../api/kurikulum.api';
@@ -117,6 +119,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
   const [searchParams, setSearchParams] = useSearchParams();
   const { tenantId } = useTenant();
   const [showIzinModal, setShowIzinModal] = useState(false);
+  const { isOrkestrasi, eventName } = useCbtOperationMode();
 
   // Status apakah guru merupakan pendidik pengajar aktif
   const isActualTeachingStaff = isPendidik && !isPureGerbang && !hasGerbangDuty;
@@ -574,6 +577,22 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
             {/* SUB-TAB CBT: BANK SOAL & JADWAL UJIAN GURU */}
             {activeSubTab === 'cbt' && (
               <div className="space-y-4">
+                {isOrkestrasi && (
+                  <div className="p-3.5 rounded-2xl bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 text-violet-900 dark:text-violet-200 flex items-start gap-3">
+                    <span className="p-1.5 rounded-xl bg-violet-600/20 text-violet-700 dark:text-violet-300 shrink-0">
+                      <Lock size={16} />
+                    </span>
+                    <div className="space-y-0.5 min-w-0 flex-1 text-xs">
+                      <p className="font-bold">
+                        Periode Ujian Massal Aktif: {eventName}
+                      </p>
+                      <p className="text-violet-800/80 dark:text-violet-300/80 leading-relaxed text-[11px]">
+                        Pembuatan jadwal sesi &amp; alokasi ruang ujian dikelola terpusat oleh Panitia CBT sekolah. Bapak/Ibu Guru dipersilakan fokus menyusun dan melengkapi butir soal di tab <strong>Bank Soal</strong>.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     <button

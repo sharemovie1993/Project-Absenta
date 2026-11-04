@@ -22,12 +22,18 @@ import {
   TableProperties,
   SlidersHorizontal,
   Loader,
+  Lock,
+  Unlock,
+  Edit2,
+  Check,
+  UserCheck,
 } from 'lucide-react';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtJadwalUjian, CbtBankSoal } from '@/types/cbt.types';
 import { getVirtualDate } from '@/utils/attendance/time';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
+import { useCbtOperationMode } from '../cbtModeHelper';
 import {
   KelasRoomMapping,
   generateClassRoomMappings,
@@ -57,6 +63,7 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const tenantId = user?.tenant_id;
+  const { mode, eventName, isOrkestrasi, isMandiri, updateMode } = useCbtOperationMode();
 
   const [activeTab, setActiveTab] = useState<CbtPanitiaPhase>('fase_1_soal');
   const [subModeFase1, setSubModeFase1] = useState<'readiness' | 'manage'>('readiness');
@@ -235,6 +242,61 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
                 {activeTp?.nama || 'TP Aktif'} &bull; {activeSemester?.nama || 'Semester'}
               </span>
             </div>
+          </div>
+        </div>
+
+        {/* ── Mode Operasional Controller Strip (Mandiri vs Orkestrasi) ── */}
+        <div className="mt-3 pt-3 border-t border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between gap-2.5 text-xs">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+              Mode Pelaksanaan:
+            </span>
+            <div className="flex items-center gap-1 p-0.5 rounded-xl bg-slate-800/90 border border-slate-700/80">
+              <button
+                type="button"
+                onClick={() => updateMode('ORKESTRASI')}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5',
+                  isOrkestrasi
+                    ? 'bg-violet-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                )}
+              >
+                <Sparkles size={12} />
+                <span>Ujian Massal (Orkestrasi)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => updateMode('MANDIRI')}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5',
+                  isMandiri
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                )}
+              >
+                <UserCheck size={12} />
+                <span>KBM Harian (Mandiri)</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {isOrkestrasi ? (
+              <div className="flex items-center gap-1.5 bg-violet-950/70 border border-violet-700/60 px-2.5 py-1 rounded-lg text-violet-200">
+                <Lock size={12} className="text-violet-400 shrink-0" />
+                <span className="text-[11px]">
+                  Event: <strong className="text-white">{eventName}</strong> (Jadwal Guru Dikunci)
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 bg-emerald-950/70 border border-emerald-700/60 px-2.5 py-1 rounded-lg text-emerald-200">
+                <Unlock size={12} className="text-emerald-400 shrink-0" />
+                <span className="text-[11px]">
+                  Guru bebas membuat jadwal sesi mandiri di kelas KBM
+                </span>
+              </div>
+            )}
           </div>
         </div>
 

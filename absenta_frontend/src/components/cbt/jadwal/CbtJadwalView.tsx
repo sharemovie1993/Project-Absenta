@@ -23,12 +23,14 @@ import {
   ShieldCheck,
   Check,
   ArrowRightLeft,
+  Lock,
 } from 'lucide-react';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { MobileAcademicList } from '@/components/academic/shared/MobileAcademicList';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtJadwalUjian } from '@/types/cbt.types';
+import { useCbtOperationMode } from '../cbtModeHelper';
 import { CbtJadwalFormModal } from './CbtJadwalFormModal';
 import { CbtBeritaAcaraPrintModal } from './CbtBeritaAcaraPrintModal';
 import { CbtTransferNilaiModal } from './CbtTransferNilaiModal';
@@ -55,6 +57,8 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const confirm = useConfirm();
+  const { isOrkestrasi, eventName, lockTeacherScheduling } = useCbtOperationMode();
+  const isTeacherLocked = Boolean(guruId) && isOrkestrasi && lockTeacherScheduling;
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -598,16 +602,31 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
           ) : undefined
         }
         onAdd={
-          !readOnly
+          !readOnly && !isTeacherLocked
             ? () => {
                 setSelectedJadwal(null);
                 setIsFormModalOpen(true);
               }
             : undefined
         }
-        addLabel="Jadwalkan Ujian"
+        addLabel={isTeacherLocked ? undefined : "Jadwalkan Ujian"}
         className="shadow-2xs"
       />
+
+      {/* Lock Notice jika Guru dibatasi dalam Mode Orkestrasi */}
+      {isTeacherLocked && (
+        <div className="p-3 rounded-xl bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 text-violet-800 dark:text-violet-300 text-xs flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Lock size={14} className="text-violet-600 shrink-0" />
+            <span>
+              <strong>Mode Orkestrasi Aktif ({eventName}):</strong> Pembuatan sesi baru dikelola terpusat oleh Panitia CBT.
+            </span>
+          </div>
+          <Badge variant="outline" className="text-[10px] bg-violet-100 text-violet-700 border-violet-300 font-bold">
+            Jadwal Terpusat Panitia
+          </Badge>
+        </div>
+      )}
 
       {isMobile ? (
         <MobileAcademicList
