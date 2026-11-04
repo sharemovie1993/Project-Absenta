@@ -6,12 +6,8 @@ import {
   Badge,
 } from '@/components/ui';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  useKelasOptions,
-  useTahunPelajaranOptions,
-  useSemesterOptions,
-  useMapelOptions,
-} from '@/components/common';
+import { useKelasOptions } from '@/components/common';
+import { useAcademicFilter } from '@/components/common/academic-filter';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtJadwalUjian, CbtRaporSlot } from '@/types/cbt.types';
 import {
@@ -23,6 +19,7 @@ import {
   Users,
   AlertCircle,
   Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -31,6 +28,8 @@ interface CbtTransferNilaiModalProps {
   isOpen: boolean;
   onClose: () => void;
   jadwal: CbtJadwalUjian | null;
+  defaultTpId?: string;
+  defaultSemesterId?: string;
 }
 
 const RAPOR_SLOTS: Array<{
@@ -69,17 +68,36 @@ export const CbtTransferNilaiModal: React.FC<CbtTransferNilaiModalProps> = ({
   isOpen,
   onClose,
   jadwal,
+  defaultTpId,
+  defaultSemesterId,
 }) => {
   const queryClient = useQueryClient();
-  const { options: tpOptions } = useTahunPelajaranOptions();
-  const { options: semOptions } = useSemesterOptions();
-  const { options: mapelOptions } = useMapelOptions();
   const { rawList: rawKelasList } = useKelasOptions();
 
+  // Gunakan Unified Academic Filter Engine agar Tahun Pelajaran & Semester
+  // selalu sinkron (cascading) dengan konteks akademik aktif di Buku Nilai e-Rapor
+  const academicFilter = useAcademicFilter({
+    enableTp: true,
+    enableSemester: true,
+    enableMapel: true,
+    initialTpId: defaultTpId || '',
+    initialSemesterId: defaultSemesterId || '',
+  });
+
+  const {
+    values: { tahunPelajaranId: tpId, semesterId: semId, mapelId },
+    handleTpChange,
+    setSemesterId,
+    handleMapelChange,
+    tpOptions,
+    semesterOptions: semOptions,
+    mapelOptions,
+    activeAcademicYear,
+    activeTpYear,
+    activeSemester,
+  } = academicFilter;
+
   const [targetSlot, setTargetSlot] = useState<CbtRaporSlot>('sumatif_1');
-  const [tpId, setTpId] = useState('');
-  const [semId, setSemId] = useState('');
-  const [mapelId, setMapelId] = useState('');
   const [selectedKelasIds, setSelectedKelasIds] = useState<string[]>([]);
   const [roundInteger, setRoundInteger] = useState(true);
   const [overwriteExisting, setOverwriteExisting] = useState(true);
@@ -87,11 +105,29 @@ export const CbtTransferNilaiModal: React.FC<CbtTransferNilaiModalProps> = ({
   // Sync defaults when modal opens with a jadwal
   useEffect(() => {
     if (isOpen && jadwal) {
-      setTpId(jadwal.tahun_pelajaran_id || '');
-      setSemId(jadwal.semester_id || '');
+      // Hanya gunakan TP dari jadwal jika TP tersebut berstatus aktif;
+      // jika tidak, prioritaskan Tahun Pelajaran Aktif sekolah agar langsung tampil di Buku Nilai Guru
+      const jadwalTpIsActive = Boolean((jadwal.TahunPelajaran as any)?.is_active);
+      if (defaultTpId) {
+        handleTpChange(defaultTpId);
+      } else if (jadwalTpIsActive && jadwal.tahun_pelajaran_id) {
+        handleTpChange(jadwal.tahun_pelajaran_id);
+      } else if (activeAcademicYear?.id) {
+        handleTpChange(activeAcademicYear.id);
+      }
+
+      if (defaultSemesterId) {
+        setSemesterId(defaultSemesterId);
+      } else if (jadwalTpIsActive && jadwal.semester_id) {
+        setSemesterId(jadwal.semester_id);
+      }
+
       const defaultMapel =
         jadwal.BankSoal?.mapel_id || (jadwal.BankSoal?.Mapel as any)?.id || '';
-      setMapelId(defaultMapel);
+      if (defaultMapel) {
+        handleMapelChange(defaultMapel);
+      }
+
       setSelectedKelasIds(Array.isArray(jadwal.target_kelas_ids) ? jadwal.target_kelas_ids : []);
 
       // Auto-suggest slot based on session name
@@ -106,7 +142,7 @@ export const CbtTransferNilaiModal: React.FC<CbtTransferNilaiModalProps> = ({
         setTargetSlot('sumatif_1');
       }
     }
-  }, [isOpen, jadwal]);
+  }, [isOpen, jadwal, defaultTpId, defaultSemesterId, activeAcademicYear?.id]);
 
   // Fetch participants for preview
   const { data: pesertaList = [], isLoading: isLoadingPeserta } = useQuery({
@@ -149,13 +185,16 @@ export const CbtTransferNilaiModal: React.FC<CbtTransferNilaiModalProps> = ({
     );
   };
 
+  const effectiveTpId = tpId || activeTpYear?.id || activeAcademicYear?.id || '';
+  const effectiveSemId = semId || activeSemester?.id || '';
+
   const transferMutation = useMutation({
     mutationFn: () => {
       if (!jadwal) throw new Error('Jadwal tidak valid');
       return cbtApi.transferToRapor(jadwal.id, {
         target_slot: targetSlot,
-        tahun_pelajaran_id: tpId,
-        semester_id: semId,
+        tahun_pelajaran_id: effectiveTpId,
+        semester_id: effectiveSemId,
         mapel_id: mapelId || undefined,
         kelas_ids: selectedKelasIds.length > 0 ? selectedKelasIds : undefined,
         overwrite_existing: overwriteExisting,
@@ -165,15 +204,16 @@ export const CbtTransferNilaiModal: React.FC<CbtTransferNilaiModalProps> = ({
     onSuccess: async (res) => {
       const slotMeta = RAPOR_SLOTS.find((s) => s.key === res.target_slot);
       toast.success(
-        `Berhasil mentransfer ${res.transferred_count} nilai siswa ke kolom ${slotMeta?.shortLabel || res.target_slot} di e-Rapor!`
+        `Berhasil mentransfer ${res.transferred_count} nilai siswa ke kolom ${slotMeta?.shortLabel || res.target_slot} (${activeTpYear?.tahun || ''} - ${activeSemester?.nama_semester || ''})!`
       );
 
-      // Invalidate all Rapor & CBT caches reactively
+      // Invalidate all Rapor, Subtab Buku Nilai Guru, & CBT caches reactively
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['grades'], exact: false, refetchType: 'all' }),
         queryClient.invalidateQueries({ queryKey: ['teacher-progress'], exact: false, refetchType: 'all' }),
-        queryClient.invalidateQueries({ queryKey: ['rapor-leger-list'], exact: false, refetchType: 'all' }),
         queryClient.invalidateQueries({ queryKey: ['rapor-teacher-progress'], exact: false, refetchType: 'all' }),
+        queryClient.invalidateQueries({ queryKey: ['rapor-teacher-progress-subtab'], exact: false, refetchType: 'all' }),
+        queryClient.invalidateQueries({ queryKey: ['rapor-leger-list'], exact: false, refetchType: 'all' }),
         queryClient.invalidateQueries({ queryKey: ['academic-stats'], exact: false, refetchType: 'all' }),
         queryClient.invalidateQueries({ queryKey: ['class-subject-progress-input'], exact: false, refetchType: 'all' }),
         queryClient.invalidateQueries({ queryKey: ['class-subject-progress'], exact: false, refetchType: 'all' }),
@@ -189,7 +229,7 @@ export const CbtTransferNilaiModal: React.FC<CbtTransferNilaiModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!tpId || !semId) {
+    if (!effectiveTpId || !effectiveSemId) {
       toast.error('Pilih Tahun Pelajaran dan Semester tujuan terlebih dahulu');
       return;
     }
@@ -207,6 +247,7 @@ export const CbtTransferNilaiModal: React.FC<CbtTransferNilaiModalProps> = ({
   if (!jadwal) return null;
 
   const selectedSlotMeta = RAPOR_SLOTS.find((s) => s.key === targetSlot);
+  const isTargetActivePeriod = Boolean(activeTpYear?.is_active && activeSemester?.is_active);
 
   return (
     <Modal
@@ -215,8 +256,8 @@ export const CbtTransferNilaiModal: React.FC<CbtTransferNilaiModalProps> = ({
       title="Transfer Nilai CBT ke Lembar Input Nilai e-Rapor"
       size="2xl"
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* 1. Info Jadwal Sumber */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* 1. Info Jadwal Sumber & Konteks Akademik */}
         <div className="p-3.5 rounded-2xl bg-gradient-to-r from-indigo-50 via-violet-50 to-purple-50 dark:from-indigo-950/40 dark:via-violet-950/30 dark:to-purple-950/40 border border-indigo-200/70 dark:border-indigo-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -294,52 +335,78 @@ export const CbtTransferNilaiModal: React.FC<CbtTransferNilaiModalProps> = ({
           </div>
         </div>
 
-        {/* 3. Pilih Periode (Tahun Pelajaran & Semester) & Mapel Tujuan */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              <Calendar size={12} className="inline mr-1 text-indigo-600" />
-              Tahun Pelajaran Rapor *
-            </label>
-            <SearchableSelect
-              options={tpOptions}
-              value={tpId}
-              onChange={setTpId}
-              placeholder="Pilih Tahun Pelajaran..."
-              aria-label="Tahun Pelajaran Tujuan"
-            />
+        {/* 3. Konteks Akademik Tujuan (Tahun Pelajaran, Semester, Mapel) */}
+        <div className="p-3.5 rounded-xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/50 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+              <Calendar size={14} className="text-indigo-600" />
+              <span>Konteks Akademik Tujuan (Terhubung ke Buku Nilai e-Rapor)</span>
+            </span>
+
+            {isTargetActivePeriod ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                <ShieldCheck size={12} />
+                <span>Periode Akademik Aktif ({activeTpYear?.tahun} • {activeSemester?.nama_semester})</span>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeAcademicYear?.id) handleTpChange(activeAcademicYear.id);
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-800 cursor-pointer hover:bg-amber-200"
+                title="Klik untuk beralih ke Tahun Pelajaran Aktif"
+              >
+                <AlertCircle size={11} />
+                <span>Bukan Periode Aktif — Klik untuk ke TP Aktif ({activeAcademicYear?.tahun})</span>
+              </button>
+            )}
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              <Calendar size={12} className="inline mr-1 text-indigo-600" />
-              Semester Rapor *
-            </label>
-            <SearchableSelect
-              options={semOptions}
-              value={semId}
-              onChange={setSemId}
-              placeholder="Pilih Semester..."
-              aria-label="Semester Tujuan"
-            />
-          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                Tahun Pelajaran Rapor *
+              </label>
+              <SearchableSelect
+                options={tpOptions}
+                value={effectiveTpId}
+                onChange={handleTpChange}
+                placeholder="Pilih Tahun Pelajaran..."
+                aria-label="Tahun Pelajaran Tujuan"
+              />
+            </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              <BookOpen size={12} className="inline mr-1 text-indigo-600" />
-              Mata Pelajaran Rapor *
-            </label>
-            <SearchableSelect
-              options={mapelOptions}
-              value={mapelId}
-              onChange={setMapelId}
-              placeholder="Pilih Mata Pelajaran..."
-              aria-label="Mata Pelajaran Tujuan"
-            />
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                Semester Rapor *
+              </label>
+              <SearchableSelect
+                options={semOptions}
+                value={effectiveSemId}
+                onChange={setSemesterId}
+                placeholder="Pilih Semester..."
+                aria-label="Semester Tujuan"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                <BookOpen size={11} className="inline mr-1 text-indigo-600" />
+                Mata Pelajaran Rapor *
+              </label>
+              <SearchableSelect
+                options={mapelOptions}
+                value={mapelId}
+                onChange={handleMapelChange}
+                placeholder="Pilih Mata Pelajaran..."
+                aria-label="Mata Pelajaran Tujuan"
+              />
+            </div>
           </div>
         </div>
 
-        {/* 4. Filter Kelas Sasaran (Jika > 1 Kelas) */}
+        {/* 4. Filter Kelas Sasaran */}
         {availableClasses.length > 0 && (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
@@ -398,7 +465,7 @@ export const CbtTransferNilaiModal: React.FC<CbtTransferNilaiModalProps> = ({
                 Bulatkan ke Bilangan Bulat (0–100)
               </span>
               <span className="text-[11px] text-slate-500">
-                Sesuai standar kolom Lembar Input Nilai e-Rapor (contoh: 87.5 → 88).
+                Sesuai standar kolom Lembar Input Nilai e-Rapor (contoh: 66.7 → 67).
               </span>
             </div>
           </label>
@@ -438,7 +505,7 @@ export const CbtTransferNilaiModal: React.FC<CbtTransferNilaiModalProps> = ({
             </span>
           </div>
 
-          <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
+          <div className="max-h-44 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
             {isLoadingPeserta ? (
               <div className="p-6 text-center text-xs text-slate-400 font-semibold">
                 Memuat daftar nilai peserta ujian...

@@ -48,8 +48,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
   const { user } = useAuthStore();
   const { isAdmin, isKurikulum } = useCapabilities();
 
-  const { options: tpOptions } = useTahunPelajaranOptions();
-  const { options: semOptions } = useSemesterOptions();
+  const { options: tpOptions, activeYear: activeTpYear } = useTahunPelajaranOptions();
   const { options: kelasOptions, rawList: rawKelasList } = useKelasOptions();
 
   // Mode filter bank soal & rombel
@@ -146,6 +145,23 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
   }, [showAllGradeClasses, teacherClasses, classesInTingkat]);
   const [tpId, setTpId] = useState('');
   const [semId, setSemId] = useState('');
+  const { options: semOptions, activeSemester } = useSemesterOptions({
+    tahunPelajaranId: tpId || undefined,
+  });
+
+  // Pastikan semester selalu sinkron dengan Tahun Pelajaran yang dipilih
+  useEffect(() => {
+    if (semOptions.length > 0) {
+      const isValid = semId && semOptions.some((s) => s.value === semId);
+      if (!isValid) {
+        if (activeSemester?.id && semOptions.some((s) => s.value === activeSemester.id)) {
+          setSemId(activeSemester.id);
+        } else {
+          setSemId(semOptions[0].value);
+        }
+      }
+    }
+  }, [semOptions, semId, activeSemester?.id]);
   const [namaSesi, setNamaSesi] = useState('');
   const [tanggalMulai, setTanggalMulai] = useState('');
   const [tanggalSelesai, setTanggalSelesai] = useState('');
@@ -185,8 +201,8 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
       const now = new Date();
       const end = new Date(now.getTime() + 2 * 60 * 60 * 1000); // +2 jam
       setBankSoalId('');
-      setTpId(tpOptions[0]?.value || '');
-      setSemId(semOptions[0]?.value || '');
+      setTpId(activeTpYear?.id || tpOptions[0]?.value || '');
+      setSemId(activeSemester?.id || semOptions[0]?.value || '');
       setNamaSesi(`UAS Sesi ${new Date().toLocaleDateString('id-ID', { month: 'short', day: '2-digit' })}`);
       setTanggalMulai(now.toISOString().slice(0, 16));
       setTanggalSelesai(end.toISOString().slice(0, 16));
@@ -199,7 +215,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
       setShuffleOptions(true);
       setShowResultInstant(false);
     }
-  }, [jadwalToEdit, isOpen, tpOptions, semOptions]);
+  }, [jadwalToEdit, isOpen, activeTpYear?.id, tpOptions]);
 
   // Auto-select bank soal jika guru hanya punya 1 paket bank soal
   useEffect(() => {

@@ -512,6 +512,8 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
             setSelectedJadwal(null);
           }}
           jadwal={selectedJadwal}
+          defaultTpId={filter.values.tahunPelajaranId}
+          defaultSemesterId={filter.values.semesterId}
         />
       )}
     </div>

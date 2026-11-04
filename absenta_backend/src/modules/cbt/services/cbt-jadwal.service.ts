@@ -61,8 +61,8 @@ export class CbtJadwalService {
               Guru: { select: { nama_guru: true } },
             },
           },
-          TahunPelajaran: { select: { tahun: true } },
-          Semester: { select: { nama_semester: true } },
+          TahunPelajaran: { select: { id: true, tahun: true, is_active: true } },
+          Semester: { select: { id: true, nama_semester: true, is_active: true } },
           _count: { select: { Peserta: true } },
         },
       }),
@@ -92,8 +92,8 @@ export class CbtJadwalService {
             Guru: { select: { nama_guru: true, nip: true } },
           },
         },
-        TahunPelajaran: { select: { id: true, tahun: true } },
-        Semester: { select: { id: true, nama_semester: true } },
+        TahunPelajaran: { select: { id: true, tahun: true, is_active: true } },
+        Semester: { select: { id: true, nama_semester: true, is_active: true } },
         _count: { select: { Peserta: true } },
       },
     });
@@ -379,7 +379,7 @@ export class CbtJadwalService {
     const roundInt = payload.round_integer ?? true;
 
     // Validasi Tahun Pelajaran & Semester milik tenant
-    const [tp, sem] = await Promise.all([
+    const [tp, rawSem] = await Promise.all([
       prisma.tahunPelajaran.findFirst({
         where: { id: payload.tahun_pelajaran_id, tenant_id: tenantId },
       }),
@@ -391,9 +391,32 @@ export class CbtJadwalService {
     if (!tp) {
       throw new Error('Tahun Pelajaran tujuan tidak ditemukan.');
     }
-    if (!sem) {
+    if (!rawSem) {
       throw new Error('Semester tujuan tidak ditemukan.');
     }
+
+    // Pastikan Semester sinkron dengan Tahun Pelajaran tujuan (Cascading Academic Context)
+    let sem = rawSem;
+    if (rawSem.tahun_pelajaran_id !== tp.id) {
+      const matchedSem = await prisma.semester.findFirst({
+        where: {
+          tenant_id: tenantId,
+          tahun_pelajaran_id: tp.id,
+          nama_semester: { equals: rawSem.nama_semester, mode: 'insensitive' },
+        },
+      });
+      const fallbackSem =
+        matchedSem ||
+        (await prisma.semester.findFirst({
+          where: { tenant_id: tenantId, tahun_pelajaran_id: tp.id },
+          orderBy: { is_active: 'desc' },
+        }));
+      if (fallbackSem) {
+        sem = fallbackSem;
+      }
+    }
+    const effectiveTpId = tp.id;
+    const effectiveSemId = sem.id;
 
     // Ambil seluruh peserta yang telah menyelesaikan ujian (FINISHED)
     const pesertaList = await prisma.cbtPesertaUjian.findMany({
@@ -423,7 +446,7 @@ export class CbtJadwalService {
     // Cek otoritas pengaturan sumber nilai rapor (MURNI_CP_MANUAL vs FORMULA_SUMATIF)
     const [tpSumberCfg, globalSumberCfg] = await Promise.all([
       prisma.config.findFirst({
-        where: { tenant_id: tenantId, key: `RAPOR_SUMBER_NILAI_${payload.tahun_pelajaran_id}` },
+        where: { tenant_id: tenantId, key: `RAPOR_SUMBER_NILAI_${effectiveTpId}` },
       }),
       prisma.config.findFirst({
         where: { tenant_id: tenantId, key: 'RAPOR_SUMBER_NILAI' },
@@ -443,8 +466,8 @@ export class CbtJadwalService {
       where: {
         tenant_id: tenantId,
         mapel_id: effectiveMapelId,
-        tahun_pelajaran_id: payload.tahun_pelajaran_id,
-        semester_id: payload.semester_id,
+        tahun_pelajaran_id: effectiveTpId,
+        semester_id: effectiveSemId,
         siswa_id: { in: siswaIds },
       },
     });
@@ -461,18 +484,21 @@ export class CbtJadwalService {
             where: {
               siswa_id_tahun_pelajaran_id_semester_id: {
                 siswa_id: p.siswa_id,
-                tahun_pelajaran_id: payload.tahun_pelajaran_id,
-                semester_id: payload.semester_id,
+                tahun_pelajaran_id: effectiveTpId,
+                semester_id: effectiveSemId,
               },
             },
             create: {
               siswa_id: p.siswa_id,
               kelas_id: p.Siswa!.kelas_id!,
-              tahun_pelajaran_id: payload.tahun_pelajaran_id,
-              semester_id: payload.semester_id,
+              tahun_pelajaran_id: effectiveTpId,
+              semester_id: effectiveSemId,
               status: 'AKTIF',
             },
-            update: {},
+            update: {
+              kelas_id: p.Siswa!.kelas_id!,
+              status: 'AKTIF',
+            },
             select: { id: true, siswa_id: true },
           })
         )
@@ -544,8 +570,8 @@ export class CbtJadwalService {
             siswa_id_mapel_id_tahun_pelajaran_id_semester_id: {
               siswa_id: p.siswa_id,
               mapel_id: effectiveMapelId,
-              tahun_pelajaran_id: payload.tahun_pelajaran_id,
-              semester_id: payload.semester_id,
+              tahun_pelajaran_id: effectiveTpId,
+              semester_id: effectiveSemId,
             },
           },
           update: {
@@ -563,8 +589,8 @@ export class CbtJadwalService {
             siswa_id: p.siswa_id,
             siswa_akademik_id: saId,
             mapel_id: effectiveMapelId,
-            tahun_pelajaran_id: payload.tahun_pelajaran_id,
-            semester_id: payload.semester_id,
+            tahun_pelajaran_id: effectiveTpId,
+            semester_id: effectiveSemId,
             sumatif_1: sum1,
             sumatif_2: sum2,
             sumatif_3: sum3,
@@ -590,8 +616,8 @@ export class CbtJadwalService {
       total_finished: pesertaList.length,
       target_slot: payload.target_slot,
       mapel_id: effectiveMapelId,
-      tahun_pelajaran_id: payload.tahun_pelajaran_id,
-      semester_id: payload.semester_id,
+      tahun_pelajaran_id: effectiveTpId,
+      semester_id: effectiveSemId,
     };
   }
 }
