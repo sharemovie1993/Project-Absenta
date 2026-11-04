@@ -19,7 +19,6 @@ import {
   Clock,
   BookOpen,
   CheckCircle2,
-  Users,
   RotateCcw,
   ArrowRight,
   ArrowLeft,
@@ -675,49 +674,21 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
             </div>
           </>
         ) : step === 2 ? (
-          <>
-            {/* Ringkasan Singkat Step 1 */}
-            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 flex items-center justify-between gap-2 text-xs">
-              <div className="min-w-0">
-                <p className="font-bold text-slate-800 dark:text-slate-200 truncate">{namaSesi}</p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                  {selectedBankSoal ? `${selectedBankSoal.kode_bank} • ${selectedBankSoal.Mapel?.nama_mapel || '-'}` : '-'} • {durasiMenit} Menit
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={(e) => handleGoToStep(1, e)}
-                className="text-[11px] font-bold text-violet-600 dark:text-violet-400 hover:underline shrink-0 cursor-pointer"
-              >
-                Ubah Waktu
-              </button>
-            </div>
-
-            {/* Target Kelas */}
+          <div className="space-y-4 py-1">
+            {/* Pertanyaan 1: Sasaran Kelas */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5 text-violet-600" />
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Sasaran Kelas ({targetKelasIds.length} dipilih) <span className="text-rose-500">*</span>
-                  </label>
-                  {selectedBankSoal?.tingkat && selectedBankSoal.tingkat !== 'SEMUA' && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60">
-                      Tingkat {selectedBankSoal.tingkat}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-black text-slate-900 dark:text-white leading-snug">
+                  Ujian ini diberikan untuk kelas mana saja?
+                </p>
+                <div className="flex items-center gap-2 shrink-0">
                   {teacherClasses.length > 0 && (
                     <button
                       type="button"
                       onClick={() => setShowAllGradeClasses((prev) => !prev)}
                       className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
                     >
-                      {showAllGradeClasses
-                        ? `(Batasi ${teacherClasses.length} Kelas Saya)`
-                        : `(Semua Kelas Tingkat ${selectedBankSoal?.tingkat || ''}: ${classesInTingkat.length})`}
+                      {showAllGradeClasses ? 'Hanya Kelas Saya' : 'Lihat Semua Kelas'}
                     </button>
                   )}
                   <button
@@ -727,129 +698,118 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                   >
                     {displayedKelasList.length > 0 &&
                     displayedKelasList.every((k) => targetKelasIds.includes(k.id))
-                      ? 'Batal Pilih Semua'
-                      : `Pilih Semua (${displayedKelasList.length})`}
+                      ? 'Batal Semua'
+                      : 'Pilih Semua'}
                   </button>
                 </div>
               </div>
 
-              <div className="p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl max-h-40 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-1.5 bg-slate-50/50 dark:bg-slate-900/50">
-                {displayedKelasList.map((k) => {
-                  const isChecked = targetKelasIds.includes(k.id);
-                  const isMyClass = teacherTaughtClassIds.includes(k.id);
-                  return (
-                    <label
-                      key={k.id}
-                      className={cn(
-                        'flex items-center gap-2 p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 cursor-pointer text-xs font-medium transition-colors border',
-                        isChecked
-                          ? 'bg-violet-50/80 dark:bg-violet-950/40 border-violet-200 dark:border-violet-800/60'
-                          : 'border-transparent'
-                      )}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => toggleKelas(k.id)}
-                        className="w-3.5 h-3.5 text-indigo-600 rounded focus:ring-indigo-500 cursor-pointer shrink-0"
+              {displayedKelasList.length === 0 ? (
+                <p className="text-xs text-amber-600 dark:text-amber-400 py-2">
+                  Tidak ditemukan kelas yang cocok dengan tingkat bank soal ini.
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1">
+                  {displayedKelasList.map((k) => {
+                    const isChecked = targetKelasIds.includes(k.id);
+                    return (
+                      <button
+                        key={k.id}
+                        type="button"
+                        onClick={() => toggleKelas(k.id)}
                         aria-label={`Target Kelas ${k.nama_kelas}`}
-                      />
-                      <div className="flex flex-col min-w-0">
-                        <span className="truncate font-bold text-slate-800 dark:text-slate-200 leading-tight">
-                          {k.nama_kelas}
-                        </span>
-                        <span className="text-[10px] text-slate-400 truncate">
-                          {isMyClass ? 'Rombel Anda' : `Tingkat ${k.tingkat}`}
-                        </span>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
-
-              {displayedKelasList.length === 0 && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 py-1">
-                  Tidak ditemukan rombel/kelas yang cocok dengan tingkat bank soal ini.
-                </p>
-              )}
-
-              {teacherClasses.length > 0 && !showAllGradeClasses && (
-                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                  <span>Otomatis difilter hanya kelas yang Anda ajar untuk mata pelajaran ini.</span>
-                </p>
+                        className={cn(
+                          'px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                          isChecked
+                            ? 'bg-violet-600 text-white border-violet-600 shadow-2xs'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-violet-300'
+                        )}
+                      >
+                        {isChecked && <CheckCircle2 size={13} />}
+                        <span>{k.nama_kelas}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               )}
             </div>
 
-            {/* Pengaturan Keamanan Anti-Cheat Ringkas */}
-            <div className="p-3 bg-indigo-50/30 dark:bg-indigo-950/20 rounded-xl border border-indigo-100 dark:border-indigo-900/40 space-y-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 text-indigo-700 dark:text-indigo-300 font-bold text-xs">
+            {/* Pertanyaan 2: Nilai Langsung Tampil atau Tidak */}
+            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <p className="text-sm font-black text-slate-900 dark:text-white leading-snug">
+                Tampilkan nilai langsung ke siswa setelah selesai mengerjakan?
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowResultInstant(true)}
+                  className={cn(
+                    'py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5',
+                    showResultInstant
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  )}
+                >
+                  <CheckCircle2 size={14} />
+                  <span>Ya, Tampilkan Langsung</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowResultInstant(false)}
+                  className={cn(
+                    'py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5',
+                    !showResultInstant
+                      ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900 shadow-2xs'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  )}
+                >
+                  <span>Tidak, Sembunyikan Dulu</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Pertanyaan 3: Proteksi Kecurangan (Anti-Cheat) */}
+            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <p className="text-sm font-black text-slate-900 dark:text-white leading-snug">
+                Aktifkan pengawasan anti-curang (acak soal & kunci pindah tab)?
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBlockTabSwitch(true);
+                    setShuffleQuestions(true);
+                    setShuffleOptions(true);
+                  }}
+                  className={cn(
+                    'py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5',
+                    blockTabSwitch
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  )}
+                >
                   <ShieldAlert size={14} />
-                  <span>Keamanan Ujian (Anti-Cheat)</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-[11px]">
-                  <span className="text-slate-500 dark:text-slate-400 font-medium">Batas Pindah Tab:</span>
-                  <select
-                    value={maxTabSwitches}
-                    onChange={(e) => setMaxTabSwitches(Number(e.target.value))}
-                    className="px-2 py-0.5 text-[11px] border rounded-md bg-white dark:bg-slate-900 font-bold"
-                    aria-label="Batas Toleransi Pelanggaran"
-                  >
-                    <option value={1}>1x (Ketat)</option>
-                    <option value={3}>3x (Standar)</option>
-                    <option value={5}>5x (Toleran)</option>
-                  </select>
-                </div>
-              </div>
+                  <span>Ya, Mode Ketat (Standar)</span>
+                </button>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700 dark:text-slate-300">
-                  <input
-                    type="checkbox"
-                    checked={blockTabSwitch}
-                    onChange={(e) => setBlockTabSwitch(e.target.checked)}
-                    className="w-3.5 h-3.5 text-indigo-600 rounded focus:ring-indigo-500"
-                    aria-label="Kunci Perpindahan Tab dan Fullscreen"
-                  />
-                  <span>Blokir Pindah Tab & Fullscreen</span>
-                </label>
-
-                <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700 dark:text-slate-300">
-                  <input
-                    type="checkbox"
-                    checked={shuffleQuestions}
-                    onChange={(e) => setShuffleQuestions(e.target.checked)}
-                    className="w-3.5 h-3.5 text-indigo-600 rounded focus:ring-indigo-500"
-                    aria-label="Acak Butir Soal"
-                  />
-                  <span>Acak Urutan Soal</span>
-                </label>
-
-                <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700 dark:text-slate-300">
-                  <input
-                    type="checkbox"
-                    checked={shuffleOptions}
-                    onChange={(e) => setShuffleOptions(e.target.checked)}
-                    className="w-3.5 h-3.5 text-indigo-600 rounded focus:ring-indigo-500"
-                    aria-label="Acak Opsi Pilihan A-E"
-                  />
-                  <span>Acak Opsi Jawaban (A–E)</span>
-                </label>
-
-                <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700 dark:text-slate-300">
-                  <input
-                    type="checkbox"
-                    checked={showResultInstant}
-                    onChange={(e) => setShowResultInstant(e.target.checked)}
-                    className="w-3.5 h-3.5 text-indigo-600 rounded focus:ring-indigo-500"
-                    aria-label="Tampilkan Nilai Langsung"
-                  />
-                  <span>Tampilkan Nilai Setelah Submit</span>
-                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBlockTabSwitch(false);
+                  }}
+                  className={cn(
+                    'py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5',
+                    !blockTabSwitch
+                      ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900 shadow-2xs'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  )}
+                >
+                  <span>Longgar (Tanpa Kunci Tab)</span>
+                </button>
               </div>
             </div>
-          </>
+          </div>
         ) : (
           <div className="space-y-4 py-1">
             {/* Pertanyaan Utama yang Simpel & Fokus */}
