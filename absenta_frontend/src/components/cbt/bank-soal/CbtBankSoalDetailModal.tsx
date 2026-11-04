@@ -38,7 +38,7 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
   readOnly = false,
 }) => {
   const queryClient = useQueryClient();
-  const { confirm } = useConfirm();
+  const confirm = useConfirm();
 
   const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
   const [soalToEdit, setSoalToEdit] = useState<CbtSoal | null>(null);
@@ -79,8 +79,9 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
     const isConfirmed = await confirm({
       title: 'Hapus Butir Soal?',
       message: `Apakah Anda yakin ingin menghapus butir soal nomor ${soal.nomor_urut}? Tindakan ini tidak dapat dibatalkan.`,
-      confirmLabel: 'Ya, Hapus',
-      cancelLabel: 'Batal',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      style: 'danger',
     });
 
     if (isConfirmed) {

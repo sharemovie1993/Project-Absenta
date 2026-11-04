@@ -47,7 +47,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
 }) => {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
-  const { confirm } = useConfirm();
+  const confirm = useConfirm();
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -121,8 +121,9 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
     const isConfirmed = await confirm({
       title: 'Hapus Bank Soal?',
       message: `Apakah Anda yakin ingin menghapus bank soal "${bankSoal.judul}" (${bankSoal.kode_bank})? Semua butir soal di dalamnya akan terhapus.`,
-      confirmLabel: 'Ya, Hapus',
-      cancelLabel: 'Batal',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      style: 'danger',
     });
 
     if (isConfirmed) {

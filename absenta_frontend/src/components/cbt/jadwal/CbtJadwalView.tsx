@@ -49,7 +49,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
 }) => {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
-  const { confirm } = useConfirm();
+  const confirm = useConfirm();
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -142,8 +142,9 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
     const isConfirmed = await confirm({
       title: 'Aktifkan Sesi Ujian?',
       message: `Sesi "${jdw.nama_sesi}" akan dibuka untuk siswa dengan token ${jdw.token_ujian}. Bundle soal akan dimuat ke Redis in-memory cache.`,
-      confirmLabel: 'Aktifkan Sekarang',
-      cancelLabel: 'Batal',
+      confirmText: 'Aktifkan Sekarang',
+      cancelText: 'Batal',
+      style: 'primary',
     });
     if (isConfirmed) activateMutation.mutate(jdw.id);
   };
@@ -152,8 +153,9 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
     const isConfirmed = await confirm({
       title: 'Selesaikan Sesi Ujian?',
       message: `Sesi "${jdw.nama_sesi}" akan ditutup permanen. Siswa yang belum submit tidak dapat melanjutkan lagi.`,
-      confirmLabel: 'Ya, Selesaikan',
-      cancelLabel: 'Batal',
+      confirmText: 'Ya, Selesaikan',
+      cancelText: 'Batal',
+      style: 'danger',
     });
     if (isConfirmed) completeMutation.mutate(jdw.id);
   };

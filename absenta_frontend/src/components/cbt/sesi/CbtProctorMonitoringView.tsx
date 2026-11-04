@@ -34,7 +34,7 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   onBack,
 }) => {
   const queryClient = useQueryClient();
-  const { confirm } = useConfirm();
+  const confirm = useConfirm();
 
   const [selectedJadwalId, setSelectedJadwalId] = useState<string>(initialJadwalId || '');
   const [searchQuery, setSearchQuery] = useState('');
@@ -84,8 +84,9 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
     const isConfirmed = await confirm({
       title: 'Reset Sesi Siswa?',
       message: `Reset sesi "${peserta.Siswa?.nama_lengkap || 'Siswa'}"? Sesi Redis akan dibersihkan agar siswa dapat masuk kembali pada perangkat lain. Jawaban yang sudah tersinkronisasi tidak akan hilang.`,
-      confirmLabel: 'Reset Sesi',
-      cancelLabel: 'Batal',
+      confirmText: 'Reset Sesi',
+      cancelText: 'Batal',
+      style: 'danger',
     });
 
     if (isConfirmed) {
