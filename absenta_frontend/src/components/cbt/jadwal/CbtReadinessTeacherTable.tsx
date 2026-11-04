@@ -8,12 +8,12 @@ import {
   CheckCircle2,
   AlertCircle,
   FileQuestion,
-  ExternalLink,
+  Phone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CbtBankSoal } from '@/types/cbt.types';
 import { formatTingkatRomawi } from '../bank-soal/cbtAsesmenHelper';
-import type { AuditedTargetItem } from './cbtMgmpHelper';
+import { AuditedTargetItem, formatNudgeMinutesAgo } from './cbtMgmpHelper';
 
 interface CbtReadinessTeacherTableProps {
   items: AuditedTargetItem[];
@@ -49,11 +49,11 @@ export const CbtReadinessTeacherTable: React.FC<CbtReadinessTeacherTableProps> =
           <thead>
             <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 text-slate-500 font-bold">
               <th className="py-2.5 px-3 w-10 text-center">No</th>
-              <th className="py-2.5 px-3">Guru Pengampu</th>
+              <th className="py-2.5 px-3">Guru Pengampu &amp; Kontak</th>
               <th className="py-2.5 px-3">Mata Pelajaran</th>
               <th className="py-2.5 px-3 w-28 text-center">Tingkat</th>
               <th className="py-2.5 px-3 w-48">Status Pemenuhan</th>
-              <th className="py-2.5 px-3 w-40 text-right">Aksi Tindakan</th>
+              <th className="py-2.5 px-3 w-48 text-right">Aksi &amp; Status Colek</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -61,7 +61,9 @@ export const CbtReadinessTeacherTable: React.FC<CbtReadinessTeacherTableProps> =
               const isReady = target.status === 'READY';
               const isCovered = Boolean(target.isCoveredByMaster);
               const isUncreated = target.status === 'UNCREATED';
-              const hp = target.assignedTeachers[0]?.no_hp;
+              const phone = target.no_hp || target.assignedTeachers[0]?.no_hp;
+              const hasNudged = Boolean(target.nudgeMeta?.sent_at);
+              const nudgeTimeAgo = hasNudged ? formatNudgeMinutesAgo(target.nudgeMeta?.sent_at) : null;
 
               return (
                 <tr
@@ -76,14 +78,19 @@ export const CbtReadinessTeacherTable: React.FC<CbtReadinessTeacherTableProps> =
                     {idx + 1}
                   </td>
 
-                  {/* 2. Guru Pengampu */}
+                  {/* 2. Guru Pengampu & Kontak WA */}
                   <td className="py-2.5 px-3">
                     <div className="font-bold text-slate-800 dark:text-slate-100">
                       {target.nama_guru}
                     </div>
-                    {hp && (
-                      <div className="text-[11px] text-slate-400">
-                        {hp}
+                    {phone ? (
+                      <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono font-medium flex items-center gap-1 mt-0.5">
+                        <Phone size={10} />
+                        <span>{phone}</span>
+                      </div>
+                    ) : (
+                      <div className="text-[10px] text-slate-400 mt-0.5 italic">
+                        (No. WA belum terdaftar)
                       </div>
                     )}
                   </td>
@@ -139,19 +146,41 @@ export const CbtReadinessTeacherTable: React.FC<CbtReadinessTeacherTableProps> =
                     )}
                   </td>
 
-                  {/* 6. Aksi Tindakan */}
+                  {/* 6. Aksi & Status Colek WA */}
                   <td className="py-2.5 px-3 text-right">
                     {!isReady ? (
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => onNudgeWhatsApp(target)}
-                          className="py-1 px-2.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300 text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer"
-                          title="Kirim pesan WhatsApp langsung ke Guru"
-                        >
-                          <MessageSquare size={12} />
-                          <span>Colek WA</span>
-                        </button>
+                      <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                        {/* Status Telah di-WA (seperti modul monitoring KBM) */}
+                        {hasNudged ? (
+                          <div className="flex items-center gap-1">
+                            <span
+                              className="inline-flex items-center gap-1 py-1 px-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-800 text-[10px] font-bold"
+                              title={`Diingatkan oleh ${target.nudgeMeta?.sent_by} pada ${new Date(target.nudgeMeta!.sent_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB`}
+                            >
+                              <CheckCircle2 size={11} className="text-amber-600 dark:text-amber-400" />
+                              <span>Di-WA ({nudgeTimeAgo})</span>
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={() => onNudgeWhatsApp(target)}
+                              className="p-1 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                              title="Colek Ulang WhatsApp"
+                            >
+                              <MessageSquare size={12} />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => onNudgeWhatsApp(target)}
+                            className="py-1 px-2.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300 text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer"
+                            title="Kirim pesan WhatsApp langsung ke nomor HP guru"
+                          >
+                            <MessageSquare size={12} />
+                            <span>Colek WA</span>
+                          </button>
+                        )}
 
                         <button
                           type="button"

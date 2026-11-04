@@ -63,7 +63,7 @@ export class GuruMapelService {
     const data = await prisma.guruMapel.findMany({
       where: whereClause,
       include: {
-        Guru: { select: { id: true, nama_guru: true, max_jp: true } },
+        Guru: { select: { id: true, nama_guru: true, max_jp: true, no_hp: true } },
         Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
         Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
         Jurusan: { select: { id: true, nama: true } },

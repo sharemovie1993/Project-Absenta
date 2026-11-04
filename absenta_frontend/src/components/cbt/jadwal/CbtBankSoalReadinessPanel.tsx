@@ -1,10 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Search,
   ArrowRight,
   Plus,
   Copy,
-  Users,
   BookOpen,
   CheckCircle2,
   AlertCircle,
@@ -18,11 +17,14 @@ import { cn } from '@/lib/utils';
 import { CbtBankSoalFormModal } from '../bank-soal/CbtBankSoalFormModal';
 import { CbtBankSoalDetailModal } from '../bank-soal/CbtBankSoalDetailModal';
 import { listGuruMapel } from '@/api/kurikulum/guru-mapel.api';
+import { useGuruOptions } from '@/hooks/useGuruOptions';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
 import {
   AuditedTargetItem,
   getAllMgmpSharedMap,
+  getNudgeHistory,
+  recordNudge,
 } from './cbtMgmpHelper';
 import { CbtReadinessStatsBar } from './CbtReadinessStatsBar';
 import { CbtReadinessTeacherTable } from './CbtReadinessTeacherTable';
@@ -63,6 +65,14 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
   const [activeTab, setActiveTab] = useState<ViewTabMode>('BELUM');
   const [filterTingkat, setFilterTingkat] = useState<number | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [nudgeTick, setNudgeTick] = useState<number>(Date.now());
+
+  // Listen event update colek WA
+  useEffect(() => {
+    const handleUpdate = () => setNudgeTick(Date.now());
+    window.addEventListener('cbt-nudge-updated', handleUpdate);
+    return () => window.removeEventListener('cbt-nudge-updated', handleUpdate);
+  }, []);
 
   // Modals state
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -74,20 +84,30 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedBankForDetail, setSelectedBankForDetail] = useState<CbtBankSoal | null>(null);
 
-  // ── 1. Fetch SK Penugasan Guru-Mapel Kurikulum Tahun Pelajaran Aktif ──
+  // ── 1. Fetch SK Penugasan & Data Guru (Termasuk No HP Terdaftar) ──
   const { data: guruMapelRes } = useQuery({
     queryKey: ['guru-mapel-readiness', activeTpId],
     queryFn: () => listGuruMapel({ tahun_pelajaran_id: activeTpId }),
   });
   const rawGuruMapel = guruMapelRes?.data || [];
 
+  const { rawList: allGurus = [] } = useGuruOptions({ jenisPtk: 'ALL' });
+  const guruPhoneMap = useMemo(() => {
+    const map = new Map<string, string>();
+    allGurus.forEach((g) => {
+      if (g.id && g.no_hp) {
+        map.set(g.id, g.no_hp);
+      }
+    });
+    return map;
+  }, [allGurus]);
+
   // ── 2. Rekonsiliasi Otomatis & Pemodelan Data Teori vs Realisasi ──
   const { auditedTeachers, mapelPaketTeoriList, stats } = useMemo(() => {
     const mgmpSharedMap = getAllMgmpSharedMap(tenantId);
+    const nudgeHistory = getNudgeHistory(tenantId);
 
-    // Map bank soal langsung per guru + mapel + tingkat
     const directBankMap = new Map<string, CbtBankSoal>();
-    // Map master bank soal per mapel + tingkat (untuk shared coverage)
     const masterBanksByMapelTingkat = new Map<string, CbtBankSoal>();
 
     bankList.forEach((b) => {
@@ -124,7 +144,6 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
         if (!gId || !mId) return;
 
         const mapelName = gm.Mapel?.nama_mapel || 'Mata Pelajaran';
-        // Abaikan BP/BK karena bukan mapel ujian CBT tertulis
         const lowerName = mapelName.toLowerCase();
         if (
           lowerName.includes('bimbingan') ||
@@ -138,6 +157,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
         const rawTingkat = gm.Kelas?.tingkat || gm.Mapel?.tingkat || 10;
         const tNum = Number(rawTingkat) || (rawTingkat === 'XI' ? 11 : rawTingkat === 'XII' ? 12 : 10);
         const guruName = gm.Guru?.nama_guru || 'Guru Pengampu';
+        const phone = gm.Guru?.no_hp || guruPhoneMap.get(gId) || '';
 
         // 2a. Model Teori Paket Mapel (Mata Pelajaran x Tingkat)
         const mtKey = `${mId}_${tNum}`;
@@ -167,6 +187,8 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
         processedTeacherKeys.add(teacherKey);
 
         const directBank = directBankMap.get(teacherKey);
+        const nudgeMeta = nudgeHistory[teacherKey] || (directBank ? nudgeHistory[directBank.id] : undefined);
+
         if (directBank) {
           const count = directBank.jumlah_soal || directBank._count?.Soal || 0;
           const isShared = Boolean(directBank.is_shared || directBank.status === 'PUBLISHED');
@@ -174,19 +196,20 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
             id: directBank.id,
             guru_id: gId,
             nama_guru: guruName,
+            no_hp: phone,
             mapel_id: mId,
             nama_mapel: mapelName,
             tingkat: tNum,
-            assignedTeachers: [{ id: gId, nama_guru: guruName, no_hp: gm.Guru?.no_hp }],
+            assignedTeachers: [{ id: gId, nama_guru: guruName, no_hp: phone }],
             bankSoal: directBank,
             soalCount: count,
             status: count > 0 ? 'READY' : 'DRAFT_EMPTY',
             isShared,
             creatorName: guruName,
             isCoveredByMaster: false,
+            nudgeMeta,
           });
         } else {
-          // Cek apakah guru ini ter-cover bank shared MGMP
           const masterBank = masterBanksByMapelTingkat.get(mtKey);
           const masterSharedIds = masterBank ? mgmpSharedMap[masterBank.id] || [] : [];
           const isCovered =
@@ -200,10 +223,11 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
               id: `mgmp_${gId}_${masterBank.id}`,
               guru_id: gId,
               nama_guru: guruName,
+              no_hp: phone,
               mapel_id: mId,
               nama_mapel: mapelName,
               tingkat: tNum,
-              assignedTeachers: [{ id: gId, nama_guru: guruName, no_hp: gm.Guru?.no_hp }],
+              assignedTeachers: [{ id: gId, nama_guru: guruName, no_hp: phone }],
               bankSoal: masterBank,
               soalCount: mCount,
               status: mCount > 0 ? 'READY' : 'DRAFT_EMPTY',
@@ -211,22 +235,25 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
               creatorName: guruName,
               isCoveredByMaster: true,
               masterAuthorName: masterBank.Guru?.nama_guru || 'Koordinator MGMP',
+              nudgeMeta,
             });
           } else {
             teacherItems.push({
-              id: `uncreated_${teacherKey}`,
+              id: teacherKey,
               guru_id: gId,
               nama_guru: guruName,
+              no_hp: phone,
               mapel_id: mId,
               nama_mapel: mapelName,
               tingkat: tNum,
-              assignedTeachers: [{ id: gId, nama_guru: guruName, no_hp: gm.Guru?.no_hp }],
+              assignedTeachers: [{ id: gId, nama_guru: guruName, no_hp: phone }],
               bankSoal: undefined,
               soalCount: 0,
               status: 'UNCREATED',
               isShared: false,
               creatorName: guruName,
               isCoveredByMaster: false,
+              nudgeMeta,
             });
           }
         }
@@ -254,7 +281,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
         guruBelumSiap,
       },
     };
-  }, [rawGuruMapel, bankList, tenantId]);
+  }, [rawGuruMapel, bankList, tenantId, guruPhoneMap, nudgeTick]);
 
   // ── 3. Filter List Guru ──
   const guruBelumList = useMemo(() => {
@@ -294,20 +321,30 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
 
   // ── 4. Handlers ──
   const handleNudgeWhatsApp = (target: AuditedTargetItem) => {
-    const rawHp = target.assignedTeachers[0]?.no_hp;
+    const rawHp = target.no_hp || guruPhoneMap.get(target.guru_id) || target.assignedTeachers[0]?.no_hp;
     const cleanHp = rawHp ? rawHp.replace(/[^0-9]/g, '').replace(/^0/, '62') : '';
     const teacherName = target.nama_guru;
     const mapelName = target.nama_mapel;
     const tingkatStr = `Tingkat ${formatTingkatRomawi(target.tingkat)} (Kelas ${target.tingkat})`;
+    const senderName = user?.full_name || (user as any)?.nama || 'Panitia CBT';
 
     const msg =
       target.status === 'UNCREATED'
-        ? `Halo Bapak/Ibu ${teacherName}, mengingatkan persiapan Asesmen Ujian CBT untuk mata pelajaran ${mapelName} ${tingkatStr} yang belum terdaftar di sistem. Mohon dapat segera menginput naskah soal atau mengklaim bank master MGMP. Terima kasih.`
-        : `Halo Bapak/Ibu ${teacherName}, bank soal untuk mata pelajaran ${mapelName} ${tingkatStr} saat ini masih kosong (0 soal). Mohon kesediaannya melengkapi butir soal. Terima kasih.`;
+        ? `Halo Bapak/Ibu ${teacherName},\n\nMengingatkan persiapan Asesmen Ujian CBT untuk mata pelajaran ${mapelName} ${tingkatStr} yang saat ini belum terdaftar di sistem.\nMohon kesediaannya segera menginput butir soal atau mengklaim paket master MGMP sebelum batas waktu yang ditentukan.\n\nTerima kasih.\n— Panitia CBT (${senderName})`
+        : `Halo Bapak/Ibu ${teacherName},\n\nMengingatkan bahwa bank soal untuk mata pelajaran ${mapelName} ${tingkatStr} saat ini masih kosong (0 butir soal).\nMohon kesediaannya melengkapi butir soal agar jadwal ujian dapat segera diterbitkan.\n\nTerima kasih.\n— Panitia CBT (${senderName})`;
+
+    if (!cleanHp) {
+      toast.error(`Nomor WhatsApp untuk ${teacherName} belum terdaftar di profil guru. Membuka link umum WhatsApp...`);
+    } else {
+      toast.success(`Membuka WhatsApp untuk ${teacherName} (${cleanHp})`);
+    }
 
     const waUrl = cleanHp ? `https://wa.me/${cleanHp}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
     window.open(waUrl, '_blank');
-    toast.success(`Membuka WhatsApp untuk ${teacherName}`);
+
+    // Catat status telah di-WA (persisten & real-time)
+    recordNudge(target.id, senderName, tenantId);
+    setNudgeTick(Date.now());
   };
 
   const handleCopyUncreatedTeachers = () => {
@@ -319,7 +356,11 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
       '📢 *PENGINGAT KESIAPAN BANK SOAL CBT SEKOLAH*',
       `Daftar guru yang belum menyelesaikan bank soal (${guruBelumList.length} penugasan):`,
       '',
-      ...guruBelumList.map((t, idx) => `${idx + 1}. *${t.nama_guru}* - ${t.nama_mapel} (Tingkat ${formatTingkatRomawi(t.tingkat)})`),
+      ...guruBelumList.map((t, idx) => {
+        const phone = t.no_hp || guruPhoneMap.get(t.guru_id) || '';
+        const phoneStr = phone ? ` (${phone})` : '';
+        return `${idx + 1}. *${t.nama_guru}*${phoneStr} - ${t.nama_mapel} (Tingkat ${formatTingkatRomawi(t.tingkat)})`;
+      }),
       '',
       'Mohon untuk segera menginput bank soal atau menghubungi rekan MGMP. Terima kasih.',
     ];
@@ -338,7 +379,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
 
   return (
     <div className="space-y-4">
-      {/* ── 1. Hero Barometer Teori vs Realisasi (Ringkas & Nol Noise) ── */}
+      {/* ── 1. Hero Barometer Teori vs Realisasi ── */}
       <CbtReadinessStatsBar
         totalTeoriPaket={stats.totalTeoriPaket}
         paketSudahSiap={stats.paketSudahSiap}
@@ -350,7 +391,6 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
 
       {/* ── 2. Kontrol Navigasi Utama: Tab 3 Jawaban Panitia + Filter ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        {/* 3 Tab Jawaban Panitia */}
         <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl overflow-x-auto no-scrollbar">
           <button
             type="button"
@@ -395,7 +435,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
           </button>
         </div>
 
-        {/* Action Header: Tambah Bank & Lanjut ke Fase 2 */}
+        {/* Action Header */}
         <div className="flex items-center gap-2 shrink-0">
           {activeTab === 'BELUM' && (
             <Button
