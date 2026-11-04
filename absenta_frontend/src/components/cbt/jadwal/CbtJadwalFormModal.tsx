@@ -13,7 +13,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import type { CbtJadwalUjian, CbtRaporSlot } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
-import { ArrowRight, ArrowLeft, Layers, Info } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Layers, Info, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   formatLocalDateTime,
@@ -520,7 +520,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
               {displayedKelasList.length === 0 ? (
                 <p className="text-xs text-amber-600 dark:text-amber-400 py-1">Tidak ada kelas yang cocok dengan tingkat bank soal.</p>
               ) : (
-                <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2 rounded-xl border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40">
                   {displayedKelasList.map((k) => {
                     const isChecked = targetKelasIds.includes(k.id);
                     return (
@@ -530,11 +530,14 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                         onClick={() => toggleKelas(k.id)}
                         aria-label={`Target Kelas ${k.nama_kelas}`}
                         className={cn(
-                          'px-3 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer',
-                          isChecked ? 'bg-violet-600 text-white border-violet-600' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-violet-300'
+                          'inline-flex items-center px-2.5 py-1 rounded-lg border text-xs transition-all cursor-pointer select-none',
+                          isChecked
+                            ? 'bg-violet-50 text-violet-700 border-violet-300 dark:bg-violet-950/60 dark:text-violet-300 dark:border-violet-700 font-bold shadow-2xs'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
                         )}
                       >
-                        {k.nama_kelas}
+                        {isChecked && <Check size={11} className="mr-1 stroke-[3] text-violet-600 dark:text-violet-400" />}
+                        <span>{k.nama_kelas}</span>
                       </button>
                     );
                   })}
@@ -544,17 +547,20 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
 
             {/* Ploting Ruang & Pengawas / Proktor (Adaptif Berdasarkan Jumlah Kelas Terpilih) */}
             {targetKelasIds.length > 1 ? (
-              <div className="p-3.5 rounded-xl bg-violet-50/80 dark:bg-violet-950/30 border border-violet-200/70 dark:border-violet-800/60 space-y-1.5">
-                <div className="flex items-center gap-2 text-violet-800 dark:text-violet-300 font-bold text-xs">
-                  <Layers size={15} />
-                  <span>Mode Multi-Kelas Terdeteksi ({targetKelasIds.length} Rombel)</span>
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/70 flex items-start gap-2.5">
+                <div className="p-1.5 rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 shrink-0 mt-0.5">
+                  <Layers size={14} />
                 </div>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Karena Anda memilih lebih dari 1 rombel, alokasi ruangan fisik (misal: <strong>R.01 s/d R.{String(targetKelasIds.length).padStart(2, '0')}</strong>) dan penugasan guru pengawas per-ruangan dikelola secara terpusat melalui <strong>Meja Orkestrasi Panitia CBT</strong> agar cetak Berita Acara tiap ruang terbit secara akurat.
-                </p>
-                <div className="flex items-center gap-1.5 text-[10px] text-violet-700 dark:text-violet-400 font-semibold pt-0.5">
-                  <Info size={12} />
-                  <span>Jadwal ini akan aktif secara serentak untuk seluruh {targetKelasIds.length} kelas terpilih.</span>
+                <div className="text-xs space-y-0.5 min-w-0">
+                  <div className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 flex-wrap">
+                    <span>Ujian Serentak Multi-Kelas ({targetKelasIds.length} Rombel)</span>
+                    <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-800">
+                      Paralel
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
+                    Ploting slot ruang fisik (<span className="font-mono font-semibold text-slate-700 dark:text-slate-300">R.01 s/d R.{String(targetKelasIds.length).padStart(2, '0')}</span>) &amp; guru pengawas diatur terpusat melalui <strong>Meja Orkestrasi CBT</strong>.
+                  </p>
                 </div>
               </div>
             ) : (
