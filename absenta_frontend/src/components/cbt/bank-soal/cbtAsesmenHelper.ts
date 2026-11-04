@@ -32,6 +32,8 @@ export function getTingkatRoman(tingkat: number | string): string {
   return NUMERAL_TO_ROMAN[key] || key;
 }
 
+export const formatTingkatRomawi = getTingkatRoman;
+
 /**
  * Mengonversi string tingkat (Romawi atau angka) ke nomor integer (1-13)
  */
