@@ -15,6 +15,9 @@ import type { CbtBankSoal } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
 import { cn } from '@/lib/utils';
+import { Layers, User, Sparkles } from 'lucide-react';
+
+export type CbtBankSoalScope = 'TERPUSAT_MASSAL' | 'MANDIRI_GURU';
 
 interface CbtBankSoalFormModalProps {
   isOpen: boolean;
@@ -23,12 +26,13 @@ interface CbtBankSoalFormModalProps {
   onSuccess: () => void;
   defaultGuruId?: string;
   defaultMapelId?: string;
+  roleContext?: 'GURU' | 'KURIKULUM' | 'ADMIN';
 }
 
 const bankSoalSchema = z.object({
   kode_bank: z.string().min(2, 'Kode bank soal minimal 2 karakter').max(50),
   judul: z.string().min(3, 'Judul bank soal minimal 3 karakter').max(200),
-  guru_id: z.string().min(1, 'Guru pembuat soal wajib dipilih'),
+  guru_id: z.string().min(1, 'Guru pembuat/penyusun soal wajib dipilih'),
   mapel_id: z.string().min(1, 'Mata pelajaran wajib dipilih'),
   tingkat: z.enum(['X', 'XI', 'XII', 'SEMUA']),
   alokasi_menit: z.number().int().min(10, 'Alokasi durasi minimal 10 menit').max(300),
@@ -41,16 +45,43 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   onSuccess,
   defaultGuruId,
   defaultMapelId,
+  roleContext,
 }) => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const { isAdmin, isKurikulum } = useCapabilities();
 
-  // Kunci pemilihan guru jika user yang login adalah guru biasa (bukan Admin / Kurikulum)
+  const isPrivilegedRole = isAdmin || isKurikulum || roleContext === 'KURIKULUM' || roleContext === 'ADMIN';
+
+  // 1. Pemisahan Konteks: Mandiri Guru vs Terpusat Massal (UAS/PAS/US/Panitia)
+  const initialScope: CbtBankSoalScope = useMemo(() => {
+    if (bankSoalToEdit) {
+      const code = bankSoalToEdit.kode_bank.toUpperCase();
+      if (
+        code.startsWith('PAS-') ||
+        code.startsWith('UAS-') ||
+        code.startsWith('PAT-') ||
+        code.startsWith('US-') ||
+        code.startsWith('PTS-') ||
+        code.startsWith('SAS-') ||
+        code.startsWith('SAT-')
+      ) {
+        return 'TERPUSAT_MASSAL';
+      }
+      return 'MANDIRI_GURU';
+    }
+    // Jika dibuka di lingkungan Kurikulum / Admin, default adalah Terpusat Massal
+    return isPrivilegedRole && !defaultGuruId ? 'TERPUSAT_MASSAL' : 'MANDIRI_GURU';
+  }, [bankSoalToEdit, isPrivilegedRole, defaultGuruId]);
+
+  const [scope, setScope] = useState<CbtBankSoalScope>(initialScope);
+  const [jenisKegiatanMassal, setJenisKegiatanMassal] = useState<'PAS' | 'PAT' | 'PTS' | 'US' | 'TRYOUT' | 'CUSTOM'>('PAS');
+
+  // Kunci pemilihan guru HANYA jika guru biasa murni di mode mandiri
   const isTeacherLocked = useMemo(() => {
-    if (isAdmin || isKurikulum) return false;
+    if (isPrivilegedRole || scope === 'TERPUSAT_MASSAL') return false;
     return Boolean(defaultGuruId || user?.guru_profile?.id);
-  }, [isAdmin, isKurikulum, defaultGuruId, user?.guru_profile?.id]);
+  }, [isPrivilegedRole, scope, defaultGuruId, user?.guru_profile?.id]);
 
   const initialGuruId = useMemo(() => {
     return defaultGuruId || user?.guru_profile?.id || '';
@@ -67,15 +98,16 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   const [alokasiMenit, setAlokasiMenit] = useState<number>(90);
   const [acakSoal, setAcakSoal] = useState(true);
   const [acakOpsi, setAcakOpsi] = useState(true);
-  const [isShared, setIsShared] = useState(false);
-  const [showAllMapels, setShowAllMapels] = useState(false);
+  const [isShared, setIsShared] = useState(true);
+  // Di mode TERPUSAT_MASSAL, showAllMapels SELALU true (tidak terkunci ke mapel ajar pribadi kurikulum)
+  const [showAllMapels, setShowAllMapels] = useState(isPrivilegedRole || initialScope === 'TERPUSAT_MASSAL');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Ambil data penugasan mapel guru yang sedang dipilih
+  // Ambil data penugasan mapel guru yang sedang dipilih (hanya relevan di mode Mandiri Guru)
   const { data: teacherAssignedMapels, isLoading: isAssignedMapelsLoading } = useQuery({
     queryKey: ['guru-assigned-mapels', guruId],
     queryFn: () => (guruId ? kurikulumApi.getGuruMapel(guruId).catch(() => null) : null),
-    enabled: isOpen && !!guruId,
+    enabled: isOpen && !!guruId && scope === 'MANDIRI_GURU',
   });
 
   // Ekstrak daftar unik mapel yang diampu guru
@@ -93,19 +125,36 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     return Array.from(map.values());
   }, [teacherAssignedMapels?.data, mapelOptions]);
 
-  // Opsi mapel aktif (difilter hanya mapel yang diampu, atau semua jika dipilih/fallback)
+  // Opsi mapel aktif
+  // 🛡️ SOLUSI: Pada mode TERPUSAT_MASSAL atau jika showAllMapels true, seluruh mapel sekolah langsung terbuka
   const activeMapelOptions = useMemo(() => {
-    let base = showAllMapels || assignedMapels.length === 0 ? mapelOptions : assignedMapels;
-    
-    // Pastikan jika sedang edit, mapel yang sudah tersimpan tetap muncul di daftar opsi
+    if (scope === 'TERPUSAT_MASSAL' || showAllMapels || assignedMapels.length === 0) {
+      return mapelOptions;
+    }
+    let base = assignedMapels;
     if (mapelId && !base.some((m) => m.value === mapelId)) {
       const canonical = mapelOptions.find((m) => m.value === mapelId);
-      if (canonical) {
-        base = [canonical, ...base];
-      }
+      if (canonical) base = [canonical, ...base];
     }
     return base;
-  }, [showAllMapels, assignedMapels, mapelOptions, mapelId]);
+  }, [scope, showAllMapels, assignedMapels, mapelOptions, mapelId]);
+
+  // Auto-generate judul & kode bank pada mode massal saat mapel atau kegiatan berubah
+  const handleAutoFillMassal = (targetMapelId: string, targetTingkat: string, targetKegiatan: string) => {
+    const selectedMapel = mapelOptions.find((m) => m.value === targetMapelId);
+    const mapelName = selectedMapel?.label?.split('(')[0]?.trim() || 'Mapel';
+    const year = new Date().getFullYear();
+    const cleanMapelCode = (selectedMapel?.label || 'MAPEL')
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .slice(0, 4)
+      .toUpperCase();
+
+    const generatedCode = `${targetKegiatan}-${year}-${cleanMapelCode}-${targetTingkat}`;
+    const generatedTitle = `${targetKegiatan} ${mapelName} Tingkat ${targetTingkat}`;
+
+    setKodeBank(generatedCode);
+    setJudul(generatedTitle);
+  };
 
   // Inisialisasi form saat buka modal atau ganti mode edit
   useEffect(() => {
@@ -119,9 +168,14 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setAcakSoal(bankSoalToEdit.acak_soal);
       setAcakOpsi(bankSoalToEdit.acak_opsi);
       setIsShared(bankSoalToEdit.status === 'PUBLISHED' || Boolean(bankSoalToEdit.is_shared));
-      setShowAllMapels(false);
+      setShowAllMapels(true);
     } else {
-      setKodeBank(`CBT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
+      setScope(initialScope);
+      const isMassal = initialScope === 'TERPUSAT_MASSAL';
+      const year = new Date().getFullYear();
+      const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+
+      setKodeBank(isMassal ? `PAS-${year}-MAPEL-X` : `CBT-${year}-${randomSuffix}`);
       setJudul('');
       setGuruId(initialGuruId);
       setMapelId(defaultMapelId || '');
@@ -130,23 +184,27 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setAcakSoal(true);
       setAcakOpsi(true);
       setIsShared(true);
-      setShowAllMapels(false);
+      setShowAllMapels(isPrivilegedRole || isMassal);
     }
-  }, [bankSoalToEdit, initialGuruId, defaultMapelId, isOpen]);
+  }, [bankSoalToEdit, initialGuruId, defaultMapelId, isOpen, initialScope, isPrivilegedRole]);
 
-  // Auto-select mapel jika guru hanya mengampu 1 mapel
-  useEffect(() => {
-    if (!isOpen || bankSoalToEdit) return;
-
-    if (!showAllMapels && assignedMapels.length === 1) {
-      setMapelId(assignedMapels[0].value);
-    } else if (!showAllMapels && assignedMapels.length > 1) {
-      // Jika mapel saat ini bukan salah satu mapel diampu guru
-      if (mapelId && !assignedMapels.some((m) => m.value === mapelId)) {
-        setMapelId('');
+  // Handler saat berganti tab Konteks (Mandiri vs Terpusat)
+  const handleChangeScope = (newScope: CbtBankSoalScope) => {
+    setScope(newScope);
+    const year = new Date().getFullYear();
+    if (newScope === 'TERPUSAT_MASSAL') {
+      setShowAllMapels(true);
+      setIsShared(true);
+      if (!judul || judul.startsWith('Ulangan') || judul.startsWith('Kuis')) {
+        handleAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal);
+      }
+    } else {
+      // Kembali ke Mandiri Guru
+      if (kodeBank.startsWith('PAS-') || kodeBank.startsWith('UAS-') || kodeBank.startsWith('PAT-')) {
+        setKodeBank(`UH-${year}-${Math.floor(1000 + Math.random() * 9000)}`);
       }
     }
-  }, [isOpen, bankSoalToEdit, assignedMapels, showAllMapels]);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,7 +219,9 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     });
 
     if (!validation.success) {
-      toast.error(validation.error.issues.map((err) => err.message).join(', ') || 'Data bank soal belum lengkap');
+      toast.error(
+        validation.error.issues.map((err) => err.message).join(', ') || 'Data bank soal belum lengkap'
+      );
       return;
     }
 
@@ -177,8 +237,8 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         alokasi_menit: Number(alokasiMenit),
         acak_soal: acakSoal,
         acak_opsi: acakOpsi,
-        status: (isShared ? 'PUBLISHED' : 'DRAFT') as 'PUBLISHED' | 'DRAFT',
-        is_shared: isShared,
+        status: (scope === 'TERPUSAT_MASSAL' || isShared ? 'PUBLISHED' : 'DRAFT') as 'PUBLISHED' | 'DRAFT',
+        is_shared: scope === 'TERPUSAT_MASSAL' ? true : isShared,
       };
 
       if (bankSoalToEdit) {
@@ -186,10 +246,13 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         toast.success('Bank soal berhasil diperbarui');
       } else {
         await cbtApi.createBankSoal(payload);
-        toast.success('Bank soal berhasil dibuat');
+        toast.success(
+          scope === 'TERPUSAT_MASSAL'
+            ? 'Paket bank soal ujian serentak berhasil dibuat & siap dijadwalkan'
+            : 'Bank soal mandiri guru berhasil dibuat'
+        );
       }
 
-      // 🛡️ Invalidate Cache secara agresif & refetch aktif (standar industri)
       await queryClient.invalidateQueries({
         queryKey: cbtQueryKeys.bankSoal(),
         exact: false,
@@ -213,25 +276,85 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       size="md"
     >
       <div className="-mt-3 sm:-mt-6 -mx-3 sm:-mx-6 mb-3 sm:mb-4 h-1.5 bg-[#673ab7]" />
+      
+      {/* ── 0. Konteks Switcher Pill: Terpusat Massal vs Mandiri Guru ── */}
+      <div className="mb-4 p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+        <div className="grid grid-cols-2 gap-1">
+          <button
+            type="button"
+            onClick={() => handleChangeScope('TERPUSAT_MASSAL')}
+            className={cn(
+              "py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+              scope === 'TERPUSAT_MASSAL'
+                ? "bg-violet-600 text-white shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+            )}
+          >
+            <Layers size={14} />
+            <span>Paket Massal (UAS / PAS / US)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleChangeScope('MANDIRI_GURU')}
+            className={cn(
+              "py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+              scope === 'MANDIRI_GURU'
+                ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+            )}
+          >
+            <User size={14} />
+            <span>Mandiri Guru (Ulangan / Kuis)</span>
+          </button>
+        </div>
+
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 px-1 pt-1.5 leading-snug">
+          {scope === 'TERPUSAT_MASSAL' ? (
+            <span className="text-violet-700 dark:text-violet-300 font-medium">
+              💡 <strong>Mode Panitia / Kurikulum:</strong> Membuka 100% seluruh mata pelajaran sekolah untuk pembuatan paket soal ujian serentak/bersama.
+            </span>
+          ) : (
+            <span>
+              💡 <strong>Mode Mandiri:</strong> Untuk keperluan kuis formatif, latihan, atau ulangan harian kelas guru pengampu.
+            </span>
+          )}
+        </p>
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-3.5">
-        {/* Pertanyaan Guru (Hanya tampil jika Admin / Kurikulum) */}
-        {!isTeacherLocked && (
-          <div className="space-y-1.5 pb-2.5 border-b border-slate-100 dark:border-slate-800">
-            <label htmlFor="form-guru" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-              Siapa guru pembuat soalnya?
+        {/* Preset Kegiatan jika Mode Terpusat Massal */}
+        {scope === 'TERPUSAT_MASSAL' && (
+          <div className="space-y-1.5 p-2.5 rounded-xl bg-violet-50/60 dark:bg-violet-950/30 border border-violet-200/80 dark:border-violet-800/60">
+            <label className="block text-[11px] font-bold text-violet-900 dark:text-violet-300 uppercase tracking-wider">
+              Jenis Kegiatan Asesmen:
             </label>
-            <SearchableSelect
-              id="form-guru"
-              options={guruOptions}
-              value={guruId}
-              onChange={(newGuruId) => {
-                setGuruId(newGuruId);
-                setMapelId('');
-                setShowAllMapels(false);
-              }}
-              placeholder={guruLoading ? 'Memuat guru...' : 'Pilih guru...'}
-              aria-label="Pilih Guru Pengampu"
-            />
+            <div className="grid grid-cols-5 gap-1.5">
+              {[
+                { key: 'PAS', label: 'PAS / SAS' },
+                { key: 'PTS', label: 'PTS / STS' },
+                { key: 'PAT', label: 'PAT / SAT' },
+                { key: 'US', label: 'US / PSAJ' },
+                { key: 'TRYOUT', label: 'Tryout' },
+              ].map((k) => (
+                <button
+                  key={k.key}
+                  type="button"
+                  onClick={() => {
+                    setJenisKegiatanMassal(k.key as any);
+                    handleAutoFillMassal(mapelId, tingkat, k.key);
+                  }}
+                  className={cn(
+                    "py-1.5 px-1 rounded-lg text-xs font-bold transition-all text-center cursor-pointer border",
+                    jenisKegiatanMassal === k.key
+                      ? "bg-violet-600 text-white border-violet-600 shadow-2xs"
+                      : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-violet-300"
+                  )}
+                >
+                  {k.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -239,9 +362,9 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-2">
             <label htmlFor="form-mapel" className="text-xs font-bold text-slate-800 dark:text-slate-200">
-              Untuk mata pelajaran apa?
+              Mata Pelajaran:
             </label>
-            {assignedMapels.length > 0 && (
+            {scope === 'MANDIRI_GURU' && assignedMapels.length > 0 && (
               <button
                 type="button"
                 onClick={() => setShowAllMapels((prev) => !prev)}
@@ -256,20 +379,25 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
             id="form-mapel"
             options={activeMapelOptions}
             value={mapelId}
-            onChange={setMapelId}
+            onChange={(newMapelId) => {
+              setMapelId(newMapelId);
+              if (scope === 'TERPUSAT_MASSAL') {
+                handleAutoFillMassal(newMapelId, tingkat, jenisKegiatanMassal);
+              }
+            }}
             placeholder={
               isAssignedMapelsLoading || mapelLoading
                 ? 'Memuat mata pelajaran...'
                 : activeMapelOptions.length === 0
                 ? 'Tidak ada mapel tersedia'
-                : 'Pilih mata pelajaran...'
+                : 'Pilih mata pelajaran sekolah...'
             }
             aria-label="Pilih Mata Pelajaran"
           />
         </div>
 
         {/* Pertanyaan 2: Tingkat / Jenjang Kelas */}
-        <div className="space-y-1.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+        <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
           <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
             Untuk kelas tingkat berapa?
           </p>
@@ -285,7 +413,12 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               <button
                 key={item.value}
                 type="button"
-                onClick={() => setTingkat(item.value)}
+                onClick={() => {
+                  setTingkat(item.value);
+                  if (scope === 'TERPUSAT_MASSAL') {
+                    handleAutoFillMassal(mapelId, item.value, jenisKegiatanMassal);
+                  }
+                }}
                 className={cn(
                   'py-2 px-2 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
                   tingkat === item.value
@@ -299,56 +432,156 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
           </div>
         </div>
 
-        {/* Pertanyaan 3: Judul Bank Soal */}
-        <div className="space-y-1.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
-          <label htmlFor="form-judul-bank" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-            Apa judul paket soal ini?
-          </label>
-          <Input
-            id="form-judul-bank"
-            value={judul}
-            onChange={(e) => setJudul(e.target.value)}
-            placeholder="Contoh: PAS Matematika Ganjil"
-            aria-label="Judul Bank Soal"
-            required
-          />
-        </div>
-
-        {/* Pertanyaan 4: Berbagi Bank Soal Se-Mapel & Setingkat */}
-        <div className="space-y-1.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
-          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-            Boleh dipakai guru lain yang se-mapel & setingkat?
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setIsShared(true)}
-              className={cn(
-                'py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
-                isShared
-                  ? 'bg-violet-600 text-white border-violet-600'
-                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+        {/* Pertanyaan 3: Guru Pembuat / Penanggung Jawab Soal */}
+        {!isTeacherLocked && (
+          <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between">
+              <label htmlFor="form-guru" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                {scope === 'TERPUSAT_MASSAL' ? 'Koordinator / Penyusun Soal:' : 'Guru Pembuat Soal:'}
+              </label>
+              {scope === 'TERPUSAT_MASSAL' && (
+                <span className="text-[11px] text-slate-400">
+                  (Dapat ditugaskan ke Guru Mapel terkait)
+                </span>
               )}
-            >
-              Ya, Bagikan
-            </button>
+            </div>
+            <SearchableSelect
+              id="form-guru"
+              options={guruOptions}
+              value={guruId}
+              onChange={(newGuruId) => {
+                setGuruId(newGuruId);
+                if (scope === 'MANDIRI_GURU') {
+                  setMapelId('');
+                  setShowAllMapels(false);
+                }
+              }}
+              placeholder={guruLoading ? 'Memuat daftar guru...' : 'Pilih koordinator / guru penyusun...'}
+              aria-label="Pilih Guru Penyusun Soal"
+            />
+          </div>
+        )}
 
-            <button
-              type="button"
-              onClick={() => setIsShared(false)}
-              className={cn(
-                'py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
-                !isShared
-                  ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900'
-                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+        {/* Pertanyaan 4: Judul & Kode Bank Soal */}
+        <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <label htmlFor="form-judul-bank" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                Judul Paket Soal:
+              </label>
+              {scope === 'TERPUSAT_MASSAL' && mapelId && (
+                <button
+                  type="button"
+                  onClick={() => handleAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal)}
+                  className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 flex items-center gap-1 hover:underline cursor-pointer"
+                  title="Generate otomatis nama standar"
+                >
+                  <Sparkles size={11} />
+                  <span>Format Standar</span>
+                </button>
               )}
-            >
-              Tidak (Pribadi)
-            </button>
+            </div>
+            <Input
+              id="form-judul-bank"
+              value={judul}
+              onChange={(e) => setJudul(e.target.value)}
+              placeholder="Contoh: PAS Ganjil - Matematika Tingkat X"
+              aria-label="Judul Bank Soal"
+              required
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="form-kode-bank" className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Kode Paket Bank Soal:
+            </label>
+            <Input
+              id="form-kode-bank"
+              value={kodeBank}
+              onChange={(e) => setKodeBank(e.target.value.toUpperCase())}
+              placeholder="Contoh: PAS-2026-MAT-X"
+              aria-label="Kode Bank Soal"
+              required
+            />
           </div>
         </div>
 
-        {/* Actions */}
+        {/* Pertanyaan 5: Alokasi Waktu Default */}
+        <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <label htmlFor="form-durasi" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+            Alokasi Waktu Ujian (Menit):
+          </label>
+          <div className="grid grid-cols-4 gap-2">
+            {[60, 90, 120].map((dur) => (
+              <button
+                key={dur}
+                type="button"
+                onClick={() => setAlokasiMenit(dur)}
+                className={cn(
+                  "py-1.5 px-2 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center",
+                  alokasiMenit === dur
+                    ? "bg-violet-600 text-white border-violet-600"
+                    : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-violet-300"
+                )}
+              >
+                {dur} Menit
+              </button>
+            ))}
+            <Input
+              id="form-durasi"
+              type="number"
+              value={alokasiMenit}
+              onChange={(e) => setAlokasiMenit(Number(e.target.value) || 90)}
+              aria-label="Alokasi Durasi Kustom"
+              className="text-center font-bold text-xs"
+            />
+          </div>
+        </div>
+
+        {/* Pertanyaan 6: Berbagi Bank Soal (Hanya relevan di mode Mandiri Guru) */}
+        {scope === 'MANDIRI_GURU' ? (
+          <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+              Boleh dipakai guru lain yang se-mapel &amp; setingkat?
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setIsShared(true)}
+                className={cn(
+                  'py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
+                  isShared
+                    ? 'bg-violet-600 text-white border-violet-600'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                )}
+              >
+                Ya, Bagikan
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsShared(false)}
+                className={cn(
+                  'py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
+                  !isShared
+                    ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                )}
+              >
+                Tidak (Pribadi)
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
+              <span className="font-bold">✓ Status Terbit:</span>
+              <span>Paket soal massal otomatis berstatus <strong>PUBLISHED</strong> agar dapat langsung dijadwalkan serentak oleh panitia.</span>
+            </div>
+          </div>
+        )}
+
+        {/* Actions Footer */}
         <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
           <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isSubmitting}>
             Batal
@@ -360,10 +593,11 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
             disabled={isSubmitting}
             className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold"
           >
-            {isSubmitting ? 'Menyimpan...' : 'Simpan'}
+            {isSubmitting ? 'Menyimpan...' : scope === 'TERPUSAT_MASSAL' ? 'Terbitkan Paket Massal' : 'Simpan Bank Soal'}
           </Button>
         </div>
       </form>
     </Modal>
   );
 };
+

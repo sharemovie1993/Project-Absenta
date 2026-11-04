@@ -120,7 +120,7 @@ export const KurikulumCbtTab: React.FC = () => {
           </div>
         }
       >
-        {activeSubView === 'bank' && <CbtBankSoalView hideLayout={true} />}
+        {activeSubView === 'bank' && <CbtBankSoalView hideLayout={true} roleContext="KURIKULUM" />}
         {activeSubView === 'jadwal' && (
           <CbtJadwalView hideLayout={true} onNavigateMonitor={handleNavigateMonitor} />
         )}

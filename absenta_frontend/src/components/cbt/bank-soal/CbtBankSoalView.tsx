@@ -32,6 +32,7 @@ export interface UniversalCbtBankSoalViewProps {
   isModal?: boolean;
   hideLayout?: boolean;
   readOnly?: boolean;
+  roleContext?: 'GURU' | 'KURIKULUM' | 'ADMIN';
   onClose?: () => void;
 }
 
@@ -41,6 +42,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
   isModal = false,
   hideLayout = false,
   readOnly = false,
+  roleContext,
   onClose,
 }) => {
   const queryClient = useQueryClient();
@@ -172,6 +174,17 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
         render: (_val: unknown, row: CbtBankSoal) => {
           const isSharedBank = row.status === 'PUBLISHED';
           const isFromColleague = Boolean(currentGuruId && row.guru_id !== currentGuruId);
+          const code = (row.kode_bank || '').toUpperCase();
+          const isMassalPackage =
+            code.startsWith('PAS-') ||
+            code.startsWith('UAS-') ||
+            code.startsWith('PAT-') ||
+            code.startsWith('US-') ||
+            code.startsWith('PTS-') ||
+            code.startsWith('SAS-') ||
+            code.startsWith('SAT-') ||
+            code.startsWith('STS-');
+
           return (
             <div className="space-y-0.5">
               <div className="flex items-center gap-1.5 flex-wrap">
@@ -181,10 +194,18 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                 <Badge variant="outline" className="text-[10px] font-bold">
                   Tingkat {row.tingkat}
                 </Badge>
-                {isSharedBank && (
+                {isMassalPackage ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-violet-50 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300 border border-violet-200 dark:border-violet-800">
+                    🏛️ Paket Terpusat
+                  </span>
+                ) : isSharedBank ? (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60">
                     <Share2 size={10} />
                     <span>{isFromColleague ? 'Bersama (Se-Mapel)' : 'Dibagikan'}</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700">
+                    Mandiri
                   </span>
                 )}
               </div>
@@ -390,6 +411,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
           bankSoalToEdit={selectedBankSoal}
           defaultGuruId={guruId}
           defaultMapelId={mapelId || (filter.values.mapelId as string) || undefined}
+          roleContext={roleContext}
           onSuccess={async () => {
             setPage(1);
             await queryClient.invalidateQueries({
