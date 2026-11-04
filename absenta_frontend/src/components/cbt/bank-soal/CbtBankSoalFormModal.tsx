@@ -5,7 +5,7 @@ import {
   Input,
   SearchableSelect,
 } from '@/components/ui';
-import { useGuruOptions, useMapelOptions } from '@/components/common';
+import { useGuruOptions, useMapelOptions, useSemesterOptions } from '@/components/common';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import { kurikulumApi } from '@/api/kurikulum.api';
 import { useAuthStore } from '@/store/authStore';
@@ -72,6 +72,114 @@ export const OFFICIAL_ASESMEN_TYPES: OfficialAsesmenType[] = [
   },
 ];
 
+export interface SmartPeriodDetection {
+  recommendedKey: string;
+  semesterLabel: string;
+  monthName: string;
+  reason: string;
+  shortTag: string;
+}
+
+/**
+ * Mendeteksi jenis kegiatan asesmen yang paling relevan secara cerdas
+ * berdasarkan kalender bulan berjalan & semester aktif sekolah.
+ * 
+ * - Semester Ganjil (Juli - Des):
+ *   * Juli-Agustus: SLM (Sumatif Lingkup Materi / Ulangan Awal Bab)
+ *   * September-Oktober: STS (Sumatif Tengah Semester)
+ *   * November-Desember: SAS (Sumatif Akhir Semester)
+ * - Semester Genap (Januari - Juni):
+ *   * Januari-Februari: SLM / Simulasi ANBK
+ *   * Februari-Maret: STS (Sumatif Tengah Semester Genap)
+ *   * Maret-April: PSAJ (Penilaian Sumatif Akhir Jenjang / Kelulusan XII)
+ *   * Mei-Juni: SAT (Sumatif Akhir Tahun / Kenaikan Kelas)
+ */
+export function detectSmartAsesmenType(
+  activeSemester?: { nama_semester?: string; is_active?: boolean } | null,
+  tingkat?: string
+): SmartPeriodDetection {
+  const now = new Date();
+  const month = now.getMonth() + 1; // 1-12
+  const monthNames = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
+  const monthName = monthNames[month - 1];
+
+  const semName = (activeSemester?.nama_semester || '').toLowerCase();
+  const isExplicitGenap = semName.includes('genap') || semName.includes('2');
+  const isExplicitGanjil = semName.includes('ganjil') || semName.includes('gasal') || semName.includes('1');
+
+  // Bila semester belum tersetting, gunakan kalender nasional Indonesia:
+  // Bulan 7 - 12 (Juli - Desember) = Semester Ganjil
+  // Bulan 1 - 6 (Januari - Juni) = Semester Genap
+  const isGanjil = isExplicitGanjil ? true : isExplicitGenap ? false : (month >= 7 && month <= 12);
+  const semesterLabel = isGanjil ? 'Semester Ganjil' : 'Semester Genap';
+
+  if (isGanjil) {
+    if (month >= 11 || month === 12) {
+      return {
+        recommendedKey: 'SAS',
+        semesterLabel,
+        monthName,
+        reason: `Bulan ${monthName} berada di penghujung Semester Ganjil — waktu pelaksanaan Sumatif Akhir Semester (SAS).`,
+        shortTag: 'Periode SAS (Akhir Smt 1)',
+      };
+    } else if (month === 9 || month === 10) {
+      return {
+        recommendedKey: 'STS',
+        semesterLabel,
+        monthName,
+        reason: `Bulan ${monthName} adalah periode evaluasi progres Sumatif Tengah Semester (STS) Ganjil.`,
+        shortTag: 'Periode STS (Tengah Smt 1)',
+      };
+    } else {
+      return {
+        recommendedKey: 'SLM',
+        semesterLabel,
+        monthName,
+        reason: `Bulan ${monthName} adalah awal semester — pelaksanaan Sumatif Lingkup Materi / Ulangan Bab (SLM).`,
+        shortTag: 'Periode SLM (Lingkup Materi)',
+      };
+    }
+  } else {
+    // Semester Genap (Januari - Juni)
+    if (tingkat === 'XII' && (month === 2 || month === 3 || month === 4)) {
+      return {
+        recommendedKey: 'PSAJ',
+        semesterLabel,
+        monthName,
+        reason: `Bulan ${monthName} bagi tingkat akhir (XII) adalah agenda Penilaian Sumatif Akhir Jenjang (PSAJ / Kelulusan).`,
+        shortTag: 'Periode PSAJ (Tingkat XII)',
+      };
+    } else if (month >= 5 || month === 6) {
+      return {
+        recommendedKey: 'SAT',
+        semesterLabel,
+        monthName,
+        reason: `Bulan ${monthName} berada di penghujung Semester Genap — waktu pelaksanaan evaluasi kenaikan kelas (SAT).`,
+        shortTag: 'Periode SAT (Kenaikan Kelas)',
+      };
+    } else if (month === 2 || month === 3) {
+      return {
+        recommendedKey: 'STS',
+        semesterLabel,
+        monthName,
+        reason: `Bulan ${monthName} adalah periode evaluasi progres Sumatif Tengah Semester (STS) Genap.`,
+        shortTag: 'Periode STS (Tengah Smt 2)',
+      };
+    } else {
+      return {
+        recommendedKey: 'TRYOUT',
+        semesterLabel,
+        monthName,
+        reason: `Bulan ${monthName} awal semester genap lazim untuk Simulasi / Try Out asesmen dan persiapan ANBK.`,
+        shortTag: 'Simulasi / Try Out',
+      };
+    }
+  }
+}
+
 interface CbtBankSoalFormModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -133,9 +241,24 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     return isPrivilegedRole && !defaultGuruId ? 'TERPUSAT_MASSAL' : 'MANDIRI_GURU';
   }, [bankSoalToEdit, isPrivilegedRole, defaultGuruId]);
 
+  const { activeSemester } = useSemesterOptions();
+  const [tingkat, setTingkat] = useState<'X' | 'XI' | 'XII' | 'SEMUA'>('X');
+
+  // Deteksi cerdas asesmen resmi berdasarkan bulan berjalan & semester aktif
+  const smartDetection = useMemo(() => {
+    return detectSmartAsesmenType(activeSemester, tingkat);
+  }, [activeSemester, tingkat]);
+
   const [step, setStep] = useState<1 | 2>(1);
   const [scope, setScope] = useState<CbtBankSoalScope>(initialScope);
-  const [jenisKegiatanMassal, setJenisKegiatanMassal] = useState<string>('SAS');
+  const [jenisKegiatanMassal, setJenisKegiatanMassal] = useState<string>(() => {
+    if (bankSoalToEdit) {
+      const code = bankSoalToEdit.kode_bank.toUpperCase();
+      const detected = OFFICIAL_ASESMEN_TYPES.find((t) => code.startsWith(`${t.key}-`));
+      if (detected) return detected.key;
+    }
+    return detectSmartAsesmenType(activeSemester, 'X').recommendedKey;
+  });
 
   const isTeacherLocked = useMemo(() => {
     if (isPrivilegedRole || scope === 'TERPUSAT_MASSAL') return false;
@@ -153,7 +276,6 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   const [judul, setJudul] = useState('');
   const [guruId, setGuruId] = useState(initialGuruId);
   const [mapelId, setMapelId] = useState(defaultMapelId || '');
-  const [tingkat, setTingkat] = useState<'X' | 'XI' | 'XII' | 'SEMUA'>('X');
   const [alokasiMenit, setAlokasiMenit] = useState<number>(90);
   const [acakSoal, setAcakSoal] = useState(true);
   const [acakOpsi, setAcakOpsi] = useState(true);
@@ -228,14 +350,22 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setAcakOpsi(bankSoalToEdit.acak_opsi);
       setIsShared(bankSoalToEdit.status === 'PUBLISHED' || Boolean(bankSoalToEdit.is_shared));
       setShowAllMapels(true);
+
+      const code = bankSoalToEdit.kode_bank.toUpperCase();
+      const detected = OFFICIAL_ASESMEN_TYPES.find((t) => code.startsWith(`${t.key}-`));
+      if (detected) {
+        setJenisKegiatanMassal(detected.key);
+      }
     } else {
       setStep(1);
       setScope(initialScope);
       const isMassal = initialScope === 'TERPUSAT_MASSAL';
       const year = new Date().getFullYear();
       const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+      const recKey = smartDetection.recommendedKey;
 
-      setKodeBank(isMassal ? `SAS-${year}-MAPEL-X` : `CBT-${year}-${randomSuffix}`);
+      setJenisKegiatanMassal(recKey);
+      setKodeBank(isMassal ? `${recKey}-${year}-MAPEL-X` : `CBT-${year}-${randomSuffix}`);
       setJudul('');
       setGuruId(initialGuruId);
       setMapelId(defaultMapelId || '');
@@ -246,7 +376,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setIsShared(true);
       setShowAllMapels(isPrivilegedRole || isMassal);
     }
-  }, [bankSoalToEdit, initialGuruId, defaultMapelId, isOpen, initialScope, isPrivilegedRole]);
+  }, [bankSoalToEdit, initialGuruId, defaultMapelId, isOpen, initialScope, isPrivilegedRole, smartDetection.recommendedKey]);
 
   const handleChangeScope = (newScope: CbtBankSoalScope) => {
     setScope(newScope);
@@ -254,8 +384,10 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     if (newScope === 'TERPUSAT_MASSAL') {
       setShowAllMapels(true);
       setIsShared(true);
+      const recKey = smartDetection.recommendedKey;
+      setJenisKegiatanMassal(recKey);
       if (mapelId) {
-        handleAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal);
+        handleAutoFillMassal(mapelId, tingkat, recKey);
       }
     } else {
       if (
@@ -461,7 +593,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
 
             {/* Pertanyaan 2: Jenis Kegiatan Asesmen Resmi Dinas (Hanya pada Paket Massal) */}
             {scope === 'TERPUSAT_MASSAL' && (
-              <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
                     2. Apa jenis kegiatan asesmen yang diadakan?
@@ -471,9 +603,38 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                   </span>
                 </div>
 
+                {/* 🌟 Rekomendasi Cerdas Berbasis Bulan Kalender & Semester Aktif */}
+                <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-violet-50/90 dark:bg-violet-950/40 border border-violet-200/80 dark:border-violet-800/80">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Sparkles size={15} className="text-violet-600 dark:text-violet-400 shrink-0" />
+                    <div className="text-[11px] text-violet-950 dark:text-violet-200 leading-tight">
+                      <span className="font-bold">
+                        Deteksi Cerdas ({smartDetection.monthName} • {smartDetection.semesterLabel}):
+                      </span>{' '}
+                      <span className="text-violet-800 dark:text-violet-300">{smartDetection.reason}</span>
+                    </div>
+                  </div>
+
+                  {jenisKegiatanMassal !== smartDetection.recommendedKey && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setJenisKegiatanMassal(smartDetection.recommendedKey);
+                        if (mapelId) handleAutoFillMassal(mapelId, tingkat, smartDetection.recommendedKey);
+                      }}
+                      className="shrink-0 px-2.5 py-1 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-[10px] font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1"
+                      title={`Gunakan rekomendasi ${smartDetection.recommendedKey}`}
+                    >
+                      <Sparkles size={11} />
+                      <span>Pilih {smartDetection.recommendedKey}</span>
+                    </button>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {OFFICIAL_ASESMEN_TYPES.map((k) => {
                     const isSelected = jenisKegiatanMassal === k.key;
+                    const isRecommended = smartDetection.recommendedKey === k.key;
                     return (
                       <button
                         key={k.key}
@@ -483,25 +644,54 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                           if (mapelId) handleAutoFillMassal(mapelId, tingkat, k.key);
                         }}
                         className={cn(
-                          'p-2.5 rounded-xl text-left transition-all cursor-pointer border flex flex-col justify-between gap-1',
+                          'p-2.5 rounded-xl text-left transition-all cursor-pointer border flex flex-col justify-between gap-1.5 relative',
                           isSelected
-                            ? 'bg-violet-600 text-white border-violet-600 shadow-xs'
+                            ? 'bg-violet-600 text-white border-violet-600 shadow-xs ring-2 ring-violet-500/20'
+                            : isRecommended
+                            ? 'bg-violet-50/40 dark:bg-violet-950/20 text-slate-700 dark:text-slate-300 border-violet-300 dark:border-violet-700 hover:border-violet-400'
                             : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-violet-300'
                         )}
                       >
                         <div className="flex items-center justify-between gap-1">
                           <span className="font-black text-xs">{k.singkatan}</span>
-                          <span
-                            className={cn(
-                              'text-[9px] font-bold px-1.5 py-0.2 rounded uppercase',
-                              isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                            )}
-                          >
-                            Resmi
-                          </span>
+                          {isRecommended ? (
+                            <span
+                              className={cn(
+                                'text-[8.5px] font-extrabold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 uppercase tracking-wide',
+                                isSelected
+                                  ? 'bg-amber-400 text-amber-950 font-black'
+                                  : 'bg-violet-100 text-violet-700 dark:bg-violet-900/60 dark:text-violet-300 font-bold'
+                              )}
+                            >
+                              <Sparkles size={9} />
+                              <span>Bulan Ini</span>
+                            </span>
+                          ) : (
+                            <span
+                              className={cn(
+                                'text-[9px] font-bold px-1.5 py-0.2 rounded uppercase',
+                                isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                              )}
+                            >
+                              Resmi
+                            </span>
+                          )}
                         </div>
-                        <p className={cn('text-[11px] font-semibold line-clamp-1', isSelected ? 'text-violet-100' : 'text-slate-800 dark:text-slate-200')}>
+                        <p
+                          className={cn(
+                            'text-[11px] font-semibold line-clamp-1',
+                            isSelected ? 'text-violet-100' : 'text-slate-800 dark:text-slate-200'
+                          )}
+                        >
                           {k.namaResmi}
+                        </p>
+                        <p
+                          className={cn(
+                            'text-[9.5px] line-clamp-1',
+                            isSelected ? 'text-violet-200' : 'text-slate-500 dark:text-slate-400'
+                          )}
+                        >
+                          {k.keterangan}
                         </p>
                       </button>
                     );
@@ -567,8 +757,14 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                     type="button"
                     onClick={() => {
                       setTingkat(item.value);
+                      const nextDetection = detectSmartAsesmenType(activeSemester, item.value);
+                      let nextKegiatan = jenisKegiatanMassal;
+                      if (item.value === 'XII' && nextDetection.recommendedKey === 'PSAJ') {
+                        nextKegiatan = 'PSAJ';
+                        setJenisKegiatanMassal('PSAJ');
+                      }
                       if (scope === 'TERPUSAT_MASSAL' && mapelId) {
-                        handleAutoFillMassal(mapelId, item.value, jenisKegiatanMassal);
+                        handleAutoFillMassal(mapelId, item.value, nextKegiatan);
                       }
                     }}
                     className={cn(
