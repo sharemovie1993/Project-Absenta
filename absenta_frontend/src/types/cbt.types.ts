@@ -165,3 +165,25 @@ export interface CbtStudentExamItem {
     jumlah_salah: number;
   } | null;
 }
+
+export type CbtRaporSlot = 'sumatif_1' | 'sumatif_2' | 'sumatif_3' | 'sumatif_akhir';
+
+export interface CbtTransferNilaiPayload {
+  target_slot: CbtRaporSlot;
+  tahun_pelajaran_id: string;
+  semester_id: string;
+  mapel_id?: string;
+  kelas_ids?: string[];
+  overwrite_existing?: boolean;
+  round_integer?: boolean;
+}
+
+export interface CbtTransferNilaiResponse {
+  transferred_count: number;
+  skipped_count: number;
+  total_finished: number;
+  target_slot: CbtRaporSlot;
+  mapel_id: string;
+  tahun_pelajaran_id: string;
+  semester_id: string;
+}

@@ -18,9 +18,11 @@ import {
   ShieldAlert,
   Search,
   Filter,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtPesertaUjian, CbtJadwalUjian } from '@/types/cbt.types';
+import { CbtTransferNilaiModal } from '../jadwal/CbtTransferNilaiModal';
 import useConfirm from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
 
@@ -39,6 +41,7 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   const [selectedJadwalId, setSelectedJadwalId] = useState<string>(initialJadwalId || '');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
 
   // Fetch active/all schedules for dropdown selector
   const { data: jadwalData } = useQuery({
@@ -280,6 +283,20 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
           >
             Segarkan
           </Button>
+
+          {activeJadwal && (
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => setIsTransferModalOpen(true)}
+              className="text-xs h-9 px-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1.5"
+              title="Transfer Nilai Hasil CBT ke Slot Rapor (SUM 1, SUM 2, SUM 3, SUM AKHIR)"
+            >
+              <ArrowRightLeft size={14} />
+              <span>Transfer ke e-Rapor</span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -382,6 +399,15 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
           emptyMessage="Tidak ada data peserta ujian pada sesi ini"
         />
       </div>
+
+      {/* Modal Transfer Nilai ke e-Rapor */}
+      {isTransferModalOpen && activeJadwal && (
+        <CbtTransferNilaiModal
+          isOpen={isTransferModalOpen}
+          onClose={() => setIsTransferModalOpen(false)}
+          jadwal={activeJadwal}
+        />
+      )}
     </div>
   );
 };

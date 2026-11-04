@@ -4,6 +4,7 @@ import {
   createJadwalUjianSchema,
   updateJadwalUjianSchema,
   queryJadwalUjianSchema,
+  transferNilaiRaporSchema,
 } from '../schemas/cbt.schema';
 import { z } from 'zod';
 
@@ -125,6 +126,27 @@ export class CbtJadwalController {
       return sendResponse(reply, 200, true, 'Sesi peserta berhasil di-reset untuk login ulang', result);
     } catch (error: any) {
       return sendError(reply, 400, error.message || 'Gagal me-reset peserta ujian');
+    }
+  }
+
+  static async transferToRapor(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { id } = req.params;
+      const parsed = transferNilaiRaporSchema.parse(req.body);
+      const result = await CbtJadwalService.transferToRapor(tenant_id, id, parsed);
+      return sendResponse(
+        reply,
+        200,
+        true,
+        `Berhasil mentransfer ${result.transferred_count} nilai siswa ke e-Rapor`,
+        result
+      );
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return sendError(reply, 400, error.errors.map((e) => e.message).join(', '));
+      }
+      return sendError(reply, 400, error.message || 'Gagal mentransfer nilai ke e-Rapor');
     }
   }
 }

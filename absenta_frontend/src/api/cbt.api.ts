@@ -6,6 +6,8 @@ import type {
   CbtPesertaUjian,
   CbtStudentAnswerItem,
   CbtStudentExamItem,
+  CbtTransferNilaiPayload,
+  CbtTransferNilaiResponse,
 } from '../types/cbt.types';
 
 // ─── Query Key Factory ──────────────────────────────────────────────────────
@@ -165,6 +167,11 @@ export const cbtApi = {
   resetPeserta: async (jadwalId: string, siswaId: string) => {
     const res = await api.post(`/cbt/jadwal/${jadwalId}/peserta/${siswaId}/reset`);
     return res.data?.data;
+  },
+
+  transferToRapor: async (jadwalId: string, payload: CbtTransferNilaiPayload) => {
+    const res = await api.post(`/cbt/jadwal/${jadwalId}/transfer-rapor`, payload);
+    return res.data?.data as CbtTransferNilaiResponse;
   },
 
   // ==========================================

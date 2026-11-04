@@ -1,6 +1,7 @@
 import { prisma } from '@/utils/prisma';
 import { Prisma } from '@prisma/client';
 import { getRedisConnection } from '@/infra/redis/redisClient';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 import crypto from 'crypto';
 
 export class CbtJadwalService {
@@ -55,7 +56,8 @@ export class CbtJadwalService {
               judul: true,
               tingkat: true,
               jumlah_soal: true,
-              Mapel: { select: { nama_mapel: true } },
+              mapel_id: true,
+              Mapel: { select: { id: true, nama_mapel: true } },
               Guru: { select: { nama_guru: true } },
             },
           },
@@ -308,13 +310,22 @@ export class CbtJadwalService {
             nama_siswa: true,
             nis: true,
             nisn: true,
+            kelas_id: true,
             Kelas: { select: { id: true, nama_kelas: true } },
           },
         },
       },
     });
 
-    return items;
+    return items.map((item) => ({
+      ...item,
+      Siswa: item.Siswa
+        ? {
+            ...item.Siswa,
+            nama_lengkap: item.Siswa.nama_siswa,
+          }
+        : undefined,
+    }));
   }
 
   /**
@@ -342,5 +353,245 @@ export class CbtJadwalService {
         status_sinkron: 'IDLE',
       },
     });
+  }
+
+  /**
+   * Transfer Nilai Hasil Ujian CBT ke Lembar Input Nilai e-Rapor (Hak Prerogatif Guru)
+   * Mendukung pemilihan slot (sumatif_1, sumatif_2, sumatif_3, sumatif_akhir),
+   * Tahun Pelajaran, Semester, Mapel, dan filter Kelas sasaran.
+   */
+  static async transferToRapor(
+    tenantId: string,
+    jadwalId: string,
+    payload: {
+      target_slot: 'sumatif_1' | 'sumatif_2' | 'sumatif_3' | 'sumatif_akhir';
+      tahun_pelajaran_id: string;
+      semester_id: string;
+      mapel_id?: string;
+      kelas_ids?: string[];
+      overwrite_existing?: boolean;
+      round_integer?: boolean;
+    }
+  ) {
+    const jadwal = await this.getById(tenantId, jadwalId);
+    const effectiveMapelId = payload.mapel_id || jadwal.BankSoal.mapel_id;
+    const overwrite = payload.overwrite_existing ?? true;
+    const roundInt = payload.round_integer ?? true;
+
+    // Validasi Tahun Pelajaran & Semester milik tenant
+    const [tp, sem] = await Promise.all([
+      prisma.tahunPelajaran.findFirst({
+        where: { id: payload.tahun_pelajaran_id, tenant_id: tenantId },
+      }),
+      prisma.semester.findFirst({
+        where: { id: payload.semester_id, tenant_id: tenantId },
+      }),
+    ]);
+
+    if (!tp) {
+      throw new Error('Tahun Pelajaran tujuan tidak ditemukan.');
+    }
+    if (!sem) {
+      throw new Error('Semester tujuan tidak ditemukan.');
+    }
+
+    // Ambil seluruh peserta yang telah menyelesaikan ujian (FINISHED)
+    const pesertaList = await prisma.cbtPesertaUjian.findMany({
+      where: {
+        tenant_id: tenantId,
+        jadwal_ujian_id: jadwalId,
+        status: 'FINISHED',
+        ...(payload.kelas_ids && payload.kelas_ids.length > 0
+          ? { Siswa: { kelas_id: { in: payload.kelas_ids } } }
+          : {}),
+      },
+      include: {
+        Siswa: {
+          select: {
+            id: true,
+            nama_siswa: true,
+            kelas_id: true,
+          },
+        },
+      },
+    });
+
+    if (pesertaList.length === 0) {
+      throw new Error('Belum ada peserta berstatus Selesai (FINISHED) pada rombel yang dipilih untuk ditransfer.');
+    }
+
+    // Cek otoritas pengaturan sumber nilai rapor (MURNI_CP_MANUAL vs FORMULA_SUMATIF)
+    const [tpSumberCfg, globalSumberCfg] = await Promise.all([
+      prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: `RAPOR_SUMBER_NILAI_${payload.tahun_pelajaran_id}` },
+      }),
+      prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: 'RAPOR_SUMBER_NILAI' },
+      }),
+    ]);
+
+    const startYear = parseInt((tp.tahun || '').split('/')[0].trim(), 10) || 2024;
+    const defaultMode = startYear <= 2023 ? 'MURNI_CP_MANUAL' : 'FORMULA_SUMATIF';
+    const activeSumberNilai = (tpSumberCfg?.value || globalSumberCfg?.value || defaultMode) as
+      | 'FORMULA_SUMATIF'
+      | 'MURNI_CP_MANUAL';
+
+    const siswaIds = pesertaList.map((p) => p.siswa_id);
+
+    // Ambil nilai rapor yang sudah ada agar slot lain tidak tertimpa
+    const existingGrades = await prisma.nilaiSiswa.findMany({
+      where: {
+        tenant_id: tenantId,
+        mapel_id: effectiveMapelId,
+        tahun_pelajaran_id: payload.tahun_pelajaran_id,
+        semester_id: payload.semester_id,
+        siswa_id: { in: siswaIds },
+      },
+    });
+
+    const existingMap = new Map(existingGrades.map((g) => [g.siswa_id, g]));
+
+    // Pastikan SiswaAkademik ter-snapshot untuk periode tujuan
+    const saMap = new Map<string, string>();
+    const pesertaWithKelas = pesertaList.filter((p) => Boolean(p.Siswa?.kelas_id));
+    if (pesertaWithKelas.length > 0) {
+      const saRecords = await Promise.all(
+        pesertaWithKelas.map((p) =>
+          prisma.siswaAkademik.upsert({
+            where: {
+              siswa_id_tahun_pelajaran_id_semester_id: {
+                siswa_id: p.siswa_id,
+                tahun_pelajaran_id: payload.tahun_pelajaran_id,
+                semester_id: payload.semester_id,
+              },
+            },
+            create: {
+              siswa_id: p.siswa_id,
+              kelas_id: p.Siswa!.kelas_id!,
+              tahun_pelajaran_id: payload.tahun_pelajaran_id,
+              semester_id: payload.semester_id,
+              status: 'AKTIF',
+            },
+            update: {},
+            select: { id: true, siswa_id: true },
+          })
+        )
+      );
+      saRecords.forEach((sa) => saMap.set(sa.siswa_id, sa.id));
+    }
+
+    const operations: Prisma.PrismaPromise<any>[] = [];
+    let transferredCount = 0;
+    let skippedCount = 0;
+
+    for (const p of pesertaList) {
+      const existing = existingMap.get(p.siswa_id);
+      const rawScore = Number(p.nilai_akhir ?? 0);
+      const cbtScore = roundInt ? Math.round(rawScore) : Math.round(rawScore * 100) / 100;
+
+      // Cek apakah slot tujuan sudah terisi dan guru memilih tidak menimpa
+      if (!overwrite && existing) {
+        const currentSlotVal =
+          payload.target_slot === 'sumatif_1'
+            ? existing.sumatif_1
+            : payload.target_slot === 'sumatif_2'
+            ? existing.sumatif_2
+            : payload.target_slot === 'sumatif_3'
+            ? existing.sumatif_3
+            : existing.nilai_akhir_sumatif;
+
+        if (currentSlotVal !== null && currentSlotVal !== undefined) {
+          skippedCount++;
+          continue;
+        }
+      }
+
+      const sum1 = payload.target_slot === 'sumatif_1' ? cbtScore : (existing?.sumatif_1 ?? null);
+      const sum2 = payload.target_slot === 'sumatif_2' ? cbtScore : (existing?.sumatif_2 ?? null);
+      const sum3 = payload.target_slot === 'sumatif_3' ? cbtScore : (existing?.sumatif_3 ?? null);
+      const nilaiAkhir =
+        payload.target_slot === 'sumatif_akhir' ? cbtScore : (existing?.nilai_akhir_sumatif ?? null);
+
+      const sumatifList = [sum1, sum2, sum3].filter(
+        (v): v is number => v !== undefined && v !== null && !isNaN(v)
+      );
+
+      let rataRataSumatif: number | null = null;
+      if (sumatifList.length > 0) {
+        const total = sumatifList.reduce((acc, curr) => acc + curr, 0);
+        rataRataSumatif = Number((total / sumatifList.length).toFixed(2));
+      }
+
+      let nilaiRaporFinal: number | null = null;
+      if (activeSumberNilai === 'MURNI_CP_MANUAL') {
+        nilaiRaporFinal = existing?.nilai_rapor_final ?? nilaiAkhir ?? rataRataSumatif ?? cbtScore;
+      } else {
+        if (rataRataSumatif !== null && nilaiAkhir !== null) {
+          nilaiRaporFinal = Number(((rataRataSumatif + nilaiAkhir) / 2).toFixed(2));
+        } else if (nilaiAkhir !== null) {
+          nilaiRaporFinal = nilaiAkhir;
+        } else if (rataRataSumatif !== null) {
+          nilaiRaporFinal = rataRataSumatif;
+        }
+      }
+
+      const mainNilai = nilaiRaporFinal ?? cbtScore;
+      const saId = saMap.get(p.siswa_id) || null;
+
+      operations.push(
+        prisma.nilaiSiswa.upsert({
+          where: {
+            siswa_id_mapel_id_tahun_pelajaran_id_semester_id: {
+              siswa_id: p.siswa_id,
+              mapel_id: effectiveMapelId,
+              tahun_pelajaran_id: payload.tahun_pelajaran_id,
+              semester_id: payload.semester_id,
+            },
+          },
+          update: {
+            sumatif_1: sum1,
+            sumatif_2: sum2,
+            sumatif_3: sum3,
+            rata_rata_sumatif: rataRataSumatif,
+            nilai_akhir_sumatif: nilaiAkhir,
+            nilai_rapor_final: nilaiRaporFinal,
+            nilai: mainNilai,
+            ...(saId ? { siswa_akademik_id: saId } : {}),
+          },
+          create: {
+            tenant_id: tenantId,
+            siswa_id: p.siswa_id,
+            siswa_akademik_id: saId,
+            mapel_id: effectiveMapelId,
+            tahun_pelajaran_id: payload.tahun_pelajaran_id,
+            semester_id: payload.semester_id,
+            sumatif_1: sum1,
+            sumatif_2: sum2,
+            sumatif_3: sum3,
+            rata_rata_sumatif: rataRataSumatif,
+            nilai_akhir_sumatif: nilaiAkhir,
+            nilai_rapor_final: nilaiRaporFinal,
+            nilai: mainNilai,
+          },
+        })
+      );
+
+      transferredCount++;
+    }
+
+    if (operations.length > 0) {
+      await prisma.$transaction(operations);
+      void cacheInvalidationService.invalidateRaporCache(tenantId);
+    }
+
+    return {
+      transferred_count: transferredCount,
+      skipped_count: skippedCount,
+      total_finished: pesertaList.length,
+      target_slot: payload.target_slot,
+      mapel_id: effectiveMapelId,
+      tahun_pelajaran_id: payload.tahun_pelajaran_id,
+      semester_id: payload.semester_id,
+    };
   }
 }

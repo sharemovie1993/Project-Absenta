@@ -22,6 +22,7 @@ import {
   Trash2,
   ShieldCheck,
   Check,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -30,6 +31,7 @@ import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtJadwalUjian } from '@/types/cbt.types';
 import { CbtJadwalFormModal } from './CbtJadwalFormModal';
 import { CbtBeritaAcaraPrintModal } from './CbtBeritaAcaraPrintModal';
+import { CbtTransferNilaiModal } from './CbtTransferNilaiModal';
 import useConfirm from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
 
@@ -57,6 +59,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
 
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [selectedJadwal, setSelectedJadwal] = useState<CbtJadwalUjian | null>(null);
 
   // 1. Unified Filter Hook
@@ -295,6 +298,24 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
               <span>Monitor</span>
             </Button>
 
+            {/* Transfer Nilai ke e-Rapor */}
+            {!readOnly && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSelectedJadwal(row);
+                  setIsTransferModalOpen(true);
+                }}
+                className="text-xs h-7 px-2 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800 font-bold bg-violet-50/60 hover:bg-violet-100"
+                title="Transfer Nilai Hasil CBT ke Slot Rapor (SUM 1, SUM 2, SUM 3, SUM AKHIR)"
+              >
+                <ArrowRightLeft size={12} className="mr-1" />
+                <span>Transfer Rapor</span>
+              </Button>
+            )}
+
             {/* Sesi Controls */}
             {!readOnly && (
               <>
@@ -476,6 +497,18 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
           isOpen={isPrintModalOpen}
           onClose={() => {
             setIsPrintModalOpen(false);
+            setSelectedJadwal(null);
+          }}
+          jadwal={selectedJadwal}
+        />
+      )}
+
+      {/* Transfer Nilai ke e-Rapor Modal */}
+      {isTransferModalOpen && selectedJadwal && (
+        <CbtTransferNilaiModal
+          isOpen={isTransferModalOpen}
+          onClose={() => {
+            setIsTransferModalOpen(false);
             setSelectedJadwal(null);
           }}
           jadwal={selectedJadwal}

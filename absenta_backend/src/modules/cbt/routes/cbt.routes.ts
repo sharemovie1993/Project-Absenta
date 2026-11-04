@@ -4,10 +4,6 @@ import { CbtTestEngineController } from '../controllers/cbt-test-engine.controll
 import { requireCapability } from '../../../middlewares/requireCapability';
 import { determineDataScope } from '@/middlewares/dataScope';
 
-const cbtAdminExempt = {
-  exemptRoles: ['ADMIN', 'SUPERADMIN', 'KURIKULUM'] as any[],
-};
-
 const cbtGuruExempt = {
   exemptRoles: ['ADMIN', 'SUPERADMIN', 'KURIKULUM', 'GURU', 'WALIKELAS'] as any[],
 };
@@ -75,27 +71,27 @@ export async function cbtRoutes(fastify: any) {
   }, CbtJadwalController.getById);
 
   fastify.post('/jadwal', {
-    preHandler: [requireCapability('cbt.jadwal.manage', cbtAdminExempt), determineDataScope()],
+    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
   }, CbtJadwalController.create);
 
   fastify.put('/jadwal/:id', {
-    preHandler: [requireCapability('cbt.jadwal.manage', cbtAdminExempt), determineDataScope()],
+    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
   }, CbtJadwalController.update);
 
   fastify.post('/jadwal/:id/regenerate-token', {
-    preHandler: [requireCapability('cbt.jadwal.manage', cbtAdminExempt), determineDataScope()],
+    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
   }, CbtJadwalController.regenerateToken);
 
   fastify.post('/jadwal/:id/activate', {
-    preHandler: [requireCapability('cbt.jadwal.manage', cbtAdminExempt), determineDataScope()],
+    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
   }, CbtJadwalController.activate);
 
   fastify.post('/jadwal/:id/pause', {
-    preHandler: [requireCapability('cbt.jadwal.manage', cbtAdminExempt), determineDataScope()],
+    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
   }, CbtJadwalController.pause);
 
   fastify.post('/jadwal/:id/complete', {
-    preHandler: [requireCapability('cbt.jadwal.manage', cbtAdminExempt), determineDataScope()],
+    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
   }, CbtJadwalController.complete);
 
   // Live Proctor & Participant Monitoring
@@ -104,8 +100,12 @@ export async function cbtRoutes(fastify: any) {
   }, CbtJadwalController.getPesertaList);
 
   fastify.post('/jadwal/:id/peserta/:siswaId/reset', {
-    preHandler: [requireCapability('cbt.sesi.monitor', cbtAdminExempt), determineDataScope()],
+    preHandler: [requireCapability('cbt.sesi.monitor', cbtGuruExempt), determineDataScope()],
   }, CbtJadwalController.resetPeserta);
+
+  fastify.post('/jadwal/:id/transfer-rapor', {
+    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+  }, CbtJadwalController.transferToRapor);
 
   // ==========================================
   // 4. STUDENT EXAM ENGINE ROUTES

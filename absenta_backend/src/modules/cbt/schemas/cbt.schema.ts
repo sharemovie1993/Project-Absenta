@@ -122,3 +122,13 @@ export const submitExamFinalSchema = z.object({
   jawaban_final: z.array(syncAnswerItemSchema),
   log_pelanggaran: z.array(recordViolationSchema).optional(),
 });
+
+export const transferNilaiRaporSchema = z.object({
+  target_slot: z.enum(['sumatif_1', 'sumatif_2', 'sumatif_3', 'sumatif_akhir']),
+  tahun_pelajaran_id: z.string().uuid('ID Tahun Pelajaran tidak valid'),
+  semester_id: z.string().uuid('ID Semester tidak valid'),
+  mapel_id: z.string().uuid('ID Mapel tidak valid').optional(),
+  kelas_ids: z.array(z.string().uuid()).optional(),
+  overwrite_existing: z.boolean().default(true),
+  round_integer: z.boolean().default(true),
+});
