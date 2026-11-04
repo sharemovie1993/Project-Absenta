@@ -34,7 +34,7 @@ export const OFFICIAL_ASESMEN_TYPES: OfficialAsesmenType[] = [
     key: 'SAS',
     singkatan: 'SAS',
     namaResmi: 'Sumatif Akhir Semester',
-    keterangan: 'Resmi Semester 1 (Ganjil) — Dahulu PAS',
+    keterangan: 'Semester 1 (Ganjil)',
     defaultPrefix: 'SAS',
     allowedTingkat: ['X', 'XI', 'XII', 'SEMUA'],
   },
@@ -42,16 +42,16 @@ export const OFFICIAL_ASESMEN_TYPES: OfficialAsesmenType[] = [
     key: 'SAT',
     singkatan: 'SAT',
     namaResmi: 'Sumatif Akhir Tahun',
-    keterangan: 'Resmi Kenaikan Kelas Sem. 2 (Genap) — Dahulu PAT/UKK',
+    keterangan: 'Kenaikan Kelas (Sem. 2)',
     defaultPrefix: 'SAT',
     allowedTingkat: ['X', 'XI'],
-    tingkatRuleExplanation: 'Khusus Kenaikan Kelas (Tingkat X & XI). Kelas XII menempuh kelulusan PSAJ.',
+    tingkatRuleExplanation: 'Khusus Kenaikan Kelas X & XI',
   },
   {
     key: 'STS',
     singkatan: 'STS',
     namaResmi: 'Sumatif Tengah Semester',
-    keterangan: 'Resmi evaluasi tengah semester — Dahulu PTS',
+    keterangan: 'Tengah Semester',
     defaultPrefix: 'STS',
     allowedTingkat: ['X', 'XI', 'XII', 'SEMUA'],
   },
@@ -59,16 +59,16 @@ export const OFFICIAL_ASESMEN_TYPES: OfficialAsesmenType[] = [
     key: 'PSAJ',
     singkatan: 'PSAJ',
     namaResmi: 'Penilaian Sumatif Akhir Jenjang',
-    keterangan: 'Resmi kelulusan tingkat akhir XII/IX — Dahulu US',
+    keterangan: 'Kelulusan Kelas XII',
     defaultPrefix: 'PSAJ',
     allowedTingkat: ['XII'],
-    tingkatRuleExplanation: 'Khusus Kelulusan Tingkat Akhir (Hanya Kelas XII).',
+    tingkatRuleExplanation: 'Khusus Kelulusan Kelas XII',
   },
   {
     key: 'SLM',
     singkatan: 'SLM',
     namaResmi: 'Sumatif Lingkup Materi',
-    keterangan: 'Resmi evaluasi per TP / Ulangan Bab',
+    keterangan: 'Ulangan Bab / TP',
     defaultPrefix: 'SLM',
     allowedTingkat: ['X', 'XI', 'XII', 'SEMUA'],
   },
@@ -76,7 +76,7 @@ export const OFFICIAL_ASESMEN_TYPES: OfficialAsesmenType[] = [
     key: 'TRYOUT',
     singkatan: 'Simulasi',
     namaResmi: 'Simulasi / Try Out Asesmen',
-    keterangan: 'Uji coba asesmen terstandar & persiapan ANBK',
+    keterangan: 'Try Out & ANBK',
     defaultPrefix: 'TRYOUT',
     allowedTingkat: ['X', 'XI', 'XII', 'SEMUA'],
   },
@@ -543,18 +543,16 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={bankSoalToEdit ? 'Edit Paket Bank Soal' : 'Buat Paket Bank Soal Baru'}
+      title={bankSoalToEdit ? 'Edit Paket Bank Soal' : 'Buat Paket Bank Soal'}
       size="lg"
     >
-      <div className="-mt-3 sm:-mt-6 -mx-3 sm:-mx-6 mb-3 sm:mb-4 h-1.5 bg-[#673ab7]" />
-
-      {/* ── Step Progress Indicator (Lapang & Terstruktur) ── */}
-      <div className="mb-4 grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/70 dark:border-slate-700/60">
+      {/* ── Stepper Ramping & Bersih ── */}
+      <div className="mb-3.5 grid grid-cols-2 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
         <button
           type="button"
           onClick={() => setStep(1)}
           className={cn(
-            'flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer',
+            'flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer',
             step === 1
               ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-2xs'
               : 'text-slate-500 hover:text-slate-800'
@@ -562,22 +560,20 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         >
           <span
             className={cn(
-              'w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center shrink-0',
-              step === 1
-                ? 'bg-violet-600 text-white'
-                : 'bg-emerald-500 text-white'
+              'w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center shrink-0',
+              step === 1 ? 'bg-violet-600 text-white' : 'bg-emerald-500 text-white'
             )}
           >
             {step > 1 ? '✓' : '1'}
           </span>
-          <span className="truncate">1. Sasaran &amp; Asesmen</span>
+          <span>Sasaran Asesmen</span>
         </button>
 
         <button
           type="button"
           onClick={handleNextStep}
           className={cn(
-            'flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer',
+            'flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer',
             step === 2
               ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-2xs'
               : 'text-slate-500 hover:text-slate-800'
@@ -585,106 +581,95 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         >
           <span
             className={cn(
-              'w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center shrink-0',
-              step === 2
-                ? 'bg-violet-600 text-white'
-                : 'bg-slate-300 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+              'w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center shrink-0',
+              step === 2 ? 'bg-violet-600 text-white' : 'bg-slate-300 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
             )}
           >
             2
           </span>
-          <span className="truncate">2. Identitas &amp; Waktu</span>
+          <span>Identitas &amp; Waktu</span>
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-3.5">
         {step === 1 ? (
           /* ── TAHAP 1: KONTEKS, SASARAN, & MATA PELAJARAN ── */
-          <div className="space-y-4">
-            {/* Pertanyaan 1: Konteks Penggunaan */}
+          <div className="space-y-3">
+            {/* 1. Konteks Penggunaan */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                1. Paket bank soal ini untuk keperluan apa?
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Jenis Bank Soal
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => handleChangeScope('TERPUSAT_MASSAL')}
                   className={cn(
-                    'p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1',
+                    'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5',
                     scope === 'TERPUSAT_MASSAL'
-                      ? 'bg-violet-50 dark:bg-violet-950/40 border-violet-600 ring-2 ring-violet-500/20 shadow-2xs text-violet-950 dark:text-violet-100'
+                      ? 'bg-violet-50 dark:bg-violet-950/40 border-violet-600 ring-2 ring-violet-500/20 text-violet-950 dark:text-violet-100'
                       : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
                   )}
                 >
-                  <div className="flex items-center gap-2">
-                    <Layers size={16} className={scope === 'TERPUSAT_MASSAL' ? 'text-violet-600' : 'text-slate-400'} />
-                    <span className="font-bold text-xs">Paket Massal Sekolah</span>
+                  <div
+                    className={cn(
+                      'p-1.5 rounded-lg shrink-0',
+                      scope === 'TERPUSAT_MASSAL' ? 'bg-violet-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                    )}
+                  >
+                    <Layers size={16} />
                   </div>
-                  <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
-                    Untuk SAS, SAT, STS, PSAJ, atau asesmen serentak sekolah.
-                  </p>
+                  <div className="min-w-0">
+                    <div className="font-bold text-xs">Paket Massal Sekolah</div>
+                    <div className="text-[10.5px] text-slate-500 dark:text-slate-400 truncate">SAS, SAT, STS, PSAJ Serentak</div>
+                  </div>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => handleChangeScope('MANDIRI_GURU')}
                   className={cn(
-                    'p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1',
+                    'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5',
                     scope === 'MANDIRI_GURU'
-                      ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-600 ring-2 ring-indigo-500/20 shadow-2xs text-indigo-950 dark:text-indigo-100'
+                      ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-600 ring-2 ring-indigo-500/20 text-indigo-950 dark:text-indigo-100'
                       : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
                   )}
                 >
-                  <div className="flex items-center gap-2">
-                    <User size={16} className={scope === 'MANDIRI_GURU' ? 'text-indigo-600' : 'text-slate-400'} />
-                    <span className="font-bold text-xs">Mandiri Guru</span>
+                  <div
+                    className={cn(
+                      'p-1.5 rounded-lg shrink-0',
+                      scope === 'MANDIRI_GURU' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                    )}
+                  >
+                    <User size={16} />
                   </div>
-                  <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
-                    Untuk ulangan harian, kuis kelas, atau latihan pribadi guru.
-                  </p>
+                  <div className="min-w-0">
+                    <div className="font-bold text-xs">Mandiri Guru</div>
+                    <div className="text-[10.5px] text-slate-500 dark:text-slate-400 truncate">Ulangan harian &amp; kuis kelas</div>
+                  </div>
                 </button>
               </div>
             </div>
 
-            {/* Pertanyaan 2: Jenis Kegiatan Asesmen Resmi Dinas (Hanya pada Paket Massal) */}
+            {/* 2. Kegiatan Asesmen (Hanya pada Paket Massal) */}
             {scope === 'TERPUSAT_MASSAL' && (
-              <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                    2. Apa jenis kegiatan asesmen yang diadakan?
-                  </label>
-                  <span className="text-[10px] text-violet-700 dark:text-violet-400 font-semibold">
-                    Permendikbud No. 21/2022
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Kegiatan Asesmen
+                    </label>
+                    <span className="text-[10.5px] text-violet-600 dark:text-violet-400 font-semibold flex items-center gap-1">
+                      <Sparkles size={11} />
+                      <span>Saran {smartDetection.monthName}: <strong>{smartDetection.recommendedKey}</strong></span>
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400">
+                    Permendikbud 21/2022
                   </span>
                 </div>
 
-                {/* 🌟 Rekomendasi Cerdas Berbasis Bulan Kalender & Semester Aktif */}
-                <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-violet-50/90 dark:bg-violet-950/40 border border-violet-200/80 dark:border-violet-800/80">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Sparkles size={15} className="text-violet-600 dark:text-violet-400 shrink-0" />
-                    <div className="text-[11px] text-violet-950 dark:text-violet-200 leading-tight">
-                      <span className="font-bold">
-                        Deteksi Cerdas ({smartDetection.monthName} • {smartDetection.semesterLabel}):
-                      </span>{' '}
-                      <span className="text-violet-800 dark:text-violet-300">{smartDetection.reason}</span>
-                    </div>
-                  </div>
-
-                  {jenisKegiatanMassal !== smartDetection.recommendedKey && (
-                    <button
-                      type="button"
-                      onClick={() => handleSelectKegiatanMassal(smartDetection.recommendedKey)}
-                      className="shrink-0 px-2.5 py-1 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-[10px] font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1"
-                      title={`Gunakan rekomendasi ${smartDetection.recommendedKey}`}
-                    >
-                      <Sparkles size={11} />
-                      <span>Pilih {smartDetection.recommendedKey}</span>
-                    </button>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   {OFFICIAL_ASESMEN_TYPES.map((k) => {
                     const isSelected = jenisKegiatanMassal === k.key;
                     const isRecommended = smartDetection.recommendedKey === k.key;
@@ -694,51 +679,34 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                         type="button"
                         onClick={() => handleSelectKegiatanMassal(k.key)}
                         className={cn(
-                          'p-2.5 rounded-xl text-left transition-all cursor-pointer border flex flex-col justify-between gap-1.5 relative',
+                          'p-2 rounded-xl text-left transition-all cursor-pointer border flex flex-col justify-between gap-0.5',
                           isSelected
-                            ? 'bg-violet-600 text-white border-violet-600 shadow-xs ring-2 ring-violet-500/20'
+                            ? 'bg-violet-600 text-white border-violet-600 shadow-2xs'
                             : isRecommended
-                            ? 'bg-violet-50/40 dark:bg-violet-950/20 text-slate-700 dark:text-slate-300 border-violet-300 dark:border-violet-700 hover:border-violet-400'
-                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-violet-300'
+                            ? 'bg-violet-50/60 dark:bg-violet-950/20 text-slate-700 dark:text-slate-300 border-violet-300 dark:border-violet-700 hover:border-violet-400'
+                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300'
                         )}
                       >
                         <div className="flex items-center justify-between gap-1">
-                          <span className="font-black text-xs">{k.singkatan}</span>
-                          {isRecommended ? (
+                          <span className="font-bold text-xs">{k.singkatan}</span>
+                          {isRecommended && (
                             <span
                               className={cn(
-                                'text-[8.5px] font-extrabold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 uppercase tracking-wide',
+                                'text-[8.5px] font-bold px-1.5 py-0.2 rounded-full flex items-center gap-0.5',
                                 isSelected
                                   ? 'bg-amber-400 text-amber-950 font-black'
-                                  : 'bg-violet-100 text-violet-700 dark:bg-violet-900/60 dark:text-violet-300 font-bold'
+                                  : 'bg-violet-100 text-violet-700 dark:bg-violet-900/60 dark:text-violet-300'
                               )}
                             >
-                              <Sparkles size={9} />
+                              <Sparkles size={8} />
                               <span>Bulan Ini</span>
-                            </span>
-                          ) : (
-                            <span
-                              className={cn(
-                                'text-[9px] font-bold px-1.5 py-0.2 rounded uppercase',
-                                isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                              )}
-                            >
-                              Resmi
                             </span>
                           )}
                         </div>
                         <p
                           className={cn(
-                            'text-[11px] font-semibold line-clamp-1',
-                            isSelected ? 'text-violet-100' : 'text-slate-800 dark:text-slate-200'
-                          )}
-                        >
-                          {k.namaResmi}
-                        </p>
-                        <p
-                          className={cn(
-                            'text-[9.5px] line-clamp-1',
-                            isSelected ? 'text-violet-200' : 'text-slate-500 dark:text-slate-400'
+                            'text-[10.5px] font-medium truncate',
+                            isSelected ? 'text-violet-100' : 'text-slate-500 dark:text-slate-400'
                           )}
                         >
                           {k.keterangan}
@@ -750,11 +718,11 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               </div>
             )}
 
-            {/* Pertanyaan 3: Mata Pelajaran */}
-            <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+            {/* 3. Mata Pelajaran */}
+            <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between gap-2">
-                <label htmlFor="form-mapel" className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                  {scope === 'TERPUSAT_MASSAL' ? '3.' : '2.'} Untuk mata pelajaran apa?
+                <label htmlFor="form-mapel" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Mata Pelajaran
                 </label>
                 {scope === 'MANDIRI_GURU' && assignedMapels.length > 0 && (
                   <button
@@ -788,14 +756,14 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               />
             </div>
 
-            {/* Pertanyaan 4: Tingkat Kelas (Terproteksi Anti Human-Error) */}
-            <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+            {/* 4. Tingkat Kelas (Terproteksi Anti Human-Error) */}
+            <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between gap-2">
-                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                  {scope === 'TERPUSAT_MASSAL' ? '4.' : '3.'} Untuk kelas tingkat berapa?
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Tingkat Kelas
                 </label>
                 {activeAsesmenDef?.tingkatRuleExplanation && (
-                  <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200/80 dark:border-amber-800/60 line-clamp-1">
+                  <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400">
                     ⚠️ {activeAsesmenDef.tingkatRuleExplanation}
                   </span>
                 )}
@@ -826,21 +794,16 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                         }
                       }}
                       className={cn(
-                        'py-2 px-2 rounded-lg border text-xs font-bold transition-all text-center flex flex-col items-center justify-center gap-0.5',
+                        'py-2 px-2 rounded-lg border text-xs font-bold transition-all text-center flex items-center justify-center gap-1',
                         !isAllowed
-                          ? 'opacity-35 bg-slate-100 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed'
+                          ? 'opacity-35 bg-slate-100 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed line-through'
                           : isSelected
                           ? 'bg-violet-600 text-white border-violet-600 shadow-2xs cursor-pointer'
-                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-violet-300 cursor-pointer'
+                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300 cursor-pointer'
                       )}
-                      title={!isAllowed ? `Tingkat ${item.label} tidak relevan untuk ${jenisKegiatanMassal}` : item.label}
+                      title={!isAllowed ? `Tidak relevan untuk ${jenisKegiatanMassal}` : item.label}
                     >
-                      <span className={cn(!isAllowed && 'line-through')}>{item.label}</span>
-                      {!isAllowed && (
-                        <span className="text-[8.5px] font-normal text-slate-400 dark:text-slate-500">
-                          Nonaktif
-                        </span>
-                      )}
+                      <span>{item.label}</span>
                     </button>
                   );
                 })}
@@ -849,13 +812,13 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
           </div>
         ) : (
           /* ── TAHAP 2: IDENTITAS, DURASI, & PENYUSUN SOAL ── */
-          <div className="space-y-4">
-            {/* Pertanyaan 5: Judul & Kode Bank Soal */}
-            <div className="space-y-2.5">
+          <div className="space-y-3">
+            {/* Judul & Kode Bank Soal */}
+            <div className="space-y-2">
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <label htmlFor="form-judul-bank" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                    5. Apa judul paket soal ini?
+                  <label htmlFor="form-judul-bank" className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Judul Bank Soal
                   </label>
                   {mapelId && (
                     <button
@@ -880,8 +843,8 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               </div>
 
               <div className="space-y-1">
-                <label htmlFor="form-kode-bank" className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  Kode Paket Bank Soal:
+                <label htmlFor="form-kode-bank" className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  Kode Paket
                 </label>
                 <Input
                   id="form-kode-bank"
@@ -894,11 +857,11 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               </div>
             </div>
 
-            {/* Pertanyaan 6: Guru Penyusun / Penanggung Jawab Soal */}
+            {/* Guru Penyusun / Penanggung Jawab */}
             {!isTeacherLocked && (
-              <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <label htmlFor="form-guru" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                  6. Siapa guru penyusun / penanggung jawab naskah soal?
+              <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-slate-800">
+                <label htmlFor="form-guru" className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Guru Penyusun / Penanggung Jawab
                 </label>
                 <SearchableSelect
                   id="form-guru"
@@ -917,10 +880,10 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               </div>
             )}
 
-            {/* Pertanyaan 7: Durasi Ujian Default */}
-            <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <label htmlFor="form-durasi" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                7. Berapa menit alokasi durasi ujian?
+            {/* Durasi Ujian Default */}
+            <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-slate-800">
+              <label htmlFor="form-durasi" className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Alokasi Durasi (Menit)
               </label>
               <div className="grid grid-cols-4 gap-2">
                 {[60, 90, 120].map((dur) => (
@@ -932,7 +895,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                       'py-2 px-2 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
                       alokasiMenit === dur
                         ? 'bg-violet-600 text-white border-violet-600 shadow-2xs'
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-violet-300'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
                     )}
                   >
                     {dur} Menit
@@ -949,12 +912,12 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               </div>
             </div>
 
-            {/* Pertanyaan 8: Berbagi Soal (Mandiri Guru) atau Notifikasi Terbit (Massal) */}
+            {/* Visibilitas & Berbagi Soal */}
             {scope === 'MANDIRI_GURU' ? (
-              <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                  8. Boleh dipakai guru lain yang se-mapel &amp; setingkat?
-                </p>
+              <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-slate-800">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Visibilitas &amp; Berbagi Soal
+                </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -966,7 +929,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                         : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
                     )}
                   >
-                    Ya, Bagikan
+                    Ya, Bagikan Se-Mapel
                   </button>
 
                   <button
@@ -979,16 +942,16 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                         : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
                     )}
                   >
-                    Tidak (Pribadi)
+                    Pribadi
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
-                  <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+              <div className="pt-1 border-t border-slate-100 dark:border-slate-800">
+                <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
+                  <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
                   <span>
-                    Paket soal massal otomatis berstatus <strong>PUBLISHED</strong> agar dapat langsung dijadwalkan serentak di Meja Orkestrasi.
+                    Paket soal massal otomatis berstatus <strong>PUBLISHED</strong> untuk penjadwalan terpusat.
                   </span>
                 </div>
               </div>
@@ -996,8 +959,8 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
           </div>
         )}
 
-        {/* ── Actions Footer (Navigasi Wizard Lapang & Nyaman) ── */}
-        <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+        {/* ── Actions Footer Ramping ── */}
+        <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-800">
           {step === 1 ? (
             <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isSubmitting}>
               Batal
