@@ -15,10 +15,6 @@ import type { CbtJadwalUjian, CbtRaporSlot } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
 import {
-  Clock,
-  BookOpen,
-  CheckCircle2,
-  RotateCcw,
   ArrowRight,
   ArrowLeft,
 } from 'lucide-react';
@@ -530,27 +526,21 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
 
       <form onSubmit={handleSubmit} className="space-y-3.5">
         {step === 1 ? (
-          <>
-            {/* Pilih Bank Soal */}
-            <div>
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <label htmlFor="jadwal-bank-soal" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Pilih Bank Soal <span className="text-rose-500">*</span>
+          <div className="space-y-3.5 py-0.5">
+            {/* Pertanyaan 1: Pilih Bank Soal */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <label htmlFor="jadwal-bank-soal" className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Pakai bank soal yang mana?
                 </label>
                 {teacherGuruId && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-50 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300 border border-violet-200/60 dark:border-violet-800/60">
-                      <BookOpen className="w-2.5 h-2.5" />
-                      {showAllSchoolBank ? 'Semua Bank Soal' : `Bank Soal Saya (${bankSoalOptions.length})`}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowAllSchoolBank((prev) => !prev)}
-                      className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
-                    >
-                      {showAllSchoolBank ? '(Hanya Milik Saya)' : '(Lihat Semua)'}
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAllSchoolBank((prev) => !prev)}
+                    className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
+                  >
+                    {showAllSchoolBank ? 'Milik Saya' : 'Semua Bank Soal'}
+                  </button>
                 )}
               </div>
               <SearchableSelect
@@ -563,87 +553,83 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                     ? 'Memuat bank soal...'
                     : bankSoalOptions.length === 0
                     ? 'Belum ada bank soal tersedia'
-                    : 'Pilih bank soal yang sudah dibuat...'
+                    : 'Pilih bank soal...'
                 }
                 aria-label="Pilih Bank Soal"
               />
-              {bankSoalOptions.length === 1 && !showAllSchoolBank && (
-                <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                  <span>Otomatis terpilih 1 paket bank soal milik Anda.</span>
-                </p>
-              )}
             </div>
 
-            {/* Nama Sesi */}
-            <div>
-              <label htmlFor="jadwal-nama-sesi" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Nama Sesi Ujian <span className="text-rose-500">*</span>
+            {/* Pertanyaan 2: Nama Sesi */}
+            <div className="space-y-1.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+              <label htmlFor="jadwal-nama-sesi" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                Apa nama sesi ujian ini?
               </label>
               <Input
                 id="jadwal-nama-sesi"
                 value={namaSesi}
                 onChange={(e) => setNamaSesi(e.target.value)}
-                placeholder="Contoh: UAS Ganjil - Sesi 1 Pagi"
+                placeholder="Contoh: UAS Sesi 1"
                 aria-label="Nama Sesi Ujian"
                 required
               />
             </div>
 
-            {/* Rentang Waktu Ujian */}
-            <div className="space-y-1.5">
+            {/* Pertanyaan 3: Rentang Waktu Ujian */}
+            <div className="space-y-1.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50/80 dark:bg-indigo-950/50 border border-indigo-200/70 dark:border-indigo-800/60 px-2 py-0.5 rounded-full">
-                  <Clock className="w-3 h-3" />
-                  <span>Zona Waktu: {tzLabel} ({activeTz})</span>
-                </span>
+                <label htmlFor="jadwal-mulai" className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Kapan ujian dibuka & ditutup ({tzLabel})?
+                </label>
                 <button
                   type="button"
                   onClick={syncWithNow}
-                  className="inline-flex items-center gap-1 text-[11px] font-bold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
+                  className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
                 >
-                  <RotateCcw className="w-3 h-3" />
-                  <span>Set Jam Sekarang ({tzLabel})</span>
+                  Sekarang
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="jadwal-mulai" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Waktu Mulai ({tzLabel}) <span className="text-rose-500">*</span>
-                  </label>
-                  <Input
-                    id="jadwal-mulai"
-                    type="datetime-local"
-                    value={tanggalMulai}
-                    onChange={(e) => setTanggalMulai(e.target.value)}
-                    aria-label="Waktu Mulai Ujian"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="jadwal-selesai" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Batas Akhir ({tzLabel}) <span className="text-rose-500">*</span>
-                  </label>
-                  <Input
-                    id="jadwal-selesai"
-                    type="datetime-local"
-                    value={tanggalSelesai}
-                    onChange={(e) => setTanggalSelesai(e.target.value)}
-                    aria-label="Batas Akhir Ujian"
-                    required
-                  />
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Input
+                  id="jadwal-mulai"
+                  type="datetime-local"
+                  value={tanggalMulai}
+                  onChange={(e) => setTanggalMulai(e.target.value)}
+                  aria-label="Waktu Mulai Ujian"
+                  required
+                />
+                <Input
+                  id="jadwal-selesai"
+                  type="datetime-local"
+                  value={tanggalSelesai}
+                  onChange={(e) => setTanggalSelesai(e.target.value)}
+                  aria-label="Batas Akhir Ujian"
+                  required
+                />
               </div>
             </div>
 
-            {/* Durasi & Toleransi Terlambat */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="jadwal-durasi" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Durasi Ujian (Menit) <span className="text-rose-500">*</span>
-                </label>
+            {/* Pertanyaan 4: Durasi Pengerjaan */}
+            <div className="space-y-1.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+              <label htmlFor="jadwal-durasi" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                Berapa menit waktu pengerjaan?
+              </label>
+              <div className="grid grid-cols-5 gap-1.5">
+                {[45, 60, 90, 120].map((mnt) => (
+                  <button
+                    key={mnt}
+                    type="button"
+                    onClick={() => setDurasiMenit(mnt)}
+                    className={cn(
+                      'py-2 px-2 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
+                      durasiMenit === mnt
+                        ? 'bg-violet-600 text-white border-violet-600'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-violet-300'
+                    )}
+                  >
+                    {mnt}m
+                  </button>
+                ))}
                 <Input
                   id="jadwal-durasi"
                   type="number"
@@ -652,26 +638,12 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                   value={durasiMenit}
                   onChange={(e) => setDurasiMenit(Number(e.target.value))}
                   aria-label="Durasi Pengerjaan Ujian"
+                  className="text-center font-bold px-1.5"
                   required
                 />
               </div>
-
-              <div>
-                <label htmlFor="jadwal-toleransi" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Toleransi Terlambat (Menit)
-                </label>
-                <Input
-                  id="jadwal-toleransi"
-                  type="number"
-                  min={0}
-                  max={120}
-                  value={toleransiMenit}
-                  onChange={(e) => setToleransiMenit(Number(e.target.value))}
-                  aria-label="Toleransi Terlambat Masuk"
-                />
-              </div>
             </div>
-          </>
+          </div>
         ) : step === 2 ? (
           <div className="space-y-3.5 py-0.5">
             {/* Pertanyaan 1: Sasaran Kelas */}
