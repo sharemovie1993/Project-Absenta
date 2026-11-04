@@ -141,6 +141,32 @@ export const cbtApi = {
     return res.data?.data as CbtJadwalUjian;
   },
 
+  bulkCreateJadwal: async (items: Array<Partial<CbtJadwalUjian>>) => {
+    const res = await api.post('/cbt/jadwal/bulk-create', { items });
+    return res.data?.data as { created_count: number; items: CbtJadwalUjian[] };
+  },
+
+  bulkUpdatePlotting: async (
+    items: Array<{
+      jadwal_id: string;
+      ruang_ujian?: string;
+      pengawas_1_id?: string;
+      pengawas_1_nama?: string;
+      pengawas_1_nip?: string;
+      pengawas_2_id?: string;
+      pengawas_2_nama?: string;
+      pengawas_2_nip?: string;
+      proktor_id?: string;
+      proktor_nama?: string;
+      proktor_nip?: string;
+      tanggal_mulai?: string;
+      tanggal_selesai?: string;
+    }>
+  ) => {
+    const res = await api.patch('/cbt/jadwal/bulk-plotting', { items });
+    return res.data?.data as { updated_count: number };
+  },
+
   updateJadwal: async (id: string, payload: Partial<CbtJadwalUjian>) => {
     const res = await api.put(`/cbt/jadwal/${id}`, payload);
     return res.data?.data as CbtJadwalUjian;

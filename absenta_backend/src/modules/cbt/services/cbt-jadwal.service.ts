@@ -862,4 +862,124 @@ export class CbtJadwalService {
       semester_id: effectiveSemId,
     };
   }
+
+  /**
+   * Ploting massal Ruang, Pengawas Ruang, dan Proktor pada banyak Jadwal Ujian sekaligus (Oleh Kurikulum / Panitia)
+   */
+  static async bulkUpdatePlotting(tenantId: string, items: any[]) {
+    const jadwalIds = items.map((i) => i.jadwal_id);
+    const existingList = await prisma.cbtJadwalUjian.findMany({
+      where: {
+        tenant_id: tenantId,
+        id: { in: jadwalIds },
+      },
+      select: {
+        id: true,
+        setting_keamanan: true,
+      },
+    });
+
+    const existingMap = new Map(existingList.map((j) => [j.id, j.setting_keamanan as Record<string, any>]));
+    const operations: any[] = [];
+
+    for (const item of items) {
+      const currentSetting = existingMap.get(item.jadwal_id);
+      if (!currentSetting && !existingList.some((j) => j.id === item.jadwal_id)) continue;
+
+      const mergedSetting = {
+        ...(currentSetting || {}),
+        ...(item.ruang_ujian !== undefined ? { ruang_ujian: item.ruang_ujian } : {}),
+        ...(item.pengawas_1_id !== undefined ? { pengawas_1_id: item.pengawas_1_id } : {}),
+        ...(item.pengawas_1_nama !== undefined ? { pengawas_1_nama: item.pengawas_1_nama } : {}),
+        ...(item.pengawas_1_nip !== undefined ? { pengawas_1_nip: item.pengawas_1_nip } : {}),
+        ...(item.pengawas_2_id !== undefined ? { pengawas_2_id: item.pengawas_2_id } : {}),
+        ...(item.pengawas_2_nama !== undefined ? { pengawas_2_nama: item.pengawas_2_nama } : {}),
+        ...(item.pengawas_2_nip !== undefined ? { pengawas_2_nip: item.pengawas_2_nip } : {}),
+        ...(item.proktor_id !== undefined ? { proktor_id: item.proktor_id } : {}),
+        ...(item.proktor_nama !== undefined ? { proktor_nama: item.proktor_nama } : {}),
+        ...(item.proktor_nip !== undefined ? { proktor_nip: item.proktor_nip } : {}),
+      };
+
+      const updateData: any = {
+        setting_keamanan: mergedSetting,
+      };
+      if (item.tanggal_mulai) updateData.tanggal_mulai = new Date(item.tanggal_mulai);
+      if (item.tanggal_selesai) updateData.tanggal_selesai = new Date(item.tanggal_selesai);
+
+      operations.push(
+        prisma.cbtJadwalUjian.update({
+          where: { id: item.jadwal_id },
+          data: updateData,
+        })
+      );
+    }
+
+    if (operations.length > 0) {
+      await prisma.$transaction(operations);
+    }
+
+    return {
+      updated_count: operations.length,
+    };
+  }
+
+  /**
+   * Merangkai / Membuat Banyak Jadwal Ujian Serentak Sekaligus dari Daftar Bank Soal (Oleh Kurikulum / Panitia)
+   */
+  static async bulkCreate(tenantId: string, items: any[]) {
+    const bankIds = Array.from(new Set(items.map((i) => i.bank_soal_id)));
+    const banks = await prisma.cbtBankSoal.findMany({
+      where: {
+        tenant_id: tenantId,
+        id: { in: bankIds },
+      },
+      include: { _count: { select: { Soal: true } } },
+    });
+
+    const bankMap = new Map(banks.map((b) => [b.id, b]));
+    const operations: any[] = [];
+
+    for (const data of items) {
+      const bankSoal = bankMap.get(data.bank_soal_id);
+      if (!bankSoal || bankSoal._count.Soal === 0) continue;
+
+      const token = this.generateToken();
+      operations.push(
+        prisma.cbtJadwalUjian.create({
+          data: {
+            tenant_id: tenantId,
+            bank_soal_id: data.bank_soal_id,
+            tahun_pelajaran_id: data.tahun_pelajaran_id,
+            semester_id: data.semester_id,
+            nama_sesi: data.nama_sesi.trim(),
+            token_ujian: token,
+            tanggal_mulai: new Date(data.tanggal_mulai),
+            tanggal_selesai: new Date(data.tanggal_selesai),
+            durasi_menit: data.durasi_menit ?? bankSoal.alokasi_menit,
+            toleransi_terlambat_menit: data.toleransi_terlambat_menit ?? 15,
+            target_kelas_ids: data.target_kelas_ids,
+            setting_keamanan: data.setting_keamanan || {
+              lock_device: true,
+              block_tab_switch: true,
+              max_violations: 3,
+              shuffle_questions: true,
+              shuffle_options: true,
+              show_result_instant: false,
+            },
+            status: 'DRAFT',
+          },
+        })
+      );
+    }
+
+    if (operations.length === 0) {
+      throw new Error('Tidak ada bank soal valid yang memiliki butir soal untuk dijadwalkan');
+    }
+
+    const created = await prisma.$transaction(operations);
+    return {
+      created_count: created.length,
+      items: created,
+    };
+  }
 }

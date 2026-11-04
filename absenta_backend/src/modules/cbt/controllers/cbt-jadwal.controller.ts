@@ -5,6 +5,8 @@ import {
   updateJadwalUjianSchema,
   queryJadwalUjianSchema,
   transferNilaiRaporSchema,
+  bulkPlottingJadwalSchema,
+  bulkCreateJadwalSchema,
 } from '../schemas/cbt.schema';
 import { z } from 'zod';
 
@@ -144,9 +146,52 @@ export class CbtJadwalController {
       );
     } catch (error: any) {
       if (error instanceof z.ZodError) {
-        return sendError(reply, 400, error.errors.map((e) => e.message).join(', '));
+        const issues = (error as any).issues || error.errors || [];
+        return sendError(reply, 400, issues.map((e: any) => e.message).join(', '));
       }
       return sendError(reply, 400, error.message || 'Gagal mentransfer nilai ke e-Rapor');
+    }
+  }
+
+  static async bulkUpdatePlotting(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const parsed = bulkPlottingJadwalSchema.parse(req.body);
+      const result = await CbtJadwalService.bulkUpdatePlotting(tenant_id, parsed.items);
+      return sendResponse(
+        reply,
+        200,
+        true,
+        `Berhasil menyimpan ploting pengawas & ruang untuk ${result.updated_count} jadwal ujian`,
+        result
+      );
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        const issues = (error as any).issues || error.errors || [];
+        return sendError(reply, 400, issues.map((e: any) => e.message).join(', '));
+      }
+      return sendError(reply, 400, error.message || 'Gagal menyimpan ploting massal pengawas');
+    }
+  }
+
+  static async bulkCreate(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const parsed = bulkCreateJadwalSchema.parse(req.body);
+      const result = await CbtJadwalService.bulkCreate(tenant_id, parsed.items);
+      return sendResponse(
+        reply,
+        201,
+        true,
+        `Berhasil merangkai & membuat ${result.created_count} jadwal ujian serentak`,
+        result
+      );
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        const issues = (error as any).issues || error.errors || [];
+        return sendError(reply, 400, issues.map((e: any) => e.message).join(', '));
+      }
+      return sendError(reply, 400, error.message || 'Gagal membuat jadwal ujian massal');
     }
   }
 }

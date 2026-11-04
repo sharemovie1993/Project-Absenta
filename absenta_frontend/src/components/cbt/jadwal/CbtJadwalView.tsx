@@ -33,6 +33,7 @@ import { CbtJadwalFormModal } from './CbtJadwalFormModal';
 import { CbtBeritaAcaraPrintModal } from './CbtBeritaAcaraPrintModal';
 import { CbtTransferNilaiModal } from './CbtTransferNilaiModal';
 import { CbtProctorMonitoringView } from '../sesi/CbtProctorMonitoringView';
+import { CbtPanitiaOrchestratorView } from './CbtPanitiaOrchestratorView';
 import useConfirm from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
 import { formatLocalTimeFromISO, getTimezone, getTimezoneLabel } from '@/utils/attendance/time';
@@ -64,6 +65,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [selectedJadwal, setSelectedJadwal] = useState<CbtJadwalUjian | null>(null);
   const [internalMonitorJadwalId, setInternalMonitorJadwalId] = useState<string | null>(null);
+  const [isOrchestratorOpen, setIsOrchestratorOpen] = useState(false);
 
   const handleOpenMonitor = (jadwalId: string) => {
     if (onNavigateMonitor) {
@@ -558,10 +560,43 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
     );
   }
 
+  if (isOrchestratorOpen) {
+    return (
+      <div className="space-y-3">
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsOrchestratorOpen(false)}
+            className="text-xs h-8 px-3 font-bold"
+          >
+            ← Kembali ke Tabel Jadwal Ujian
+          </Button>
+        </div>
+        <CbtPanitiaOrchestratorView />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 w-full max-w-full min-w-0">
       <AcademicFilterToolbar
         {...filter.toolbarProps}
+        extraActions={
+          !guruId && !readOnly ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsOrchestratorOpen(true)}
+              className="text-xs h-9 px-3.5 font-bold text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800 bg-indigo-50/70 hover:bg-indigo-100"
+              title="Rangkai Jadwal Serentak & Ploting Pengawas Ruang Secara Massal"
+            >
+              <span>Orkestrasi &amp; Ploting Pengawas</span>
+            </Button>
+          ) : undefined
+        }
         onAdd={
           !readOnly
             ? () => {

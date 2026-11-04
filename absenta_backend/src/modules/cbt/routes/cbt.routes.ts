@@ -78,6 +78,14 @@ export async function cbtRoutes(fastify: any) {
     preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
   }, CbtJadwalController.create);
 
+  fastify.post('/jadwal/bulk-create', {
+    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+  }, CbtJadwalController.bulkCreate);
+
+  fastify.patch('/jadwal/bulk-plotting', {
+    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+  }, CbtJadwalController.bulkUpdatePlotting);
+
   fastify.put('/jadwal/:id', {
     preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
   }, CbtJadwalController.update);

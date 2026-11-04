@@ -149,3 +149,27 @@ export const transferNilaiRaporSchema = z.object({
   overwrite_existing: z.boolean().default(true),
   round_integer: z.boolean().default(true),
 });
+
+export const bulkPlottingItemSchema = z.object({
+  jadwal_id: z.string().uuid('ID Jadwal tidak valid'),
+  ruang_ujian: z.string().optional(),
+  pengawas_1_id: z.string().optional(),
+  pengawas_1_nama: z.string().optional(),
+  pengawas_1_nip: z.string().optional(),
+  pengawas_2_id: z.string().optional(),
+  pengawas_2_nama: z.string().optional(),
+  pengawas_2_nip: z.string().optional(),
+  proktor_id: z.string().optional(),
+  proktor_nama: z.string().optional(),
+  proktor_nip: z.string().optional(),
+  tanggal_mulai: z.string().optional(),
+  tanggal_selesai: z.string().optional(),
+});
+
+export const bulkPlottingJadwalSchema = z.object({
+  items: z.array(bulkPlottingItemSchema).min(1, 'Minimal 1 jadwal ujian untuk diploting'),
+});
+
+export const bulkCreateJadwalSchema = z.object({
+  items: z.array(createJadwalUjianSchema).min(1, 'Minimal 1 jadwal ujian untuk dibuat'),
+});

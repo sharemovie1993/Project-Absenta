@@ -7,6 +7,7 @@ import {
   Activity,
   ExternalLink,
   Loader,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -19,8 +20,13 @@ const CbtJadwalView = lazy(() =>
 const CbtProctorMonitoringView = lazy(() =>
   import('@/components/cbt/sesi/CbtProctorMonitoringView').then((m) => ({ default: m.CbtProctorMonitoringView }))
 );
+const CbtPanitiaOrchestratorView = lazy(() =>
+  import('@/components/cbt/jadwal/CbtPanitiaOrchestratorView').then((m) => ({
+    default: m.CbtPanitiaOrchestratorView,
+  }))
+);
 
-export type KurikulumCbtSubView = 'bank' | 'jadwal' | 'monitor';
+export type KurikulumCbtSubView = 'bank' | 'jadwal' | 'orkestrasi' | 'monitor';
 
 export const KurikulumCbtTab: React.FC = () => {
   const navigate = useNavigate();
@@ -67,6 +73,20 @@ export const KurikulumCbtTab: React.FC = () => {
 
           <button
             type="button"
+            onClick={() => setActiveSubView('orkestrasi')}
+            className={cn(
+              "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0",
+              activeSubView === 'orkestrasi'
+                ? "bg-violet-600 text-white shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+            )}
+          >
+            <Users size={15} />
+            <span>Orkestrasi &amp; Ploting Pengawas</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveSubView('monitor')}
             className={cn(
               "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0",
@@ -104,6 +124,7 @@ export const KurikulumCbtTab: React.FC = () => {
         {activeSubView === 'jadwal' && (
           <CbtJadwalView hideLayout={true} onNavigateMonitor={handleNavigateMonitor} />
         )}
+        {activeSubView === 'orkestrasi' && <CbtPanitiaOrchestratorView />}
         {activeSubView === 'monitor' && (
           <CbtProctorMonitoringView
             initialJadwalId={activeMonitorJadwalId}
