@@ -504,7 +504,23 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
             {/* Sasaran Kelas */}
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Untuk kelas mana saja?</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Untuk kelas mana saja?</p>
+                  {displayedKelasList.length > 0 && (
+                    <span
+                      className={cn(
+                        'text-[10px] font-black px-2 py-0.5 rounded-full border',
+                        targetKelasIds.length === displayedKelasList.length
+                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                          : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-300 dark:border-amber-700'
+                      )}
+                    >
+                      {targetKelasIds.length === displayedKelasList.length
+                        ? `✓ Lengkap (${targetKelasIds.length}/${displayedKelasList.length})`
+                        : `${targetKelasIds.length}/${displayedKelasList.length} Terpilih`}
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-2.5 shrink-0">
                   {teacherClasses.length > 0 && (
                     <button type="button" onClick={() => setShowAllGradeClasses((prev) => !prev)} className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer">
@@ -520,7 +536,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
               {displayedKelasList.length === 0 ? (
                 <p className="text-xs text-amber-600 dark:text-amber-400 py-1">Tidak ada kelas yang cocok dengan tingkat bank soal.</p>
               ) : (
-                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2 rounded-xl border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40">
+                <div className="flex flex-wrap gap-1.5 p-2 rounded-xl border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40">
                   {displayedKelasList.map((k) => {
                     const isChecked = targetKelasIds.includes(k.id);
                     return (
