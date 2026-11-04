@@ -219,9 +219,9 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
   };
 
   useEffect(() => {
-    if (isOpen) {
-      setStep(1);
-    }
+    if (!isOpen) return;
+    setStep(1);
+
     if (jadwalToEdit) {
       setBankSoalId(jadwalToEdit.bank_soal_id);
       setTpId(jadwalToEdit.tahun_pelajaran_id || activeTpYear?.id || tpOptions[0]?.value || '');
@@ -268,7 +268,8 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
       setShuffleOptions(true);
       setShowResultInstant(false);
     }
-  }, [jadwalToEdit, isOpen, activeTpYear?.id, tpOptions, activeTz]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jadwalToEdit, isOpen]);
 
   // Auto-select bank soal jika guru hanya punya 1 paket bank soal
   useEffect(() => {
@@ -308,7 +309,12 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
     }
   };
 
-  const handleNextStep = () => {
+  const handleNextStep = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
     const check = step1Schema.safeParse({
       bank_soal_id: bankSoalId,
       nama_sesi: namaSesi.trim(),
@@ -792,10 +798,15 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
         <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
           {step === 2 ? (
             <Button
+              key="btn-back"
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setStep(1)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setStep(1);
+              }}
               disabled={isSubmitting}
               className="flex items-center gap-1.5"
             >
@@ -803,17 +814,25 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
               <span>Kembali</span>
             </Button>
           ) : (
-            <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isSubmitting}>
+            <Button
+              key="btn-cancel"
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
               Batal
             </Button>
           )}
 
           {step === 1 ? (
             <Button
+              key="btn-next"
               type="button"
               variant="primary"
               size="sm"
-              onClick={handleNextStep}
+              onClick={(e) => handleNextStep(e)}
               className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold flex items-center gap-1.5"
             >
               <span>Lanjut: Pilih Kelas</span>
@@ -821,6 +840,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
             </Button>
           ) : (
             <Button
+              key="btn-submit"
               type="submit"
               variant="primary"
               size="sm"
