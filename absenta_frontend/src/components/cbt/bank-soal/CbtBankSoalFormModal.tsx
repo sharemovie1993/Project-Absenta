@@ -799,6 +799,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
             {(scope === 'TERPUSAT_MASSAL' || isShared) && (
               <CbtMgmpColleaguePicker
                 mapelId={mapelId}
+                tingkat={tingkat}
                 currentGuruId={guruId}
                 selectedIds={selectedColleagueIds}
                 onChangeSelectedIds={setSelectedColleagueIds}
