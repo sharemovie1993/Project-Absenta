@@ -14,7 +14,16 @@ import { useCapabilities } from '@/hooks/useCapabilities';
 import type { CbtJadwalUjian } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
-import { ShieldAlert, Clock, Calendar, CheckSquare, BookOpen, CheckCircle2, Users, RotateCcw } from 'lucide-react';
+import {
+  ShieldAlert,
+  Clock,
+  BookOpen,
+  CheckCircle2,
+  Users,
+  RotateCcw,
+  ArrowRight,
+  ArrowLeft,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   formatLocalDateTime,
@@ -32,15 +41,18 @@ interface CbtJadwalFormModalProps {
   defaultGuruId?: string;
 }
 
-const jadwalSchema = z.object({
+const step1Schema = z.object({
   bank_soal_id: z.string().min(1, 'Bank soal wajib dipilih'),
-  tahun_pelajaran_id: z.string().min(1, 'Tahun pelajaran wajib dipilih'),
-  semester_id: z.string().min(1, 'Semester wajib dipilih'),
   nama_sesi: z.string().min(3, 'Nama sesi minimal 3 karakter'),
   tanggal_mulai: z.string().min(1, 'Tanggal mulai wajib diisi'),
   tanggal_selesai: z.string().min(1, 'Tanggal selesai wajib diisi'),
   durasi_menit: z.number().int().min(10, 'Durasi minimal 10 menit'),
   toleransi_terlambat_menit: z.number().int().min(0),
+});
+
+const jadwalSchema = step1Schema.extend({
+  tahun_pelajaran_id: z.string().min(1, 'Tahun pelajaran aktif tidak ditemukan'),
+  semester_id: z.string().min(1, 'Semester aktif tidak ditemukan'),
   target_kelas_ids: z.array(z.string()).min(1, 'Pilih minimal satu kelas target ujian'),
 });
 
@@ -56,7 +68,10 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
   const { isAdmin, isKurikulum } = useCapabilities();
 
   const { options: tpOptions, activeYear: activeTpYear } = useTahunPelajaranOptions();
-  const { options: kelasOptions, rawList: rawKelasList } = useKelasOptions();
+  const { rawList: rawKelasList } = useKelasOptions();
+
+  // Wizard Step State (1 = Identitas & Waktu, 2 = Distribusi Kelas & Keamanan)
+  const [step, setStep] = useState<1 | 2>(1);
 
   // Mode filter bank soal & rombel
   const [showAllSchoolBank, setShowAllSchoolBank] = useState(false);
@@ -150,13 +165,20 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
     }
     return classesInTingkat;
   }, [showAllGradeClasses, teacherClasses, classesInTingkat]);
+
+  // Konteks Akademik (disinkronkan otomatis di belakang layar)
   const [tpId, setTpId] = useState('');
   const [semId, setSemId] = useState('');
   const { options: semOptions, activeSemester } = useSemesterOptions({
     tahunPelajaranId: tpId || undefined,
   });
 
-  // Pastikan semester selalu sinkron dengan Tahun Pelajaran yang dipilih
+  useEffect(() => {
+    if (!tpId && (activeTpYear?.id || tpOptions[0]?.value)) {
+      setTpId(activeTpYear?.id || tpOptions[0]?.value || '');
+    }
+  }, [tpId, activeTpYear?.id, tpOptions]);
+
   useEffect(() => {
     if (semOptions.length > 0) {
       const isValid = semId && semOptions.some((s) => s.value === semId);
@@ -169,6 +191,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
       }
     }
   }, [semOptions, semId, activeSemester?.id]);
+
   const [namaSesi, setNamaSesi] = useState('');
   const [tanggalMulai, setTanggalMulai] = useState('');
   const [tanggalSelesai, setTanggalSelesai] = useState('');
@@ -196,10 +219,13 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
   };
 
   useEffect(() => {
+    if (isOpen) {
+      setStep(1);
+    }
     if (jadwalToEdit) {
       setBankSoalId(jadwalToEdit.bank_soal_id);
-      setTpId(jadwalToEdit.tahun_pelajaran_id);
-      setSemId(jadwalToEdit.semester_id);
+      setTpId(jadwalToEdit.tahun_pelajaran_id || activeTpYear?.id || tpOptions[0]?.value || '');
+      setSemId(jadwalToEdit.semester_id || activeSemester?.id || semOptions[0]?.value || '');
       setNamaSesi(jadwalToEdit.nama_sesi);
       setTanggalMulai(
         jadwalToEdit.tanggal_mulai ? formatLocalDateTime(new Date(jadwalToEdit.tanggal_mulai)) : ''
@@ -255,6 +281,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
     if (!isOpen) {
       setShowAllSchoolBank(false);
       setShowAllGradeClasses(false);
+      setStep(1);
     }
   }, [isOpen]);
 
@@ -281,13 +308,46 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
     }
   };
 
+  const handleNextStep = () => {
+    const check = step1Schema.safeParse({
+      bank_soal_id: bankSoalId,
+      nama_sesi: namaSesi.trim(),
+      tanggal_mulai: tanggalMulai,
+      tanggal_selesai: tanggalSelesai,
+      durasi_menit: Number(durasiMenit),
+      toleransi_terlambat_menit: Number(toleransiMenit),
+    });
+
+    if (!check.success) {
+      toast.error(check.error.errors.map((err) => err.message).join(', '));
+      return;
+    }
+
+    const startMs = new Date(localDateTimeInputToISO(tanggalMulai, activeTz)).getTime();
+    const endMs = new Date(localDateTimeInputToISO(tanggalSelesai, activeTz)).getTime();
+    if (endMs <= startMs) {
+      toast.error('Batas akhir ujian harus lebih besar dari waktu mulai ujian');
+      return;
+    }
+
+    setStep(2);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (step === 1) {
+      handleNextStep();
+      return;
+    }
+
+    const resolvedTpId = tpId || activeTpYear?.id || tpOptions[0]?.value || '';
+    const resolvedSemId = semId || activeSemester?.id || semOptions[0]?.value || '';
+
     const validation = jadwalSchema.safeParse({
       bank_soal_id: bankSoalId,
-      tahun_pelajaran_id: tpId,
-      semester_id: semId,
+      tahun_pelajaran_id: resolvedTpId,
+      semester_id: resolvedSemId,
       nama_sesi: namaSesi.trim(),
       tanggal_mulai: tanggalMulai,
       tanggal_selesai: tanggalSelesai,
@@ -306,8 +366,8 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
 
       const payload = {
         bank_soal_id: bankSoalId,
-        tahun_pelajaran_id: tpId,
-        semester_id: semId,
+        tahun_pelajaran_id: resolvedTpId,
+        semester_id: resolvedSemId,
         nama_sesi: namaSesi.trim(),
         tanggal_mulai: localDateTimeInputToISO(tanggalMulai, activeTz),
         tanggal_selesai: localDateTimeInputToISO(tanggalSelesai, activeTz),
@@ -353,347 +413,423 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={jadwalToEdit ? 'Edit Jadwal Ujian CBT' : 'Jadwalkan Sesi Ujian CBT Baru'}
-      size="lg"
+      size="md"
     >
-      <div className="-mt-3 sm:-mt-6 -mx-3 sm:-mx-6 mb-3 sm:mb-4 h-2 bg-[#673ab7]" />
-      <form onSubmit={handleSubmit} className="space-y-3.5 sm:space-y-4">
-        {/* Pilih Bank Soal */}
-        <div>
-          <div className="flex items-center justify-between gap-2 mb-1">
-            <label htmlFor="jadwal-bank-soal" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-              Pilih Bank Soal <span className="text-rose-500">*</span>
-            </label>
-            {teacherGuruId && (
-              <div className="flex items-center gap-1.5">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-50 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300 border border-violet-200/60 dark:border-violet-800/60">
-                  <BookOpen className="w-2.5 h-2.5" />
-                  {showAllSchoolBank ? 'Semua Bank Soal Sekolah' : `Bank Soal Saya (${bankSoalOptions.length})`}
+      <div className="-mt-3 sm:-mt-6 -mx-3 sm:-mx-6 mb-3 sm:mb-4 h-1.5 bg-[#673ab7]" />
+
+      {/* Stepper Header 2 Langkah */}
+      <div className="grid grid-cols-2 gap-2 p-1 mb-4 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/60">
+        <button
+          type="button"
+          onClick={() => setStep(1)}
+          className={cn(
+            'flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer',
+            step === 1
+              ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-2xs'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          )}
+        >
+          <span
+            className={cn(
+              'w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center shrink-0',
+              step === 1
+                ? 'bg-violet-600 text-white'
+                : 'bg-emerald-500 text-white'
+            )}
+          >
+            1
+          </span>
+          <span className="truncate">Identitas & Waktu</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleNextStep}
+          className={cn(
+            'flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer',
+            step === 2
+              ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-2xs'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          )}
+        >
+          <span
+            className={cn(
+              'w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center shrink-0',
+              step === 2
+                ? 'bg-violet-600 text-white'
+                : 'bg-slate-300 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+            )}
+          >
+            2
+          </span>
+          <span className="truncate">Distribusi Kelas ({targetKelasIds.length})</span>
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-3.5">
+        {step === 1 ? (
+          <>
+            {/* Pilih Bank Soal */}
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <label htmlFor="jadwal-bank-soal" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Pilih Bank Soal <span className="text-rose-500">*</span>
+                </label>
+                {teacherGuruId && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-50 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300 border border-violet-200/60 dark:border-violet-800/60">
+                      <BookOpen className="w-2.5 h-2.5" />
+                      {showAllSchoolBank ? 'Semua Bank Soal' : `Bank Soal Saya (${bankSoalOptions.length})`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowAllSchoolBank((prev) => !prev)}
+                      className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
+                    >
+                      {showAllSchoolBank ? '(Hanya Milik Saya)' : '(Lihat Semua)'}
+                    </button>
+                  </div>
+                )}
+              </div>
+              <SearchableSelect
+                id="jadwal-bank-soal"
+                options={bankSoalOptions}
+                value={bankSoalId}
+                onChange={setBankSoalId}
+                placeholder={
+                  isBankSoalLoading
+                    ? 'Memuat bank soal...'
+                    : bankSoalOptions.length === 0
+                    ? 'Belum ada bank soal tersedia'
+                    : 'Pilih bank soal yang sudah dibuat...'
+                }
+                aria-label="Pilih Bank Soal"
+              />
+              {bankSoalOptions.length === 1 && !showAllSchoolBank && (
+                <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Otomatis terpilih 1 paket bank soal milik Anda.</span>
+                </p>
+              )}
+            </div>
+
+            {/* Nama Sesi */}
+            <div>
+              <label htmlFor="jadwal-nama-sesi" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Nama Sesi Ujian <span className="text-rose-500">*</span>
+              </label>
+              <Input
+                id="jadwal-nama-sesi"
+                value={namaSesi}
+                onChange={(e) => setNamaSesi(e.target.value)}
+                placeholder="Contoh: UAS Ganjil - Sesi 1 Pagi"
+                aria-label="Nama Sesi Ujian"
+                required
+              />
+            </div>
+
+            {/* Rentang Waktu Ujian */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50/80 dark:bg-indigo-950/50 border border-indigo-200/70 dark:border-indigo-800/60 px-2 py-0.5 rounded-full">
+                  <Clock className="w-3 h-3" />
+                  <span>Zona Waktu: {tzLabel} ({activeTz})</span>
                 </span>
                 <button
                   type="button"
-                  onClick={() => setShowAllSchoolBank((prev) => !prev)}
-                  className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
+                  onClick={syncWithNow}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
                 >
-                  {showAllSchoolBank ? '(Hanya Bank Soal Saya)' : '(Lihat Semua Bank Soal)'}
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Set Jam Sekarang ({tzLabel})</span>
                 </button>
               </div>
-            )}
-          </div>
-          <SearchableSelect
-            id="jadwal-bank-soal"
-            options={bankSoalOptions}
-            value={bankSoalId}
-            onChange={setBankSoalId}
-            placeholder={
-              isBankSoalLoading
-                ? 'Memuat bank soal...'
-                : bankSoalOptions.length === 0
-                ? 'Belum ada bank soal tersedia'
-                : 'Pilih bank soal yang sudah dibuat...'
-            }
-            aria-label="Pilih Bank Soal"
-          />
-          {bankSoalOptions.length === 1 && !showAllSchoolBank && (
-            <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-              <span>Otomatis terpilih 1 paket bank soal milik Anda.</span>
-            </p>
-          )}
-        </div>
 
-        {/* Nama Sesi */}
-        <div>
-          <label htmlFor="jadwal-nama-sesi" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-            Nama Sesi Ujian <span className="text-rose-500">*</span>
-          </label>
-          <Input
-            id="jadwal-nama-sesi"
-            value={namaSesi}
-            onChange={(e) => setNamaSesi(e.target.value)}
-            placeholder="Contoh: UAS Ganjil 2026/2027 - Sesi 1 Pagi"
-            aria-label="Nama Sesi Ujian"
-            required
-          />
-        </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="jadwal-mulai" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Waktu Mulai ({tzLabel}) <span className="text-rose-500">*</span>
+                  </label>
+                  <Input
+                    id="jadwal-mulai"
+                    type="datetime-local"
+                    value={tanggalMulai}
+                    onChange={(e) => setTanggalMulai(e.target.value)}
+                    aria-label="Waktu Mulai Ujian"
+                    required
+                  />
+                </div>
 
-        {/* Tahun Pelajaran & Semester */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="jadwal-tp" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Tahun Pelajaran <span className="text-rose-500">*</span>
-            </label>
-            <SearchableSelect
-              options={tpOptions}
-              value={tpId}
-              onChange={setTpId}
-              placeholder="Pilih Tahun Pelajaran"
-              aria-label="Tahun Pelajaran"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="jadwal-sem" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Semester <span className="text-rose-500">*</span>
-            </label>
-            <SearchableSelect
-              options={semOptions}
-              value={semId}
-              onChange={setSemId}
-              placeholder="Pilih Semester"
-              aria-label="Semester"
-            />
-          </div>
-        </div>
-
-        {/* Rentang Waktu Ujian */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between gap-2">
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50/80 dark:bg-indigo-950/50 border border-indigo-200/70 dark:border-indigo-800/60 px-2.5 py-0.5 rounded-full">
-              <Clock className="w-3 h-3" />
-              <span>Zona Waktu Sekolah: {tzLabel} ({activeTz})</span>
-            </span>
-            <button
-              type="button"
-              onClick={syncWithNow}
-              className="inline-flex items-center gap-1 text-[11px] font-bold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
-            >
-              <RotateCcw className="w-3 h-3" />
-              <span>Set Waktu Sekarang ({tzLabel})</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="jadwal-mulai" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Waktu Mulai Ujian ({tzLabel}) <span className="text-rose-500">*</span>
-              </label>
-              <Input
-                id="jadwal-mulai"
-                type="datetime-local"
-                value={tanggalMulai}
-                onChange={(e) => setTanggalMulai(e.target.value)}
-                aria-label="Waktu Mulai Ujian"
-                required
-              />
+                <div>
+                  <label htmlFor="jadwal-selesai" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Batas Akhir ({tzLabel}) <span className="text-rose-500">*</span>
+                  </label>
+                  <Input
+                    id="jadwal-selesai"
+                    type="datetime-local"
+                    value={tanggalSelesai}
+                    onChange={(e) => setTanggalSelesai(e.target.value)}
+                    aria-label="Batas Akhir Ujian"
+                    required
+                  />
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label htmlFor="jadwal-selesai" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Batas Akhir Ujian ({tzLabel}) <span className="text-rose-500">*</span>
-              </label>
-              <Input
-                id="jadwal-selesai"
-                type="datetime-local"
-                value={tanggalSelesai}
-                onChange={(e) => setTanggalSelesai(e.target.value)}
-                aria-label="Batas Akhir Ujian"
-                required
-              />
+            {/* Durasi & Toleransi Terlambat */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="jadwal-durasi" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Durasi Ujian (Menit) <span className="text-rose-500">*</span>
+                </label>
+                <Input
+                  id="jadwal-durasi"
+                  type="number"
+                  min={10}
+                  max={300}
+                  value={durasiMenit}
+                  onChange={(e) => setDurasiMenit(Number(e.target.value))}
+                  aria-label="Durasi Pengerjaan Ujian"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="jadwal-toleransi" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Toleransi Terlambat (Menit)
+                </label>
+                <Input
+                  id="jadwal-toleransi"
+                  type="number"
+                  min={0}
+                  max={120}
+                  value={toleransiMenit}
+                  onChange={(e) => setToleransiMenit(Number(e.target.value))}
+                  aria-label="Toleransi Terlambat Masuk"
+                />
+              </div>
             </div>
-          </div>
-        </div>
-
-        {/* Durasi & Toleransi Terlambat */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="jadwal-durasi" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Durasi Ujian Siswa (Menit) <span className="text-rose-500">*</span>
-            </label>
-            <Input
-              id="jadwal-durasi"
-              type="number"
-              min={10}
-              max={300}
-              value={durasiMenit}
-              onChange={(e) => setDurasiMenit(Number(e.target.value))}
-              aria-label="Durasi Pengerjaan Ujian"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="jadwal-toleransi" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Toleransi Terlambat Masuk (Menit)
-            </label>
-            <Input
-              id="jadwal-toleransi"
-              type="number"
-              min={0}
-              max={120}
-              value={toleransiMenit}
-              onChange={(e) => setToleransiMenit(Number(e.target.value))}
-              aria-label="Toleransi Terlambat Masuk"
-            />
-          </div>
-        </div>
-
-        {/* Target Kelas */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                Sasaran Rombongan Belajar / Kelas ({targetKelasIds.length} dipilih) <span className="text-rose-500">*</span>
-              </label>
-              {selectedBankSoal?.tingkat && selectedBankSoal.tingkat !== 'SEMUA' && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60">
-                  Tingkat {selectedBankSoal.tingkat}
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              {teacherClasses.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllGradeClasses((prev) => !prev)}
-                  className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
-                >
-                  {showAllGradeClasses
-                    ? `(Batasi ke ${teacherClasses.length} Kelas Diampu)`
-                    : `(Tampilkan Semua Kelas Tingkat ${selectedBankSoal?.tingkat || ''}: ${classesInTingkat.length})`}
-                </button>
-              )}
+          </>
+        ) : (
+          <>
+            {/* Ringkasan Singkat Step 1 */}
+            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 flex items-center justify-between gap-2 text-xs">
+              <div className="min-w-0">
+                <p className="font-bold text-slate-800 dark:text-slate-200 truncate">{namaSesi}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                  {selectedBankSoal ? `${selectedBankSoal.kode_bank} • ${selectedBankSoal.Mapel?.nama_mapel || '-'}` : '-'} • {durasiMenit} Menit
+                </p>
+              </div>
               <button
                 type="button"
-                onClick={selectAllKelas}
-                className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                onClick={() => setStep(1)}
+                className="text-[11px] font-bold text-violet-600 dark:text-violet-400 hover:underline shrink-0 cursor-pointer"
               >
-                {displayedKelasList.length > 0 &&
-                displayedKelasList.every((k) => targetKelasIds.includes(k.id))
-                  ? 'Batal Pilih Semua'
-                  : teacherClasses.length > 0 && !showAllGradeClasses
-                  ? `Pilih Semua Kelas Saya (${displayedKelasList.length})`
-                  : `Pilih Semua (${displayedKelasList.length})`}
+                Ubah Waktu
               </button>
             </div>
-          </div>
 
-          <div className="p-3 border border-slate-200 dark:border-slate-800 rounded-xl max-h-36 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-50/50 dark:bg-slate-900/50">
-            {displayedKelasList.map((k) => {
-              const isChecked = targetKelasIds.includes(k.id);
-              const isMyClass = teacherTaughtClassIds.includes(k.id);
-              return (
-                <label
-                  key={k.id}
-                  className={cn(
-                    "flex items-center gap-2 p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 cursor-pointer text-xs font-medium transition-colors",
-                    isChecked && "bg-violet-50/70 dark:bg-violet-950/40 border border-violet-200/60 dark:border-violet-800/60"
-                  )}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => toggleKelas(k.id)}
-                    className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 cursor-pointer"
-                    aria-label={`Target Kelas ${k.nama_kelas}`}
-                  />
-                  <div className="flex flex-col min-w-0">
-                    <span className="truncate font-semibold text-slate-800 dark:text-slate-200">{k.nama_kelas}</span>
-                    <span className="text-[10px] text-slate-400">
-                      Tingkat {k.tingkat} {isMyClass && '• Rombel Anda'}
+            {/* Target Kelas */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-violet-600" />
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Sasaran Kelas ({targetKelasIds.length} dipilih) <span className="text-rose-500">*</span>
+                  </label>
+                  {selectedBankSoal?.tingkat && selectedBankSoal.tingkat !== 'SEMUA' && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60">
+                      Tingkat {selectedBankSoal.tingkat}
                     </span>
-                  </div>
-                </label>
-              );
-            })}
-          </div>
+                  )}
+                </div>
 
-          {displayedKelasList.length === 0 && (
-            <p className="text-xs text-amber-600 dark:text-amber-400 py-1">
-              Tidak ditemukan rombel/kelas yang cocok dengan tingkat bank soal ini.
-            </p>
-          )}
+                <div className="flex items-center gap-2">
+                  {teacherClasses.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllGradeClasses((prev) => !prev)}
+                      className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
+                    >
+                      {showAllGradeClasses
+                        ? `(Batasi ${teacherClasses.length} Kelas Saya)`
+                        : `(Semua Kelas Tingkat ${selectedBankSoal?.tingkat || ''}: ${classesInTingkat.length})`}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={selectAllKelas}
+                    className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                  >
+                    {displayedKelasList.length > 0 &&
+                    displayedKelasList.every((k) => targetKelasIds.includes(k.id))
+                      ? 'Batal Pilih Semua'
+                      : `Pilih Semua (${displayedKelasList.length})`}
+                  </button>
+                </div>
+              </div>
 
-          {teacherClasses.length > 0 && !showAllGradeClasses && (
-            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-              <span>Daftar kelas otomatis difilter hanya kelas yang Anda ajar untuk mata pelajaran ini.</span>
-            </p>
-          )}
-        </div>
+              <div className="p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl max-h-40 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-1.5 bg-slate-50/50 dark:bg-slate-900/50">
+                {displayedKelasList.map((k) => {
+                  const isChecked = targetKelasIds.includes(k.id);
+                  const isMyClass = teacherTaughtClassIds.includes(k.id);
+                  return (
+                    <label
+                      key={k.id}
+                      className={cn(
+                        'flex items-center gap-2 p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 cursor-pointer text-xs font-medium transition-colors border',
+                        isChecked
+                          ? 'bg-violet-50/80 dark:bg-violet-950/40 border-violet-200 dark:border-violet-800/60'
+                          : 'border-transparent'
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleKelas(k.id)}
+                        className="w-3.5 h-3.5 text-indigo-600 rounded focus:ring-indigo-500 cursor-pointer shrink-0"
+                        aria-label={`Target Kelas ${k.nama_kelas}`}
+                      />
+                      <div className="flex flex-col min-w-0">
+                        <span className="truncate font-bold text-slate-800 dark:text-slate-200 leading-tight">
+                          {k.nama_kelas}
+                        </span>
+                        <span className="text-[10px] text-slate-400 truncate">
+                          {isMyClass ? 'Rombel Anda' : `Tingkat ${k.tingkat}`}
+                        </span>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
 
-        {/* Pengaturan Keamanan Anti-Cheat */}
-        <div className="p-4 bg-indigo-50/30 dark:bg-indigo-950/20 rounded-xl border border-indigo-100 dark:border-indigo-900/40 space-y-3">
-          <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-bold text-xs">
-            <ShieldAlert size={16} />
-            <span>Pengaturan Keamanan Ujian (Anti-Cheat Engine)</span>
-          </div>
+              {displayedKelasList.length === 0 && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 py-1">
+                  Tidak ditemukan rombel/kelas yang cocok dengan tingkat bank soal ini.
+                </p>
+              )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700 dark:text-slate-300">
-              <input
-                type="checkbox"
-                checked={blockTabSwitch}
-                onChange={(e) => setBlockTabSwitch(e.target.checked)}
-                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-                aria-label="Kunci Perpindahan Tab dan Fullscreen"
-              />
-              <span>Blokir Switch Tab & Keluar Fullscreen</span>
-            </label>
-
-            <div className="flex items-center gap-2">
-              <span className="text-slate-600 dark:text-slate-400 font-medium">Batas Toleransi Pelanggaran:</span>
-              <select
-                value={maxTabSwitches}
-                onChange={(e) => setMaxTabSwitches(Number(e.target.value))}
-                className="px-2 py-1 text-xs border rounded-lg bg-white dark:bg-slate-900 font-bold"
-                aria-label="Batas Toleransi Pelanggaran"
-              >
-                <option value={1}>1 Kali (Ketat)</option>
-                <option value={3}>3 Kali (Standar)</option>
-                <option value={5}>5 Kali (Toleran)</option>
-              </select>
+              {teacherClasses.length > 0 && !showAllGradeClasses && (
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Otomatis difilter hanya kelas yang Anda ajar untuk mata pelajaran ini.</span>
+                </p>
+              )}
             </div>
 
-            <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700 dark:text-slate-300">
-              <input
-                type="checkbox"
-                checked={shuffleQuestions}
-                onChange={(e) => setShuffleQuestions(e.target.checked)}
-                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-                aria-label="Acak Butir Soal"
-              />
-              <span>Acak Urutan Soal per Siswa</span>
-            </label>
+            {/* Pengaturan Keamanan Anti-Cheat Ringkas */}
+            <div className="p-3 bg-indigo-50/30 dark:bg-indigo-950/20 rounded-xl border border-indigo-100 dark:border-indigo-900/40 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-indigo-700 dark:text-indigo-300 font-bold text-xs">
+                  <ShieldAlert size={14} />
+                  <span>Keamanan Ujian (Anti-Cheat)</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px]">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Batas Pindah Tab:</span>
+                  <select
+                    value={maxTabSwitches}
+                    onChange={(e) => setMaxTabSwitches(Number(e.target.value))}
+                    className="px-2 py-0.5 text-[11px] border rounded-md bg-white dark:bg-slate-900 font-bold"
+                    aria-label="Batas Toleransi Pelanggaran"
+                  >
+                    <option value={1}>1x (Ketat)</option>
+                    <option value={3}>3x (Standar)</option>
+                    <option value={5}>5x (Toleran)</option>
+                  </select>
+                </div>
+              </div>
 
-            <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700 dark:text-slate-300">
-              <input
-                type="checkbox"
-                checked={shuffleOptions}
-                onChange={(e) => setShuffleOptions(e.target.checked)}
-                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-                aria-label="Acak Opsi Pilihan A-E"
-              />
-              <span>Acak Opsi Jawaban (A–E)</span>
-            </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700 dark:text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={blockTabSwitch}
+                    onChange={(e) => setBlockTabSwitch(e.target.checked)}
+                    className="w-3.5 h-3.5 text-indigo-600 rounded focus:ring-indigo-500"
+                    aria-label="Kunci Perpindahan Tab dan Fullscreen"
+                  />
+                  <span>Blokir Pindah Tab & Fullscreen</span>
+                </label>
 
-            <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700 dark:text-slate-300 sm:col-span-2">
-              <input
-                type="checkbox"
-                checked={showResultInstant}
-                onChange={(e) => setShowResultInstant(e.target.checked)}
-                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-                aria-label="Tampilkan Nilai Langsung"
-              />
-              <span>Tampilkan Nilai Langsung kepada Siswa setelah Submit</span>
-            </label>
-          </div>
-        </div>
+                <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700 dark:text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={shuffleQuestions}
+                    onChange={(e) => setShuffleQuestions(e.target.checked)}
+                    className="w-3.5 h-3.5 text-indigo-600 rounded focus:ring-indigo-500"
+                    aria-label="Acak Butir Soal"
+                  />
+                  <span>Acak Urutan Soal</span>
+                </label>
 
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-          <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isSubmitting}>
-            Batal
-          </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            size="sm"
-            disabled={isSubmitting}
-            className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold"
-          >
-            {isSubmitting ? 'Menyimpan...' : jadwalToEdit ? 'Simpan Perubahan' : 'Terbitkan Jadwal Ujian'}
-          </Button>
+                <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700 dark:text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={shuffleOptions}
+                    onChange={(e) => setShuffleOptions(e.target.checked)}
+                    className="w-3.5 h-3.5 text-indigo-600 rounded focus:ring-indigo-500"
+                    aria-label="Acak Opsi Pilihan A-E"
+                  />
+                  <span>Acak Opsi Jawaban (A–E)</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700 dark:text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={showResultInstant}
+                    onChange={(e) => setShowResultInstant(e.target.checked)}
+                    className="w-3.5 h-3.5 text-indigo-600 rounded focus:ring-indigo-500"
+                    aria-label="Tampilkan Nilai Langsung"
+                  />
+                  <span>Tampilkan Nilai Setelah Submit</span>
+                </label>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Actions Footer */}
+        <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+          {step === 2 ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setStep(1)}
+              disabled={isSubmitting}
+              className="flex items-center gap-1.5"
+            >
+              <ArrowLeft size={14} />
+              <span>Kembali</span>
+            </Button>
+          ) : (
+            <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isSubmitting}>
+              Batal
+            </Button>
+          )}
+
+          {step === 1 ? (
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={handleNextStep}
+              className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold flex items-center gap-1.5"
+            >
+              <span>Lanjut: Pilih Kelas</span>
+              <ArrowRight size={14} />
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              disabled={isSubmitting}
+              className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold"
+            >
+              {isSubmitting ? 'Menyimpan...' : jadwalToEdit ? 'Simpan Perubahan' : 'Terbitkan Jadwal Ujian'}
+            </Button>
+          )}
         </div>
       </form>
     </Modal>
