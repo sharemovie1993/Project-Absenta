@@ -16,15 +16,18 @@ export const uploadController = {
          return reply.status(400).send({ success: false, message: 'Invalid file type. Only images are allowed.' });
       }
 
-      const fileUrl = await uploadService.saveFile(data);
+      const tenantId = request.user?.tenant_id || request.tenantId || null;
+      const saved = await uploadService.saveFile(data, { tenantId });
 
       return reply.send({
         success: true,
         message: 'File uploaded successfully',
         data: {
-          url: fileUrl,
+          url: saved.url,
           filename: data.filename,
-          mimetype: data.mimetype
+          mimetype: data.mimetype,
+          size_bytes: saved.sizeBytes,
+          deduplicated: saved.deduplicated,
         }
       });
     } catch (error: any) {

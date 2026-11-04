@@ -241,8 +241,9 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
 
         const needsResize = targetWidth > maxDimension || targetHeight > maxDimension;
 
-        // Jika gambar sudah sangat kecil (< 80 KB) dan dimensinya tidak melebihi batas, biarkan apa adanya
-        if (!needsResize && file.size <= 80 * 1024) {
+        // Jika gambar sudah sangat kecil (<= 30 KB) dan dimensinya tidak melebihi batas, biarkan apa adanya
+        // agar potongan rumus kecil (Snipping Tool) tidak mengalami generation loss
+        if (!needsResize && file.size <= 30 * 1024) {
           resolve(file);
           return;
         }
@@ -256,6 +257,13 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
             targetHeight = maxDimension;
           }
         }
+
+        // Formula/Table Aware Quality: jika rasio melebar/memanjang atau tinggi kecil (ciri khas rumus/tabel),
+        // naikkan kualitas WebP ke 0.90 agar indeks/pangkat kecil tetap tajam di semua jenjang
+        const aspectRatio = targetWidth / Math.max(1, targetHeight);
+        const isFormulaOrTableStrip =
+          aspectRatio >= 2.2 || aspectRatio <= 0.45 || targetHeight <= 240;
+        const effectiveQuality = isFormulaOrTableStrip ? Math.max(quality, 0.9) : quality;
 
         try {
           const canvas = document.createElement('canvas');
@@ -291,7 +299,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
               }
             },
             'image/webp',
-            quality
+            effectiveQuality
           );
         } catch {
           resolve(file);

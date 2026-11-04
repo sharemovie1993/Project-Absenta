@@ -43,11 +43,12 @@ export const CbtContentRenderer: React.FC<CbtContentRendererProps> = ({
       {/* Gambar Stimulus / Ilustrasi jika ada */}
       {imageUrl && (
         <div className="mt-3 inline-block">
-          <div className="relative group rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50 dark:bg-slate-900/60 max-w-md shadow-xs">
+          <div className="relative group rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden bg-white p-1.5 max-w-md shadow-xs">
             <img
               src={imageUrl}
               alt={imageAlt}
-              className="max-h-64 object-contain rounded-lg transition-transform duration-200 group-hover:scale-[1.02] cursor-pointer"
+              decoding="async"
+              className="max-h-64 object-contain rounded-lg transition-transform duration-200 group-hover:scale-[1.02] cursor-pointer bg-white"
               onClick={() => setIsZoomOpen(true)}
               loading="lazy"
             />
@@ -71,7 +72,7 @@ export const CbtContentRenderer: React.FC<CbtContentRendererProps> = ({
           onClick={() => setIsZoomOpen(false)}
         >
           <div
-            className="relative max-w-4xl max-h-[90vh] bg-white dark:bg-slate-900 p-2 rounded-2xl shadow-2xl flex flex-col items-center"
+            className="relative max-w-4xl max-h-[90vh] bg-white p-3 rounded-2xl shadow-2xl flex flex-col items-center"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -85,7 +86,8 @@ export const CbtContentRenderer: React.FC<CbtContentRendererProps> = ({
             <img
               src={imageUrl}
               alt={imageAlt}
-              className="max-h-[80vh] w-auto object-contain rounded-xl"
+              decoding="async"
+              className="max-h-[80vh] w-auto object-contain rounded-xl bg-white"
             />
             <div className="py-2 text-xs font-semibold text-slate-500 flex items-center gap-1.5">
               <ImageIcon size={14} />

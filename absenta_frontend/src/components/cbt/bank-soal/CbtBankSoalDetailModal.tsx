@@ -305,21 +305,24 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                               </div>
 
                               <div className="flex-1 min-w-0 space-y-1">
-                                <p
-                                  className={cn(
-                                    'text-xs leading-relaxed',
-                                    isCorrectKey
-                                      ? 'text-emerald-950 dark:text-emerald-200 font-bold'
-                                      : 'text-slate-700 dark:text-slate-300 font-medium'
-                                  )}
-                                >
-                                  {opt.teks || '-'}
-                                </p>
+                                {(opt.teks?.trim() || !opt.gambar_url) && (
+                                  <p
+                                    className={cn(
+                                      'text-xs leading-relaxed',
+                                      isCorrectKey
+                                        ? 'text-emerald-950 dark:text-emerald-200 font-bold'
+                                        : 'text-slate-700 dark:text-slate-300 font-medium'
+                                    )}
+                                  >
+                                    {opt.teks || '-'}
+                                  </p>
+                                )}
                                 {opt.gambar_url && (
                                   <img
                                     src={opt.gambar_url}
                                     alt={`Opsi ${opt.kode}`}
-                                    className="h-14 w-auto object-contain rounded-lg border border-slate-200 bg-white"
+                                    decoding="async"
+                                    className="h-14 w-auto object-contain rounded-lg border border-slate-200 bg-white p-1"
                                   />
                                 )}
                               </div>
