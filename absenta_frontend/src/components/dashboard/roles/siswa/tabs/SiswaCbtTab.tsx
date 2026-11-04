@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -16,6 +16,13 @@ import {
   ChevronRight,
   Hourglass,
   Ban,
+  Trophy,
+  Award,
+  UserCheck,
+  ShieldCheck,
+  ShieldAlert,
+  BookOpen,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
@@ -25,8 +32,8 @@ type FilterKey = 'aktif' | 'riwayat' | 'semua';
 
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: 'aktif', label: 'Sedang Berlangsung' },
-  { key: 'riwayat', label: 'Riwayat' },
-  { key: 'semua', label: 'Semua' },
+  { key: 'riwayat', label: 'Riwayat & Nilai' },
+  { key: 'semua', label: 'Semua Ujian' },
 ];
 
 const formatDateTime = (iso?: string | null) => {
@@ -40,6 +47,47 @@ const formatDateTime = (iso?: string | null) => {
     hour: '2-digit',
     minute: '2-digit',
   });
+};
+
+const formatTimeOnly = (iso?: string | null) => {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '-';
+  return d.toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+const formatScore = (val: number) => {
+  const rounded1 = Math.round(val * 10) / 10;
+  return Number.isInteger(rounded1) ? String(rounded1) : rounded1.toFixed(1);
+};
+
+const getPredikatMeta = (score: number) => {
+  const rounded = Math.round(score);
+  if (rounded >= 85) {
+    return {
+      label: 'Sangat Baik',
+      badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800',
+      scoreClass: 'text-emerald-600 dark:text-emerald-400',
+      boxClass: 'bg-emerald-50/70 border-emerald-200/80 dark:bg-emerald-950/25 dark:border-emerald-900/60',
+    };
+  }
+  if (rounded >= 70) {
+    return {
+      label: 'Tuntas',
+      badgeClass: 'bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800',
+      scoreClass: 'text-sky-600 dark:text-sky-400',
+      boxClass: 'bg-sky-50/70 border-sky-200/80 dark:bg-sky-950/25 dark:border-sky-900/60',
+    };
+  }
+  return {
+    label: 'Perlu Penguatan',
+    badgeClass: 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800',
+    scoreClass: 'text-amber-600 dark:text-amber-400',
+    boxClass: 'bg-amber-50/70 border-amber-200/80 dark:bg-amber-950/25 dark:border-amber-900/60',
+  };
 };
 
 /** Ujian yang masih bisa dikerjakan / dilanjutkan oleh siswa */
@@ -100,6 +148,7 @@ const getStatusMeta = (item: CbtStudentExamItem): StatusMeta => {
 export const SiswaCbtTab: React.FC = () => {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<FilterKey>('aktif');
+  const didAutoSelectTab = useRef(false);
 
   const {
     data: exams = [],
@@ -123,17 +172,39 @@ export const SiswaCbtTab: React.FC = () => {
     [exams]
   );
 
+  // Otomatis tampilkan tab Riwayat jika tidak ada ujian yang sedang berlangsung namun ada riwayat ujian
+  useEffect(() => {
+    if (!isLoading && !didAutoSelectTab.current && exams.length > 0) {
+      didAutoSelectTab.current = true;
+      if (counts.aktif === 0 && counts.riwayat > 0) {
+        setFilter('riwayat');
+      }
+    }
+  }, [isLoading, exams.length, counts.aktif, counts.riwayat]);
+
   const filtered = useMemo(() => {
     if (filter === 'aktif') return exams.filter(isActionable);
     if (filter === 'riwayat') return exams.filter((e) => !isActionable(e));
     return exams;
   }, [exams, filter]);
 
+  const finishedCount = useMemo(
+    () => exams.filter((e) => e.status_peserta === 'FINISHED').length,
+    [exams]
+  );
+
   const finishedWithScore = useMemo(() => exams.filter((e) => e.hasil), [exams]);
+
   const avgScore = useMemo(() => {
     if (finishedWithScore.length === 0) return null;
     const sum = finishedWithScore.reduce((acc, e) => acc + (e.hasil?.nilai_akhir || 0), 0);
     return Math.round((sum / finishedWithScore.length) * 10) / 10;
+  }, [finishedWithScore]);
+
+  const highestScore = useMemo(() => {
+    if (finishedWithScore.length === 0) return null;
+    const max = Math.max(...finishedWithScore.map((e) => e.hasil?.nilai_akhir || 0));
+    return Math.round(max * 10) / 10;
   }, [finishedWithScore]);
 
   const goToExamRoom = () => navigate('/cbt/ruang-ujian');
@@ -147,9 +218,14 @@ export const SiswaCbtTab: React.FC = () => {
             <Laptop size={22} />
           </div>
           <div className="min-w-0 space-y-0.5">
-            <h3 className="text-base sm:text-lg font-black tracking-tight leading-tight">Ruang Ujian CBT</h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-base sm:text-lg font-black tracking-tight leading-tight">Ruang Ujian CBT</h3>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/15 border border-white/20 text-[10px] font-bold">
+                <Sparkles size={10} /> Anti-Cheat & Auto-Save Aktif
+              </span>
+            </div>
             <p className="text-xs text-violet-100/85 font-medium">
-              Masukkan token resmi dari pengawas untuk memulai ujian yang sedang dibuka.
+              Masukkan 6 digit token resmi dari pengawas ruangan untuk memulai sesi ujian yang sedang dibuka.
             </p>
           </div>
         </div>
@@ -164,21 +240,76 @@ export const SiswaCbtTab: React.FC = () => {
         </button>
       </div>
 
-      {/* Ringkasan */}
-      <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
-        <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
-          <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 block">Ujian Dibuka</span>
-          <span className="text-lg sm:text-xl font-black text-violet-600 dark:text-violet-400">{counts.aktif}</span>
+      {/* Ringkasan Statistik Ujian Siswa */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-950/50 border border-violet-100 dark:border-violet-900 flex items-center justify-center text-violet-600 dark:text-violet-400 shrink-0">
+            <PlayCircle size={20} />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 block truncate">
+              Ujian Dibuka
+            </span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-lg sm:text-xl font-black text-violet-600 dark:text-violet-400">{counts.aktif}</span>
+              <span className="text-[10px] font-semibold text-slate-400">sesi aktif</span>
+            </div>
+          </div>
         </div>
-        <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
-          <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 block">Sudah Dikerjakan</span>
-          <span className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400">
-            {exams.filter((e) => e.status_peserta === 'FINISHED').length}
-          </span>
+
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-100 dark:border-emerald-900 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+            <CheckCircle2 size={20} />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 block truncate">
+              Sudah Dikerjakan
+            </span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400">{finishedCount}</span>
+              <span className="text-[10px] font-semibold text-slate-400">dari {counts.semua} jadwal</span>
+            </div>
+          </div>
         </div>
-        <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
-          <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 block">Rata-Rata Nilai</span>
-          <span className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">{avgScore ?? '-'}</span>
+
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950/50 border border-sky-100 dark:border-sky-900 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0">
+            <Award size={20} />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 block truncate">
+              Rata-Rata Nilai
+            </span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                {avgScore !== null ? formatScore(avgScore) : '-'}
+              </span>
+              {avgScore !== null && (
+                <span className="text-[10px] font-semibold text-slate-400">
+                  (Bulat: {Math.round(avgScore)})
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-100 dark:border-amber-900 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+            <Trophy size={20} />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 block truncate">
+              Nilai Tertinggi
+            </span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-lg sm:text-xl font-black text-amber-600 dark:text-amber-400">
+                {highestScore !== null ? formatScore(highestScore) : '-'}
+              </span>
+              {highestScore !== null && (
+                <span className="text-[10px] font-semibold text-slate-400">poin terbaik</span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -225,7 +356,7 @@ export const SiswaCbtTab: React.FC = () => {
         {isLoading ? (
           <div className="p-4 space-y-3">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-20 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+              <div key={i} className="h-24 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
             ))}
           </div>
         ) : isError ? (
@@ -240,18 +371,28 @@ export const SiswaCbtTab: React.FC = () => {
             </button>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="p-10 text-center space-y-2">
+          <div className="p-10 text-center space-y-2.5">
             <div className="w-12 h-12 mx-auto rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
               <FileQuestion size={22} />
             </div>
             <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
-              {filter === 'aktif' ? 'Belum ada ujian yang dibuka' : 'Belum ada riwayat ujian'}
+              {filter === 'aktif' ? 'Tidak ada ujian yang sedang berlangsung' : 'Belum ada riwayat ujian'}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
               {filter === 'aktif'
-                ? 'Ujian akan muncul di sini saat pengawas mengaktifkan sesi untuk kelasmu. Daftar ini diperbarui otomatis.'
-                : 'Ujian yang sudah selesai atau ditutup akan tercatat di sini.'}
+                ? 'Ujian akan muncul di sini saat pengawas mengaktifkan sesi untuk kelasmu. Kamu juga bisa melihat nilai ujian sebelumnya di tab Riwayat & Nilai.'
+                : 'Ujian yang sudah selesai dikerjakan atau ditutup oleh pengawas akan tercatat lengkap beserta nilainya di sini.'}
             </p>
+            {filter === 'aktif' && counts.riwayat > 0 && (
+              <button
+                type="button"
+                onClick={() => setFilter('riwayat')}
+                className="mt-1 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 text-xs font-bold cursor-pointer transition-colors"
+              >
+                Lihat {counts.riwayat} Riwayat Ujian & Nilai
+                <ChevronRight size={13} />
+              </button>
+            )}
           </div>
         ) : (
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -261,50 +402,156 @@ export const SiswaCbtTab: React.FC = () => {
               const actionable = isActionable(item);
               const isPaused = item.status_jadwal === 'PAUSED';
               const isResume = item.status_peserta === 'IN_PROGRESS';
+              const isFinished = item.status_peserta === 'FINISHED';
+              const predikat = item.hasil ? getPredikatMeta(item.hasil.nilai_akhir) : null;
+              const accuracyPct =
+                item.hasil && item.total_soal > 0
+                  ? Math.round((item.hasil.jumlah_benar / item.total_soal) * 100)
+                  : null;
+              const pelanggaranCount = item.pelanggaran_count ?? 0;
+              const jumlahTerjawab =
+                item.jumlah_terjawab && item.jumlah_terjawab > 0
+                  ? item.jumlah_terjawab
+                  : item.hasil
+                  ? item.hasil.jumlah_benar + item.hasil.jumlah_salah
+                  : 0;
 
               return (
-                <li key={item.id} className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-                  <div className="min-w-0 flex-1 space-y-1.5">
+                <li
+                  key={item.id}
+                  className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors"
+                >
+                  <div className="min-w-0 flex-1 space-y-2.5">
+                    {/* Baris Badge Status, Mapel, Bank Soal & Konteks Akademik */}
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span
                         className={cn(
-                          'inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-bold',
+                          'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md border text-[10px] font-bold',
                           meta.className
                         )}
                       >
                         <StatusIcon size={11} />
                         {meta.label}
                       </span>
-                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200/70 dark:border-indigo-900 px-2 py-0.5 rounded-md">
+                        <BookOpen size={10} />
                         {item.mapel}
                       </span>
+
+                      {(item.kode_bank || (item.judul_bank && item.judul_bank !== '-')) && (
+                        <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                          {item.kode_bank ? `${item.kode_bank} • ` : ''}
+                          {item.judul_bank}
+                        </span>
+                      )}
+
+                      {(item.semester || item.tahun_ajaran) && (
+                        <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 px-2 py-0.5 rounded-md">
+                          {[item.semester ? `Semester ${item.semester}` : null, item.tahun_ajaran]
+                            .filter(Boolean)
+                            .join(' • ')}
+                        </span>
+                      )}
                     </div>
-                    <h4 className="text-sm font-black text-slate-900 dark:text-white truncate">{item.nama_sesi}</h4>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                      <span className="flex items-center gap-1">
-                        <CalendarDays size={12} />
-                        {formatDateTime(item.tanggal_mulai)} – {formatDateTime(item.tanggal_selesai)}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock size={12} />
-                        {item.durasi_menit} menit
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <FileQuestion size={12} />
-                        {item.total_soal} soal
-                      </span>
-                      {item.guru && <span className="truncate">Pengampu: {item.guru}</span>}
+
+                    {/* Nama Sesi Ujian */}
+                    <div>
+                      <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-snug">
+                        {item.nama_sesi}
+                      </h4>
                     </div>
+
+                    {/* Info Jadwal, Durasi, Jumlah Soal & Guru Pengampu */}
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] font-medium text-slate-600 dark:text-slate-400">
+                      <span className="inline-flex items-center gap-1.5">
+                        <CalendarDays size={13} className="text-slate-400 shrink-0" />
+                        <span>
+                          Jadwal: <strong className="font-semibold text-slate-700 dark:text-slate-300">{formatDateTime(item.tanggal_mulai)}</strong> –{' '}
+                          <strong className="font-semibold text-slate-700 dark:text-slate-300">{formatDateTime(item.tanggal_selesai)}</strong>
+                        </span>
+                      </span>
+
+                      <span className="inline-flex items-center gap-1">
+                        <Clock size={13} className="text-slate-400 shrink-0" />
+                        <span>Alokasi {item.durasi_menit} menit</span>
+                      </span>
+
+                      <span className="inline-flex items-center gap-1">
+                        <FileQuestion size={13} className="text-slate-400 shrink-0" />
+                        <span>{item.total_soal} butir soal</span>
+                      </span>
+
+                      {item.guru && (
+                        <span className="inline-flex items-center gap-1 truncate">
+                          <UserCheck size={13} className="text-slate-400 shrink-0" />
+                          <span>Pengampu: <strong className="font-semibold text-slate-700 dark:text-slate-300">{item.guru}</strong></span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Rincian Riwayat Pengerjaan Siswa (Jika sudah mulai / selesai) */}
+                    {(item.waktu_mulai || isFinished) && (
+                      <div className="pt-1 flex flex-wrap items-center gap-2 text-[11px]">
+                        {item.waktu_mulai && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-medium">
+                            <Clock size={11} className="text-slate-400" />
+                            <span>
+                              Dikerjakan: <strong>{formatTimeOnly(item.waktu_mulai)}</strong>
+                              {item.waktu_selesai ? (
+                                <>
+                                  {' '}– <strong>{formatTimeOnly(item.waktu_selesai)}</strong>
+                                </>
+                              ) : null}
+                              {item.durasi_pengerjaan_menit ? ` (${item.durasi_pengerjaan_menit} mnt)` : ''}
+                            </span>
+                          </span>
+                        )}
+
+                        {isFinished && item.total_soal > 0 && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-medium">
+                            <CheckCircle2 size={11} className="text-emerald-500" />
+                            <span>
+                              Terjawab: <strong>{jumlahTerjawab}/{item.total_soal} soal</strong>
+                            </span>
+                          </span>
+                        )}
+
+                        {isFinished && (
+                          <span
+                            className={cn(
+                              'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-semibold',
+                              pelanggaranCount === 0
+                                ? 'bg-emerald-50/80 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                : 'bg-amber-50/80 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
+                            )}
+                          >
+                            {pelanggaranCount === 0 ? (
+                              <>
+                                <ShieldCheck size={11} />
+                                <span>Tertib (0 Pelanggaran)</span>
+                              </>
+                            ) : (
+                              <>
+                                <ShieldAlert size={11} />
+                                <span>{pelanggaranCount}x Peringatan Keamanan</span>
+                              </>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="shrink-0 sm:text-right">
+                  {/* Panel Kanan: Tombol Aksi atau Kartu Hasil Nilai */}
+                  <div className="shrink-0 lg:text-right">
                     {actionable ? (
                       <button
                         type="button"
                         onClick={goToExamRoom}
                         disabled={isPaused}
                         className={cn(
-                          'w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98',
+                          'w-full lg:w-auto px-4 py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98',
                           isPaused
                             ? 'bg-slate-100 text-slate-400 dark:bg-slate-800 cursor-not-allowed'
                             : 'bg-violet-600 hover:bg-violet-700 text-white shadow-sm'
@@ -313,20 +560,57 @@ export const SiswaCbtTab: React.FC = () => {
                         {isPaused ? <PauseCircle size={14} /> : isResume ? <RotateCcw size={14} /> : <PlayCircle size={14} />}
                         {isPaused ? 'Menunggu Pengawas' : isResume ? 'Lanjutkan Ujian' : 'Kerjakan Ujian'}
                       </button>
-                    ) : item.status_peserta === 'FINISHED' ? (
-                      item.hasil ? (
-                        <div className="flex sm:flex-col items-center sm:items-end gap-2 sm:gap-0.5">
-                          <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 leading-none">
-                            {item.hasil.nilai_akhir}
-                          </span>
-                          <span className="text-[10px] font-semibold text-slate-500">
-                            {item.hasil.jumlah_benar} benar • {item.hasil.jumlah_salah} salah
-                          </span>
+                    ) : isFinished ? (
+                      item.hasil && predikat ? (
+                        <div
+                          className={cn(
+                            'p-3 rounded-xl border flex flex-row lg:flex-col items-center lg:items-end justify-between gap-3 lg:gap-1 min-w-[190px]',
+                            predikat.boxClass
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={cn(
+                                'px-2 py-0.5 rounded-md border text-[10px] font-bold',
+                                predikat.badgeClass
+                              )}
+                            >
+                              {predikat.label}
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                              Nilai Rapor: {Math.round(item.hasil.nilai_akhir)}
+                            </span>
+                          </div>
+
+                          <div className="flex items-baseline gap-1.5">
+                            <span className={cn('text-2xl sm:text-3xl font-black leading-none tracking-tight', predikat.scoreClass)}>
+                              {formatScore(item.hasil.nilai_akhir)}
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-400">/ 100</span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 text-[11px] font-semibold">
+                            <span className="text-emerald-600 dark:text-emerald-400">
+                              {item.hasil.jumlah_benar} Benar
+                            </span>
+                            <span className="text-slate-300 dark:text-slate-600">•</span>
+                            <span className="text-rose-600 dark:text-rose-400">
+                              {item.hasil.jumlah_salah} Salah
+                            </span>
+                            {accuracyPct !== null && (
+                              <>
+                                <span className="text-slate-300 dark:text-slate-600">•</span>
+                                <span className="text-slate-500 dark:text-slate-400">
+                                  Akurasi {accuracyPct}%
+                                </span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       ) : (
-                        <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                        <div className="px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 text-xs font-semibold text-slate-500 dark:text-slate-400">
                           Nilai menunggu rilis guru
-                        </span>
+                        </div>
                       )
                     ) : null}
                   </div>

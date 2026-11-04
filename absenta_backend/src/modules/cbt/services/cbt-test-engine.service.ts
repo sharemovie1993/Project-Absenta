@@ -37,11 +37,15 @@ export class CbtTestEngineService {
         durasi_menit: true,
         status: true,
         setting_keamanan: true,
+        TahunPelajaran: { select: { tahun: true } },
+        Semester: { select: { nama_semester: true } },
         BankSoal: {
           select: {
+            kode_bank: true,
             judul: true,
+            tingkat: true,
             jumlah_soal: true,
-            Mapel: { select: { nama_mapel: true } },
+            Mapel: { select: { nama_mapel: true, kode_mapel: true } },
             Guru: { select: { nama_guru: true } },
           },
         },
@@ -55,6 +59,8 @@ export class CbtTestEngineService {
             nilai_akhir: true,
             jumlah_benar: true,
             jumlah_salah: true,
+            jawaban_json: true,
+            log_pelanggaran_json: true,
           },
         },
       },
@@ -62,14 +68,30 @@ export class CbtTestEngineService {
 
     return jadwalList.map((j) => {
       const peserta = j.Peserta[0];
-      const showResult = (j.setting_keamanan as any)?.show_result_instant ?? false;
+      const showResult = (j.setting_keamanan as any)?.show_result_instant ?? true;
       const isFinished = peserta?.status === 'FINISHED';
+      const jawabanArr = Array.isArray(peserta?.jawaban_json) ? (peserta.jawaban_json as any[]) : [];
+      const jumlahTerjawab = jawabanArr.filter((ans) => ans && String(ans.jawaban_siswa || '').trim() !== '').length;
+      const pelanggaranArr = Array.isArray(peserta?.log_pelanggaran_json) ? (peserta.log_pelanggaran_json as any[]) : [];
+
+      let durasiPengerjaanMenit: number | null = null;
+      if (peserta?.waktu_mulai && peserta?.waktu_selesai) {
+        const diffMs = new Date(peserta.waktu_selesai).getTime() - new Date(peserta.waktu_mulai).getTime();
+        if (diffMs >= 0) {
+          durasiPengerjaanMenit = Math.max(1, Math.round(diffMs / 60000));
+        }
+      }
 
       return {
         id: j.id,
         nama_sesi: j.nama_sesi,
         mapel: j.BankSoal?.Mapel?.nama_mapel || '-',
+        kode_mapel: j.BankSoal?.Mapel?.kode_mapel || null,
+        kode_bank: j.BankSoal?.kode_bank || null,
         judul_bank: j.BankSoal?.judul || '-',
+        tingkat: j.BankSoal?.tingkat || null,
+        tahun_ajaran: j.TahunPelajaran?.tahun || null,
+        semester: j.Semester?.nama_semester || null,
         guru: j.BankSoal?.Guru?.nama_guru || null,
         total_soal: j.BankSoal?.jumlah_soal || 0,
         tanggal_mulai: j.tanggal_mulai,
@@ -79,8 +101,11 @@ export class CbtTestEngineService {
         status_peserta: peserta?.status || 'BELUM_MULAI',
         waktu_mulai: peserta?.waktu_mulai || null,
         waktu_selesai: peserta?.waktu_selesai || null,
+        durasi_pengerjaan_menit: durasiPengerjaanMenit,
+        jumlah_terjawab: jumlahTerjawab,
+        pelanggaran_count: pelanggaranArr.length,
         hasil:
-          isFinished && showResult
+          isFinished && (showResult || j.status === 'COMPLETED')
             ? {
                 nilai_akhir: Number(peserta?.nilai_akhir ?? 0),
                 jumlah_benar: peserta?.jumlah_benar ?? 0,

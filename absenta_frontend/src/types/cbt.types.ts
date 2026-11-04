@@ -149,7 +149,12 @@ export interface CbtStudentExamItem {
   id: string;
   nama_sesi: string;
   mapel: string;
+  kode_mapel?: string | null;
+  kode_bank?: string | null;
   judul_bank: string;
+  tingkat?: string | null;
+  tahun_ajaran?: string | null;
+  semester?: string | null;
   guru: string | null;
   total_soal: number;
   tanggal_mulai: string;
@@ -159,6 +164,9 @@ export interface CbtStudentExamItem {
   status_peserta: CbtStudentExamStatus;
   waktu_mulai: string | null;
   waktu_selesai: string | null;
+  durasi_pengerjaan_menit?: number | null;
+  jumlah_terjawab?: number;
+  pelanggaran_count?: number;
   hasil: {
     nilai_akhir: number;
     jumlah_benar: number;
