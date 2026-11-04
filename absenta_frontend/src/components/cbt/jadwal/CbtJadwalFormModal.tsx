@@ -71,8 +71,8 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
   const { options: tpOptions, activeYear: activeTpYear } = useTahunPelajaranOptions();
   const { rawList: rawKelasList } = useKelasOptions();
 
-  // Wizard Step State (1 = Identitas & Waktu, 2 = Distribusi Kelas & Keamanan)
-  const [step, setStep] = useState<1 | 2>(1);
+  // Wizard Step State (1 = Identitas & Waktu, 2 = Distribusi Kelas, 3 = Integrasi Rapor & Keamanan)
+  const [step, setStep] = useState<1 | 2 | 3>(1);
 
   // Mode filter bank soal & rombel
   const [showAllSchoolBank, setShowAllSchoolBank] = useState(false);
@@ -316,12 +316,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
     }
   };
 
-  const handleNextStep = (e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
+  const validateStep1 = (): boolean => {
     const check = step1Schema.safeParse({
       bank_soal_id: bankSoalId,
       nama_sesi: namaSesi.trim(),
@@ -333,24 +328,56 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
 
     if (!check.success) {
       toast.error(check.error.errors.map((err) => err.message).join(', '));
-      return;
+      return false;
     }
 
     const startMs = new Date(localDateTimeInputToISO(tanggalMulai, activeTz)).getTime();
     const endMs = new Date(localDateTimeInputToISO(tanggalSelesai, activeTz)).getTime();
     if (endMs <= startMs) {
       toast.error('Batas akhir ujian harus lebih besar dari waktu mulai ujian');
+      return false;
+    }
+    return true;
+  };
+
+  const validateStep2 = (): boolean => {
+    if (targetKelasIds.length === 0) {
+      toast.error('Pilih minimal satu kelas target ujian');
+      return false;
+    }
+    return true;
+  };
+
+  const handleGoToStep = (targetStep: 1 | 2 | 3, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (targetStep === 1) {
+      setStep(1);
       return;
     }
-
-    setStep(2);
+    if (targetStep === 2) {
+      if (!validateStep1()) return;
+      setStep(2);
+      return;
+    }
+    if (targetStep === 3) {
+      if (!validateStep1()) return;
+      if (!validateStep2()) return;
+      setStep(3);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (step === 1) {
-      handleNextStep();
+      handleGoToStep(2);
+      return;
+    }
+    if (step === 2) {
+      handleGoToStep(3);
       return;
     }
 
@@ -432,13 +459,13 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
     >
       <div className="-mt-3 sm:-mt-6 -mx-3 sm:-mx-6 mb-3 sm:mb-4 h-1.5 bg-[#673ab7]" />
 
-      {/* Stepper Header 2 Langkah */}
-      <div className="grid grid-cols-2 gap-2 p-1 mb-4 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/60">
+      {/* Stepper Header 3 Langkah */}
+      <div className="grid grid-cols-3 gap-1.5 p-1 mb-4 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/60">
         <button
           type="button"
-          onClick={() => setStep(1)}
+          onClick={(e) => handleGoToStep(1, e)}
           className={cn(
-            'flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer',
+            'flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-[11px] font-bold transition-all cursor-pointer min-w-0',
             step === 1
               ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-2xs'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
@@ -446,10 +473,8 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
         >
           <span
             className={cn(
-              'w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center shrink-0',
-              step === 1
-                ? 'bg-violet-600 text-white'
-                : 'bg-emerald-500 text-white'
+              'w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center shrink-0',
+              step === 1 ? 'bg-violet-600 text-white' : 'bg-emerald-500 text-white'
             )}
           >
             1
@@ -459,9 +484,9 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
 
         <button
           type="button"
-          onClick={handleNextStep}
+          onClick={(e) => handleGoToStep(2, e)}
           className={cn(
-            'flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer',
+            'flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-[11px] font-bold transition-all cursor-pointer min-w-0',
             step === 2
               ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-2xs'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
@@ -469,15 +494,40 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
         >
           <span
             className={cn(
-              'w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center shrink-0',
+              'w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center shrink-0',
               step === 2
                 ? 'bg-violet-600 text-white'
+                : step > 2
+                ? 'bg-emerald-500 text-white'
                 : 'bg-slate-300 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
             )}
           >
             2
           </span>
-          <span className="truncate">Distribusi Kelas ({targetKelasIds.length})</span>
+          <span className="truncate">Kelas ({targetKelasIds.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={(e) => handleGoToStep(3, e)}
+          className={cn(
+            'flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-[11px] font-bold transition-all cursor-pointer min-w-0',
+            step === 3
+              ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-2xs'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          )}
+        >
+          <span
+            className={cn(
+              'w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center shrink-0',
+              step === 3
+                ? 'bg-violet-600 text-white'
+                : 'bg-slate-300 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+            )}
+          >
+            3
+          </span>
+          <span className="truncate">Transfer Rapor</span>
         </button>
       </div>
 
@@ -625,7 +675,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
               </div>
             </div>
           </>
-        ) : (
+        ) : step === 2 ? (
           <>
             {/* Ringkasan Singkat Step 1 */}
             <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 flex items-center justify-between gap-2 text-xs">
@@ -637,7 +687,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
               </div>
               <button
                 type="button"
-                onClick={() => setStep(1)}
+                onClick={(e) => handleGoToStep(1, e)}
                 className="text-[11px] font-bold text-violet-600 dark:text-violet-400 hover:underline shrink-0 cursor-pointer"
               >
                 Ubah Waktu
@@ -732,74 +782,6 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
               )}
             </div>
 
-            {/* Otomasi Transfer Nilai ke e-Rapor */}
-            <div className="p-3 bg-emerald-50/40 dark:bg-emerald-950/20 rounded-xl border border-emerald-200/70 dark:border-emerald-900/50 space-y-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-emerald-800 dark:text-emerald-300">
-                  <input
-                    type="checkbox"
-                    checked={autoTransferRapor}
-                    onChange={(e) => setAutoTransferRapor(e.target.checked)}
-                    className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 cursor-pointer"
-                    aria-label="Otomatis Transfer Nilai ke e-Rapor"
-                  />
-                  <ArrowRightLeft size={14} className="text-emerald-600 shrink-0" />
-                  <span>Otomatis Transfer Nilai ke Buku Nilai e-Rapor</span>
-                </label>
-                {autoTransferRapor && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
-                    Real-Time Aktif
-                  </span>
-                )}
-              </div>
-
-              {autoTransferRapor && (
-                <div className="space-y-1.5 pt-0.5">
-                  <span className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                    Petakan Hasil Ujian ke Kolom / Slot Rapor:
-                  </span>
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {(
-                      [
-                        { key: 'sumatif_1', label: 'SUM 1', desc: 'Sumatif 1' },
-                        { key: 'sumatif_2', label: 'SUM 2', desc: 'Sumatif 2' },
-                        { key: 'sumatif_3', label: 'SUM 3', desc: 'Sumatif 3' },
-                        { key: 'sumatif_akhir', label: 'SUM AKHIR', desc: 'SAS / UAS' },
-                      ] as { key: CbtRaporSlot; label: string; desc: string }[]
-                    ).map((slot) => {
-                      const active = targetRaporSlot === slot.key;
-                      return (
-                        <button
-                          key={slot.key}
-                          type="button"
-                          onClick={() => setTargetRaporSlot(slot.key)}
-                          className={cn(
-                            'p-2 rounded-lg border text-left transition-all cursor-pointer flex flex-col items-start',
-                            active
-                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
-                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-emerald-300'
-                          )}
-                        >
-                          <span className="text-[11px] font-black leading-tight">{slot.label}</span>
-                          <span
-                            className={cn(
-                              'text-[9px] font-medium truncate w-full',
-                              active ? 'text-emerald-100' : 'text-slate-400'
-                            )}
-                          >
-                            {slot.desc}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                    Nilai siswa otomatis masuk ke kolom <strong>{targetRaporSlot.toUpperCase().replace('_', ' ')}</strong> begitu siswa menyelesaikan ujian.
-                  </p>
-                </div>
-              )}
-            </div>
-
             {/* Pengaturan Keamanan Anti-Cheat Ringkas */}
             <div className="p-3 bg-indigo-50/30 dark:bg-indigo-950/20 rounded-xl border border-indigo-100 dark:border-indigo-900/40 space-y-2.5">
               <div className="flex items-center justify-between gap-2">
@@ -869,21 +851,164 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
               </div>
             </div>
           </>
+        ) : (
+          <>
+            {/* Ringkasan Singkat Step 1 & Step 2 */}
+            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 flex items-center justify-between gap-2 text-xs">
+              <div className="min-w-0">
+                <p className="font-bold text-slate-800 dark:text-slate-200 truncate">{namaSesi}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                  {selectedBankSoal ? `${selectedBankSoal.Mapel?.nama_mapel || '-'}` : '-'} • {targetKelasIds.length} Kelas Dipilih • {durasiMenit} Menit
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={(e) => handleGoToStep(2, e)}
+                className="text-[11px] font-bold text-violet-600 dark:text-violet-400 hover:underline shrink-0 cursor-pointer"
+              >
+                Ubah Kelas
+              </button>
+            </div>
+
+            {/* Pilihan Mode Transfer Nilai ke e-Rapor (Step 3) */}
+            <div className="space-y-3">
+              <div>
+                <h4 className="text-xs font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                  <ArrowRightLeft size={14} className="text-violet-600" />
+                  <span>Integrasi & Otomasi Transfer Nilai ke e-Rapor</span>
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Pilih apakah nilai ujian CBT ini ingin langsung dikirim otomatis ke Buku Nilai e-Rapor guru.
+                </p>
+              </div>
+
+              {/* Pilihan Mode: Otomatis vs Manual */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setAutoTransferRapor(true)}
+                  className={cn(
+                    'p-3 rounded-xl border text-left transition-all cursor-pointer space-y-1',
+                    autoTransferRapor
+                      ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500 ring-2 ring-emerald-500/15'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-black text-slate-900 dark:text-white">
+                      Otomatis Transfer ke Rapor
+                    </span>
+                    <span
+                      className={cn(
+                        'px-2 py-0.5 rounded-full text-[9px] font-bold',
+                        autoTransferRapor
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                      )}
+                    >
+                      Direkomendasikan
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+                    Nilai langsung masuk ke slot rapor begitu siswa menyelesaikan ujian.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAutoTransferRapor(false)}
+                  className={cn(
+                    'p-3 rounded-xl border text-left transition-all cursor-pointer space-y-1',
+                    !autoTransferRapor
+                      ? 'bg-violet-50/80 dark:bg-violet-950/40 border-violet-500 ring-2 ring-violet-500/15'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-black text-slate-900 dark:text-white">
+                      Simpan di CBT Saja (Manual)
+                    </span>
+                    <span
+                      className={cn(
+                        'px-2 py-0.5 rounded-full text-[9px] font-bold',
+                        !autoTransferRapor
+                          ? 'bg-violet-600 text-white'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                      )}
+                    >
+                      Fleksibel
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+                    Guru dapat meninjau nilai dulu & mentransfer manual kapan saja.
+                  </p>
+                </button>
+              </div>
+
+              {/* Pemetaan Slot Nilai Rapor */}
+              {autoTransferRapor ? (
+                <div className="p-3 bg-emerald-50/40 dark:bg-emerald-950/20 rounded-xl border border-emerald-200/70 dark:border-emerald-900/50 space-y-2">
+                  <span className="block text-xs font-bold text-emerald-900 dark:text-emerald-200">
+                    Pilih Kolom / Slot Tujuan di Buku Nilai e-Rapor:
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {(
+                      [
+                        { key: 'sumatif_1', label: 'SUM 1', desc: 'Sumatif Lingkup 1' },
+                        { key: 'sumatif_2', label: 'SUM 2', desc: 'Sumatif 2 / PTS' },
+                        { key: 'sumatif_3', label: 'SUM 3', desc: 'Sumatif Lingkup 3' },
+                        { key: 'sumatif_akhir', label: 'SUM AKHIR', desc: 'SAS / UAS / PAT' },
+                      ] as { key: CbtRaporSlot; label: string; desc: string }[]
+                    ).map((slot) => {
+                      const active = targetRaporSlot === slot.key;
+                      return (
+                        <button
+                          key={slot.key}
+                          type="button"
+                          onClick={() => setTargetRaporSlot(slot.key)}
+                          className={cn(
+                            'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col items-start gap-0.5',
+                            active
+                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-emerald-300'
+                          )}
+                        >
+                          <span className="text-xs font-black leading-tight">{slot.label}</span>
+                          <span
+                            className={cn(
+                              'text-[10px] font-medium truncate w-full',
+                              active ? 'text-emerald-100' : 'text-slate-400'
+                            )}
+                          >
+                            {slot.desc}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-medium">
+                    ✓ Setiap siswa yang selesai ujian akan langsung terisi nilainya (dibulatkan 0–100) pada kolom{' '}
+                    <strong>{targetRaporSlot.toUpperCase().replace('_', ' ')}</strong>.
+                  </p>
+                </div>
+              ) : (
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 text-[11px] text-slate-600 dark:text-slate-400">
+                  Nilai ujian tetap tersimpan aman di modul CBT. Anda dapat mengirimnya ke kolom rapor mana pun nanti melalui tombol <strong>Transfer Rapor</strong> di tabel jadwal.
+                </div>
+              )}
+            </div>
+          </>
         )}
 
         {/* Actions Footer */}
         <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-          {step === 2 ? (
+          {step > 1 ? (
             <Button
               key="btn-back"
               type="button"
               variant="outline"
               size="sm"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setStep(1);
-              }}
+              onClick={(e) => handleGoToStep((step - 1) as 1 | 2, e)}
               disabled={isSubmitting}
               className="flex items-center gap-1.5"
             >
@@ -905,14 +1030,26 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
 
           {step === 1 ? (
             <Button
-              key="btn-next"
+              key="btn-next-step2"
               type="button"
               variant="primary"
               size="sm"
-              onClick={(e) => handleNextStep(e)}
+              onClick={(e) => handleGoToStep(2, e)}
               className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold flex items-center gap-1.5"
             >
               <span>Lanjut: Pilih Kelas</span>
+              <ArrowRight size={14} />
+            </Button>
+          ) : step === 2 ? (
+            <Button
+              key="btn-next-step3"
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={(e) => handleGoToStep(3, e)}
+              className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold flex items-center gap-1.5"
+            >
+              <span>Lanjut: Opsi Transfer Rapor</span>
               <ArrowRight size={14} />
             </Button>
           ) : (
