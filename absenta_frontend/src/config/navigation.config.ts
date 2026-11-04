@@ -180,7 +180,6 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     targetGroupKeywords: ['AKADEMIK', 'DATA MASTER', 'MASTER', 'SISTEM'],
     crossModulePaths: [
       '/kurikulum/dashboard',
-      '/cbt/dashboard',
       '/cbt/bank-soal',
       '/cbt/jadwal',
       '/cbt/sesi',
@@ -232,7 +231,6 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     requiredRoleName: 'GURU',
     defaultPath: '/attendance/riwayat-ajar',
     crossModulePaths: [
-      '/cbt/dashboard',
       '/cbt/bank-soal',
       '/cbt/jadwal',
       '/cbt/sesi',
@@ -300,7 +298,6 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     defaultPath: '/kurikulum/dashboard',
     targetGroupKeywords: ['KURIKULUM'],
     crossModulePaths: [
-      '/cbt/dashboard',
       '/cbt/bank-soal',
       '/cbt/jadwal',
       '/cbt/sesi',
@@ -405,7 +402,6 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     defaultPath: '/kurikulum/dashboard',
     crossModulePaths: [
       '/cbt/sesi',
-      '/cbt/dashboard',
       '/hubin/monitoring',
       '/bpbk/cases',
       '/sarpras/inventory'
@@ -433,7 +429,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     bg: 'bg-violet-50',
     solidBg: 'bg-violet-600',
     desc: 'Ujian Berbasis Komputer & Bank Soal',
-    defaultPath: '/cbt/dashboard',
+    defaultPath: '/dashboard?tab=kurikulum&subtab=cbt',
     targetGroupKeywords: ['CBT', 'UJIAN']
   },
   {

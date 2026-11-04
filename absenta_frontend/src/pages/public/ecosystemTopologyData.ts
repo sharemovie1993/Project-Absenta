@@ -239,7 +239,7 @@ export const TOPOLOGY_NODES: RouteTopologyNode[] = [
   {
     id: 'kuri-cbt',
     name: 'Ujian Komputer CBT & Bank Soal',
-    path: '/cbt/dashboard',
+    path: '/dashboard?tab=kurikulum&subtab=cbt',
     division: 'kurikulum',
     category: 'Asesmen & Ujian',
     stage: ['kelas-10', 'kelas-11', 'kelas-12'],

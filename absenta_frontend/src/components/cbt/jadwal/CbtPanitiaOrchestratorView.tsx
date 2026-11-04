@@ -19,8 +19,6 @@ import {
   AlertCircle,
   ArrowRight,
   ShieldCheck,
-  Laptop,
-  ExternalLink,
   TableProperties,
   SlidersHorizontal,
   Loader,
@@ -228,7 +226,7 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 self-start md:self-auto flex-wrap">
+          <div className="flex items-center gap-2 shrink-0 self-start md:self-auto">
             <div className="flex items-center gap-2 bg-white/10 backdrop-blur-xs px-3 py-2 rounded-xl border border-white/10 text-xs">
               <ShieldCheck size={16} className="text-emerald-400" />
               <div>
@@ -238,16 +236,6 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
                 </p>
               </div>
             </div>
-
-            <button
-              type="button"
-              onClick={() => navigate('/cbt/dashboard')}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
-            >
-              <Laptop size={14} />
-              <span>Command Center CBT</span>
-              <ExternalLink size={12} className="text-violet-300" />
-            </button>
           </div>
         </div>
 

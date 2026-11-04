@@ -129,7 +129,7 @@ const DIVISIONS: Record<DivisionId, DivisionDefinition> = {
         { id: 'm-supervisi', label: 'Supervisi Guru', icon: ShieldCheck, path: '/kurikulum/supervisi', roles: ['kepsek', 'kaprog'], estafetStep: 6 }
       ],
       'evaluasi-rapor': [
-        { id: 'm-cbt', label: 'Ujian CBT', icon: Laptop, path: '/cbt/dashboard', roles: ['kaprog', 'kepsek'], estafetStep: 8 },
+        { id: 'm-cbt', label: 'Ujian CBT', icon: Laptop, path: '/dashboard?tab=kurikulum&subtab=cbt', roles: ['kaprog', 'kepsek'], estafetStep: 8 },
         { id: 'm-nilai', label: 'Input Nilai', icon: Award, path: '/rapor/nilai', roles: ['walas', 'kaprog'], estafetStep: 9 },
         { id: 'm-pleno', label: 'Rapat Pleno', icon: Users, path: '/academic/pleno', roles: ['kepsek', 'kaprog', 'walas'], estafetStep: 13 },
         { id: 'm-rapor', label: 'Cetak Rapor', icon: Printer, path: '/rapor/cetak', roles: ['walas', 'siswa'], estafetStep: 14 }

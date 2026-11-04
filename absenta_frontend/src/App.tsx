@@ -176,7 +176,6 @@ const P5Page = lazy(() => import('./pages/rapor/P5Page'));
 const NilaiEskulPage = lazy(() => import('./pages/rapor/NilaiEskulPage'));
 const RaporPklPage = lazy(() => import('./pages/rapor/RaporPklPage'));
 const RaporSettingsPage = lazy(() => import('./pages/rapor/RaporSettingsPage'));
-const CbtDashboard = lazy(() => import('./pages/cbt/Dashboard'));
 const CbtBankSoalPage = lazy(() => import('./pages/cbt/CbtBankSoalPage'));
 const CbtJadwalPage = lazy(() => import('./pages/cbt/CbtJadwalPage'));
 const CbtSesiPage = lazy(() => import('./pages/cbt/CbtSesiPage'));
@@ -1067,11 +1066,7 @@ function App() {
                         <RaporSettingsPage />
                       </ProtectedRoute>
                     } />
-                    <Route path="/cbt/dashboard" element={
-                      <ProtectedRoute requiredCapability={['cbt.bank.view', 'cbt.jadwal.view', 'academic.students.view.list']}>
-                        <CbtDashboard />
-                      </ProtectedRoute>
-                    } />
+                    <Route path="/cbt/dashboard" element={<Navigate to="/dashboard?tab=kurikulum&subtab=cbt" replace />} />
                     <Route path="/cbt/bank-soal" element={
                       <ProtectedRoute requiredCapability={['cbt.bank.view', 'cbt.bank.manage']}>
                         <CbtBankSoalPage />

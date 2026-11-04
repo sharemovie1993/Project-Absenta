@@ -203,7 +203,7 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
       '/hubin/dashboard', '/hubin',
       '/bkk/dashboard', '/bkk',
       '/cooperative/dashboard', '/cooperative',
-      '/cbt/dashboard', '/cbt',
+      '/cbt',
       '/rapor/input-nilai', '/rapor/nilai', '/rapor',
       '/correspondence/dashboard', '/correspondence',
       '/attendance/dashboard', '/attendance',
@@ -263,7 +263,7 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
       return;
     }
     if (currentPath.startsWith('/cbt')) {
-      navigate('/cbt/dashboard');
+      navigate('/dashboard?tab=kurikulum&subtab=cbt');
       return;
     }
     if (currentPath.startsWith('/rapor')) {

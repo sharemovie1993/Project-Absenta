@@ -613,13 +613,6 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
                       Live Proctoring
                     </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => navigate('/cbt/dashboard')}
-                    className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>Pusat CBT Utama ↗</span>
-                  </button>
                 </div>
 
                 <Suspense

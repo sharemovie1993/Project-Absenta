@@ -95,7 +95,7 @@ export const ABSENTA_APPS_REGISTRY: AbsentaApp[] = [
       hover: 'hover:border-violet-300 dark:hover:border-violet-700 hover:bg-violet-50/50 dark:hover:bg-violet-950/20',
       gradient: 'from-violet-600 to-purple-600',
     },
-    defaultPath: '/cbt/dashboard',
+    defaultPath: '/dashboard?tab=kurikulum&subtab=cbt',
     pathPrefixes: ['/cbt'],
     category: 'CBT',
   },
