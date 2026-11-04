@@ -1,5 +1,6 @@
 import { prisma } from '@/utils/prisma';
 import { Prisma } from '@prisma/client';
+import { storageService } from '@/infra/storage/storage.service';
 
 export interface QueryBankSoalDto {
   page?: number;
@@ -306,7 +307,86 @@ export class CbtBankSoalService {
   }
 
   /**
-   * Menghapus Bank Soal
+   * Helper: Ekstrak seluruh URL gambar (stimulus & opsi A-E) dari daftar butir soal
+   */
+  private static extractMediaUrlsFromSoalList(
+    soalItems: Array<{ gambar_stimulus_url?: string | null; opsi_jawaban_json?: any }>
+  ): string[] {
+    const urls = new Set<string>();
+    for (const s of soalItems || []) {
+      if (s?.gambar_stimulus_url && typeof s.gambar_stimulus_url === 'string') {
+        urls.add(s.gambar_stimulus_url.trim());
+      }
+      const opsiList = Array.isArray(s?.opsi_jawaban_json) ? s.opsi_jawaban_json : [];
+      for (const opt of opsiList) {
+        if (opt?.gambar_url && typeof opt.gambar_url === 'string') {
+          urls.add(opt.gambar_url.trim());
+        }
+      }
+    }
+    return Array.from(urls).filter(Boolean);
+  }
+
+  /**
+   * Helper: Konversi URL publik (/api/uploads/... atau /uploads/...) menjadi storageKey (uploads/...)
+   */
+  private static urlToStorageKey(url: string): string | null {
+    const trimmed = String(url || '').trim();
+    if (!trimmed) return null;
+    if (trimmed.startsWith('/api/uploads/')) {
+      return `uploads/${trimmed.slice('/api/uploads/'.length)}`;
+    }
+    if (trimmed.startsWith('/uploads/')) {
+      return `uploads/${trimmed.slice('/uploads/'.length)}`;
+    }
+    if (trimmed.startsWith('uploads/')) {
+      return trimmed;
+    }
+    return null;
+  }
+
+  /**
+   * Reference-Counted Media Cleanup:
+   * Menghancurkan file gambar fisik di Storage Engine (Local Disk / S3 / MinIO)
+   * HANYA JIKA gambar tersebut sudah tidak dipakai lagi oleh butir soal lain di tenant tersebut
+   * (aman untuk Bank Soal hasil duplikasi maupun gambar tabel yang dipakai bersama di beberapa soal).
+   */
+  private static async cleanupUnusedMediaUrls(
+    tenantId: string,
+    candidateUrls: string[]
+  ): Promise<void> {
+    const uniqueCandidates = Array.from(new Set(candidateUrls.filter(Boolean)));
+    if (uniqueCandidates.length === 0) return;
+
+    try {
+      // Ambil seluruh butir soal yang masih tersisa milik tenant ini untuk mengecek referensi aktif
+      const remainingQuestions = await prisma.cbtSoal.findMany({
+        where: { tenant_id: tenantId },
+        select: {
+          gambar_stimulus_url: true,
+          opsi_jawaban_json: true,
+        },
+      });
+
+      const stillReferencedUrls = new Set(this.extractMediaUrlsFromSoalList(remainingQuestions));
+
+      for (const url of uniqueCandidates) {
+        if (stillReferencedUrls.has(url)) {
+          // Masih digunakan oleh soal lain / bank soal hasil duplikasi -> jangan dihapus
+          continue;
+        }
+        const storageKey = this.urlToStorageKey(url);
+        if (storageKey) {
+          await storageService.delete(storageKey).catch(() => null);
+        }
+      }
+    } catch (err) {
+      console.warn('[CbtBankSoalService] Gagal membersihkan media yatim (orphan media):', err);
+    }
+  }
+
+  /**
+   * Menghapus Bank Soal beserta pembersihan media gambar di Storage Engine
    */
   static async delete(tenantId: string, id: string) {
     await this.getById(tenantId, id);
@@ -324,9 +404,24 @@ export class CbtBankSoalService {
       throw new Error('Bank soal tidak dapat dihapus karena masih digunakan pada jadwal ujian aktif.');
     }
 
-    return prisma.cbtBankSoal.delete({
+    // Kumpulkan semua URL gambar dari soal-soal di dalam Bank Soal ini sebelum dihapus dari DB
+    const questionsToDelete = await prisma.cbtSoal.findMany({
+      where: { tenant_id: tenantId, bank_soal_id: id },
+      select: {
+        gambar_stimulus_url: true,
+        opsi_jawaban_json: true,
+      },
+    });
+    const candidateMediaUrls = this.extractMediaUrlsFromSoalList(questionsToDelete);
+
+    const deletedBank = await prisma.cbtBankSoal.delete({
       where: { id },
     });
+
+    // Hancurkan file fisik di Storage Engine jika sudah tidak direferensikan soal lain
+    await this.cleanupUnusedMediaUrls(tenantId, candidateMediaUrls);
+
+    return deletedBank;
   }
 
   // ==========================================
@@ -398,7 +493,7 @@ export class CbtBankSoalService {
   }
 
   /**
-   * Mengupdate butir soal
+   * Mengupdate butir soal (sekaligus membersihkan file gambar lama jika diganti/dihapus)
    */
   static async updateQuestion(tenantId: string, questionId: string, data: any) {
     const existing = await prisma.cbtSoal.findFirst({
@@ -409,7 +504,9 @@ export class CbtBankSoalService {
       throw new Error('Butir soal tidak ditemukan');
     }
 
-    return prisma.cbtSoal.update({
+    const oldUrls = this.extractMediaUrlsFromSoalList([existing]);
+
+    const updated = await prisma.cbtSoal.update({
       where: { id: questionId },
       data: {
         ...(data.nomor_urut !== undefined ? { nomor_urut: data.nomor_urut } : {}),
@@ -421,10 +518,19 @@ export class CbtBankSoalService {
         ...(data.pembahasan !== undefined ? { pembahasan: data.pembahasan } : {}),
       },
     });
+
+    const newUrls = new Set(this.extractMediaUrlsFromSoalList([updated]));
+    const removedUrls = oldUrls.filter((u) => !newUrls.has(u));
+
+    if (removedUrls.length > 0) {
+      await this.cleanupUnusedMediaUrls(tenantId, removedUrls);
+    }
+
+    return updated;
   }
 
   /**
-   * Menghapus butir soal
+   * Menghapus butir soal beserta file gambarnya di Storage Engine
    */
   static async deleteQuestion(tenantId: string, questionId: string) {
     const existing = await prisma.cbtSoal.findFirst({
@@ -435,7 +541,9 @@ export class CbtBankSoalService {
       throw new Error('Butir soal tidak ditemukan');
     }
 
-    return prisma.$transaction(async (tx) => {
+    const candidateMediaUrls = this.extractMediaUrlsFromSoalList([existing]);
+
+    const result = await prisma.$transaction(async (tx) => {
       await tx.cbtSoal.delete({
         where: { id: questionId },
       });
@@ -451,6 +559,10 @@ export class CbtBankSoalService {
 
       return { success: true };
     });
+
+    await this.cleanupUnusedMediaUrls(tenantId, candidateMediaUrls);
+
+    return result;
   }
 
   /**
