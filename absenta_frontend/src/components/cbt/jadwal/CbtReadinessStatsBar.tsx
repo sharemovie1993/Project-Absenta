@@ -1,6 +1,5 @@
 import React from 'react';
-import { CheckCircle2, AlertCircle, BookOpen, Users, Sparkles } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { CheckCircle2, AlertCircle, BookOpen, Users } from 'lucide-react';
 
 interface CbtReadinessStatsBarProps {
   totalTeoriPaket: number;
@@ -9,6 +8,7 @@ interface CbtReadinessStatsBarProps {
   totalGuruPenugasan: number;
   guruSudahSiap: number;
   guruBelumSiap: number;
+  scopeLabel?: string;
 }
 
 export const CbtReadinessStatsBar: React.FC<CbtReadinessStatsBarProps> = ({
@@ -18,6 +18,7 @@ export const CbtReadinessStatsBar: React.FC<CbtReadinessStatsBarProps> = ({
   totalGuruPenugasan,
   guruSudahSiap,
   guruBelumSiap,
+  scopeLabel,
 }) => {
   const percentPaket = totalTeoriPaket > 0 ? Math.round((paketSudahSiap / totalTeoriPaket) * 100) : 0;
   const percentGuru = totalGuruPenugasan > 0 ? Math.round((guruSudahSiap / totalGuruPenugasan) * 100) : 0;
@@ -31,14 +32,14 @@ export const CbtReadinessStatsBar: React.FC<CbtReadinessStatsBarProps> = ({
           <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
               <BookOpen size={13} className="text-violet-600 dark:text-violet-400" />
-              <span>1. Total Teori Bank Soal</span>
+              <span>1. Total Teori Bank Soal {scopeLabel ? `(${scopeLabel})` : ''}</span>
             </span>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl font-black text-slate-800 dark:text-slate-100">{totalTeoriPaket}</span>
               <span className="text-xs text-slate-500 font-medium">Paket Mapel-Tingkat</span>
             </div>
             <div className="text-[11px] text-slate-400 mt-0.5">
-              Mewadahi {totalGuruPenugasan} penugasan guru aktif
+              Mewadahi {totalGuruPenugasan} penugasan guru {scopeLabel ? scopeLabel.toLowerCase() : 'aktif'}
             </div>
           </div>
           <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 flex items-center justify-center font-black text-sm">

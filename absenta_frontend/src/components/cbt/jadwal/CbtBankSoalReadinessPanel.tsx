@@ -319,6 +319,36 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
     });
   }, [mapelPaketTeoriList, filterTingkat, searchQuery]);
 
+  // Statistik Dinamis Menyesuaikan Filter Tingkat
+  const activeStats = useMemo(() => {
+    const targetMapelList =
+      filterTingkat === 'ALL'
+        ? mapelPaketTeoriList
+        : mapelPaketTeoriList.filter((p) => p.tingkat === filterTingkat);
+
+    const targetTeacherList =
+      filterTingkat === 'ALL'
+        ? auditedTeachers
+        : auditedTeachers.filter((t) => t.tingkat === filterTingkat);
+
+    const totalTeoriPaket = targetMapelList.length;
+    const paketSudahSiap = targetMapelList.filter((p) => p.isReady).length;
+    const paketBelumSiap = totalTeoriPaket - paketSudahSiap;
+
+    const totalGuruPenugasan = targetTeacherList.length;
+    const guruSudahSiap = targetTeacherList.filter((t) => t.status === 'READY').length;
+    const guruBelumSiap = totalGuruPenugasan - guruSudahSiap;
+
+    return {
+      totalTeoriPaket,
+      paketSudahSiap,
+      paketBelumSiap,
+      totalGuruPenugasan,
+      guruSudahSiap,
+      guruBelumSiap,
+    };
+  }, [mapelPaketTeoriList, auditedTeachers, filterTingkat]);
+
   // ── 4. Handlers ──
   const handleNudgeWhatsApp = (target: AuditedTargetItem) => {
     const rawHp = target.no_hp || guruPhoneMap.get(target.guru_id) || target.assignedTeachers[0]?.no_hp;
@@ -379,14 +409,15 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
 
   return (
     <div className="space-y-4">
-      {/* ── 1. Hero Barometer Teori vs Realisasi ── */}
+      {/* ── 1. Hero Barometer Teori vs Realisasi (Adaptif Filter Tingkat) ── */}
       <CbtReadinessStatsBar
-        totalTeoriPaket={stats.totalTeoriPaket}
-        paketSudahSiap={stats.paketSudahSiap}
-        paketBelumSiap={stats.paketBelumSiap}
-        totalGuruPenugasan={stats.totalGuruPenugasan}
-        guruSudahSiap={stats.guruSudahSiap}
-        guruBelumSiap={stats.guruBelumSiap}
+        totalTeoriPaket={activeStats.totalTeoriPaket}
+        paketSudahSiap={activeStats.paketSudahSiap}
+        paketBelumSiap={activeStats.paketBelumSiap}
+        totalGuruPenugasan={activeStats.totalGuruPenugasan}
+        guruSudahSiap={activeStats.guruSudahSiap}
+        guruBelumSiap={activeStats.guruBelumSiap}
+        scopeLabel={filterTingkat === 'ALL' ? undefined : `Tingkat ${formatTingkatRomawi(filterTingkat)}`}
       />
 
       {/* ── 2. Kontrol Navigasi Utama: Tab 3 Jawaban Panitia + Filter ── */}
@@ -403,7 +434,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
             )}
           >
             <AlertCircle size={13} />
-            <span>1. Guru Belum Buat ({stats.guruBelumSiap})</span>
+            <span>1. Guru Belum Buat ({activeStats.guruBelumSiap})</span>
           </button>
 
           <button
@@ -417,7 +448,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
             )}
           >
             <CheckCircle2 size={13} />
-            <span>2. Guru Sudah Siap ({stats.guruSudahSiap})</span>
+            <span>2. Guru Sudah Siap ({activeStats.guruSudahSiap})</span>
           </button>
 
           <button
@@ -431,7 +462,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
             )}
           >
             <BookOpen size={13} />
-            <span>3. Teori Paket Mapel ({stats.totalTeoriPaket})</span>
+            <span>3. Teori Paket Mapel ({activeStats.totalTeoriPaket})</span>
           </button>
         </div>
 
