@@ -375,6 +375,8 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   };
 
   useEffect(() => {
+    if (!isOpen) return;
+
     if (bankSoalToEdit) {
       setStep(1);
       setKodeBank(bankSoalToEdit.kode_bank);
@@ -399,7 +401,8 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       const isMassal = initialScope === 'TERPUSAT_MASSAL';
       const year = new Date().getFullYear();
       const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-      const recKey = smartDetection.recommendedKey;
+      const initialSmart = detectSmartAsesmenType(activeSemester, 'X');
+      const recKey = initialSmart.recommendedKey;
       const def = OFFICIAL_ASESMEN_TYPES.find((t) => t.key === recKey);
       const defaultTingkat = def?.allowedTingkat && !def.allowedTingkat.includes('X')
         ? def.allowedTingkat[0]
@@ -417,7 +420,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setIsShared(true);
       setShowAllMapels(isPrivilegedRole || isMassal);
     }
-  }, [bankSoalToEdit, initialGuruId, defaultMapelId, isOpen, initialScope, isPrivilegedRole, smartDetection.recommendedKey]);
+  }, [isOpen, bankSoalToEdit]);
 
   const handleChangeScope = (newScope: CbtBankSoalScope) => {
     setScope(newScope);
@@ -449,7 +452,10 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     }
   };
 
-  const handleNextStep = () => {
+  const handleNextStep = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+
     const val = step1Schema.safeParse({ mapel_id: mapelId, tingkat });
     if (!val.success) {
       toast.error(val.error.issues.map((i) => i.message).join(', '));
@@ -474,6 +480,12 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+
+    // Guard ketat: Cegah form submission jika belum berada di Tahap 2
+    if (step !== 2) {
+      return;
+    }
 
     if (scope === 'TERPUSAT_MASSAL' && !allowedTingkatList.includes(tingkat)) {
       toast.error(`Tingkat ${tingkat} tidak diperkenankan untuk asesmen ${jenisKegiatanMassal}`);
@@ -549,8 +561,13 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       {/* ── Stepper Ramping & Bersih ── */}
       <div className="mb-3.5 grid grid-cols-2 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
         <button
+          key="pill-nav-step-1"
           type="button"
-          onClick={() => setStep(1)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setStep(1);
+          }}
           className={cn(
             'flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer',
             step === 1
@@ -570,6 +587,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         </button>
 
         <button
+          key="pill-nav-step-2"
           type="button"
           onClick={handleNextStep}
           className={cn(
@@ -962,15 +980,27 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         {/* ── Actions Footer Ramping ── */}
         <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-800">
           {step === 1 ? (
-            <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isSubmitting}>
+            <Button
+              key="btn-step1-cancel"
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
               Batal
             </Button>
           ) : (
             <Button
+              key="btn-step2-back"
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setStep(1)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setStep(1);
+              }}
               disabled={isSubmitting}
               className="flex items-center gap-1.5"
             >
@@ -981,22 +1011,24 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
 
           {step === 1 ? (
             <Button
+              key="btn-step1-next"
               type="button"
               variant="primary"
               size="sm"
               onClick={handleNextStep}
-              className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold flex items-center gap-1.5"
+              className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold flex items-center gap-1.5 cursor-pointer"
             >
               <span>Lanjut ke Tahap 2</span>
               <ArrowRight size={14} />
             </Button>
           ) : (
             <Button
+              key="btn-step2-submit"
               type="submit"
               variant="primary"
               size="sm"
               disabled={isSubmitting}
-              className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold"
+              className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold cursor-pointer"
             >
               {isSubmitting ? 'Menyimpan...' : scope === 'TERPUSAT_MASSAL' ? 'Terbitkan Paket Massal' : 'Simpan Bank Soal'}
             </Button>
