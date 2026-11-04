@@ -8,6 +8,8 @@ import {
   ExternalLink,
   Loader,
   Users,
+  Layers,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -26,11 +28,11 @@ const CbtPanitiaOrchestratorView = lazy(() =>
   }))
 );
 
-export type KurikulumCbtSubView = 'bank' | 'jadwal' | 'orkestrasi' | 'monitor';
+export type KurikulumCbtSubView = 'orkestrasi' | 'bank' | 'jadwal' | 'monitor';
 
 export const KurikulumCbtTab: React.FC = () => {
   const navigate = useNavigate();
-  const [activeSubView, setActiveSubView] = useState<KurikulumCbtSubView>('bank');
+  const [activeSubView, setActiveSubView] = useState<KurikulumCbtSubView>('orkestrasi');
   const [activeMonitorJadwalId, setActiveMonitorJadwalId] = useState<string | undefined>(undefined);
 
   const handleNavigateMonitor = (jadwalId: string) => {
@@ -43,6 +45,30 @@ export const KurikulumCbtTab: React.FC = () => {
       {/* ── Sub Navigation Header ── */}
       <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+          <button
+            type="button"
+            onClick={() => setActiveSubView('orkestrasi')}
+            className={cn(
+              "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0",
+              activeSubView === 'orkestrasi'
+                ? "bg-violet-600 text-white shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+            )}
+          >
+            <Layers size={15} />
+            <span>Meja Panitia CBT (5 Fase)</span>
+            <span
+              className={cn(
+                "px-1.5 py-0.5 text-[9px] rounded-md font-black uppercase tracking-wider",
+                activeSubView === 'orkestrasi'
+                  ? "bg-amber-400 text-amber-950"
+                  : "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300"
+              )}
+            >
+              Pipeline SOP
+            </span>
+          </button>
+
           <button
             type="button"
             onClick={() => setActiveSubView('bank')}
@@ -68,21 +94,7 @@ export const KurikulumCbtTab: React.FC = () => {
             )}
           >
             <Calendar size={15} />
-            <span>Jadwal &amp; Sesi Ujian</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveSubView('orkestrasi')}
-            className={cn(
-              "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0",
-              activeSubView === 'orkestrasi'
-                ? "bg-violet-600 text-white shadow-xs"
-                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-            )}
-          >
-            <Users size={15} />
-            <span>Orkestrasi &amp; Ploting Pengawas</span>
+            <span>Daftar Jadwal &amp; Sesi Ujian</span>
           </button>
 
           <button

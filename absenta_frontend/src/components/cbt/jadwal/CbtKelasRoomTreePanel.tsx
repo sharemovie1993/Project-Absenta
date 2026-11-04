@@ -29,6 +29,7 @@ interface CbtKelasRoomTreePanelProps {
   roomMappings: KelasRoomMapping[];
   onUpdateRoomMappings: (mappings: KelasRoomMapping[]) => void;
   tenantId?: string;
+  onProceedToNextPhase?: () => void;
 }
 
 export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
@@ -36,6 +37,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
   roomMappings,
   onUpdateRoomMappings,
   tenantId,
+  onProceedToNextPhase,
 }) => {
   const { jenjang } = useJenjang();
   const [searchQuery, setSearchQuery] = useState('');
@@ -308,6 +310,24 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Footer Navigasi Antar-Fase */}
+      {onProceedToNextPhase && (
+        <div className="pt-4 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3">
+          <p className="text-xs text-slate-500">
+            Pastikan seluruh kode slot ruang (R.01 s/d R.n) sudah sesuai sebelum masuk ke penjadwalan.
+          </p>
+          <Button
+            type="button"
+            variant="primary"
+            onClick={onProceedToNextPhase}
+            className="flex items-center gap-2 cursor-pointer bg-violet-600 hover:bg-violet-700 text-white shrink-0 text-xs px-4 py-2"
+          >
+            <span>Lanjut ke Fase 3: Matriks Hari &amp; Sesi</span>
+            <ArrowRight size={14} />
+          </Button>
         </div>
       )}
     </Card>

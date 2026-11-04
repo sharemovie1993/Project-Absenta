@@ -10,6 +10,7 @@ import {
   MapPin,
   Printer,
   FileCheck2,
+  ArrowRight,
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
@@ -35,12 +36,14 @@ interface CbtPengawasMatrixPanelProps {
   jadwalList: CbtJadwalUjian[];
   guruList: any[];
   isLoadingJadwal: boolean;
+  onProceedToNextPhase?: () => void;
 }
 
 export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
   jadwalList,
   guruList,
   isLoadingJadwal,
+  onProceedToNextPhase,
 }) => {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
@@ -455,6 +458,24 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
           </tbody>
         </table>
       </div>
+
+      {/* Footer Navigasi Antar-Fase */}
+      {onProceedToNextPhase && (
+        <div className="pt-4 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3">
+          <p className="text-xs text-slate-500">
+            Setelah pengawas terplot dan tersimpan, Anda siap memantau jalannya ujian secara langsung di Fase 5.
+          </p>
+          <Button
+            type="button"
+            variant="primary"
+            onClick={onProceedToNextPhase}
+            className="flex items-center gap-2 cursor-pointer bg-violet-600 hover:bg-violet-700 text-white shrink-0 text-xs px-4 py-2"
+          >
+            <span>Lanjut ke Fase 5: Hari H &amp; Live Proctoring</span>
+            <ArrowRight size={14} />
+          </Button>
+        </div>
+      )}
 
       {/* Modal Berita Acara */}
       {selectedJadwalForPrint && (
