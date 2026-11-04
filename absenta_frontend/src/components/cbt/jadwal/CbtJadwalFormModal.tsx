@@ -13,7 +13,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import type { CbtJadwalUjian, CbtRaporSlot } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
-import { ArrowRight, ArrowLeft } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Layers, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   formatLocalDateTime,
@@ -339,13 +339,13 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
           auto_transfer_rapor: autoTransferRapor,
           target_rapor_slot: autoTransferRapor ? targetRaporSlot : null,
           created_by_guru_id: teacherGuruId || null,
-          ruang_ujian: ruangUjian.trim() || null,
-          pengawas_1_id: pengawas1Id || null,
-          pengawas_1_nama: pengawas1Obj?.nama_guru || null,
-          pengawas_1_nip: pengawas1Obj?.nip || null,
-          proktor_id: proktorId || null,
-          proktor_nama: proktorObj?.nama_guru || null,
-          proktor_nip: proktorObj?.nip || null,
+          ruang_ujian: targetKelasIds.length > 1 ? (ruangUjian.trim() || 'Multi-Ruang Kelas') : (ruangUjian.trim() || null),
+          pengawas_1_id: targetKelasIds.length > 1 ? null : (pengawas1Id || null),
+          pengawas_1_nama: targetKelasIds.length > 1 ? null : (pengawas1Obj?.nama_guru || null),
+          pengawas_1_nip: targetKelasIds.length > 1 ? null : (pengawas1Obj?.nip || null),
+          proktor_id: targetKelasIds.length > 1 ? null : (proktorId || null),
+          proktor_nama: targetKelasIds.length > 1 ? null : (proktorObj?.nama_guru || null),
+          proktor_nip: targetKelasIds.length > 1 ? null : (proktorObj?.nip || null),
         },
       };
 
@@ -542,33 +542,49 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
               )}
             </div>
 
-            {/* Ploting Ruang & Pengawas / Proktor */}
-            <div className="space-y-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
-              <div className="space-y-1">
-                <label htmlFor="jadwal-ruang" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                  Di ruang / kelas mana ujian berlangsung? <span className="font-normal text-slate-400">(Opsional)</span>
-                </label>
-                <Input id="jadwal-ruang" value={ruangUjian} onChange={(e) => setRuangUjian(e.target.value)} placeholder="Contoh: Ruang 10 / Lab Komputer" aria-label="Ruang atau Kelas Ujian" />
+            {/* Ploting Ruang & Pengawas / Proktor (Adaptif Berdasarkan Jumlah Kelas Terpilih) */}
+            {targetKelasIds.length > 1 ? (
+              <div className="p-3.5 rounded-xl bg-violet-50/80 dark:bg-violet-950/30 border border-violet-200/70 dark:border-violet-800/60 space-y-1.5">
+                <div className="flex items-center gap-2 text-violet-800 dark:text-violet-300 font-bold text-xs">
+                  <Layers size={15} />
+                  <span>Mode Multi-Kelas Terdeteksi ({targetKelasIds.length} Rombel)</span>
+                </div>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Karena Anda memilih lebih dari 1 rombel, alokasi ruangan fisik (misal: <strong>R.01 s/d R.{String(targetKelasIds.length).padStart(2, '0')}</strong>) dan penugasan guru pengawas per-ruangan dikelola secara terpusat melalui <strong>Meja Orkestrasi Panitia CBT</strong> agar cetak Berita Acara tiap ruang terbit secara akurat.
+                </p>
+                <div className="flex items-center gap-1.5 text-[10px] text-violet-700 dark:text-violet-400 font-semibold pt-0.5">
+                  <Info size={12} />
+                  <span>Jadwal ini akan aktif secara serentak untuk seluruh {targetKelasIds.length} kelas terpilih.</span>
+                </div>
               </div>
+            ) : (
+              <div className="space-y-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+                <div className="space-y-1">
+                  <label htmlFor="jadwal-ruang" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                    Di ruang / kelas mana ujian berlangsung? <span className="font-normal text-slate-400">(Opsional)</span>
+                  </label>
+                  <Input id="jadwal-ruang" value={ruangUjian} onChange={(e) => setRuangUjian(e.target.value)} placeholder="Contoh: Ruang 10 / Lab Komputer" aria-label="Ruang atau Kelas Ujian" />
+                </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div className="space-y-1 min-w-0">
-                  <label htmlFor="jadwal-pengawas-1" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                    Siapa Pengawas Ruang / Kelas?
-                  </label>
-                  <SearchableSelect id="jadwal-pengawas-1" options={pengawasSelectOptions} value={pengawas1Id} onChange={setPengawas1Id} placeholder="Pilih Guru Pengawas..." aria-label="Pilih Pengawas Ruang" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="space-y-1 min-w-0">
+                    <label htmlFor="jadwal-pengawas-1" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                      Siapa Pengawas Ruang / Kelas?
+                    </label>
+                    <SearchableSelect id="jadwal-pengawas-1" options={pengawasSelectOptions} value={pengawas1Id} onChange={setPengawas1Id} placeholder="Pilih Guru Pengawas..." aria-label="Pilih Pengawas Ruang" />
+                  </div>
+                  <div className="space-y-1 min-w-0">
+                    <label htmlFor="jadwal-proktor" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                      Proktor / Pengawas 2 <span className="font-normal text-slate-400">(Opsional)</span>
+                    </label>
+                    <SearchableSelect id="jadwal-proktor" options={pengawasSelectOptions} value={proktorId} onChange={setProktorId} placeholder="Kosongkan jika cukup 1 pengawas..." aria-label="Pilih Proktor Ujian" />
+                  </div>
                 </div>
-                <div className="space-y-1 min-w-0">
-                  <label htmlFor="jadwal-proktor" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                    Proktor / Pengawas 2 <span className="font-normal text-slate-400">(Opsional)</span>
-                  </label>
-                  <SearchableSelect id="jadwal-proktor" options={pengawasSelectOptions} value={proktorId} onChange={setProktorId} placeholder="Kosongkan jika cukup 1 pengawas..." aria-label="Pilih Proktor Ujian" />
-                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  💡 Guru yang di-plot sebagai <strong>Pengawas</strong> otomatis mendapatkan akses Token, Monitoring, Reset Login, & Berita Acara.
+                </p>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                💡 Guru yang di-plot sebagai <strong>Pengawas</strong> otomatis mendapatkan akses Token, Monitoring, Reset Login, & Berita Acara.
-              </p>
-            </div>
+            )}
           </div>
         ) : (
           <div className="space-y-3.5 py-0.5">
