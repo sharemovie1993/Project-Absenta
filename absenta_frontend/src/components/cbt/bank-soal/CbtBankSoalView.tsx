@@ -286,7 +286,22 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                 <span>{isFromColleague || readOnly ? 'Lihat Soal' : 'Kelola Soal'}</span>
               </Button>
 
-              {!readOnly && (
+              {!readOnly && isFromColleague && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDuplicate(row)}
+                  disabled={duplicateMutation.isPending}
+                  className="text-xs h-7 px-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 font-bold rounded-lg flex items-center gap-1"
+                  title="Klaim & Salin Master Soal MGMP ini ke Akun Anda"
+                >
+                  <Copy size={12} />
+                  <span>Klaim Master</span>
+                </Button>
+              )}
+
+              {!readOnly && !isFromColleague && (
                 <Button
                   type="button"
                   variant="ghost"
@@ -294,7 +309,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                   onClick={() => handleDuplicate(row)}
                   disabled={duplicateMutation.isPending}
                   className="text-xs h-7 px-2 text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/30 rounded-lg"
-                  title="Salin ke Bank Soal Saya"
+                  title="Duplikat Bank Soal"
                 >
                   <Copy size={13} />
                 </Button>

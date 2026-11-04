@@ -9,6 +9,7 @@ import {
   ArrowRight,
   Layers,
   User,
+  Users,
   ExternalLink,
   MessageSquare,
   Eye,
@@ -70,6 +71,10 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
   const totalBanks = bankList.length;
   const readyBanks = useMemo(
     () => bankList.filter((b) => (b.jumlah_soal || b._count?.Soal || 0) > 0).length,
+    [bankList]
+  );
+  const sharedBanksCount = useMemo(
+    () => bankList.filter((b) => Boolean(b.is_shared || b.status === 'PUBLISHED')).length,
     [bankList]
   );
   const emptyBanks = totalBanks - readyBanks;
@@ -139,6 +144,12 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
             <CheckCircle2 size={13} className="mr-1" />
             <span>{readyBanks} Siap Ujian</span>
           </Badge>
+          {sharedBanksCount > 0 && (
+            <Badge variant="outline" className="px-2.5 py-1 font-bold border-indigo-200 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
+              <Users size={13} className="mr-1" />
+              <span>{sharedBanksCount} Master MGMP Bersama</span>
+            </Badge>
+          )}
           {emptyBanks > 0 ? (
             <Badge variant="outline" className="px-2.5 py-1 font-bold border-rose-300 bg-rose-50 text-rose-700 animate-pulse">
               <AlertCircle size={13} className="mr-1" />
@@ -282,6 +293,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
           {filteredBanks.map((bank) => {
             const soalCount = bank.jumlah_soal || bank._count?.Soal || 0;
             const isReady = soalCount > 0;
+            const isShared = Boolean(bank.is_shared || bank.status === 'PUBLISHED');
             const mapelName = bank.Mapel?.nama_mapel || bank.MataPelajaran?.nama_mapel || bank.judul;
             const guruName = bank.Guru?.nama_guru || 'Guru Belum Ditentukan';
             const tingkatNum = resolveBankTingkatNumber(bank) || 10;
@@ -297,11 +309,19 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
                 )}
               >
                 <div className="space-y-2">
-                  {/* Top Bar: Tingkat & Status Badge */}
+                  {/* Top Bar: Tingkat, Shared Badge, & Status Badge */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="space-y-0.5 min-w-0">
-                      <div className="text-[10px] font-black text-violet-600 uppercase tracking-wider">
-                        Tingkat {formatTingkatRomawi(tingkatNum)} (Kelas {tingkatNum})
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-black text-violet-600 uppercase tracking-wider">
+                          Tingkat {formatTingkatRomawi(tingkatNum)} (Kelas {tingkatNum})
+                        </span>
+                        {isShared && (
+                          <span className="inline-flex items-center gap-0.5 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                            <Users size={10} />
+                            <span>Shared MGMP</span>
+                          </span>
+                        )}
                       </div>
                       <h5 className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate" title={mapelName}>
                         {mapelName}
@@ -324,7 +344,10 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
                   <div className="text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
                     <div className="flex items-center gap-1.5 truncate">
                       <User size={12} className="text-slate-400 shrink-0" />
-                      <span className="truncate">Pengampu: <span className="font-semibold text-slate-700 dark:text-slate-300">{guruName}</span></span>
+                      <span className="truncate">
+                        Pengampu: <span className="font-semibold text-slate-700 dark:text-slate-300">{guruName}</span>
+                        {isShared && <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold ml-1">(Master Tim)</span>}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800">
                       <span className="flex items-center gap-1">
