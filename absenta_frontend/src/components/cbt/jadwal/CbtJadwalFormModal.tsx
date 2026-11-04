@@ -15,7 +15,6 @@ import type { CbtJadwalUjian, CbtRaporSlot } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
 import {
-  ShieldAlert,
   Clock,
   BookOpen,
   CheckCircle2,
@@ -463,7 +462,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
           type="button"
           onClick={(e) => handleGoToStep(1, e)}
           className={cn(
-            'flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-[11px] font-bold transition-all cursor-pointer min-w-0',
+            'flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer min-w-0',
             step === 1
               ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-2xs'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
@@ -477,14 +476,14 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
           >
             1
           </span>
-          <span className="truncate">Identitas & Waktu</span>
+          <span className="truncate">Waktu</span>
         </button>
 
         <button
           type="button"
           onClick={(e) => handleGoToStep(2, e)}
           className={cn(
-            'flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-[11px] font-bold transition-all cursor-pointer min-w-0',
+            'flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer min-w-0',
             step === 2
               ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-2xs'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
@@ -509,7 +508,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
           type="button"
           onClick={(e) => handleGoToStep(3, e)}
           className={cn(
-            'flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-[11px] font-bold transition-all cursor-pointer min-w-0',
+            'flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer min-w-0',
             step === 3
               ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-2xs'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
@@ -525,7 +524,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
           >
             3
           </span>
-          <span className="truncate">Transfer Rapor</span>
+          <span className="truncate">Rapor</span>
         </button>
       </div>
 
@@ -674,21 +673,21 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
             </div>
           </>
         ) : step === 2 ? (
-          <div className="space-y-4 py-1">
+          <div className="space-y-3.5 py-0.5">
             {/* Pertanyaan 1: Sasaran Kelas */}
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-black text-slate-900 dark:text-white leading-snug">
-                  Ujian ini diberikan untuk kelas mana saja?
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Untuk kelas mana saja?
                 </p>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2.5 shrink-0">
                   {teacherClasses.length > 0 && (
                     <button
                       type="button"
                       onClick={() => setShowAllGradeClasses((prev) => !prev)}
                       className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
                     >
-                      {showAllGradeClasses ? 'Hanya Kelas Saya' : 'Lihat Semua Kelas'}
+                      {showAllGradeClasses ? 'Kelas Saya' : 'Semua Kelas'}
                     </button>
                   )}
                   <button
@@ -698,18 +697,18 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                   >
                     {displayedKelasList.length > 0 &&
                     displayedKelasList.every((k) => targetKelasIds.includes(k.id))
-                      ? 'Batal Semua'
+                      ? 'Reset'
                       : 'Pilih Semua'}
                   </button>
                 </div>
               </div>
 
               {displayedKelasList.length === 0 ? (
-                <p className="text-xs text-amber-600 dark:text-amber-400 py-2">
-                  Tidak ditemukan kelas yang cocok dengan tingkat bank soal ini.
+                <p className="text-xs text-amber-600 dark:text-amber-400 py-1">
+                  Tidak ada kelas yang cocok.
                 </p>
               ) : (
-                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1">
+                <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
                   {displayedKelasList.map((k) => {
                     const isChecked = targetKelasIds.includes(k.id);
                     return (
@@ -719,14 +718,13 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                         onClick={() => toggleKelas(k.id)}
                         aria-label={`Target Kelas ${k.nama_kelas}`}
                         className={cn(
-                          'px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                          'px-3 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer',
                           isChecked
-                            ? 'bg-violet-600 text-white border-violet-600 shadow-2xs'
-                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-violet-300'
+                            ? 'bg-violet-600 text-white border-violet-600'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-violet-300'
                         )}
                       >
-                        {isChecked && <CheckCircle2 size={13} />}
-                        <span>{k.nama_kelas}</span>
+                        {k.nama_kelas}
                       </button>
                     );
                   })}
@@ -735,44 +733,43 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
             </div>
 
             {/* Pertanyaan 2: Nilai Langsung Tampil atau Tidak */}
-            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <p className="text-sm font-black text-slate-900 dark:text-white leading-snug">
-                Tampilkan nilai langsung ke siswa setelah selesai mengerjakan?
+            <div className="space-y-1.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                Tampilkan nilai langsung ke siswa?
               </p>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setShowResultInstant(true)}
                   className={cn(
-                    'py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5',
+                    'py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
                     showResultInstant
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                      ? 'bg-violet-600 text-white border-violet-600'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                   )}
                 >
-                  <CheckCircle2 size={14} />
-                  <span>Ya, Tampilkan Langsung</span>
+                  Ya
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setShowResultInstant(false)}
                   className={cn(
-                    'py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5',
+                    'py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
                     !showResultInstant
-                      ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900 shadow-2xs'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                      ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                   )}
                 >
-                  <span>Tidak, Sembunyikan Dulu</span>
+                  Tidak
                 </button>
               </div>
             </div>
 
             {/* Pertanyaan 3: Proteksi Kecurangan (Anti-Cheat) */}
-            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <p className="text-sm font-black text-slate-900 dark:text-white leading-snug">
-                Aktifkan pengawasan anti-curang (acak soal & kunci pindah tab)?
+            <div className="space-y-1.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                Aktifkan mode anti-curang (acak soal & kunci tab)?
               </p>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -783,14 +780,13 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                     setShuffleOptions(true);
                   }}
                   className={cn(
-                    'py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5',
+                    'py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
                     blockTabSwitch
-                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                      ? 'bg-violet-600 text-white border-violet-600'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                   )}
                 >
-                  <ShieldAlert size={14} />
-                  <span>Ya, Mode Ketat (Standar)</span>
+                  Ya
                 </button>
 
                 <button
@@ -799,64 +795,58 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                     setBlockTabSwitch(false);
                   }}
                   className={cn(
-                    'py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5',
+                    'py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
                     !blockTabSwitch
-                      ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900 shadow-2xs'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                      ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                   )}
                 >
-                  <span>Longgar (Tanpa Kunci Tab)</span>
+                  Tidak
                 </button>
               </div>
             </div>
           </div>
         ) : (
-          <div className="space-y-4 py-1">
+          <div className="space-y-3.5 py-0.5">
             {/* Pertanyaan Utama yang Simpel & Fokus */}
-            <div className="space-y-1">
-              <p className="text-sm font-black text-slate-900 dark:text-white leading-snug">
-                Apakah nilai ujian ini ingin otomatis ditransfer ke Buku Nilai e-Rapor?
+            <div className="space-y-1.5">
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                Transfer nilai otomatis ke e-Rapor?
               </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Jika <strong>Ya</strong>, nilai siswa langsung masuk ke rapor begitu selesai mengerjakan ujian.
-              </p>
-            </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAutoTransferRapor(true)}
+                  className={cn(
+                    'py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
+                    autoTransferRapor
+                      ? 'bg-violet-600 text-white border-violet-600'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  )}
+                >
+                  Ya
+                </button>
 
-            {/* Pilihan Jawaban: Ya vs Tidak */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <button
-                type="button"
-                onClick={() => setAutoTransferRapor(true)}
-                className={cn(
-                  'py-2.5 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2',
-                  autoTransferRapor
-                    ? 'bg-violet-600 text-white border-violet-600 shadow-xs'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-                )}
-              >
-                <CheckCircle2 size={15} />
-                <span>Ya, Otomatis Transfer</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setAutoTransferRapor(false)}
-                className={cn(
-                  'py-2.5 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2',
-                  !autoTransferRapor
-                    ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900 shadow-xs'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-                )}
-              >
-                <span>Tidak, Nanti Manual</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setAutoTransferRapor(false)}
+                  className={cn(
+                    'py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
+                    !autoTransferRapor
+                      ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  )}
+                >
+                  Tidak
+                </button>
+              </div>
             </div>
 
             {/* Pertanyaan Lanjutan (Hanya jika dijawab Ya) */}
             {autoTransferRapor && (
-              <div className="space-y-2 pt-1">
-                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Masukkan ke kolom nilai yang mana?
+              <div className="space-y-1.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Masukkan ke kolom nilai mana?
                 </p>
                 <div className="grid grid-cols-4 gap-2">
                   {(
@@ -874,10 +864,10 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                         type="button"
                         onClick={() => setTargetRaporSlot(slot.key)}
                         className={cn(
-                          'py-2.5 px-2 rounded-xl border text-xs font-black text-center transition-all cursor-pointer',
+                          'py-2 px-2 rounded-lg border text-xs font-bold text-center transition-all cursor-pointer',
                           active
-                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-emerald-400'
+                            ? 'bg-emerald-600 text-white border-emerald-600'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-emerald-400'
                         )}
                       >
                         {slot.label}
@@ -927,7 +917,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
               onClick={(e) => handleGoToStep(2, e)}
               className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold flex items-center gap-1.5"
             >
-              <span>Lanjut: Pilih Kelas</span>
+              <span>Lanjut</span>
               <ArrowRight size={14} />
             </Button>
           ) : step === 2 ? (
@@ -939,7 +929,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
               onClick={(e) => handleGoToStep(3, e)}
               className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold flex items-center gap-1.5"
             >
-              <span>Lanjut: Opsi Transfer Rapor</span>
+              <span>Lanjut</span>
               <ArrowRight size={14} />
             </Button>
           ) : (
@@ -951,7 +941,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
               disabled={isSubmitting}
               className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold"
             >
-              {isSubmitting ? 'Menyimpan...' : jadwalToEdit ? 'Simpan Perubahan' : 'Terbitkan Jadwal Ujian'}
+              {isSubmitting ? 'Menyimpan...' : 'Simpan'}
             </Button>
           )}
         </div>
