@@ -12,6 +12,7 @@ import {
   Users,
   CheckCircle2,
   RotateCcw,
+  ArrowRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
