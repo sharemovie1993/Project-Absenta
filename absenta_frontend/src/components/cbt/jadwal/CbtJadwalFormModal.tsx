@@ -358,7 +358,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
     });
 
     if (!check.success) {
-      toast.error(check.error.errors.map((err) => err.message).join(', '));
+      toast.error(check.error.issues.map((err) => err.message).join(', ') || 'Data jadwal langkah 1 belum lengkap');
       return false;
     }
 
@@ -428,7 +428,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
     });
 
     if (!validation.success) {
-      toast.error(validation.error.errors.map((err) => err.message).join(', '));
+      toast.error(validation.error.issues.map((err) => err.message).join(', ') || 'Data jadwal ujian belum lengkap');
       return;
     }
 

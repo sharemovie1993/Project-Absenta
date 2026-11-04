@@ -33,7 +33,7 @@ export interface CbtInlineSoalCardProps {
 
 const soalSchema = z.object({
   nomor_urut: z.number().int().min(1, 'Nomor urut minimal 1'),
-  konten_pertanyaan: z.string().min(3, 'Konten pertanyaan minimal 3 karakter'),
+  konten_pertanyaan: z.string(),
   bobot: z.number().min(0.1, 'Bobot minimal 0.1'),
   kunci_jawaban: z.enum(['A', 'B', 'C', 'D', 'E']),
 });
@@ -522,19 +522,29 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
   };
 
   const handleSave = async (mode: 'stay' | 'add-next' | 'duplicate') => {
+    const trimmedQuestion = kontenPertanyaan.trim();
+    if (!trimmedQuestion && !gambarStimulusUrl) {
+      toast.error('Isi teks pertanyaan atau sisipkan gambar soal terlebih dahulu');
+      return;
+    }
+
     const validation = soalSchema.safeParse({
       nomor_urut: Number(nomorUrut),
-      konten_pertanyaan: kontenPertanyaan.trim(),
+      konten_pertanyaan: trimmedQuestion,
       bobot: Number(bobot),
       kunci_jawaban: kunciJawaban,
     });
 
     if (!validation.success) {
-      toast.error(validation.error.errors.map((err) => err.message).join(', '));
+      toast.error(
+        (validation.error.issues || []).map((err) => err.message).join(', ') || 'Data soal belum lengkap'
+      );
       return;
     }
 
-    const emptyOptions = opsiJawaban.filter((opt) => !opt.teks.trim() && !opt.gambar_url);
+    const emptyOptions = (opsiJawaban || []).filter(
+      (opt) => !(opt?.teks || '').trim() && !opt?.gambar_url
+    );
     if (emptyOptions.length > 0) {
       toast.error(
         `Opsi ${emptyOptions.map((o) => o.kode).join(', ')} belum diisi teks atau gambar`
@@ -548,7 +558,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
       const payload = {
         nomor_urut: mode === 'duplicate' ? Number(nomorUrut) + 1 : Number(nomorUrut),
         jenis_soal: 'PG' as const,
-        konten_pertanyaan: kontenPertanyaan.trim(),
+        konten_pertanyaan: trimmedQuestion || 'Perhatikan gambar berikut:',
         gambar_stimulus_url: gambarStimulusUrl,
         bobot: Number(bobot),
         opsi_jawaban_json: opsiJawaban,

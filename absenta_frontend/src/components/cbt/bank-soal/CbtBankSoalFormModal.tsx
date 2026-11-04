@@ -161,7 +161,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     });
 
     if (!validation.success) {
-      toast.error(validation.error.errors.map((err) => err.message).join(', '));
+      toast.error(validation.error.issues.map((err) => err.message).join(', ') || 'Data bank soal belum lengkap');
       return;
     }
 
