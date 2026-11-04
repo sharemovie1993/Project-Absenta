@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Modal, Button, Input, SearchableSelect } from '@/components/ui';
 import { useGuruOptions, useMapelOptions, useSemesterOptions } from '@/components/common';
+import { useJenjang } from '@/hooks/useJenjang';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import { kurikulumApi } from '@/api/kurikulum.api';
 import { useAuthStore } from '@/store/authStore';
@@ -18,6 +19,8 @@ import {
   getAllowedTingkatForAsesmen,
   cbtBankSoalStep1Schema,
   cbtBankSoalPayloadSchema,
+  getTingkatRoman,
+  formatTingkatLabel,
 } from './cbtAsesmenHelper';
 
 export * from './cbtAsesmenHelper';
@@ -58,13 +61,20 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     return isPrivilegedRole && !defaultGuruId ? 'TERPUSAT_MASSAL' : 'MANDIRI_GURU';
   }, [bankSoalToEdit, isPrivilegedRole, defaultGuruId]);
 
-  const { activeSemester } = useSemesterOptions();
-  const [tingkat, setTingkat] = useState<'X' | 'XI' | 'XII' | 'SEMUA'>('X');
+  const { tingkatList, jenjang } = useJenjang();
+  const defaultInitialTingkat = useMemo(() => {
+    return tingkatList.length > 0 ? getTingkatRoman(tingkatList[0]) : 'X';
+  }, [tingkatList]);
 
-  // Deteksi cerdas asesmen resmi berdasarkan kalender bulan & semester aktif
+  const { activeSemester } = useSemesterOptions();
+  const [tingkat, setTingkat] = useState<string>(() => {
+    return bankSoalToEdit?.tingkat || defaultInitialTingkat;
+  });
+
+  // Deteksi cerdas asesmen resmi berdasarkan kalender bulan, semester aktif, & jenjang
   const smartDetection = useMemo(() => {
-    return detectSmartAsesmenType(activeSemester, tingkat);
-  }, [activeSemester, tingkat]);
+    return detectSmartAsesmenType(activeSemester, tingkat, tingkatList);
+  }, [activeSemester, tingkat, tingkatList]);
 
   const [step, setStep] = useState<1 | 2>(1);
   const [scope, setScope] = useState<CbtBankSoalScope>(initialScope);
@@ -74,7 +84,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       const detected = OFFICIAL_ASESMEN_TYPES.find((t) => code.startsWith(`${t.key}-`));
       if (detected) return detected.key;
     }
-    return detectSmartAsesmenType(activeSemester, 'X').recommendedKey;
+    return detectSmartAsesmenType(activeSemester, defaultInitialTingkat, tingkatList).recommendedKey;
   });
 
   const isTeacherLocked = useMemo(() => {
@@ -89,8 +99,16 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   }, [scope, jenisKegiatanMassal]);
 
   const allowedTingkatList = useMemo(() => {
-    return getAllowedTingkatForAsesmen(scope, jenisKegiatanMassal);
-  }, [scope, jenisKegiatanMassal]);
+    return getAllowedTingkatForAsesmen(scope, jenisKegiatanMassal, tingkatList);
+  }, [scope, jenisKegiatanMassal, tingkatList]);
+
+  const dynamicTingkatOptions = useMemo(() => {
+    const list = (tingkatList || []).map((t) => ({
+      value: getTingkatRoman(t),
+      label: formatTingkatLabel(t),
+    }));
+    return [...list, { value: 'SEMUA', label: 'Semua' }];
+  }, [tingkatList]);
 
   const initialGuruId = useMemo(() => {
     return defaultGuruId || user?.guru_profile?.id || '';
@@ -158,10 +176,10 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   // Aksi pemilihan kegiatan massal dengan proteksi otomatis tingkat kelas (Anti Human-Error)
   const handleSelectKegiatanMassal = (targetKey: string) => {
     setJenisKegiatanMassal(targetKey);
-    const def = OFFICIAL_ASESMEN_TYPES.find((t) => t.key === targetKey);
+    const validTingkat = getAllowedTingkatForAsesmen('TERPUSAT_MASSAL', targetKey, tingkatList);
     let nextTingkat = tingkat;
-    if (def?.allowedTingkat && !def.allowedTingkat.includes(tingkat)) {
-      nextTingkat = def.allowedTingkat[0];
+    if (validTingkat.length > 0 && !validTingkat.includes(tingkat)) {
+      nextTingkat = validTingkat[0];
       setTingkat(nextTingkat);
     }
     if (mapelId) {
@@ -195,12 +213,14 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       const isMassal = initialScope === 'TERPUSAT_MASSAL';
       const year = new Date().getFullYear();
       const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-      const initialSmart = detectSmartAsesmenType(activeSemester, 'X');
+      const initialSmart = detectSmartAsesmenType(activeSemester, defaultInitialTingkat, tingkatList);
       const recKey = initialSmart.recommendedKey;
-      const def = OFFICIAL_ASESMEN_TYPES.find((t) => t.key === recKey);
-      const defaultTingkat = def?.allowedTingkat && !def.allowedTingkat.includes('X')
-        ? def.allowedTingkat[0]
-        : 'X';
+      const validTingkat = getAllowedTingkatForAsesmen(
+        isMassal ? 'TERPUSAT_MASSAL' : 'MANDIRI_GURU',
+        recKey,
+        tingkatList
+      );
+      const defaultTingkat = validTingkat[0] || defaultInitialTingkat;
 
       setJenisKegiatanMassal(recKey);
       setKodeBank(isMassal ? `${recKey}-${year}-MAPEL-${defaultTingkat}` : `CBT-${year}-${randomSuffix}`);
@@ -223,10 +243,8 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setShowAllMapels(true);
       setIsShared(true);
       const recKey = smartDetection.recommendedKey;
-      const def = OFFICIAL_ASESMEN_TYPES.find((t) => t.key === recKey);
-      const targetTingkat = def?.allowedTingkat && !def.allowedTingkat.includes(tingkat)
-        ? def.allowedTingkat[0]
-        : tingkat;
+      const validTingkat = getAllowedTingkatForAsesmen('TERPUSAT_MASSAL', recKey, tingkatList);
+      const targetTingkat = validTingkat.includes(tingkat) ? tingkat : (validTingkat[0] || defaultInitialTingkat);
       setJenisKegiatanMassal(recKey);
       setTingkat(targetTingkat);
       if (mapelId) {
@@ -584,15 +602,8 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                 )}
               </div>
 
-              <div className="grid grid-cols-4 gap-2">
-                {(
-                  [
-                    { value: 'X', label: 'Kelas X' },
-                    { value: 'XI', label: 'Kelas XI' },
-                    { value: 'XII', label: 'Kelas XII' },
-                    { value: 'SEMUA', label: 'Semua' },
-                  ] as { value: 'X' | 'XI' | 'XII' | 'SEMUA'; label: string }[]
-                ).map((item) => {
+              <div className="flex flex-wrap gap-2">
+                {dynamicTingkatOptions.map((item) => {
                   const isAllowed = allowedTingkatList.includes(item.value);
                   const isSelected = tingkat === item.value;
 
@@ -609,7 +620,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                         }
                       }}
                       className={cn(
-                        'py-2 px-2 rounded-lg border text-xs font-bold transition-all text-center flex items-center justify-center gap-1',
+                        'py-2 px-3 rounded-lg border text-xs font-bold transition-all text-center flex items-center justify-center gap-1 min-w-[70px]',
                         !isAllowed
                           ? 'opacity-35 bg-slate-100 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed line-through'
                           : isSelected

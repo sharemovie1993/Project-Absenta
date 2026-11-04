@@ -10,12 +10,25 @@ export const opsiPilihanSchema = z.object({
   gambar_url: z.string().nullable().optional(),
 });
 
+export const VALID_CBT_TINGKAT = [
+  '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13',
+  'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII',
+  'SEMUA',
+] as const;
+
+const FINAL_GRADUATING_GRADES = new Set(['6', 'VI', '9', 'IX', '12', 'XII', '13', 'XIII']);
+const NON_FINAL_GRADES = new Set([
+  '1', '2', '3', '4', '5', 'I', 'II', 'III', 'IV', 'V',
+  '7', '8', 'VII', 'VIII',
+  '10', '11', 'X', 'XI'
+]);
+
 const bankSoalBaseSchema = z.object({
   guru_id: z.string().uuid('ID Guru tidak valid'),
   mapel_id: z.string().uuid('ID Mapel tidak valid'),
   kode_bank: z.string().min(2, 'Kode bank soal minimal 2 karakter').max(50),
   judul: z.string().min(3, 'Judul bank soal minimal 3 karakter').max(200),
-  tingkat: z.enum(['X', 'XI', 'XII', 'SEMUA']),
+  tingkat: z.enum(VALID_CBT_TINGKAT),
   jurusan: z.string().nullable().optional(),
   alokasi_menit: z.number().int().min(10).max(300).default(90),
   acak_soal: z.boolean().default(true),
@@ -25,31 +38,32 @@ const bankSoalBaseSchema = z.object({
 });
 
 /**
- * Validasi domain aturan dinas / kurikulum untuk Bank Soal:
- * 1. PSAJ (Penilaian Sumatif Akhir Jenjang) hanya untuk tingkat XII.
- * 2. SAT (Sumatif Akhir Tahun / Kenaikan Kelas) hanya untuk tingkat X dan XI (tingkat XII tidak diperbolehkan).
+ * Validasi domain aturan dinas / kurikulum multi-jenjang untuk Bank Soal:
+ * 1. PSAJ (Penilaian Sumatif Akhir Jenjang) hanya untuk tingkat akhir (SD: VI, SMP: IX, SMA/SMK: XII/XIII).
+ * 2. SAT (Sumatif Akhir Tahun) adalah kenaikan kelas bagi seluruh tingkat KECUALI tingkat akhir.
  */
 const refineBankSoalAsesmen = (
   data: { kode_bank?: string; tingkat?: string },
   ctx: z.RefinementCtx
 ) => {
-  if (!data.kode_bank) return;
+  if (!data.kode_bank || !data.tingkat) return;
   const kodeUpper = data.kode_bank.toUpperCase();
+  const tingkatUpper = data.tingkat.toUpperCase().trim();
 
-  if (kodeUpper.startsWith('PSAJ-') && data.tingkat && data.tingkat !== 'XII') {
+  if (kodeUpper.startsWith('PSAJ-') && NON_FINAL_GRADES.has(tingkatUpper)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message:
-        'Paket bank soal PSAJ adalah evaluasi kelulusan akhir jenjang yang hanya diperkenankan untuk Kelas XII',
+        'Paket bank soal PSAJ adalah evaluasi kelulusan akhir jenjang yang hanya diperkenankan untuk kelas tingkat akhir (Kelas 6/VI di SD, Kelas 9/IX di SMP, atau Kelas 12/13 di SMA/SMK)',
       path: ['tingkat'],
     });
   }
 
-  if (kodeUpper.startsWith('SAT-') && data.tingkat === 'XII') {
+  if (kodeUpper.startsWith('SAT-') && FINAL_GRADUATING_GRADES.has(tingkatUpper)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message:
-        'Paket bank soal SAT adalah evaluasi kenaikan kelas untuk Kelas X dan XI (Kelas XII menempuh kelulusan PSAJ)',
+        'Paket bank soal SAT adalah evaluasi kenaikan kelas (Tingkat akhir menempuh kelulusan PSAJ)',
       path: ['tingkat'],
     });
   }

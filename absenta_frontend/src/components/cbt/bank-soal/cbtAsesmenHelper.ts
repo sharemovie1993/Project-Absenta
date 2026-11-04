@@ -2,13 +2,60 @@ import { z } from 'zod';
 
 export type CbtBankSoalScope = 'TERPUSAT_MASSAL' | 'MANDIRI_GURU';
 
+// ==========================================
+// 1. UNIVERSAL GRADE LEVEL CONVERTERS
+// ==========================================
+
+export const NUMERAL_TO_ROMAN: Record<string, string> = {
+  '1': 'I', '2': 'II', '3': 'III', '4': 'IV', '5': 'V', '6': 'VI',
+  '7': 'VII', '8': 'VIII', '9': 'IX',
+  '10': 'X', '11': 'XI', '12': 'XII', '13': 'XIII',
+  'I': 'I', 'II': 'II', 'III': 'III', 'IV': 'IV', 'V': 'V', 'VI': 'VI',
+  'VII': 'VII', 'VIII': 'VIII', 'IX': 'IX',
+  'X': 'X', 'XI': 'XI', 'XII': 'XII', 'XIII': 'XIII',
+};
+
+export const ROMAN_TO_NUMERAL: Record<string, number> = {
+  'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6,
+  'VII': 7, 'VIII': 8, 'IX': 9,
+  'X': 10, 'XI': 11, 'XII': 12, 'XIII': 13,
+  '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6,
+  '7': 7, '8': 8, '9': 9,
+  '10': 10, '11': 11, '12': 12, '13': 13,
+};
+
+/**
+ * Mengonversi angka tingkat (1-13) atau string ke representasi Romawi standar
+ */
+export function getTingkatRoman(tingkat: number | string): string {
+  const key = String(tingkat).toUpperCase().trim();
+  return NUMERAL_TO_ROMAN[key] || key;
+}
+
+/**
+ * Mengonversi string tingkat (Romawi atau angka) ke nomor integer (1-13)
+ */
+export function parseTingkatToNumber(tingkat: number | string): number | undefined {
+  const key = String(tingkat).toUpperCase().trim();
+  return ROMAN_TO_NUMERAL[key] ?? (Number.isInteger(Number(key)) ? Number(key) : undefined);
+}
+
+/**
+ * Format label visual tingkat kelas (misal: 'Kelas X', 'Kelas VII', 'Kelas I')
+ */
+export function formatTingkatLabel(tingkat: string | number): string {
+  const rawStr = String(tingkat).toUpperCase().trim();
+  if (rawStr === 'SEMUA') return 'Semua Kelas';
+  const roman = getTingkatRoman(rawStr);
+  return `Kelas ${roman}`;
+}
+
 export interface OfficialAsesmenType {
   key: string;
   singkatan: string;
   namaResmi: string;
   keterangan: string;
   defaultPrefix: string;
-  allowedTingkat?: Array<'X' | 'XI' | 'XII' | 'SEMUA'>;
   tingkatRuleExplanation?: string;
 }
 
@@ -23,7 +70,6 @@ export const OFFICIAL_ASESMEN_TYPES: OfficialAsesmenType[] = [
     namaResmi: 'Sumatif Akhir Semester',
     keterangan: 'Semester 1 (Ganjil)',
     defaultPrefix: 'SAS',
-    allowedTingkat: ['X', 'XI', 'XII', 'SEMUA'],
   },
   {
     key: 'SAT',
@@ -31,8 +77,7 @@ export const OFFICIAL_ASESMEN_TYPES: OfficialAsesmenType[] = [
     namaResmi: 'Sumatif Akhir Tahun',
     keterangan: 'Kenaikan Kelas (Sem. 2)',
     defaultPrefix: 'SAT',
-    allowedTingkat: ['X', 'XI'],
-    tingkatRuleExplanation: 'Khusus Kenaikan Kelas X & XI',
+    tingkatRuleExplanation: 'Khusus Kenaikan Kelas (Selain Tingkat Akhir)',
   },
   {
     key: 'STS',
@@ -40,16 +85,14 @@ export const OFFICIAL_ASESMEN_TYPES: OfficialAsesmenType[] = [
     namaResmi: 'Sumatif Tengah Semester',
     keterangan: 'Tengah Semester',
     defaultPrefix: 'STS',
-    allowedTingkat: ['X', 'XI', 'XII', 'SEMUA'],
   },
   {
     key: 'PSAJ',
     singkatan: 'PSAJ',
     namaResmi: 'Penilaian Sumatif Akhir Jenjang',
-    keterangan: 'Kelulusan Kelas XII',
+    keterangan: 'Evaluasi Kelulusan Akhir',
     defaultPrefix: 'PSAJ',
-    allowedTingkat: ['XII'],
-    tingkatRuleExplanation: 'Khusus Kelulusan Kelas XII',
+    tingkatRuleExplanation: 'Khusus Kelulusan Tingkat Akhir',
   },
   {
     key: 'SLM',
@@ -57,7 +100,6 @@ export const OFFICIAL_ASESMEN_TYPES: OfficialAsesmenType[] = [
     namaResmi: 'Sumatif Lingkup Materi',
     keterangan: 'Ulangan Bab / TP',
     defaultPrefix: 'SLM',
-    allowedTingkat: ['X', 'XI', 'XII', 'SEMUA'],
   },
   {
     key: 'TRYOUT',
@@ -65,7 +107,6 @@ export const OFFICIAL_ASESMEN_TYPES: OfficialAsesmenType[] = [
     namaResmi: 'Simulasi / Try Out Asesmen',
     keterangan: 'Try Out & ANBK',
     defaultPrefix: 'TRYOUT',
-    allowedTingkat: ['X', 'XI', 'XII', 'SEMUA'],
   },
 ];
 
@@ -79,21 +120,12 @@ export interface SmartPeriodDetection {
 
 /**
  * Mendeteksi jenis kegiatan asesmen yang paling relevan secara cerdas
- * berdasarkan kalender bulan berjalan & semester aktif sekolah.
- * 
- * - Semester Ganjil (Juli - Des):
- *   * Juli-Agustus: SLM (Sumatif Lingkup Materi / Ulangan Awal Bab)
- *   * September-Oktober: STS (Sumatif Tengah Semester)
- *   * November-Desember: SAS (Sumatif Akhir Semester)
- * - Semester Genap (Januari - Juni):
- *   * Januari-Februari: SLM / Simulasi ANBK
- *   * Februari-Maret: STS (Sumatif Tengah Semester Genap)
- *   * Maret-April: PSAJ (Penilaian Sumatif Akhir Jenjang / Kelulusan XII)
- *   * Mei-Juni: SAT (Sumatif Akhir Tahun / Kenaikan Kelas)
+ * berdasarkan kalender bulan berjalan, semester aktif, dan jenjang sekolah.
  */
 export function detectSmartAsesmenType(
   activeSemester?: { nama_semester?: string; is_active?: boolean } | null,
-  tingkat?: string
+  tingkat?: string,
+  tingkatList: number[] = [10, 11, 12]
 ): SmartPeriodDetection {
   const now = new Date();
   const month = now.getMonth() + 1; // 1-12
@@ -107,11 +139,13 @@ export function detectSmartAsesmenType(
   const isExplicitGenap = semName.includes('genap') || semName.includes('2');
   const isExplicitGanjil = semName.includes('ganjil') || semName.includes('gasal') || semName.includes('1');
 
-  // Bila semester belum tersetting, gunakan kalender nasional Indonesia:
-  // Bulan 7 - 12 (Juli - Desember) = Semester Ganjil
-  // Bulan 1 - 6 (Januari - Juni) = Semester Genap
   const isGanjil = isExplicitGanjil ? true : isExplicitGenap ? false : (month >= 7 && month <= 12);
   const semesterLabel = isGanjil ? 'Semester Ganjil' : 'Semester Genap';
+
+  const maxTingkatNum = tingkatList.length > 0 ? Math.max(...tingkatList) : 12;
+  const currentTingkatNum = tingkat ? parseTingkatToNumber(tingkat) : undefined;
+  const isFinalGrade = currentTingkatNum === maxTingkatNum;
+  const finalGradeRoman = getTingkatRoman(maxTingkatNum);
 
   if (isGanjil) {
     if (month >= 11 || month === 12) {
@@ -141,13 +175,13 @@ export function detectSmartAsesmenType(
     }
   } else {
     // Semester Genap (Januari - Juni)
-    if (tingkat === 'XII' && (month === 2 || month === 3 || month === 4)) {
+    if (isFinalGrade && (month === 2 || month === 3 || month === 4)) {
       return {
         recommendedKey: 'PSAJ',
         semesterLabel,
         monthName,
-        reason: `Bulan ${monthName} bagi tingkat akhir (XII) adalah agenda Penilaian Sumatif Akhir Jenjang (PSAJ / Kelulusan).`,
-        shortTag: 'Periode PSAJ (Tingkat XII)',
+        reason: `Bulan ${monthName} bagi tingkat akhir (${finalGradeRoman}) adalah agenda Penilaian Sumatif Akhir Jenjang (PSAJ / Kelulusan).`,
+        shortTag: `Periode PSAJ (Tingkat ${finalGradeRoman})`,
       };
     } else if (month >= 5 || month === 6) {
       return {
@@ -198,25 +232,42 @@ export function generateAutoFillMassal(params: {
   const selectedDef = OFFICIAL_ASESMEN_TYPES.find((t) => t.key === targetKegiatanKey);
   const prefix = selectedDef?.defaultPrefix || targetKegiatanKey;
   const fullOfficialName = selectedDef?.namaResmi || targetKegiatanKey;
+  const romanTingkat = getTingkatRoman(targetTingkat);
 
-  const generatedCode = `${prefix}-${year}-${cleanMapelCode}-${targetTingkat}`;
-  const generatedTitle = `${prefix} - ${mapelName} Tingkat ${targetTingkat} (${fullOfficialName})`;
+  const generatedCode = `${prefix}-${year}-${cleanMapelCode}-${romanTingkat}`;
+  const generatedTitle = `${prefix} - ${mapelName} Tingkat ${romanTingkat} (${fullOfficialName})`;
 
   return { kodeBank: generatedCode, judul: generatedTitle };
 }
 
 /**
- * Menghitung daftar tingkat kelas yang sah untuk asesmen tertentu
+ * Menghitung daftar tingkat kelas yang sah untuk asesmen tertentu secara dinamis
+ * berdasarkan jenjang sekolah (SD: 1-6, SMP: 7-9, SMA: 10-12, SMK: 10-12/13).
  */
 export function getAllowedTingkatForAsesmen(
   scope: CbtBankSoalScope,
-  jenisKegiatanKey: string
-): Array<'X' | 'XI' | 'XII' | 'SEMUA'> {
+  jenisKegiatanKey: string,
+  tingkatList: number[] = [10, 11, 12]
+): string[] {
+  const romanList = tingkatList.map((t) => getTingkatRoman(t));
   if (scope !== 'TERPUSAT_MASSAL') {
-    return ['X', 'XI', 'XII', 'SEMUA'];
+    return [...romanList, 'SEMUA'];
   }
-  const def = OFFICIAL_ASESMEN_TYPES.find((t) => t.key === jenisKegiatanKey);
-  return def?.allowedTingkat || ['X', 'XI', 'XII', 'SEMUA'];
+
+  const maxTingkat = tingkatList.length > 0 ? Math.max(...tingkatList) : 12;
+  const finalGradeRoman = getTingkatRoman(maxTingkat);
+
+  if (jenisKegiatanKey === 'PSAJ') {
+    // PSAJ hanya untuk tingkat akhir kelulusan (VI di SD, IX di SMP, XII di SMA/SMK)
+    return [finalGradeRoman];
+  }
+
+  if (jenisKegiatanKey === 'SAT') {
+    // SAT adalah evaluasi kenaikan kelas untuk seluruh tingkat selain tingkat akhir
+    return romanList.filter((r) => r !== finalGradeRoman);
+  }
+
+  return [...romanList, 'SEMUA'];
 }
 
 // ==========================================
@@ -224,7 +275,7 @@ export function getAllowedTingkatForAsesmen(
 // ==========================================
 export const cbtBankSoalStep1Schema = z.object({
   mapel_id: z.string().min(1, 'Mata pelajaran wajib dipilih'),
-  tingkat: z.enum(['X', 'XI', 'XII', 'SEMUA']),
+  tingkat: z.string().min(1, 'Pilih tingkat/kelas bank soal'),
 });
 
 export const cbtBankSoalPayloadSchema = z.object({
@@ -232,6 +283,6 @@ export const cbtBankSoalPayloadSchema = z.object({
   judul: z.string().min(3, 'Judul bank soal minimal 3 karakter').max(200),
   guru_id: z.string().min(1, 'Guru pembuat/penyusun soal wajib dipilih'),
   mapel_id: z.string().min(1, 'Mata pelajaran wajib dipilih'),
-  tingkat: z.enum(['X', 'XI', 'XII', 'SEMUA']),
+  tingkat: z.string().min(1, 'Pilih tingkat/kelas bank soal'),
   alokasi_menit: z.number().int().min(10, 'Alokasi durasi minimal 10 menit').max(300),
 });

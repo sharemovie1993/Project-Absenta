@@ -4,6 +4,7 @@ import {
   localDateTimeInputToISO,
 } from '@/utils/attendance/time';
 import type { CbtBankSoal } from '@/types/cbt.types';
+import { parseTingkatToNumber } from '../bank-soal/cbtAsesmenHelper';
 
 // ==========================================
 // 1. ZOD VALIDATION SCHEMAS
@@ -57,14 +58,11 @@ export function getEndTimePreview(tanggalSelesai: string, tzLabel: string): stri
 // ==========================================
 
 /**
- * Mengonversi tingkat bank soal format romawi ('X', 'XI', 'XII') ke angka (10, 11, 12)
+ * Mengonversi tingkat bank soal (Romawi maupun angka) ke nomor integer (1-13)
  */
 export function resolveBankTingkatNumber(selectedBankSoal?: CbtBankSoal | null): number | undefined {
-  if (!selectedBankSoal) return undefined;
-  if (selectedBankSoal.tingkat === 'X') return 10;
-  if (selectedBankSoal.tingkat === 'XI') return 11;
-  if (selectedBankSoal.tingkat === 'XII') return 12;
-  return undefined;
+  if (!selectedBankSoal?.tingkat) return undefined;
+  return parseTingkatToNumber(selectedBankSoal.tingkat);
 }
 
 /**

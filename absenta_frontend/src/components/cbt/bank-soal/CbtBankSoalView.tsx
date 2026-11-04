@@ -23,6 +23,7 @@ import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtBankSoal } from '@/types/cbt.types';
 import { CbtBankSoalFormModal } from './CbtBankSoalFormModal';
 import { CbtBankSoalDetailModal } from './CbtBankSoalDetailModal';
+import { getTingkatRoman } from './cbtAsesmenHelper';
 import useConfirm from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
 
@@ -69,14 +70,11 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
     onFilterChange: () => setPage(1),
   });
 
-  // Normalisasi tingkat filter (misal: 10 -> 'X') agar presisi dengan schema DB CBT
+  // Normalisasi tingkat filter multi-jenjang (misal: 10 -> 'X', 7 -> 'VII', 1 -> 'I')
   const normalizedTingkat = useMemo(() => {
     const raw = filter.values.tingkat;
     if (!raw) return undefined;
-    if (raw === 10 || raw === '10' || raw === 'X') return 'X';
-    if (raw === 11 || raw === '11' || raw === 'XI') return 'XI';
-    if (raw === 12 || raw === '12' || raw === 'XII') return 'XII';
-    return String(raw);
+    return getTingkatRoman(raw);
   }, [filter.values.tingkat]);
 
   // 2. Fetch Bank Soal via TanStack Query

@@ -38,6 +38,7 @@ import {
 } from '@/utils/attendance/time';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import { resolveBankTingkatNumber } from './cbtJadwalHelper';
 
 interface PlottingDraftRow {
   jadwal_id: string;
@@ -315,9 +316,10 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
         if (prev[b.id]) {
           next[b.id] = prev[b.id];
         } else {
-          // Auto-match classes by tingkat
+          // Auto-match classes by tingkat across multi-jenjang (SD/SMP/SMA/SMK)
+          const bankNum = resolveBankTingkatNumber(b);
           const matchedKelasIds = kelasList
-            .filter((k) => !b.tingkat || String(k.tingkat).toUpperCase() === String(b.tingkat).toUpperCase())
+            .filter((k) => !bankNum || Number(k.tingkat) === bankNum)
             .map((k) => k.id);
 
           next[b.id] = {
