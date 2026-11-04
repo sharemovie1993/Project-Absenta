@@ -704,3 +704,5 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
     </div>
   );
 });
+
+export default CbtJadwalView;

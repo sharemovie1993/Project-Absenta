@@ -180,3 +180,5 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
     </div>
   );
 };
+
+export default CbtPanitiaOrchestratorView;

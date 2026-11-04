@@ -438,3 +438,5 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
     </div>
   );
 });
+
+export default CbtBankSoalView;

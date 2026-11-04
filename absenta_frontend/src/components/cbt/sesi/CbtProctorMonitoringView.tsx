@@ -653,3 +653,5 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
     </div>
   );
 };
+
+export default CbtProctorMonitoringView;

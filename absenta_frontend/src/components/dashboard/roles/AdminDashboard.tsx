@@ -50,7 +50,7 @@ const JurusanPage = lazy(() => import('@/pages/academic/JurusanPage').then((m) =
 const MapelPage = lazy(() => import('@/pages/academic/MapelPage').then((m) => ({ default: m.MapelPage })));
 const TahunPelajaranPage = lazy(() => import('@/pages/academic/TahunPelajaranPage').then((m) => ({ default: m.TahunPelajaranPage })));
 const UserPage = lazy(() => import('@/pages/users/UsersPage'));
-const StrukturOrganisasiPage = lazy(() => import('@/pages/academic/struktur-organisasi/StrukturOrganisasiPage').then((m) => ({ default: m.StrukturOrganisasiPage })));
+const StrukturOrganisasiPage = lazy(() => import('@/pages/academic/struktur-organisasi/StrukturOrganisasiPage').then((m) => ({ default: m.StrukturOrganisasiPage || m.default })));
 const StaffActivityLogPage = lazy(() => import('@/pages/academic/StaffActivityLogPage').then((m) => ({ default: m.StaffActivityLogPage })));
 const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'));
 const CetakBerkasPage = lazy(() => import('@/pages/academic/CetakBerkasPage').then((m) => ({ default: m.CetakBerkasPage })));

@@ -51,7 +51,7 @@ const TABS = [
   },
 ];
 
-const StrukturOrganisasiPage: React.FC = () => {
+export const StrukturOrganisasiPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
