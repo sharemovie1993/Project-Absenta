@@ -74,6 +74,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
 
   const [uploadingStimulus, setUploadingStimulus] = useState(false);
   const [uploadingOpsiIndex, setUploadingOpsiIndex] = useState<number | null>(null);
+  const [dragTarget, setDragTarget] = useState<'question' | number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPembahasanBox, setShowPembahasanBox] = useState(Boolean(soal?.pembahasan));
 
@@ -105,11 +106,31 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
     }
   }, [autoFocus]);
 
-  // Upload Gambar Stimulus Soal
-  const handleUploadStimulus = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Helper ekstrak file gambar dari event Clipboard (Ctrl+V Screenshot / Copy Image)
+  const extractImageFromClipboard = (clipboardData?: DataTransfer | null): File | null => {
+    if (!clipboardData) return null;
+    if (clipboardData.files && clipboardData.files.length > 0) {
+      const file = Array.from(clipboardData.files).find((f) => f.type.startsWith('image/'));
+      if (file) return file;
+    }
+    if (clipboardData.items) {
+      for (let i = 0; i < clipboardData.items.length; i++) {
+        const item = clipboardData.items[i];
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) return file;
+        }
+      }
+    }
+    return null;
+  };
 
+  // Upload Gambar Stimulus Soal (dari File Input, Paste Ctrl+V, atau Drag & Drop)
+  const uploadStimulusFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('File harus berupa gambar (PNG, JPG, WEBP)');
+      return;
+    }
     if (file.size > 5 * 1024 * 1024) {
       toast.error('Ukuran gambar maksimal 5 MB');
       return;
@@ -139,8 +160,18 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
     }
   };
 
+  const handleUploadStimulus = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadStimulusFile(file);
+  };
+
   // Upload Gambar Opsi (A, B, C, D, E)
   const handleUploadOpsi = async (index: number, file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('File harus berupa gambar (PNG, JPG, WEBP)');
+      return;
+    }
     if (file.size > 5 * 1024 * 1024) {
       toast.error('Ukuran gambar opsi maksimal 5 MB');
       return;
@@ -176,11 +207,18 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
   };
 
   /**
-   * Smart Multi-Line Paste (Google Forms Style):
-   * Saat guru mem-paste daftar baris dari Word/Docs/Excel ke salah satu input Opsi (misal Opsi A),
-   * otomatis pecah tiap baris ke Opsi A, B, C, D, E.
+   * Smart Paste pada Opsi (Mendukung Paste Gambar Screenshot Ctrl+V & Multi-Line List):
    */
   const handleOpsiPaste = (index: number, e: React.ClipboardEvent<HTMLInputElement>) => {
+    // 1. Cek apakah yang di-paste adalah gambar (Screenshot / Copy Image)
+    const imageFile = extractImageFromClipboard(e.clipboardData);
+    if (imageFile) {
+      e.preventDefault();
+      handleUploadOpsi(index, imageFile);
+      return;
+    }
+
+    // 2. Cek apakah yang di-paste adalah teks multi-baris
     const rawText = e.clipboardData?.getData('text/plain') || '';
     if (!rawText) return;
 
@@ -239,11 +277,18 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
   };
 
   /**
-   * Smart Paste pada kotak Pertanyaan:
-   * Jika guru mem-paste sekaligus Pertanyaan + Opsi A-E (berawalan A. / B. / C.),
-   * otomatis pisahkan pertanyaan dan isi Opsi A-E.
+   * Smart Paste pada kotak Pertanyaan (Mendukung Paste Gambar Screenshot Ctrl+V & Paket Soal + Opsi):
    */
   const handleQuestionPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    // 1. Cek apakah yang di-paste adalah gambar (Screenshot / Copy Image)
+    const imageFile = extractImageFromClipboard(e.clipboardData);
+    if (imageFile) {
+      e.preventDefault();
+      uploadStimulusFile(imageFile);
+      return;
+    }
+
+    // 2. Cek apakah yang di-paste adalah teks Pertanyaan + Opsi A-E
     const rawText = e.clipboardData?.getData('text/plain') || '';
     if (!rawText) return;
 
@@ -440,8 +485,31 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
         </div>
       </div>
 
-      {/* ── 2. PERTANYAAN + TOMBOL GAMBAR STIMULUS ── */}
-      <div className="space-y-2">
+      {/* ── 2. PERTANYAAN + TOMBOL GAMBAR STIMULUS (SUPPORT PASTE & DRAG-DROP GAMBAR) ── */}
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (dragTarget !== 'question') setDragTarget('question');
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (dragTarget === 'question') setDragTarget(null);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setDragTarget(null);
+          const file = e.dataTransfer?.files?.[0];
+          if (file) uploadStimulusFile(file);
+        }}
+        className={cn(
+          'space-y-2 rounded-xl transition-all',
+          dragTarget === 'question' &&
+            'ring-2 ring-[#673ab7] bg-purple-50/50 dark:bg-purple-950/30 p-2'
+        )}
+      >
         <div className="flex items-start gap-2">
           <div className="flex-1 min-w-0">
             <textarea
@@ -451,7 +519,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
               value={kontenPertanyaan}
               onChange={(e) => setKontenPertanyaan(e.target.value)}
               onPaste={handleQuestionPaste}
-              placeholder="Ketik pertanyaan di sini..."
+              placeholder="Ketik pertanyaan di sini... (Bisa Ctrl+V atau Drag & Drop gambar soal)"
               className="w-full px-3.5 py-2.5 text-xs sm:text-sm font-medium rounded-xl bg-slate-50/90 hover:bg-slate-100/70 focus:bg-white dark:bg-slate-800/60 dark:focus:bg-slate-900 text-slate-900 dark:text-white border-b-2 border-b-slate-200 dark:border-b-slate-700 focus:border-b-[#673ab7] focus:outline-none transition-all resize-y min-h-[60px]"
               aria-label="Pertanyaan Soal"
             />
@@ -517,12 +585,32 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
 
         {opsiJawaban.map((opt, index) => {
           const isKey = kunciJawaban === opt.kode;
+          const isDragOverThisOption = dragTarget === index;
           return (
             <div
               key={opt.kode}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (dragTarget !== index) setDragTarget(index);
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (dragTarget === index) setDragTarget(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setDragTarget(null);
+                const file = e.dataTransfer?.files?.[0];
+                if (file) handleUploadOpsi(index, file);
+              }}
               className={cn(
                 'rounded-xl px-2.5 py-1.5 transition-all flex flex-col gap-1.5',
-                isKey
+                isDragOverThisOption
+                  ? 'ring-2 ring-[#673ab7] bg-purple-50/60 dark:bg-purple-950/30 border border-purple-400'
+                  : isKey
                   ? 'bg-emerald-50/60 dark:bg-emerald-950/25 border border-emerald-300/80 dark:border-emerald-800/80'
                   : 'hover:bg-slate-50 dark:hover:bg-slate-800/40 border border-transparent'
               )}
@@ -549,7 +637,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
                     value={opt.teks}
                     onChange={(e) => handleOpsiTeksChange(index, e.target.value)}
                     onPaste={(e) => handleOpsiPaste(index, e)}
-                    placeholder={`Teks opsi ${opt.kode}... (Bisa paste daftar opsi sekaligus)`}
+                    placeholder={`Teks opsi ${opt.kode}... (Bisa paste daftar opsi / Ctrl+V gambar)`}
                     className={cn(
                       'w-full py-1 px-1.5 text-xs sm:text-sm font-medium bg-transparent border-b border-b-slate-200 dark:border-b-slate-700 focus:border-b-[#673ab7] focus:outline-none transition-colors',
                       isKey && 'font-bold text-emerald-950 dark:text-emerald-200'
@@ -592,7 +680,12 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
                 </div>
               </div>
 
-              {opt.gambar_url && (
+              {uploadingOpsiIndex === index ? (
+                <div className="ml-8 flex items-center gap-1.5 text-[11px] font-bold text-[#673ab7]">
+                  <UploadCloud size={13} className="animate-bounce" />
+                  <span>Mengunggah gambar opsi {opt.kode}...</span>
+                </div>
+              ) : opt.gambar_url ? (
                 <div className="ml-8 flex items-center gap-2">
                   <img
                     src={opt.gambar_url}
@@ -607,7 +700,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
                     <Trash2 size={11} /> Hapus
                   </button>
                 </div>
-              )}
+              ) : null}
             </div>
           );
         })}
