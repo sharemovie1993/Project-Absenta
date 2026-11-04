@@ -14,8 +14,15 @@ import { useCapabilities } from '@/hooks/useCapabilities';
 import type { CbtJadwalUjian } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
-import { ShieldAlert, Clock, Calendar, CheckSquare, BookOpen, CheckCircle2, Users } from 'lucide-react';
+import { ShieldAlert, Clock, Calendar, CheckSquare, BookOpen, CheckCircle2, Users, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  formatLocalDateTime,
+  getTimezone,
+  getTimezoneLabel,
+  getVirtualDate,
+  localDateTimeInputToISO,
+} from '@/utils/attendance/time';
 
 interface CbtJadwalFormModalProps {
   isOpen: boolean;
@@ -178,14 +185,28 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const activeTz = getTimezone();
+  const tzLabel = getTimezoneLabel(activeTz);
+
+  const syncWithNow = () => {
+    const now = getVirtualDate();
+    const end = new Date(now.getTime() + Math.max(120, Number(durasiMenit) || 90) * 60 * 1000);
+    setTanggalMulai(formatLocalDateTime(now));
+    setTanggalSelesai(formatLocalDateTime(end));
+  };
+
   useEffect(() => {
     if (jadwalToEdit) {
       setBankSoalId(jadwalToEdit.bank_soal_id);
       setTpId(jadwalToEdit.tahun_pelajaran_id);
       setSemId(jadwalToEdit.semester_id);
       setNamaSesi(jadwalToEdit.nama_sesi);
-      setTanggalMulai(jadwalToEdit.tanggal_mulai ? new Date(jadwalToEdit.tanggal_mulai).toISOString().slice(0, 16) : '');
-      setTanggalSelesai(jadwalToEdit.tanggal_selesai ? new Date(jadwalToEdit.tanggal_selesai).toISOString().slice(0, 16) : '');
+      setTanggalMulai(
+        jadwalToEdit.tanggal_mulai ? formatLocalDateTime(new Date(jadwalToEdit.tanggal_mulai)) : ''
+      );
+      setTanggalSelesai(
+        jadwalToEdit.tanggal_selesai ? formatLocalDateTime(new Date(jadwalToEdit.tanggal_selesai)) : ''
+      );
       setDurasiMenit(jadwalToEdit.durasi_menit);
       setToleransiMenit(jadwalToEdit.toleransi_terlambat_menit);
       setTargetKelasIds((jadwalToEdit.target_kelas_ids as string[]) || []);
@@ -198,14 +219,20 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
         setShowResultInstant(jadwalToEdit.setting_keamanan.show_result_instant ?? false);
       }
     } else {
-      const now = new Date();
+      const now = getVirtualDate();
       const end = new Date(now.getTime() + 2 * 60 * 60 * 1000); // +2 jam
       setBankSoalId('');
       setTpId(activeTpYear?.id || tpOptions[0]?.value || '');
       setSemId(activeSemester?.id || semOptions[0]?.value || '');
-      setNamaSesi(`UAS Sesi ${new Date().toLocaleDateString('id-ID', { month: 'short', day: '2-digit' })}`);
-      setTanggalMulai(now.toISOString().slice(0, 16));
-      setTanggalSelesai(end.toISOString().slice(0, 16));
+      setNamaSesi(
+        `UAS Sesi ${now.toLocaleDateString('id-ID', {
+          month: 'short',
+          day: '2-digit',
+          timeZone: activeTz,
+        })}`
+      );
+      setTanggalMulai(formatLocalDateTime(now));
+      setTanggalSelesai(formatLocalDateTime(end));
       setDurasiMenit(90);
       setToleransiMenit(15);
       setTargetKelasIds([]);
@@ -215,7 +242,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
       setShuffleOptions(true);
       setShowResultInstant(false);
     }
-  }, [jadwalToEdit, isOpen, activeTpYear?.id, tpOptions]);
+  }, [jadwalToEdit, isOpen, activeTpYear?.id, tpOptions, activeTz]);
 
   // Auto-select bank soal jika guru hanya punya 1 paket bank soal
   useEffect(() => {
@@ -282,8 +309,8 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
         tahun_pelajaran_id: tpId,
         semester_id: semId,
         nama_sesi: namaSesi.trim(),
-        tanggal_mulai: new Date(tanggalMulai).toISOString(),
-        tanggal_selesai: new Date(tanggalSelesai).toISOString(),
+        tanggal_mulai: localDateTimeInputToISO(tanggalMulai, activeTz),
+        tanggal_selesai: localDateTimeInputToISO(tanggalSelesai, activeTz),
         durasi_menit: Number(durasiMenit),
         toleransi_terlambat_menit: Number(toleransiMenit),
         target_kelas_ids: targetKelasIds,
@@ -419,33 +446,50 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
         </div>
 
         {/* Rentang Waktu Ujian */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="jadwal-mulai" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Waktu Mulai Ujian <span className="text-rose-500">*</span>
-            </label>
-            <Input
-              id="jadwal-mulai"
-              type="datetime-local"
-              value={tanggalMulai}
-              onChange={(e) => setTanggalMulai(e.target.value)}
-              aria-label="Waktu Mulai Ujian"
-              required
-            />
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50/80 dark:bg-indigo-950/50 border border-indigo-200/70 dark:border-indigo-800/60 px-2.5 py-0.5 rounded-full">
+              <Clock className="w-3 h-3" />
+              <span>Zona Waktu Sekolah: {tzLabel} ({activeTz})</span>
+            </span>
+            <button
+              type="button"
+              onClick={syncWithNow}
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Set Waktu Sekarang ({tzLabel})</span>
+            </button>
           </div>
 
-          <div>
-            <label htmlFor="jadwal-selesai" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Batas Akhir Ujian <span className="text-rose-500">*</span>
-            </label>
-            <Input
-              id="jadwal-selesai"
-              type="datetime-local"
-              value={tanggalSelesai}
-              onChange={(e) => setTanggalSelesai(e.target.value)}
-              aria-label="Batas Akhir Ujian"
-              required
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="jadwal-mulai" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Waktu Mulai Ujian ({tzLabel}) <span className="text-rose-500">*</span>
+              </label>
+              <Input
+                id="jadwal-mulai"
+                type="datetime-local"
+                value={tanggalMulai}
+                onChange={(e) => setTanggalMulai(e.target.value)}
+                aria-label="Waktu Mulai Ujian"
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="jadwal-selesai" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Batas Akhir Ujian ({tzLabel}) <span className="text-rose-500">*</span>
+              </label>
+              <Input
+                id="jadwal-selesai"
+                type="datetime-local"
+                value={tanggalSelesai}
+                onChange={(e) => setTanggalSelesai(e.target.value)}
+                aria-label="Batas Akhir Ujian"
+                required
+              />
+            </div>
           </div>
         </div>
 

@@ -127,3 +127,33 @@ export const getTimezoneLabel = (tz?: string): string => {
   if (activeTz.includes('Jayapura') || activeTz.includes('WIT')) return 'WIT';
   return 'WIB';
 };
+
+export const getTimezoneOffsetString = (tz?: string): string => {
+  const activeTz = tz || getTimezone();
+  if (activeTz.includes('Makassar') || activeTz.includes('WITA')) return '+08:00';
+  if (activeTz.includes('Jayapura') || activeTz.includes('WIT')) return '+09:00';
+  return '+07:00';
+};
+
+/**
+ * Mengonversi nilai input `datetime-local` ("YYYY-MM-DDTHH:mm") ke ISO 8601 UTC string
+ * dengan memperhitungkan Timezone Sekolah/Tenant aktif (WIB +07:00 / WITA +08:00 / WIT +09:00).
+ */
+export const localDateTimeInputToISO = (localDateTimeStr: string, tz?: string): string => {
+  if (!localDateTimeStr) return '';
+  const trimmed = localDateTimeStr.trim();
+  // Jika sudah memiliki informasi zona waktu (Z atau +HH:mm), langsung parse
+  if (/[zZ]$|[+-]\d{2}:\d{2}$/.test(trimmed)) {
+    const d = new Date(trimmed);
+    return isNaN(d.getTime()) ? '' : d.toISOString();
+  }
+  const offset = getTimezoneOffsetString(tz);
+  // Pastikan format memiliki detik YYYY-MM-DDTHH:mm:ss+07:00
+  const normalized = trimmed.length === 16 ? `${trimmed}:00` : trimmed;
+  const d = new Date(`${normalized}${offset}`);
+  if (!isNaN(d.getTime())) {
+    return d.toISOString();
+  }
+  const fallback = new Date(trimmed);
+  return isNaN(fallback.getTime()) ? '' : fallback.toISOString();
+};

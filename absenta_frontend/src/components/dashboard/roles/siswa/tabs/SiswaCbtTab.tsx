@@ -27,6 +27,7 @@ import {
 import { cn } from '@/lib/utils';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtStudentExamItem } from '@/types/cbt.types';
+import { getTimezone, getTimezoneLabel } from '@/utils/attendance/time';
 
 type FilterKey = 'aktif' | 'riwayat' | 'semua';
 
@@ -40,12 +41,14 @@ const formatDateTime = (iso?: string | null) => {
   if (!iso) return '-';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '-';
+  const tz = getTimezone();
   return d.toLocaleString('id-ID', {
     weekday: 'short',
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: tz,
   });
 };
 
@@ -53,10 +56,12 @@ const formatTimeOnly = (iso?: string | null) => {
   if (!iso) return '-';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '-';
-  return d.toLocaleTimeString('id-ID', {
+  const tz = getTimezone();
+  return `${d.toLocaleTimeString('id-ID', {
     hour: '2-digit',
     minute: '2-digit',
-  });
+    timeZone: tz,
+  })} ${getTimezoneLabel(tz)}`;
 };
 
 const formatScore = (val: number) => {

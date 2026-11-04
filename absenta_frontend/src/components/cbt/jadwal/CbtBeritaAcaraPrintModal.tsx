@@ -5,6 +5,7 @@ import type { CbtJadwalUjian } from '@/types/cbt.types';
 import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '@/lib/axiosInstance';
 import toast from 'react-hot-toast';
+import { getTimezone, getTimezoneLabel } from '@/utils/attendance/time';
 
 interface CbtBeritaAcaraPrintModalProps {
   isOpen: boolean;
@@ -42,15 +43,18 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
 
   if (!jadwal) return null;
 
+  const activeTz = getTimezone();
+  const tzLabel = getTimezoneLabel(activeTz);
   const tglMulai = new Date(jadwal.tanggal_mulai);
   const tanggalFormat = tglMulai.toLocaleDateString('id-ID', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone: activeTz,
   });
 
-  const jamFormat = `${tglMulai.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB s.d. Selesai`;
+  const jamFormat = `${tglMulai.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: activeTz })} ${tzLabel} s.d. Selesai`;
 
   return (
     <Modal
@@ -177,7 +181,7 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
               </div>
 
               <div className="text-center w-52 space-y-16">
-                <p>{kotaSekolah}, {tglMulai.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br />Pengawas 2 / Tim CBT,</p>
+                <p>{kotaSekolah}, {tglMulai.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: activeTz })}<br />Pengawas 2 / Tim CBT,</p>
                 <div>
                   <p className="font-bold underline">{pengawas2 || '( .......................................... )'}</p>
                   <p className="text-[10px] text-gray-600">NIP. .....................................</p>

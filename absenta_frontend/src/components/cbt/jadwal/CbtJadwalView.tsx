@@ -34,6 +34,7 @@ import { CbtBeritaAcaraPrintModal } from './CbtBeritaAcaraPrintModal';
 import { CbtTransferNilaiModal } from './CbtTransferNilaiModal';
 import useConfirm from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
+import { formatLocalTimeFromISO, getTimezone, getTimezoneLabel } from '@/utils/attendance/time';
 
 export interface UniversalCbtJadwalViewProps {
   guruId?: string;
@@ -251,17 +252,29 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         key: 'waktu',
         title: 'Jadwal & Durasi',
         label: 'Jadwal & Durasi',
-        className: 'min-w-[180px]',
+        className: 'min-w-[190px]',
         render: (_val: unknown, row: CbtJadwalUjian) => {
           const tgl = new Date(row.tanggal_mulai);
+          const tz = getTimezone();
+          const tzLabel = getTimezoneLabel(tz);
+          const jamMulai = formatLocalTimeFromISO(row.tanggal_mulai);
+          const jamSelesai = formatLocalTimeFromISO(row.tanggal_selesai);
           return (
             <div className="space-y-0.5 text-xs">
               <div className="font-semibold text-slate-700 dark:text-slate-300">
-                {tgl.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                {tgl.toLocaleDateString('id-ID', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                  timeZone: tz,
+                })}
               </div>
-              <div className="text-[11px] text-slate-400 flex items-center gap-1">
-                <Clock size={11} />
-                <span>{row.durasi_menit} Menit</span>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                <Clock size={11} className="shrink-0" />
+                <span>
+                  {jamMulai && jamSelesai ? `${jamMulai}–${jamSelesai} ${tzLabel} • ` : ''}
+                  {row.durasi_menit} mnt
+                </span>
               </div>
             </div>
           );
