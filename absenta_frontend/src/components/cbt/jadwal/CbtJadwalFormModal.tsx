@@ -11,7 +11,7 @@ import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import { kurikulumApi } from '@/api/kurikulum.api';
 import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
-import type { CbtJadwalUjian } from '@/types/cbt.types';
+import type { CbtJadwalUjian, CbtRaporSlot } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
 import {
@@ -23,6 +23,7 @@ import {
   RotateCcw,
   ArrowRight,
   ArrowLeft,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -199,12 +200,14 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
   const [toleransiMenit, setToleransiMenit] = useState<number>(15);
   const [targetKelasIds, setTargetKelasIds] = useState<string[]>([]);
 
-  // Keamanan
+  // Keamanan & Otomasi Rapor
   const [blockTabSwitch, setBlockTabSwitch] = useState(true);
   const [maxTabSwitches, setMaxTabSwitches] = useState(3);
   const [shuffleQuestions, setShuffleQuestions] = useState(true);
   const [shuffleOptions, setShuffleOptions] = useState(true);
   const [showResultInstant, setShowResultInstant] = useState(false);
+  const [autoTransferRapor, setAutoTransferRapor] = useState(true);
+  const [targetRaporSlot, setTargetRaporSlot] = useState<CbtRaporSlot>('sumatif_akhir');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -243,6 +246,8 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
         setShuffleQuestions(jadwalToEdit.setting_keamanan.shuffle_questions ?? true);
         setShuffleOptions(jadwalToEdit.setting_keamanan.shuffle_options ?? true);
         setShowResultInstant(jadwalToEdit.setting_keamanan.show_result_instant ?? false);
+        setAutoTransferRapor(jadwalToEdit.setting_keamanan.auto_transfer_rapor ?? false);
+        setTargetRaporSlot(jadwalToEdit.setting_keamanan.target_rapor_slot || 'sumatif_akhir');
       }
     } else {
       const now = getVirtualDate();
@@ -267,6 +272,8 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
       setShuffleQuestions(true);
       setShuffleOptions(true);
       setShowResultInstant(false);
+      setAutoTransferRapor(true);
+      setTargetRaporSlot('sumatif_akhir');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jadwalToEdit, isOpen]);
@@ -387,6 +394,8 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
           shuffle_questions: shuffleQuestions,
           shuffle_options: shuffleOptions,
           show_result_instant: showResultInstant,
+          auto_transfer_rapor: autoTransferRapor,
+          target_rapor_slot: autoTransferRapor ? targetRaporSlot : null,
         },
       };
 
@@ -720,6 +729,74 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                   <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                   <span>Otomatis difilter hanya kelas yang Anda ajar untuk mata pelajaran ini.</span>
                 </p>
+              )}
+            </div>
+
+            {/* Otomasi Transfer Nilai ke e-Rapor */}
+            <div className="p-3 bg-emerald-50/40 dark:bg-emerald-950/20 rounded-xl border border-emerald-200/70 dark:border-emerald-900/50 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                  <input
+                    type="checkbox"
+                    checked={autoTransferRapor}
+                    onChange={(e) => setAutoTransferRapor(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 cursor-pointer"
+                    aria-label="Otomatis Transfer Nilai ke e-Rapor"
+                  />
+                  <ArrowRightLeft size={14} className="text-emerald-600 shrink-0" />
+                  <span>Otomatis Transfer Nilai ke Buku Nilai e-Rapor</span>
+                </label>
+                {autoTransferRapor && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
+                    Real-Time Aktif
+                  </span>
+                )}
+              </div>
+
+              {autoTransferRapor && (
+                <div className="space-y-1.5 pt-0.5">
+                  <span className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                    Petakan Hasil Ujian ke Kolom / Slot Rapor:
+                  </span>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {(
+                      [
+                        { key: 'sumatif_1', label: 'SUM 1', desc: 'Sumatif 1' },
+                        { key: 'sumatif_2', label: 'SUM 2', desc: 'Sumatif 2' },
+                        { key: 'sumatif_3', label: 'SUM 3', desc: 'Sumatif 3' },
+                        { key: 'sumatif_akhir', label: 'SUM AKHIR', desc: 'SAS / UAS' },
+                      ] as { key: CbtRaporSlot; label: string; desc: string }[]
+                    ).map((slot) => {
+                      const active = targetRaporSlot === slot.key;
+                      return (
+                        <button
+                          key={slot.key}
+                          type="button"
+                          onClick={() => setTargetRaporSlot(slot.key)}
+                          className={cn(
+                            'p-2 rounded-lg border text-left transition-all cursor-pointer flex flex-col items-start',
+                            active
+                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-emerald-300'
+                          )}
+                        >
+                          <span className="text-[11px] font-black leading-tight">{slot.label}</span>
+                          <span
+                            className={cn(
+                              'text-[9px] font-medium truncate w-full',
+                              active ? 'text-emerald-100' : 'text-slate-400'
+                            )}
+                          >
+                            {slot.desc}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                    Nilai siswa otomatis masuk ke kolom <strong>{targetRaporSlot.toUpperCase().replace('_', ' ')}</strong> begitu siswa menyelesaikan ujian.
+                  </p>
+                </div>
               )}
             </div>
 

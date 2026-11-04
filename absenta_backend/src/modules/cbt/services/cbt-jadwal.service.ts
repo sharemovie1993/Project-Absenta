@@ -262,7 +262,7 @@ export class CbtJadwalService {
   }
 
   /**
-   * Menyelesaikan Jadwal Ujian
+   * Menyelesaikan Jadwal Ujian & Menjalankan Auto-Transfer ke e-Rapor jika diaktifkan
    */
   static async completeJadwal(tenantId: string, id: string) {
     const jadwal = await this.getById(tenantId, id);
@@ -273,10 +273,213 @@ export class CbtJadwalService {
       await redis.del(`cbt:${tenantId}:token:${jadwal.token_ujian}`).catch(() => null);
     }
 
-    return prisma.cbtJadwalUjian.update({
+    const updated = await prisma.cbtJadwalUjian.update({
       where: { id },
       data: { status: 'COMPLETED' },
     });
+
+    // Jaring pengaman: jika auto_transfer_rapor aktif, sinkronkan seluruh peserta FINISHED ke slot tujuan
+    const cfg = (jadwal.setting_keamanan as any) || {};
+    if (cfg.auto_transfer_rapor && cfg.target_rapor_slot) {
+      await this.transferToRapor(tenantId, id, {
+        target_slot: cfg.target_rapor_slot,
+        tahun_pelajaran_id: jadwal.tahun_pelajaran_id,
+        semester_id: jadwal.semester_id,
+        mapel_id: jadwal.BankSoal.mapel_id,
+        overwrite_existing: true,
+        round_integer: true,
+      }).catch((err: any) => {
+        console.warn('[CBT Complete Jadwal Auto-Transfer Warn]', err?.message);
+      });
+    }
+
+    return updated;
+  }
+
+  /**
+   * Auto-Transfer Nilai 1 Siswa secara Real-Time saat siswa menyelesaikan ujian (Submit Final)
+   */
+  static async autoTransferSingleStudentIfEnabled(
+    tenantId: string,
+    jadwalId: string,
+    siswaId: string,
+    rawScore: number
+  ) {
+    const jadwal = await prisma.cbtJadwalUjian.findFirst({
+      where: { id: jadwalId, tenant_id: tenantId },
+      include: {
+        BankSoal: { select: { mapel_id: true } },
+        TahunPelajaran: { select: { id: true, tahun: true } },
+        Semester: { select: { id: true, nama_semester: true, tahun_pelajaran_id: true } },
+      },
+    });
+
+    if (!jadwal) return null;
+
+    const cfg = (jadwal.setting_keamanan as any) || {};
+    const targetSlot = cfg.target_rapor_slot as
+      | 'sumatif_1'
+      | 'sumatif_2'
+      | 'sumatif_3'
+      | 'sumatif_akhir'
+      | undefined;
+
+    if (!cfg.auto_transfer_rapor || !targetSlot) {
+      return null;
+    }
+
+    const effectiveMapelId = jadwal.BankSoal.mapel_id;
+    let effectiveTpId = jadwal.tahun_pelajaran_id;
+    let effectiveSemId = jadwal.semester_id;
+
+    // Pastikan semester selaras dengan tahun pelajaran
+    if (jadwal.Semester && jadwal.Semester.tahun_pelajaran_id !== effectiveTpId) {
+      const matchedSem = await prisma.semester.findFirst({
+        where: {
+          tenant_id: tenantId,
+          tahun_pelajaran_id: effectiveTpId,
+          nama_semester: { equals: jadwal.Semester.nama_semester, mode: 'insensitive' },
+        },
+      });
+      if (matchedSem) {
+        effectiveSemId = matchedSem.id;
+      }
+    }
+
+    const siswa = await prisma.siswa.findFirst({
+      where: { id: siswaId, tenant_id: tenantId },
+      select: { id: true, kelas_id: true },
+    });
+
+    if (!siswa) return null;
+
+    let saId: string | null = null;
+    if (siswa.kelas_id) {
+      const sa = await prisma.siswaAkademik.upsert({
+        where: {
+          siswa_id_tahun_pelajaran_id_semester_id: {
+            siswa_id: siswaId,
+            tahun_pelajaran_id: effectiveTpId,
+            semester_id: effectiveSemId,
+          },
+        },
+        create: {
+          siswa_id: siswaId,
+          kelas_id: siswa.kelas_id,
+          tahun_pelajaran_id: effectiveTpId,
+          semester_id: effectiveSemId,
+          status: 'AKTIF',
+        },
+        update: {
+          kelas_id: siswa.kelas_id,
+          status: 'AKTIF',
+        },
+        select: { id: true },
+      });
+      saId = sa.id;
+    }
+
+    const [tpSumberCfg, globalSumberCfg, existing] = await Promise.all([
+      prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: `RAPOR_SUMBER_NILAI_${effectiveTpId}` },
+      }),
+      prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: 'RAPOR_SUMBER_NILAI' },
+      }),
+      prisma.nilaiSiswa.findUnique({
+        where: {
+          siswa_id_mapel_id_tahun_pelajaran_id_semester_id: {
+            siswa_id: siswaId,
+            mapel_id: effectiveMapelId,
+            tahun_pelajaran_id: effectiveTpId,
+            semester_id: effectiveSemId,
+          },
+        },
+      }),
+    ]);
+
+    const startYear = parseInt((jadwal.TahunPelajaran?.tahun || '').split('/')[0].trim(), 10) || 2024;
+    const defaultMode = startYear <= 2023 ? 'MURNI_CP_MANUAL' : 'FORMULA_SUMATIF';
+    const activeSumberNilai = (tpSumberCfg?.value || globalSumberCfg?.value || defaultMode) as
+      | 'FORMULA_SUMATIF'
+      | 'MURNI_CP_MANUAL';
+
+    const cbtScore = Math.round(Number(rawScore ?? 0));
+
+    const sum1 = targetSlot === 'sumatif_1' ? cbtScore : (existing?.sumatif_1 ?? null);
+    const sum2 = targetSlot === 'sumatif_2' ? cbtScore : (existing?.sumatif_2 ?? null);
+    const sum3 = targetSlot === 'sumatif_3' ? cbtScore : (existing?.sumatif_3 ?? null);
+    const nilaiAkhir =
+      targetSlot === 'sumatif_akhir' ? cbtScore : (existing?.nilai_akhir_sumatif ?? null);
+
+    const sumatifList = [sum1, sum2, sum3].filter(
+      (v): v is number => v !== undefined && v !== null && !isNaN(v)
+    );
+
+    let rataRataSumatif: number | null = null;
+    if (sumatifList.length > 0) {
+      const total = sumatifList.reduce((acc, curr) => acc + curr, 0);
+      rataRataSumatif = Number((total / sumatifList.length).toFixed(2));
+    }
+
+    let nilaiRaporFinal: number | null = null;
+    if (activeSumberNilai === 'MURNI_CP_MANUAL') {
+      nilaiRaporFinal = existing?.nilai_rapor_final ?? nilaiAkhir ?? rataRataSumatif ?? cbtScore;
+    } else {
+      if (rataRataSumatif !== null && nilaiAkhir !== null) {
+        nilaiRaporFinal = Number(((rataRataSumatif + nilaiAkhir) / 2).toFixed(2));
+      } else if (nilaiAkhir !== null) {
+        nilaiRaporFinal = nilaiAkhir;
+      } else if (rataRataSumatif !== null) {
+        nilaiRaporFinal = rataRataSumatif;
+      }
+    }
+
+    const mainNilai = nilaiRaporFinal ?? cbtScore;
+
+    await prisma.nilaiSiswa.upsert({
+      where: {
+        siswa_id_mapel_id_tahun_pelajaran_id_semester_id: {
+          siswa_id: siswaId,
+          mapel_id: effectiveMapelId,
+          tahun_pelajaran_id: effectiveTpId,
+          semester_id: effectiveSemId,
+        },
+      },
+      update: {
+        sumatif_1: sum1,
+        sumatif_2: sum2,
+        sumatif_3: sum3,
+        rata_rata_sumatif: rataRataSumatif,
+        nilai_akhir_sumatif: nilaiAkhir,
+        nilai_rapor_final: nilaiRaporFinal,
+        nilai: mainNilai,
+        ...(saId ? { siswa_akademik_id: saId } : {}),
+      },
+      create: {
+        tenant_id: tenantId,
+        siswa_id: siswaId,
+        siswa_akademik_id: saId,
+        mapel_id: effectiveMapelId,
+        tahun_pelajaran_id: effectiveTpId,
+        semester_id: effectiveSemId,
+        sumatif_1: sum1,
+        sumatif_2: sum2,
+        sumatif_3: sum3,
+        rata_rata_sumatif: rataRataSumatif,
+        nilai_akhir_sumatif: nilaiAkhir,
+        nilai_rapor_final: nilaiRaporFinal,
+        nilai: mainNilai,
+      },
+    });
+
+    void cacheInvalidationService.invalidateRaporCache(tenantId);
+
+    return {
+      auto_transferred: true,
+      target_slot: targetSlot,
+      score: cbtScore,
+    };
   }
 
   /**

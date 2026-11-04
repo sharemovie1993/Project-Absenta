@@ -60,6 +60,8 @@ export const settingKeamananSchema = z.object({
   shuffle_questions: z.boolean().default(true),
   shuffle_options: z.boolean().default(true),
   show_result_instant: z.boolean().default(false),
+  auto_transfer_rapor: z.boolean().default(false),
+  target_rapor_slot: z.enum(['sumatif_1', 'sumatif_2', 'sumatif_3', 'sumatif_akhir']).nullable().optional(),
 }).partial();
 
 export const createJadwalUjianSchema = z.object({

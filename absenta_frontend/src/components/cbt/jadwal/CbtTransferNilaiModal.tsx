@@ -130,9 +130,12 @@ export const CbtTransferNilaiModal: React.FC<CbtTransferNilaiModalProps> = ({
 
       setSelectedKelasIds(Array.isArray(jadwal.target_kelas_ids) ? jadwal.target_kelas_ids : []);
 
-      // Auto-suggest slot based on session name
+      // Prioritaskan slot yang sudah dikonfigurasi di jadwal (auto_transfer_rapor), lalu fallback ke deteksi nama sesi
+      const configuredSlot = jadwal.setting_keamanan?.target_rapor_slot;
       const lower = (jadwal.nama_sesi || '').toLowerCase();
-      if (lower.includes('akhir') || lower.includes('sas') || lower.includes('uas') || lower.includes('pat') || lower.includes('pas')) {
+      if (configuredSlot) {
+        setTargetSlot(configuredSlot);
+      } else if (lower.includes('akhir') || lower.includes('sas') || lower.includes('uas') || lower.includes('pat') || lower.includes('pas')) {
         setTargetSlot('sumatif_akhir');
       } else if (lower.includes('pts') || lower.includes('sts') || lower.includes('sumatif 2') || lower.includes('uh 2')) {
         setTargetSlot('sumatif_2');

@@ -172,20 +172,46 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         title: 'Sesi Ujian & Mapel',
         label: 'Sesi Ujian & Mapel',
         className: 'min-w-[220px]',
-        render: (_val: unknown, row: CbtJadwalUjian) => (
-          <div className="space-y-1">
-            <span className="font-bold text-xs text-slate-900 dark:text-slate-100 line-clamp-1">
-              {row.nama_sesi}
-            </span>
-            <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
-              <span className="font-semibold text-indigo-600 dark:text-indigo-400">
-                {row.BankSoal?.Mapel?.nama_mapel || '-'}
-              </span>
-              <span>•</span>
-              <span className="font-mono text-slate-400">{row.BankSoal?.kode_bank}</span>
+        render: (_val: unknown, row: CbtJadwalUjian) => {
+          const autoRapor = row.setting_keamanan?.auto_transfer_rapor;
+          const targetSlot = row.setting_keamanan?.target_rapor_slot;
+          const slotLabel =
+            targetSlot === 'sumatif_1'
+              ? 'SUM 1'
+              : targetSlot === 'sumatif_2'
+              ? 'SUM 2'
+              : targetSlot === 'sumatif_3'
+              ? 'SUM 3'
+              : targetSlot === 'sumatif_akhir'
+              ? 'SUM AKHIR'
+              : null;
+
+          return (
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-bold text-xs text-slate-900 dark:text-slate-100 line-clamp-1">
+                  {row.nama_sesi}
+                </span>
+                {autoRapor && slotLabel && (
+                  <span
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60"
+                    title={`Nilai otomatis ditransfer ke kolom ${slotLabel} di e-Rapor`}
+                  >
+                    <ArrowRightLeft size={9} />
+                    <span>Auto → {slotLabel}</span>
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+                  {row.BankSoal?.Mapel?.nama_mapel || '-'}
+                </span>
+                <span>•</span>
+                <span className="font-mono text-slate-400">{row.BankSoal?.kode_bank}</span>
+              </div>
             </div>
-          </div>
-        ),
+          );
+        },
       },
       {
         key: 'token',

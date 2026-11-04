@@ -1,6 +1,7 @@
 import { prisma } from '@/utils/prisma';
 import { getRedisConnection } from '@/infra/redis/redisClient';
 import { Prisma } from '@prisma/client';
+import { CbtJadwalService } from './cbt-jadwal.service';
 
 export class CbtTestEngineService {
   /**
@@ -509,6 +510,16 @@ export class CbtTestEngineService {
     if (redis) {
       await redis.del(`cbt:${tenantId}:session:${siswaId}`).catch(() => null);
     }
+
+    // Jika jadwal mengaktifkan Auto-Transfer ke e-Rapor, suntikkan nilai siswa secara real-time
+    await CbtJadwalService.autoTransferSingleStudentIfEnabled(
+      tenantId,
+      jadwalId,
+      siswaId,
+      nilaiAkhir
+    ).catch((err: any) => {
+      console.warn('[CBT Auto-Transfer on Submit Warn]', err?.message);
+    });
 
     const showInstant = (peserta.JadwalUjian.setting_keamanan as any)?.show_result_instant ?? false;
 

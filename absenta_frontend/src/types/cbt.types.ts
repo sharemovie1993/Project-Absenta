@@ -56,6 +56,8 @@ export interface CbtBankSoal {
   };
 }
 
+export type CbtRaporSlot = 'sumatif_1' | 'sumatif_2' | 'sumatif_3' | 'sumatif_akhir';
+
 export interface CbtSettingKeamanan {
   lock_device?: boolean;
   block_tab_switching?: boolean;
@@ -63,6 +65,8 @@ export interface CbtSettingKeamanan {
   shuffle_questions?: boolean;
   shuffle_options?: boolean;
   show_result_instant?: boolean;
+  auto_transfer_rapor?: boolean;
+  target_rapor_slot?: CbtRaporSlot | null;
 }
 
 export interface CbtJadwalUjian {
@@ -173,8 +177,6 @@ export interface CbtStudentExamItem {
     jumlah_salah: number;
   } | null;
 }
-
-export type CbtRaporSlot = 'sumatif_1' | 'sumatif_2' | 'sumatif_3' | 'sumatif_akhir';
 
 export interface CbtTransferNilaiPayload {
   target_slot: CbtRaporSlot;
