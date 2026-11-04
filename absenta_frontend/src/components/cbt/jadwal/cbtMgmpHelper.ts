@@ -33,6 +33,18 @@ export interface AuditedTargetItem {
   nudgeMeta?: CbtNudgeMeta;
 }
 
+export interface MapelPaketTeoriItem {
+  id: string;
+  mapel_id: string;
+  nama_mapel: string;
+  tingkat: number;
+  assignedTeachers: Array<{ id: string; nama_guru: string }>;
+  isReady: boolean;
+  bankSoal?: CbtBankSoal;
+  masterAuthor?: string;
+  soalCount: number;
+}
+
 const STORAGE_PREFIX = 'cbt_mgmp_shared_teachers_';
 const NUDGE_STORAGE_PREFIX = 'cbt_nudge_history_';
 

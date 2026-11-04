@@ -8,8 +8,9 @@ import {
   CheckCircle2,
   AlertCircle,
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CbtBankSoal } from '@/types/cbt.types';
+import type { GuruMapel } from '@/types/academic';
 import { useJenjang } from '@/hooks/useJenjang';
 import { formatTingkatRomawi } from '../bank-soal/cbtAsesmenHelper';
 import { resolveBankTingkatNumber } from './cbtJadwalHelper';
@@ -22,12 +23,14 @@ import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
 import {
   AuditedTargetItem,
+  MapelPaketTeoriItem,
   getAllMgmpSharedMap,
   getNudgeHistory,
   recordNudge,
 } from './cbtMgmpHelper';
 import { CbtReadinessStatsBar } from './CbtReadinessStatsBar';
 import { CbtReadinessTeacherTable } from './CbtReadinessTeacherTable';
+import { CbtReadinessPaketTable } from './CbtReadinessPaketTable';
 import toast from 'react-hot-toast';
 
 interface CbtBankSoalReadinessPanelProps {
@@ -40,24 +43,13 @@ interface CbtBankSoalReadinessPanelProps {
 
 export type ViewTabMode = 'BELUM' | 'SUDAH' | 'PAKET_MAPEL';
 
-export interface MapelPaketTeoriItem {
-  id: string;
-  mapel_id: string;
-  nama_mapel: string;
-  tingkat: number;
-  assignedTeachers: Array<{ id: string; nama_guru: string }>;
-  isReady: boolean;
-  bankSoal?: CbtBankSoal;
-  masterAuthor?: string;
-  soalCount: number;
-}
-
 export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps> = ({
   bankList,
   activeTpId,
   onProceedToNextPhase,
   onRefreshBankList,
 }) => {
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const tenantId = user?.tenant_id || 'default';
   const { tingkatList } = useJenjang();
@@ -138,7 +130,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
     const processedTeacherKeys = new Set<string>();
 
     if (rawGuruMapel.length > 0) {
-      rawGuruMapel.forEach((gm: any) => {
+      rawGuruMapel.forEach((gm: GuruMapel) => {
         const gId = gm.guru_id;
         const mId = gm.mapel_id;
         if (!gId || !mId) return;
@@ -624,82 +616,23 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
       )}
 
       {activeTab === 'PAKET_MAPEL' && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xs">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 text-slate-500 font-bold">
-                <th className="py-2.5 px-3 w-10 text-center">No</th>
-                <th className="py-2.5 px-3">Mata Pelajaran Ujian</th>
-                <th className="py-2.5 px-3 w-28 text-center">Tingkat</th>
-                <th className="py-2.5 px-3">Guru Pengampu Terdaftar</th>
-                <th className="py-2.5 px-3 w-40 text-center">Status Paket Ujian</th>
-                <th className="py-2.5 px-3 w-32 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-              {mapelPaketFilteredList.map((paket, idx) => (
-                <tr key={paket.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                  <td className="py-2.5 px-3 text-center text-slate-400 font-medium">{idx + 1}</td>
-                  <td className="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-100">
-                    {paket.nama_mapel}
-                  </td>
-                  <td className="py-2.5 px-3 text-center">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                      Tingkat {formatTingkatRomawi(paket.tingkat)}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300">
-                    {paket.assignedTeachers.map((t) => t.nama_guru).join(', ') || '-'}
-                  </td>
-                  <td className="py-2.5 px-3 text-center">
-                    {paket.isReady ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
-                        <CheckCircle2 size={12} />
-                        <span>Tersedia ({paket.soalCount} Soal)</span>
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 dark:text-rose-400">
-                        <AlertCircle size={12} />
-                        <span>Belum Ada Paket</span>
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-2.5 px-3 text-right">
-                    {paket.bankSoal ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedBankForDetail(paket.bankSoal!);
-                          setIsDetailModalOpen(true);
-                        }}
-                        className="py-1 px-2.5 rounded-lg bg-violet-50 hover:bg-violet-100 text-violet-700 text-[11px] font-bold cursor-pointer"
-                      >
-                        Periksa
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedBankToEdit(null);
-                          setDefaultMapelForCreate(paket.mapel_id);
-                          const romanTingkat = paket.tingkat === 11 ? 'XI' : paket.tingkat === 12 ? 'XII' : 'X';
-                          setDefaultTingkatForCreate(romanTingkat);
-                          setIsFormModalOpen(true);
-                        }}
-                        className="py-1 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold cursor-pointer"
-                      >
-                        + Buatkan
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <CbtReadinessPaketTable
+          items={mapelPaketFilteredList}
+          onPeriksaButir={(bank) => {
+            setSelectedBankForDetail(bank);
+            setIsDetailModalOpen(true);
+          }}
+          onCreateForMapel={(paket) => {
+            setSelectedBankToEdit(null);
+            setDefaultMapelForCreate(paket.mapel_id);
+            const romanTingkat = paket.tingkat === 11 ? 'XI' : paket.tingkat === 12 ? 'XII' : 'X';
+            setDefaultTingkatForCreate(romanTingkat);
+            setIsFormModalOpen(true);
+          }}
+        />
       )}
 
-      {/* ── 5. Modals ── */}
+      {/* ── 5. Modals (Zero-Manual-Reload via Query Cache Invalidation) ── */}
       {isFormModalOpen && (
         <CbtBankSoalFormModal
           isOpen={isFormModalOpen}
@@ -718,6 +651,9 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
             setDefaultMapelForCreate(undefined);
             setDefaultGuruForCreate(undefined);
             setDefaultTingkatForCreate(undefined);
+            // Invalidate server state caches
+            queryClient.invalidateQueries({ queryKey: ['cbt-bank-soal'] });
+            queryClient.invalidateQueries({ queryKey: ['cbt-bank-soal-readiness'] });
             if (onRefreshBankList) onRefreshBankList();
           }}
         />
@@ -732,6 +668,8 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
           }}
           bankSoal={selectedBankForDetail}
           onBankSoalUpdated={() => {
+            queryClient.invalidateQueries({ queryKey: ['cbt-bank-soal'] });
+            queryClient.invalidateQueries({ queryKey: ['cbt-bank-soal-readiness'] });
             if (onRefreshBankList) onRefreshBankList();
           }}
         />

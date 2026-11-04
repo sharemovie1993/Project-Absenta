@@ -278,7 +278,7 @@ export interface GuruMapel {
   // Relations
   Guru?: Guru;
   Mapel?: Mapel;
-  Kelas?: { id: string; nama_kelas: string };
+  Kelas?: { id: string; nama_kelas: string; tingkat?: number | string | null };
   Jurusan?: { id: string; nama: string };
 }
 

@@ -24,7 +24,7 @@ export const CbtReadinessStatsBar: React.FC<CbtReadinessStatsBarProps> = ({
   const percentGuru = totalGuruPenugasan > 0 ? Math.round((guruSudahSiap / totalGuruPenugasan) * 100) : 0;
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-2xs space-y-3">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-2xs space-y-3 w-full max-w-full min-w-0" role="region" aria-label="Statistik Barometer Kesiapan Bank Soal">
       {/* ── 3 Kartu Barometer Utama ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {/* 1. Total Teori Bank Soal */}
@@ -92,7 +92,7 @@ export const CbtReadinessStatsBar: React.FC<CbtReadinessStatsBarProps> = ({
 
       {/* ── Progress Bar Visual Minimalis ── */}
       <div className="space-y-1">
-        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium px-0.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium px-0.5">
           <span>Kesiapan Paket Soal: <strong>{paketSudahSiap}</strong> dari <strong>{totalTeoriPaket}</strong> paket ({percentPaket}%)</span>
           <span>Cakupan Guru: <strong>{guruSudahSiap}</strong> dari <strong>{totalGuruPenugasan}</strong> guru ({percentGuru}%)</span>
         </div>

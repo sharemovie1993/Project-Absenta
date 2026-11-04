@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Users, CheckSquare, Square, Info } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { listGuruMapel } from '@/api/kurikulum/guru-mapel.api';
+import type { GuruMapel } from '@/types/academic';
 import { cn } from '@/lib/utils';
 import { formatTingkatRomawi } from './cbtAsesmenHelper';
 
@@ -39,7 +40,7 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
     const list = parallelTeachersRes?.data || [];
     const map = new Map<string, { id: string; name: string; tingkatNum?: number }>();
 
-    list.forEach((gm: any) => {
+    list.forEach((gm: GuruMapel) => {
       const gId = gm.guru_id;
       const gName = gm.Guru?.nama_guru;
       if (!gId || gId === currentGuruId || !gName) return;
