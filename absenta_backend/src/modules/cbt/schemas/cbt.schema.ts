@@ -64,11 +64,15 @@ const refineBankSoalAsesmen = (
     });
   }
 
-  if (kodeUpper.startsWith('SAT-') && FINAL_GRADUATING_GRADES.has(tingkatUpper)) {
+  const isKenaikanKelasCode =
+    kodeUpper.startsWith('PSAT-') ||
+    kodeUpper.startsWith('SAT-');
+
+  if (isKenaikanKelasCode && FINAL_GRADUATING_GRADES.has(tingkatUpper)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message:
-        'Paket bank soal SAT adalah evaluasi kenaikan kelas (Tingkat akhir menempuh kelulusan PSAJ)',
+        'Paket bank soal PSAT / SAT adalah evaluasi kenaikan kelas (Tingkat akhir menempuh kelulusan PSAJ / AM)',
       path: ['tingkat'],
     });
   }

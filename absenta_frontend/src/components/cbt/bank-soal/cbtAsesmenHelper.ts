@@ -57,13 +57,19 @@ export interface OfficialAsesmenType {
   keterangan: string;
   defaultPrefix: string;
   tingkatRuleExplanation?: string;
+  aliases?: string[];
 }
 
 /**
- * Memperoleh daftar jenis asesmen resmi disesuaikan dengan jenis jenjang sekolah:
- * - Sekolah Umum Kemendikbud (SD, SMP, SMA): SAS, SAT, STS, PSAJ, SLM, Simulasi
- * - Madrasah Kemenag (MI, MTs, MA): AM (Asesmen Madrasah / PSAJ) untuk kelulusan
- * - Kejuruan (SMK, MAK): Dilengkapi dengan asesmen UKK (Uji Kompetensi Keahlian - Teori Kejuruan)
+ * Memperoleh daftar jenis asesmen resmi disesuaikan dengan jenis jenjang sekolah.
+ * Semua jenis evaluasi secara konsisten diawali dengan istilah resmi "Penilaian":
+ * - PSAS: Penilaian Sumatif Akhir Semester (Semester 1 / Ganjil)
+ * - PSAT: Penilaian Sumatif Akhir Tahun (Kenaikan Kelas Semester 2)
+ * - PSTS: Penilaian Sumatif Tengah Semester (Tengah Semester 1 & 2)
+ * - PSAJ: Penilaian Sumatif Akhir Jenjang (Kelulusan Tingkat Akhir) / AM (Asesmen Madrasah untuk Kemenag)
+ * - UKK: Uji Kompetensi Keahlian (Khusus Kejuruan SMK/MAK)
+ * - PSLM: Penilaian Sumatif Lingkup Materi (Ulangan Bab / Formatif-Sumatif)
+ * - Simulasi: Simulasi & Try Out Asesmen
  */
 export function getOfficialAsesmenTypes(jenjang?: string): OfficialAsesmenType[] {
   const normalizedJenjang = (jenjang || 'SMK').toUpperCase().trim();
@@ -72,36 +78,40 @@ export function getOfficialAsesmenTypes(jenjang?: string): OfficialAsesmenType[]
 
   const baseTypes: OfficialAsesmenType[] = [
     {
-      key: 'SAS',
-      singkatan: 'SAS',
-      namaResmi: 'Sumatif Akhir Semester',
+      key: 'PSAS',
+      singkatan: 'PSAS',
+      namaResmi: 'Penilaian Sumatif Akhir Semester (PSAS / SAS)',
       keterangan: 'Semester 1 (Ganjil)',
-      defaultPrefix: 'SAS',
+      defaultPrefix: 'PSAS',
+      aliases: ['SAS', 'PAS', 'UAS'],
     },
     {
-      key: 'SAT',
-      singkatan: 'SAT',
-      namaResmi: 'Sumatif Akhir Tahun',
+      key: 'PSAT',
+      singkatan: 'PSAT',
+      namaResmi: 'Penilaian Sumatif Akhir Tahun (PSAT / SAT)',
       keterangan: 'Kenaikan Kelas (Sem. 2)',
-      defaultPrefix: 'SAT',
+      defaultPrefix: 'PSAT',
       tingkatRuleExplanation: 'Khusus Kenaikan Kelas (Selain Tingkat Akhir)',
+      aliases: ['SAT', 'PAT'],
     },
     {
-      key: 'STS',
-      singkatan: 'STS',
-      namaResmi: 'Sumatif Tengah Semester',
+      key: 'PSTS',
+      singkatan: 'PSTS',
+      namaResmi: 'Penilaian Sumatif Tengah Semester (PSTS / STS)',
       keterangan: 'Tengah Semester',
-      defaultPrefix: 'STS',
+      defaultPrefix: 'PSTS',
+      aliases: ['STS', 'PTS', 'UTS'],
     },
     {
       key: isMadrasah ? 'AM' : 'PSAJ',
       singkatan: isMadrasah ? 'AM' : 'PSAJ',
       namaResmi: isMadrasah
-        ? 'Asesmen Madrasah (AM)'
+        ? 'Penilaian Asesmen Madrasah (AM)'
         : 'Penilaian Sumatif Akhir Jenjang (PSAJ)',
       keterangan: isMadrasah ? 'Evaluasi Kelulusan Madrasah' : 'Evaluasi Kelulusan Akhir Jenjang',
       defaultPrefix: isMadrasah ? 'AM' : 'PSAJ',
       tingkatRuleExplanation: 'Khusus Kelulusan Tingkat Akhir',
+      aliases: ['PSAJ', 'AM', 'ASAJ', 'US', 'USBN'],
     },
   ];
 
@@ -110,21 +120,23 @@ export function getOfficialAsesmenTypes(jenjang?: string): OfficialAsesmenType[]
     baseTypes.push({
       key: 'UKK',
       singkatan: 'UKK',
-      namaResmi: 'Uji Kompetensi Keahlian (Teori Kejuruan)',
+      namaResmi: 'Penilaian Uji Kompetensi Keahlian (UKK Teori)',
       keterangan: 'Sertifikasi Kejuruan LSP/DUDI',
       defaultPrefix: 'UKK',
       tingkatRuleExplanation: 'Khusus Kejuruan Tingkat Akhir',
+      aliases: ['UKK'],
     });
   }
 
-  // Asesmen formatif berkala & simulasi try out
+  // Asesmen materi & simulasi
   baseTypes.push(
     {
-      key: 'SLM',
-      singkatan: 'SLM',
-      namaResmi: 'Sumatif Lingkup Materi',
+      key: 'PSLM',
+      singkatan: 'PSLM',
+      namaResmi: 'Penilaian Sumatif Lingkup Materi (PSLM / SLM)',
       keterangan: 'Ulangan Bab / TP',
-      defaultPrefix: 'SLM',
+      defaultPrefix: 'PSLM',
+      aliases: ['SLM', 'UH'],
     },
     {
       key: 'TRYOUT',
@@ -132,6 +144,7 @@ export function getOfficialAsesmenTypes(jenjang?: string): OfficialAsesmenType[]
       namaResmi: 'Simulasi / Try Out Asesmen',
       keterangan: 'Try Out & ANBK',
       defaultPrefix: 'TRYOUT',
+      aliases: ['TRYOUT', 'SIMULASI'],
     }
   );
 
@@ -142,6 +155,20 @@ export function getOfficialAsesmenTypes(jenjang?: string): OfficialAsesmenType[]
  * Daftar default fallback untuk kompatibilitas ke belakang
  */
 export const OFFICIAL_ASESMEN_TYPES: OfficialAsesmenType[] = getOfficialAsesmenTypes('SMK');
+
+/**
+ * Mencocokkan kode bank soal dengan jenis asesmen resmi secara fleksibel (mendukung alias lama & baru)
+ */
+export function findMatchingAsesmenType(
+  code: string,
+  types: OfficialAsesmenType[]
+): OfficialAsesmenType | undefined {
+  const upper = code.toUpperCase();
+  return types.find((t) => {
+    if (upper.startsWith(`${t.key}-`) || upper.startsWith(`${t.defaultPrefix}-`)) return true;
+    return t.aliases?.some((a) => upper.startsWith(`${a}-`));
+  });
+}
 
 export interface SmartPeriodDetection {
   recommendedKey: string;
@@ -188,27 +215,27 @@ export function detectSmartAsesmenType(
   if (isGanjil) {
     if (month >= 11 || month === 12) {
       return {
-        recommendedKey: 'SAS',
+        recommendedKey: 'PSAS',
         semesterLabel,
         monthName,
-        reason: `Bulan ${monthName} berada di penghujung Semester Ganjil — waktu pelaksanaan Sumatif Akhir Semester (SAS).`,
-        shortTag: 'Periode SAS (Akhir Smt 1)',
+        reason: `Bulan ${monthName} berada di penghujung Semester Ganjil — waktu pelaksanaan Penilaian Sumatif Akhir Semester (PSAS / SAS).`,
+        shortTag: 'Periode PSAS (Akhir Smt 1)',
       };
     } else if (month === 9 || month === 10) {
       return {
-        recommendedKey: 'STS',
+        recommendedKey: 'PSTS',
         semesterLabel,
         monthName,
-        reason: `Bulan ${monthName} adalah periode evaluasi progres Sumatif Tengah Semester (STS) Ganjil.`,
-        shortTag: 'Periode STS (Tengah Smt 1)',
+        reason: `Bulan ${monthName} adalah periode evaluasi progres Penilaian Sumatif Tengah Semester (PSTS / STS) Ganjil.`,
+        shortTag: 'Periode PSTS (Tengah Smt 1)',
       };
     } else {
       return {
-        recommendedKey: 'SLM',
+        recommendedKey: 'PSLM',
         semesterLabel,
         monthName,
-        reason: `Bulan ${monthName} adalah awal semester — pelaksanaan Sumatif Lingkup Materi / Ulangan Bab (SLM).`,
-        shortTag: 'Periode SLM (Lingkup Materi)',
+        reason: `Bulan ${monthName} adalah awal semester — pelaksanaan Penilaian Sumatif Lingkup Materi / Ulangan Bab (PSLM / SLM).`,
+        shortTag: 'Periode PSLM (Lingkup Materi)',
       };
     }
   } else {
@@ -223,19 +250,19 @@ export function detectSmartAsesmenType(
       };
     } else if (month >= 5 || month === 6) {
       return {
-        recommendedKey: 'SAT',
+        recommendedKey: 'PSAT',
         semesterLabel,
         monthName,
-        reason: `Bulan ${monthName} berada di penghujung Semester Genap — waktu pelaksanaan evaluasi kenaikan kelas (SAT).`,
-        shortTag: 'Periode SAT (Kenaikan Kelas)',
+        reason: `Bulan ${monthName} berada di penghujung Semester Genap — waktu pelaksanaan Penilaian Sumatif Akhir Tahun / Kenaikan Kelas (PSAT / SAT).`,
+        shortTag: 'Periode PSAT (Kenaikan Kelas)',
       };
     } else if (month === 2 || month === 3) {
       return {
-        recommendedKey: 'STS',
+        recommendedKey: 'PSTS',
         semesterLabel,
         monthName,
-        reason: `Bulan ${monthName} adalah periode evaluasi progres Sumatif Tengah Semester (STS) Genap.`,
-        shortTag: 'Periode STS (Tengah Smt 2)',
+        reason: `Bulan ${monthName} adalah periode evaluasi progres Penilaian Sumatif Tengah Semester (PSTS / STS) Genap.`,
+        shortTag: 'Periode PSTS (Tengah Smt 2)',
       };
     } else {
       return {
@@ -303,8 +330,8 @@ export function getAllowedTingkatForAsesmen(
     return [finalGradeRoman];
   }
 
-  if (jenisKegiatanKey === 'SAT') {
-    // SAT adalah evaluasi kenaikan kelas untuk seluruh tingkat selain tingkat akhir
+  // Evaluasi kenaikan kelas (PSAT / SAT)
+  if (jenisKegiatanKey === 'PSAT' || jenisKegiatanKey === 'SAT') {
     return romanList.filter((r) => r !== finalGradeRoman);
   }
 

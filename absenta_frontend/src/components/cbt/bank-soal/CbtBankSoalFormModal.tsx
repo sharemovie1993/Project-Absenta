@@ -14,6 +14,7 @@ import { Layers, User, Sparkles, ArrowRight, ArrowLeft, CheckCircle2 } from 'luc
 import {
   type CbtBankSoalScope,
   getOfficialAsesmenTypes,
+  findMatchingAsesmenType,
   OFFICIAL_ASESMEN_TYPES,
   detectSmartAsesmenType,
   generateAutoFillMassal,
@@ -50,20 +51,17 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   const { isAdmin, isKurikulum } = useCapabilities();
   const isPrivilegedRole = isAdmin || isKurikulum || roleContext === 'KURIKULUM' || roleContext === 'ADMIN';
 
+  const { tingkatList, jenjang } = useJenjang();
+  const officialAsesmenTypes = useMemo(() => getOfficialAsesmenTypes(jenjang), [jenjang]);
+
   // 1. Pemisahan Konteks: Mandiri Guru vs Terpusat Massal
   const initialScope: CbtBankSoalScope = useMemo(() => {
     if (bankSoalToEdit) {
-      const code = bankSoalToEdit.kode_bank.toUpperCase();
-      const isMassalCode = [
-        'PAS-', 'UAS-', 'PAT-', 'US-', 'PTS-', 'SAS-', 'SAT-', 'STS-', 'PSAJ-',
-      ].some((prefix) => code.startsWith(prefix));
-      return isMassalCode ? 'TERPUSAT_MASSAL' : 'MANDIRI_GURU';
+      const detected = findMatchingAsesmenType(bankSoalToEdit.kode_bank, officialAsesmenTypes);
+      return detected ? 'TERPUSAT_MASSAL' : 'MANDIRI_GURU';
     }
     return isPrivilegedRole && !defaultGuruId ? 'TERPUSAT_MASSAL' : 'MANDIRI_GURU';
-  }, [bankSoalToEdit, isPrivilegedRole, defaultGuruId]);
-
-  const { tingkatList, jenjang } = useJenjang();
-  const officialAsesmenTypes = useMemo(() => getOfficialAsesmenTypes(jenjang), [jenjang]);
+  }, [bankSoalToEdit, isPrivilegedRole, defaultGuruId, officialAsesmenTypes]);
 
   const defaultInitialTingkat = useMemo(() => {
     return tingkatList.length > 0 ? getTingkatRoman(tingkatList[0]) : 'X';
@@ -83,8 +81,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   const [scope, setScope] = useState<CbtBankSoalScope>(initialScope);
   const [jenisKegiatanMassal, setJenisKegiatanMassal] = useState<string>(() => {
     if (bankSoalToEdit) {
-      const code = bankSoalToEdit.kode_bank.toUpperCase();
-      const detected = officialAsesmenTypes.find((t) => code.startsWith(`${t.key}-`));
+      const detected = findMatchingAsesmenType(bankSoalToEdit.kode_bank, officialAsesmenTypes);
       if (detected) return detected.key;
     }
     return detectSmartAsesmenType(activeSemester, defaultInitialTingkat, tingkatList, jenjang).recommendedKey;
@@ -208,8 +205,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setIsShared(bankSoalToEdit.status === 'PUBLISHED' || Boolean(bankSoalToEdit.is_shared));
       setShowAllMapels(true);
 
-      const code = bankSoalToEdit.kode_bank.toUpperCase();
-      const detected = officialAsesmenTypes.find((t) => code.startsWith(`${t.key}-`));
+      const detected = findMatchingAsesmenType(bankSoalToEdit.kode_bank, officialAsesmenTypes);
       if (detected) setJenisKegiatanMassal(detected.key);
     } else {
       setStep(1);
