@@ -11,6 +11,7 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CbtBankSoal } from '@/types/cbt.types';
 import type { GuruMapel } from '@/types/academic';
+import { cbtQueryKeys } from '@/api/cbt.api';
 import { useJenjang } from '@/hooks/useJenjang';
 import { formatTingkatRomawi } from '../bank-soal/cbtAsesmenHelper';
 import { resolveBankTingkatNumber } from './cbtJadwalHelper';
@@ -652,6 +653,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
             setDefaultGuruForCreate(undefined);
             setDefaultTingkatForCreate(undefined);
             // Invalidate server state caches
+            queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false });
             queryClient.invalidateQueries({ queryKey: ['cbt-bank-soal'] });
             queryClient.invalidateQueries({ queryKey: ['cbt-bank-soal-readiness'] });
             if (onRefreshBankList) onRefreshBankList();
@@ -668,6 +670,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
           }}
           bankSoal={selectedBankForDetail}
           onBankSoalUpdated={() => {
+            queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false });
             queryClient.invalidateQueries({ queryKey: ['cbt-bank-soal'] });
             queryClient.invalidateQueries({ queryKey: ['cbt-bank-soal-readiness'] });
             if (onRefreshBankList) onRefreshBankList();

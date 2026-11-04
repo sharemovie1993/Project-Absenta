@@ -104,10 +104,11 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
     }
   }, [activeKelasList, tenantId]);
 
-  // ── 2. Fetch Bank Soal ──
+  // ── 2. Fetch Bank Soal (Kapasitas Penuh 500 & StaleTime Guard) ──
   const { data: bankRes, refetch: refetchBankSoal } = useQuery({
-    queryKey: cbtQueryKeys.bankSoal({ limit: 100 }),
-    queryFn: () => cbtApi.getBankSoalList({ limit: 100 }),
+    queryKey: cbtQueryKeys.bankSoal({ limit: 500 }),
+    queryFn: () => cbtApi.getBankSoalList({ limit: 500 }),
+    staleTime: 60 * 1000,
   });
 
   const rawBankList: CbtBankSoal[] = bankRes?.items || [];

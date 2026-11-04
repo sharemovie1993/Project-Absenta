@@ -21,7 +21,7 @@ export class CbtBankSoalService {
    */
   static async list(tenantId: string, query: QueryBankSoalDto) {
     const page = Math.max(1, Number(query.page || 1));
-    const limit = Math.min(100, Math.max(1, Number(query.limit || 10)));
+    const limit = Math.min(500, Math.max(1, Number(query.limit || 10)));
     const skip = (page - 1) * limit;
 
     const ROMAN_MAP: Record<string, string> = {
