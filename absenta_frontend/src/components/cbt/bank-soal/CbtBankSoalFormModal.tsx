@@ -25,6 +25,8 @@ export interface OfficialAsesmenType {
   namaResmi: string;
   keterangan: string;
   defaultPrefix: string;
+  allowedTingkat?: Array<'X' | 'XI' | 'XII' | 'SEMUA'>;
+  tingkatRuleExplanation?: string;
 }
 
 export const OFFICIAL_ASESMEN_TYPES: OfficialAsesmenType[] = [
@@ -34,6 +36,7 @@ export const OFFICIAL_ASESMEN_TYPES: OfficialAsesmenType[] = [
     namaResmi: 'Sumatif Akhir Semester',
     keterangan: 'Resmi Semester 1 (Ganjil) — Dahulu PAS',
     defaultPrefix: 'SAS',
+    allowedTingkat: ['X', 'XI', 'XII', 'SEMUA'],
   },
   {
     key: 'SAT',
@@ -41,6 +44,8 @@ export const OFFICIAL_ASESMEN_TYPES: OfficialAsesmenType[] = [
     namaResmi: 'Sumatif Akhir Tahun',
     keterangan: 'Resmi Kenaikan Kelas Sem. 2 (Genap) — Dahulu PAT/UKK',
     defaultPrefix: 'SAT',
+    allowedTingkat: ['X', 'XI'],
+    tingkatRuleExplanation: 'Khusus Kenaikan Kelas (Tingkat X & XI). Kelas XII menempuh kelulusan PSAJ.',
   },
   {
     key: 'STS',
@@ -48,6 +53,7 @@ export const OFFICIAL_ASESMEN_TYPES: OfficialAsesmenType[] = [
     namaResmi: 'Sumatif Tengah Semester',
     keterangan: 'Resmi evaluasi tengah semester — Dahulu PTS',
     defaultPrefix: 'STS',
+    allowedTingkat: ['X', 'XI', 'XII', 'SEMUA'],
   },
   {
     key: 'PSAJ',
@@ -55,6 +61,8 @@ export const OFFICIAL_ASESMEN_TYPES: OfficialAsesmenType[] = [
     namaResmi: 'Penilaian Sumatif Akhir Jenjang',
     keterangan: 'Resmi kelulusan tingkat akhir XII/IX — Dahulu US',
     defaultPrefix: 'PSAJ',
+    allowedTingkat: ['XII'],
+    tingkatRuleExplanation: 'Khusus Kelulusan Tingkat Akhir (Hanya Kelas XII).',
   },
   {
     key: 'SLM',
@@ -62,6 +70,7 @@ export const OFFICIAL_ASESMEN_TYPES: OfficialAsesmenType[] = [
     namaResmi: 'Sumatif Lingkup Materi',
     keterangan: 'Resmi evaluasi per TP / Ulangan Bab',
     defaultPrefix: 'SLM',
+    allowedTingkat: ['X', 'XI', 'XII', 'SEMUA'],
   },
   {
     key: 'TRYOUT',
@@ -69,6 +78,7 @@ export const OFFICIAL_ASESMEN_TYPES: OfficialAsesmenType[] = [
     namaResmi: 'Simulasi / Try Out Asesmen',
     keterangan: 'Uji coba asesmen terstandar & persiapan ANBK',
     defaultPrefix: 'TRYOUT',
+    allowedTingkat: ['X', 'XI', 'XII', 'SEMUA'],
   },
 ];
 
@@ -265,6 +275,19 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     return Boolean(defaultGuruId || user?.guru_profile?.id);
   }, [isPrivilegedRole, scope, defaultGuruId, user?.guru_profile?.id]);
 
+  // Evaluasi definisi asesmen & proteksi tingkat kelas yang diperkenankan (Anti Human-Error)
+  const activeAsesmenDef = useMemo(() => {
+    if (scope !== 'TERPUSAT_MASSAL') return null;
+    return OFFICIAL_ASESMEN_TYPES.find((t) => t.key === jenisKegiatanMassal) || null;
+  }, [scope, jenisKegiatanMassal]);
+
+  const allowedTingkatList = useMemo(() => {
+    if (!activeAsesmenDef?.allowedTingkat) {
+      return ['X', 'XI', 'XII', 'SEMUA'] as const;
+    }
+    return activeAsesmenDef.allowedTingkat;
+  }, [activeAsesmenDef]);
+
   const initialGuruId = useMemo(() => {
     return defaultGuruId || user?.guru_profile?.id || '';
   }, [defaultGuruId, user?.guru_profile?.id]);
@@ -337,6 +360,20 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     setJudul(generatedTitle);
   };
 
+  // Aksi pemilihan kegiatan massal dengan proteksi otomatis tingkat kelas (Anti Human-Error)
+  const handleSelectKegiatanMassal = (targetKey: string) => {
+    setJenisKegiatanMassal(targetKey);
+    const def = OFFICIAL_ASESMEN_TYPES.find((t) => t.key === targetKey);
+    let nextTingkat = tingkat;
+    if (def?.allowedTingkat && !def.allowedTingkat.includes(tingkat)) {
+      nextTingkat = def.allowedTingkat[0];
+      setTingkat(nextTingkat);
+    }
+    if (mapelId) {
+      handleAutoFillMassal(mapelId, nextTingkat, targetKey);
+    }
+  };
+
   useEffect(() => {
     if (bankSoalToEdit) {
       setStep(1);
@@ -363,13 +400,17 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       const year = new Date().getFullYear();
       const randomSuffix = Math.floor(1000 + Math.random() * 9000);
       const recKey = smartDetection.recommendedKey;
+      const def = OFFICIAL_ASESMEN_TYPES.find((t) => t.key === recKey);
+      const defaultTingkat = def?.allowedTingkat && !def.allowedTingkat.includes('X')
+        ? def.allowedTingkat[0]
+        : 'X';
 
       setJenisKegiatanMassal(recKey);
-      setKodeBank(isMassal ? `${recKey}-${year}-MAPEL-X` : `CBT-${year}-${randomSuffix}`);
+      setKodeBank(isMassal ? `${recKey}-${year}-MAPEL-${defaultTingkat}` : `CBT-${year}-${randomSuffix}`);
       setJudul('');
       setGuruId(initialGuruId);
       setMapelId(defaultMapelId || '');
-      setTingkat('X');
+      setTingkat(defaultTingkat);
       setAlokasiMenit(90);
       setAcakSoal(true);
       setAcakOpsi(true);
@@ -385,9 +426,14 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setShowAllMapels(true);
       setIsShared(true);
       const recKey = smartDetection.recommendedKey;
+      const def = OFFICIAL_ASESMEN_TYPES.find((t) => t.key === recKey);
+      const targetTingkat = def?.allowedTingkat && !def.allowedTingkat.includes(tingkat)
+        ? def.allowedTingkat[0]
+        : tingkat;
       setJenisKegiatanMassal(recKey);
+      setTingkat(targetTingkat);
       if (mapelId) {
-        handleAutoFillMassal(mapelId, tingkat, recKey);
+        handleAutoFillMassal(mapelId, targetTingkat, recKey);
       }
     } else {
       if (
@@ -410,7 +456,12 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       return;
     }
 
-    if (scope === 'TERPUSAT_MASSAL' && (!judul || judul.startsWith('SAS -') || judul.startsWith('PAS -'))) {
+    if (scope === 'TERPUSAT_MASSAL' && !allowedTingkatList.includes(tingkat)) {
+      toast.error(`Tingkat ${tingkat} tidak diperkenankan untuk jenis kegiatan asesmen ${jenisKegiatanMassal}`);
+      return;
+    }
+
+    if (scope === 'TERPUSAT_MASSAL' && (!judul || judul.startsWith('SAS -') || judul.startsWith('PAS -') || judul.startsWith('SAT -') || judul.startsWith('PSAJ -'))) {
       handleAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal);
     } else if (scope === 'MANDIRI_GURU' && !judul) {
       const selectedMapel = mapelOptions.find((m) => m.value === mapelId);
@@ -423,6 +474,11 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (scope === 'TERPUSAT_MASSAL' && !allowedTingkatList.includes(tingkat)) {
+      toast.error(`Tingkat ${tingkat} tidak diperkenankan untuk asesmen ${jenisKegiatanMassal}`);
+      return;
+    }
 
     const validation = bankSoalSchema.safeParse({
       kode_bank: kodeBank.trim().toUpperCase(),
@@ -618,10 +674,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                   {jenisKegiatanMassal !== smartDetection.recommendedKey && (
                     <button
                       type="button"
-                      onClick={() => {
-                        setJenisKegiatanMassal(smartDetection.recommendedKey);
-                        if (mapelId) handleAutoFillMassal(mapelId, tingkat, smartDetection.recommendedKey);
-                      }}
+                      onClick={() => handleSelectKegiatanMassal(smartDetection.recommendedKey)}
                       className="shrink-0 px-2.5 py-1 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-[10px] font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1"
                       title={`Gunakan rekomendasi ${smartDetection.recommendedKey}`}
                     >
@@ -639,10 +692,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                       <button
                         key={k.key}
                         type="button"
-                        onClick={() => {
-                          setJenisKegiatanMassal(k.key);
-                          if (mapelId) handleAutoFillMassal(mapelId, tingkat, k.key);
-                        }}
+                        onClick={() => handleSelectKegiatanMassal(k.key)}
                         className={cn(
                           'p-2.5 rounded-xl text-left transition-all cursor-pointer border flex flex-col justify-between gap-1.5 relative',
                           isSelected
@@ -738,11 +788,19 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               />
             </div>
 
-            {/* Pertanyaan 4: Tingkat Kelas */}
+            {/* Pertanyaan 4: Tingkat Kelas (Terproteksi Anti Human-Error) */}
             <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                {scope === 'TERPUSAT_MASSAL' ? '4.' : '3.'} Untuk kelas tingkat berapa?
-              </label>
+              <div className="flex items-center justify-between gap-2">
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                  {scope === 'TERPUSAT_MASSAL' ? '4.' : '3.'} Untuk kelas tingkat berapa?
+                </label>
+                {activeAsesmenDef?.tingkatRuleExplanation && (
+                  <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200/80 dark:border-amber-800/60 line-clamp-1">
+                    ⚠️ {activeAsesmenDef.tingkatRuleExplanation}
+                  </span>
+                )}
+              </div>
+
               <div className="grid grid-cols-4 gap-2">
                 {(
                   [
@@ -751,32 +809,41 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                     { value: 'XII', label: 'Kelas XII' },
                     { value: 'SEMUA', label: 'Semua' },
                   ] as { value: 'X' | 'XI' | 'XII' | 'SEMUA'; label: string }[]
-                ).map((item) => (
-                  <button
-                    key={item.value}
-                    type="button"
-                    onClick={() => {
-                      setTingkat(item.value);
-                      const nextDetection = detectSmartAsesmenType(activeSemester, item.value);
-                      let nextKegiatan = jenisKegiatanMassal;
-                      if (item.value === 'XII' && nextDetection.recommendedKey === 'PSAJ') {
-                        nextKegiatan = 'PSAJ';
-                        setJenisKegiatanMassal('PSAJ');
-                      }
-                      if (scope === 'TERPUSAT_MASSAL' && mapelId) {
-                        handleAutoFillMassal(mapelId, item.value, nextKegiatan);
-                      }
-                    }}
-                    className={cn(
-                      'py-2 px-2 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
-                      tingkat === item.value
-                        ? 'bg-violet-600 text-white border-violet-600 shadow-2xs'
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-violet-300'
-                    )}
-                  >
-                    {item.label}
-                  </button>
-                ))}
+                ).map((item) => {
+                  const isAllowed = allowedTingkatList.includes(item.value);
+                  const isSelected = tingkat === item.value;
+
+                  return (
+                    <button
+                      key={item.value}
+                      type="button"
+                      disabled={!isAllowed}
+                      onClick={() => {
+                        if (!isAllowed) return;
+                        setTingkat(item.value);
+                        if (scope === 'TERPUSAT_MASSAL' && mapelId) {
+                          handleAutoFillMassal(mapelId, item.value, jenisKegiatanMassal);
+                        }
+                      }}
+                      className={cn(
+                        'py-2 px-2 rounded-lg border text-xs font-bold transition-all text-center flex flex-col items-center justify-center gap-0.5',
+                        !isAllowed
+                          ? 'opacity-35 bg-slate-100 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed'
+                          : isSelected
+                          ? 'bg-violet-600 text-white border-violet-600 shadow-2xs cursor-pointer'
+                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-violet-300 cursor-pointer'
+                      )}
+                      title={!isAllowed ? `Tingkat ${item.label} tidak relevan untuk ${jenisKegiatanMassal}` : item.label}
+                    >
+                      <span className={cn(!isAllowed && 'line-through')}>{item.label}</span>
+                      {!isAllowed && (
+                        <span className="text-[8.5px] font-normal text-slate-400 dark:text-slate-500">
+                          Nonaktif
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
