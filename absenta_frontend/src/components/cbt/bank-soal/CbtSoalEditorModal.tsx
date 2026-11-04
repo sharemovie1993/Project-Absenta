@@ -199,21 +199,132 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
     return { files: resultFiles, wordLocalMultiImageDetected };
   };
 
+  const formatFileSize = (bytes: number): string => {
+    if (bytes >= 1024 * 1024) {
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+    return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  };
+
+  /**
+   * Smart Client-Side Image Compression (WebP + Proportional Max Dimension)
+   * Dilakukan 1x saat guru upload/paste agar file di server sudah ringan (~80-180 KB)
+   * dan langsung cepat dimuat oleh ratusan HP siswa saat ujian serentak.
+   */
+  const compressImageForCbt = (
+    file: File,
+    maxDimension: number = 1280,
+    quality: number = 0.84
+  ): Promise<File> => {
+    if (
+      !file.type.startsWith('image/') ||
+      file.type === 'image/svg+xml' ||
+      file.type === 'image/gif'
+    ) {
+      return Promise.resolve(file);
+    }
+
+    return new Promise((resolve) => {
+      const objectUrl = URL.createObjectURL(file);
+      const img = new Image();
+
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+
+        let targetWidth = img.naturalWidth || img.width;
+        let targetHeight = img.naturalHeight || img.height;
+
+        if (!targetWidth || !targetHeight) {
+          resolve(file);
+          return;
+        }
+
+        const needsResize = targetWidth > maxDimension || targetHeight > maxDimension;
+
+        // Jika gambar sudah sangat kecil (< 80 KB) dan dimensinya tidak melebihi batas, biarkan apa adanya
+        if (!needsResize && file.size <= 80 * 1024) {
+          resolve(file);
+          return;
+        }
+
+        if (needsResize) {
+          if (targetWidth >= targetHeight) {
+            targetHeight = Math.round((targetHeight * maxDimension) / targetWidth);
+            targetWidth = maxDimension;
+          } else {
+            targetWidth = Math.round((targetWidth * maxDimension) / targetHeight);
+            targetHeight = maxDimension;
+          }
+        }
+
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = targetWidth;
+          canvas.height = targetHeight;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(file);
+            return;
+          }
+
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                resolve(file);
+                return;
+              }
+              // Gunakan hasil kompresi jika lebih ringan dari file asli
+              if (blob.size < file.size) {
+                const baseName = file.name.replace(/\.[^.]+$/, '') || `cbt-img-${Date.now()}`;
+                const compressedFile = new File([blob], `${baseName}.webp`, {
+                  type: 'image/webp',
+                  lastModified: Date.now(),
+                });
+                resolve(compressedFile);
+              } else {
+                resolve(file);
+              }
+            },
+            'image/webp',
+            quality
+          );
+        } catch {
+          resolve(file);
+        }
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(file);
+      };
+
+      img.src = objectUrl;
+    });
+  };
+
   // Upload Gambar Stimulus Soal (dari File Input, Paste Ctrl+V, atau Drag & Drop)
   const uploadStimulusFile = async (file: File) => {
     if (!file.type.startsWith('image/')) {
       toast.error('File harus berupa gambar (PNG, JPG, WEBP)');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Ukuran gambar maksimal 5 MB');
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error('Ukuran sumber gambar maksimal 15 MB');
       return;
     }
 
     try {
       setUploadingStimulus(true);
+      const originalSize = file.size;
+      const processedFile = await compressImageForCbt(file, 1280, 0.84);
+
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', processedFile);
 
       const res = await axiosInstance.post('/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -222,7 +333,11 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
       const url = res.data?.data?.url || res.data?.url;
       if (url) {
         setGambarStimulusUrl(url);
-        toast.success('Gambar soal berhasil disisipkan');
+        const savedInfo =
+          originalSize > 300 * 1024 && processedFile.size < originalSize
+            ? ` (dikompres ${formatFileSize(originalSize)} → ${formatFileSize(processedFile.size)})`
+            : '';
+        toast.success(`Gambar soal berhasil disisipkan${savedInfo}`);
       }
     } catch {
       toast.error('Gagal mengunggah gambar');
@@ -246,15 +361,18 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
       toast.error('File harus berupa gambar (PNG, JPG, WEBP)');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Ukuran gambar opsi maksimal 5 MB');
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error('Ukuran sumber gambar opsi maksimal 15 MB');
       return;
     }
 
     try {
       setUploadingOpsiIndex(index);
+      const originalSize = file.size;
+      const processedFile = await compressImageForCbt(file, 800, 0.82);
+
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', processedFile);
 
       const res = await axiosInstance.post('/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -265,7 +383,11 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
         setOpsiJawaban((prev) =>
           prev.map((opt, i) => (i === index ? { ...opt, gambar_url: url } : opt))
         );
-        toast.success(`Gambar opsi ${opsiJawaban[index].kode} berhasil disisipkan`);
+        const savedInfo =
+          originalSize > 300 * 1024 && processedFile.size < originalSize
+            ? ` (${formatFileSize(originalSize)} → ${formatFileSize(processedFile.size)})`
+            : '';
+        toast.success(`Gambar opsi ${opsiJawaban[index]?.kode || ''} berhasil disisipkan${savedInfo}`);
       }
     } catch {
       toast.error('Gagal mengunggah gambar opsi');
@@ -277,11 +399,11 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
   // Upload Banyak Gambar Opsi Sekaligus (Otomatis sebar ke Opsi A, B, C, D, E)
   const handleUploadMultiOpsi = async (startIndex: number, files: File[]) => {
     const validFiles = files
-      .filter((f) => f.type.startsWith('image/') && f.size <= 5 * 1024 * 1024)
+      .filter((f) => f.type.startsWith('image/') && f.size <= 15 * 1024 * 1024)
       .slice(0, 5 - startIndex);
 
     if (validFiles.length === 0) {
-      toast.error('Tidak ada file gambar valid (PNG/JPG maks 5 MB)');
+      toast.error('Tidak ada file gambar valid (PNG/JPG maks 15 MB)');
       return;
     }
 
@@ -306,8 +428,9 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
       setUploadingOpsiIndex(startIndex);
       const uploadedUrls = await Promise.all(
         validFiles.map(async (file) => {
+          const processedFile = await compressImageForCbt(file, 800, 0.82);
           const formData = new FormData();
-          formData.append('file', file);
+          formData.append('file', processedFile);
           const res = await axiosInstance.post('/upload', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
           });

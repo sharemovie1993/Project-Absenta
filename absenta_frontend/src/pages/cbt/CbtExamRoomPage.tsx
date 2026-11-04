@@ -158,6 +158,29 @@ export default function CbtExamRoomPage() {
     return () => clearInterval(interval);
   }, [step, sisaWaktuDetik]);
 
+  // 3b. Preload gambar untuk soal berikutnya (agar perpindahan soal 0ms tanpa jeda loading gambar)
+  useEffect(() => {
+    if (step !== 'EXAM_ROOM' || !soalList?.length) return;
+    const nextSoal = soalList[currentIdx + 1];
+    if (!nextSoal) return;
+
+    const urlsToPreload: string[] = [];
+    if (nextSoal.gambar_stimulus_url) {
+      urlsToPreload.push(nextSoal.gambar_stimulus_url);
+    }
+    (nextSoal.opsi_jawaban_json || []).forEach((opt) => {
+      if (opt?.gambar_url) {
+        urlsToPreload.push(opt.gambar_url);
+      }
+    });
+
+    urlsToPreload.forEach((url) => {
+      const preloadImg = new Image();
+      preloadImg.decoding = 'async';
+      preloadImg.src = url;
+    });
+  }, [step, currentIdx, soalList]);
+
   // 4. Background Sync ke Redis setiap 20 detik (Debounced Autosave)
   useEffect(() => {
     if (step !== 'EXAM_ROOM' || !jadwalId) return;
@@ -592,14 +615,17 @@ export default function CbtExamRoomPage() {
                       </div>
 
                       <div className="flex-1 min-w-0 pt-1 space-y-2">
-                        <p className="text-sm font-medium text-slate-200 leading-relaxed">
-                          {opt.teks || '-'}
-                        </p>
+                        {(opt.teks?.trim() || !opt.gambar_url) && (
+                          <p className="text-sm font-medium text-slate-200 leading-relaxed">
+                            {opt.teks || '-'}
+                          </p>
+                        )}
                         {opt.gambar_url && (
                           <img
                             src={opt.gambar_url}
                             alt={`Opsi ${opt.kode}`}
-                            className="max-h-36 object-contain rounded-lg border border-slate-700"
+                            decoding="async"
+                            className="max-h-36 object-contain rounded-lg border border-slate-700 bg-white/95 p-1"
                           />
                         )}
                       </div>
