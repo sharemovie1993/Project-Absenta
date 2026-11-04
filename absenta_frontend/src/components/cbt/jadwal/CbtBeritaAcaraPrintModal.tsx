@@ -74,7 +74,7 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
       '-';
     const defaultRuang =
       cfg?.ruang_ujian ||
-      'Laboratorium Komputer / Ruang CBT';
+      'Ruang Kelas / Ruang Ujian CBT';
 
     const defaultKepsek =
       sekolahData?.kepala_sekolah ||
@@ -476,49 +476,81 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
             sebenarnya dan penuh rasa tanggung jawab untuk dapat dipergunakan sebagaimana mestinya.
           </p>
 
-          {/* 6. STANDAR TANDA TANGAN 2-TIER (BARIS 1: PENGAWAS 1 & 2, BARIS 2: KEPALA SEKOLAH) */}
+          {/* 6. STANDAR TANDA TANGAN (ADAPTIF: 1 PENGAWAS KELAS VS 2 PENGAWAS/PROKTOR) */}
           <div className="mt-6 pt-2 text-[11.5px] text-black">
-            {/* Baris 1 (Sejajar Kiri & Kanan) */}
-            <div className="grid grid-cols-2 gap-8 text-center">
-              <div>
-                <p className="invisible select-none">{kotaSekolah}, {tanggalTitimangsa}</p>
-                <p className="font-normal">Pengawas 1 / Guru Pengampu,</p>
-                <div className="h-16" />
-                <p className="font-bold underline">
-                  {pengawas1Nama || '( ..................................................... )'}
-                </p>
-                <p className="text-[10.5px] text-slate-700">
-                  NIP. {pengawas1Nip || '.........................................'}
-                </p>
-              </div>
+            {pengawas2Nama.trim() ? (
+              <>
+                {/* Mode 2 Petugas (Pengawas Ruang + Proktor/Pengawas 2) & Kepala Sekolah di Tengah Bawah */}
+                <div className="grid grid-cols-2 gap-8 text-center">
+                  <div>
+                    <p className="invisible select-none">{kotaSekolah}, {tanggalTitimangsa}</p>
+                    <p className="font-normal">Pengawas I / Ruang Ujian,</p>
+                    <div className="h-16" />
+                    <p className="font-bold underline">
+                      {pengawas1Nama || '( ..................................................... )'}
+                    </p>
+                    <p className="text-[10.5px] text-slate-700">
+                      NIP. {pengawas1Nip || '.........................................'}
+                    </p>
+                  </div>
 
-              <div>
-                <p className="font-normal">
-                  {kotaSekolah}, {tanggalTitimangsa}
-                </p>
-                <p className="font-normal">Pengawas 2 / Proktor Ruang,</p>
-                <div className="h-16" />
-                <p className="font-bold underline">
-                  {pengawas2Nama || '( ..................................................... )'}
-                </p>
-                <p className="text-[10.5px] text-slate-700">
-                  NIP. {pengawas2Nip || '.........................................'}
-                </p>
-              </div>
-            </div>
+                  <div>
+                    <p className="font-normal">
+                      {kotaSekolah}, {tanggalTitimangsa}
+                    </p>
+                    <p className="font-normal">Pengawas II / Proktor Ruang,</p>
+                    <div className="h-16" />
+                    <p className="font-bold underline">
+                      {pengawas2Nama}
+                    </p>
+                    <p className="text-[10.5px] text-slate-700">
+                      NIP. {pengawas2Nip || '.........................................'}
+                    </p>
+                  </div>
+                </div>
 
-            {/* Baris 2 (Tengah Bawah - Kepala Sekolah) */}
-            <div className="mt-6 text-center max-w-xs mx-auto">
-              <p className="font-normal">Mengetahui / Menyetujui,</p>
-              <p className="font-normal">Kepala Sekolah</p>
-              <div className="h-16" />
-              <p className="font-bold underline">
-                {kepsekNama || '( ..................................................... )'}
-              </p>
-              <p className="text-[10.5px] text-slate-700">
-                NIP. {kepsekNip || '.........................................'}
-              </p>
-            </div>
+                <div className="mt-6 text-center max-w-xs mx-auto">
+                  <p className="font-normal">Mengetahui / Menyetujui,</p>
+                  <p className="font-normal">Kepala Sekolah</p>
+                  <div className="h-16" />
+                  <p className="font-bold underline">
+                    {kepsekNama || '( ..................................................... )'}
+                  </p>
+                  <p className="text-[10.5px] text-slate-700">
+                    NIP. {kepsekNip || '.........................................'}
+                  </p>
+                </div>
+              </>
+            ) : (
+              /* Mode 1 Pengawas Kelas (Tanpa Proktor) — Kiri: Kepala Sekolah, Kanan: Pengawas Ruang */
+              <div className="grid grid-cols-2 gap-8 text-center">
+                <div>
+                  <p className="font-normal">Mengetahui / Menyetujui,</p>
+                  <p className="font-normal">Kepala Sekolah</p>
+                  <div className="h-16" />
+                  <p className="font-bold underline">
+                    {kepsekNama || '( ..................................................... )'}
+                  </p>
+                  <p className="text-[10.5px] text-slate-700">
+                    NIP. {kepsekNip || '.........................................'}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="font-normal">
+                    {kotaSekolah}, {tanggalTitimangsa}
+                  </p>
+                  <p className="font-normal">Pengawas Ruang Ujian,</p>
+                  <div className="h-16" />
+                  <p className="font-bold underline">
+                    {pengawas1Nama || '( ..................................................... )'}
+                  </p>
+                  <p className="text-[10.5px] text-slate-700">
+                    NIP. {pengawas1Nip || '.........................................'}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </PrintDocumentSheet>
       </div>

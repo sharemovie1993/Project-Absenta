@@ -406,23 +406,27 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
             Boolean(guruId) &&
             (row.setting_keamanan?.proktor_id === guruId ||
               row.setting_keamanan?.pengawas_2_id === guruId);
+          const isPengawas =
+            Boolean(guruId) && row.setting_keamanan?.pengawas_1_id === guruId;
 
           const isSessionUsed = row.status !== 'DRAFT' || pesertaCount > 0;
-          const canControlSession = !readOnly && (isOwnerOrAdmin || isProktor);
+          const canOpenMonitor = isSessionUsed || isPengawas || isProktor;
+          // Pengawas Ruang (1 pengawas di kelas ujian HP) maupun Proktor memiliki akses penuh kontrol jalannya sesi & token
+          const canControlSession = !readOnly && (isOwnerOrAdmin || isProktor || isPengawas);
           const canTransferRapor = !readOnly && isOwnerOrAdmin && row.status !== 'DRAFT' && pesertaCount > 0;
           const canEditSchedule = !readOnly && isOwnerOrAdmin;
 
           return (
             <div className="flex items-center justify-end gap-1 flex-nowrap" onClick={(e) => e.stopPropagation()}>
-              {/* Live Monitoring Proctor Button: Tampil ketika sesi sudah diaktifkan/digunakan */}
-              {isSessionUsed && (
+              {/* Live Monitoring Button: Tampil ketika sesi sudah diaktifkan/digunakan atau bagi Guru Pengawas/Proktor yang diploting */}
+              {canOpenMonitor && (
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => handleOpenMonitor(row.id)}
                   className="text-xs h-7 px-2 text-indigo-600 border-indigo-200 dark:border-indigo-800 font-bold bg-indigo-50/50 hover:bg-indigo-100"
-                  title="Monitoring Peserta Real-time"
+                  title="Monitoring Peserta & Token Ujian Real-time"
                 >
                   <Activity size={13} className="mr-1" />
                   <span>Monitor</span>

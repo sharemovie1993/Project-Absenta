@@ -778,46 +778,49 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
             <div className="space-y-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
               <div className="space-y-1">
                 <label htmlFor="jadwal-ruang" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                  Di ruang / lab mana ujian berlangsung? <span className="font-normal text-slate-400">(Opsional)</span>
+                  Di ruang / kelas mana ujian berlangsung? <span className="font-normal text-slate-400">(Opsional)</span>
                 </label>
                 <Input
                   id="jadwal-ruang"
                   value={ruangUjian}
                   onChange={(e) => setRuangUjian(e.target.value)}
-                  placeholder="Contoh: Lab Komputer 1 / Ruang 10"
-                  aria-label="Ruang atau Lab Ujian"
+                  placeholder="Contoh: Ruang 10 / Kelas X-1 / Lab Komputer"
+                  aria-label="Ruang atau Kelas Ujian"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div className="space-y-1 min-w-0">
                   <label htmlFor="jadwal-pengawas-1" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                    Siapa Pengawas Ruang?
+                    Siapa Pengawas Ruang / Kelas?
                   </label>
                   <SearchableSelect
                     id="jadwal-pengawas-1"
                     options={pengawasSelectOptions}
                     value={pengawas1Id}
                     onChange={setPengawas1Id}
-                    placeholder="Pilih Pengawas..."
+                    placeholder="Pilih Guru Pengawas..."
                     aria-label="Pilih Pengawas Ruang"
                   />
                 </div>
 
                 <div className="space-y-1 min-w-0">
                   <label htmlFor="jadwal-proktor" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                    Siapa Proktor / Pengawas 2?
+                    Proktor / Pengawas 2 <span className="font-normal text-slate-400">(Opsional)</span>
                   </label>
                   <SearchableSelect
                     id="jadwal-proktor"
                     options={pengawasSelectOptions}
                     value={proktorId}
                     onChange={setProktorId}
-                    placeholder="Pilih Proktor..."
+                    placeholder="Kosongkan jika cukup 1 pengawas..."
                     aria-label="Pilih Proktor Ujian"
                   />
                 </div>
               </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                💡 Guru yang di-plot sebagai <strong>Pengawas Ruang</strong> otomatis mendapatkan akses <strong>Token Masuk, Aktifkan Sesi, Live Monitoring, Reset Login Siswa, & Cetak Berita Acara</strong> di akunnya.
+              </p>
             </div>
 
             {/* Pertanyaan 2: Nilai Langsung Tampil atau Tidak */}

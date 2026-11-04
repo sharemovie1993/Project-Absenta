@@ -12,18 +12,24 @@ import {
   Users,
   Activity,
   CheckCircle2,
-  AlertTriangle,
   RotateCcw,
-  Clock,
   ShieldAlert,
   Search,
-  Filter,
   ArrowRightLeft,
   ArrowLeft,
+  Copy,
+  Check,
+  RotateCw,
+  Play,
+  Pause,
+  CheckCircle,
+  Printer,
+  MapPin,
 } from 'lucide-react';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
-import type { CbtPesertaUjian, CbtJadwalUjian } from '@/types/cbt.types';
+import type { CbtPesertaUjian } from '@/types/cbt.types';
 import { CbtTransferNilaiModal } from '../jadwal/CbtTransferNilaiModal';
+import { CbtBeritaAcaraPrintModal } from '../jadwal/CbtBeritaAcaraPrintModal';
 import useConfirm from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
 
@@ -45,6 +51,8 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [isBeritaAcaraOpen, setIsBeritaAcaraOpen] = useState(false);
+  const [copiedToken, setCopiedToken] = useState(false);
 
   // Sync apabila initialJadwalId berubah dari luar (misal klik tombol Monitor pada baris tabel)
   React.useEffect(() => {
@@ -92,6 +100,78 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal mereset sesi siswa'),
   });
+
+  // Session Control & Token Mutations (Untuk Pengawas Kelas / Proktor / Pengampu)
+  const activateMutation = useMutation({
+    mutationFn: (id: string) => cbtApi.activateJadwal(id),
+    onSuccess: async () => {
+      toast.success('Sesi ujian berhasil diaktifkan! Siswa kini dapat masuk menggunakan token.');
+      await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false, refetchType: 'all' });
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal mengaktifkan sesi ujian'),
+  });
+
+  const pauseMutation = useMutation({
+    mutationFn: (id: string) => cbtApi.pauseJadwal(id),
+    onSuccess: async () => {
+      toast.success('Sesi ujian dijeda sementara.');
+      await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false, refetchType: 'all' });
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal menjeda sesi ujian'),
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: (id: string) => cbtApi.completeJadwal(id),
+    onSuccess: async () => {
+      toast.success('Sesi ujian resmi diselesaikan.');
+      await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false, refetchType: 'all' });
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal menyelesaikan sesi ujian'),
+  });
+
+  const regenerateTokenMutation = useMutation({
+    mutationFn: (id: string) => cbtApi.regenerateToken(id),
+    onSuccess: async (res) => {
+      toast.success(`Token baru berhasil dibuat: ${res.token_ujian}`);
+      await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false, refetchType: 'all' });
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal membuat ulang token'),
+  });
+
+  const handleCopyToken = (token: string) => {
+    navigator.clipboard.writeText(token);
+    setCopiedToken(true);
+    toast.success(`Token "${token}" berhasil disalin!`);
+    setTimeout(() => setCopiedToken(false), 2000);
+  };
+
+  const handleActivateSession = async () => {
+    if (!activeJadwal) return;
+    const isConfirmed = await confirm({
+      title: 'Aktifkan Sesi Ujian?',
+      message: `Aktifkan sesi "${activeJadwal.nama_sesi}"? Siswa yang termasuk dalam rombel target akan dapat mulai masuk menggunakan token "${activeJadwal.token_ujian}".`,
+      confirmText: 'Aktifkan Sekarang',
+      cancelText: 'Batal',
+      style: 'primary',
+    });
+    if (isConfirmed) {
+      activateMutation.mutate(activeJadwal.id);
+    }
+  };
+
+  const handleCompleteSession = async () => {
+    if (!activeJadwal) return;
+    const isConfirmed = await confirm({
+      title: 'Selesaikan Sesi Ujian?',
+      message: `Akhiri sesi "${activeJadwal.nama_sesi}"? Siswa tidak dapat lagi masuk atau mengirimkan jawaban baru.`,
+      confirmText: 'Selesaikan Ujian',
+      cancelText: 'Batal',
+      style: 'danger',
+    });
+    if (isConfirmed) {
+      completeMutation.mutate(activeJadwal.id);
+    }
+  };
 
   const handleReset = async (peserta: CbtPesertaUjian) => {
     const isConfirmed = await confirm({
@@ -296,12 +376,90 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
 
         <div className="flex items-center gap-2 flex-wrap">
           {activeJadwal && (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700">
-              <span className="text-xs text-slate-500 font-medium">Token Sesi:</span>
-              <span className="font-mono text-sm font-black tracking-widest text-indigo-600 dark:text-indigo-400">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/70">
+              <span className="text-xs text-slate-600 dark:text-slate-300 font-semibold">Token Masuk:</span>
+              <span className="font-mono text-sm font-black tracking-widest text-indigo-700 dark:text-indigo-300 px-1">
                 {activeJadwal.token_ujian}
               </span>
+              <button
+                type="button"
+                onClick={() => handleCopyToken(activeJadwal.token_ujian)}
+                className="p-1 rounded-md text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors"
+                title="Salin Token Ujian untuk Siswa"
+              >
+                {copiedToken ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+              </button>
+              <button
+                type="button"
+                onClick={() => regenerateTokenMutation.mutate(activeJadwal.id)}
+                disabled={regenerateTokenMutation.isPending}
+                className="p-1 rounded-md text-slate-500 hover:text-indigo-700 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors"
+                title="Acak Ulang Token Baru (Jika Token Bocor)"
+              >
+                <RotateCw size={13} className={regenerateTokenMutation.isPending ? 'animate-spin' : ''} />
+              </button>
             </div>
+          )}
+
+          {/* Kontrol Jalannya Sesi Langsung dari Layar Pengawas Kelas */}
+          {activeJadwal && (
+            <>
+              {(activeJadwal.status === 'DRAFT' || activeJadwal.status === 'PAUSED') && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleActivateSession}
+                  disabled={activateMutation.isPending}
+                  className="text-xs h-9 px-3 text-emerald-700 border-emerald-300 bg-emerald-50 hover:bg-emerald-100 font-bold"
+                  title="Aktifkan Sesi Ujian agar Siswa Bisa Masuk"
+                >
+                  <Play size={13} className="mr-1" />
+                  <span>{activeJadwal.status === 'PAUSED' ? 'Lanjutkan Sesi' : 'Aktifkan Sesi'}</span>
+                </Button>
+              )}
+
+              {activeJadwal.status === 'ACTIVE' && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => pauseMutation.mutate(activeJadwal.id)}
+                    disabled={pauseMutation.isPending}
+                    className="text-xs h-9 px-2.5 text-amber-700 border-amber-300 bg-amber-50 hover:bg-amber-100 font-bold"
+                    title="Jeda Sementara Sesi Ujian"
+                  >
+                    <Pause size={13} className="mr-1" />
+                    <span>Jeda</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCompleteSession}
+                    disabled={completeMutation.isPending}
+                    className="text-xs h-9 px-2.5 text-slate-700 border-slate-300 hover:bg-slate-100 font-bold"
+                    title="Akhiri & Selesaikan Sesi Ujian"
+                  >
+                    <CheckCircle size={13} className="mr-1" />
+                    <span>Selesaikan</span>
+                  </Button>
+                </>
+              )}
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsBeritaAcaraOpen(true)}
+                className="text-xs h-9 px-3 font-semibold"
+                title="Cetak Berita Acara Pelaksanaan Ujian"
+              >
+                <Printer size={13} className="mr-1.5" />
+                <span>Berita Acara</span>
+              </Button>
+            </>
           )}
 
           <Button
@@ -310,7 +468,7 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
             size="sm"
             onClick={() => refetch()}
             className="text-xs h-9 px-3"
-            title="Segarkan Data Proctor"
+            title="Segarkan Data Peserta"
           >
             Segarkan
           </Button>
@@ -330,6 +488,50 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
           )}
         </div>
       </div>
+
+      {/* Info Bar Konteks Ruang & Mata Pelajaran */}
+      {activeJadwal && (
+        <div className="px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2 text-slate-600 dark:text-slate-300">
+            <span className="font-bold text-indigo-600 dark:text-indigo-400">
+              {activeJadwal.BankSoal?.MataPelajaran?.nama_mapel || 'Mata Pelajaran Umum'}
+            </span>
+            <span>•</span>
+            <span>Pengampu: <strong>{activeJadwal.BankSoal?.Guru?.nama_guru || '-'}</strong></span>
+            {activeJadwal.setting_keamanan?.ruang_ujian && (
+              <>
+                <span>•</span>
+                <span className="inline-flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-200">
+                  <MapPin size={12} className="text-indigo-500" />
+                  {activeJadwal.setting_keamanan.ruang_ujian}
+                </span>
+              </>
+            )}
+            {activeJadwal.setting_keamanan?.pengawas_1_nama && (
+              <>
+                <span>•</span>
+                <span>Pengawas: <strong>{activeJadwal.setting_keamanan.pengawas_1_nama}</strong></span>
+              </>
+            )}
+          </div>
+          <div>
+            {activeJadwal.status === 'ACTIVE' ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                SESI AKTIF
+              </span>
+            ) : activeJadwal.status === 'DRAFT' ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                BELUM DIAKTIFKAN (KLIK AKTIFKAN SESI AGAR SISWA BISA MASUK)
+              </span>
+            ) : (
+              <Badge variant="outline" className="text-[10px] font-bold">
+                STATUS: {activeJadwal.status}
+              </Badge>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Shopee-Grade Metric Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -436,6 +638,15 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
         <CbtTransferNilaiModal
           isOpen={isTransferModalOpen}
           onClose={() => setIsTransferModalOpen(false)}
+          jadwal={activeJadwal}
+        />
+      )}
+
+      {/* Modal Cetak Berita Acara Pelaksanaan */}
+      {isBeritaAcaraOpen && activeJadwal && (
+        <CbtBeritaAcaraPrintModal
+          isOpen={isBeritaAcaraOpen}
+          onClose={() => setIsBeritaAcaraOpen(false)}
           jadwal={activeJadwal}
         />
       )}
