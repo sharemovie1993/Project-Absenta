@@ -10,7 +10,7 @@ export const opsiPilihanSchema = z.object({
   gambar_url: z.string().nullable().optional(),
 });
 
-export const createBankSoalSchema = z.object({
+const bankSoalBaseSchema = z.object({
   guru_id: z.string().uuid('ID Guru tidak valid'),
   mapel_id: z.string().uuid('ID Mapel tidak valid'),
   kode_bank: z.string().min(2, 'Kode bank soal minimal 2 karakter').max(50),
@@ -24,10 +24,46 @@ export const createBankSoalSchema = z.object({
   is_shared: z.boolean().optional(),
 });
 
-export const updateBankSoalSchema = createBankSoalSchema.partial().extend({
-  status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']).optional(),
-  is_shared: z.boolean().optional(),
-});
+/**
+ * Validasi domain aturan dinas / kurikulum untuk Bank Soal:
+ * 1. PSAJ (Penilaian Sumatif Akhir Jenjang) hanya untuk tingkat XII.
+ * 2. SAT (Sumatif Akhir Tahun / Kenaikan Kelas) hanya untuk tingkat X dan XI (tingkat XII tidak diperbolehkan).
+ */
+const refineBankSoalAsesmen = (
+  data: { kode_bank?: string; tingkat?: string },
+  ctx: z.RefinementCtx
+) => {
+  if (!data.kode_bank) return;
+  const kodeUpper = data.kode_bank.toUpperCase();
+
+  if (kodeUpper.startsWith('PSAJ-') && data.tingkat && data.tingkat !== 'XII') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        'Paket bank soal PSAJ adalah evaluasi kelulusan akhir jenjang yang hanya diperkenankan untuk Kelas XII',
+      path: ['tingkat'],
+    });
+  }
+
+  if (kodeUpper.startsWith('SAT-') && data.tingkat === 'XII') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        'Paket bank soal SAT adalah evaluasi kenaikan kelas untuk Kelas X dan XI (Kelas XII menempuh kelulusan PSAJ)',
+      path: ['tingkat'],
+    });
+  }
+};
+
+export const createBankSoalSchema = bankSoalBaseSchema.superRefine(refineBankSoalAsesmen);
+
+export const updateBankSoalSchema = bankSoalBaseSchema
+  .partial()
+  .extend({
+    status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']).optional(),
+    is_shared: z.boolean().optional(),
+  })
+  .superRefine(refineBankSoalAsesmen);
 
 export const queryBankSoalSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),

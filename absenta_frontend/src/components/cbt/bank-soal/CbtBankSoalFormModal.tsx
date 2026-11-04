@@ -1,10 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-  Modal,
-  Button,
-  Input,
-  SearchableSelect,
-} from '@/components/ui';
+import { Modal, Button, Input, SearchableSelect } from '@/components/ui';
 import { useGuruOptions, useMapelOptions, useSemesterOptions } from '@/components/common';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import { kurikulumApi } from '@/api/kurikulum.api';
@@ -13,182 +8,19 @@ import { useCapabilities } from '@/hooks/useCapabilities';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CbtBankSoal } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
-import { z } from 'zod';
 import { cn } from '@/lib/utils';
 import { Layers, User, Sparkles, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import {
+  type CbtBankSoalScope,
+  OFFICIAL_ASESMEN_TYPES,
+  detectSmartAsesmenType,
+  generateAutoFillMassal,
+  getAllowedTingkatForAsesmen,
+  cbtBankSoalStep1Schema,
+  cbtBankSoalPayloadSchema,
+} from './cbtAsesmenHelper';
 
-export type CbtBankSoalScope = 'TERPUSAT_MASSAL' | 'MANDIRI_GURU';
-
-export interface OfficialAsesmenType {
-  key: string;
-  singkatan: string;
-  namaResmi: string;
-  keterangan: string;
-  defaultPrefix: string;
-  allowedTingkat?: Array<'X' | 'XI' | 'XII' | 'SEMUA'>;
-  tingkatRuleExplanation?: string;
-}
-
-export const OFFICIAL_ASESMEN_TYPES: OfficialAsesmenType[] = [
-  {
-    key: 'SAS',
-    singkatan: 'SAS',
-    namaResmi: 'Sumatif Akhir Semester',
-    keterangan: 'Semester 1 (Ganjil)',
-    defaultPrefix: 'SAS',
-    allowedTingkat: ['X', 'XI', 'XII', 'SEMUA'],
-  },
-  {
-    key: 'SAT',
-    singkatan: 'SAT',
-    namaResmi: 'Sumatif Akhir Tahun',
-    keterangan: 'Kenaikan Kelas (Sem. 2)',
-    defaultPrefix: 'SAT',
-    allowedTingkat: ['X', 'XI'],
-    tingkatRuleExplanation: 'Khusus Kenaikan Kelas X & XI',
-  },
-  {
-    key: 'STS',
-    singkatan: 'STS',
-    namaResmi: 'Sumatif Tengah Semester',
-    keterangan: 'Tengah Semester',
-    defaultPrefix: 'STS',
-    allowedTingkat: ['X', 'XI', 'XII', 'SEMUA'],
-  },
-  {
-    key: 'PSAJ',
-    singkatan: 'PSAJ',
-    namaResmi: 'Penilaian Sumatif Akhir Jenjang',
-    keterangan: 'Kelulusan Kelas XII',
-    defaultPrefix: 'PSAJ',
-    allowedTingkat: ['XII'],
-    tingkatRuleExplanation: 'Khusus Kelulusan Kelas XII',
-  },
-  {
-    key: 'SLM',
-    singkatan: 'SLM',
-    namaResmi: 'Sumatif Lingkup Materi',
-    keterangan: 'Ulangan Bab / TP',
-    defaultPrefix: 'SLM',
-    allowedTingkat: ['X', 'XI', 'XII', 'SEMUA'],
-  },
-  {
-    key: 'TRYOUT',
-    singkatan: 'Simulasi',
-    namaResmi: 'Simulasi / Try Out Asesmen',
-    keterangan: 'Try Out & ANBK',
-    defaultPrefix: 'TRYOUT',
-    allowedTingkat: ['X', 'XI', 'XII', 'SEMUA'],
-  },
-];
-
-export interface SmartPeriodDetection {
-  recommendedKey: string;
-  semesterLabel: string;
-  monthName: string;
-  reason: string;
-  shortTag: string;
-}
-
-/**
- * Mendeteksi jenis kegiatan asesmen yang paling relevan secara cerdas
- * berdasarkan kalender bulan berjalan & semester aktif sekolah.
- * 
- * - Semester Ganjil (Juli - Des):
- *   * Juli-Agustus: SLM (Sumatif Lingkup Materi / Ulangan Awal Bab)
- *   * September-Oktober: STS (Sumatif Tengah Semester)
- *   * November-Desember: SAS (Sumatif Akhir Semester)
- * - Semester Genap (Januari - Juni):
- *   * Januari-Februari: SLM / Simulasi ANBK
- *   * Februari-Maret: STS (Sumatif Tengah Semester Genap)
- *   * Maret-April: PSAJ (Penilaian Sumatif Akhir Jenjang / Kelulusan XII)
- *   * Mei-Juni: SAT (Sumatif Akhir Tahun / Kenaikan Kelas)
- */
-export function detectSmartAsesmenType(
-  activeSemester?: { nama_semester?: string; is_active?: boolean } | null,
-  tingkat?: string
-): SmartPeriodDetection {
-  const now = new Date();
-  const month = now.getMonth() + 1; // 1-12
-  const monthNames = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-  ];
-  const monthName = monthNames[month - 1];
-
-  const semName = (activeSemester?.nama_semester || '').toLowerCase();
-  const isExplicitGenap = semName.includes('genap') || semName.includes('2');
-  const isExplicitGanjil = semName.includes('ganjil') || semName.includes('gasal') || semName.includes('1');
-
-  // Bila semester belum tersetting, gunakan kalender nasional Indonesia:
-  // Bulan 7 - 12 (Juli - Desember) = Semester Ganjil
-  // Bulan 1 - 6 (Januari - Juni) = Semester Genap
-  const isGanjil = isExplicitGanjil ? true : isExplicitGenap ? false : (month >= 7 && month <= 12);
-  const semesterLabel = isGanjil ? 'Semester Ganjil' : 'Semester Genap';
-
-  if (isGanjil) {
-    if (month >= 11 || month === 12) {
-      return {
-        recommendedKey: 'SAS',
-        semesterLabel,
-        monthName,
-        reason: `Bulan ${monthName} berada di penghujung Semester Ganjil — waktu pelaksanaan Sumatif Akhir Semester (SAS).`,
-        shortTag: 'Periode SAS (Akhir Smt 1)',
-      };
-    } else if (month === 9 || month === 10) {
-      return {
-        recommendedKey: 'STS',
-        semesterLabel,
-        monthName,
-        reason: `Bulan ${monthName} adalah periode evaluasi progres Sumatif Tengah Semester (STS) Ganjil.`,
-        shortTag: 'Periode STS (Tengah Smt 1)',
-      };
-    } else {
-      return {
-        recommendedKey: 'SLM',
-        semesterLabel,
-        monthName,
-        reason: `Bulan ${monthName} adalah awal semester — pelaksanaan Sumatif Lingkup Materi / Ulangan Bab (SLM).`,
-        shortTag: 'Periode SLM (Lingkup Materi)',
-      };
-    }
-  } else {
-    // Semester Genap (Januari - Juni)
-    if (tingkat === 'XII' && (month === 2 || month === 3 || month === 4)) {
-      return {
-        recommendedKey: 'PSAJ',
-        semesterLabel,
-        monthName,
-        reason: `Bulan ${monthName} bagi tingkat akhir (XII) adalah agenda Penilaian Sumatif Akhir Jenjang (PSAJ / Kelulusan).`,
-        shortTag: 'Periode PSAJ (Tingkat XII)',
-      };
-    } else if (month >= 5 || month === 6) {
-      return {
-        recommendedKey: 'SAT',
-        semesterLabel,
-        monthName,
-        reason: `Bulan ${monthName} berada di penghujung Semester Genap — waktu pelaksanaan evaluasi kenaikan kelas (SAT).`,
-        shortTag: 'Periode SAT (Kenaikan Kelas)',
-      };
-    } else if (month === 2 || month === 3) {
-      return {
-        recommendedKey: 'STS',
-        semesterLabel,
-        monthName,
-        reason: `Bulan ${monthName} adalah periode evaluasi progres Sumatif Tengah Semester (STS) Genap.`,
-        shortTag: 'Periode STS (Tengah Smt 2)',
-      };
-    } else {
-      return {
-        recommendedKey: 'TRYOUT',
-        semesterLabel,
-        monthName,
-        reason: `Bulan ${monthName} awal semester genap lazim untuk Simulasi / Try Out asesmen dan persiapan ANBK.`,
-        shortTag: 'Simulasi / Try Out',
-      };
-    }
-  }
-}
+export * from './cbtAsesmenHelper';
 
 interface CbtBankSoalFormModalProps {
   isOpen: boolean;
@@ -199,20 +31,6 @@ interface CbtBankSoalFormModalProps {
   defaultMapelId?: string;
   roleContext?: 'GURU' | 'KURIKULUM' | 'ADMIN';
 }
-
-const step1Schema = z.object({
-  mapel_id: z.string().min(1, 'Mata pelajaran wajib dipilih'),
-  tingkat: z.enum(['X', 'XI', 'XII', 'SEMUA']),
-});
-
-const bankSoalSchema = z.object({
-  kode_bank: z.string().min(2, 'Kode bank soal minimal 2 karakter').max(50),
-  judul: z.string().min(3, 'Judul bank soal minimal 3 karakter').max(200),
-  guru_id: z.string().min(1, 'Guru pembuat/penyusun soal wajib dipilih'),
-  mapel_id: z.string().min(1, 'Mata pelajaran wajib dipilih'),
-  tingkat: z.enum(['X', 'XI', 'XII', 'SEMUA']),
-  alokasi_menit: z.number().int().min(10, 'Alokasi durasi minimal 10 menit').max(300),
-});
 
 export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   isOpen,
@@ -226,27 +44,16 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const { isAdmin, isKurikulum } = useCapabilities();
-
   const isPrivilegedRole = isAdmin || isKurikulum || roleContext === 'KURIKULUM' || roleContext === 'ADMIN';
 
-  // 1. Pemisahan Konteks: Mandiri Guru vs Terpusat Massal (UAS/PAS/US/Panitia)
+  // 1. Pemisahan Konteks: Mandiri Guru vs Terpusat Massal
   const initialScope: CbtBankSoalScope = useMemo(() => {
     if (bankSoalToEdit) {
       const code = bankSoalToEdit.kode_bank.toUpperCase();
-      if (
-        code.startsWith('PAS-') ||
-        code.startsWith('UAS-') ||
-        code.startsWith('PAT-') ||
-        code.startsWith('US-') ||
-        code.startsWith('PTS-') ||
-        code.startsWith('SAS-') ||
-        code.startsWith('SAT-') ||
-        code.startsWith('STS-') ||
-        code.startsWith('PSAJ-')
-      ) {
-        return 'TERPUSAT_MASSAL';
-      }
-      return 'MANDIRI_GURU';
+      const isMassalCode = [
+        'PAS-', 'UAS-', 'PAT-', 'US-', 'PTS-', 'SAS-', 'SAT-', 'STS-', 'PSAJ-',
+      ].some((prefix) => code.startsWith(prefix));
+      return isMassalCode ? 'TERPUSAT_MASSAL' : 'MANDIRI_GURU';
     }
     return isPrivilegedRole && !defaultGuruId ? 'TERPUSAT_MASSAL' : 'MANDIRI_GURU';
   }, [bankSoalToEdit, isPrivilegedRole, defaultGuruId]);
@@ -254,7 +61,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   const { activeSemester } = useSemesterOptions();
   const [tingkat, setTingkat] = useState<'X' | 'XI' | 'XII' | 'SEMUA'>('X');
 
-  // Deteksi cerdas asesmen resmi berdasarkan bulan berjalan & semester aktif
+  // Deteksi cerdas asesmen resmi berdasarkan kalender bulan & semester aktif
   const smartDetection = useMemo(() => {
     return detectSmartAsesmenType(activeSemester, tingkat);
   }, [activeSemester, tingkat]);
@@ -275,24 +82,21 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     return Boolean(defaultGuruId || user?.guru_profile?.id);
   }, [isPrivilegedRole, scope, defaultGuruId, user?.guru_profile?.id]);
 
-  // Evaluasi definisi asesmen & proteksi tingkat kelas yang diperkenankan (Anti Human-Error)
+  // Evaluasi daftar tingkat kelas yang sah (Anti Human-Error)
   const activeAsesmenDef = useMemo(() => {
     if (scope !== 'TERPUSAT_MASSAL') return null;
     return OFFICIAL_ASESMEN_TYPES.find((t) => t.key === jenisKegiatanMassal) || null;
   }, [scope, jenisKegiatanMassal]);
 
   const allowedTingkatList = useMemo(() => {
-    if (!activeAsesmenDef?.allowedTingkat) {
-      return ['X', 'XI', 'XII', 'SEMUA'] as const;
-    }
-    return activeAsesmenDef.allowedTingkat;
-  }, [activeAsesmenDef]);
+    return getAllowedTingkatForAsesmen(scope, jenisKegiatanMassal);
+  }, [scope, jenisKegiatanMassal]);
 
   const initialGuruId = useMemo(() => {
     return defaultGuruId || user?.guru_profile?.id || '';
   }, [defaultGuruId, user?.guru_profile?.id]);
 
-  const { options: guruOptions, loading: guruLoading } = useGuruOptions();
+  const { options: guruOptions, isLoading: isGuruLoading } = useGuruOptions();
   const { options: mapelOptions, loading: mapelLoading } = useMapelOptions();
 
   const [kodeBank, setKodeBank] = useState('');
@@ -339,25 +143,16 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     return base;
   }, [scope, showAllMapels, assignedMapels, mapelOptions, mapelId]);
 
-  // Auto-generate judul & kode bank pada mode massal saat mapel atau kegiatan berubah
-  const handleAutoFillMassal = (targetMapelId: string, targetTingkat: string, targetKegiatanKey: string) => {
-    const selectedMapel = mapelOptions.find((m) => m.value === targetMapelId);
-    const mapelName = selectedMapel?.label?.split('(')[0]?.trim() || 'Mata Pelajaran';
-    const year = new Date().getFullYear();
-    const cleanMapelCode = (selectedMapel?.label || 'MAPEL')
-      .replace(/[^a-zA-Z0-9]/g, '')
-      .slice(0, 4)
-      .toUpperCase();
-
-    const selectedDef = OFFICIAL_ASESMEN_TYPES.find((t) => t.key === targetKegiatanKey);
-    const prefix = selectedDef?.defaultPrefix || targetKegiatanKey;
-    const fullOfficialName = selectedDef?.namaResmi || targetKegiatanKey;
-
-    const generatedCode = `${prefix}-${year}-${cleanMapelCode}-${targetTingkat}`;
-    const generatedTitle = `${prefix} - ${mapelName} Tingkat ${targetTingkat} (${fullOfficialName})`;
-
-    setKodeBank(generatedCode);
-    setJudul(generatedTitle);
+  // Sinkronisasi otomatis judul & kode bank pada mode massal
+  const triggerAutoFillMassal = (targetMapelId: string, targetTingkat: string, targetKegiatanKey: string) => {
+    const { kodeBank: genCode, judul: genTitle } = generateAutoFillMassal({
+      mapelOptions,
+      targetMapelId,
+      targetTingkat,
+      targetKegiatanKey,
+    });
+    setKodeBank(genCode);
+    setJudul(genTitle);
   };
 
   // Aksi pemilihan kegiatan massal dengan proteksi otomatis tingkat kelas (Anti Human-Error)
@@ -370,10 +165,11 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setTingkat(nextTingkat);
     }
     if (mapelId) {
-      handleAutoFillMassal(mapelId, nextTingkat, targetKey);
+      triggerAutoFillMassal(mapelId, nextTingkat, targetKey);
     }
   };
 
+  // Inisialisasi awal saat modal dibuka
   useEffect(() => {
     if (!isOpen) return;
 
@@ -392,9 +188,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
 
       const code = bankSoalToEdit.kode_bank.toUpperCase();
       const detected = OFFICIAL_ASESMEN_TYPES.find((t) => code.startsWith(`${t.key}-`));
-      if (detected) {
-        setJenisKegiatanMassal(detected.key);
-      }
+      if (detected) setJenisKegiatanMassal(detected.key);
     } else {
       setStep(1);
       setScope(initialScope);
@@ -436,7 +230,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setJenisKegiatanMassal(recKey);
       setTingkat(targetTingkat);
       if (mapelId) {
-        handleAutoFillMassal(mapelId, targetTingkat, recKey);
+        triggerAutoFillMassal(mapelId, targetTingkat, recKey);
       }
     } else {
       if (
@@ -456,7 +250,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     e?.preventDefault();
     e?.stopPropagation();
 
-    const val = step1Schema.safeParse({ mapel_id: mapelId, tingkat });
+    const val = cbtBankSoalStep1Schema.safeParse({ mapel_id: mapelId, tingkat });
     if (!val.success) {
       toast.error(val.error.issues.map((i) => i.message).join(', '));
       return;
@@ -467,8 +261,11 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       return;
     }
 
-    if (scope === 'TERPUSAT_MASSAL' && (!judul || judul.startsWith('SAS -') || judul.startsWith('PAS -') || judul.startsWith('SAT -') || judul.startsWith('PSAJ -'))) {
-      handleAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal);
+    if (
+      scope === 'TERPUSAT_MASSAL' &&
+      (!judul || judul.startsWith('SAS -') || judul.startsWith('PAS -') || judul.startsWith('SAT -') || judul.startsWith('PSAJ -'))
+    ) {
+      triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal);
     } else if (scope === 'MANDIRI_GURU' && !judul) {
       const selectedMapel = mapelOptions.find((m) => m.value === mapelId);
       const mapelName = selectedMapel?.label?.split('(')[0]?.trim() || 'Mata Pelajaran';
@@ -492,7 +289,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       return;
     }
 
-    const validation = bankSoalSchema.safeParse({
+    const validation = cbtBankSoalPayloadSchema.safeParse({
       kode_bank: kodeBank.trim().toUpperCase(),
       judul: judul.trim(),
       guru_id: guruId,
@@ -760,7 +557,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                 onChange={(newMapelId) => {
                   setMapelId(newMapelId);
                   if (scope === 'TERPUSAT_MASSAL') {
-                    handleAutoFillMassal(newMapelId, tingkat, jenisKegiatanMassal);
+                    triggerAutoFillMassal(newMapelId, tingkat, jenisKegiatanMassal);
                   }
                 }}
                 placeholder={
@@ -808,7 +605,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                         if (!isAllowed) return;
                         setTingkat(item.value);
                         if (scope === 'TERPUSAT_MASSAL' && mapelId) {
-                          handleAutoFillMassal(mapelId, item.value, jenisKegiatanMassal);
+                          triggerAutoFillMassal(mapelId, item.value, jenisKegiatanMassal);
                         }
                       }}
                       className={cn(
@@ -841,7 +638,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                   {mapelId && (
                     <button
                       type="button"
-                      onClick={() => handleAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal)}
+                      onClick={() => triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal)}
                       className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 flex items-center gap-1 hover:underline cursor-pointer"
                       title="Generate otomatis judul standar"
                     >
@@ -892,7 +689,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                       setShowAllMapels(false);
                     }
                   }}
-                  placeholder={guruLoading ? 'Memuat daftar guru...' : 'Pilih guru penyusun...'}
+                  placeholder={isGuruLoading ? 'Memuat daftar guru...' : 'Pilih guru penyusun...'}
                   aria-label="Pilih Guru Penyusun Soal"
                 />
               </div>
