@@ -127,15 +127,6 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
     return classesInTingkat;
   }, [showAllGradeClasses, teacherClasses, classesInTingkat]);
 
-  // Sinkronisasi ID kelas terpilih yang valid dan aktif di layar
-  const validTargetKelasIds = useMemo(() => {
-    return filterValidTargetKelasIds(targetKelasIds, displayedKelasList);
-  }, [targetKelasIds, displayedKelasList]);
-
-  const selectedCount = validTargetKelasIds.length;
-  const totalCount = displayedKelasList.length;
-  const isAllSelected = totalCount > 0 && selectedCount === totalCount;
-
   // Konteks Akademik Terpadu
   const [tpId, setTpId] = useState('');
   const [semId, setSemId] = useState('');
@@ -164,6 +155,15 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
   const [pengawas1Id, setPengawas1Id] = useState('');
   const [proktorId, setProktorId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Sinkronisasi ID kelas terpilih yang valid dan aktif di layar
+  const validTargetKelasIds = useMemo(() => {
+    return filterValidTargetKelasIds(targetKelasIds, displayedKelasList);
+  }, [targetKelasIds, displayedKelasList]);
+
+  const selectedCount = validTargetKelasIds.length;
+  const totalCount = displayedKelasList.length;
+  const isAllSelected = totalCount > 0 && selectedCount === totalCount;
 
   // Initial Sync Konteks Akademik & Edit State
   useEffect(() => {
