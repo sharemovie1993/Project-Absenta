@@ -300,7 +300,7 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
     return `${y}-${m}-${d}`;
   }, []);
 
-  const [eventPrefix, setEventPrefix] = useState('PAS Ganjil');
+  const [eventPrefix, setEventPrefix] = useState('SAS Ganjil');
   const [defaultDate, setDefaultDate] = useState(defaultTodayStr);
   const [defaultStartTime, setDefaultStartTime] = useState('07:30');
   const [defaultEndTime, setDefaultEndTime] = useState('09:00');
@@ -682,13 +682,45 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
               </Button>
             </div>
 
+            {/* Preset Cepat Nomenklatur Resmi Dinas */}
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold text-violet-950 dark:text-violet-200 uppercase tracking-wider">
+                Pilih Nomenklatur Asesmen Resmi Dinas:
+              </label>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {[
+                  { label: 'SAS Ganjil', desc: 'Sumatif Akhir Semester' },
+                  { label: 'SAT Genap', desc: 'Sumatif Akhir Tahun' },
+                  { label: 'STS Ganjil', desc: 'Sumatif Tengah Semester 1' },
+                  { label: 'STS Genap', desc: 'Sumatif Tengah Semester 2' },
+                  { label: 'PSAJ', desc: 'Penilaian Sumatif Akhir Jenjang (Kelulusan)' },
+                  { label: 'Simulasi Asesmen', desc: 'Tryout / Persiapan ANBK' },
+                ].map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => setEventPrefix(item.label)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer",
+                      eventPrefix === item.label
+                        ? "bg-violet-600 text-white border-violet-600 shadow-2xs"
+                        : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-violet-300"
+                    )}
+                    title={item.desc}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
               <div>
                 <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Nama Event</label>
                 <Input
                   value={eventPrefix}
                   onChange={(e) => setEventPrefix(e.target.value)}
-                  placeholder="PAS Ganjil"
+                  placeholder="SAS Ganjil"
                   aria-label="Nama Event Ujian"
                 />
               </div>

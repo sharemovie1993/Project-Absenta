@@ -176,14 +176,16 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
           const isFromColleague = Boolean(currentGuruId && row.guru_id !== currentGuruId);
           const code = (row.kode_bank || '').toUpperCase();
           const isMassalPackage =
-            code.startsWith('PAS-') ||
-            code.startsWith('UAS-') ||
-            code.startsWith('PAT-') ||
-            code.startsWith('US-') ||
-            code.startsWith('PTS-') ||
             code.startsWith('SAS-') ||
             code.startsWith('SAT-') ||
-            code.startsWith('STS-');
+            code.startsWith('STS-') ||
+            code.startsWith('PSAJ-') ||
+            code.startsWith('PAS-') ||
+            code.startsWith('PAT-') ||
+            code.startsWith('PTS-') ||
+            code.startsWith('US-') ||
+            code.startsWith('UAS-') ||
+            code.startsWith('TRYOUT-');
 
           return (
             <div className="space-y-0.5">

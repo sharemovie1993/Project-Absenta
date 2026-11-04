@@ -19,6 +19,59 @@ import { Layers, User, Sparkles } from 'lucide-react';
 
 export type CbtBankSoalScope = 'TERPUSAT_MASSAL' | 'MANDIRI_GURU';
 
+export interface OfficialAsesmenType {
+  key: string;
+  singkatan: string;
+  namaResmi: string;
+  keterangan: string;
+  defaultPrefix: string;
+}
+
+export const OFFICIAL_ASESMEN_TYPES: OfficialAsesmenType[] = [
+  {
+    key: 'SAS',
+    singkatan: 'SAS',
+    namaResmi: 'Sumatif Akhir Semester',
+    keterangan: 'Resmi Kurikulum Merdeka pengganti PAS (Semester Ganjil)',
+    defaultPrefix: 'SAS',
+  },
+  {
+    key: 'SAT',
+    singkatan: 'SAT',
+    namaResmi: 'Sumatif Akhir Tahun',
+    keterangan: 'Resmi Kurikulum Merdeka pengganti PAT / Kenaikan Kelas (Semester Genap)',
+    defaultPrefix: 'SAT',
+  },
+  {
+    key: 'STS',
+    singkatan: 'STS',
+    namaResmi: 'Sumatif Tengah Semester',
+    keterangan: 'Resmi evaluasi progres tengah semester pengganti PTS',
+    defaultPrefix: 'STS',
+  },
+  {
+    key: 'PSAJ',
+    singkatan: 'PSAJ',
+    namaResmi: 'Penilaian Sumatif Akhir Jenjang',
+    keterangan: 'Resmi kelulusan tingkat akhir kelas XII / IX pengganti Ujian Sekolah (US)',
+    defaultPrefix: 'PSAJ',
+  },
+  {
+    key: 'SLM',
+    singkatan: 'SLM',
+    namaResmi: 'Sumatif Lingkup Materi',
+    keterangan: 'Resmi evaluasi Tujuan Pembelajaran (TP) / Ulangan Bab',
+    defaultPrefix: 'SLM',
+  },
+  {
+    key: 'TRYOUT',
+    singkatan: 'Simulasi',
+    namaResmi: 'Simulasi / Try Out Asesmen',
+    keterangan: 'Uji coba asesmen terstandar & persiapan ANBK / TKA',
+    defaultPrefix: 'TRYOUT',
+  },
+];
+
 interface CbtBankSoalFormModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -75,7 +128,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   }, [bankSoalToEdit, isPrivilegedRole, defaultGuruId]);
 
   const [scope, setScope] = useState<CbtBankSoalScope>(initialScope);
-  const [jenisKegiatanMassal, setJenisKegiatanMassal] = useState<'PAS' | 'PAT' | 'PTS' | 'US' | 'TRYOUT' | 'CUSTOM'>('PAS');
+  const [jenisKegiatanMassal, setJenisKegiatanMassal] = useState<string>('SAS');
 
   // Kunci pemilihan guru HANYA jika guru biasa murni di mode mandiri
   const isTeacherLocked = useMemo(() => {
@@ -140,17 +193,21 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   }, [scope, showAllMapels, assignedMapels, mapelOptions, mapelId]);
 
   // Auto-generate judul & kode bank pada mode massal saat mapel atau kegiatan berubah
-  const handleAutoFillMassal = (targetMapelId: string, targetTingkat: string, targetKegiatan: string) => {
+  const handleAutoFillMassal = (targetMapelId: string, targetTingkat: string, targetKegiatanKey: string) => {
     const selectedMapel = mapelOptions.find((m) => m.value === targetMapelId);
-    const mapelName = selectedMapel?.label?.split('(')[0]?.trim() || 'Mapel';
+    const mapelName = selectedMapel?.label?.split('(')[0]?.trim() || 'Mata Pelajaran';
     const year = new Date().getFullYear();
     const cleanMapelCode = (selectedMapel?.label || 'MAPEL')
       .replace(/[^a-zA-Z0-9]/g, '')
       .slice(0, 4)
       .toUpperCase();
 
-    const generatedCode = `${targetKegiatan}-${year}-${cleanMapelCode}-${targetTingkat}`;
-    const generatedTitle = `${targetKegiatan} ${mapelName} Tingkat ${targetTingkat}`;
+    const selectedDef = OFFICIAL_ASESMEN_TYPES.find((t) => t.key === targetKegiatanKey);
+    const prefix = selectedDef?.defaultPrefix || targetKegiatanKey;
+    const fullOfficialName = selectedDef?.namaResmi || targetKegiatanKey;
+
+    const generatedCode = `${prefix}-${year}-${cleanMapelCode}-${targetTingkat}`;
+    const generatedTitle = `${prefix} - ${mapelName} Tingkat ${targetTingkat} (${fullOfficialName})`;
 
     setKodeBank(generatedCode);
     setJudul(generatedTitle);
@@ -175,7 +232,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       const year = new Date().getFullYear();
       const randomSuffix = Math.floor(1000 + Math.random() * 9000);
 
-      setKodeBank(isMassal ? `PAS-${year}-MAPEL-X` : `CBT-${year}-${randomSuffix}`);
+      setKodeBank(isMassal ? `SAS-${year}-MAPEL-X` : `CBT-${year}-${randomSuffix}`);
       setJudul('');
       setGuruId(initialGuruId);
       setMapelId(defaultMapelId || '');
@@ -195,13 +252,18 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     if (newScope === 'TERPUSAT_MASSAL') {
       setShowAllMapels(true);
       setIsShared(true);
-      if (!judul || judul.startsWith('Ulangan') || judul.startsWith('Kuis')) {
-        handleAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal);
-      }
+      handleAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal);
     } else {
       // Kembali ke Mandiri Guru
-      if (kodeBank.startsWith('PAS-') || kodeBank.startsWith('UAS-') || kodeBank.startsWith('PAT-')) {
-        setKodeBank(`UH-${year}-${Math.floor(1000 + Math.random() * 9000)}`);
+      if (
+        kodeBank.startsWith('SAS-') ||
+        kodeBank.startsWith('SAT-') ||
+        kodeBank.startsWith('STS-') ||
+        kodeBank.startsWith('PSAJ-') ||
+        kodeBank.startsWith('PAS-') ||
+        kodeBank.startsWith('PAT-')
+      ) {
+        setKodeBank(`SLM-${year}-${Math.floor(1000 + Math.random() * 9000)}`);
       }
     }
   };
@@ -325,35 +387,54 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       <form onSubmit={handleSubmit} className="space-y-3.5">
         {/* Preset Kegiatan jika Mode Terpusat Massal */}
         {scope === 'TERPUSAT_MASSAL' && (
-          <div className="space-y-1.5 p-2.5 rounded-xl bg-violet-50/60 dark:bg-violet-950/30 border border-violet-200/80 dark:border-violet-800/60">
-            <label className="block text-[11px] font-bold text-violet-900 dark:text-violet-300 uppercase tracking-wider">
-              Jenis Kegiatan Asesmen:
-            </label>
-            <div className="grid grid-cols-5 gap-1.5">
-              {[
-                { key: 'PAS', label: 'PAS / SAS' },
-                { key: 'PTS', label: 'PTS / STS' },
-                { key: 'PAT', label: 'PAT / SAT' },
-                { key: 'US', label: 'US / PSAJ' },
-                { key: 'TRYOUT', label: 'Tryout' },
-              ].map((k) => (
-                <button
-                  key={k.key}
-                  type="button"
-                  onClick={() => {
-                    setJenisKegiatanMassal(k.key as any);
-                    handleAutoFillMassal(mapelId, tingkat, k.key);
-                  }}
-                  className={cn(
-                    "py-1.5 px-1 rounded-lg text-xs font-bold transition-all text-center cursor-pointer border",
-                    jenisKegiatanMassal === k.key
-                      ? "bg-violet-600 text-white border-violet-600 shadow-2xs"
-                      : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-violet-300"
-                  )}
-                >
-                  {k.label}
-                </button>
-              ))}
+          <div className="space-y-2 p-3 rounded-xl bg-violet-50/70 dark:bg-violet-950/40 border border-violet-200/90 dark:border-violet-800/70">
+            <div className="flex items-center justify-between">
+              <label className="block text-[11px] font-black text-violet-950 dark:text-violet-200 uppercase tracking-wider">
+                Nomenklatur Resmi Asesmen Nasional &amp; Dinas Pendidikan:
+              </label>
+              <span className="text-[10px] font-semibold text-violet-700 dark:text-violet-400">
+                Permendikbudristek No. 21 Th. 2022
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {OFFICIAL_ASESMEN_TYPES.map((k) => {
+                const isSelected = jenisKegiatanMassal === k.key;
+                return (
+                  <button
+                    key={k.key}
+                    type="button"
+                    onClick={() => {
+                      setJenisKegiatanMassal(k.key);
+                      handleAutoFillMassal(mapelId, tingkat, k.key);
+                    }}
+                    className={cn(
+                      "p-2 rounded-lg text-left transition-all cursor-pointer border flex flex-col justify-between gap-1",
+                      isSelected
+                        ? "bg-violet-600 text-white border-violet-600 shadow-xs"
+                        : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-violet-300"
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-black text-xs">{k.singkatan}</span>
+                      <span
+                        className={cn(
+                          "text-[9px] font-bold px-1.5 py-0.2 rounded uppercase",
+                          isSelected ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+                        )}
+                      >
+                        Resmi
+                      </span>
+                    </div>
+                    <p className={cn("text-[11px] font-semibold line-clamp-1", isSelected ? "text-violet-100" : "text-slate-800 dark:text-slate-200")}>
+                      {k.namaResmi}
+                    </p>
+                    <p className={cn("text-[10px] line-clamp-1", isSelected ? "text-violet-200" : "text-slate-400")}>
+                      {k.keterangan}
+                    </p>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
