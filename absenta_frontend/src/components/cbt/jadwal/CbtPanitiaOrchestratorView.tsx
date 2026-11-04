@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, Suspense, lazy } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   useKelasOptions,
@@ -18,6 +19,11 @@ import {
   AlertCircle,
   ArrowRight,
   ShieldCheck,
+  Laptop,
+  ExternalLink,
+  TableProperties,
+  SlidersHorizontal,
+  Loader,
 } from 'lucide-react';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtJadwalUjian, CbtBankSoal } from '@/types/cbt.types';
@@ -35,6 +41,13 @@ import { CbtTimetableMatrixPanel } from './CbtTimetableMatrixPanel';
 import { CbtPengawasMatrixPanel } from './CbtPengawasMatrixPanel';
 import { CbtProctorMonitoringView } from '../sesi/CbtProctorMonitoringView';
 
+const CbtBankSoalView = lazy(() =>
+  import('@/components/cbt/bank-soal/CbtBankSoalView').then((m) => ({ default: m.CbtBankSoalView }))
+);
+const CbtJadwalView = lazy(() =>
+  import('./CbtJadwalView').then((m) => ({ default: m.CbtJadwalView }))
+);
+
 export type CbtPanitiaPhase =
   | 'fase_1_soal'
   | 'fase_2_ruang'
@@ -43,10 +56,13 @@ export type CbtPanitiaPhase =
   | 'fase_5_monitor';
 
 export const CbtPanitiaOrchestratorView: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const tenantId = user?.tenant_id;
 
   const [activeTab, setActiveTab] = useState<CbtPanitiaPhase>('fase_1_soal');
+  const [subModeFase1, setSubModeFase1] = useState<'readiness' | 'manage'>('readiness');
+  const [subModeFase3, setSubModeFase3] = useState<'matrix' | 'table'>('matrix');
 
   const { rawList: guruList = [] } = useGuruOptions({ jenisPtk: 'ALL' });
   const { rawList: kelasList = [] } = useKelasOptions();
@@ -212,14 +228,26 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 self-start md:self-auto bg-white/10 backdrop-blur-xs px-3 py-2 rounded-xl border border-white/10 text-xs">
-            <ShieldCheck size={16} className="text-emerald-400" />
-            <div>
-              <p className="text-[10px] text-violet-200 font-medium">Tahun Ajaran Aktif</p>
-              <p className="font-bold text-white">
-                {activeTp?.nama || 'TP Aktif'} &bull; {activeSemester?.nama || 'Semester'}
-              </p>
+          <div className="flex items-center gap-2 shrink-0 self-start md:self-auto flex-wrap">
+            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-xs px-3 py-2 rounded-xl border border-white/10 text-xs">
+              <ShieldCheck size={16} className="text-emerald-400" />
+              <div>
+                <p className="text-[10px] text-violet-200 font-medium">Tahun Ajaran Aktif</p>
+                <p className="font-bold text-white">
+                  {activeTp?.nama || 'TP Aktif'} &bull; {activeSemester?.nama || 'Semester'}
+                </p>
+              </div>
             </div>
+
+            <button
+              type="button"
+              onClick={() => navigate('/cbt/dashboard')}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+            >
+              <Laptop size={14} />
+              <span>Command Center CBT</span>
+              <ExternalLink size={12} className="text-violet-300" />
+            </button>
           </div>
         </div>
 
@@ -304,11 +332,61 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
       {/* ── Render Panel Fase Aktif ── */}
       <div className="transition-opacity duration-200">
         {activeTab === 'fase_1_soal' && (
-          <CbtBankSoalReadinessPanel
-            bankList={rawBankList}
-            onProceedToNextPhase={() => setActiveTab('fase_2_ruang')}
-            onRefreshBankList={() => refetchBankSoal()}
-          />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3 px-1 flex-wrap">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <SlidersHorizontal size={13} className="text-violet-600" />
+                <span>Pilih Tampilan Fase 1:</span>
+              </span>
+              <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setSubModeFase1('readiness')}
+                  className={cn(
+                    'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                    subModeFase1 === 'readiness'
+                      ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  )}
+                >
+                  <CheckCircle2 size={13} />
+                  <span>Checklist Kesiapan Soal</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSubModeFase1('manage')}
+                  className={cn(
+                    'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                    subModeFase1 === 'manage'
+                      ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  )}
+                >
+                  <BookOpen size={13} />
+                  <span>Kelola Seluruh Butir Soal &amp; Kisi-Kisi</span>
+                </button>
+              </div>
+            </div>
+
+            {subModeFase1 === 'readiness' ? (
+              <CbtBankSoalReadinessPanel
+                bankList={rawBankList}
+                onProceedToNextPhase={() => setActiveTab('fase_2_ruang')}
+                onRefreshBankList={() => refetchBankSoal()}
+              />
+            ) : (
+              <Suspense
+                fallback={
+                  <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                    <Loader className="animate-spin mx-auto text-violet-600 mb-2" size={24} />
+                    <p className="text-xs text-slate-500">Memuat Modul Kelola Bank Soal...</p>
+                  </div>
+                }
+              >
+                <CbtBankSoalView hideLayout={true} roleContext="KURIKULUM" />
+              </Suspense>
+            )}
+          </div>
         )}
 
         {activeTab === 'fase_2_ruang' && (
@@ -322,17 +400,70 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
         )}
 
         {activeTab === 'fase_3_jadwal' && (
-          <CbtTimetableMatrixPanel
-            bankList={readyBankList}
-            roomMappings={roomMappings}
-            activeTpId={activeTp?.id}
-            activeSemId={activeSemester?.id}
-            defaultTodayStr={defaultTodayStr}
-            onSuccessGenerate={() => {
-              refetchJadwal();
-              setActiveTab('fase_4_pengawas');
-            }}
-          />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3 px-1 flex-wrap">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <SlidersHorizontal size={13} className="text-violet-600" />
+                <span>Pilih Tampilan Fase 3:</span>
+              </span>
+              <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setSubModeFase3('matrix')}
+                  className={cn(
+                    'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                    subModeFase3 === 'matrix'
+                      ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  )}
+                >
+                  <Sparkles size={13} />
+                  <span>Matriks Hari &amp; Sesi (Generator Massal)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSubModeFase3('table')}
+                  className={cn(
+                    'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                    subModeFase3 === 'table'
+                      ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  )}
+                >
+                  <TableProperties size={13} />
+                  <span>Daftar Sesi Ujian (Tabel &amp; Card)</span>
+                </button>
+              </div>
+            </div>
+
+            {subModeFase3 === 'matrix' ? (
+              <CbtTimetableMatrixPanel
+                bankList={readyBankList}
+                roomMappings={roomMappings}
+                activeTpId={activeTp?.id}
+                activeSemId={activeSemester?.id}
+                defaultTodayStr={defaultTodayStr}
+                onSuccessGenerate={() => {
+                  refetchJadwal();
+                  setActiveTab('fase_4_pengawas');
+                }}
+              />
+            ) : (
+              <Suspense
+                fallback={
+                  <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                    <Loader className="animate-spin mx-auto text-violet-600 mb-2" size={24} />
+                    <p className="text-xs text-slate-500">Memuat Daftar Jadwal Sesi...</p>
+                  </div>
+                }
+              >
+                <CbtJadwalView
+                  hideLayout={true}
+                  onNavigateMonitor={() => setActiveTab('fase_5_monitor')}
+                />
+              </Suspense>
+            )}
+          </div>
         )}
 
         {activeTab === 'fase_4_pengawas' && (
