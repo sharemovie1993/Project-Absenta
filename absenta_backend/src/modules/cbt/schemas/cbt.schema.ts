@@ -67,6 +67,16 @@ export const settingKeamananSchema = z.object({
   auto_transfer_rapor: z.boolean().default(false),
   target_rapor_slot: z.enum(['sumatif_1', 'sumatif_2', 'sumatif_3', 'sumatif_akhir']).nullable().optional(),
   created_by_guru_id: z.string().uuid().nullable().optional(),
+  ruang_ujian: z.string().max(120).nullable().optional(),
+  pengawas_1_id: z.string().nullable().optional(),
+  pengawas_1_nama: z.string().max(150).nullable().optional(),
+  pengawas_1_nip: z.string().max(60).nullable().optional(),
+  pengawas_2_id: z.string().nullable().optional(),
+  pengawas_2_nama: z.string().max(150).nullable().optional(),
+  pengawas_2_nip: z.string().max(60).nullable().optional(),
+  proktor_id: z.string().nullable().optional(),
+  proktor_nama: z.string().max(150).nullable().optional(),
+  proktor_nip: z.string().max(60).nullable().optional(),
 }).partial();
 
 export const createJadwalUjianSchema = z.object({

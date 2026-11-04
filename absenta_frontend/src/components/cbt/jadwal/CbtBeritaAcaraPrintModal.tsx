@@ -55,7 +55,27 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
   });
 
   const populateDefaultSigners = () => {
-    const defaultGuru = jadwal?.BankSoal?.Guru?.nama_guru || '';
+    const cfg = jadwal?.setting_keamanan;
+    const defaultGuruNama =
+      cfg?.pengawas_1_nama ||
+      jadwal?.BankSoal?.Guru?.nama_guru ||
+      '';
+    const defaultGuruNip =
+      cfg?.pengawas_1_nip ||
+      (jadwal?.BankSoal?.Guru as any)?.nip ||
+      '-';
+    const defaultProktorNama =
+      cfg?.proktor_nama ||
+      cfg?.pengawas_2_nama ||
+      '';
+    const defaultProktorNip =
+      cfg?.proktor_nip ||
+      cfg?.pengawas_2_nip ||
+      '-';
+    const defaultRuang =
+      cfg?.ruang_ujian ||
+      'Laboratorium Komputer / Ruang CBT';
+
     const defaultKepsek =
       sekolahData?.kepala_sekolah ||
       sekolahData?.nama_kepala_sekolah ||
@@ -65,10 +85,11 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
       sekolahData?.nip_kepala_sekolah ||
       '-';
 
-    setPengawas1Nama(defaultGuru);
-    setPengawas1Nip('-');
-    setPengawas2Nama('');
-    setPengawas2Nip('-');
+    setRuangUjian(defaultRuang);
+    setPengawas1Nama(defaultGuruNama);
+    setPengawas1Nip(defaultGuruNip);
+    setPengawas2Nama(defaultProktorNama);
+    setPengawas2Nip(defaultProktorNip);
     setKepsekNama(defaultKepsek);
     setKepsekNip(defaultNipKepsek);
   };

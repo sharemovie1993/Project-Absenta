@@ -46,6 +46,24 @@ export class CbtJadwalService {
               equals: query.guru_id,
             },
           },
+          {
+            setting_keamanan: {
+              path: ['pengawas_1_id'],
+              equals: query.guru_id,
+            },
+          },
+          {
+            setting_keamanan: {
+              path: ['pengawas_2_id'],
+              equals: query.guru_id,
+            },
+          },
+          {
+            setting_keamanan: {
+              path: ['proktor_id'],
+              equals: query.guru_id,
+            },
+          },
         ],
       });
     }
@@ -72,13 +90,14 @@ export class CbtJadwalService {
           BankSoal: {
             select: {
               id: true,
+              guru_id: true,
               kode_bank: true,
               judul: true,
               tingkat: true,
               jumlah_soal: true,
               mapel_id: true,
               Mapel: { select: { id: true, nama_mapel: true } },
-              Guru: { select: { nama_guru: true } },
+              Guru: { select: { id: true, nama_guru: true, nip: true } },
             },
           },
           TahunPelajaran: { select: { id: true, tahun: true, is_active: true } },

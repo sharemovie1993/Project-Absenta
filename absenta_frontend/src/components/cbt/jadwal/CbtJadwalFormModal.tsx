@@ -6,7 +6,7 @@ import {
   SearchableSelect,
 } from '@/components/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useKelasOptions, useTahunPelajaranOptions, useSemesterOptions } from '@/components/common';
+import { useKelasOptions, useTahunPelajaranOptions, useSemesterOptions, useGuruOptions } from '@/components/common';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import { kurikulumApi } from '@/api/kurikulum.api';
 import { useAuthStore } from '@/store/authStore';
@@ -63,6 +63,14 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
 
   const { options: tpOptions, activeYear: activeTpYear } = useTahunPelajaranOptions();
   const { rawList: rawKelasList } = useKelasOptions();
+  const { options: staffOptions, rawList: rawStaffList } = useGuruOptions({ jenisPtk: 'ALL' });
+
+  const pengawasSelectOptions = useMemo(() => {
+    return [
+      { value: '', label: '— Belum Diploting / Default Guru Mapel —' },
+      ...staffOptions,
+    ];
+  }, [staffOptions]);
 
   // Wizard Step State (1 = Identitas & Waktu, 2 = Distribusi Kelas, 3 = Integrasi Rapor & Keamanan)
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -198,7 +206,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
   const [toleransiMenit, setToleransiMenit] = useState<number>(15);
   const [targetKelasIds, setTargetKelasIds] = useState<string[]>([]);
 
-  // Keamanan & Otomasi Rapor
+  // Keamanan & Otomasi Rapor + Ploting Pengawas & Proktor
   const [blockTabSwitch, setBlockTabSwitch] = useState(true);
   const [maxTabSwitches, setMaxTabSwitches] = useState(3);
   const [shuffleQuestions, setShuffleQuestions] = useState(true);
@@ -206,6 +214,9 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
   const [showResultInstant, setShowResultInstant] = useState(false);
   const [autoTransferRapor, setAutoTransferRapor] = useState(true);
   const [targetRaporSlot, setTargetRaporSlot] = useState<CbtRaporSlot>('sumatif_akhir');
+  const [ruangUjian, setRuangUjian] = useState('');
+  const [pengawas1Id, setPengawas1Id] = useState('');
+  const [proktorId, setProktorId] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -279,6 +290,13 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
         setShowResultInstant(jadwalToEdit.setting_keamanan.show_result_instant ?? false);
         setAutoTransferRapor(jadwalToEdit.setting_keamanan.auto_transfer_rapor ?? false);
         setTargetRaporSlot(jadwalToEdit.setting_keamanan.target_rapor_slot || 'sumatif_akhir');
+        setRuangUjian(jadwalToEdit.setting_keamanan.ruang_ujian || '');
+        setPengawas1Id(jadwalToEdit.setting_keamanan.pengawas_1_id || '');
+        setProktorId(
+          jadwalToEdit.setting_keamanan.proktor_id ||
+            jadwalToEdit.setting_keamanan.pengawas_2_id ||
+            ''
+        );
       }
     } else {
       const now = getVirtualDate();
@@ -305,6 +323,9 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
       setShowResultInstant(false);
       setAutoTransferRapor(true);
       setTargetRaporSlot('sumatif_akhir');
+      setRuangUjian('');
+      setPengawas1Id(teacherGuruId || '');
+      setProktorId('');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jadwalToEdit, isOpen]);
@@ -435,6 +456,9 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
     try {
       setIsSubmitting(true);
 
+      const pengawas1Obj = rawStaffList.find((g) => g.id === pengawas1Id);
+      const proktorObj = rawStaffList.find((g) => g.id === proktorId);
+
       const payload = {
         bank_soal_id: bankSoalId,
         tahun_pelajaran_id: resolvedTpId,
@@ -455,6 +479,16 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
           auto_transfer_rapor: autoTransferRapor,
           target_rapor_slot: autoTransferRapor ? targetRaporSlot : null,
           created_by_guru_id: teacherGuruId || null,
+          ruang_ujian: ruangUjian.trim() || null,
+          pengawas_1_id: pengawas1Id || null,
+          pengawas_1_nama: pengawas1Obj?.nama_guru || null,
+          pengawas_1_nip: pengawas1Obj?.nip || null,
+          proktor_id: proktorId || null,
+          proktor_nama: proktorObj?.nama_guru || null,
+          proktor_nip: proktorObj?.nip || null,
+          pengawas_2_id: proktorId || null,
+          pengawas_2_nama: proktorObj?.nama_guru || null,
+          pengawas_2_nip: proktorObj?.nip || null,
         },
       };
 
@@ -738,6 +772,52 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                   })}
                 </div>
               )}
+            </div>
+
+            {/* Pertanyaan 1b: Ploting Ruang & Pengawas / Proktor Ujian */}
+            <div className="space-y-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+              <div className="space-y-1">
+                <label htmlFor="jadwal-ruang" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Di ruang / lab mana ujian berlangsung? <span className="font-normal text-slate-400">(Opsional)</span>
+                </label>
+                <Input
+                  id="jadwal-ruang"
+                  value={ruangUjian}
+                  onChange={(e) => setRuangUjian(e.target.value)}
+                  placeholder="Contoh: Lab Komputer 1 / Ruang 10"
+                  aria-label="Ruang atau Lab Ujian"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="space-y-1 min-w-0">
+                  <label htmlFor="jadwal-pengawas-1" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                    Siapa Pengawas Ruang?
+                  </label>
+                  <SearchableSelect
+                    id="jadwal-pengawas-1"
+                    options={pengawasSelectOptions}
+                    value={pengawas1Id}
+                    onChange={setPengawas1Id}
+                    placeholder="Pilih Pengawas..."
+                    aria-label="Pilih Pengawas Ruang"
+                  />
+                </div>
+
+                <div className="space-y-1 min-w-0">
+                  <label htmlFor="jadwal-proktor" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                    Siapa Proktor / Pengawas 2?
+                  </label>
+                  <SearchableSelect
+                    id="jadwal-proktor"
+                    options={pengawasSelectOptions}
+                    value={proktorId}
+                    onChange={setProktorId}
+                    placeholder="Pilih Proktor..."
+                    aria-label="Pilih Proktor Ujian"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Pertanyaan 2: Nilai Langsung Tampil atau Tidak */}

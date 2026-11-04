@@ -69,6 +69,16 @@ export interface CbtSettingKeamanan {
   auto_transfer_rapor?: boolean;
   target_rapor_slot?: CbtRaporSlot | null;
   created_by_guru_id?: string | null;
+  ruang_ujian?: string | null;
+  pengawas_1_id?: string | null;
+  pengawas_1_nama?: string | null;
+  pengawas_1_nip?: string | null;
+  pengawas_2_id?: string | null;
+  pengawas_2_nama?: string | null;
+  pengawas_2_nip?: string | null;
+  proktor_id?: string | null;
+  proktor_nama?: string | null;
+  proktor_nip?: string | null;
 }
 
 export interface CbtJadwalUjian {

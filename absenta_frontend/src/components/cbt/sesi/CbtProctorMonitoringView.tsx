@@ -113,6 +113,11 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   const finished = pesertaList.filter((p) => p.status === 'FINISHED').length;
   const disqualified = pesertaList.filter((p) => p.status === 'DISQUALIFIED').length;
 
+  const isOwnerOrAdmin =
+    !guruId ||
+    activeJadwal?.BankSoal?.guru_id === guruId ||
+    activeJadwal?.setting_keamanan?.created_by_guru_id === guruId;
+
   const filteredItems = pesertaList.filter((p) => {
     if (statusFilter !== 'ALL' && p.status !== statusFilter) return false;
     if (searchQuery) {
@@ -310,7 +315,7 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
             Segarkan
           </Button>
 
-          {activeJadwal && activeJadwal.status !== 'DRAFT' && totalPeserta > 0 && (
+          {isOwnerOrAdmin && activeJadwal && activeJadwal.status !== 'DRAFT' && totalPeserta > 0 && (
             <Button
               type="button"
               variant="primary"

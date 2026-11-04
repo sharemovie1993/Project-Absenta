@@ -196,13 +196,49 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
               ? 'SUM AKHIR'
               : null;
 
+          const isOwner =
+            !guruId ||
+            row.BankSoal?.guru_id === guruId ||
+            row.setting_keamanan?.created_by_guru_id === guruId;
+          const isProktorDuty =
+            Boolean(guruId) &&
+            !isOwner &&
+            (row.setting_keamanan?.proktor_id === guruId ||
+              row.setting_keamanan?.pengawas_2_id === guruId);
+          const isPengawasDuty =
+            Boolean(guruId) &&
+            !isOwner &&
+            !isProktorDuty &&
+            row.setting_keamanan?.pengawas_1_id === guruId;
+          const ruangUjian = row.setting_keamanan?.ruang_ujian;
+          const pengawas1Nama = row.setting_keamanan?.pengawas_1_nama;
+          const proktorNama = row.setting_keamanan?.proktor_nama || row.setting_keamanan?.pengawas_2_nama;
+
           return (
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="font-bold text-xs text-slate-900 dark:text-slate-100 line-clamp-1">
                   {row.nama_sesi}
                 </span>
-                {autoRapor && slotLabel && (
+                {isProktorDuty && (
+                  <span
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                    title="Anda ditugaskan sebagai Proktor Teknis pada sesi ujian ini"
+                  >
+                    <ShieldCheck size={9} />
+                    <span>Tugas Proktor</span>
+                  </span>
+                )}
+                {isPengawasDuty && (
+                  <span
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                    title="Anda ditugaskan sebagai Pengawas Ruang pada sesi ujian ini"
+                  >
+                    <ShieldCheck size={9} />
+                    <span>Tugas Pengawas</span>
+                  </span>
+                )}
+                {isOwner && autoRapor && slotLabel && (
                   <span
                     className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60"
                     title={`Nilai otomatis ditransfer ke kolom ${slotLabel} di e-Rapor`}
@@ -212,8 +248,22 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-400 flex-wrap">
                 <span className="font-mono">{row.BankSoal?.kode_bank || '-'}</span>
+                {ruangUjian && (
+                  <>
+                    <span>•</span>
+                    <span className="text-slate-500 font-medium">{ruangUjian}</span>
+                  </>
+                )}
+                {(pengawas1Nama || proktorNama) && (
+                  <>
+                    <span>•</span>
+                    <span className="text-slate-500 truncate max-w-[180px]" title={`Pengawas: ${pengawas1Nama || '-'} | Proktor: ${proktorNama || '-'}`}>
+                      Pengawas: {pengawas1Nama || proktorNama}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           );
@@ -348,8 +398,19 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         className: 'min-w-[260px] text-right',
         render: (_val: unknown, row: CbtJadwalUjian) => {
           const pesertaCount = row._count?.Peserta || 0;
+          const isOwnerOrAdmin =
+            !guruId ||
+            row.BankSoal?.guru_id === guruId ||
+            row.setting_keamanan?.created_by_guru_id === guruId;
+          const isProktor =
+            Boolean(guruId) &&
+            (row.setting_keamanan?.proktor_id === guruId ||
+              row.setting_keamanan?.pengawas_2_id === guruId);
+
           const isSessionUsed = row.status !== 'DRAFT' || pesertaCount > 0;
-          const canTransferRapor = !readOnly && row.status !== 'DRAFT' && pesertaCount > 0;
+          const canControlSession = !readOnly && (isOwnerOrAdmin || isProktor);
+          const canTransferRapor = !readOnly && isOwnerOrAdmin && row.status !== 'DRAFT' && pesertaCount > 0;
+          const canEditSchedule = !readOnly && isOwnerOrAdmin;
 
           return (
             <div className="flex items-center justify-end gap-1 flex-nowrap" onClick={(e) => e.stopPropagation()}>
@@ -368,7 +429,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
                 </Button>
               )}
 
-              {/* Transfer Nilai ke e-Rapor (Cerdas: Hanya tampil jika sesi sudah aktif/selesai & memiliki peserta > 0) */}
+              {/* Transfer Nilai ke e-Rapor (Hanya untuk Guru Pengampu Mapel / Admin ketika sesi aktif/selesai & ada peserta) */}
               {canTransferRapor && (
                 <Button
                   type="button"
@@ -386,8 +447,8 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
                 </Button>
               )}
 
-              {/* Sesi Controls */}
-              {!readOnly && (
+              {/* Sesi Controls (Guru Pengampu / Kurikulum / Proktor yang Diploting) */}
+              {canControlSession && (
                 <>
                   {row.status === 'DRAFT' || row.status === 'PAUSED' ? (
                     <Button
@@ -443,7 +504,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
                 </>
               )}
 
-              {/* Cetak Berita Acara */}
+              {/* Cetak Berita Acara (Tersedia bagi Pengampu, Pengawas Ruang, maupun Proktor) */}
               <Button
                 type="button"
                 variant="ghost"
@@ -458,7 +519,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
                 <Printer size={13} />
               </Button>
 
-              {!readOnly && (
+              {canEditSchedule && (
                 <Button
                   type="button"
                   variant="ghost"
@@ -478,7 +539,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         },
       },
     ],
-    [copiedToken, readOnly, onNavigateMonitor]
+    [copiedToken, readOnly, guruId, onNavigateMonitor]
   );
 
   // Jika pengguna mengklik tombol Monitor dan CbtJadwalView tidak menerima onNavigateMonitor eksternal,
