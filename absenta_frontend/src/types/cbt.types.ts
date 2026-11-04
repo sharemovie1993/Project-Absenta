@@ -38,6 +38,7 @@ export interface CbtBankSoal {
   acak_soal: boolean;
   acak_opsi: boolean;
   status: CbtBankStatus;
+  is_shared?: boolean;
   created_at?: string;
   updated_at?: string;
   Guru?: {
@@ -67,6 +68,7 @@ export interface CbtSettingKeamanan {
   show_result_instant?: boolean;
   auto_transfer_rapor?: boolean;
   target_rapor_slot?: CbtRaporSlot | null;
+  created_by_guru_id?: string | null;
 }
 
 export interface CbtJadwalUjian {

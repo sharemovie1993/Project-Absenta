@@ -8,18 +8,16 @@ import {
 } from '@/components/ui';
 import type { Column } from '@/components/ui/Table';
 import {
-  Plus,
-  BookOpen,
   Edit2,
   Trash2,
-  Layers,
   Clock,
   Eye,
-  Calendar,
   Share2,
+  Copy,
 } from 'lucide-react';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useAuthStore } from '@/store/authStore';
 import { MobileAcademicList } from '@/components/academic/shared/MobileAcademicList';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtBankSoal } from '@/types/cbt.types';
@@ -48,6 +46,8 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const confirm = useConfirm();
+  const { user } = useAuthStore();
+  const currentGuruId = guruId || user?.guru_profile?.id;
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -131,6 +131,36 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
     }
   };
 
+  // Duplicate Mutation
+  const duplicateMutation = useMutation({
+    mutationFn: (id: string) => cbtApi.duplicateBankSoal(id, currentGuruId),
+    onSuccess: async () => {
+      toast.success('Bank soal berhasil disalin ke daftar Bank Soal Anda');
+      await queryClient.invalidateQueries({
+        queryKey: cbtQueryKeys.bankSoal(),
+        exact: false,
+        refetchType: 'all',
+      });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Gagal menyalin bank soal');
+    },
+  });
+
+  const handleDuplicate = async (bankSoal: CbtBankSoal) => {
+    const isConfirmed = await confirm({
+      title: 'Salin Bank Soal?',
+      message: `Salin paket "${bankSoal.judul}" beserta seluruh butir soalnya menjadi Bank Soal milik Anda sendiri?`,
+      confirmText: 'Ya, Salin',
+      cancelText: 'Batal',
+      style: 'info',
+    });
+
+    if (isConfirmed) {
+      duplicateMutation.mutate(bankSoal.id);
+    }
+  };
+
   // Table Columns Definition
   const columns: Column[] = useMemo(
     () => [
@@ -139,21 +169,31 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
         title: 'Kode & Judul Bank Soal',
         label: 'Kode & Judul Bank Soal',
         className: 'min-w-[240px]',
-        render: (_val: unknown, row: CbtBankSoal) => (
-          <div className="space-y-0.5">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-100 dark:border-indigo-900/40">
-                {row.kode_bank}
-              </span>
-              <Badge variant="outline" className="text-[10px] font-bold">
-                Tingkat {row.tingkat}
-              </Badge>
+        render: (_val: unknown, row: CbtBankSoal) => {
+          const isSharedBank = row.status === 'PUBLISHED';
+          const isFromColleague = Boolean(currentGuruId && row.guru_id !== currentGuruId);
+          return (
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-mono text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-100 dark:border-indigo-900/40">
+                  {row.kode_bank}
+                </span>
+                <Badge variant="outline" className="text-[10px] font-bold">
+                  Tingkat {row.tingkat}
+                </Badge>
+                {isSharedBank && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60">
+                    <Share2 size={10} />
+                    <span>{isFromColleague ? 'Bersama (Se-Mapel)' : 'Dibagikan'}</span>
+                  </span>
+                )}
+              </div>
+              <p className="font-bold text-xs text-slate-800 dark:text-slate-200 line-clamp-1 pt-0.5">
+                {row.judul}
+              </p>
             </div>
-            <p className="font-bold text-xs text-slate-800 dark:text-slate-200 line-clamp-1 pt-0.5">
-              {row.judul}
-            </p>
-          </div>
-        ),
+          );
+        },
       },
       {
         key: 'mapel',
@@ -206,55 +246,72 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
         key: 'aksi',
         title: 'Aksi',
         label: 'Aksi',
-        className: 'min-w-[200px] text-right',
-        render: (_val: unknown, row: CbtBankSoal) => (
-          <div className="flex items-center justify-end gap-1 flex-nowrap" onClick={(e) => e.stopPropagation()}>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSelectedBankSoal(row);
-                setIsDetailModalOpen(true);
-              }}
-              className="text-xs h-7 px-2.5 bg-indigo-50/50 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 font-bold rounded-lg"
-            >
-              <Eye size={13} className="mr-1" />
-              <span>Kelola Soal</span>
-            </Button>
+        className: 'min-w-[220px] text-right',
+        render: (_val: unknown, row: CbtBankSoal) => {
+          const isFromColleague = Boolean(currentGuruId && row.guru_id !== currentGuruId);
+          return (
+            <div className="flex items-center justify-end gap-1 flex-nowrap" onClick={(e) => e.stopPropagation()}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSelectedBankSoal(row);
+                  setIsDetailModalOpen(true);
+                }}
+                className="text-xs h-7 px-2.5 bg-indigo-50/50 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 font-bold rounded-lg"
+              >
+                <Eye size={13} className="mr-1" />
+                <span>{isFromColleague || readOnly ? 'Lihat Soal' : 'Kelola Soal'}</span>
+              </Button>
 
-            {!readOnly && (
-              <>
+              {!readOnly && (
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    setSelectedBankSoal(row);
-                    setIsFormModalOpen(true);
-                  }}
-                  className="text-xs h-7 px-2 text-slate-600 hover:text-slate-900 rounded-lg"
-                  title="Edit Bank Soal"
+                  onClick={() => handleDuplicate(row)}
+                  disabled={duplicateMutation.isPending}
+                  className="text-xs h-7 px-2 text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/30 rounded-lg"
+                  title="Salin ke Bank Soal Saya"
                 >
-                  <Edit2 size={13} />
+                  <Copy size={13} />
                 </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDelete(row)}
-                  className="text-xs h-7 px-2 text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg"
-                  title="Hapus Bank Soal"
-                >
-                  <Trash2 size={13} />
-                </Button>
-              </>
-            )}
-          </div>
-        ),
+              )}
+
+              {!readOnly && !isFromColleague && (
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedBankSoal(row);
+                      setIsFormModalOpen(true);
+                    }}
+                    className="text-xs h-7 px-2 text-slate-600 hover:text-slate-900 rounded-lg"
+                    title="Edit Bank Soal"
+                  >
+                    <Edit2 size={13} />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(row)}
+                    className="text-xs h-7 px-2 text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg"
+                    title="Hapus Bank Soal"
+                  >
+                    <Trash2 size={13} />
+                  </Button>
+                </>
+              )}
+            </div>
+          );
+        },
       },
     ],
-    [readOnly]
+    [readOnly, currentGuruId, duplicateMutation.isPending]
   );
 
   return (
@@ -353,7 +410,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
             setSelectedBankSoal(null);
           }}
           bankSoal={selectedBankSoal}
-          readOnly={readOnly}
+          readOnly={readOnly || Boolean(currentGuruId && selectedBankSoal.guru_id !== currentGuruId)}
         />
       )}
     </div>

@@ -76,6 +76,18 @@ export class CbtBankSoalController {
     }
   }
 
+  static async duplicate(req: any, reply: any) {
+    try {
+      const { tenant_id, guru_profile } = req.user!;
+      const { id } = req.params;
+      const targetGuruId = req.body?.guru_id || guru_profile?.id;
+      const result = await CbtBankSoalService.duplicate(tenant_id, id, targetGuruId);
+      return sendResponse(reply, 201, true, 'Bank soal berhasil diduplikasi ke akun Anda', result);
+    } catch (error: any) {
+      return sendError(reply, 400, error.message || 'Gagal menduplikasi bank soal');
+    }
+  }
+
   // Question Items
   static async listQuestions(req: any, reply: any) {
     try {

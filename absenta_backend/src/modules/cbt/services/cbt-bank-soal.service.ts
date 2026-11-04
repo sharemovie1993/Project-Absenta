@@ -9,11 +9,14 @@ export interface QueryBankSoalDto {
   status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
   mapel_id?: string;
   guru_id?: string;
+  include_shared?: boolean;
 }
 
 export class CbtBankSoalService {
   /**
    * Mengambil daftar Bank Soal dengan paginasi dan filter
+   * Jika guru_id diberikan dan include_shared !== false, sertakan pula Bank Soal Bersama (PUBLISHED)
+   * dari guru lain yang se-mapel dan setingkat.
    */
   static async list(tenantId: string, query: QueryBankSoalDto) {
     const page = Math.max(1, Number(query.page || 1));
@@ -25,21 +28,76 @@ export class CbtBankSoalService {
     else if (normalizedTingkat === '11') normalizedTingkat = 'XI';
     else if (normalizedTingkat === '12') normalizedTingkat = 'XII';
 
-    const where: Prisma.CbtBankSoalWhereInput = {
-      tenant_id: tenantId,
-      ...(query.status ? { status: query.status } : {}),
-      ...(normalizedTingkat && normalizedTingkat !== 'SEMUA' ? { tingkat: normalizedTingkat } : {}),
-      ...(query.mapel_id ? { mapel_id: query.mapel_id } : {}),
-      ...(query.guru_id ? { guru_id: query.guru_id } : {}),
-      ...(query.search
-        ? {
-            OR: [
-              { judul: { contains: query.search, mode: 'insensitive' } },
-              { kode_bank: { contains: query.search, mode: 'insensitive' } },
-            ],
-          }
-        : {}),
-    };
+    const andConditions: Prisma.CbtBankSoalWhereInput[] = [
+      { tenant_id: tenantId },
+    ];
+
+    if (query.status) {
+      andConditions.push({ status: query.status });
+    }
+    if (normalizedTingkat && normalizedTingkat !== 'SEMUA') {
+      andConditions.push({ tingkat: normalizedTingkat });
+    }
+    if (query.mapel_id) {
+      andConditions.push({ mapel_id: query.mapel_id });
+    }
+    if (query.search) {
+      andConditions.push({
+        OR: [
+          { judul: { contains: query.search, mode: 'insensitive' } },
+          { kode_bank: { contains: query.search, mode: 'insensitive' } },
+        ],
+      });
+    }
+
+    if (query.guru_id) {
+      if (query.include_shared === false) {
+        andConditions.push({ guru_id: query.guru_id });
+      } else {
+        // Cari mapel & tingkat yang diampu guru ini di kurikulum
+        const assignments = await prisma.guruMapel.findMany({
+          where: {
+            tenant_id: tenantId,
+            guru_id: query.guru_id,
+          },
+          include: {
+            Kelas: {
+              select: { tingkat: true },
+            },
+          },
+        });
+
+        const assignedMapelIds = Array.from(
+          new Set(assignments.map((a) => a.mapel_id).filter(Boolean))
+        );
+
+        const assignedTingkats = new Set<string>(['SEMUA']);
+        for (const a of assignments) {
+          const rawTingkat = String(a.Kelas?.tingkat || '').toUpperCase().trim();
+          if (rawTingkat === '10' || rawTingkat === 'X') assignedTingkats.add('X');
+          else if (rawTingkat === '11' || rawTingkat === 'XI') assignedTingkats.add('XI');
+          else if (rawTingkat === '12' || rawTingkat === 'XII') assignedTingkats.add('XII');
+        }
+
+        if (assignedMapelIds.length > 0) {
+          const sharedCondition: Prisma.CbtBankSoalWhereInput = {
+            status: 'PUBLISHED',
+            mapel_id: { in: assignedMapelIds },
+            ...(assignedTingkats.size > 1
+              ? { tingkat: { in: Array.from(assignedTingkats) } }
+              : {}),
+          };
+          andConditions.push({
+            OR: [{ guru_id: query.guru_id }, sharedCondition],
+          });
+        } else {
+          andConditions.push({ guru_id: query.guru_id });
+        }
+      }
+    }
+
+    const where: Prisma.CbtBankSoalWhereInput =
+      andConditions.length === 1 ? andConditions[0] : { AND: andConditions };
 
     const [total, items] = await Promise.all([
       prisma.cbtBankSoal.count({ where }),
@@ -115,6 +173,9 @@ export class CbtBankSoalService {
       throw new Error(`Kode bank soal '${data.kode_bank}' sudah digunakan.`);
     }
 
+    const resolvedStatus =
+      data.status || (data.is_shared ? 'PUBLISHED' : 'DRAFT');
+
     return prisma.cbtBankSoal.create({
       data: {
         tenant_id: tenantId,
@@ -127,7 +188,7 @@ export class CbtBankSoalService {
         alokasi_menit: data.alokasi_menit ?? 90,
         acak_soal: data.acak_soal ?? true,
         acak_opsi: data.acak_opsi ?? true,
-        status: 'DRAFT',
+        status: resolvedStatus,
       },
       include: {
         Guru: { select: { nama_guru: true } },
@@ -155,6 +216,15 @@ export class CbtBankSoalService {
       }
     }
 
+    const resolvedStatus =
+      data.status !== undefined
+        ? data.status
+        : data.is_shared !== undefined
+        ? data.is_shared
+          ? 'PUBLISHED'
+          : 'DRAFT'
+        : undefined;
+
     return prisma.cbtBankSoal.update({
       where: { id },
       data: {
@@ -167,8 +237,71 @@ export class CbtBankSoalService {
         ...(data.alokasi_menit !== undefined ? { alokasi_menit: data.alokasi_menit } : {}),
         ...(data.acak_soal !== undefined ? { acak_soal: data.acak_soal } : {}),
         ...(data.acak_opsi !== undefined ? { acak_opsi: data.acak_opsi } : {}),
-        ...(data.status ? { status: data.status } : {}),
+        ...(resolvedStatus ? { status: resolvedStatus } : {}),
       },
+    });
+  }
+
+  /**
+   * Menduplikasi (Copy) Bank Soal beserta seluruh butir soalnya ke akun Guru peminta
+   */
+  static async duplicate(tenantId: string, sourceBankSoalId: string, targetGuruId?: string) {
+    const source = await prisma.cbtBankSoal.findFirst({
+      where: { id: sourceBankSoalId, tenant_id: tenantId },
+      include: {
+        Soal: {
+          orderBy: { nomor_urut: 'asc' },
+        },
+      },
+    });
+
+    if (!source) {
+      throw new Error('Bank soal sumber tidak ditemukan');
+    }
+
+    const ownerGuruId = targetGuruId || source.guru_id;
+    const newCode = `CBT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    return prisma.$transaction(async (tx) => {
+      const clonedBank = await tx.cbtBankSoal.create({
+        data: {
+          tenant_id: tenantId,
+          guru_id: ownerGuruId,
+          mapel_id: source.mapel_id,
+          kode_bank: newCode,
+          judul: `${source.judul} (Salinan)`,
+          tingkat: source.tingkat,
+          jurusan: source.jurusan,
+          jumlah_soal: source.Soal.length,
+          alokasi_menit: source.alokasi_menit,
+          acak_soal: source.acak_soal,
+          acak_opsi: source.acak_opsi,
+          status: 'DRAFT',
+        },
+        include: {
+          Guru: { select: { id: true, nama_guru: true } },
+          Mapel: { select: { id: true, nama_mapel: true } },
+        },
+      });
+
+      if (source.Soal.length > 0) {
+        await tx.cbtSoal.createMany({
+          data: source.Soal.map((s, idx) => ({
+            tenant_id: tenantId,
+            bank_soal_id: clonedBank.id,
+            nomor_urut: s.nomor_urut || idx + 1,
+            jenis_soal: s.jenis_soal,
+            konten_pertanyaan: s.konten_pertanyaan,
+            gambar_stimulus_url: s.gambar_stimulus_url,
+            bobot: s.bobot,
+            opsi_jawaban_json: s.opsi_jawaban_json as any,
+            kunci_jawaban: s.kunci_jawaban,
+            pembahasan: s.pembahasan,
+          })),
+        });
+      }
+
+      return clonedBank;
     });
   }
 

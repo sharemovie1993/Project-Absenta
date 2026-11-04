@@ -26,20 +26,40 @@ export class CbtJadwalService {
     const limit = Math.min(100, Math.max(1, Number(query.limit || 10)));
     const skip = (page - 1) * limit;
 
-    const where: Prisma.CbtJadwalUjianWhereInput = {
-      tenant_id: tenantId,
-      ...(query.status ? { status: query.status } : {}),
-      ...(query.bank_soal_id ? { bank_soal_id: query.bank_soal_id } : {}),
-      ...(query.guru_id ? { BankSoal: { guru_id: query.guru_id } } : {}),
-      ...(query.search
-        ? {
-            OR: [
-              { nama_sesi: { contains: query.search, mode: 'insensitive' } },
-              { token_ujian: { contains: query.search, mode: 'insensitive' } },
-            ],
-          }
-        : {}),
-    };
+    const andConditions: Prisma.CbtJadwalUjianWhereInput[] = [
+      { tenant_id: tenantId },
+    ];
+
+    if (query.status) {
+      andConditions.push({ status: query.status });
+    }
+    if (query.bank_soal_id) {
+      andConditions.push({ bank_soal_id: query.bank_soal_id });
+    }
+    if (query.guru_id) {
+      andConditions.push({
+        OR: [
+          { BankSoal: { guru_id: query.guru_id } },
+          {
+            setting_keamanan: {
+              path: ['created_by_guru_id'],
+              equals: query.guru_id,
+            },
+          },
+        ],
+      });
+    }
+    if (query.search) {
+      andConditions.push({
+        OR: [
+          { nama_sesi: { contains: query.search, mode: 'insensitive' } },
+          { token_ujian: { contains: query.search, mode: 'insensitive' } },
+        ],
+      });
+    }
+
+    const where: Prisma.CbtJadwalUjianWhereInput =
+      andConditions.length === 1 ? andConditions[0] : { AND: andConditions };
 
     const [total, items] = await Promise.all([
       prisma.cbtJadwalUjian.count({ where }),

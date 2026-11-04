@@ -36,6 +36,10 @@ export async function cbtRoutes(fastify: any) {
     preHandler: [requireCapability('cbt.bank.manage', cbtGuruExempt), determineDataScope()],
   }, CbtBankSoalController.delete);
 
+  fastify.post('/bank-soal/:id/duplicate', {
+    preHandler: [requireCapability('cbt.bank.manage', cbtGuruExempt), determineDataScope()],
+  }, CbtBankSoalController.duplicate);
+
   // ==========================================
   // 2. BUTIR SOAL ROUTES
   // ==========================================

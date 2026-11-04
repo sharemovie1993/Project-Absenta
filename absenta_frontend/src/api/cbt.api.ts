@@ -80,6 +80,13 @@ export const cbtApi = {
     return res.data?.data;
   },
 
+  duplicateBankSoal: async (id: string, guruId?: string) => {
+    const res = await api.post(`/cbt/bank-soal/${id}/duplicate`, {
+      ...(guruId ? { guru_id: guruId } : {}),
+    });
+    return res.data?.data as CbtBankSoal;
+  },
+
   // ==========================================
   // 2. BUTIR SOAL
   // ==========================================

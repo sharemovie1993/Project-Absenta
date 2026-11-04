@@ -93,11 +93,16 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
   });
 
   const bankSoalOptions = useMemo(() => {
-    return (bankSoalData?.items || []).map((b) => ({
-      value: b.id,
-      label: `${b.kode_bank} - ${b.judul} (${b.Mapel?.nama_mapel || '-'})`,
-    }));
-  }, [bankSoalData?.items]);
+    return (bankSoalData?.items || []).map((b) => {
+      const isColleagueBank = Boolean(teacherGuruId && b.guru_id !== teacherGuruId);
+      return {
+        value: b.id,
+        label: isColleagueBank
+          ? `[Bersama • ${b.Guru?.nama_guru || 'Guru Se-Mapel'}] ${b.judul} (${b.Mapel?.nama_mapel || '-'})`
+          : `${b.kode_bank} - ${b.judul} (${b.Mapel?.nama_mapel || '-'})`,
+      };
+    });
+  }, [bankSoalData?.items, teacherGuruId]);
 
   const [bankSoalId, setBankSoalId] = useState('');
 
@@ -449,6 +454,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
           show_result_instant: showResultInstant,
           auto_transfer_rapor: autoTransferRapor,
           target_rapor_slot: autoTransferRapor ? targetRaporSlot : null,
+          created_by_guru_id: teacherGuruId || null,
         },
       };
 

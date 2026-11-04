@@ -67,6 +67,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   const [alokasiMenit, setAlokasiMenit] = useState<number>(90);
   const [acakSoal, setAcakSoal] = useState(true);
   const [acakOpsi, setAcakOpsi] = useState(true);
+  const [isShared, setIsShared] = useState(false);
   const [showAllMapels, setShowAllMapels] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -117,6 +118,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setAlokasiMenit(bankSoalToEdit.alokasi_menit);
       setAcakSoal(bankSoalToEdit.acak_soal);
       setAcakOpsi(bankSoalToEdit.acak_opsi);
+      setIsShared(bankSoalToEdit.status === 'PUBLISHED' || Boolean(bankSoalToEdit.is_shared));
       setShowAllMapels(false);
     } else {
       setKodeBank(`CBT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
@@ -127,6 +129,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setAlokasiMenit(90);
       setAcakSoal(true);
       setAcakOpsi(true);
+      setIsShared(true);
       setShowAllMapels(false);
     }
   }, [bankSoalToEdit, initialGuruId, defaultMapelId, isOpen]);
@@ -174,6 +177,8 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         alokasi_menit: Number(alokasiMenit),
         acak_soal: acakSoal,
         acak_opsi: acakOpsi,
+        status: (isShared ? 'PUBLISHED' : 'DRAFT') as 'PUBLISHED' | 'DRAFT',
+        is_shared: isShared,
       };
 
       if (bankSoalToEdit) {
@@ -309,42 +314,36 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
           />
         </div>
 
-        {/* Pertanyaan 4: Pengacakan Soal & Opsi */}
+        {/* Pertanyaan 4: Berbagi Bank Soal Se-Mapel & Setingkat */}
         <div className="space-y-1.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
           <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-            Acak urutan soal & pilihan jawaban?
+            Boleh dipakai guru lain yang se-mapel & setingkat?
           </p>
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => {
-                setAcakSoal(true);
-                setAcakOpsi(true);
-              }}
+              onClick={() => setIsShared(true)}
               className={cn(
                 'py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
-                acakSoal
+                isShared
                   ? 'bg-violet-600 text-white border-violet-600'
                   : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
               )}
             >
-              Ya
+              Ya, Bagikan
             </button>
 
             <button
               type="button"
-              onClick={() => {
-                setAcakSoal(false);
-                setAcakOpsi(false);
-              }}
+              onClick={() => setIsShared(false)}
               className={cn(
                 'py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
-                !acakSoal
+                !isShared
                   ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900'
                   : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
               )}
             >
-              Tidak
+              Tidak (Pribadi)
             </button>
           </div>
         </div>

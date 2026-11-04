@@ -20,10 +20,13 @@ export const createBankSoalSchema = z.object({
   alokasi_menit: z.number().int().min(10).max(300).default(90),
   acak_soal: z.boolean().default(true),
   acak_opsi: z.boolean().default(true),
+  status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']).optional(),
+  is_shared: z.boolean().optional(),
 });
 
 export const updateBankSoalSchema = createBankSoalSchema.partial().extend({
   status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']).optional(),
+  is_shared: z.boolean().optional(),
 });
 
 export const queryBankSoalSchema = z.object({
@@ -34,6 +37,7 @@ export const queryBankSoalSchema = z.object({
   status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']).optional(),
   mapel_id: z.string().optional(),
   guru_id: z.string().optional(),
+  include_shared: z.coerce.boolean().optional().default(true),
 });
 
 export const createSoalPgSchema = z.object({
@@ -62,6 +66,7 @@ export const settingKeamananSchema = z.object({
   show_result_instant: z.boolean().default(false),
   auto_transfer_rapor: z.boolean().default(false),
   target_rapor_slot: z.enum(['sumatif_1', 'sumatif_2', 'sumatif_3', 'sumatif_akhir']).nullable().optional(),
+  created_by_guru_id: z.string().uuid().nullable().optional(),
 }).partial();
 
 export const createJadwalUjianSchema = z.object({
