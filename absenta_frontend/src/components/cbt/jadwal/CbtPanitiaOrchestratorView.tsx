@@ -67,17 +67,17 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [onlyUnplotted, setOnlyUnplotted] = useState(false);
 
-  const { guruList } = useGuruOptions({ jenisPtk: 'ALL' });
-  const { kelasList } = useKelasOptions();
-  const { activeTp } = useTahunPelajaranOptions();
+  const { rawList: guruList = [] } = useGuruOptions({ jenisPtk: 'ALL' });
+  const { rawList: kelasList = [] } = useKelasOptions();
+  const { activeYear: activeTp } = useTahunPelajaranOptions();
   const { activeSemester } = useSemesterOptions();
 
-  const guruMap = useMemo(() => new Map(guruList.map((g) => [g.id, g])), [guruList]);
+  const guruMap = useMemo(() => new Map((guruList || []).map((g) => [g.id, g])), [guruList]);
 
   const pengawasSelectOptions = useMemo(() => {
     return [
       { value: '', label: '— Belum Diploting —' },
-      ...guruList.map((g) => ({
+      ...(guruList || []).map((g) => ({
         value: g.id,
         label: `${g.nama_guru}${g.nip ? ` (NIP. ${g.nip})` : ''}`,
       })),
