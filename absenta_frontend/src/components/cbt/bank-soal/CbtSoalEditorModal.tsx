@@ -175,6 +175,122 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
     );
   };
 
+  /**
+   * Smart Multi-Line Paste (Google Forms Style):
+   * Saat guru mem-paste daftar baris dari Word/Docs/Excel ke salah satu input Opsi (misal Opsi A),
+   * otomatis pecah tiap baris ke Opsi A, B, C, D, E.
+   */
+  const handleOpsiPaste = (index: number, e: React.ClipboardEvent<HTMLInputElement>) => {
+    const rawText = e.clipboardData?.getData('text/plain') || '';
+    if (!rawText) return;
+
+    // Pecah per baris, buang baris kosong (misal spasi antar paragraf dari MS Word)
+    let lines = rawText
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    // Jika hanya 1 baris tapi memiliki pola "A. ... B. ... C. ..." dalam 1 baris
+    if (lines.length === 1 && /\b[A-Ea-e][.)]\s+.+\s+[B-Eb-e][.)]\s+/.test(lines[0])) {
+      lines = lines[0]
+        .split(/(?=\b[A-Ea-e][.)]\s+)/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+
+    if (lines.length <= 1) return;
+
+    // Bersihkan prefix huruf/bullet di awal baris jika ada (contoh: "A. ", "a) ", "(A) ", "• ", "- ")
+    const cleanedLines = lines.map((line) =>
+      line
+        .replace(/^(?:[A-Ea-e][.)\]:-]\s+|\([A-Ea-e1-5]\)\s+|[1-5][.)\]:-]\s+|[•●▪◦*-]\s+)/, '')
+        .trim()
+    );
+
+    e.preventDefault();
+
+    const allCodes: ('A' | 'B' | 'C' | 'D' | 'E')[] = ['A', 'B', 'C', 'D', 'E'];
+    setOpsiJawaban((prev) => {
+      const neededCount = Math.min(5, Math.max(prev.length, index + cleanedLines.length));
+      const nextList: OpsiJawaban[] = [];
+
+      for (let i = 0; i < neededCount; i++) {
+        const existing = prev[i] || { kode: allCodes[i], teks: '', gambar_url: null };
+        const lineOffset = i - index;
+        if (lineOffset >= 0 && lineOffset < cleanedLines.length) {
+          nextList.push({
+            ...existing,
+            kode: allCodes[i],
+            teks: cleanedLines[lineOffset],
+          });
+        } else {
+          nextList.push({
+            ...existing,
+            kode: allCodes[i],
+          });
+        }
+      }
+
+      return nextList;
+    });
+
+    const pastedCount = Math.min(cleanedLines.length, 5 - index);
+    toast.success(`${pastedCount} opsi jawaban otomatis terisi per baris`);
+  };
+
+  /**
+   * Smart Paste pada kotak Pertanyaan:
+   * Jika guru mem-paste sekaligus Pertanyaan + Opsi A-E (berawalan A. / B. / C.),
+   * otomatis pisahkan pertanyaan dan isi Opsi A-E.
+   */
+  const handleQuestionPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const rawText = e.clipboardData?.getData('text/plain') || '';
+    if (!rawText) return;
+
+    const lines = rawText
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+
+    if (lines.length < 3) return;
+
+    const firstOptionLineIdx = lines.findIndex((l) => /^(?:[Aa][.)\]:-]\s+|\([Aa]\)\s+)/.test(l));
+    if (firstOptionLineIdx <= 0) return;
+
+    const optionLines = lines.slice(firstOptionLineIdx);
+    const looksLikeOptionList =
+      optionLines.length >= 2 &&
+      optionLines.every((l) => /^(?:[A-Ea-e][.)\]:-]\s+|\([A-Ea-e]\)\s+)/.test(l));
+
+    if (!looksLikeOptionList) return;
+
+    e.preventDefault();
+
+    const questionPart = lines.slice(0, firstOptionLineIdx).join('\n');
+    const cleanedOptions = optionLines
+      .slice(0, 5)
+      .map((l) => l.replace(/^(?:[A-Ea-e][.)\]:-]\s+|\([A-Ea-e]\)\s+)/, '').trim());
+
+    setKontenPertanyaan((prev) => (prev ? `${prev}\n${questionPart}` : questionPart));
+
+    const allCodes: ('A' | 'B' | 'C' | 'D' | 'E')[] = ['A', 'B', 'C', 'D', 'E'];
+    setOpsiJawaban((prev) => {
+      const neededCount = Math.min(5, Math.max(prev.length, cleanedOptions.length));
+      const nextList: OpsiJawaban[] = [];
+      for (let i = 0; i < neededCount; i++) {
+        const existing = prev[i] || { kode: allCodes[i], teks: '', gambar_url: null };
+        nextList.push({
+          ...existing,
+          kode: allCodes[i],
+          teks: i < cleanedOptions.length ? cleanedOptions[i] : existing.teks,
+        });
+      }
+      return nextList;
+    });
+
+    toast.success(`Pertanyaan & ${cleanedOptions.length} opsi jawaban terisi otomatis`);
+  };
+
   const handleRemoveOpsiGambar = (index: number) => {
     setOpsiJawaban((prev) =>
       prev.map((opt, i) => (i === index ? { ...opt, gambar_url: null } : opt))
@@ -334,6 +450,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
               rows={2}
               value={kontenPertanyaan}
               onChange={(e) => setKontenPertanyaan(e.target.value)}
+              onPaste={handleQuestionPaste}
               placeholder="Ketik pertanyaan di sini..."
               className="w-full px-3.5 py-2.5 text-xs sm:text-sm font-medium rounded-xl bg-slate-50/90 hover:bg-slate-100/70 focus:bg-white dark:bg-slate-800/60 dark:focus:bg-slate-900 text-slate-900 dark:text-white border-b-2 border-b-slate-200 dark:border-b-slate-700 focus:border-b-[#673ab7] focus:outline-none transition-all resize-y min-h-[60px]"
               aria-label="Pertanyaan Soal"
@@ -431,7 +548,8 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
                     type="text"
                     value={opt.teks}
                     onChange={(e) => handleOpsiTeksChange(index, e.target.value)}
-                    placeholder={`Teks opsi ${opt.kode}...`}
+                    onPaste={(e) => handleOpsiPaste(index, e)}
+                    placeholder={`Teks opsi ${opt.kode}... (Bisa paste daftar opsi sekaligus)`}
                     className={cn(
                       'w-full py-1 px-1.5 text-xs sm:text-sm font-medium bg-transparent border-b border-b-slate-200 dark:border-b-slate-700 focus:border-b-[#673ab7] focus:outline-none transition-colors',
                       isKey && 'font-bold text-emerald-950 dark:text-emerald-200'
