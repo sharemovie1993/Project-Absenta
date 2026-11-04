@@ -50,11 +50,16 @@ const refineBankSoalAsesmen = (
   const kodeUpper = data.kode_bank.toUpperCase();
   const tingkatUpper = data.tingkat.toUpperCase().trim();
 
-  if (kodeUpper.startsWith('PSAJ-') && NON_FINAL_GRADES.has(tingkatUpper)) {
+  const isKelulusanCode =
+    kodeUpper.startsWith('PSAJ-') ||
+    kodeUpper.startsWith('AM-') ||
+    kodeUpper.startsWith('UKK-');
+
+  if (isKelulusanCode && NON_FINAL_GRADES.has(tingkatUpper)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message:
-        'Paket bank soal PSAJ adalah evaluasi kelulusan akhir jenjang yang hanya diperkenankan untuk kelas tingkat akhir (Kelas 6/VI di SD, Kelas 9/IX di SMP, atau Kelas 12/13 di SMA/SMK)',
+        'Paket bank soal kelulusan (PSAJ / Asesmen Madrasah / UKK Teori) hanya diperkenankan untuk kelas tingkat akhir jenjang',
       path: ['tingkat'],
     });
   }

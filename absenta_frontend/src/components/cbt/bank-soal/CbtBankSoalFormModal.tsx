@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { Layers, User, Sparkles, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import {
   type CbtBankSoalScope,
+  getOfficialAsesmenTypes,
   OFFICIAL_ASESMEN_TYPES,
   detectSmartAsesmenType,
   generateAutoFillMassal,
@@ -62,6 +63,8 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   }, [bankSoalToEdit, isPrivilegedRole, defaultGuruId]);
 
   const { tingkatList, jenjang } = useJenjang();
+  const officialAsesmenTypes = useMemo(() => getOfficialAsesmenTypes(jenjang), [jenjang]);
+
   const defaultInitialTingkat = useMemo(() => {
     return tingkatList.length > 0 ? getTingkatRoman(tingkatList[0]) : 'X';
   }, [tingkatList]);
@@ -73,18 +76,18 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
 
   // Deteksi cerdas asesmen resmi berdasarkan kalender bulan, semester aktif, & jenjang
   const smartDetection = useMemo(() => {
-    return detectSmartAsesmenType(activeSemester, tingkat, tingkatList);
-  }, [activeSemester, tingkat, tingkatList]);
+    return detectSmartAsesmenType(activeSemester, tingkat, tingkatList, jenjang);
+  }, [activeSemester, tingkat, tingkatList, jenjang]);
 
   const [step, setStep] = useState<1 | 2>(1);
   const [scope, setScope] = useState<CbtBankSoalScope>(initialScope);
   const [jenisKegiatanMassal, setJenisKegiatanMassal] = useState<string>(() => {
     if (bankSoalToEdit) {
       const code = bankSoalToEdit.kode_bank.toUpperCase();
-      const detected = OFFICIAL_ASESMEN_TYPES.find((t) => code.startsWith(`${t.key}-`));
+      const detected = officialAsesmenTypes.find((t) => code.startsWith(`${t.key}-`));
       if (detected) return detected.key;
     }
-    return detectSmartAsesmenType(activeSemester, defaultInitialTingkat, tingkatList).recommendedKey;
+    return detectSmartAsesmenType(activeSemester, defaultInitialTingkat, tingkatList, jenjang).recommendedKey;
   });
 
   const isTeacherLocked = useMemo(() => {
@@ -95,12 +98,12 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   // Evaluasi daftar tingkat kelas yang sah (Anti Human-Error)
   const activeAsesmenDef = useMemo(() => {
     if (scope !== 'TERPUSAT_MASSAL') return null;
-    return OFFICIAL_ASESMEN_TYPES.find((t) => t.key === jenisKegiatanMassal) || null;
-  }, [scope, jenisKegiatanMassal]);
+    return officialAsesmenTypes.find((t) => t.key === jenisKegiatanMassal) || null;
+  }, [scope, jenisKegiatanMassal, officialAsesmenTypes]);
 
   const allowedTingkatList = useMemo(() => {
-    return getAllowedTingkatForAsesmen(scope, jenisKegiatanMassal, tingkatList);
-  }, [scope, jenisKegiatanMassal, tingkatList]);
+    return getAllowedTingkatForAsesmen(scope, jenisKegiatanMassal, tingkatList, jenjang);
+  }, [scope, jenisKegiatanMassal, tingkatList, jenjang]);
 
   const dynamicTingkatOptions = useMemo(() => {
     const list = (tingkatList || []).map((t) => ({
@@ -168,6 +171,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       targetMapelId,
       targetTingkat,
       targetKegiatanKey,
+      jenjang,
     });
     setKodeBank(genCode);
     setJudul(genTitle);
@@ -176,7 +180,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   // Aksi pemilihan kegiatan massal dengan proteksi otomatis tingkat kelas (Anti Human-Error)
   const handleSelectKegiatanMassal = (targetKey: string) => {
     setJenisKegiatanMassal(targetKey);
-    const validTingkat = getAllowedTingkatForAsesmen('TERPUSAT_MASSAL', targetKey, tingkatList);
+    const validTingkat = getAllowedTingkatForAsesmen('TERPUSAT_MASSAL', targetKey, tingkatList, jenjang);
     let nextTingkat = tingkat;
     if (validTingkat.length > 0 && !validTingkat.includes(tingkat)) {
       nextTingkat = validTingkat[0];
@@ -205,7 +209,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setShowAllMapels(true);
 
       const code = bankSoalToEdit.kode_bank.toUpperCase();
-      const detected = OFFICIAL_ASESMEN_TYPES.find((t) => code.startsWith(`${t.key}-`));
+      const detected = officialAsesmenTypes.find((t) => code.startsWith(`${t.key}-`));
       if (detected) setJenisKegiatanMassal(detected.key);
     } else {
       setStep(1);
@@ -213,12 +217,13 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       const isMassal = initialScope === 'TERPUSAT_MASSAL';
       const year = new Date().getFullYear();
       const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-      const initialSmart = detectSmartAsesmenType(activeSemester, defaultInitialTingkat, tingkatList);
+      const initialSmart = detectSmartAsesmenType(activeSemester, defaultInitialTingkat, tingkatList, jenjang);
       const recKey = initialSmart.recommendedKey;
       const validTingkat = getAllowedTingkatForAsesmen(
         isMassal ? 'TERPUSAT_MASSAL' : 'MANDIRI_GURU',
         recKey,
-        tingkatList
+        tingkatList,
+        jenjang
       );
       const defaultTingkat = validTingkat[0] || defaultInitialTingkat;
 
@@ -243,7 +248,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setShowAllMapels(true);
       setIsShared(true);
       const recKey = smartDetection.recommendedKey;
-      const validTingkat = getAllowedTingkatForAsesmen('TERPUSAT_MASSAL', recKey, tingkatList);
+      const validTingkat = getAllowedTingkatForAsesmen('TERPUSAT_MASSAL', recKey, tingkatList, jenjang);
       const targetTingkat = validTingkat.includes(tingkat) ? tingkat : (validTingkat[0] || defaultInitialTingkat);
       setJenisKegiatanMassal(recKey);
       setTingkat(targetTingkat);
@@ -502,8 +507,8 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                   </span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2">
-                  {OFFICIAL_ASESMEN_TYPES.map((k) => {
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {officialAsesmenTypes.map((k) => {
                     const isSelected = jenisKegiatanMassal === k.key;
                     const isRecommended = smartDetection.recommendedKey === k.key;
                     return (

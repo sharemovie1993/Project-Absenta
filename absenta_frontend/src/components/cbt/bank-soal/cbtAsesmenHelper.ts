@@ -60,55 +60,88 @@ export interface OfficialAsesmenType {
 }
 
 /**
- * Nomenklatur resmi asesmen nasional & dinas pendidikan
- * berdasarkan Permendikbudristek No. 21 Tahun 2022
+ * Memperoleh daftar jenis asesmen resmi disesuaikan dengan jenis jenjang sekolah:
+ * - Sekolah Umum Kemendikbud (SD, SMP, SMA): SAS, SAT, STS, PSAJ, SLM, Simulasi
+ * - Madrasah Kemenag (MI, MTs, MA): AM (Asesmen Madrasah / PSAJ) untuk kelulusan
+ * - Kejuruan (SMK, MAK): Dilengkapi dengan asesmen UKK (Uji Kompetensi Keahlian - Teori Kejuruan)
  */
-export const OFFICIAL_ASESMEN_TYPES: OfficialAsesmenType[] = [
-  {
-    key: 'SAS',
-    singkatan: 'SAS',
-    namaResmi: 'Sumatif Akhir Semester',
-    keterangan: 'Semester 1 (Ganjil)',
-    defaultPrefix: 'SAS',
-  },
-  {
-    key: 'SAT',
-    singkatan: 'SAT',
-    namaResmi: 'Sumatif Akhir Tahun',
-    keterangan: 'Kenaikan Kelas (Sem. 2)',
-    defaultPrefix: 'SAT',
-    tingkatRuleExplanation: 'Khusus Kenaikan Kelas (Selain Tingkat Akhir)',
-  },
-  {
-    key: 'STS',
-    singkatan: 'STS',
-    namaResmi: 'Sumatif Tengah Semester',
-    keterangan: 'Tengah Semester',
-    defaultPrefix: 'STS',
-  },
-  {
-    key: 'PSAJ',
-    singkatan: 'PSAJ',
-    namaResmi: 'Penilaian Sumatif Akhir Jenjang',
-    keterangan: 'Evaluasi Kelulusan Akhir',
-    defaultPrefix: 'PSAJ',
-    tingkatRuleExplanation: 'Khusus Kelulusan Tingkat Akhir',
-  },
-  {
-    key: 'SLM',
-    singkatan: 'SLM',
-    namaResmi: 'Sumatif Lingkup Materi',
-    keterangan: 'Ulangan Bab / TP',
-    defaultPrefix: 'SLM',
-  },
-  {
-    key: 'TRYOUT',
-    singkatan: 'Simulasi',
-    namaResmi: 'Simulasi / Try Out Asesmen',
-    keterangan: 'Try Out & ANBK',
-    defaultPrefix: 'TRYOUT',
-  },
-];
+export function getOfficialAsesmenTypes(jenjang?: string): OfficialAsesmenType[] {
+  const normalizedJenjang = (jenjang || 'SMK').toUpperCase().trim();
+  const isMadrasah = ['MI', 'MTS', 'MA', 'MAK'].includes(normalizedJenjang);
+  const isKejuruan = ['SMK', 'MAK'].includes(normalizedJenjang);
+
+  const baseTypes: OfficialAsesmenType[] = [
+    {
+      key: 'SAS',
+      singkatan: 'SAS',
+      namaResmi: 'Sumatif Akhir Semester',
+      keterangan: 'Semester 1 (Ganjil)',
+      defaultPrefix: 'SAS',
+    },
+    {
+      key: 'SAT',
+      singkatan: 'SAT',
+      namaResmi: 'Sumatif Akhir Tahun',
+      keterangan: 'Kenaikan Kelas (Sem. 2)',
+      defaultPrefix: 'SAT',
+      tingkatRuleExplanation: 'Khusus Kenaikan Kelas (Selain Tingkat Akhir)',
+    },
+    {
+      key: 'STS',
+      singkatan: 'STS',
+      namaResmi: 'Sumatif Tengah Semester',
+      keterangan: 'Tengah Semester',
+      defaultPrefix: 'STS',
+    },
+    {
+      key: isMadrasah ? 'AM' : 'PSAJ',
+      singkatan: isMadrasah ? 'AM' : 'PSAJ',
+      namaResmi: isMadrasah
+        ? 'Asesmen Madrasah (AM)'
+        : 'Penilaian Sumatif Akhir Jenjang (PSAJ)',
+      keterangan: isMadrasah ? 'Evaluasi Kelulusan Madrasah' : 'Evaluasi Kelulusan Akhir Jenjang',
+      defaultPrefix: isMadrasah ? 'AM' : 'PSAJ',
+      tingkatRuleExplanation: 'Khusus Kelulusan Tingkat Akhir',
+    },
+  ];
+
+  // Tambahan khusus untuk SMK/MAK
+  if (isKejuruan) {
+    baseTypes.push({
+      key: 'UKK',
+      singkatan: 'UKK',
+      namaResmi: 'Uji Kompetensi Keahlian (Teori Kejuruan)',
+      keterangan: 'Sertifikasi Kejuruan LSP/DUDI',
+      defaultPrefix: 'UKK',
+      tingkatRuleExplanation: 'Khusus Kejuruan Tingkat Akhir',
+    });
+  }
+
+  // Asesmen formatif berkala & simulasi try out
+  baseTypes.push(
+    {
+      key: 'SLM',
+      singkatan: 'SLM',
+      namaResmi: 'Sumatif Lingkup Materi',
+      keterangan: 'Ulangan Bab / TP',
+      defaultPrefix: 'SLM',
+    },
+    {
+      key: 'TRYOUT',
+      singkatan: 'Simulasi',
+      namaResmi: 'Simulasi / Try Out Asesmen',
+      keterangan: 'Try Out & ANBK',
+      defaultPrefix: 'TRYOUT',
+    }
+  );
+
+  return baseTypes;
+}
+
+/**
+ * Daftar default fallback untuk kompatibilitas ke belakang
+ */
+export const OFFICIAL_ASESMEN_TYPES: OfficialAsesmenType[] = getOfficialAsesmenTypes('SMK');
 
 export interface SmartPeriodDetection {
   recommendedKey: string;
@@ -125,7 +158,8 @@ export interface SmartPeriodDetection {
 export function detectSmartAsesmenType(
   activeSemester?: { nama_semester?: string; is_active?: boolean } | null,
   tingkat?: string,
-  tingkatList: number[] = [10, 11, 12]
+  tingkatList: number[] = [10, 11, 12],
+  jenjang?: string
 ): SmartPeriodDetection {
   const now = new Date();
   const month = now.getMonth() + 1; // 1-12
@@ -146,6 +180,10 @@ export function detectSmartAsesmenType(
   const currentTingkatNum = tingkat ? parseTingkatToNumber(tingkat) : undefined;
   const isFinalGrade = currentTingkatNum === maxTingkatNum;
   const finalGradeRoman = getTingkatRoman(maxTingkatNum);
+
+  const isMadrasah = ['MI', 'MTS', 'MA', 'MAK'].includes((jenjang || '').toUpperCase().trim());
+  const kelulusanKey = isMadrasah ? 'AM' : 'PSAJ';
+  const kelulusanLabel = isMadrasah ? 'Asesmen Madrasah (AM)' : 'Penilaian Sumatif Akhir Jenjang (PSAJ)';
 
   if (isGanjil) {
     if (month >= 11 || month === 12) {
@@ -177,11 +215,11 @@ export function detectSmartAsesmenType(
     // Semester Genap (Januari - Juni)
     if (isFinalGrade && (month === 2 || month === 3 || month === 4)) {
       return {
-        recommendedKey: 'PSAJ',
+        recommendedKey: kelulusanKey,
         semesterLabel,
         monthName,
-        reason: `Bulan ${monthName} bagi tingkat akhir (${finalGradeRoman}) adalah agenda Penilaian Sumatif Akhir Jenjang (PSAJ / Kelulusan).`,
-        shortTag: `Periode PSAJ (Tingkat ${finalGradeRoman})`,
+        reason: `Bulan ${monthName} bagi tingkat akhir (${finalGradeRoman}) adalah agenda evaluasi kelulusan: ${kelulusanLabel}.`,
+        shortTag: `Periode ${kelulusanKey} (Tingkat ${finalGradeRoman})`,
       };
     } else if (month >= 5 || month === 6) {
       return {
@@ -219,8 +257,9 @@ export function generateAutoFillMassal(params: {
   targetMapelId: string;
   targetTingkat: string;
   targetKegiatanKey: string;
+  jenjang?: string;
 }): { kodeBank: string; judul: string } {
-  const { mapelOptions, targetMapelId, targetTingkat, targetKegiatanKey } = params;
+  const { mapelOptions, targetMapelId, targetTingkat, targetKegiatanKey, jenjang } = params;
   const selectedMapel = mapelOptions.find((m) => m.value === targetMapelId);
   const mapelName = selectedMapel?.label?.split('(')[0]?.trim() || 'Mata Pelajaran';
   const year = new Date().getFullYear();
@@ -229,7 +268,8 @@ export function generateAutoFillMassal(params: {
     .slice(0, 4)
     .toUpperCase();
 
-  const selectedDef = OFFICIAL_ASESMEN_TYPES.find((t) => t.key === targetKegiatanKey);
+  const allTypes = getOfficialAsesmenTypes(jenjang);
+  const selectedDef = allTypes.find((t) => t.key === targetKegiatanKey);
   const prefix = selectedDef?.defaultPrefix || targetKegiatanKey;
   const fullOfficialName = selectedDef?.namaResmi || targetKegiatanKey;
   const romanTingkat = getTingkatRoman(targetTingkat);
@@ -247,7 +287,8 @@ export function generateAutoFillMassal(params: {
 export function getAllowedTingkatForAsesmen(
   scope: CbtBankSoalScope,
   jenisKegiatanKey: string,
-  tingkatList: number[] = [10, 11, 12]
+  tingkatList: number[] = [10, 11, 12],
+  jenjang?: string
 ): string[] {
   const romanList = tingkatList.map((t) => getTingkatRoman(t));
   if (scope !== 'TERPUSAT_MASSAL') {
@@ -257,8 +298,8 @@ export function getAllowedTingkatForAsesmen(
   const maxTingkat = tingkatList.length > 0 ? Math.max(...tingkatList) : 12;
   const finalGradeRoman = getTingkatRoman(maxTingkat);
 
-  if (jenisKegiatanKey === 'PSAJ') {
-    // PSAJ hanya untuk tingkat akhir kelulusan (VI di SD, IX di SMP, XII di SMA/SMK)
+  // Evaluasi kelulusan tingkat akhir (PSAJ, AM, atau UKK Teori Kejuruan)
+  if (jenisKegiatanKey === 'PSAJ' || jenisKegiatanKey === 'AM' || jenisKegiatanKey === 'UKK') {
     return [finalGradeRoman];
   }
 
