@@ -115,7 +115,7 @@ export const settingKeamananSchema = z.object({
   proktor_nip: z.string().max(60).nullable().optional(),
 }).partial();
 
-export const createJadwalUjianSchema = z.object({
+const jadwalUjianBaseSchema = z.object({
   bank_soal_id: z.string().uuid('ID Bank Soal tidak valid'),
   tahun_pelajaran_id: z.string().uuid('ID Tahun Pelajaran tidak valid'),
   semester_id: z.string().uuid('ID Semester tidak valid'),
@@ -128,10 +128,37 @@ export const createJadwalUjianSchema = z.object({
   setting_keamanan: settingKeamananSchema.optional(),
 });
 
-export const updateJadwalUjianSchema = createJadwalUjianSchema.partial().extend({
-  status: z.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED', 'ARCHIVED']).optional(),
-  token_ujian: z.string().min(4).max(10).optional(),
-});
+/**
+ * Validasi domain rentang waktu pelaksanaan ujian:
+ * Batas akhir tanggal dan jam selesai ujian harus lebih besar dari tanggal mulai.
+ */
+const refineJadwalUjianWaktu = (
+  data: { tanggal_mulai?: string; tanggal_selesai?: string },
+  ctx: z.RefinementCtx
+) => {
+  if (data.tanggal_mulai && data.tanggal_selesai) {
+    const startMs = new Date(data.tanggal_mulai).getTime();
+    const endMs = new Date(data.tanggal_selesai).getTime();
+
+    if (endMs <= startMs) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Batas akhir tanggal dan jam selesai ujian harus lebih besar dari tanggal mulai',
+        path: ['tanggal_selesai'],
+      });
+    }
+  }
+};
+
+export const createJadwalUjianSchema = jadwalUjianBaseSchema.superRefine(refineJadwalUjianWaktu);
+
+export const updateJadwalUjianSchema = jadwalUjianBaseSchema
+  .partial()
+  .extend({
+    status: z.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED', 'ARCHIVED']).optional(),
+    token_ujian: z.string().min(4).max(10).optional(),
+  })
+  .superRefine(refineJadwalUjianWaktu);
 
 export const queryJadwalUjianSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),

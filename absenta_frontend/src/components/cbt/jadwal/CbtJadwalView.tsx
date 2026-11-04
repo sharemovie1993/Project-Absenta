@@ -663,6 +663,8 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
           }}
           jadwalToEdit={selectedJadwal}
           defaultGuruId={guruId}
+          initialTahunPelajaranId={(filter.values.tahunPelajaranId as string) || undefined}
+          initialSemesterId={(filter.values.semesterId as string) || undefined}
           onSuccess={async () => {
             setPage(1);
             await queryClient.invalidateQueries({
