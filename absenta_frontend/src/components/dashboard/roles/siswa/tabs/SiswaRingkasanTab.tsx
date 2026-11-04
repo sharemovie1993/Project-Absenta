@@ -291,11 +291,11 @@ export const SiswaRingkasanTab: React.FC<SiswaRingkasanTabProps> = ({
 
         <button
           type="button"
-          onClick={() => navigate('/cbt/ruang-ujian')}
+          onClick={() => (onNavigateTab ? onNavigateTab('cbt') : navigate('/cbt/ruang-ujian'))}
           className="w-full md:w-auto px-5 py-3 rounded-2xl bg-white hover:bg-violet-50 text-violet-900 text-xs font-black shadow-lg hover:shadow-xl flex items-center justify-center gap-2 shrink-0 cursor-pointer transition-all active:scale-98"
         >
           <PlayCircle size={16} className="text-violet-700" />
-          <span>Masuk Ruang Ujian CBT</span>
+          <span>Lihat Ujian Saya</span>
           <ChevronRight size={14} className="text-violet-400" />
         </button>
       </div>

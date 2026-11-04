@@ -110,6 +110,10 @@ export async function cbtRoutes(fastify: any) {
   // ==========================================
   // 4. STUDENT EXAM ENGINE ROUTES
   // ==========================================
+  fastify.get('/engine/my-exams', {
+    preHandler: [requireCapability('cbt.exam.take', cbtStudentExempt), determineDataScope()],
+  }, CbtTestEngineController.getMyExams);
+
   fastify.post('/engine/verify-token', {
     preHandler: [requireCapability('cbt.exam.take', cbtStudentExempt), determineDataScope()],
   }, CbtTestEngineController.verifyToken);

@@ -16,6 +16,7 @@ import {
   Flame,
   Sparkles,
   Briefcase,
+  Laptop,
 } from 'lucide-react';
 import { renderApiValue } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -35,6 +36,7 @@ import { SiswaHeaderBanner } from './siswa/components/SiswaHeaderBanner';
 // Subtabs
 import { SiswaRingkasanTab } from './siswa/tabs/SiswaRingkasanTab';
 import { SiswaPklTab } from './siswa/tabs/SiswaPklTab';
+import { SiswaCbtTab } from './siswa/tabs/SiswaCbtTab';
 import { SiswaKehadiranTab } from './siswa/tabs/SiswaKehadiranTab';
 import { SiswaCatatanTab } from './siswa/tabs/SiswaCatatanTab';
 import { SiswaBerkasTab } from './siswa/tabs/SiswaBerkasTab';
@@ -61,7 +63,7 @@ const SiswaOnboardingModal = lazy(() =>
 export const SiswaDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab') as SiswaTabId | null;
-  const validTabs: SiswaTabId[] = ['ringkasan', 'pkl', 'portal', 'kehadiran', 'catatan', 'berkas', 'profil'];
+  const validTabs: SiswaTabId[] = ['ringkasan', 'pkl', 'cbt', 'portal', 'kehadiran', 'catatan', 'berkas', 'profil'];
   const activeTab: SiswaTabId = rawTab && validTabs.includes(rawTab) ? rawTab : 'ringkasan';
 
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -195,6 +197,7 @@ export const SiswaDashboard: React.FC = () => {
       });
     }
     tabs.push(
+      { id: 'cbt', label: 'Ujian CBT', icon: Laptop },
       { id: 'kehadiran', label: 'Presensi & KBM', icon: CheckCircle2 },
       { id: 'catatan', label: 'Catatan Kedisiplinan', icon: FileText, badge: data.pelanggaranCount },
       { id: 'berkas', label: 'Berkas Dokumen', icon: FolderOpen },
@@ -459,6 +462,16 @@ export const SiswaDashboard: React.FC = () => {
                   data.refetchProfile();
                 }}
               />
+            </div>
+          )}
+
+          {visitedTabs.has('cbt') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'cbt'}
+              className={cn('w-full min-w-0', activeTab === 'cbt' ? 'block' : 'hidden')}
+            >
+              <SiswaCbtTab />
             </div>
           )}
 

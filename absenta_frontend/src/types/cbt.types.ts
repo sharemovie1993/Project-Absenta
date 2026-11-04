@@ -142,3 +142,26 @@ export interface CbtStudentAnswerItem {
   is_ragu: boolean;
   timestamp: number;
 }
+
+export type CbtStudentExamStatus = 'BELUM_MULAI' | 'STANDBY' | 'IN_PROGRESS' | 'FINISHED' | 'DISQUALIFIED';
+
+export interface CbtStudentExamItem {
+  id: string;
+  nama_sesi: string;
+  mapel: string;
+  judul_bank: string;
+  guru: string | null;
+  total_soal: number;
+  tanggal_mulai: string;
+  tanggal_selesai: string;
+  durasi_menit: number;
+  status_jadwal: 'ACTIVE' | 'PAUSED' | 'COMPLETED';
+  status_peserta: CbtStudentExamStatus;
+  waktu_mulai: string | null;
+  waktu_selesai: string | null;
+  hasil: {
+    nilai_akhir: number;
+    jumlah_benar: number;
+    jumlah_salah: number;
+  } | null;
+}

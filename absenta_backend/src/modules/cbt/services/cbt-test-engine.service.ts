@@ -4,6 +4,94 @@ import { Prisma } from '@prisma/client';
 
 export class CbtTestEngineService {
   /**
+   * Daftar jadwal ujian milik siswa (berdasarkan kelas siswa) beserta status & hasil pengerjaannya.
+   * Token ujian TIDAK pernah dikirim ke siswa — token tetap diumumkan oleh pengawas.
+   */
+  static async getMyExams(tenantId: string, siswaId: string) {
+    const siswa = await prisma.siswa.findFirst({
+      where: { id: siswaId, tenant_id: tenantId },
+      select: { id: true, kelas_id: true },
+    });
+
+    if (!siswa) {
+      throw new Error('Data siswa tidak ditemukan.');
+    }
+
+    if (!siswa.kelas_id) {
+      return [];
+    }
+
+    const jadwalList = await prisma.cbtJadwalUjian.findMany({
+      where: {
+        tenant_id: tenantId,
+        status: { in: ['ACTIVE', 'PAUSED', 'COMPLETED'] },
+        target_kelas_ids: { array_contains: [siswa.kelas_id] },
+      },
+      orderBy: { tanggal_mulai: 'desc' },
+      take: 100,
+      select: {
+        id: true,
+        nama_sesi: true,
+        tanggal_mulai: true,
+        tanggal_selesai: true,
+        durasi_menit: true,
+        status: true,
+        setting_keamanan: true,
+        BankSoal: {
+          select: {
+            judul: true,
+            jumlah_soal: true,
+            Mapel: { select: { nama_mapel: true } },
+            Guru: { select: { nama_guru: true } },
+          },
+        },
+        Peserta: {
+          where: { siswa_id: siswaId },
+          take: 1,
+          select: {
+            status: true,
+            waktu_mulai: true,
+            waktu_selesai: true,
+            nilai_akhir: true,
+            jumlah_benar: true,
+            jumlah_salah: true,
+          },
+        },
+      },
+    });
+
+    return jadwalList.map((j) => {
+      const peserta = j.Peserta[0];
+      const showResult = (j.setting_keamanan as any)?.show_result_instant ?? false;
+      const isFinished = peserta?.status === 'FINISHED';
+
+      return {
+        id: j.id,
+        nama_sesi: j.nama_sesi,
+        mapel: j.BankSoal?.Mapel?.nama_mapel || '-',
+        judul_bank: j.BankSoal?.judul || '-',
+        guru: j.BankSoal?.Guru?.nama_guru || null,
+        total_soal: j.BankSoal?.jumlah_soal || 0,
+        tanggal_mulai: j.tanggal_mulai,
+        tanggal_selesai: j.tanggal_selesai,
+        durasi_menit: j.durasi_menit,
+        status_jadwal: j.status,
+        status_peserta: peserta?.status || 'BELUM_MULAI',
+        waktu_mulai: peserta?.waktu_mulai || null,
+        waktu_selesai: peserta?.waktu_selesai || null,
+        hasil:
+          isFinished && showResult
+            ? {
+                nilai_akhir: Number(peserta?.nilai_akhir ?? 0),
+                jumlah_benar: peserta?.jumlah_benar ?? 0,
+                jumlah_salah: peserta?.jumlah_salah ?? 0,
+              }
+            : null,
+      };
+    });
+  }
+
+  /**
    * Verifikasi token ujian sebelum siswa masuk
    */
   static async verifyToken(tenantId: string, tokenUjian: string, siswaId: string) {

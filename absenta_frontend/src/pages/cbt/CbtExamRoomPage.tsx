@@ -475,7 +475,7 @@ export default function CbtExamRoomPage() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => (window.location.href = '/cbt/dashboard')}
+              onClick={() => (window.location.href = '/dashboard?tab=cbt')}
               className="w-full border-slate-700 text-slate-300 hover:text-white"
             >
               Kembali ke Beranda

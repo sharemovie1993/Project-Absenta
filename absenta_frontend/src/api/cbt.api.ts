@@ -5,6 +5,7 @@ import type {
   CbtJadwalUjian,
   CbtPesertaUjian,
   CbtStudentAnswerItem,
+  CbtStudentExamItem,
 } from '../types/cbt.types';
 
 // ─── Query Key Factory ──────────────────────────────────────────────────────
@@ -36,6 +37,7 @@ export const cbtQueryKeys = {
         ? ([...cbtQueryKeys.all, 'peserta-list', jadwalId, params] as const)
         : ([...cbtQueryKeys.all, 'peserta-list', jadwalId] as const)
       : ([...cbtQueryKeys.all, 'peserta-list'] as const),
+  myExams: () => [...cbtQueryKeys.all, 'my-exams'] as const,
 };
 
 // ─── API Client ─────────────────────────────────────────────────────────────
@@ -168,6 +170,11 @@ export const cbtApi = {
   // ==========================================
   // 4. STUDENT EXAM ENGINE
   // ==========================================
+  getMyExams: async () => {
+    const res = await api.get('/cbt/engine/my-exams');
+    return (res.data?.data || []) as CbtStudentExamItem[];
+  },
+
   verifyToken: async (tokenUjian: string) => {
     const res = await api.post('/cbt/engine/verify-token', { token_ujian: tokenUjian });
     return res.data?.data as {

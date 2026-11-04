@@ -31,6 +31,20 @@ export class CbtTestEngineController {
   }
 
   /**
+   * Daftar jadwal ujian siswa yang sedang login
+   */
+  static async getMyExams(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const siswaId = await CbtTestEngineController.resolveSiswaId(req);
+      const result = await CbtTestEngineService.getMyExams(tenant_id, siswaId);
+      return sendResponse(reply, 200, true, 'Daftar ujian siswa', result);
+    } catch (error: any) {
+      return sendError(reply, 400, error.message || 'Gagal memuat daftar ujian');
+    }
+  }
+
+  /**
    * Verifikasi token ujian
    */
   static async verifyToken(req: any, reply: any) {
