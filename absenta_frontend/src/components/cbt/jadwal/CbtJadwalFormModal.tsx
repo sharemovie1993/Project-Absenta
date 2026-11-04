@@ -207,12 +207,42 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
   const activeTz = getTimezone();
   const tzLabel = getTimezoneLabel(activeTz);
 
+  const computeEndFromStart = (startLocal: string, minutes: number): string => {
+    try {
+      const startIso = localDateTimeInputToISO(startLocal, activeTz);
+      const startMs = new Date(startIso).getTime();
+      if (Number.isNaN(startMs)) return startLocal;
+      const dur = Math.max(10, Number(minutes) || 90);
+      return formatLocalDateTime(new Date(startMs + dur * 60 * 1000));
+    } catch {
+      return startLocal;
+    }
+  };
+
   const syncWithNow = () => {
     const now = getVirtualDate();
-    const end = new Date(now.getTime() + Math.max(120, Number(durasiMenit) || 90) * 60 * 1000);
-    setTanggalMulai(formatLocalDateTime(now));
-    setTanggalSelesai(formatLocalDateTime(end));
+    const startStr = formatLocalDateTime(now);
+    setTanggalMulai(startStr);
+    setTanggalSelesai(computeEndFromStart(startStr, durasiMenit));
   };
+
+  const handleStartChange = (newStart: string) => {
+    setTanggalMulai(newStart);
+    setTanggalSelesai(computeEndFromStart(newStart, durasiMenit));
+  };
+
+  const handleDurationChange = (newDur: number) => {
+    setDurasiMenit(newDur);
+    if (tanggalMulai) {
+      setTanggalSelesai(computeEndFromStart(tanggalMulai, newDur));
+    }
+  };
+
+  const endTimePreview = useMemo(() => {
+    if (!tanggalSelesai) return '';
+    const timePart = tanggalSelesai.split('T')[1];
+    return timePart ? `${timePart.slice(0, 5)} ${tzLabel}` : '';
+  }, [tanggalSelesai, tzLabel]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -223,11 +253,14 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
       setTpId(jadwalToEdit.tahun_pelajaran_id || activeTpYear?.id || tpOptions[0]?.value || '');
       setSemId(jadwalToEdit.semester_id || activeSemester?.id || semOptions[0]?.value || '');
       setNamaSesi(jadwalToEdit.nama_sesi);
-      setTanggalMulai(
-        jadwalToEdit.tanggal_mulai ? formatLocalDateTime(new Date(jadwalToEdit.tanggal_mulai)) : ''
-      );
+      const startStr = jadwalToEdit.tanggal_mulai
+        ? formatLocalDateTime(new Date(jadwalToEdit.tanggal_mulai))
+        : '';
+      setTanggalMulai(startStr);
       setTanggalSelesai(
-        jadwalToEdit.tanggal_selesai ? formatLocalDateTime(new Date(jadwalToEdit.tanggal_selesai)) : ''
+        jadwalToEdit.tanggal_selesai
+          ? formatLocalDateTime(new Date(jadwalToEdit.tanggal_selesai))
+          : computeEndFromStart(startStr, jadwalToEdit.durasi_menit)
       );
       setDurasiMenit(jadwalToEdit.durasi_menit);
       setToleransiMenit(jadwalToEdit.toleransi_terlambat_menit);
@@ -244,7 +277,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
       }
     } else {
       const now = getVirtualDate();
-      const end = new Date(now.getTime() + 2 * 60 * 60 * 1000); // +2 jam
+      const startStr = formatLocalDateTime(now);
       setBankSoalId('');
       setTpId(activeTpYear?.id || tpOptions[0]?.value || '');
       setSemId(activeSemester?.id || semOptions[0]?.value || '');
@@ -255,8 +288,8 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
           timeZone: activeTz,
         })}`
       );
-      setTanggalMulai(formatLocalDateTime(now));
-      setTanggalSelesai(formatLocalDateTime(end));
+      setTanggalMulai(startStr);
+      setTanggalSelesai(computeEndFromStart(startStr, 90));
       setDurasiMenit(90);
       setToleransiMenit(15);
       setTargetKelasIds([]);
@@ -574,11 +607,11 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
               />
             </div>
 
-            {/* Pertanyaan 3: Rentang Waktu Ujian */}
+            {/* Pertanyaan 3: Waktu Mulai Ujian */}
             <div className="space-y-1.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between gap-2">
                 <label htmlFor="jadwal-mulai" className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                  Kapan ujian dibuka & ditutup ({tzLabel})?
+                  Kapan ujian dimulai ({tzLabel})?
                 </label>
                 <button
                   type="button"
@@ -589,37 +622,34 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <Input
-                  id="jadwal-mulai"
-                  type="datetime-local"
-                  value={tanggalMulai}
-                  onChange={(e) => setTanggalMulai(e.target.value)}
-                  aria-label="Waktu Mulai Ujian"
-                  required
-                />
-                <Input
-                  id="jadwal-selesai"
-                  type="datetime-local"
-                  value={tanggalSelesai}
-                  onChange={(e) => setTanggalSelesai(e.target.value)}
-                  aria-label="Batas Akhir Ujian"
-                  required
-                />
-              </div>
+              <Input
+                id="jadwal-mulai"
+                type="datetime-local"
+                value={tanggalMulai}
+                onChange={(e) => handleStartChange(e.target.value)}
+                aria-label="Waktu Mulai Ujian"
+                required
+              />
             </div>
 
             {/* Pertanyaan 4: Durasi Pengerjaan */}
             <div className="space-y-1.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
-              <label htmlFor="jadwal-durasi" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                Berapa menit waktu pengerjaan?
-              </label>
+              <div className="flex items-center justify-between gap-2">
+                <label htmlFor="jadwal-durasi" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Berapa menit waktu pengerjaan?
+                </label>
+                {endTimePreview && (
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                    Selesai {endTimePreview}
+                  </span>
+                )}
+              </div>
               <div className="grid grid-cols-5 gap-1.5">
                 {[45, 60, 90, 120].map((mnt) => (
                   <button
                     key={mnt}
                     type="button"
-                    onClick={() => setDurasiMenit(mnt)}
+                    onClick={() => handleDurationChange(mnt)}
                     className={cn(
                       'py-2 px-2 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
                       durasiMenit === mnt
@@ -636,7 +666,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                   min={10}
                   max={300}
                   value={durasiMenit}
-                  onChange={(e) => setDurasiMenit(Number(e.target.value))}
+                  onChange={(e) => handleDurationChange(Number(e.target.value))}
                   aria-label="Durasi Pengerjaan Ujian"
                   className="text-center font-bold px-1.5"
                   required
