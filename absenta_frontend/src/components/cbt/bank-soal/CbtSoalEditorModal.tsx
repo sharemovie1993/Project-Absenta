@@ -106,23 +106,97 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
     }
   }, [autoFocus]);
 
-  // Helper ekstrak file gambar dari event Clipboard (Ctrl+V Screenshot / Copy Image)
-  const extractImageFromClipboard = (clipboardData?: DataTransfer | null): File | null => {
-    if (!clipboardData) return null;
-    if (clipboardData.files && clipboardData.files.length > 0) {
-      const file = Array.from(clipboardData.files).find((f) => f.type.startsWith('image/'));
-      if (file) return file;
+  // Helper konversi Data URL (base64) menjadi File
+  const dataUrlToFile = (dataUrl: string, filename: string): File | null => {
+    try {
+      const arr = dataUrl.split(',');
+      const mimeMatch = arr[0]?.match(/:(.*?);/);
+      if (!mimeMatch || !arr[1]) return null;
+      const mime = mimeMatch[1];
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      return new File([u8arr], filename, { type: mime });
+    } catch {
+      return null;
     }
-    if (clipboardData.items) {
+  };
+
+  // Helper ekstrak BANYAK file gambar dari Clipboard (Ctrl+V Multi-File / HTML <img> / Screenshot)
+  const extractImagesFromClipboard = async (
+    clipboardData?: DataTransfer | null
+  ): Promise<{ files: File[]; wordLocalMultiImageDetected: boolean }> => {
+    const resultFiles: File[] = [];
+    if (!clipboardData) return { files: resultFiles, wordLocalMultiImageDetected: false };
+
+    // 1. Cek daftar file langsung di clipboard (misal Copy beberapa file gambar dari Explorer)
+    if (clipboardData.files && clipboardData.files.length > 0) {
+      const imageFiles = Array.from(clipboardData.files).filter((f) =>
+        f.type.startsWith('image/')
+      );
+      resultFiles.push(...imageFiles);
+    }
+
+    // 2. Cek items jika files masih kosong
+    if (resultFiles.length === 0 && clipboardData.items) {
       for (let i = 0; i < clipboardData.items.length; i++) {
         const item = clipboardData.items[i];
         if (item.type.startsWith('image/')) {
-          const file = item.getAsFile();
-          if (file) return file;
+          const f = item.getAsFile();
+          if (f) resultFiles.push(f);
         }
       }
     }
-    return null;
+
+    // 3. Cek text/html apabila menyalin beberapa gambar dari dokumen (Google Docs / Web / Word)
+    const html = clipboardData.getData('text/html') || '';
+    let wordLocalMultiImageDetected = false;
+    if (html && /<img\b/i.test(html)) {
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const imgs = Array.from(doc.querySelectorAll('img'));
+
+        if (imgs.length > 1) {
+          const htmlFiles: File[] = [];
+          let localFileCount = 0;
+
+          for (let i = 0; i < imgs.length; i++) {
+            const src = imgs[i].getAttribute('src') || '';
+            if (src.startsWith('data:image/')) {
+              const converted = dataUrlToFile(src, `paste-opt-${i + 1}.png`);
+              if (converted) htmlFiles.push(converted);
+            } else if (src.startsWith('file://')) {
+              localFileCount++;
+            } else if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('blob:')) {
+              try {
+                const resp = await fetch(src);
+                const blob = await resp.blob();
+                if (blob.type.startsWith('image/')) {
+                  htmlFiles.push(new File([blob], `paste-opt-${i + 1}.png`, { type: blob.type }));
+                }
+              } catch {
+                // Abaikan jika gagal fetch CORS
+              }
+            }
+          }
+
+          if (htmlFiles.length > 1) {
+            return { files: htmlFiles, wordLocalMultiImageDetected: false };
+          }
+          if (localFileCount > 1) {
+            wordLocalMultiImageDetected = true;
+          }
+        }
+      } catch {
+        // Fallback ke resultFiles
+      }
+    }
+
+    return { files: resultFiles, wordLocalMultiImageDetected };
   };
 
   // Upload Gambar Stimulus Soal (dari File Input, Paste Ctrl+V, atau Drag & Drop)
@@ -200,6 +274,66 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
     }
   };
 
+  // Upload Banyak Gambar Opsi Sekaligus (Otomatis sebar ke Opsi A, B, C, D, E)
+  const handleUploadMultiOpsi = async (startIndex: number, files: File[]) => {
+    const validFiles = files
+      .filter((f) => f.type.startsWith('image/') && f.size <= 5 * 1024 * 1024)
+      .slice(0, 5 - startIndex);
+
+    if (validFiles.length === 0) {
+      toast.error('Tidak ada file gambar valid (PNG/JPG maks 5 MB)');
+      return;
+    }
+
+    if (validFiles.length === 1) {
+      await handleUploadOpsi(startIndex, validFiles[0]);
+      return;
+    }
+
+    const allCodes: ('A' | 'B' | 'C' | 'D' | 'E')[] = ['A', 'B', 'C', 'D', 'E'];
+
+    // Pastikan jumlah slot opsi cukup untuk menampung seluruh gambar yang di-drop/paste
+    setOpsiJawaban((prev) => {
+      const neededCount = Math.min(5, Math.max(prev.length, startIndex + validFiles.length));
+      const nextList: OpsiJawaban[] = [];
+      for (let i = 0; i < neededCount; i++) {
+        nextList.push(prev[i] || { kode: allCodes[i], teks: '', gambar_url: null });
+      }
+      return nextList;
+    });
+
+    try {
+      setUploadingOpsiIndex(startIndex);
+      const uploadedUrls = await Promise.all(
+        validFiles.map(async (file) => {
+          const formData = new FormData();
+          formData.append('file', file);
+          const res = await axiosInstance.post('/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+          return (res.data?.data?.url || res.data?.url || null) as string | null;
+        })
+      );
+
+      setOpsiJawaban((prev) =>
+        prev.map((opt, idx) => {
+          const offset = idx - startIndex;
+          if (offset >= 0 && offset < uploadedUrls.length && uploadedUrls[offset]) {
+            return { ...opt, gambar_url: uploadedUrls[offset] };
+          }
+          return opt;
+        })
+      );
+
+      const successCount = uploadedUrls.filter(Boolean).length;
+      toast.success(`${successCount} gambar otomatis disebar ke Opsi ${allCodes.slice(startIndex, startIndex + successCount).join(', ')}`);
+    } catch {
+      toast.error('Gagal mengunggah beberapa gambar opsi');
+    } finally {
+      setUploadingOpsiIndex(null);
+    }
+  };
+
   const handleOpsiTeksChange = (index: number, text: string) => {
     setOpsiJawaban((prev) =>
       prev.map((opt, i) => (i === index ? { ...opt, teks: text } : opt))
@@ -207,19 +341,34 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
   };
 
   /**
-   * Smart Paste pada Opsi (Mendukung Paste Gambar Screenshot Ctrl+V & Multi-Line List):
+   * Smart Paste pada Opsi (Mendukung Multi-Gambar, Screenshot Ctrl+V & Multi-Line List):
    */
-  const handleOpsiPaste = (index: number, e: React.ClipboardEvent<HTMLInputElement>) => {
-    // 1. Cek apakah yang di-paste adalah gambar (Screenshot / Copy Image)
-    const imageFile = extractImageFromClipboard(e.clipboardData);
-    if (imageFile) {
+  const handleOpsiPaste = async (index: number, e: React.ClipboardEvent<HTMLInputElement>) => {
+    const rawText = e.clipboardData?.getData('text/plain') || '';
+    const hasFilesOrHtmlImg =
+      (e.clipboardData?.files && e.clipboardData.files.length > 0) ||
+      /<img\b/i.test(e.clipboardData?.getData('text/html') || '');
+
+    // 1. Jika clipboard berisi gambar (1 atau banyak gambar sekaligus)
+    if (hasFilesOrHtmlImg) {
       e.preventDefault();
-      handleUploadOpsi(index, imageFile);
-      return;
+      const { files: imageFiles, wordLocalMultiImageDetected } = await extractImagesFromClipboard(
+        e.clipboardData
+      );
+      if (wordLocalMultiImageDetected && imageFiles.length <= 1) {
+        toast.error(
+          'MS Word Desktop menggabungkan multi-gambar di clipboard. Silakan Drag & Drop 5 file gambar atau klik ikon Gambar di Opsi A untuk pilih 5 gambar sekaligus.',
+          { duration: 5000 }
+        );
+        return;
+      }
+      if (imageFiles.length > 0) {
+        await handleUploadMultiOpsi(index, imageFiles);
+        return;
+      }
     }
 
     // 2. Cek apakah yang di-paste adalah teks multi-baris
-    const rawText = e.clipboardData?.getData('text/plain') || '';
     if (!rawText) return;
 
     // Pecah per baris, buang baris kosong (misal spasi antar paragraf dari MS Word)
@@ -279,13 +428,16 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
   /**
    * Smart Paste pada kotak Pertanyaan (Mendukung Paste Gambar Screenshot Ctrl+V & Paket Soal + Opsi):
    */
-  const handleQuestionPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+  const handleQuestionPaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     // 1. Cek apakah yang di-paste adalah gambar (Screenshot / Copy Image)
-    const imageFile = extractImageFromClipboard(e.clipboardData);
-    if (imageFile) {
-      e.preventDefault();
-      uploadStimulusFile(imageFile);
-      return;
+    const hasFiles = e.clipboardData?.files && e.clipboardData.files.length > 0;
+    if (hasFiles) {
+      const firstImg = Array.from(e.clipboardData.files).find((f) => f.type.startsWith('image/'));
+      if (firstImg) {
+        e.preventDefault();
+        await uploadStimulusFile(firstImg);
+        return;
+      }
     }
 
     // 2. Cek apakah yang di-paste adalah teks Pertanyaan + Opsi A-E
@@ -603,8 +755,10 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
                 e.preventDefault();
                 e.stopPropagation();
                 setDragTarget(null);
-                const file = e.dataTransfer?.files?.[0];
-                if (file) handleUploadOpsi(index, file);
+                const droppedFiles = Array.from(e.dataTransfer?.files || []);
+                if (droppedFiles.length > 0) {
+                  handleUploadMultiOpsi(index, droppedFiles);
+                }
               }}
               className={cn(
                 'rounded-xl px-2.5 py-1.5 transition-all flex flex-col gap-1.5',
@@ -649,18 +803,22 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
                 <div className="flex items-center gap-1 shrink-0">
                   <label
                     className="p-1.5 rounded-lg text-slate-400 hover:text-[#673ab7] hover:bg-purple-50 dark:hover:bg-purple-950/60 cursor-pointer transition-colors"
-                    title={`Gambar Opsi ${opt.kode}`}
+                    title={`Sisipkan 1 atau beberapa gambar sekaligus mulai dari Opsi ${opt.kode}`}
                     aria-label={`Sisipkan gambar untuk Opsi ${opt.kode}`}
                   >
                     <ImageIcon size={14} />
                     <input
                       type="file"
                       accept="image/*"
+                      multiple
                       onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleUploadOpsi(index, file);
+                        const selectedFiles = Array.from(e.target.files || []);
+                        if (selectedFiles.length > 0) {
+                          handleUploadMultiOpsi(index, selectedFiles);
+                        }
+                        e.target.value = '';
                       }}
-                      disabled={uploadingOpsiIndex === index}
+                      disabled={uploadingOpsiIndex !== null}
                       className="hidden"
                       aria-label={`Unggah Gambar Opsi ${opt.kode}`}
                     />
