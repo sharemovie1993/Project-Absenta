@@ -420,6 +420,8 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
             {subModeFase1 === 'readiness' ? (
               <CbtBankSoalReadinessPanel
                 bankList={rawBankList}
+                activeTpId={activeTp?.id}
+                activeSemId={activeSemester?.id}
                 onProceedToNextPhase={() => setActiveTab('fase_2_ruang')}
                 onRefreshBankList={() => refetchBankSoal()}
               />

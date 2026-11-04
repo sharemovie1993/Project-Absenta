@@ -24,6 +24,8 @@ import {
   getTingkatRoman,
   formatTingkatLabel,
 } from './cbtAsesmenHelper';
+import { CbtMgmpColleaguePicker } from './CbtMgmpColleaguePicker';
+import { getMgmpSharedTeacherIds, setMgmpSharedTeacherIds } from '../jadwal/cbtMgmpHelper';
 
 export * from './cbtAsesmenHelper';
 
@@ -34,6 +36,7 @@ interface CbtBankSoalFormModalProps {
   onSuccess: () => void;
   defaultGuruId?: string;
   defaultMapelId?: string;
+  defaultTingkat?: 'X' | 'XI' | 'XII';
   roleContext?: 'GURU' | 'KURIKULUM' | 'ADMIN';
 }
 
@@ -44,6 +47,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   onSuccess,
   defaultGuruId,
   defaultMapelId,
+  defaultTingkat,
   roleContext,
 }) => {
   const queryClient = useQueryClient();
@@ -125,6 +129,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   const [acakSoal, setAcakSoal] = useState(true);
   const [acakOpsi, setAcakOpsi] = useState(true);
   const [isShared, setIsShared] = useState(true);
+  const [selectedColleagueIds, setSelectedColleagueIds] = useState<string[]>([]);
   const [showAllMapels, setShowAllMapels] = useState(isPrivilegedRole || initialScope === 'TERPUSAT_MASSAL');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -203,6 +208,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setAcakSoal(bankSoalToEdit.acak_soal);
       setAcakOpsi(bankSoalToEdit.acak_opsi);
       setIsShared(bankSoalToEdit.status === 'PUBLISHED' || Boolean(bankSoalToEdit.is_shared));
+      setSelectedColleagueIds(getMgmpSharedTeacherIds(bankSoalToEdit.id, user?.tenant_id));
       setShowAllMapels(true);
 
       const detected = findMatchingAsesmenType(bankSoalToEdit.kode_bank, officialAsesmenTypes);
@@ -221,18 +227,19 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         tingkatList,
         jenjang
       );
-      const defaultTingkat = validTingkat[0] || defaultInitialTingkat;
+      const autoDetectedTingkat = defaultTingkat || validTingkat[0] || defaultInitialTingkat;
 
       setJenisKegiatanMassal(recKey);
-      setKodeBank(isMassal ? `${recKey}-${year}-MAPEL-${defaultTingkat}` : `CBT-${year}-${randomSuffix}`);
+      setKodeBank(isMassal ? `${recKey}-${year}-MAPEL-${autoDetectedTingkat}` : `CBT-${year}-${randomSuffix}`);
       setJudul('');
       setGuruId(initialGuruId);
       setMapelId(defaultMapelId || '');
-      setTingkat(defaultTingkat);
+      setTingkat(autoDetectedTingkat);
       setAlokasiMenit(90);
       setAcakSoal(true);
       setAcakOpsi(true);
       setIsShared(true);
+      setSelectedColleagueIds([]);
       setShowAllMapels(isPrivilegedRole || isMassal);
     }
   }, [isOpen, bankSoalToEdit]);
@@ -342,9 +349,14 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
 
       if (bankSoalToEdit) {
         await cbtApi.updateBankSoal(bankSoalToEdit.id, payload);
+        setMgmpSharedTeacherIds(bankSoalToEdit.id, selectedColleagueIds, user?.tenant_id);
         toast.success('Bank soal berhasil diperbarui');
       } else {
-        await cbtApi.createBankSoal(payload);
+        const createRes = await cbtApi.createBankSoal(payload);
+        const newBankId = (createRes as any)?.data?.id || (createRes as any)?.id;
+        if (newBankId) {
+          setMgmpSharedTeacherIds(newBankId, selectedColleagueIds, user?.tenant_id);
+        }
         toast.success(
           scope === 'TERPUSAT_MASSAL'
             ? 'Paket bank soal ujian serentak berhasil dibuat & siap dijadwalkan'
@@ -782,6 +794,15 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                   </span>
                 </div>
               </div>
+            )}
+            {/* Kolaborasi MGMP Rekan Guru Paralel (Arah Push) */}
+            {(scope === 'TERPUSAT_MASSAL' || isShared) && (
+              <CbtMgmpColleaguePicker
+                mapelId={mapelId}
+                currentGuruId={guruId}
+                selectedIds={selectedColleagueIds}
+                onChangeSelectedIds={setSelectedColleagueIds}
+              />
             )}
           </div>
         )}

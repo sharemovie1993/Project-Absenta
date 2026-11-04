@@ -1,23 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { Card, Button, Badge } from '@/components/ui';
 import {
-  BookOpen,
   Search,
   CheckCircle2,
   AlertCircle,
-  Plus,
   ArrowRight,
-  Layers,
-  User,
-  Users,
-  ExternalLink,
-  MessageSquare,
-  Eye,
-  Edit3,
-  Copy,
-  Clock,
-  Sparkles,
+  Plus,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import type { CbtBankSoal } from '@/types/cbt.types';
 import { useJenjang } from '@/hooks/useJenjang';
 import { formatTingkatRomawi } from '../bank-soal/cbtAsesmenHelper';
@@ -25,10 +14,22 @@ import { resolveBankTingkatNumber } from './cbtJadwalHelper';
 import { cn } from '@/lib/utils';
 import { CbtBankSoalFormModal } from '../bank-soal/CbtBankSoalFormModal';
 import { CbtBankSoalDetailModal } from '../bank-soal/CbtBankSoalDetailModal';
+import { listGuruMapel } from '@/api/kurikulum/guru-mapel.api';
+import { useAuthStore } from '@/store/authStore';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  AuditedTargetItem,
+  getAllMgmpSharedMap,
+  getMgmpSharedTeacherIds,
+} from './cbtMgmpHelper';
+import { CbtAuditedTargetCard } from './CbtAuditedTargetCard';
 import toast from 'react-hot-toast';
 
 interface CbtBankSoalReadinessPanelProps {
   bankList: CbtBankSoal[];
+  activeTpId?: string;
+  activeSemId?: string;
   onProceedToNextPhase?: () => void;
   onRefreshBankList?: () => void;
 }
@@ -37,127 +38,276 @@ export type BankReadinessStatusFilter = 'ALL' | 'NEED_ACTION' | 'READY';
 
 export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps> = ({
   bankList,
+  activeTpId,
   onProceedToNextPhase,
   onRefreshBankList,
 }) => {
-  const { jenjang } = useJenjang();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterTingkat, setFilterTingkat] = useState<number | 'ALL'>('ALL');
+  const { user } = useAuthStore();
+  const tenantId = user?.tenant_id || 'default';
+  const { tingkatList } = useJenjang();
+
   const [statusFilter, setStatusFilter] = useState<BankReadinessStatusFilter>('ALL');
+  const [filterTingkat, setFilterTingkat] = useState<number | 'ALL'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Modals state
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [selectedBankToEdit, setSelectedBankToEdit] = useState<CbtBankSoal | null>(null);
+  const [defaultMapelForCreate, setDefaultMapelForCreate] = useState<string | undefined>(undefined);
+  const [defaultGuruForCreate, setDefaultGuruForCreate] = useState<string | undefined>(undefined);
+  const [defaultTingkatForCreate, setDefaultTingkatForCreate] = useState<'X' | 'XI' | 'XII' | undefined>(undefined);
 
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedBankForDetail, setSelectedBankForDetail] = useState<CbtBankSoal | null>(null);
 
-  // Group banks by tingkat
-  const groupedBanks = useMemo(() => {
-    const map = new Map<number, CbtBankSoal[]>();
+  // ── 1. Fetch SK Penugasan Guru-Mapel Kurikulum Tahun Pelajaran Aktif (Patokan Resmi) ──
+  const { data: guruMapelRes } = useQuery({
+    queryKey: ['guru-mapel-readiness', activeTpId],
+    queryFn: () => listGuruMapel({ tahun_pelajaran_id: activeTpId }),
+  });
+  const rawGuruMapel = guruMapelRes?.data || [];
+
+  // ── 2. Rekonsiliasi Otomatis: Kurikulum SK Assignments vs CBT Bank Soal + MGMP Sharing ──
+  const auditedTargetList: AuditedTargetItem[] = useMemo(() => {
+    const mgmpSharedMap = getAllMgmpSharedMap(tenantId);
+
+    // Map bank soal berdasarkan guru + mapel + tingkat
+    const directBankMap = new Map<string, CbtBankSoal>();
+    // Map master bank soal per mapel + tingkat (untuk fallback MGMP sharing)
+    const masterBanksByMapelTingkat = new Map<string, CbtBankSoal>();
+
     bankList.forEach((b) => {
-      const num = resolveBankTingkatNumber(b) || 10;
-      if (!map.has(num)) map.set(num, []);
-      map.get(num)!.push(b);
+      const tNum = resolveBankTingkatNumber(b) || 10;
+      const gId = b.guru_id;
+      const mId = b.mapel_id;
+      const count = b.jumlah_soal || b._count?.Soal || 0;
+
+      if (gId && mId) {
+        directBankMap.set(`${gId}_${mId}_${tNum}`, b);
+      }
+
+      // Simpan kandidat master bank (prioritas yang punya soal terbanyak dan is_shared)
+      const mtKey = `${mId}_${tNum}`;
+      const existingMaster = masterBanksByMapelTingkat.get(mtKey);
+      const isShared = Boolean(b.is_shared || b.status === 'PUBLISHED');
+      if (
+        !existingMaster ||
+        (isShared && !(existingMaster.is_shared || existingMaster.status === 'PUBLISHED')) ||
+        count > (existingMaster.jumlah_soal || existingMaster._count?.Soal || 0)
+      ) {
+        masterBanksByMapelTingkat.set(mtKey, b);
+      }
     });
-    return map;
-  }, [bankList]);
 
-  const tingkatList = useMemo(() => {
-    return Array.from(groupedBanks.keys()).sort((a, b) => a - b);
-  }, [groupedBanks]);
+    const items: AuditedTargetItem[] = [];
+    const processedKeys = new Set<string>();
 
-  // Readiness Metrics
-  const totalBanks = bankList.length;
-  const readyBanks = useMemo(
-    () => bankList.filter((b) => (b.jumlah_soal || b._count?.Soal || 0) > 0).length,
-    [bankList]
-  );
-  const sharedBanksCount = useMemo(
-    () => bankList.filter((b) => Boolean(b.is_shared || b.status === 'PUBLISHED')).length,
-    [bankList]
-  );
-  const emptyBanks = totalBanks - readyBanks;
+    // 2a. Iterasi setiap SK Penugasan Guru di Kurikulum
+    if (rawGuruMapel.length > 0) {
+      rawGuruMapel.forEach((gm: any) => {
+        const gId = gm.guru_id;
+        const mId = gm.mapel_id;
+        if (!gId || !mId) return;
 
-  // Filtered list
-  const filteredBanks = useMemo(() => {
-    return bankList.filter((b) => {
-      const num = resolveBankTingkatNumber(b) || 10;
-      if (filterTingkat !== 'ALL' && num !== filterTingkat) return false;
+        const rawTingkat = gm.Kelas?.tingkat || gm.Mapel?.tingkat || 10;
+        const tNum =
+          Number(rawTingkat) ||
+          (rawTingkat === 'XI' ? 11 : rawTingkat === 'XII' ? 12 : 10);
+        const itemKey = `${gId}_${mId}_${tNum}`;
 
-      const soalCount = b.jumlah_soal || b._count?.Soal || 0;
-      if (statusFilter === 'NEED_ACTION' && soalCount > 0) return false;
-      if (statusFilter === 'READY' && soalCount === 0) return false;
+        if (processedKeys.has(itemKey)) return;
+        processedKeys.add(itemKey);
 
+        const guruName = gm.Guru?.nama_guru || 'Guru Pengampu';
+        const mapelName = gm.Mapel?.nama_mapel || 'Mata Pelajaran';
+        const directBank = directBankMap.get(itemKey);
+
+        if (directBank) {
+          // Guru ini membuat bank soal langsung
+          const count = directBank.jumlah_soal || directBank._count?.Soal || 0;
+          const isShared = Boolean(directBank.is_shared || directBank.status === 'PUBLISHED');
+          const sharedIds = mgmpSharedMap[directBank.id] || [];
+
+          items.push({
+            id: directBank.id,
+            guru_id: gId,
+            nama_guru: guruName,
+            mapel_id: mId,
+            nama_mapel: mapelName,
+            tingkat: tNum,
+            assignedTeachers: [{ id: gId, nama_guru: guruName, no_hp: gm.Guru?.no_hp }],
+            bankSoal: directBank,
+            soalCount: count,
+            status: count > 0 ? 'READY' : 'DRAFT_EMPTY',
+            isShared,
+            creatorName: guruName,
+            isCoveredByMaster: false,
+            coveredCoTeachers: sharedIds,
+          });
+        } else {
+          // Guru belum membuat bank soal langsung. Cek apakah ter-cover Master MGMP!
+          const mtKey = `${mId}_${tNum}`;
+          const masterBank = masterBanksByMapelTingkat.get(mtKey);
+          const masterSharedIds = masterBank ? mgmpSharedMap[masterBank.id] || [] : [];
+          const isCoveredBySharedMaster =
+            masterBank &&
+            (Boolean(masterBank.is_shared || masterBank.status === 'PUBLISHED') ||
+              masterSharedIds.includes(gId));
+
+          if (isCoveredBySharedMaster && masterBank) {
+            const mCount = masterBank.jumlah_soal || masterBank._count?.Soal || 0;
+            items.push({
+              id: `mgmp_covered_${gId}_${masterBank.id}`,
+              guru_id: gId,
+              nama_guru: guruName,
+              mapel_id: mId,
+              nama_mapel: mapelName,
+              tingkat: tNum,
+              assignedTeachers: [{ id: gId, nama_guru: guruName, no_hp: gm.Guru?.no_hp }],
+              bankSoal: masterBank,
+              soalCount: mCount,
+              status: mCount > 0 ? 'READY' : 'DRAFT_EMPTY',
+              isShared: true,
+              creatorName: guruName,
+              isCoveredByMaster: true,
+              masterAuthorName: masterBank.Guru?.nama_guru || 'Koordinator MGMP',
+            });
+          } else {
+            // Belum buat sama sekali & belum ter-cover
+            items.push({
+              id: `uncreated_${itemKey}`,
+              guru_id: gId,
+              nama_guru: guruName,
+              mapel_id: mId,
+              nama_mapel: mapelName,
+              tingkat: tNum,
+              assignedTeachers: [{ id: gId, nama_guru: guruName, no_hp: gm.Guru?.no_hp }],
+              bankSoal: undefined,
+              soalCount: 0,
+              status: 'UNCREATED',
+              isShared: false,
+              creatorName: guruName,
+              isCoveredByMaster: false,
+            });
+          }
+        }
+      });
+    }
+
+    // 2b. Sertakan bank soal CBT yang mungkin tidak tercatat dalam SK
+    bankList.forEach((b) => {
+      const tNum = resolveBankTingkatNumber(b) || 10;
+      const gId = b.guru_id || '';
+      const mId = b.mapel_id || '';
+      const itemKey = `${gId}_${mId}_${tNum}`;
+
+      if (!processedKeys.has(itemKey)) {
+        processedKeys.add(itemKey);
+        const count = b.jumlah_soal || b._count?.Soal || 0;
+        const isShared = Boolean(b.is_shared || b.status === 'PUBLISHED');
+        items.push({
+          id: b.id,
+          guru_id: gId,
+          nama_guru: b.Guru?.nama_guru || 'Guru Pengampu',
+          mapel_id: mId,
+          nama_mapel: b.Mapel?.nama_mapel || 'Mata Pelajaran',
+          tingkat: tNum,
+          assignedTeachers: [{ id: gId, nama_guru: b.Guru?.nama_guru || 'Guru Pengampu' }],
+          bankSoal: b,
+          soalCount: count,
+          status: count > 0 ? 'READY' : 'DRAFT_EMPTY',
+          isShared,
+          creatorName: b.Guru?.nama_guru || 'Guru Pengampu',
+          isCoveredByMaster: false,
+        });
+      }
+    });
+
+    return items;
+  }, [rawGuruMapel, bankList, tenantId]);
+
+  // ── 3. Statistik Audit Kesiapan ──
+  const totalTargets = auditedTargetList.length;
+  const readyTargets = auditedTargetList.filter((t) => t.status === 'READY').length;
+  const uncreatedCount = auditedTargetList.filter((t) => t.status === 'UNCREATED').length;
+  const draftEmptyCount = auditedTargetList.filter((t) => t.status === 'DRAFT_EMPTY').length;
+  const needActionCount = uncreatedCount + draftEmptyCount;
+
+  // ── 4. Filter List ──
+  const filteredList = useMemo(() => {
+    return auditedTargetList.filter((t) => {
+      if (statusFilter === 'READY' && t.status !== 'READY') return false;
+      if (statusFilter === 'NEED_ACTION' && t.status === 'READY') return false;
+      if (filterTingkat !== 'ALL' && t.tingkat !== filterTingkat) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchJudul = b.judul.toLowerCase().includes(q);
-        const matchMapel = (b.Mapel?.nama_mapel || b.MataPelajaran?.nama_mapel || '').toLowerCase().includes(q);
-        const matchGuru = (b.Guru?.nama_guru || '').toLowerCase().includes(q);
-        return matchJudul || matchMapel || matchGuru;
+        const mapelMatch = t.nama_mapel.toLowerCase().includes(q);
+        const guruMatch = t.nama_guru.toLowerCase().includes(q);
+        if (!mapelMatch && !guruMatch) return false;
       }
       return true;
     });
-  }, [bankList, filterTingkat, statusFilter, searchQuery]);
+  }, [auditedTargetList, statusFilter, filterTingkat, searchQuery]);
 
-  // Tindakan: Kirim Pengingat WhatsApp ke Guru
-  const handleNudgeWhatsApp = (bank: CbtBankSoal) => {
-    const guruName = bank.Guru?.nama_guru || 'Bapak/Ibu Guru';
-    const mapelName = bank.Mapel?.nama_mapel || bank.judul;
-    const tingkatNum = resolveBankTingkatNumber(bank) || 10;
-    const pesan = `Halo Yth. ${guruName}, kami dari Panitia Ujian/CBT mengingatkan bahwa naskah butir soal untuk mata pelajaran "${mapelName}" (Tingkat ${tingkatNum}) saat ini belum lengkap/masih kosong di sistem. Mohon segera melengkapi butir soal dan kunci jawaban agar jadwal ujian serentak dapat segera diterbitkan. Terima kasih. 🙏`;
+  // ── 5. Action Handlers ──
+  const handleNudgeWhatsApp = (target: AuditedTargetItem) => {
+    const rawHp = target.assignedTeachers[0]?.no_hp;
+    const cleanHp = rawHp ? rawHp.replace(/[^0-9]/g, '').replace(/^0/, '62') : '';
+    const teacherName = target.nama_guru;
+    const mapelName = target.nama_mapel;
+    const tingkatStr = `Tingkat ${formatTingkatRomawi(target.tingkat)} (Kelas ${target.tingkat})`;
 
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(pesan);
-      toast.success(`Format pesan pengingat untuk ${guruName} disalin ke clipboard! Membuka WhatsApp...`);
-    }
+    const msg =
+      target.status === 'UNCREATED'
+        ? `Halo Bapak/Ibu ${teacherName}, mohon konfirmasi pembuatan naskah Asesmen Ujian CBT untuk mata pelajaran ${mapelName} ${tingkatStr} yang belum terdaftar di sistem. Mohon dapat segera menginput naskah atau mengklaim bank master MGMP. Terima kasih.`
+        : `Halo Bapak/Ibu ${teacherName}, bank soal untuk mata pelajaran ${mapelName} ${tingkatStr} saat ini masih berisi 0 butir soal. Mohon kesediaannya melengkapi butir soal agar jadwal ujian dapat segera diterbitkan panitia. Terima kasih.`;
 
-    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(pesan)}`;
+    const waUrl = cleanHp
+      ? `https://wa.me/${cleanHp}?text=${encodeURIComponent(msg)}`
+      : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+
     window.open(waUrl, '_blank');
+    toast.success(`Membuka WhatsApp untuk ${teacherName}`);
+  };
+
+  const handleCreateForTarget = (target: AuditedTargetItem) => {
+    setSelectedBankToEdit(null);
+    setDefaultMapelForCreate(target.mapel_id);
+    setDefaultGuruForCreate(target.guru_id);
+    const romanTingkat = target.tingkat === 11 ? 'XI' : target.tingkat === 12 ? 'XII' : 'X';
+    setDefaultTingkatForCreate(romanTingkat);
+    setIsFormModalOpen(true);
   };
 
   return (
-    <Card className="p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl shadow-2xs space-y-4">
-      {/* ── 1. Header & Quick Summary Strip ── */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+    <div className="space-y-4">
+      {/* ── 1. Hero Summary Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">
-              <BookOpen size={18} />
-            </span>
-            <h4 className="text-sm font-black text-slate-900 dark:text-slate-100">
-              Fase 1: Audit Kesiapan Materi &amp; Bank Soal Ujian
-            </h4>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Pantau pemenuhan butir soal per mata pelajaran, beri pengingat ke guru yang belum tuntas, dan periksa kunci jawaban sebelum jadwal massal diterbitkan.
+          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <span>Fase 1: Audit Kesiapan Materi & Bank Soal Ujian</span>
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Rekonsiliasi otomatis SK Mengajar Kurikulum vs Naskah CBT. Pantau guru yang belum membuat atau yang ter-cover MGMP.
           </p>
         </div>
 
-        {/* Readiness Summary Badges */}
-        <div className="flex items-center gap-2 flex-wrap text-xs">
+        <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline" className="px-2.5 py-1 font-bold border-violet-200 bg-violet-50 text-violet-700">
-            <BookOpen size={13} className="mr-1" />
-            <span>{totalBanks} Bank Soal Terdaftar</span>
+            <span>{totalTargets} Target Mapel-Guru</span>
           </Badge>
-          <Badge variant="outline" className="px-2.5 py-1 font-bold border-emerald-200 bg-emerald-50 text-emerald-700">
-            <CheckCircle2 size={13} className="mr-1" />
-            <span>{readyBanks} Siap Ujian</span>
+          <Badge variant="outline" className="px-2.5 py-1 font-bold border-emerald-300 bg-emerald-50 text-emerald-800">
+            <CheckCircle2 size={13} className="mr-1 text-emerald-600" />
+            <span>{readyTargets} Siap Ujian</span>
           </Badge>
-          {sharedBanksCount > 0 && (
-            <Badge variant="outline" className="px-2.5 py-1 font-bold border-indigo-200 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
-              <Users size={13} className="mr-1" />
-              <span>{sharedBanksCount} Master MGMP Bersama</span>
-            </Badge>
-          )}
-          {emptyBanks > 0 ? (
-            <Badge variant="outline" className="px-2.5 py-1 font-bold border-rose-300 bg-rose-50 text-rose-700 animate-pulse">
-              <AlertCircle size={13} className="mr-1" />
-              <span>{emptyBanks} Perlu Tindakan (0 Soal)</span>
+          {needActionCount > 0 ? (
+            <Badge variant="outline" className="px-2.5 py-1 font-bold border-rose-300 bg-rose-50 text-rose-800">
+              <AlertCircle size={13} className="mr-1 text-rose-600" />
+              <span>{needActionCount} Perlu Tindakan ({uncreatedCount} Belum Buat)</span>
             </Badge>
           ) : (
             <Badge variant="outline" className="px-2.5 py-1 font-bold border-emerald-300 bg-emerald-50 text-emerald-800">
-              <span>✓ 100% Soal Lengkap</span>
+              <span>✓ 100% Target Lengkap</span>
             </Badge>
           )}
         </div>
@@ -178,7 +328,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
                   : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
               )}
             >
-              Semua ({totalBanks})
+              Semua ({totalTargets})
             </button>
             <button
               type="button"
@@ -191,7 +341,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
               )}
             >
               <AlertCircle size={12} />
-              <span>Perlu Tindakan ({emptyBanks})</span>
+              <span>Perlu Tindakan ({needActionCount})</span>
             </button>
             <button
               type="button"
@@ -204,7 +354,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
               )}
             >
               <CheckCircle2 size={12} />
-              <span>Sudah Siap ({readyBanks})</span>
+              <span>Sudah Siap ({readyTargets})</span>
             </button>
           </div>
 
@@ -214,7 +364,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari mapel, judul, guru..."
+              placeholder="Cari mapel atau guru..."
               aria-label="Cari bank soal"
               className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
             />
@@ -260,6 +410,9 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
             size="sm"
             onClick={() => {
               setSelectedBankToEdit(null);
+              setDefaultMapelForCreate(undefined);
+              setDefaultGuruForCreate(undefined);
+              setDefaultTingkatForCreate(undefined);
               setIsFormModalOpen(true);
             }}
             className="text-xs h-9 px-3 font-bold border-violet-300 text-violet-700 bg-white hover:bg-violet-50 cursor-pointer"
@@ -283,171 +436,73 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
         </div>
       </div>
 
-      {/* ── 3. Grid Kartu Audit Kesiapan Bank Soal ── */}
-      {filteredBanks.length === 0 ? (
+      {/* ── 3. Grid Kartu Audit Kesiapan Mapel Kurikulum ── */}
+      {filteredList.length === 0 ? (
         <div className="p-10 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-xs text-slate-400">
-          Tidak ada bank soal yang cocok dengan filter yang dipilih.
+          Tidak ada mapel atau guru yang cocok dengan filter yang dipilih.
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filteredBanks.map((bank) => {
-            const soalCount = bank.jumlah_soal || bank._count?.Soal || 0;
-            const isReady = soalCount > 0;
-            const isShared = Boolean(bank.is_shared || bank.status === 'PUBLISHED');
-            const mapelName = bank.Mapel?.nama_mapel || bank.MataPelajaran?.nama_mapel || bank.judul;
-            const guruName = bank.Guru?.nama_guru || 'Guru Belum Ditentukan';
-            const tingkatNum = resolveBankTingkatNumber(bank) || 10;
-
-            return (
-              <div
-                key={bank.id}
-                className={cn(
-                  'p-3.5 rounded-2xl border transition-all flex flex-col justify-between gap-3 relative',
-                  isReady
-                    ? 'border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-violet-300 shadow-2xs'
-                    : 'border-rose-200 dark:border-rose-900/50 bg-rose-50/20 dark:bg-rose-950/10 shadow-2xs'
-                )}
-              >
-                <div className="space-y-2">
-                  {/* Top Bar: Tingkat, Shared Badge, & Status Badge */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-0.5 min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[10px] font-black text-violet-600 uppercase tracking-wider">
-                          Tingkat {formatTingkatRomawi(tingkatNum)} (Kelas {tingkatNum})
-                        </span>
-                        {isShared && (
-                          <span className="inline-flex items-center gap-0.5 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                            <Users size={10} />
-                            <span>Shared MGMP</span>
-                          </span>
-                        )}
-                      </div>
-                      <h5 className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate" title={mapelName}>
-                        {mapelName}
-                      </h5>
-                    </div>
-
-                    <span
-                      className={cn(
-                        'text-[10px] font-black px-2 py-0.5 rounded-full border shrink-0',
-                        isReady
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300'
-                          : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300'
-                      )}
-                    >
-                      {isReady ? `✓ Siap (${soalCount} Soal)` : '⚠️ Belum Ada Soal'}
-                    </span>
-                  </div>
-
-                  {/* Metadata: Guru Pengampu & Durasi */}
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
-                    <div className="flex items-center gap-1.5 truncate">
-                      <User size={12} className="text-slate-400 shrink-0" />
-                      <span className="truncate">
-                        Pengampu: <span className="font-semibold text-slate-700 dark:text-slate-300">{guruName}</span>
-                        {isShared && <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold ml-1">(Master Tim)</span>}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800">
-                      <span className="flex items-center gap-1">
-                        <Clock size={11} />
-                        <span>Durasi: {bank.alokasi_menit || 90} Menit</span>
-                      </span>
-                      <span>Kode: <span className="font-mono">{bank.kode_bank || '-'}</span></span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ── Action Buttons per Role Panitia ── */}
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                  {!isReady ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => handleNudgeWhatsApp(bank)}
-                        className="flex-1 py-1 px-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-300 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                        title="Kirim pesan pengingat deadline ke WhatsApp Guru"
-                      >
-                        <MessageSquare size={13} />
-                        <span>Colek Guru (WA)</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedBankForDetail(bank);
-                          setIsDetailModalOpen(true);
-                        }}
-                        className="py-1 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer"
-                        title="Input naskah butir soal darurat atas nama guru"
-                      >
-                        <Plus size={13} />
-                        <span>Input Soal</span>
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedBankForDetail(bank);
-                          setIsDetailModalOpen(true);
-                        }}
-                        className="flex-1 py-1 px-2 rounded-lg bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 dark:bg-violet-950/30 dark:border-violet-800 dark:text-violet-300 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                        title="Periksa dan audit butir soal & kunci jawaban"
-                      >
-                        <Eye size={13} />
-                        <span>Periksa Butir ({soalCount})</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedBankToEdit(bank);
-                          setIsFormModalOpen(true);
-                        }}
-                        className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
-                        title="Edit pengaturan bank soal"
-                      >
-                        <Edit3 size={14} />
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          {filteredList.map((target) => (
+            <CbtAuditedTargetCard
+              key={target.id}
+              target={target}
+              onPeriksaButir={(bank) => {
+                setSelectedBankForDetail(bank);
+                setIsDetailModalOpen(true);
+              }}
+              onEditBank={(bank) => {
+                setSelectedBankToEdit(bank);
+                setIsFormModalOpen(true);
+              }}
+              onInputSoal={(bank) => {
+                setSelectedBankForDetail(bank);
+                setIsDetailModalOpen(true);
+              }}
+              onCreateForTarget={handleCreateForTarget}
+              onNudgeWhatsApp={handleNudgeWhatsApp}
+            />
+          ))}
         </div>
       )}
 
-      {/* Modal Detail & Pemeriksa Butir Soal */}
-      {isDetailModalOpen && (
+      {/* ── 4. Modals ── */}
+      {isFormModalOpen && (
+        <CbtBankSoalFormModal
+          isOpen={isFormModalOpen}
+          onClose={() => {
+            setIsFormModalOpen(false);
+            setDefaultMapelForCreate(undefined);
+            setDefaultGuruForCreate(undefined);
+            setDefaultTingkatForCreate(undefined);
+          }}
+          bankSoalToEdit={selectedBankToEdit}
+          defaultMapelId={defaultMapelForCreate}
+          defaultGuruId={defaultGuruForCreate}
+          defaultTingkat={defaultTingkatForCreate}
+          onSuccess={() => {
+            setIsFormModalOpen(false);
+            setDefaultMapelForCreate(undefined);
+            setDefaultGuruForCreate(undefined);
+            setDefaultTingkatForCreate(undefined);
+            if (onRefreshBankList) onRefreshBankList();
+          }}
+        />
+      )}
+
+      {isDetailModalOpen && selectedBankForDetail && (
         <CbtBankSoalDetailModal
           isOpen={isDetailModalOpen}
           onClose={() => {
             setIsDetailModalOpen(false);
             setSelectedBankForDetail(null);
-            if (onRefreshBankList) onRefreshBankList();
           }}
           bankSoal={selectedBankForDetail}
-        />
-      )}
-
-      {/* Modal Form Tambah/Edit Bank Soal */}
-      {isFormModalOpen && (
-        <CbtBankSoalFormModal
-          isOpen={isFormModalOpen}
-          onClose={() => setIsFormModalOpen(false)}
-          bankSoalToEdit={selectedBankToEdit}
-          onSuccess={() => {
-            setIsFormModalOpen(false);
+          onBankSoalUpdated={() => {
             if (onRefreshBankList) onRefreshBankList();
           }}
         />
       )}
-    </Card>
+    </div>
   );
 };
-
-export default CbtBankSoalReadinessPanel;
