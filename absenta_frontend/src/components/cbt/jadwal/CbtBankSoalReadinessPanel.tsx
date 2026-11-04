@@ -154,8 +154,18 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
           return;
         }
 
-        const rawTingkat = gm.Kelas?.tingkat || gm.Mapel?.tingkat || 10;
-        const tNum = Number(rawTingkat) || (rawTingkat === 'XI' ? 11 : rawTingkat === 'XII' ? 12 : 10);
+        const rawTingkat = gm.Kelas?.tingkat || gm.Mapel?.tingkat;
+        let tNum = Number(rawTingkat);
+        if (!tNum && gm.Kelas?.nama_kelas) {
+          const match = gm.Kelas.nama_kelas.match(/\b(X|XI|XII|10|11|12)\b/i);
+          if (match) {
+            const roman = match[1].toUpperCase();
+            tNum = roman === 'XI' || roman === '11' ? 11 : roman === 'XII' || roman === '12' ? 12 : 10;
+          }
+        }
+        if (!tNum) {
+          tNum = rawTingkat === 'XI' ? 11 : rawTingkat === 'XII' ? 12 : 10;
+        }
         const guruName = gm.Guru?.nama_guru || 'Guru Pengampu';
         const phone = gm.Guru?.no_hp || guruPhoneMap.get(gId) || '';
 
@@ -283,40 +293,59 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
     };
   }, [rawGuruMapel, bankList, tenantId, guruPhoneMap, nudgeTick]);
 
-  // ── 3. Filter List Guru ──
+  // ── 3. Filter & Default Sorting: Tingkat (10 -> 11 -> 12) -> Nama Mapel (A-Z) -> Nama Guru (A-Z) ──
   const guruBelumList = useMemo(() => {
-    return auditedTeachers.filter((t) => {
-      if (t.status === 'READY') return false;
-      if (filterTingkat !== 'ALL' && t.tingkat !== filterTingkat) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        return t.nama_guru.toLowerCase().includes(q) || t.nama_mapel.toLowerCase().includes(q);
-      }
-      return true;
-    });
+    return auditedTeachers
+      .filter((t) => {
+        if (t.status === 'READY') return false;
+        if (filterTingkat !== 'ALL' && t.tingkat !== filterTingkat) return false;
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          return t.nama_guru.toLowerCase().includes(q) || t.nama_mapel.toLowerCase().includes(q);
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        if (a.tingkat !== b.tingkat) return a.tingkat - b.tingkat;
+        const cmpMapel = a.nama_mapel.localeCompare(b.nama_mapel, 'id');
+        if (cmpMapel !== 0) return cmpMapel;
+        return a.nama_guru.localeCompare(b.nama_guru, 'id');
+      });
   }, [auditedTeachers, filterTingkat, searchQuery]);
 
   const guruSudahList = useMemo(() => {
-    return auditedTeachers.filter((t) => {
-      if (t.status !== 'READY') return false;
-      if (filterTingkat !== 'ALL' && t.tingkat !== filterTingkat) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        return t.nama_guru.toLowerCase().includes(q) || t.nama_mapel.toLowerCase().includes(q);
-      }
-      return true;
-    });
+    return auditedTeachers
+      .filter((t) => {
+        if (t.status !== 'READY') return false;
+        if (filterTingkat !== 'ALL' && t.tingkat !== filterTingkat) return false;
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          return t.nama_guru.toLowerCase().includes(q) || t.nama_mapel.toLowerCase().includes(q);
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        if (a.tingkat !== b.tingkat) return a.tingkat - b.tingkat;
+        const cmpMapel = a.nama_mapel.localeCompare(b.nama_mapel, 'id');
+        if (cmpMapel !== 0) return cmpMapel;
+        return a.nama_guru.localeCompare(b.nama_guru, 'id');
+      });
   }, [auditedTeachers, filterTingkat, searchQuery]);
 
   const mapelPaketFilteredList = useMemo(() => {
-    return mapelPaketTeoriList.filter((p) => {
-      if (filterTingkat !== 'ALL' && p.tingkat !== filterTingkat) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        return p.nama_mapel.toLowerCase().includes(q);
-      }
-      return true;
-    });
+    return mapelPaketTeoriList
+      .filter((p) => {
+        if (filterTingkat !== 'ALL' && p.tingkat !== filterTingkat) return false;
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          return p.nama_mapel.toLowerCase().includes(q);
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        if (a.tingkat !== b.tingkat) return a.tingkat - b.tingkat;
+        return a.nama_mapel.localeCompare(b.nama_mapel, 'id');
+      });
   }, [mapelPaketTeoriList, filterTingkat, searchQuery]);
 
   // Statistik Dinamis Menyesuaikan Filter Tingkat
