@@ -23,7 +23,6 @@ import {
   RotateCcw,
   ArrowRight,
   ArrowLeft,
-  ArrowRightLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -852,152 +851,83 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
             </div>
           </>
         ) : (
-          <>
-            {/* Ringkasan Singkat Step 1 & Step 2 */}
-            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 flex items-center justify-between gap-2 text-xs">
-              <div className="min-w-0">
-                <p className="font-bold text-slate-800 dark:text-slate-200 truncate">{namaSesi}</p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                  {selectedBankSoal ? `${selectedBankSoal.Mapel?.nama_mapel || '-'}` : '-'} • {targetKelasIds.length} Kelas Dipilih • {durasiMenit} Menit
-                </p>
-              </div>
+          <div className="space-y-4 py-1">
+            {/* Pertanyaan Utama yang Simpel & Fokus */}
+            <div className="space-y-1">
+              <p className="text-sm font-black text-slate-900 dark:text-white leading-snug">
+                Apakah nilai ujian ini ingin otomatis ditransfer ke Buku Nilai e-Rapor?
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Jika <strong>Ya</strong>, nilai siswa langsung masuk ke rapor begitu selesai mengerjakan ujian.
+              </p>
+            </div>
+
+            {/* Pilihan Jawaban: Ya vs Tidak */}
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
-                onClick={(e) => handleGoToStep(2, e)}
-                className="text-[11px] font-bold text-violet-600 dark:text-violet-400 hover:underline shrink-0 cursor-pointer"
+                onClick={() => setAutoTransferRapor(true)}
+                className={cn(
+                  'py-2.5 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2',
+                  autoTransferRapor
+                    ? 'bg-violet-600 text-white border-violet-600 shadow-xs'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                )}
               >
-                Ubah Kelas
+                <CheckCircle2 size={15} />
+                <span>Ya, Otomatis Transfer</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAutoTransferRapor(false)}
+                className={cn(
+                  'py-2.5 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2',
+                  !autoTransferRapor
+                    ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900 shadow-xs'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                )}
+              >
+                <span>Tidak, Nanti Manual</span>
               </button>
             </div>
 
-            {/* Pilihan Mode Transfer Nilai ke e-Rapor (Step 3) */}
-            <div className="space-y-3">
-              <div>
-                <h4 className="text-xs font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                  <ArrowRightLeft size={14} className="text-violet-600" />
-                  <span>Integrasi & Otomasi Transfer Nilai ke e-Rapor</span>
-                </h4>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                  Pilih apakah nilai ujian CBT ini ingin langsung dikirim otomatis ke Buku Nilai e-Rapor guru.
+            {/* Pertanyaan Lanjutan (Hanya jika dijawab Ya) */}
+            {autoTransferRapor && (
+              <div className="space-y-2 pt-1">
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Masukkan ke kolom nilai yang mana?
                 </p>
-              </div>
-
-              {/* Pilihan Mode: Otomatis vs Manual */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setAutoTransferRapor(true)}
-                  className={cn(
-                    'p-3 rounded-xl border text-left transition-all cursor-pointer space-y-1',
-                    autoTransferRapor
-                      ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500 ring-2 ring-emerald-500/15'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300'
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-black text-slate-900 dark:text-white">
-                      Otomatis Transfer ke Rapor
-                    </span>
-                    <span
-                      className={cn(
-                        'px-2 py-0.5 rounded-full text-[9px] font-bold',
-                        autoTransferRapor
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                      )}
-                    >
-                      Direkomendasikan
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-                    Nilai langsung masuk ke slot rapor begitu siswa menyelesaikan ujian.
-                  </p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setAutoTransferRapor(false)}
-                  className={cn(
-                    'p-3 rounded-xl border text-left transition-all cursor-pointer space-y-1',
-                    !autoTransferRapor
-                      ? 'bg-violet-50/80 dark:bg-violet-950/40 border-violet-500 ring-2 ring-violet-500/15'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300'
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-black text-slate-900 dark:text-white">
-                      Simpan di CBT Saja (Manual)
-                    </span>
-                    <span
-                      className={cn(
-                        'px-2 py-0.5 rounded-full text-[9px] font-bold',
-                        !autoTransferRapor
-                          ? 'bg-violet-600 text-white'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                      )}
-                    >
-                      Fleksibel
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-                    Guru dapat meninjau nilai dulu & mentransfer manual kapan saja.
-                  </p>
-                </button>
-              </div>
-
-              {/* Pemetaan Slot Nilai Rapor */}
-              {autoTransferRapor ? (
-                <div className="p-3 bg-emerald-50/40 dark:bg-emerald-950/20 rounded-xl border border-emerald-200/70 dark:border-emerald-900/50 space-y-2">
-                  <span className="block text-xs font-bold text-emerald-900 dark:text-emerald-200">
-                    Pilih Kolom / Slot Tujuan di Buku Nilai e-Rapor:
-                  </span>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {(
-                      [
-                        { key: 'sumatif_1', label: 'SUM 1', desc: 'Sumatif Lingkup 1' },
-                        { key: 'sumatif_2', label: 'SUM 2', desc: 'Sumatif 2 / PTS' },
-                        { key: 'sumatif_3', label: 'SUM 3', desc: 'Sumatif Lingkup 3' },
-                        { key: 'sumatif_akhir', label: 'SUM AKHIR', desc: 'SAS / UAS / PAT' },
-                      ] as { key: CbtRaporSlot; label: string; desc: string }[]
-                    ).map((slot) => {
-                      const active = targetRaporSlot === slot.key;
-                      return (
-                        <button
-                          key={slot.key}
-                          type="button"
-                          onClick={() => setTargetRaporSlot(slot.key)}
-                          className={cn(
-                            'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col items-start gap-0.5',
-                            active
-                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-emerald-300'
-                          )}
-                        >
-                          <span className="text-xs font-black leading-tight">{slot.label}</span>
-                          <span
-                            className={cn(
-                              'text-[10px] font-medium truncate w-full',
-                              active ? 'text-emerald-100' : 'text-slate-400'
-                            )}
-                          >
-                            {slot.desc}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-medium">
-                    ✓ Setiap siswa yang selesai ujian akan langsung terisi nilainya (dibulatkan 0–100) pada kolom{' '}
-                    <strong>{targetRaporSlot.toUpperCase().replace('_', ' ')}</strong>.
-                  </p>
+                <div className="grid grid-cols-4 gap-2">
+                  {(
+                    [
+                      { key: 'sumatif_1', label: 'SUM 1' },
+                      { key: 'sumatif_2', label: 'SUM 2' },
+                      { key: 'sumatif_3', label: 'SUM 3' },
+                      { key: 'sumatif_akhir', label: 'SUM AKHIR' },
+                    ] as { key: CbtRaporSlot; label: string }[]
+                  ).map((slot) => {
+                    const active = targetRaporSlot === slot.key;
+                    return (
+                      <button
+                        key={slot.key}
+                        type="button"
+                        onClick={() => setTargetRaporSlot(slot.key)}
+                        className={cn(
+                          'py-2.5 px-2 rounded-xl border text-xs font-black text-center transition-all cursor-pointer',
+                          active
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-emerald-400'
+                        )}
+                      >
+                        {slot.label}
+                      </button>
+                    );
+                  })}
                 </div>
-              ) : (
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 text-[11px] text-slate-600 dark:text-slate-400">
-                  Nilai ujian tetap tersimpan aman di modul CBT. Anda dapat mengirimnya ke kolom rapor mana pun nanti melalui tombol <strong>Transfer Rapor</strong> di tabel jadwal.
-                </div>
-              )}
-            </div>
-          </>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Actions Footer */}
