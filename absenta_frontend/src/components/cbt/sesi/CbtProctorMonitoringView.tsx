@@ -87,9 +87,9 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
     const isConfirmed = await confirm({
       title: 'Reset Sesi Siswa?',
       message: `Reset sesi "${peserta.Siswa?.nama_lengkap || 'Siswa'}"? Sesi Redis akan dibersihkan agar siswa dapat masuk kembali pada perangkat lain. Jawaban yang sudah tersinkronisasi tidak akan hilang.`,
-      confirmText: 'Reset Sesi',
+      confirmText: 'Reset Sesi Login',
       cancelText: 'Batal',
-      style: 'danger',
+      style: 'warning',
     });
 
     if (isConfirmed) {

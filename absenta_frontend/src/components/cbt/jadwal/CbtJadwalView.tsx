@@ -155,10 +155,10 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
   const handleComplete = async (jdw: CbtJadwalUjian) => {
     const isConfirmed = await confirm({
       title: 'Selesaikan Sesi Ujian?',
-      message: `Sesi "${jdw.nama_sesi}" akan ditutup permanen. Siswa yang belum submit tidak dapat melanjutkan lagi.`,
-      confirmText: 'Ya, Selesaikan',
+      message: `Sesi "${jdw.nama_sesi}" akan ditutup permanen. Siswa yang belum mengumpulkan jawaban tidak dapat melanjutkan ujian lagi.`,
+      confirmText: 'Ya, Selesaikan Sesi',
       cancelText: 'Batal',
-      style: 'danger',
+      style: 'warning',
     });
     if (isConfirmed) completeMutation.mutate(jdw.id);
   };
