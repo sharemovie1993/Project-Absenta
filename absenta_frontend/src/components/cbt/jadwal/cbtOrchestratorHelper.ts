@@ -81,8 +81,16 @@ export function generateClassRoomMappings(
     return [];
   }
 
+  // Hanya ambil kelas yang aktif di sekolah
+  const activeList = rawKelasList.filter((k) => {
+    if (k.is_active === false) return false;
+    const statusText = String((k as any).status || '').toUpperCase();
+    if (statusText === 'NONAKTIF' || statusText === 'INACTIVE') return false;
+    return true;
+  });
+
   // Sort secara hierarkis: Tingkat ASC -> Kode Jurusan -> Nama Kelas
-  const sorted = [...rawKelasList].sort((a, b) => {
+  const sorted = [...activeList].sort((a, b) => {
     const numA = Number(a.tingkat) || 0;
     const numB = Number(b.tingkat) || 0;
     if (numA !== numB) return numA - numB;

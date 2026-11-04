@@ -31,6 +31,7 @@ import {
   extractTeacherTaughtClassIds,
   filterClassesByTingkat,
   filterTeacherClasses,
+  filterValidTargetKelasIds,
 } from './cbtJadwalHelper';
 
 interface CbtJadwalFormModalProps {
@@ -125,6 +126,15 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
     if (!showAllGradeClasses && teacherClasses.length > 0) return teacherClasses;
     return classesInTingkat;
   }, [showAllGradeClasses, teacherClasses, classesInTingkat]);
+
+  // Sinkronisasi ID kelas terpilih yang valid dan aktif di layar
+  const validTargetKelasIds = useMemo(() => {
+    return filterValidTargetKelasIds(targetKelasIds, displayedKelasList);
+  }, [targetKelasIds, displayedKelasList]);
+
+  const selectedCount = validTargetKelasIds.length;
+  const totalCount = displayedKelasList.length;
+  const isAllSelected = totalCount > 0 && selectedCount === totalCount;
 
   // Konteks Akademik Terpadu
   const [tpId, setTpId] = useState('');
@@ -252,8 +262,11 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
 
   const selectAllKelas = () => {
     const ids = displayedKelasList.map((k) => k.id);
-    const all = ids.length > 0 && ids.every((id) => targetKelasIds.includes(id));
-    setTargetKelasIds((prev) => all ? prev.filter((id) => !ids.includes(id)) : Array.from(new Set([...prev, ...ids])));
+    if (isAllSelected) {
+      setTargetKelasIds((prev) => prev.filter((id) => !ids.includes(id)));
+    } else {
+      setTargetKelasIds(ids);
+    }
   };
 
   const validateStep1 = (): boolean => {
@@ -284,7 +297,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
     if (targetStep === 2) { if (validateStep1()) setStep(2); return; }
     if (targetStep === 3) {
       if (!validateStep1()) return;
-      if (targetKelasIds.length === 0) { toast.error('Pilih minimal satu kelas target ujian'); return; }
+      if (selectedCount === 0) { toast.error('Pilih minimal satu kelas target ujian'); return; }
       setStep(3);
     }
   };
@@ -306,7 +319,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
       tanggal_selesai: tanggalSelesai,
       durasi_menit: Number(durasiMenit),
       toleransi_terlambat_menit: Number(toleransiMenit),
-      target_kelas_ids: targetKelasIds,
+      target_kelas_ids: validTargetKelasIds,
     });
 
     if (!validation.success) {
@@ -328,7 +341,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
         tanggal_selesai: localDateTimeInputToISO(tanggalSelesai, activeTz),
         durasi_menit: Number(durasiMenit),
         toleransi_terlambat_menit: Number(toleransiMenit),
-        target_kelas_ids: targetKelasIds,
+        target_kelas_ids: validTargetKelasIds,
         setting_keamanan: {
           lock_device: true,
           block_tab_switching: blockTabSwitch,
@@ -339,13 +352,13 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
           auto_transfer_rapor: autoTransferRapor,
           target_rapor_slot: autoTransferRapor ? targetRaporSlot : null,
           created_by_guru_id: teacherGuruId || null,
-          ruang_ujian: targetKelasIds.length > 1 ? (ruangUjian.trim() || 'Multi-Ruang Kelas') : (ruangUjian.trim() || null),
-          pengawas_1_id: targetKelasIds.length > 1 ? null : (pengawas1Id || null),
-          pengawas_1_nama: targetKelasIds.length > 1 ? null : (pengawas1Obj?.nama_guru || null),
-          pengawas_1_nip: targetKelasIds.length > 1 ? null : (pengawas1Obj?.nip || null),
-          proktor_id: targetKelasIds.length > 1 ? null : (proktorId || null),
-          proktor_nama: targetKelasIds.length > 1 ? null : (proktorObj?.nama_guru || null),
-          proktor_nip: targetKelasIds.length > 1 ? null : (proktorObj?.nip || null),
+          ruang_ujian: selectedCount > 1 ? (ruangUjian.trim() || 'Multi-Ruang Kelas') : (ruangUjian.trim() || null),
+          pengawas_1_id: selectedCount > 1 ? null : (pengawas1Id || null),
+          pengawas_1_nama: selectedCount > 1 ? null : (pengawas1Obj?.nama_guru || null),
+          pengawas_1_nip: selectedCount > 1 ? null : (pengawas1Obj?.nip || null),
+          proktor_id: selectedCount > 1 ? null : (proktorId || null),
+          proktor_nama: selectedCount > 1 ? null : (proktorObj?.nama_guru || null),
+          proktor_nip: selectedCount > 1 ? null : (proktorObj?.nip || null),
         },
       };
 
@@ -379,7 +392,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
       <div className="grid grid-cols-3 gap-1.5 p-1 mb-4 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/60">
         {[
           { num: 1, label: 'Waktu' },
-          { num: 2, label: `Kelas (${targetKelasIds.length})` },
+          { num: 2, label: selectedCount > 0 ? `Kelas (${selectedCount})` : 'Kelas' },
           { num: 3, label: 'Rapor' },
         ].map((s) => (
           <button
@@ -506,18 +519,18 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Untuk kelas mana saja?</p>
-                  {displayedKelasList.length > 0 && (
+                  {totalCount > 0 && (
                     <span
                       className={cn(
                         'text-[10px] font-black px-2 py-0.5 rounded-full border',
-                        targetKelasIds.length === displayedKelasList.length
+                        isAllSelected
                           ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
                           : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-300 dark:border-amber-700'
                       )}
                     >
-                      {targetKelasIds.length === displayedKelasList.length
-                        ? `✓ Lengkap (${targetKelasIds.length}/${displayedKelasList.length})`
-                        : `${targetKelasIds.length}/${displayedKelasList.length} Terpilih`}
+                      {isAllSelected
+                        ? `✓ Lengkap (${selectedCount}/${totalCount} Terpilih)`
+                        : `${selectedCount}/${totalCount} Terpilih`}
                     </span>
                   )}
                 </div>
@@ -528,7 +541,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                     </button>
                   )}
                   <button type="button" onClick={selectAllKelas} className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
-                    {displayedKelasList.length > 0 && displayedKelasList.every((k) => targetKelasIds.includes(k.id)) ? 'Reset' : 'Pilih Semua'}
+                    {isAllSelected ? 'Reset' : 'Pilih Semua'}
                   </button>
                 </div>
               </div>
@@ -538,7 +551,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
               ) : (
                 <div className="flex flex-wrap gap-1.5 p-2 rounded-xl border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40">
                   {displayedKelasList.map((k) => {
-                    const isChecked = targetKelasIds.includes(k.id);
+                    const isChecked = validTargetKelasIds.includes(k.id);
                     return (
                       <button
                         key={k.id}
@@ -562,20 +575,20 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
             </div>
 
             {/* Ploting Ruang & Pengawas / Proktor (Adaptif Berdasarkan Jumlah Kelas Terpilih) */}
-            {targetKelasIds.length > 1 ? (
+            {selectedCount > 1 ? (
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/70 flex items-start gap-2.5">
                 <div className="p-1.5 rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 shrink-0 mt-0.5">
                   <Layers size={14} />
                 </div>
                 <div className="text-xs space-y-0.5 min-w-0">
                   <div className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 flex-wrap">
-                    <span>Ujian Serentak Multi-Kelas ({targetKelasIds.length} Rombel)</span>
+                    <span>Ujian Serentak Multi-Kelas ({selectedCount} Rombel)</span>
                     <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-800">
                       Paralel
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
-                    Ploting slot ruang fisik (<span className="font-mono font-semibold text-slate-700 dark:text-slate-300">R.01 s/d R.{String(targetKelasIds.length).padStart(2, '0')}</span>) &amp; guru pengawas diatur terpusat melalui <strong>Meja Orkestrasi CBT</strong>.
+                    Ploting slot ruang fisik (<span className="font-mono font-semibold text-slate-700 dark:text-slate-300">R.01 s/d R.{String(selectedCount).padStart(2, '0')}</span>) &amp; guru pengawas diatur terpusat melalui <strong>Meja Orkestrasi CBT</strong>.
                   </p>
                 </div>
               </div>

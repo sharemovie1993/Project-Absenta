@@ -87,14 +87,34 @@ export function extractTeacherTaughtClassIds(
 }
 
 /**
- * Memfilter daftar kelas berdasarkan tingkat jenjang bank soal (X, XI, atau XII)
+ * Memfilter daftar kelas berdasarkan tingkat jenjang bank soal (X, XI, atau XII),
+ * hanya mengkalkulasi kelas yang berstatus aktif di sekolah (is_active !== false).
  */
 export function filterClassesByTingkat(
   rawKelasList: any[],
   bankTingkatNumber?: number
 ): any[] {
-  if (!bankTingkatNumber) return rawKelasList;
-  return rawKelasList.filter((k) => Number(k.tingkat) === bankTingkatNumber);
+  const activeList = (rawKelasList || []).filter((k) => {
+    if (k.is_active === false) return false;
+    const statusText = String((k as any).status || '').toUpperCase();
+    if (statusText === 'NONAKTIF' || statusText === 'INACTIVE') return false;
+    return true;
+  });
+
+  if (!bankTingkatNumber) return activeList;
+  return activeList.filter((k) => Number(k.tingkat) === bankTingkatNumber);
+}
+
+/**
+ * Memfilter ID kelas terpilih agar selalu selaras dan valid dengan daftar kelas aktif yang sedang tampil
+ */
+export function filterValidTargetKelasIds(
+  targetKelasIds: string[],
+  activeKelasList: any[]
+): string[] {
+  if (!targetKelasIds || targetKelasIds.length === 0) return [];
+  const validIds = new Set((activeKelasList || []).map((k) => k.id));
+  return targetKelasIds.filter((id) => validIds.has(id));
 }
 
 /**
