@@ -205,42 +205,41 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
 
   return (
     <div className="space-y-4 w-full max-w-full min-w-0">
-      {/* ── Header Meja Kerja Panitia CBT ── */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-violet-900 via-indigo-900 to-slate-900 text-white shadow-lg border border-violet-700/40">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-violet-500/20 text-violet-300 border border-violet-400/30">
-                <Layers size={18} />
-              </span>
-              <h2 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2">
-                Meja Kerja Orkestrasi Panitia CBT
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase bg-amber-400 text-amber-950">
+      {/* ── Header Meja Kerja Panitia CBT (Compact & Sleek) ── */}
+      <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900 dark:bg-slate-950 text-white shadow-md border border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="p-1.5 rounded-lg bg-violet-600/30 text-violet-300 border border-violet-500/30 shrink-0">
+              <Layers size={17} />
+            </span>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-sm sm:text-base font-black tracking-tight text-white">
+                  Meja Kerja Panitia CBT
+                </h2>
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider uppercase bg-amber-400 text-amber-950">
                   SOP 5 Fase
                 </span>
-              </h2>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Alur terintegrasi persiapan &amp; pelaksanaan ujian serentak massal sekolah.
+              </p>
             </div>
-            <p className="text-xs text-violet-200/90 max-w-3xl leading-relaxed">
-              Panduan terintegrasi persiapan asesmen massal sekolah. Urutkan alur kerja mulai dari kesiapan bank soal,
-              alokasi ruang fisik kelas-centrik (R.01 s/d R.n), penyusunan jadwal matriks hari &amp; sesi, pembagian guru pengawas anti-bentrok, hingga pengawasan Hari H dan cetak Berita Acara resmi.
-            </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 self-start md:self-auto">
-            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-xs px-3 py-2 rounded-xl border border-white/10 text-xs">
-              <ShieldCheck size={16} className="text-emerald-400" />
-              <div>
-                <p className="text-[10px] text-violet-200 font-medium">Tahun Ajaran Aktif</p>
-                <p className="font-bold text-white">
-                  {activeTp?.nama || 'TP Aktif'} &bull; {activeSemester?.nama || 'Semester'}
-                </p>
-              </div>
+          <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto bg-white/5 px-2.5 py-1.5 rounded-xl border border-white/10 text-xs">
+            <ShieldCheck size={14} className="text-emerald-400 shrink-0" />
+            <div className="text-[11px]">
+              <span className="text-slate-400">TP: </span>
+              <span className="font-bold text-white">
+                {activeTp?.nama || 'TP Aktif'} &bull; {activeSemester?.nama || 'Semester'}
+              </span>
             </div>
           </div>
         </div>
 
         {/* ── Pipeline Stepper 5 Fase (Shopee-Grade High-Density) ── */}
-        <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 pt-4 border-t border-white/10">
+        <div className="mt-3.5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 pt-3 border-t border-slate-800/80">
           {phases.map((phase, idx) => {
             const Icon = phase.icon;
             const isActive = activeTab === phase.id;
