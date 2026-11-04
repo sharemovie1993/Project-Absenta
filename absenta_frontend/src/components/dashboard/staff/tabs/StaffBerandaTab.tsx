@@ -64,6 +64,9 @@ const CbtBankSoalView = lazy(() =>
 const CbtJadwalView = lazy(() =>
   import('@/components/cbt/jadwal/CbtJadwalView').then((m) => ({ default: m.CbtJadwalView }))
 );
+const CbtProctorMonitoringView = lazy(() =>
+  import('@/components/cbt/sesi/CbtProctorMonitoringView').then((m) => ({ default: m.CbtProctorMonitoringView }))
+);
 
 // Lazy load GateInputModule untuk satpam
 const GateInputModule = lazy(() =>
@@ -228,7 +231,8 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
     ...(isPengujiSidang ? ['sidang_guru' as const] : []),
   ], [isPengujiSidang]);
 
-  const [teacherCbtMode, setTeacherCbtMode] = useState<'bank' | 'jadwal'>('bank');
+  const [teacherCbtMode, setTeacherCbtMode] = useState<'bank' | 'jadwal' | 'monitor'>('bank');
+  const [teacherMonitorJadwalId, setTeacherMonitorJadwalId] = useState<string | undefined>(undefined);
 
   const activeSubTab = validSubTabs.includes(subTabParam) ? subTabParam : 'agenda';
 
@@ -546,6 +550,18 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
                     >
                       Jadwal Ujian Aktif
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setTeacherCbtMode('monitor')}
+                      className={cn(
+                        "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                        teacherCbtMode === 'monitor'
+                          ? "bg-violet-600 text-white shadow-xs"
+                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      )}
+                    >
+                      Live Proctoring
+                    </button>
                   </div>
                   <button
                     type="button"
@@ -566,8 +582,21 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
                 >
                   {teacherCbtMode === 'bank' ? (
                     <CbtBankSoalView guruId={effectiveGuruId} hideLayout={true} />
+                  ) : teacherCbtMode === 'jadwal' ? (
+                    <CbtJadwalView
+                      guruId={effectiveGuruId}
+                      hideLayout={true}
+                      onNavigateMonitor={(jadwalId) => {
+                        setTeacherMonitorJadwalId(jadwalId);
+                        setTeacherCbtMode('monitor');
+                      }}
+                    />
                   ) : (
-                    <CbtJadwalView guruId={effectiveGuruId} hideLayout={true} />
+                    <CbtProctorMonitoringView
+                      initialJadwalId={teacherMonitorJadwalId}
+                      guruId={effectiveGuruId}
+                      onBack={() => setTeacherCbtMode('jadwal')}
+                    />
                   )}
                 </Suspense>
               </div>

@@ -19,6 +19,7 @@ import {
   Search,
   Filter,
   ArrowRightLeft,
+  ArrowLeft,
 } from 'lucide-react';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtPesertaUjian, CbtJadwalUjian } from '@/types/cbt.types';
@@ -28,11 +29,13 @@ import toast from 'react-hot-toast';
 
 interface CbtProctorMonitoringViewProps {
   initialJadwalId?: string;
+  guruId?: string;
   onBack?: () => void;
 }
 
 export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> = ({
   initialJadwalId,
+  guruId,
   onBack,
 }) => {
   const queryClient = useQueryClient();
@@ -43,10 +46,17 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
 
+  // Sync apabila initialJadwalId berubah dari luar (misal klik tombol Monitor pada baris tabel)
+  React.useEffect(() => {
+    if (initialJadwalId) {
+      setSelectedJadwalId(initialJadwalId);
+    }
+  }, [initialJadwalId]);
+
   // Fetch active/all schedules for dropdown selector
   const { data: jadwalData } = useQuery({
-    queryKey: cbtQueryKeys.jadwal({ limit: 50 }),
-    queryFn: () => cbtApi.getJadwalList({ limit: 50 }),
+    queryKey: cbtQueryKeys.jadwal({ limit: 50, guru_id: guruId }),
+    queryFn: () => cbtApi.getJadwalList({ limit: 50, guru_id: guruId }),
   });
 
   const jadwalList = jadwalData?.items || [];
@@ -250,20 +260,36 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
     <div className="space-y-4 w-full max-w-full min-w-0">
       {/* Selector & Top Filter */}
       <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div className="flex-1 max-w-md">
-          <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-            Pilih Sesi Ujian Aktif:
-          </label>
-          <SearchableSelect
-            options={scheduleOptions}
-            value={selectedJadwalId}
-            onChange={setSelectedJadwalId}
-            placeholder="Pilih Sesi Ujian..."
-            aria-label="Pilih Sesi Ujian Aktif"
-          />
+        <div className="flex items-center gap-3 flex-1 max-w-xl">
+          {onBack && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onBack}
+              className="text-xs h-9 px-3 shrink-0 font-bold"
+              title="Kembali ke Daftar Jadwal Ujian"
+            >
+              <ArrowLeft size={14} className="mr-1.5" />
+              <span>Kembali</span>
+            </Button>
+          )}
+
+          <div className="flex-1 min-w-0">
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+              Pilih Sesi Ujian:
+            </label>
+            <SearchableSelect
+              options={scheduleOptions}
+              value={selectedJadwalId}
+              onChange={setSelectedJadwalId}
+              placeholder="Pilih Sesi Ujian..."
+              aria-label="Pilih Sesi Ujian Aktif"
+            />
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {activeJadwal && (
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700">
               <span className="text-xs text-slate-500 font-medium">Token Sesi:</span>
@@ -284,7 +310,7 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
             Segarkan
           </Button>
 
-          {activeJadwal && (
+          {activeJadwal && activeJadwal.status !== 'DRAFT' && totalPeserta > 0 && (
             <Button
               type="button"
               variant="primary"

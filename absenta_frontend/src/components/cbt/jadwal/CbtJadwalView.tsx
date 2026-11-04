@@ -32,6 +32,7 @@ import type { CbtJadwalUjian } from '@/types/cbt.types';
 import { CbtJadwalFormModal } from './CbtJadwalFormModal';
 import { CbtBeritaAcaraPrintModal } from './CbtBeritaAcaraPrintModal';
 import { CbtTransferNilaiModal } from './CbtTransferNilaiModal';
+import { CbtProctorMonitoringView } from '../sesi/CbtProctorMonitoringView';
 import useConfirm from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
 import { formatLocalTimeFromISO, getTimezone, getTimezoneLabel } from '@/utils/attendance/time';
@@ -62,6 +63,15 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [selectedJadwal, setSelectedJadwal] = useState<CbtJadwalUjian | null>(null);
+  const [internalMonitorJadwalId, setInternalMonitorJadwalId] = useState<string | null>(null);
+
+  const handleOpenMonitor = (jadwalId: string) => {
+    if (onNavigateMonitor) {
+      onNavigateMonitor(jadwalId);
+    } else {
+      setInternalMonitorJadwalId(jadwalId);
+    }
+  };
 
   // 1. Unified Filter Hook
   const filter = useAcademicFilter({
@@ -169,9 +179,9 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
     () => [
       {
         key: 'sesi',
-        title: 'Sesi Ujian & Mapel',
-        label: 'Sesi Ujian & Mapel',
-        className: 'min-w-[220px]',
+        title: 'Sesi Ujian',
+        label: 'Sesi Ujian',
+        className: 'min-w-[200px]',
         render: (_val: unknown, row: CbtJadwalUjian) => {
           const autoRapor = row.setting_keamanan?.auto_transfer_rapor;
           const targetSlot = row.setting_keamanan?.target_rapor_slot;
@@ -202,16 +212,30 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                <span className="font-semibold text-indigo-600 dark:text-indigo-400">
-                  {row.BankSoal?.Mapel?.nama_mapel || '-'}
-                </span>
-                <span>•</span>
-                <span className="font-mono text-slate-400">{row.BankSoal?.kode_bank}</span>
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                <span className="font-mono">{row.BankSoal?.kode_bank || '-'}</span>
               </div>
             </div>
           );
         },
+      },
+      {
+        key: 'mapel',
+        title: 'Mata Pelajaran',
+        label: 'Mata Pelajaran',
+        className: 'min-w-[170px]',
+        render: (_val: unknown, row: CbtJadwalUjian) => (
+          <div className="space-y-0.5">
+            <span className="font-semibold text-xs text-indigo-600 dark:text-indigo-400 block line-clamp-1">
+              {row.BankSoal?.Mapel?.nama_mapel || '-'}
+            </span>
+            {row.BankSoal?.tingkat && (
+              <span className="text-[10px] font-bold text-slate-400">
+                Kelas {row.BankSoal.tingkat}
+              </span>
+            )}
+          </div>
+        ),
       },
       {
         key: 'token',
@@ -322,132 +346,152 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         title: 'Aksi & Proctor',
         label: 'Aksi & Proctor',
         className: 'min-w-[260px] text-right',
-        render: (_val: unknown, row: CbtJadwalUjian) => (
-          <div className="flex items-center justify-end gap-1 flex-nowrap" onClick={(e) => e.stopPropagation()}>
-            {/* Live Monitoring Proctor Button */}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onNavigateMonitor?.(row.id)}
-              className="text-xs h-7 px-2 text-indigo-600 border-indigo-200 dark:border-indigo-800 font-bold bg-indigo-50/50 hover:bg-indigo-100"
-              title="Monitoring Peserta Real-time"
-            >
-              <Activity size={13} className="mr-1" />
-              <span>Monitor</span>
-            </Button>
+        render: (_val: unknown, row: CbtJadwalUjian) => {
+          const pesertaCount = row._count?.Peserta || 0;
+          const isSessionUsed = row.status !== 'DRAFT' || pesertaCount > 0;
+          const canTransferRapor = !readOnly && row.status !== 'DRAFT' && pesertaCount > 0;
 
-            {/* Transfer Nilai ke e-Rapor */}
-            {!readOnly && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSelectedJadwal(row);
-                  setIsTransferModalOpen(true);
-                }}
-                className="text-xs h-7 px-2 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800 font-bold bg-violet-50/60 hover:bg-violet-100"
-                title="Transfer Nilai Hasil CBT ke Slot Rapor (SUM 1, SUM 2, SUM 3, SUM AKHIR)"
-              >
-                <ArrowRightLeft size={12} className="mr-1" />
-                <span>Transfer Rapor</span>
-              </Button>
-            )}
-
-            {/* Sesi Controls */}
-            {!readOnly && (
-              <>
-                {row.status === 'DRAFT' || row.status === 'PAUSED' ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleActivate(row)}
-                    className="text-xs h-7 px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 font-bold"
-                    title="Aktifkan Sesi Ujian"
-                  >
-                    <Play size={13} className="mr-1" />
-                    <span>Aktifkan</span>
-                  </Button>
-                ) : row.status === 'ACTIVE' ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => pauseMutation.mutate(row.id)}
-                    className="text-xs h-7 px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                    title="Jeda Sesi Ujian"
-                  >
-                    <Pause size={13} className="mr-1" />
-                    <span>Jeda</span>
-                  </Button>
-                ) : null}
-
-                {row.status === 'ACTIVE' && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleComplete(row)}
-                    className="text-xs h-7 px-2 text-slate-600 hover:text-slate-900"
-                    title="Selesaikan Sesi Ujian"
-                  >
-                    <CheckCircle size={13} className="mr-1" />
-                    <span>Selesai</span>
-                  </Button>
-                )}
-
-                {/* Regenerate Token */}
+          return (
+            <div className="flex items-center justify-end gap-1 flex-nowrap" onClick={(e) => e.stopPropagation()}>
+              {/* Live Monitoring Proctor Button: Tampil ketika sesi sudah diaktifkan/digunakan */}
+              {isSessionUsed && (
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  onClick={() => regenerateTokenMutation.mutate(row.id)}
-                  className="text-xs h-7 px-1.5 text-slate-500 hover:text-slate-800"
-                  title="Generate Ulang Token Ujian"
+                  onClick={() => handleOpenMonitor(row.id)}
+                  className="text-xs h-7 px-2 text-indigo-600 border-indigo-200 dark:border-indigo-800 font-bold bg-indigo-50/50 hover:bg-indigo-100"
+                  title="Monitoring Peserta Real-time"
                 >
-                  <RotateCw size={12} />
+                  <Activity size={13} className="mr-1" />
+                  <span>Monitor</span>
                 </Button>
-              </>
-            )}
+              )}
 
-            {/* Cetak Berita Acara */}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSelectedJadwal(row);
-                setIsPrintModalOpen(true);
-              }}
-              className="text-xs h-7 px-2 text-slate-600 hover:text-slate-900"
-              title="Cetak Berita Acara Pelaksanaan Ujian"
-            >
-              <Printer size={13} />
-            </Button>
+              {/* Transfer Nilai ke e-Rapor (Cerdas: Hanya tampil jika sesi sudah aktif/selesai & memiliki peserta > 0) */}
+              {canTransferRapor && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedJadwal(row);
+                    setIsTransferModalOpen(true);
+                  }}
+                  className="text-xs h-7 px-2 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800 font-bold bg-violet-50/60 hover:bg-violet-100"
+                  title="Transfer Nilai Hasil CBT ke Slot Rapor (SUM 1, SUM 2, SUM 3, SUM AKHIR)"
+                >
+                  <ArrowRightLeft size={12} className="mr-1" />
+                  <span>Transfer Rapor</span>
+                </Button>
+              )}
 
-            {!readOnly && (
+              {/* Sesi Controls */}
+              {!readOnly && (
+                <>
+                  {row.status === 'DRAFT' || row.status === 'PAUSED' ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleActivate(row)}
+                      className="text-xs h-7 px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 font-bold"
+                      title="Aktifkan Sesi Ujian"
+                    >
+                      <Play size={13} className="mr-1" />
+                      <span>Aktifkan</span>
+                    </Button>
+                  ) : row.status === 'ACTIVE' ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => pauseMutation.mutate(row.id)}
+                      className="text-xs h-7 px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                      title="Jeda Sesi Ujian"
+                    >
+                      <Pause size={13} className="mr-1" />
+                      <span>Jeda</span>
+                    </Button>
+                  ) : null}
+
+                  {row.status === 'ACTIVE' && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleComplete(row)}
+                      className="text-xs h-7 px-2 text-slate-600 hover:text-slate-900"
+                      title="Selesaikan Sesi Ujian"
+                    >
+                      <CheckCircle size={13} className="mr-1" />
+                      <span>Selesai</span>
+                    </Button>
+                  )}
+
+                  {/* Regenerate Token */}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => regenerateTokenMutation.mutate(row.id)}
+                    className="text-xs h-7 px-1.5 text-slate-500 hover:text-slate-800"
+                    title="Generate Ulang Token Ujian"
+                  >
+                    <RotateCw size={12} />
+                  </Button>
+                </>
+              )}
+
+              {/* Cetak Berita Acara */}
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => {
                   setSelectedJadwal(row);
-                  setIsFormModalOpen(true);
+                  setIsPrintModalOpen(true);
                 }}
-                className="text-xs h-7 px-1.5 text-slate-500 hover:text-slate-800"
-                title="Edit Jadwal"
+                className="text-xs h-7 px-2 text-slate-600 hover:text-slate-900"
+                title="Cetak Berita Acara Pelaksanaan Ujian"
               >
-                <Edit2 size={12} />
+                <Printer size={13} />
               </Button>
-            )}
-          </div>
-        ),
+
+              {!readOnly && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedJadwal(row);
+                    setIsFormModalOpen(true);
+                  }}
+                  className="text-xs h-7 px-1.5 text-slate-500 hover:text-slate-800"
+                  title="Edit Jadwal"
+                >
+                  <Edit2 size={12} />
+                </Button>
+              )}
+            </div>
+          );
+        },
       },
     ],
     [copiedToken, readOnly, onNavigateMonitor]
   );
+
+  // Jika pengguna mengklik tombol Monitor dan CbtJadwalView tidak menerima onNavigateMonitor eksternal,
+  // tampilkan CbtProctorMonitoringView secara inline
+  if (internalMonitorJadwalId) {
+    return (
+      <CbtProctorMonitoringView
+        initialJadwalId={internalMonitorJadwalId}
+        guruId={guruId}
+        onBack={() => setInternalMonitorJadwalId(null)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-4 w-full max-w-full min-w-0">
@@ -484,7 +528,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
             onPageChange: setPage,
             onLimitChange: setLimit,
           }}
-          onItemClick={(item) => onNavigateMonitor?.(item.id)}
+          onItemClick={(item) => handleOpenMonitor(item.id)}
         />
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
