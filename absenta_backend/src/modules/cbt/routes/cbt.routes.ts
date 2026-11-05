@@ -1,6 +1,7 @@
 import { CbtBankSoalController } from '../controllers/cbt-bank-soal.controller';
 import { CbtJadwalController } from '../controllers/cbt-jadwal.controller';
 import { CbtTestEngineController } from '../controllers/cbt-test-engine.controller';
+import { DenahSpasialController } from '../../sarpras/controllers/denah-spasial.controller';
 import { requireCapability } from '../../../middlewares/requireCapability';
 import { determineDataScope } from '@/middlewares/dataScope';
 
@@ -145,4 +146,31 @@ export async function cbtRoutes(fastify: any) {
   fastify.post('/engine/jadwal/:jadwalId/submit', {
     preHandler: [requireCapability('cbt.exam.take', cbtStudentExempt), determineDataScope()],
   }, CbtTestEngineController.submitFinal);
+
+  // ==========================================
+  // 5. DENAH SPASIAL RUANG UJIAN (CBT)
+  // ==========================================
+  fastify.get('/denah', {
+    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+  }, DenahSpasialController.list);
+
+  fastify.get('/denah/:id', {
+    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+  }, DenahSpasialController.getById);
+
+  fastify.post('/denah', {
+    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+  }, DenahSpasialController.create);
+
+  fastify.put('/denah/:id', {
+    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+  }, DenahSpasialController.update);
+
+  fastify.delete('/denah/:id', {
+    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+  }, DenahSpasialController.delete);
+
+  fastify.post('/denah/:id/clone', {
+    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+  }, DenahSpasialController.clone);
 }

@@ -1,6 +1,7 @@
 import { AssetController } from '../controllers/asset.controller';
 import { LoanController } from '../controllers/loan.controller';
 import { RepairController } from '../controllers/repair.controller';
+import { DenahSpasialController } from '../controllers/denah-spasial.controller';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { organizationalScopeMiddleware } from '@/middlewares/organizationalScope';
 import { determineDataScope } from '@/middlewares/dataScope';
@@ -164,4 +165,29 @@ export async function sarprasRoutes(fastify: any) {
   fastify.get('/repairs/calendar', {
     preHandler: [requireCapability('sarpras.repairs.view.list'), organizationalScopeMiddleware, determineDataScope()]
   }, repairController.getRepairsCalendar.bind(repairController));
+
+  // --- Denah Spasial Kampus & Sarpras ---
+  fastify.get('/denah', {
+    preHandler: [requireCapability('sarpras.inventory.view.list'), organizationalScopeMiddleware, determineDataScope()]
+  }, DenahSpasialController.list);
+
+  fastify.get('/denah/:id', {
+    preHandler: [requireCapability('sarpras.inventory.view.list'), organizationalScopeMiddleware, determineDataScope()]
+  }, DenahSpasialController.getById);
+
+  fastify.post('/denah', {
+    preHandler: [requireCapability('sarpras.inventory.manage'), organizationalScopeMiddleware, determineDataScope()]
+  }, DenahSpasialController.create);
+
+  fastify.put('/denah/:id', {
+    preHandler: [requireCapability('sarpras.inventory.manage'), organizationalScopeMiddleware, determineDataScope()]
+  }, DenahSpasialController.update);
+
+  fastify.delete('/denah/:id', {
+    preHandler: [requireCapability('sarpras.inventory.manage'), organizationalScopeMiddleware, determineDataScope()]
+  }, DenahSpasialController.delete);
+
+  fastify.post('/denah/:id/clone', {
+    preHandler: [requireCapability('sarpras.inventory.manage'), organizationalScopeMiddleware, determineDataScope()]
+  }, DenahSpasialController.clone);
 }

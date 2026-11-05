@@ -183,6 +183,7 @@ model Tenant {
   CbtSoal                  CbtSoal[]
   CbtJadwalUjian           CbtJadwalUjian[]
   CbtPesertaUjian          CbtPesertaUjian[]
+  DenahSpasial             DenahSpasial[]
 }
 
 enum BackupStatus {
@@ -5837,4 +5838,31 @@ model CbtPesertaUjian {
   @@index([jadwal_ujian_id])
   @@index([siswa_id])
   @@index([jadwal_ujian_id, status])
+}
+
+enum TipeDenah {
+  MASTER_SARPRAS
+  EVENT_UJIAN
+}
+
+model DenahSpasial {
+  id              String       @id @default(uuid())
+  tenant_id       String
+  nama_denah      String
+  tipe            TipeDenah    @default(MASTER_SARPRAS)
+  event_cbt_id    String?
+  lantai          Int          @default(1)
+  gedung          String?
+  canvas_width    Int          @default(1920)
+  canvas_height   Int          @default(1080)
+  grid_size       Int          @default(20)
+  elements        Json         // Array of DenahElementNode { id, x, y, width, height, rotation, label_utama, label_sub, ... }
+  is_active       Boolean      @default(true)
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @updatedAt
+
+  Tenant          Tenant       @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([tenant_id, tipe])
 }

@@ -11,6 +11,7 @@ import {
   Printer,
   ArrowRight,
   Filter,
+  Map,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -23,6 +24,7 @@ import {
   savePersistedRoomMappings,
 } from './cbtOrchestratorHelper';
 import { CbtLabelRuangPrintModal } from './CbtLabelRuangPrintModal';
+import { CbtDenahModal } from './CbtDenahModal';
 
 interface CbtKelasRoomTreePanelProps {
   kelasList: any[];
@@ -51,6 +53,9 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
   // Modal Cetak Label Ruang State
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [targetKelasIdForPrint, setTargetKelasIdForPrint] = useState<string | null>(null);
+
+  // Modal Studio Denah Spasial State
+  const [isDenahModalOpen, setIsDenahModalOpen] = useState(false);
 
   // Auto-generate sequential room slots R.01 s/d R.n
   const handleAutoPlottingRooms = () => {
@@ -204,7 +209,19 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
             title="Cetak label ruang ujian seluruh rombel dalam format A4 Landscape"
           >
             <Printer size={14} className="mr-1.5" />
-            <span>Cetak Label Ruang (A4 Landscape)</span>
+            <span>Cetak Label Ruang (A4)</span>
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsDenahModalOpen(true)}
+            className="text-xs h-9 px-3.5 font-bold text-indigo-700 border-indigo-300 bg-indigo-50/70 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:border-indigo-800 dark:text-indigo-300 cursor-pointer shadow-2xs"
+            title="Buka studio canvas puzzle denah interaktif untuk tata letak ruang ujian dan fasilitas kampus"
+          >
+            <Map size={14} className="mr-1.5 text-indigo-600" />
+            <span>Denah Lokasi Ujian</span>
           </Button>
         </div>
       </div>
@@ -461,6 +478,16 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
           }}
           items={roomMappings}
           selectedKelasId={targetKelasIdForPrint}
+          eventName={eventName}
+        />
+      )}
+
+      {/* ── 7. Modal Studio Denah Spasial (Interactive Puzzle Canvas) ── */}
+      {isDenahModalOpen && (
+        <CbtDenahModal
+          isOpen={isDenahModalOpen}
+          onClose={() => setIsDenahModalOpen(false)}
+          roomMappings={roomMappings}
           eventName={eventName}
         />
       )}
