@@ -71,6 +71,10 @@ export const DenahMapGuideLayer: React.FC<DenahMapGuideLayerProps> = ({
       maxNativeZoom: tileConfig.maxNativeZoom,
       maxZoom: 24,
       subdomains: tileConfig.subdomains || 'abc',
+      keepBuffer: 8,
+      updateWhenIdle: false,
+      updateWhenZooming: true,
+      crossOrigin: true,
     }).addTo(map);
     currentTileLayerRef.current = tileLayer;
 
@@ -117,6 +121,10 @@ export const DenahMapGuideLayer: React.FC<DenahMapGuideLayerProps> = ({
       maxNativeZoom: tileConfig.maxNativeZoom,
       maxZoom: 24,
       subdomains: tileConfig.subdomains || 'abc',
+      keepBuffer: 8,
+      updateWhenIdle: false,
+      updateWhenZooming: true,
+      crossOrigin: true,
     }).addTo(map);
 
     currentTileLayerRef.current = newLayer;
@@ -132,21 +140,27 @@ export const DenahMapGuideLayer: React.FC<DenahMapGuideLayerProps> = ({
 
     const diffLat = Math.abs(currentCenter.lat - config.lat);
     const diffLng = Math.abs(currentCenter.lng - config.lng);
-    const diffZoom = currentZoom !== config.zoom;
+    const diffZoom = Math.abs(currentZoom - config.zoom) > 0.05;
 
-    if (diffLat > 0.00005 || diffLng > 0.00005 || diffZoom) {
+    if (diffLat > 0.0001 || diffLng > 0.0001 || diffZoom) {
       isUpdatingFromProps.current = true;
-      map.setView([config.lat, config.lng], config.zoom, { animate: true });
+      map.stop();
+      map.setView([config.lat, config.lng], config.zoom, { animate: false });
       setTimeout(() => {
         isUpdatingFromProps.current = false;
-      }, 500);
+        if (mapRef.current) {
+          mapRef.current.invalidateSize({ debounceMoveend: true });
+        }
+      }, 50);
     }
   }, [config.lat, config.lng, config.zoom]);
 
-  // Update lock/unlock interactions
+  // Update lock/unlock interactions without interrupting rendering
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+
+    map.stop();
 
     if (config.is_locked) {
       map.dragging.disable();
@@ -159,6 +173,13 @@ export const DenahMapGuideLayer: React.FC<DenahMapGuideLayerProps> = ({
       map.doubleClickZoom.enable();
       map.touchZoom.enable();
     }
+
+    // Force tile revalidation so screen NEVER goes blank
+    requestAnimationFrame(() => {
+      if (mapRef.current) {
+        mapRef.current.invalidateSize({ debounceMoveend: true });
+      }
+    });
   }, [config.is_locked]);
 
   // Handle dimensions resize
