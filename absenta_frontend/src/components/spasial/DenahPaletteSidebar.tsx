@@ -7,6 +7,8 @@ import {
   Building2,
   CheckCircle2,
   School,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import type { DenahElementNode, KategoriRuang } from '../../types/spasial.types';
 
@@ -23,6 +25,9 @@ interface DenahPaletteSidebarProps {
   onAddRoomNode: (item: UnassignedRoomItem) => void;
   onAddVirtualNode: (node: Omit<DenahElementNode, 'id' | 'x' | 'y'>) => void;
   isLightMode?: boolean;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+}
 }
 
 const VIRTUAL_PRESETS: Array<{
@@ -54,6 +59,8 @@ export const DenahPaletteSidebar: React.FC<DenahPaletteSidebarProps> = ({
   onAddRoomNode,
   onAddVirtualNode,
   isLightMode = false,
+  isCollapsed = false,
+  onToggleCollapse,
 }) => {
   // If no exam rooms passed, start on 'virtual' tab automatically
   const [activeTab, setActiveTab] = useState<'ruang_sekolah' | 'virtual'>(() =>
@@ -82,17 +89,88 @@ export const DenahPaletteSidebar: React.FC<DenahPaletteSidebarProps> = ({
       label_utama: customLabel.trim().toUpperCase(),
       label_sub: customSub.trim() || undefined,
       kategori_ruang: customCat,
-      width: 180,
-      height: 100,
+      width: 100,
+      height: 60,
       rotation: 0,
     });
     setCustomLabel('');
     setCustomSub('');
   };
 
+  // Tampilan Ciut (Collapsed Minimal Rail)
+  if (isCollapsed) {
+    const unplacedCount = unassignedRooms.filter((r) => !placedKelasIds.has(r.kelas_id)).length;
+    return (
+      <aside
+        className={`w-12 flex-shrink-0 border-r flex flex-col items-center py-3 justify-between shadow-xs z-20 transition-all ${
+          isLightMode
+            ? 'bg-slate-50 border-slate-200 text-slate-800'
+            : 'bg-slate-900 border-slate-800 text-slate-100'
+        }`}
+      >
+        <div className="flex flex-col items-center gap-3">
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            className={`p-2 rounded-xl border transition-colors cursor-pointer ${
+              isLightMode
+                ? 'bg-white border-slate-200 text-indigo-600 hover:bg-slate-100 shadow-xs'
+                : 'bg-slate-800 border-slate-700 text-indigo-400 hover:bg-slate-750 shadow-xs'
+            }`}
+            title="Buka Panel Palet Ruangan (Sidebar Kiri)"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              onToggleCollapse?.();
+              setActiveTab('ruang_sekolah');
+            }}
+            className={`relative p-2 rounded-lg transition-colors cursor-pointer ${
+              isLightMode ? 'hover:bg-slate-200 text-slate-600' : 'hover:bg-slate-800 text-slate-400'
+            }`}
+            title={`Ruang Ujian Belum Ditempatkan (${unplacedCount})`}
+          >
+            <School className="w-4 h-4" />
+            {unplacedCount > 0 && (
+              <span className="absolute -top-1 -right-1 px-1 min-w-[16px] h-4 text-[9px] bg-amber-500 text-white font-black rounded-full flex items-center justify-center shadow-xs">
+                {unplacedCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              onToggleCollapse?.();
+              setActiveTab('virtual');
+            }}
+            className={`p-2 rounded-lg transition-colors cursor-pointer ${
+              isLightMode ? 'hover:bg-slate-200 text-slate-600' : 'hover:bg-slate-800 text-slate-400'
+            }`}
+            title={`Fasilitas Gedung (${VIRTUAL_PRESETS.length})`}
+          >
+            <Sparkles className="w-4 h-4" />
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          className="text-[9px] font-bold text-slate-400 hover:text-indigo-500 tracking-wider uppercase select-none pb-1 transition-colors cursor-pointer"
+          title="Klik untuk membuka palet"
+        >
+          Palet
+        </button>
+      </aside>
+    );
+  }
+
   return (
     <aside
-      className={`w-80 flex-shrink-0 border-r flex flex-col h-full shadow-sm z-20 transition-colors ${
+      className={`w-80 flex-shrink-0 border-r flex flex-col h-full shadow-sm z-20 transition-all ${
         isLightMode
           ? 'bg-white border-slate-200 text-slate-800'
           : 'bg-slate-900 border-slate-800 text-slate-100'
@@ -104,43 +182,60 @@ export const DenahPaletteSidebar: React.FC<DenahPaletteSidebarProps> = ({
           isLightMode ? 'border-slate-200 bg-slate-50/70' : 'border-slate-800 bg-slate-850'
         }`}
       >
-        <div
-          className={`flex items-center gap-1.5 p-1 rounded-xl ${
-            isLightMode ? 'bg-slate-200/80' : 'bg-slate-800'
-          }`}
-        >
-          <button
-            type="button"
-            onClick={() => setActiveTab('ruang_sekolah')}
-            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeTab === 'ruang_sekolah'
-                ? isLightMode
-                  ? 'bg-white text-indigo-700 shadow-xs'
-                  : 'bg-slate-700 text-indigo-300 shadow-xs'
-                : isLightMode
-                ? 'text-slate-600 hover:text-slate-900'
-                : 'text-slate-400 hover:text-slate-200'
+        <div className="flex items-center justify-between gap-1.5">
+          <div
+            className={`flex-1 flex items-center gap-1 p-0.5 rounded-xl ${
+              isLightMode ? 'bg-slate-200/80' : 'bg-slate-800'
             }`}
           >
-            <School className="w-3.5 h-3.5" />
-            Ruang &amp; Kelas ({unassignedRooms.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('virtual')}
-            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeTab === 'virtual'
-                ? isLightMode
-                  ? 'bg-white text-indigo-700 shadow-xs'
-                  : 'bg-slate-700 text-indigo-300 shadow-xs'
-                : isLightMode
-                ? 'text-slate-600 hover:text-slate-900'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            Fasilitas ({VIRTUAL_PRESETS.length})
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('ruang_sekolah')}
+              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                activeTab === 'ruang_sekolah'
+                  ? isLightMode
+                    ? 'bg-white text-indigo-700 shadow-xs'
+                    : 'bg-slate-700 text-indigo-300 shadow-xs'
+                  : isLightMode
+                  ? 'text-slate-600 hover:text-slate-900'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <School className="w-3.5 h-3.5" />
+              Ruang ({unassignedRooms.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('virtual')}
+              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                activeTab === 'virtual'
+                  ? isLightMode
+                    ? 'bg-white text-indigo-700 shadow-xs'
+                    : 'bg-slate-700 text-indigo-300 shadow-xs'
+                  : isLightMode
+                  ? 'text-slate-600 hover:text-slate-900'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Fasilitas ({VIRTUAL_PRESETS.length})
+            </button>
+          </div>
+
+          {onToggleCollapse && (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              className={`p-1.5 rounded-lg border transition-colors cursor-pointer shrink-0 ${
+                isLightMode
+                  ? 'border-slate-200 text-slate-500 hover:bg-slate-200 hover:text-slate-800'
+                  : 'border-slate-750 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              }`}
+              title="Ciutkan Panel (Maksimalkan Ruang Kanvas)"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Search */}

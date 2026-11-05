@@ -13,6 +13,8 @@ import {
   Sun,
   Moon,
   Globe,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import type { DenahSpasial } from '../../types/spasial.types';
 
@@ -35,6 +37,8 @@ interface InteractiveDenahCanvasToolbarProps {
   onSave: () => void;
   isSaving: boolean;
   isReadOnly?: boolean;
+  isSidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
 }
 
 export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolbarProps> = ({
@@ -56,6 +60,8 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
   onSave,
   isSaving,
   isReadOnly = false,
+  isSidebarOpen = true,
+  onToggleSidebar,
 }) => {
   return (
     <header
@@ -65,7 +71,21 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
           : 'bg-slate-850 border-slate-750 text-slate-200'
       }`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5">
+        {!isReadOnly && onToggleSidebar && (
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            className={`p-1.5 rounded-lg border transition-colors cursor-pointer mr-0.5 ${
+              isSidebarOpen
+                ? 'bg-slate-100 dark:bg-slate-750 text-indigo-600 dark:text-indigo-400 border-slate-300 dark:border-slate-700 hover:bg-slate-200'
+                : 'bg-indigo-600 text-white border-indigo-700 shadow-xs hover:bg-indigo-700'
+            }`}
+            title={isSidebarOpen ? 'Ciutkan Panel Kiri (Maksimalkan Kanvas)' : 'Buka Panel Kiri'}
+          >
+            {isSidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
+          </button>
+        )}
         <div className="p-1.5 bg-indigo-600/15 text-indigo-600 dark:text-indigo-400 rounded-lg">
           <MapPin className="w-4 h-4" />
         </div>

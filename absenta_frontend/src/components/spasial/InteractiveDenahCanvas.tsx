@@ -35,6 +35,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isLightMode, setIsLightMode] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // Satellite Map Guide State
   const [mapGuideConfig, setMapGuideConfig] = useState<DenahMapGuideConfig>(() => {
@@ -276,6 +277,8 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
         onSave={handleSaveDenah}
         isSaving={isSaving}
         isReadOnly={isReadOnly}
+        isSidebarOpen={isSidebarOpen}
+        onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
       />
 
       {/* Main Studio Body: Palette Sidebar + Canvas Surface */}
@@ -287,6 +290,8 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
             onAddRoomNode={handleAddRoomNode}
             onAddVirtualNode={handleAddVirtualNode}
             isLightMode={isLightMode}
+            isCollapsed={!isSidebarOpen}
+            onToggleCollapse={() => setIsSidebarOpen((prev) => !prev)}
           />
         )}
 
