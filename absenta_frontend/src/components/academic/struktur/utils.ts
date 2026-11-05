@@ -65,7 +65,6 @@ export const transformManagementToTree = (
             leaderMember = members.find((m: any) => m.assignment_flag === leaderFlagDef.flag);
           }
           if (!leaderMember && members.length > 0) {
-            // Fallback anggota pertama jika data legacy belum ber-flag
             leaderMember = members[0];
           }
 
@@ -114,30 +113,100 @@ export const transformManagementToTree = (
             };
           }
 
+          // 2. Petakan Sub-Bidang Resmi sebagai Slot (Slot Kosong & Terisi SELALU aktif di Pusat dan Sub-Tab)
           const remainingMembers = members.filter((m: any) => m.id !== leaderMember?.id);
+          const subSlots: TopologyNodeData[] = [];
+          const legacyUnflaggedMembers = remainingMembers.filter((m: any) => !m.assignment_flag);
+          const assignedMembers = new Set<string>();
 
-          if (!options.includeEmptySlots) {
-            // ── PERILAKU 1: STRUKTUR ORGANISASI PUSAT (MAKRO) ──
-            // Tampilan Pusat TIDAK BOLEH BERUBAH: HANYA menampilkan staf yang aktif terdaftar secara vertikal.
-            memberSlots.push(leaderNode);
-            remainingMembers.forEach((m: any) => {
-              const rawLabel = m.custom_title || (m.assignment_flag ? getFlagLabel(kode, m.assignment_flag) : (isKoordinatorTu ? 'Staf TU' : `STAF ${area}`));
-              memberSlots.push({
-                id: `staff-${kode}-${n.id}-${m.id}`,
+          subFlags.forEach(subFlag => {
+            let matched = remainingMembers.find((m: any) => m.assignment_flag === subFlag.flag && !assignedMembers.has(m.id));
+            
+            if (!matched && legacyUnflaggedMembers.length > 0) {
+              matched = legacyUnflaggedMembers.shift();
+            }
+
+            if (matched) {
+              assignedMembers.add(matched.id);
+              const rawLabel = matched.custom_title || subFlag.label;
+              subSlots.push({
+                id: `slot-${kode}-${n.id}-${subFlag.flag}-${matched.id}`,
                 label: shortenPosition(rawLabel),
-                subLabel: m.name,
+                subLabel: matched.name,
                 type: 'STRUCT' as any,
                 data: {
                   roleCode: kode,
-                  realMemberId: m.id,
+                  realMemberId: matched.id,
                   realStrukturId: n.id,
                   unit_id: n.unit_id,
                   isLeader: false,
-                  assignmentFlag: m.assignment_flag,
-                  customTitle: m.custom_title,
+                  assignmentFlag: subFlag.flag,
+                  customTitle: matched.custom_title,
+                  isSlot: true,
                 }
               });
+            } else {
+              // SLOT KOSONG: Siap diklik langsung untuk penugasan (+ Klik Isi Slot)
+              subSlots.push({
+                id: `slot-empty-${kode}-${n.id}-${subFlag.flag}`,
+                label: shortenPosition(subFlag.label),
+                subLabel: 'Belum Diisi',
+                type: 'STRUCT' as any,
+                data: {
+                  roleCode: kode,
+                  realStrukturId: n.id,
+                  unit_id: n.unit_id,
+                  isLeader: false,
+                  assignmentFlag: subFlag.flag,
+                  customTitle: subFlag.label,
+                  isUnassigned: true,
+                  isSlot: true,
+                }
+              });
+            }
+          });
+
+          // Tambahan personil non-slot jika melebihi kuota standar
+          const leftoverMembers = remainingMembers.filter((m: any) => !assignedMembers.has(m.id) && !legacyUnflaggedMembers.includes(m));
+          leftoverMembers.forEach((extra: any) => {
+            const rawLabel = extra.custom_title || (extra.assignment_flag ? getFlagLabel(kode, extra.assignment_flag) : `STAF ${area}`);
+            subSlots.push({
+              id: `staff-extra-${kode}-${n.id}-${extra.id}`,
+              label: shortenPosition(rawLabel),
+              subLabel: extra.name,
+              type: 'STRUCT' as any,
+              data: {
+                roleCode: kode,
+                realMemberId: extra.id,
+                realStrukturId: n.id,
+                unit_id: n.unit_id,
+                isLeader: false,
+                assignmentFlag: extra.assignment_flag,
+                customTitle: extra.custom_title,
+              }
             });
+          });
+
+          if (options.horizontalSubSlots) {
+            // ── PERILAKU SUB-TAB DASHBOARD: Sub-bidang menjulur secara HORIZONTAL di bawah Leader ──
+            leaderNode.children = subSlots;
+
+            children.push({
+              id: uniqueId,
+              label: isKoordinatorTu ? 'BIDANG TU' : `BIDANG ${area.replace(/& STAF/gi, '').trim()}`, 
+              subLabel: '',
+              type: 'CATEGORY' as any,
+              data: { 
+                roleCode: kode, 
+                realStrukturId: n.id, 
+                unit_id: n.unit_id, 
+                forceVertical: true // Banner terhubung vertikal ke Leader
+              },
+              children: [leaderNode]
+            });
+          } else {
+            // ── PERILAKU PUSAT: Seluruh slot (Leader + Sub-bidang kosong & terisi) vertikal di bawah Divisi ──
+            memberSlots.push(leaderNode, ...subSlots);
 
             children.push({
               id: uniqueId,
@@ -147,110 +216,6 @@ export const transformManagementToTree = (
               data: { roleCode: kode, realStrukturId: n.id, unit_id: n.unit_id, forceVertical: true },
               children: memberSlots
             });
-
-          } else {
-            // ── PERILAKU 2: SUB-TAB DASHBOARD ROLE (HORIZONTAL) ──
-            // Menampilkan formasi lengkap slot resmi (terisi maupun kosong) secara HORIZONTAL di bawah Waka.
-            const subSlots: TopologyNodeData[] = [];
-            const legacyUnflaggedMembers = remainingMembers.filter((m: any) => !m.assignment_flag);
-            const assignedMembers = new Set<string>();
-
-            subFlags.forEach(subFlag => {
-              let matched = remainingMembers.find((m: any) => m.assignment_flag === subFlag.flag && !assignedMembers.has(m.id));
-              
-              if (!matched && legacyUnflaggedMembers.length > 0) {
-                matched = legacyUnflaggedMembers.shift();
-              }
-
-              if (matched) {
-                assignedMembers.add(matched.id);
-                const rawLabel = matched.custom_title || subFlag.label;
-                subSlots.push({
-                  id: `slot-${kode}-${n.id}-${subFlag.flag}-${matched.id}`,
-                  label: shortenPosition(rawLabel),
-                  subLabel: matched.name,
-                  type: 'STRUCT' as any,
-                  data: {
-                    roleCode: kode,
-                    realMemberId: matched.id,
-                    realStrukturId: n.id,
-                    unit_id: n.unit_id,
-                    isLeader: false,
-                    assignmentFlag: subFlag.flag,
-                    customTitle: matched.custom_title,
-                    isSlot: true,
-                  }
-                });
-              } else {
-                // SLOT KOSONG: Siap diklik langsung untuk penugasan tanpa dropdown manual
-                subSlots.push({
-                  id: `slot-empty-${kode}-${n.id}-${subFlag.flag}`,
-                  label: shortenPosition(subFlag.label),
-                  subLabel: 'Belum Diisi',
-                  type: 'STRUCT' as any,
-                  data: {
-                    roleCode: kode,
-                    realStrukturId: n.id,
-                    unit_id: n.unit_id,
-                    isLeader: false,
-                    assignmentFlag: subFlag.flag,
-                    customTitle: subFlag.label,
-                    isUnassigned: true,
-                    isSlot: true,
-                  }
-                });
-              }
-            });
-
-            // Tambahan personil non-slot jika melebihi kuota standar
-            const leftoverMembers = remainingMembers.filter((m: any) => !assignedMembers.has(m.id) && !legacyUnflaggedMembers.includes(m));
-            leftoverMembers.forEach((extra: any) => {
-              const rawLabel = extra.custom_title || (extra.assignment_flag ? getFlagLabel(kode, extra.assignment_flag) : `STAF ${area}`);
-              subSlots.push({
-                id: `staff-extra-${kode}-${n.id}-${extra.id}`,
-                label: shortenPosition(rawLabel),
-                subLabel: extra.name,
-                type: 'STRUCT' as any,
-                data: {
-                  roleCode: kode,
-                  realMemberId: extra.id,
-                  realStrukturId: n.id,
-                  unit_id: n.unit_id,
-                  isLeader: false,
-                  assignmentFlag: extra.assignment_flag,
-                  customTitle: extra.custom_title,
-                }
-              });
-            });
-
-            if (options.horizontalSubSlots) {
-              // Sub-bagian berjajar secara HORIZONTAL di bawah Leader
-              leaderNode.children = subSlots;
-
-              children.push({
-                id: uniqueId,
-                label: isKoordinatorTu ? 'BIDANG TU' : `BIDANG ${area.replace(/& STAF/gi, '').trim()}`, 
-                subLabel: '',
-                type: 'CATEGORY' as any,
-                data: { 
-                  roleCode: kode, 
-                  realStrukturId: n.id, 
-                  unit_id: n.unit_id, 
-                  forceVertical: true // Banner terhubung vertikal ke Leader
-                },
-                children: [leaderNode]
-              });
-            } else {
-              memberSlots.push(leaderNode, ...subSlots);
-              children.push({
-                id: uniqueId,
-                label: isKoordinatorTu ? 'BIDANG TU' : `BIDANG ${area.replace(/& STAF/gi, '').trim()}`, 
-                subLabel: '',
-                type: 'CATEGORY' as any,
-                data: { roleCode: kode, realStrukturId: n.id, unit_id: n.unit_id, forceVertical: true },
-                children: memberSlots
-              });
-            }
           }
 
         } else {

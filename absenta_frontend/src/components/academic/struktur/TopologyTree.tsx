@@ -135,13 +135,14 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
   const isRoot = node.type === 'ROOT';
   const isTopLeader = node.type === 'STRUCT' && depth === 1 && node.data?.roleCode === 'KEPALA_SEKOLAH';
   
+  const isForceHorizontal = node.data?.forceVertical === false;
+  const isForceVertical = node.data?.forceVertical === true;
+
   const shouldBeVertical = 
-    !isRoot && !isTopLeader && 
-    (isVerticalLayout || 
-     node.data?.forceVertical === true || 
-     (node.data?.forceVertical !== false && 
-      ((node.type === 'GROUP' && depth >= 1) || (node.type === 'STRUCT' && depth >= 2) || (node.type === 'CATEGORY' && depth >= 2))
-     )
+    !isRoot && !isTopLeader && !isForceHorizontal && 
+    (isForceVertical || 
+     isVerticalLayout || 
+     ((node.type === 'GROUP' && depth >= 1) || (node.type === 'STRUCT' && depth >= 2) || (node.type === 'CATEGORY' && depth >= 2))
     );
   const isExpanded = true; 
 
@@ -302,7 +303,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
                     isLast={idx === (node.children || []).length - 1} 
                     onAction={onAction}
                     editingId={editingId}
-                    isVerticalLayout={shouldBeVertical}
+                    isVerticalLayout={!isForceHorizontal && (isVerticalLayout || shouldBeVertical)}
                   />
                 </div>
               ))}
