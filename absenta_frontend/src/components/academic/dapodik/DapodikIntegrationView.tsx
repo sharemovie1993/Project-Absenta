@@ -817,13 +817,17 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                             </div>
                           </td>
                           <td className="p-2.5 font-medium text-slate-800 dark:text-slate-200">
-                            {s.dapodikRaw?.nama || s.nama}
+                            {s.dapodikRaw ? (
+                              s.dapodikRaw.nama || s.dapodikRaw.nama_siswa || s.nama
+                            ) : (
+                              <span className="text-slate-400 italic">Belum Ada di Dapodik</span>
+                            )}
                           </td>
                           <td className="p-2.5 font-medium text-slate-800 dark:text-slate-200">
                             {s.absentaRaw ? (
-                              s.absentaRaw.nama
+                              s.absentaRaw.nama_siswa || s.absentaRaw.nama || s.nama
                             ) : (
-                              <span className="text-slate-400 italic">Belum Ada</span>
+                              <span className="text-slate-400 italic">Belum Ada di Absenta</span>
                             )}
                           </td>
                           <td className="p-2.5 text-slate-600 dark:text-slate-400">
@@ -989,6 +993,7 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
               <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl space-y-1">
                 <span className="font-bold text-[11px] text-blue-600 uppercase">Data Dapodik</span>
                 <div className="space-y-1 text-slate-600 dark:text-slate-300">
+                  <div>Nama: {inspectedStudent.dapodikRaw?.nama || inspectedStudent.dapodikRaw?.nama_siswa || '-'}</div>
                   <div>NIS: {inspectedStudent.dapodikRaw?.registrasi_peserta_didik?.nipd || inspectedStudent.nis || '-'}</div>
                   <div>Tempat Lahir: {inspectedStudent.dapodikRaw?.tempat_lahir || '-'}</div>
                   <div>Tgl Lahir: {inspectedStudent.dapodikRaw?.tanggal_lahir || '-'}</div>
@@ -999,6 +1004,7 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
               <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl space-y-1">
                 <span className="font-bold text-[11px] text-indigo-600 uppercase">Data Absenta</span>
                 <div className="space-y-1 text-slate-600 dark:text-slate-300">
+                  <div>Nama: {inspectedStudent.absentaRaw?.nama_siswa || inspectedStudent.absentaRaw?.nama || inspectedStudent.nama || '-'}</div>
                   <div>NIS: {inspectedStudent.absentaRaw?.nis || '-'}</div>
                   <div>Tempat Lahir: {inspectedStudent.absentaRaw?.tempat_lahir || '-'}</div>
                   <div>Tgl Lahir: {inspectedStudent.absentaRaw?.tanggal_lahir ? new Date(inspectedStudent.absentaRaw.tanggal_lahir).toLocaleDateString('id-ID') : '-'}</div>
