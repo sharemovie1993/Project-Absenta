@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
+  UniversalDocumentSignatures,
   PrintHeader,
   usePrintHeaderData,
 } from '@/components/ui';
@@ -477,79 +478,47 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
           </p>
 
           {/* 6. STANDAR TANDA TANGAN (ADAPTIF: 1 PENGAWAS KELAS VS 2 PENGAWAS/PROKTOR) */}
-          <div className="mt-6 pt-2 text-[11.5px] text-black">
+          {/* 6. STANDAR TANDA TANGAN MENGGUNAKAN UNIVERSAL SIGNATURE ENGINE */}
+          <div className="mt-6 pt-2 w-full">
             {pengawas2Nama.trim() ? (
-              <>
-                {/* Mode 2 Petugas (Pengawas Ruang + Proktor/Pengawas 2) & Kepala Sekolah di Tengah Bawah */}
-                <div className="grid grid-cols-2 gap-8 text-center">
-                  <div>
-                    <p className="invisible select-none">{kotaSekolah}, {tanggalTitimangsa}</p>
-                    <p className="font-normal">Pengawas I / Ruang Ujian,</p>
-                    <div className="h-16" />
-                    <p className="font-bold underline">
-                      {pengawas1Nama || '( ..................................................... )'}
-                    </p>
-                    <p className="text-[10.5px] text-slate-700">
-                      NIP. {pengawas1Nip || '.........................................'}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="font-normal">
-                      {kotaSekolah}, {tanggalTitimangsa}
-                    </p>
-                    <p className="font-normal">Pengawas II / Proktor Ruang,</p>
-                    <div className="h-16" />
-                    <p className="font-bold underline">
-                      {pengawas2Nama}
-                    </p>
-                    <p className="text-[10.5px] text-slate-700">
-                      NIP. {pengawas2Nip || '.........................................'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-6 text-center max-w-xs mx-auto">
-                  <p className="font-normal">Mengetahui / Menyetujui,</p>
-                  <p className="font-normal">Kepala Sekolah</p>
-                  <div className="h-16" />
-                  <p className="font-bold underline">
-                    {kepsekNama || '( ..................................................... )'}
-                  </p>
-                  <p className="text-[10.5px] text-slate-700">
-                    NIP. {kepsekNip || '.........................................'}
-                  </p>
-                </div>
-              </>
+              <UniversalDocumentSignatures
+                layout="triangle_rapor"
+                titimangsaCity={kotaSekolah}
+                titimangsaDate={tanggalTitimangsa}
+                overrideSignerLeft={{
+                  roleTitle: 'Pengawas I / Ruang Ujian,',
+                  personName: pengawas1Nama,
+                  nip: pengawas1Nip,
+                }}
+                overrideSignerRight={{
+                  roleTitle: 'Pengawas II / Proktor Ruang,',
+                  personName: pengawas2Nama,
+                  nip: pengawas2Nip,
+                }}
+                overrideSignerCenter={{
+                  roleTitle: 'Mengetahui / Menyetujui,\nKepala Sekolah',
+                  personName: kepsekNama,
+                  nip: kepsekNip,
+                }}
+                spacingHeightMm={16}
+              />
             ) : (
-              /* Mode 1 Pengawas Kelas (Tanpa Proktor) — Kiri: Kepala Sekolah, Kanan: Pengawas Ruang */
-              <div className="grid grid-cols-2 gap-8 text-center">
-                <div>
-                  <p className="font-normal">Mengetahui / Menyetujui,</p>
-                  <p className="font-normal">Kepala Sekolah</p>
-                  <div className="h-16" />
-                  <p className="font-bold underline">
-                    {kepsekNama || '( ..................................................... )'}
-                  </p>
-                  <p className="text-[10.5px] text-slate-700">
-                    NIP. {kepsekNip || '.........................................'}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="font-normal">
-                    {kotaSekolah}, {tanggalTitimangsa}
-                  </p>
-                  <p className="font-normal">Pengawas Ruang Ujian,</p>
-                  <div className="h-16" />
-                  <p className="font-bold underline">
-                    {pengawas1Nama || '( ..................................................... )'}
-                  </p>
-                  <p className="text-[10.5px] text-slate-700">
-                    NIP. {pengawas1Nip || '.........................................'}
-                  </p>
-                </div>
-              </div>
+              <UniversalDocumentSignatures
+                layout="dual_unit_kepsek"
+                titimangsaCity={kotaSekolah}
+                titimangsaDate={tanggalTitimangsa}
+                overrideSignerLeft={{
+                  roleTitle: 'Mengetahui / Menyetujui,\nKepala Sekolah',
+                  personName: kepsekNama,
+                  nip: kepsekNip,
+                }}
+                overrideSignerRight={{
+                  roleTitle: 'Pengawas Ruang Ujian,',
+                  personName: pengawas1Nama,
+                  nip: pengawas1Nip,
+                }}
+                spacingHeightMm={16}
+              />
             )}
           </div>
         </PrintDocumentSheet>

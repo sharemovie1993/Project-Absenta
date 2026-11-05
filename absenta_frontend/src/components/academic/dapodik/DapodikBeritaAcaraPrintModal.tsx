@@ -8,6 +8,7 @@ import React, { useState, useMemo } from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
+  UniversalDocumentSignatures,
   PrintHeader,
   usePrintHeaderData,
 } from '@/components/ui';
@@ -261,39 +262,28 @@ export const DapodikBeritaAcaraPrintModal: React.FC<DapodikBeritaAcaraPrintModal
           Berdasarkan hasil rekonsiliasi ini, tim Tata Usaha dan Operator Dapodik telah menjadwalkan sinkronisasi massal untuk menyelaraskan data biodata siswa di platform internal sekolah sesuai dengan data induk Dapodik nasional.
         </p>
 
-        {/* TANDA TANGAN 3 PIHAK PENGESAHAN */}
-        <div className="mt-4 pt-1">
-          <div className="text-right text-[10.5px] mb-2">
-            {sekolahData?.kota || 'Purwakarta'}, {auditDate}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 text-center text-[10.5px]">
-            <div>
-              <p className="font-normal">Petugas Operator Dapodik,</p>
-              <div className="h-12 flex items-center justify-center my-1" />
-              <p className="font-bold underline">OPERATOR DAPODIK SEKOLAH</p>
-              <p className="text-[9.5px] text-slate-600">Unit Kerja Tata Usaha</p>
-            </div>
-
-            <div>
-              <p className="font-normal">Kepala Urusan Tata Usaha,</p>
-              <div className="h-12 flex items-center justify-center my-1" />
-              <p className="font-bold underline">KEPALA TATA USAHA</p>
-              <p className="text-[9.5px] text-slate-600">NIP. 199401352010011134</p>
-            </div>
-          </div>
-
-          <div className="text-center text-[10.5px] mt-2">
-            <p className="font-normal">Mengetahui,</p>
-            <p className="font-semibold">Kepala {sekolahData?.nama || tenantInfo.name}</p>
-            <div className="h-12 flex items-center justify-center my-1" />
-            <p className="font-bold underline">
-              {sekolahData?.kepala_sekolah || 'KEPALA SEKOLAH'}
-            </p>
-            <p className="text-[9.5px] text-slate-600">
-              NIP. {sekolahData?.nip_kepala || '-'}
-            </p>
-          </div>
+        {/* TANDA TANGAN 3 PIHAK MENGGUNAKAN UNIVERSAL SIGNATURE ENGINE */}
+        <div className="mt-4 pt-1 w-full">
+          <UniversalDocumentSignatures
+            layout="triangle_rapor"
+            titimangsaCity={sekolahData?.kota || 'Purwakarta'}
+            titimangsaDate={auditDate}
+            overrideSignerLeft={{
+              roleTitle: 'Petugas Operator Dapodik,\nUnit Kerja Tata Usaha',
+              personName: 'OPERATOR DAPODIK SEKOLAH',
+            }}
+            overrideSignerRight={{
+              roleTitle: 'Kepala Urusan Tata Usaha,',
+              personName: 'KEPALA TATA USAHA',
+              nip: '199401352010011134',
+            }}
+            overrideSignerCenter={{
+              roleTitle: `Mengetahui,\nKepala ${sekolahData?.nama || tenantInfo.name}`,
+              personName: sekolahData?.kepala_sekolah || 'KEPALA SEKOLAH',
+              nip: sekolahData?.nip_kepala,
+            }}
+            spacingHeightMm={14}
+          />
         </div>
       </PrintDocumentSheet>
     </UniversalDocumentModal>

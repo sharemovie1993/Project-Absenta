@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
+  UniversalDocumentSignatures,
   PrintHeader,
   usePrintHeaderData,
 } from '@/components/ui';
@@ -268,33 +269,22 @@ export const UkkBeritaAcaraPrintModal: React.FC<UkkBeritaAcaraPrintModalProps> =
             </div>
           </div>
 
-          {/* Baris 2: Panitia / Kaprog & Kepala Sekolah */}
-          <div className="grid grid-cols-2 gap-8 text-center text-[11.5px] mt-6">
-            <div>
-              <p className="font-normal">Ketua Panitia / Kaprog,</p>
-              <div className="h-16 flex items-center justify-center my-1">
-                {beritaAcara.ttd_panitia ? (
-                  <img
-                    src={beritaAcara.ttd_panitia}
-                    alt="TTD Panitia"
-                    className="max-h-14 max-w-full object-contain"
-                  />
-                ) : (
-                  <div className="h-14" />
-                )}
-              </div>
-              <p className="font-bold underline">{beritaAcara.panitia || 'Panitia UKK'}</p>
-            </div>
-
-            <div>
-              <p className="font-normal">Mengetahui,</p>
-              <p className="font-normal -mt-0.5">Kepala Sekolah,</p>
-              <div className="h-16 flex items-center justify-center my-1">
-                <div className="h-14" />
-              </div>
-              <p className="font-bold underline">{sekolahData?.kepala_sekolah || 'Kepala Sekolah'}</p>
-              <p className="text-[10px] text-slate-600">NIP. {sekolahData?.nip_kepala || '-'}</p>
-            </div>
+          {/* Baris 2: Panitia / Kaprog & Kepala Sekolah via Universal Signature Engine */}
+          <div className="mt-6 w-full">
+            <UniversalDocumentSignatures
+              layout="dual_unit_kepsek"
+              titimangsaDate={beritaAcara.tanggal}
+              titimangsaCity={sekolahData?.kota || 'Purwakarta'}
+              overrideSignerLeft={{
+                roleTitle: 'Ketua Panitia / Kaprog,',
+                personName: beritaAcara.panitia || 'Panitia UKK',
+              }}
+              overrideSignerRight={{
+                personName: sekolahData?.kepala_sekolah || 'Kepala Sekolah',
+                nip: sekolahData?.nip_kepala,
+              }}
+              spacingHeightMm={16}
+            />
           </div>
         </div>
       </PrintDocumentSheet>

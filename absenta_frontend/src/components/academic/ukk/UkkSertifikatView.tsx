@@ -11,6 +11,7 @@ import {
   UniversalDocumentModal,
   UniversalDocumentTab,
   PrintDocumentSheet,
+  UniversalDocumentSignatures,
   PrintHeader,
   usePrintHeaderData,
   type DocumentTemplateOption,
@@ -596,28 +597,20 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
               </p>
             </div>
 
-            {/* Tanda Tangan Tunggal Kepala Sekolah Lampiran 2 */}
-            <div className="pt-4 border-t border-slate-200 mt-6 text-right">
-              <div className="inline-block text-center font-serif text-[11px] min-w-[220px]">
-                <p>{certData.tanggal_terbit}</p>
-                <p className="font-normal mt-0.5">Kepala SMK,</p>
-                <div className="h-16 flex items-center justify-center my-1">
-                  {certData.ukk.ttd_kepala_sekolah ? (
-                    <img
-                      src={certData.ukk.ttd_kepala_sekolah}
-                      alt="TTD Kepala Sekolah"
-                      className="max-h-14 max-w-full object-contain"
-                    />
-                  ) : (
-                    <div className="h-14" />
-                  )}
-                </div>
-                <p className="font-bold underline text-slate-900">
-                  {certData.sekolah?.kepala_sekolah || 'Kepala Sekolah'}
-                </p>
-                <p className="text-[10px] text-slate-600 font-sans">
-                  NIP. {certData.sekolah?.nip_kepala || '-'}
-                </p>
+            {/* Tanda Tangan Tunggal Kepala Sekolah Lampiran 2 via Universal Signature Engine */}
+            <div className="pt-4 border-t border-slate-200 mt-6 flex justify-end">
+              <div className="w-[75mm]">
+                <UniversalDocumentSignatures
+                  layout="single_kepsek"
+                  titimangsaDate={certData.tanggal_terbit}
+                  overrideSignerRight={{
+                    roleTitle: 'Kepala SMK,',
+                    personName: certData.sekolah?.kepala_sekolah || 'Kepala Sekolah',
+                    nip: certData.sekolah?.nip_kepala,
+                  }}
+                  fontFamilyClass="font-serif"
+                  spacingHeightMm={16}
+                />
               </div>
             </div>
           </div>

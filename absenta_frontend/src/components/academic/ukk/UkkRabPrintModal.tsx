@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
+  UniversalDocumentSignatures,
   PrintHeader,
   usePrintHeaderData,
 } from '@/components/ui';
@@ -516,46 +517,29 @@ export const UkkRabPrintModal: React.FC<UkkRabPrintModalProps> = ({
           </div>
         )}
 
-        {/* Tanda Tangan: Baris 1 Sejajar (Wakasek Sarpras Kiri, Kaprog Kanan), Baris 2 Kepala Sekolah di Tengah Bawah */}
-        <div className="mt-8 pt-2">
-          {/* Baris 1: Wakasek Sarpras (Kiri) & Kaprog (Kanan) */}
-          <div className="grid grid-cols-2 gap-8 text-center text-[10.5px]">
-            {/* Kolom Kiri: Verifikator (Wakasek Sarpras) */}
-            <div>
-              <p className="font-normal text-slate-800">Diverifikasi oleh,</p>
-              <p className="font-semibold text-black -mt-0.5">Wakasek Bidang Sarpras</p>
-              <div className="h-16 flex items-center justify-center my-1" />
-              <p className="font-bold underline text-black">{wakasekSarprasNama}</p>
-              <p className="text-[9.5px] text-slate-600">NIP. {wakasekSarprasNip}</p>
-            </div>
-
-            {/* Kolom Kanan: Pemohon (Kaprog) */}
-            <div>
-              <div className="text-[10.5px] text-black mb-1">
-                {sekolahData?.kota || 'Purwakarta'}, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-              </div>
-              <p className="font-normal text-slate-800">Dibuat oleh,</p>
-              <p className="font-semibold text-black -mt-0.5">Ketua Program Keahlian</p>
-              <div className="h-14 flex items-center justify-center my-1" />
-              <p className="font-bold underline text-black">{kaprogNama}</p>
-              <p className="text-[9.5px] text-slate-600">NIP. {kaprogNip}</p>
-            </div>
-          </div>
-
-          {/* Baris 2: Mengetahui / Menyetujui Kepala Sekolah (Di Tengah Bawah) */}
-          <div className="mt-6 flex justify-center text-center text-[10.5px]">
-            <div className="w-72">
-              <p className="font-normal text-slate-800">Mengetahui / Menyetujui,</p>
-              <p className="font-semibold text-black -mt-0.5">Kepala Sekolah</p>
-              <div className="h-16 flex items-center justify-center my-1" />
-              <p className="font-bold underline text-black">
-                {kepalaSekolahNama || sekolahData?.kepala_sekolah || 'Kepala Sekolah'}
-              </p>
-              <p className="text-[9.5px] text-slate-600">
-                NIP. {kepalaSekolahNip || sekolahData?.nip_kepala || '-'}
-              </p>
-            </div>
-          </div>
+        {/* Tanda Tangan Menggunakan Universal Signature Engine */}
+        <div className="mt-8 pt-2 w-full">
+          <UniversalDocumentSignatures
+            layout="triangle_rapor"
+            titimangsaCity={sekolahData?.kota || 'Purwakarta'}
+            titimangsaDate={new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+            overrideSignerLeft={{
+              roleTitle: 'Diverifikasi oleh,\nWakasek Bidang Sarpras',
+              personName: wakasekSarprasNama,
+              nip: wakasekSarprasNip,
+            }}
+            overrideSignerRight={{
+              roleTitle: 'Dibuat oleh,\nKetua Program Keahlian',
+              personName: kaprogNama,
+              nip: kaprogNip,
+            }}
+            overrideSignerCenter={{
+              roleTitle: 'Mengetahui / Menyetujui,\nKepala Sekolah',
+              personName: kepalaSekolahNama || sekolahData?.kepala_sekolah,
+              nip: kepalaSekolahNip || sekolahData?.nip_kepala,
+            }}
+            spacingHeightMm={16}
+          />
         </div>
       </PrintDocumentSheet>
       </div>
