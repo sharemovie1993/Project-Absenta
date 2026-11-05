@@ -26,6 +26,7 @@ export interface UniversalStudentIdentityProps {
   mode?: 'screen' | 'print';
   variant?: StudentIdentityVariant;
   className?: string;
+  subtitle?: string;
   showPhoto?: boolean;
   photoSizeMm?: { width: number; height: number }; // default 3x4: 28x36 mm
   fields?: Array<
@@ -52,6 +53,7 @@ export const UniversalStudentIdentity: React.FC<UniversalStudentIdentityProps> =
   mode = 'screen',
   variant = 'card',
   className,
+  subtitle,
   showPhoto = true,
   photoSizeMm = { width: 28, height: 36 },
   fields,
@@ -294,7 +296,7 @@ export const UniversalStudentIdentity: React.FC<UniversalStudentIdentityProps> =
             {identity.nama}
           </span>
           <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-            {identity.nis} • {identity.namaKelas}
+            {subtitle || `${identity.nis} • ${identity.namaKelas}`}
           </span>
         </div>
       </div>

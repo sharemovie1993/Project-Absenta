@@ -33,6 +33,7 @@ import { getStatusBadgeClass, getStatusLabel } from '../../../utils/layoutUtils'
 import { getSiswaList, deleteSiswa, deleteAllSiswa, getSiswaDetail, sendParentAccess, bulkUpdateStatus, generateNisMassal, updateSiswa, siswaQueryKeys, normalizeSiswaWaPhones } from '../../../api/academic/siswa.api';
 import { NisGenerateWizard } from './NisGenerateWizard';
 import { getKelasList } from '../../../api/academic/kelas.api';
+import { UniversalStudentIdentity } from '@/components/common/UniversalStudentIdentity';
 import type { Siswa, Kelas } from '../../../types/academic';
 import { resetUserPassword, updateUser } from '../../../api/user.api';
 import toast from 'react-hot-toast';
@@ -824,11 +825,14 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       key: 'nama_siswa', 
       label: 'Nama Siswa',
       sortable: true,
-      render: (value: string, siswa: Siswa) => (
-        <div>
-          <div className="font-semibold text-gray-900 dark:text-gray-100">{value}</div>
-          <div className="text-xs text-gray-600 dark:text-gray-400">{siswa.User?.email || '-'}</div>
-        </div>
+      render: (_value: string, siswa: Siswa) => (
+        <UniversalStudentIdentity
+          data={siswa}
+          variant="chip"
+          showPhoto
+          subtitle={siswa.User?.email || (siswa.nis ? `NIS: ${siswa.nis}` : '-')}
+          className="bg-transparent border-0 shadow-none p-0"
+        />
       )
     },
     { 
@@ -1053,19 +1057,13 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       className="bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-2xl p-3.5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between gap-3"
     >
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm leading-snug">
-            {siswa.nama_siswa}
-          </h3>
-          {siswa.status && siswa.status !== 'AKTIF' && (
-            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-md">
-              {siswa.status}
-            </span>
-          )}
-        </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">
-          {siswa.Kelas?.nama_kelas || 'Tanpa Kelas'} {siswa.nis ? `• NIS: ${siswa.nis}` : ''} {siswa.jenis_kelamin ? `• ${siswa.jenis_kelamin === 'L' ? 'L' : 'P'}` : ''}
-        </p>
+        <UniversalStudentIdentity
+          data={siswa}
+          variant="chip"
+          showPhoto
+          subtitle={`${siswa.Kelas?.nama_kelas || 'Tanpa Kelas'} • NIS: ${siswa.nis || '-'}`}
+          className="bg-transparent border-0 shadow-none p-0"
+        />
       </div>
 
       <Button

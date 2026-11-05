@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { normalizeStudentIdentity, formatTanggalIndonesia } from '../../academic/academicIdentityNormalizer';
 
 /**
  * Fallback Engine 2: Programmatic PDF generator for Buku Induk
@@ -12,8 +13,9 @@ export async function generateBukuIndukPdf(siswa: any, tenantInfo: any): Promise
   const contentW = pageW - margin * 2;
   let y = 14;
 
-  const nama = siswa?.nama_siswa || '-';
-  const nis = siswa?.nis || '-';
+  const normalized = normalizeStudentIdentity(siswa);
+  const nama = normalized.nama || '-';
+  const nis = normalized.nis || '-';
   const schoolName = tenantInfo?.name || 'SMK';
 
   const setTitle = (text: string, size = 12) => {
@@ -62,11 +64,14 @@ export async function generateBukuIndukPdf(siswa: any, tenantInfo: any): Promise
   sectionHeader('A. Identitas Pribadi');
   addRow('Nama Lengkap', nama.toUpperCase());
   addRow('NIS', nis);
-  addRow('NISN', siswa?.nisn || '-');
-  addRow('Tempat Lahir', siswa?.tempat_lahir || '-');
-  addRow('Tanggal Lahir', siswa?.tanggal_lahir ? new Date(siswa.tanggal_lahir).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-');
-  addRow('Jenis Kelamin', siswa?.gender === 'L' || siswa?.jenis_kelamin?.toUpperCase()?.startsWith('L') ? 'Laki-laki' : siswa?.gender === 'P' ? 'Perempuan' : '-');
-  addRow('Agama', siswa?.agama || '-');
+  addRow('NISN', normalized.nisn || '-');
+  addRow('Tempat Lahir', normalized.tempatLahir || '-');
+  addRow('Tanggal Lahir', normalized.tanggalLahir ? formatTanggalIndonesia(normalized.tanggalLahir) : '-');
+  addRow('Jenis Kelamin', normalized.jenisKelaminLabel);
+  addRow('Agama', normalized.agama || '-');
+  addRow('Kelas', normalized.namaKelas || '-');
+  addRow('Program Keahlian', normalized.programKeahlian || '-');
+  addRow('Konsentrasi Keahlian', normalized.namaJurusan || '-');
   addRow('Kewarganegaraan', siswa?.kewarganegaraan || 'Indonesia');
   addRow('Anak ke-', siswa?.anak_ke ? String(siswa.anak_ke) : '-');
   addRow('No. Akta Lahir', siswa?.no_akta_lahir || '-');

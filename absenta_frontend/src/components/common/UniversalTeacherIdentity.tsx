@@ -24,6 +24,7 @@ export interface UniversalTeacherIdentityProps {
   mode?: 'screen' | 'print';
   variant?: TeacherIdentityVariant;
   className?: string;
+  subtitle?: string;
   showPhoto?: boolean;
 }
 
@@ -34,6 +35,7 @@ export const UniversalTeacherIdentity: React.FC<UniversalTeacherIdentityProps> =
   mode = 'screen',
   variant = 'card',
   className,
+  subtitle,
   showPhoto = true,
 }) => {
   const { identity: baseIdentity, isLoading } = useTeacherIdentity({
@@ -153,7 +155,7 @@ export const UniversalTeacherIdentity: React.FC<UniversalTeacherIdentityProps> =
             {identity.namaLengkapGelar}
           </span>
           <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-            {identity.nipFormatted || identity.statusKepegawaian} • {identity.jenisPtk}
+            {subtitle || `${identity.nipFormatted || identity.statusKepegawaian} • ${identity.jenisPtk}`}
           </span>
         </div>
       </div>

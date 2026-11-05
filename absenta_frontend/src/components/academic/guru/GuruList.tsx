@@ -36,6 +36,7 @@ import {
   Checkbox,
   Skeleton
 } from '../../ui';
+import { UniversalTeacherIdentity } from '@/components/common/UniversalTeacherIdentity';
 
 // Lazy load Table to improve mobile performance (TBT)
 const Table = lazy(() => import('../../ui/Table').then(module => ({ default: module.Table })));
@@ -359,11 +360,14 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       key: 'nama_guru', 
       label: 'Nama Guru',
       sortable: true,
-      render: (value: string, guru: Guru) => (
-        <div>
-          <div className="font-semibold text-gray-900 dark:text-gray-100">{value}</div>
-          <div className="text-xs text-gray-600 dark:text-gray-400">{guru.User?.email || '-'}</div>
-        </div>
+      render: (_value: string, guru: Guru) => (
+        <UniversalTeacherIdentity
+          data={guru}
+          variant="chip"
+          showPhoto
+          subtitle={guru.User?.email || guru.nip || guru.status_kepegawaian || '-'}
+          className="bg-transparent border-0 shadow-none p-0"
+        />
       )
     },
     { 
@@ -586,19 +590,13 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between gap-3"
     >
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm leading-snug">
-            {guru.nama_guru}
-          </h4>
-          {guru.status_kepegawaian && (
-            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded-md">
-              {guru.status_kepegawaian}
-            </span>
-          )}
-        </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 truncate">
-          {guru.nip ? `NIP: ${guru.nip}` : 'Tanpa NIP'}
-        </p>
+        <UniversalTeacherIdentity
+          data={guru}
+          variant="chip"
+          showPhoto
+          subtitle={`${guru.nip ? `NIP: ${guru.nip}` : (guru.status_kepegawaian || 'Guru')}`}
+          className="bg-transparent border-0 shadow-none p-0"
+        />
       </div>
 
       <Button

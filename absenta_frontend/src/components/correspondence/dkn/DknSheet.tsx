@@ -1,5 +1,11 @@
-import React from 'react';
-import { PrintDocumentSheet, PrintHeader, UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
+import React, { useMemo } from 'react';
+import { 
+  PrintDocumentSheet, 
+  PrintHeader, 
+  UniversalDocumentSignatures,
+  normalizeStudentIdentity,
+  normalizeTeacherIdentity,
+} from '@/components/ui/PrintHeader';
 import type { DknMatriksData, DknSiswaRow } from '@/api/correspondence/dkn.api';
 
 interface DknSheetProps {
@@ -161,17 +167,19 @@ export const DknSheet: React.FC<DknSheetProps> = ({ data, tahunPelajaran, tenant
                       </td>
                     </tr>
                   ) : (
-                    pageRows.map((row) => (
+                    pageRows.map((row) => {
+                      const student = normalizeStudentIdentity(row);
+                      return (
                       <tr key={row.id}>
                         <td style={{ border: '0.5px solid #000', padding: '2px' }}>{row.nomor_urut}</td>
                         <td style={{ border: '0.5px solid #000', padding: '2px', fontSize: '7pt' }}>
-                          <div>{row.nis}</div>
-                          <div style={{ color: '#475569', fontSize: '6.5pt' }}>{row.nisn}</div>
+                          <div>{student.nis}</div>
+                          <div style={{ color: '#475569', fontSize: '6.5pt' }}>{student.nisn || '-'}</div>
                         </td>
                         <td style={{ border: '0.5px solid #000', padding: '2px 4px', textAlign: 'left', fontWeight: 'bold' }}>
-                          {row.nama_siswa}
+                          {student.nama}
                         </td>
-                        <td style={{ border: '0.5px solid #000', padding: '2px' }}>{row.gender}</td>
+                        <td style={{ border: '0.5px solid #000', padding: '2px' }}>{student.jenisKelamin}</td>
 
                         {/* Nilai Mapel A */}
                         {mapelA.map((m) => (
@@ -211,7 +219,8 @@ export const DknSheet: React.FC<DknSheetProps> = ({ data, tahunPelajaran, tenant
                           {row.status_kelulusan}
                         </td>
                       </tr>
-                    ))
+                    );
+                  })
                   )}
                 </tbody>
               </table>
@@ -225,8 +234,8 @@ export const DknSheet: React.FC<DknSheetProps> = ({ data, tahunPelajaran, tenant
                     titimangsaDate={today}
                     overrideSignerLeft={{
                       roleTitle: 'Mengetahui,\nWakil Kepala Sekolah Bidang Kurikulum',
-                      personName: pejabat.waka_kurikulum.nama,
-                      nip: pejabat.waka_kurikulum.nip,
+                      personName: normalizeTeacherIdentity(pejabat.waka_kurikulum).namaLengkapGelar,
+                      nip: normalizeTeacherIdentity(pejabat.waka_kurikulum).nipFormatted || undefined,
                     }}
                     overrideSignerCenter={{
                       roleTitle: 'Mengetahui,\nPengawas Pembina Cabang Dinas',
@@ -234,8 +243,8 @@ export const DknSheet: React.FC<DknSheetProps> = ({ data, tahunPelajaran, tenant
                       nip: '.......................................................',
                     }}
                     overrideSignerRight={{
-                      personName: pejabat.kepala_sekolah.nama,
-                      nip: pejabat.kepala_sekolah.nip,
+                      personName: normalizeTeacherIdentity(pejabat.kepala_sekolah).namaLengkapGelar,
+                      nip: normalizeTeacherIdentity(pejabat.kepala_sekolah).nipFormatted || undefined,
                     }}
                     spacingHeightMm={16}
                   />

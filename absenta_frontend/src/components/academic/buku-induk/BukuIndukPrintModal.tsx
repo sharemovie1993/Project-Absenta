@@ -5,6 +5,7 @@ import {
   PrintDocumentSheet,
   PrintHeader,
   usePrintHeaderData,
+  normalizeStudentIdentity,
 } from '@/components/ui/PrintHeader';
 import {
   bukuIndukApi,
@@ -37,6 +38,7 @@ export const BukuIndukPrintModal: React.FC<BukuIndukPrintModalProps> = ({
   });
 
   const siswa = data?.data;
+  const normalizedStudent = siswa ? normalizeStudentIdentity(siswa) : null;
 
   const handleDownload = useCallback(async () => {
     if (!siswa || isDownloading) return;
@@ -59,8 +61,8 @@ export const BukuIndukPrintModal: React.FC<BukuIndukPrintModalProps> = ({
     <UniversalDocumentModal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Buku Induk Siswa${siswa ? ` — ${siswa.nama_siswa}` : ''}`}
-      subtitle={siswa ? `NIS: ${siswa.nis} | NISN: ${siswa.nisn || '-'}` : undefined}
+      title={`Buku Induk Siswa${normalizedStudent ? ` — ${normalizedStudent.nama}` : ''}`}
+      subtitle={normalizedStudent ? `NIS: ${normalizedStudent.nis} | NISN: ${normalizedStudent.nisn || '-'} | ${normalizedStudent.namaKelas} | ${normalizedStudent.namaJurusan}` : undefined}
       allowLogoToggles={true}
       orientation="portrait"
       onDownloadPdf={siswa ? handleDownload : undefined}

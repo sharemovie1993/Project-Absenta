@@ -1,5 +1,10 @@
 import React from 'react';
-import { PrintDocumentSheet, PrintHeader, UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
+import { 
+  PrintDocumentSheet, 
+  PrintHeader, 
+  UniversalDocumentSignatures,
+  normalizeTeacherIdentity,
+} from '@/components/ui/PrintHeader';
 import type { PreviewSuratPengantarResponse } from '@/api/correspondence/dkn.api';
 
 interface SuratPengantarDknSheetProps {
@@ -160,8 +165,8 @@ export const SuratPengantarDknSheet: React.FC<SuratPengantarDknSheetProps> = ({ 
               showTitimangsa={false}
               overrideSignerRight={{
                 roleTitle: 'Kepala Sekolah,',
-                personName: pejabat.kepala_sekolah.nama,
-                nip: pejabat.kepala_sekolah.nip,
+                personName: normalizeTeacherIdentity(pejabat.kepala_sekolah).namaLengkapGelar,
+                nip: normalizeTeacherIdentity(pejabat.kepala_sekolah).nipFormatted || undefined,
               }}
               spacingHeightMm={18}
             />

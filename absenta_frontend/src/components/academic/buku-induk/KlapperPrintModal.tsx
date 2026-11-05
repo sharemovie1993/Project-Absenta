@@ -5,6 +5,7 @@ import {
   UniversalDocumentSignatures,
   PrintHeader,
   usePrintHeaderData,
+  normalizeStudentIdentity,
 } from '@/components/ui/PrintHeader';
 import type { KlapperListItem } from '@/api/academic/buku-induk.api';
 
@@ -212,6 +213,7 @@ export const KlapperPrintModal: React.FC<KlapperPrintModalProps> = ({
                     }
 
                     globalNo++;
+                    const student = normalizeStudentIdentity(item);
                     return (
                       <tr
                         key={item.id}
@@ -231,22 +233,22 @@ export const KlapperPrintModal: React.FC<KlapperPrintModalProps> = ({
                         <td
                           style={{ border: '0.5px solid #000', padding: '2px 6px' }}
                         >
-                          {item.nis}
+                          {student.nis}
                         </td>
                         <td
                           style={{ border: '0.5px solid #000', padding: '2px 6px' }}
                         >
-                          {item.nama_siswa}
+                          {student.nama}
                         </td>
                         <td
                           style={{ border: '0.5px solid #000', padding: '2px 6px' }}
                         >
-                          {item.nisn || '-'}
+                          {student.nisn || '-'}
                         </td>
                         <td
                           style={{ border: '0.5px solid #000', padding: '2px 6px' }}
                         >
-                          {item.Kelas?.nama_kelas || '-'}
+                          {student.namaKelas || '-'}
                         </td>
                         <td
                           style={{
@@ -255,7 +257,7 @@ export const KlapperPrintModal: React.FC<KlapperPrintModalProps> = ({
                             textAlign: 'center',
                           }}
                         >
-                          {item.status}
+                          {student.status || item.status || '-'}
                         </td>
                       </tr>
                     );
