@@ -568,6 +568,9 @@ model OrganizationalAssignment {
   start_date         DateTime?
   end_date           DateTime?
   is_active          Boolean                 @default(true)
+  is_leader          Boolean                 @default(false)
+  assignment_flag    String?
+  custom_title       String?
   created_at         DateTime                @default(now())
   updated_at         DateTime                @updatedAt
 
@@ -586,6 +589,7 @@ model OrganizationalAssignment {
   @@index([tenant_id, is_active])
   @@index([tenant_id, user_id, is_active])
   @@index([tenant_id, position_id, is_active])
+  @@index([tenant_id, position_id, is_leader, is_active])
   @@index([tenant_id, kelas_id, is_active])
   @@index([tenant_id, position_id, kelas_id, tahun_pelajaran_id, is_active])
   @@index([tahun_pelajaran_id])

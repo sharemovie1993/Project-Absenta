@@ -34,6 +34,9 @@ export interface OrganizationalAssignment {
   position_id: string;
   user_id: string;
   is_active: boolean;
+  is_leader?: boolean;
+  assignment_flag?: string | null;
+  custom_title?: string | null;
   unit_id?: string | null;
   kelas_id?: string | null;
   start_date?: string;
@@ -91,6 +94,9 @@ export interface AssignGuruInput {
   jenis_kegiatan_id?: string | null;
   start_date?: string;
   end_date?: string;
+  is_leader?: boolean;
+  assignment_flag?: string | null;
+  custom_title?: string | null;
 }
 
 export interface AssignSiswaInput {
@@ -125,6 +131,20 @@ export const updateStruktur = async (id: string, data: UpdateStrukturInput): Pro
 
 export const deleteStruktur = async (id: string): Promise<ApiResponse<null>> => {
   return requestWithFallback<ApiResponse<null>>('delete', `/academic/struktur-organisasi/${id}`);
+};
+
+export interface AssignmentFlagDef {
+  flag: string;
+  label: string;
+  isLeader: boolean;
+  canSignDocument: boolean;
+  description: string;
+}
+
+export const getAssignmentFlags = async (positionCode?: string): Promise<ApiResponse<AssignmentFlagDef[]>> => {
+  return requestWithFallback<ApiResponse<AssignmentFlagDef[]>>('get', '/academic/struktur-organisasi/assignment-flags', {
+    params: positionCode ? { positionCode } : undefined,
+  });
 };
 
 export const assignGuruToStruktur = async (strukturId: string, data: AssignGuruInput): Promise<ApiResponse<GuruStrukturOrganisasi>> => {

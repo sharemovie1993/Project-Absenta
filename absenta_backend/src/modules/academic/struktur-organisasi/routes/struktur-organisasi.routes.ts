@@ -3,6 +3,9 @@ import { requireCapability } from '@/middlewares/requireCapability';
 import { determineDataScope } from '@/middlewares/dataScope';
 
 export default async function strukturOrganisasiRoutes(fastify: any) {
+  // Master Assignment Flags
+  fastify.get('/assignment-flags', strukturOrganisasiController.getAssignmentFlags);
+
   // CRUD Struktur
   fastify.get(
     '/tree',

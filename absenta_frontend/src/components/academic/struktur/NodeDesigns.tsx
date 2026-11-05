@@ -19,7 +19,8 @@ import {
   Wrench, 
   Coins,
   ClipboardCheck,
-  Sparkles
+  Sparkles,
+  Crown
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { STRUKTUR_CONFIG, shortenPosition } from './StrukturConfig';
@@ -54,7 +55,8 @@ interface NodeDesignProps {
  */
 export const LeadershipNode = React.memo<NodeDesignProps>(({ node }) => {
   const cfg = STRUKTUR_CONFIG.design.leadership;
-  const isStaff = node.label.toUpperCase().startsWith('STAF');
+  const isLeader = node.data?.isLeader === true;
+  const isStaff = !isLeader && (node.label.toUpperCase().startsWith('STAF') || Boolean(node.data?.assignmentFlag));
   const role = node.data?.roleCode;
 
   let headerBg = "bg-indigo-700 dark:bg-indigo-600";
@@ -65,7 +67,7 @@ export const LeadershipNode = React.memo<NodeDesignProps>(({ node }) => {
     else if (remainder === 1) headerBg = "bg-violet-600 dark:bg-violet-500";
     else headerBg = "bg-rose-600 dark:bg-rose-500";
   } else if (isStaff) {
-    headerBg = "bg-slate-500 dark:bg-slate-600";
+    headerBg = "bg-slate-600 dark:bg-slate-700";
   } else if (role === 'KEPALA_SEKOLAH') {
     headerBg = "bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-500 dark:to-indigo-500";
   } else if (role === 'KURIKULUM') {
@@ -78,7 +80,7 @@ export const LeadershipNode = React.memo<NodeDesignProps>(({ node }) => {
     headerBg = "bg-cyan-600 dark:bg-cyan-500";
   } else if (role === 'SARPRAS') {
     headerBg = "bg-indigo-600 dark:bg-indigo-500";
-  } else if (role === 'TU') {
+  } else if (role === 'TU' || role === 'TU_KEPALA') {
     headerBg = "bg-blue-600 dark:bg-blue-500";
   } else if (role === 'BKK') {
     headerBg = "bg-violet-600 dark:bg-violet-500";
@@ -86,16 +88,17 @@ export const LeadershipNode = React.memo<NodeDesignProps>(({ node }) => {
 
   const icon = getRoleIcon(node.data?.roleCode, 14, "text-white/90 mr-1.5 flex-shrink-0");
   return (
-    <div className={cn("flex flex-col w-full h-full", cfg.minHeight)}>
+    <div className={cn("flex flex-col w-full h-full relative", cfg.minHeight)}>
       {/* Position Header */}
-      <div className={cn(headerBg, "px-4 flex-1 flex items-center justify-center gap-1")}>
+      <div className={cn(headerBg, "px-3 py-1 flex-1 flex items-center justify-center gap-1")}>
+        {isLeader && <Crown size={13} className="text-amber-300 drop-shadow flex-shrink-0 mr-0.5" />}
         {icon}
-        <span className={cn(cfg.colors.textTop, "text-[9.5px] font-black uppercase tracking-widest block whitespace-normal break-words line-clamp-2 px-1 text-center")}>
+        <span className={cn(cfg.colors.textTop, "text-[9.5px] font-black uppercase tracking-wider block whitespace-normal break-words line-clamp-2 px-1 text-center")}>
           {node.label}
         </span>
       </div>
       {/* Occupant Name */}
-      <div className={cn(cfg.colors.bottom, cfg.colors.border, "px-4 flex-1 border-t w-full flex items-center justify-center")}>
+      <div className={cn(cfg.colors.bottom, cfg.colors.border, "px-3 flex-1 border-t w-full flex items-center justify-center")}>
         <span className={cn(cfg.colors.textBottom, "text-[11px] font-bold truncate block text-center")}>
           {node.subLabel}
         </span>
@@ -104,9 +107,6 @@ export const LeadershipNode = React.memo<NodeDesignProps>(({ node }) => {
   );
 });
 
-/**
- * CategoryNode: Solid 1-row header design for Bidang/Category labels.
- */
 export const CategoryNode = React.memo<NodeDesignProps>(({ node }) => {
   const cfg = STRUKTUR_CONFIG.design.leadership;
   

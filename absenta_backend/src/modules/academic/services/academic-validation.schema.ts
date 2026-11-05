@@ -48,7 +48,10 @@ export const assignGuruSchema = z.object({
   }, z.date().nullable().optional().transform(v => v === null ? undefined : v)),
   kelas_id: z.string().uuid({ message: 'kelas_id harus berupa UUID yang valid' }).nullable().optional().transform(v => v === null ? undefined : v),
   unit_id: z.string().uuid({ message: 'unit_id harus berupa UUID yang valid' }).nullable().optional().transform(v => v === null ? undefined : v),
-  jenis_kegiatan_id: z.string().uuid({ message: 'jenis_kegiatan_id harus berupa UUID yang valid' }).nullable().optional().transform(v => v === null ? undefined : v)
+  jenis_kegiatan_id: z.string().uuid({ message: 'jenis_kegiatan_id harus berupa UUID yang valid' }).nullable().optional().transform(v => v === null ? undefined : v),
+  is_leader: z.boolean().optional().default(false),
+  assignment_flag: z.string().nullable().optional().transform(v => v === null ? undefined : v),
+  custom_title: z.string().nullable().optional().transform(v => v === null ? undefined : v)
 });
 
 export const assignSiswaSchema = z.object({

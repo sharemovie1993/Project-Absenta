@@ -1,13 +1,22 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useGuruOptions, useSiswaOptions } from '@/components/common';
-import { Loader2, Search } from 'lucide-react';
+import { Loader2, Search, Crown, CheckSquare, Square, Tag, Edit3, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TopologyNodeData } from './types';
+import { getAssignmentFlagsForPosition } from '@/config/assignmentFlags';
+
+export interface LiveNodeEditorSavePayload {
+  value: string;
+  label: string;
+  is_leader?: boolean;
+  assignment_flag?: string;
+  custom_title?: string;
+}
 
 interface LiveNodeEditorProps {
   node: TopologyNodeData | null | undefined;
-  onSave: (val: { value: string; label: string }) => Promise<void>;
+  onSave: (val: LiveNodeEditorSavePayload) => Promise<void>;
   onClose: () => void;
   anchorEl?: HTMLElement | null;
 }
@@ -17,12 +26,20 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
   const [query, setQuery] = useState('');
   const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
 
+  const roleCode = String(node?.data?.roleCode || '').toUpperCase();
+  const availableFlags = useMemo(() => getAssignmentFlagsForPosition(roleCode), [roleCode]);
+
+  // Sub-bidang & Leader form states
+  const [selectedFlag, setSelectedFlag] = useState<string>(() => node?.data?.assignmentFlag || '');
+  const [isLeader, setIsLeader] = useState<boolean>(() => Boolean(node?.data?.isLeader));
+  const [customTitle, setCustomTitle] = useState<string>(() => node?.data?.customTitle || '');
+
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const isSiswa = node?.data?.roleCode === 'PETUGAS_KELAS';
+  const isSiswa = roleCode === 'PETUGAS_KELAS';
   const PENDIDIK_ONLY_ROLES = ['WALIKELAS', 'KAPROG', 'KABENG', 'PEMBINA_ESKUL'];
-  const jenisPtk = PENDIDIK_ONLY_ROLES.includes(node?.data?.roleCode || '') ? 'PENDIDIK' : 'ALL';
+  const jenisPtk = PENDIDIK_ONLY_ROLES.includes(roleCode) ? 'PENDIDIK' : 'ALL';
 
   const { options: guruOptions, isLoading: searchingGuru } = useGuruOptions({ jenisPtk });
   const { options: siswaOptions, isLoading: searchingSiswa } = useSiswaOptions({ 
@@ -107,29 +124,105 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
     setQuery(e.target.value);
   }, []);
 
+  const handleFlagChange = (flagCode: string) => {
+    setSelectedFlag(flagCode);
+    const def = availableFlags.find(f => f.flag === flagCode);
+    if (def) {
+      setIsLeader(def.isLeader);
+    }
+  };
+
   const handleSelect = useCallback(async (val: string, label: string) => {
-    if (saving || !node) return; // Defensive check
+    if (saving || !node) return;
     setSaving(true);
     try {
-      await onSave({ value: val, label });
-      // Let the parent handle closing
+      await onSave({ 
+        value: val, 
+        label,
+        is_leader: isLeader,
+        assignment_flag: selectedFlag || undefined,
+        custom_title: customTitle.trim() || undefined
+      });
     } catch (err) {
       console.error('Gagal menyimpan:', err);
     } finally {
       setSaving(false);
     }
-  }, [saving, node, onSave]);
+  }, [saving, node, onSave, isLeader, selectedFlag, customTitle]);
 
   if (!node) return null;
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+
+  // Sub-bidang config form block (reusable for mobile and desktop)
+  const renderFlagConfiguration = () => {
+    if (availableFlags.length === 0) return null;
+
+    return (
+      <div className="p-3 bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-800 space-y-2.5">
+        <div>
+          <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 mb-1">
+            <Tag size={11} className="text-indigo-500" />
+            Sub-Bidang / Tugas Khusus
+          </label>
+          <select
+            value={selectedFlag}
+            onChange={(e) => handleFlagChange(e.target.value)}
+            className="w-full text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+          >
+            <option value="">— Standar Jabatan (Tanpa Sub-Bidang Khusus) —</option>
+            {availableFlags.map((f) => (
+              <option key={f.flag} value={f.flag}>
+                {f.label} {f.isLeader ? '👑 (Pimpinan/Waka)' : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center justify-between pt-0.5">
+          <button
+            type="button"
+            onClick={() => setIsLeader(!isLeader)}
+            className={cn(
+              "flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-bold transition-all",
+              isLeader 
+                ? "bg-amber-500/10 border-amber-500/40 text-amber-700 dark:text-amber-400 shadow-xs" 
+                : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-500"
+            )}
+          >
+            {isLeader ? (
+              <CheckSquare size={13} className="text-amber-600 dark:text-amber-400" />
+            ) : (
+              <Square size={13} className="text-slate-400" />
+            )}
+            <Crown size={12} className={isLeader ? "text-amber-500" : "text-slate-400"} />
+            <span>Pimpinan Utama (Waka / Ka.)</span>
+          </button>
+        </div>
+
+        <div>
+          <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 mb-1">
+            <Edit3 size={11} className="text-slate-500" />
+            Gelar / Nama Tugas Khusus (Opsional)
+          </label>
+          <input
+            type="text"
+            value={customTitle}
+            onChange={(e) => setCustomTitle(e.target.value)}
+            placeholder="Contoh: Koordinator P5, Plt. Waka Kurikulum"
+            className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+          />
+        </div>
+      </div>
+    );
+  };
 
   if (isMobile) {
     return createPortal(
       <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
         <div 
           ref={containerRef}
-          className="w-full max-h-[85vh] bg-white dark:bg-slate-900 rounded-t-3xl border-t border-amber-400 dark:border-amber-600 shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom duration-300"
+          className="w-full max-h-[90vh] bg-white dark:bg-slate-900 rounded-t-3xl border-t border-amber-400 dark:border-amber-600 shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom duration-300"
         >
           {/* Mobile Handle & Header */}
           <div className="flex flex-col items-center pt-3 pb-2 px-4 border-b border-slate-100 dark:border-slate-800">
@@ -147,10 +240,13 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
                 onClick={onClose}
                 className="p-1.5 text-xs font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200"
               >
-                Tutup
+                <X size={16} />
               </button>
             </div>
           </div>
+
+          {/* Configuration sub-bidang & leader */}
+          {renderFlagConfiguration()}
 
           {/* Search Box */}
           <div className="relative flex items-center px-4 h-12 border-b border-slate-100 dark:border-slate-800 bg-amber-50/40 dark:bg-slate-800/40">
@@ -168,7 +264,7 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
           </div>
 
           {/* Options List */}
-          <div onScroll={handleScrollList} className="overflow-y-auto custom-scrollbar p-3 flex-1 max-h-[60vh]">
+          <div onScroll={handleScrollList} className="overflow-y-auto custom-scrollbar p-3 flex-1 max-h-[50vh]">
             {searching ? (
               <div className="py-12 flex flex-col items-center justify-center gap-3">
                 <Loader2 size={24} className="animate-spin text-amber-500/60" />
@@ -207,31 +303,34 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
       style={{
         top: `${position.top}px`,
         left: `${position.left}px`,
-        width: `${Math.max(position.width + 40, 320)}px` // Lebih lebar agar melimpah keluar
+        width: `${Math.max(position.width + 80, 360)}px`
       }}
     >
-      <div className="relative flex items-center px-5 h-12 border-b border-amber-100 dark:border-slate-800 bg-amber-50/50 dark:bg-slate-800/50">
-        <Search size={14} className="text-amber-500 mr-4 flex-shrink-0" />
+      {/* Configuration sub-bidang & leader */}
+      {renderFlagConfiguration()}
+
+      <div className="relative flex items-center px-4 h-11 border-b border-amber-100 dark:border-slate-800 bg-amber-50/50 dark:bg-slate-800/50">
+        <Search size={14} className="text-amber-500 mr-3 flex-shrink-0" />
         <input
           ref={inputRef}
           type="text"
           value={query}
           onChange={handleSearchChange}
-          placeholder="Cari nama personil..."
-          className="bg-transparent border-none outline-none text-[13px] font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 w-full"
+          placeholder="Cari personil untuk ditugaskan..."
+          className="bg-transparent border-none outline-none text-[12px] font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 w-full"
           autoComplete="off"
         />
         {saving && <Loader2 size={14} className="animate-spin text-amber-500 ml-2" />}
       </div>
 
-      <div onScroll={handleScrollList} className="max-h-[350px] overflow-y-auto custom-scrollbar p-2" style={{ scrollbarWidth: 'thin' }}>
+      <div onScroll={handleScrollList} className="max-h-[300px] overflow-y-auto custom-scrollbar p-2" style={{ scrollbarWidth: 'thin' }}>
         {searching ? (
-          <div className="py-12 flex flex-col items-center justify-center gap-3">
-            <Loader2 size={24} className="animate-spin text-amber-500/40" />
+          <div className="py-10 flex flex-col items-center justify-center gap-2">
+            <Loader2 size={20} className="animate-spin text-amber-500/40" />
             <span className="text-[10px] font-bold text-amber-600/40 uppercase tracking-widest">Mencari Data...</span>
           </div>
         ) : options.length === 0 ? (
-          <div className="py-8 text-center bg-slate-50/50 dark:bg-slate-950/30 rounded-xl m-1 border border-dashed border-slate-200 dark:border-slate-800">
+          <div className="py-6 text-center bg-slate-50/50 dark:bg-slate-950/30 rounded-xl m-1 border border-dashed border-slate-200 dark:border-slate-800">
             <p className="text-[11px] font-black text-slate-400 uppercase tracking-tighter">Data tidak ditemukan</p>
           </div>
         ) : (
@@ -240,7 +339,7 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
               <button
                 key={opt.value}
                 onClick={() => handleSelect(opt.value, opt.label)}
-                className="group flex items-center px-4 py-3 w-full text-left transition-all rounded-lg hover:bg-gradient-to-r hover:from-amber-500 hover:to-orange-600 dark:hover:from-amber-600 dark:hover:to-orange-700"
+                className="group flex items-center px-3.5 py-2.5 w-full text-left transition-all rounded-lg hover:bg-gradient-to-r hover:from-amber-500 hover:to-orange-600 dark:hover:from-amber-600 dark:hover:to-orange-700"
               >
                 <div className="flex flex-col min-w-0">
                   <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200 group-hover:text-white truncate">
@@ -258,11 +357,11 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
         )}
       </div>
       
-      <div className="px-4 py-2 bg-slate-50 dark:bg-slate-950/50 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
-         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Sistem Penugasan v2.0</span>
-         <div className="flex gap-1">
+      <div className="px-3.5 py-2 bg-slate-50 dark:bg-slate-950/50 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-[9px] font-black text-slate-400 uppercase tracking-wider">
+         <span>Sistem Penugasan Sub-Bidang v2.5</span>
+         <div className="flex gap-1 items-center">
+            {isLeader && <span className="text-amber-500 flex items-center gap-0.5"><Crown size={10} /> Koordinator</span>}
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
          </div>
       </div>
     </div>,

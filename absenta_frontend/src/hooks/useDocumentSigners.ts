@@ -11,6 +11,8 @@ export interface SignerPerson {
   nip?: string;
   statusBadge?: string;
   isAssigned: boolean;
+  assignmentFlag?: string;
+  customTitle?: string;
 }
 
 export interface UseDocumentSignersParams {
@@ -27,6 +29,16 @@ export interface UseDocumentSignersParams {
     unit?: Partial<SignerPerson>;
     parent?: Partial<SignerPerson>;
     dudi?: Partial<SignerPerson>;
+    wakaKurikulum?: Partial<SignerPerson>;
+    wakaKesiswaan?: Partial<SignerPerson>;
+    wakaSarpras?: Partial<SignerPerson>;
+    wakaHubin?: Partial<SignerPerson>;
+    kepalaTu?: Partial<SignerPerson>;
+    kabeng?: Partial<SignerPerson>;
+    toolman?: Partial<SignerPerson>;
+    koordinatorBk?: Partial<SignerPerson>;
+    ketuaKoperasi?: Partial<SignerPerson>;
+    bendaharaKoperasi?: Partial<SignerPerson>;
   };
 }
 
@@ -38,11 +50,27 @@ export interface DocumentSignersResult {
   walas: SignerPerson;
   kaprog: SignerPerson;
   wakaKurikulum: SignerPerson;
+  wakaKesiswaan: SignerPerson;
   wakaSarpras: SignerPerson;
   wakaHubin: SignerPerson;
+  kepalaTu: SignerPerson;
+  kabeng: SignerPerson;
+  toolman: SignerPerson;
+  koordinatorBk: SignerPerson;
+  ketuaKoperasi: SignerPerson;
+  bendaharaKoperasi: SignerPerson;
   parent: SignerPerson;
   dudi: SignerPerson;
   isLoading: boolean;
+  getByPositionCode: (
+    codes: string | string[],
+    options?: {
+      unitId?: string;
+      kelasId?: string;
+      flag?: string;
+      fallbackRoleTitle?: string;
+    }
+  ) => SignerPerson;
 }
 
 /**
@@ -59,9 +87,37 @@ export const cleanNipValue = (rawNip?: string | null): string => {
 };
 
 /**
+ * Deterministically resolves the primary leader / coordinator from a list of assignments.
+ * Priority:
+ * 1. is_leader === true && is_active !== false
+ * 2. assignment_flag matches preferredFlag && is_active !== false
+ * 3. is_active !== false
+ * 4. First available assignment
+ */
+export const resolveLeaderAssignment = (assigns: any[] = [], preferredFlag?: string): any | null => {
+  if (!assigns || assigns.length === 0) return null;
+
+  // 1. Explicit leader flag
+  const leader = assigns.find((a: any) => a.is_leader === true && a.is_active !== false);
+  if (leader) return leader;
+
+  // 2. Preferred flag match
+  if (preferredFlag) {
+    const byFlag = assigns.find((a: any) => a.assignment_flag === preferredFlag && a.is_active !== false);
+    if (byFlag) return byFlag;
+  }
+
+  // 3. Active member
+  const active = assigns.find((a: any) => a.is_active !== false);
+  if (active) return active;
+
+  return assigns[0];
+};
+
+/**
  * 🏛️ SSOT Document Signers Hook
- * Resolves official signatories (Kepala Sekolah, Wali Kelas, Kaprog, Waka)
- * directly from OrganizationalAssignment, RaporSettings, and School Profile.
+ * Resolves official signatories (Kepala Sekolah, Wali Kelas, Kaprog, Waka, Staf)
+ * directly from OrganizationalAssignment (prioritizing is_leader: true), RaporSettings, and School Profile.
  */
 export const useDocumentSigners = (params: UseDocumentSignersParams = {}): DocumentSignersResult => {
   const {
@@ -128,18 +184,45 @@ export const useDocumentSigners = (params: UseDocumentSignersParams = {}): Docum
     const dateStr = rawDate ? formatIndoDate(rawDate) : formatIndoDate(new Date());
     const titimangsa = `${city}, ${dateStr}`;
 
-    // Helper: Find assignments for a position code
-    const getAssignmentsForCode = (codes: string[]) => {
+    // Helper: Find assignments for position codes
+    const getAssignmentsForCode = (codes: string[]): any[] => {
       const pos = strukturList.find((p: any) =>
         codes.some((c) => (p.kode || p.code || '').toUpperCase() === c.toUpperCase())
       );
       return (pos?.organizationalAssigns || []) as any[];
     };
 
+    // Helper: Map assignment record to SignerPerson
+    const mapAssignToSigner = (
+      assign: any | null,
+      fallbackRole: string,
+      custom?: Partial<SignerPerson>
+    ): SignerPerson => {
+      const guru = assign?.User?.Guru || assign?.User;
+      const personName =
+        custom?.personName ||
+        guru?.nama_guru ||
+        guru?.nama ||
+        assign?.User?.full_name ||
+        fallbackRole;
+
+      const nipRaw = custom?.nip ?? guru?.nip;
+      const nip = cleanNipValue(nipRaw);
+      const roleTitle = custom?.roleTitle || assign?.custom_title || fallbackRole;
+
+      return {
+        roleTitle,
+        personName,
+        nip,
+        isAssigned: Boolean(assign || custom?.personName),
+        assignmentFlag: assign?.assignment_flag,
+        customTitle: assign?.custom_title,
+      };
+    };
+
     // ── B. Resolve Kepala Sekolah ──
     const kepsekAssigns = getAssignmentsForCode(['KEPALA_SEKOLAH', 'KEPSEK', 'PRINCIPAL']);
-    const activeKepsekAssign =
-      kepsekAssigns.find((a: any) => a.is_active !== false) || kepsekAssigns[0];
+    const activeKepsekAssign = resolveLeaderAssignment(kepsekAssigns);
 
     const kepsekGuru = activeKepsekAssign?.User?.Guru || activeKepsekAssign?.User;
     const kepsekName =
@@ -182,26 +265,10 @@ export const useDocumentSigners = (params: UseDocumentSignersParams = {}): Docum
       );
     }
     if (!matchedWalasAssign && walasAssigns.length > 0) {
-      matchedWalasAssign = walasAssigns.find((a: any) => a.is_active !== false) || walasAssigns[0];
+      matchedWalasAssign = resolveLeaderAssignment(walasAssigns);
     }
 
-    const walasGuru = matchedWalasAssign?.User?.Guru || matchedWalasAssign?.User;
-    const walasName =
-      customSigners?.walas?.personName ||
-      walasGuru?.nama_guru ||
-      walasGuru?.nama ||
-      matchedWalasAssign?.User?.full_name ||
-      'Wali Kelas';
-
-    const walasNipRaw = customSigners?.walas?.nip ?? walasGuru?.nip;
-    const walasNip = cleanNipValue(walasNipRaw);
-
-    const walas: SignerPerson = {
-      roleTitle: customSigners?.walas?.roleTitle || 'Wali Kelas',
-      personName: walasName,
-      nip: walasNip,
-      isAssigned: Boolean(matchedWalasAssign || customSigners?.walas?.personName),
-    };
+    const walas = mapAssignToSigner(matchedWalasAssign, 'Wali Kelas', customSigners?.walas);
 
     // ── D. Resolve Ketua Program Keahlian (Kaprog) ──
     const kaprogAssigns = getAssignmentsForCode(['KAPROG', 'KETUA_JURUSAN', 'HEAD_OF_DEPARTMENT']);
@@ -211,61 +278,73 @@ export const useDocumentSigners = (params: UseDocumentSignersParams = {}): Docum
       matchedKaprogAssign = kaprogAssigns.find((a: any) => a.unit_id === jurusanId);
     }
     if (!matchedKaprogAssign && kaprogAssigns.length > 0) {
-      matchedKaprogAssign = kaprogAssigns.find((a: any) => a.is_active !== false) || kaprogAssigns[0];
+      matchedKaprogAssign = resolveLeaderAssignment(kaprogAssigns);
     }
 
-    const kaprogGuru = matchedKaprogAssign?.User?.Guru || matchedKaprogAssign?.User;
-    const kaprogName =
-      customSigners?.kaprog?.personName ||
-      kaprogGuru?.nama_guru ||
-      kaprogGuru?.nama ||
-      matchedKaprogAssign?.User?.full_name ||
-      'Ketua Program Keahlian';
+    const kaprog = mapAssignToSigner(matchedKaprogAssign, 'Ketua Program Keahlian', customSigners?.kaprog);
 
-    const kaprogNipRaw = customSigners?.kaprog?.nip ?? kaprogGuru?.nip;
-    const kaprogNip = cleanNipValue(kaprogNipRaw);
-
-    const kaprog: SignerPerson = {
-      roleTitle: customSigners?.kaprog?.roleTitle || 'Ketua Program Keahlian',
-      personName: kaprogName,
-      nip: kaprogNip,
-      isAssigned: Boolean(matchedKaprogAssign || customSigners?.kaprog?.personName),
-    };
-
-    // ── E. Resolve Waka Kurikulum ──
+    // ── E. Resolve Waka Kurikulum (Leader Priority) ──
     const kurikulumAssigns = getAssignmentsForCode(['WAKA_KURIKULUM', 'KURIKULUM']);
-    const kurikulumAssign = kurikulumAssigns.find((a: any) => a.is_active !== false) || kurikulumAssigns[0];
-    const kurikulumGuru = kurikulumAssign?.User?.Guru || kurikulumAssign?.User;
-    const wakaKurikulum: SignerPerson = {
-      roleTitle: 'Waka. Bidang Kurikulum',
-      personName: kurikulumGuru?.nama_guru || kurikulumGuru?.nama || kurikulumAssign?.User?.full_name || 'Waka Kurikulum',
-      nip: cleanNipValue(kurikulumGuru?.nip),
-      isAssigned: Boolean(kurikulumAssign),
-    };
+    const kurikulumAssign = resolveLeaderAssignment(kurikulumAssigns, 'WAKA_KURIKULUM');
+    const wakaKurikulum = mapAssignToSigner(kurikulumAssign, 'Waka. Bidang Kurikulum', customSigners?.wakaKurikulum);
 
-    // ── F. Resolve Waka Sarpras ──
+    // ── F. Resolve Waka Kesiswaan (Leader Priority) ──
+    const kesiswaanAssigns = getAssignmentsForCode(['WAKA_KESISWAAN', 'KESISWAAN']);
+    const kesiswaanAssign = resolveLeaderAssignment(kesiswaanAssigns, 'WAKA_KESISWAAN');
+    const wakaKesiswaan = mapAssignToSigner(kesiswaanAssign, 'Waka. Bidang Kesiswaan', customSigners?.wakaKesiswaan);
+
+    // ── G. Resolve Waka Sarpras (Leader Priority) ──
     const sarprasAssigns = getAssignmentsForCode(['WAKA_SARPRAS', 'SARPRAS']);
-    const sarprasAssign = sarprasAssigns.find((a: any) => a.is_active !== false) || sarprasAssigns[0];
-    const sarprasGuru = sarprasAssign?.User?.Guru || sarprasAssign?.User;
-    const wakaSarpras: SignerPerson = {
-      roleTitle: 'Waka. Bidang Sarana & Prasarana',
-      personName: sarprasGuru?.nama_guru || sarprasGuru?.nama || sarprasAssign?.User?.full_name || 'Waka Sarpras',
-      nip: cleanNipValue(sarprasGuru?.nip),
-      isAssigned: Boolean(sarprasAssign),
-    };
+    const sarprasAssign = resolveLeaderAssignment(sarprasAssigns, 'WAKA_SARPRAS');
+    const wakaSarpras = mapAssignToSigner(sarprasAssign, 'Waka. Bidang Sarana & Prasarana', customSigners?.wakaSarpras);
 
-    // ── G. Resolve Waka Hubin ──
+    // ── H. Resolve Waka Hubin (Leader Priority) ──
     const hubinAssigns = getAssignmentsForCode(['WAKA_HUBIN', 'HUBIN', 'KOORDINATOR_PKL']);
-    const hubinAssign = hubinAssigns.find((a: any) => a.is_active !== false) || hubinAssigns[0];
-    const hubinGuru = hubinAssign?.User?.Guru || hubinAssign?.User;
-    const wakaHubin: SignerPerson = {
-      roleTitle: 'Waka. Bidang Hubungan Industri',
-      personName: hubinGuru?.nama_guru || hubinGuru?.nama || hubinAssign?.User?.full_name || 'Waka Hubin',
-      nip: cleanNipValue(hubinGuru?.nip),
-      isAssigned: Boolean(hubinAssign),
-    };
+    const hubinAssign = resolveLeaderAssignment(hubinAssigns, 'WAKA_HUBIN');
+    const wakaHubin = mapAssignToSigner(hubinAssign, 'Waka. Bidang Hubungan Industri', customSigners?.wakaHubin);
 
-    // ── H. Orang Tua / Wali Siswa ──
+    // ── I. Resolve Kepala TU ──
+    const tuAssigns = getAssignmentsForCode(['TU_KEPALA', 'KEPALA_TU', 'TU']);
+    const tuAssign = resolveLeaderAssignment(tuAssigns, 'KOORDINATOR_TU');
+    const kepalaTu = mapAssignToSigner(tuAssign, 'Kepala Tata Usaha', customSigners?.kepalaTu);
+
+    // ── J. Resolve Kepala Bengkel (Kabeng) ──
+    const kabengAssigns = getAssignmentsForCode(['KABENG', 'KEPALA_BENGKEL']);
+    let matchedKabengAssign: any = null;
+    if (jurusanId) {
+      matchedKabengAssign = kabengAssigns.find((a: any) => a.unit_id === jurusanId);
+    }
+    if (!matchedKabengAssign && kabengAssigns.length > 0) {
+      matchedKabengAssign = resolveLeaderAssignment(kabengAssigns);
+    }
+    const kabeng = mapAssignToSigner(matchedKabengAssign, 'Kepala Bengkel', customSigners?.kabeng);
+
+    // ── K. Resolve Toolman (Teknisi / Laboran) ──
+    const toolmanAssigns = getAssignmentsForCode(['TOOLMAN', 'TEKNISI', 'LABORAN']);
+    let matchedToolmanAssign: any = null;
+    if (jurusanId) {
+      matchedToolmanAssign = toolmanAssigns.find((a: any) => a.unit_id === jurusanId);
+    }
+    if (!matchedToolmanAssign && toolmanAssigns.length > 0) {
+      matchedToolmanAssign = resolveLeaderAssignment(toolmanAssigns);
+    }
+    const toolman = mapAssignToSigner(matchedToolmanAssign, 'Toolman / Teknisi', customSigners?.toolman);
+
+    // ── L. Resolve Koordinator BP/BK ──
+    const bkAssigns = getAssignmentsForCode(['BPBK', 'BK', 'BIMBINGAN_KONSELING']);
+    const bkAssign = resolveLeaderAssignment(bkAssigns, 'KOORDINATOR_BK');
+    const koordinatorBk = mapAssignToSigner(bkAssign, 'Koordinator BP/BK', customSigners?.koordinatorBk);
+
+    // ── M. Resolve Koperasi (Ketua & Bendahara) ──
+    const ketuaKoperasiAssigns = getAssignmentsForCode(['KETUA_KOPERASI', 'KOPERASI_KETUA']);
+    const ketuaKopAssign = resolveLeaderAssignment(ketuaKoperasiAssigns);
+    const ketuaKoperasi = mapAssignToSigner(ketuaKopAssign, 'Ketua Koperasi', customSigners?.ketuaKoperasi);
+
+    const bendaharaKopAssigns = getAssignmentsForCode(['BENDAHARA_KOPERASI', 'KOPERASI_BENDAHARA']);
+    const bendaharaKopAssign = resolveLeaderAssignment(bendaharaKopAssigns);
+    const bendaharaKoperasi = mapAssignToSigner(bendaharaKopAssign, 'Bendahara Koperasi', customSigners?.bendaharaKoperasi);
+
+    // ── N. Orang Tua / Wali Siswa ──
     const parent: SignerPerson = {
       roleTitle: customSigners?.parent?.roleTitle || 'Orang Tua / Wali,',
       personName: customSigners?.parent?.personName || '................................',
@@ -273,12 +352,40 @@ export const useDocumentSigners = (params: UseDocumentSignersParams = {}): Docum
       isAssigned: Boolean(customSigners?.parent?.personName),
     };
 
-    // ── I. Mitra DUDI / Industri ──
+    // ── O. Mitra DUDI / Industri ──
     const dudi: SignerPerson = {
       roleTitle: customSigners?.dudi?.roleTitle || 'Pembimbing DUDI / Industri,',
       personName: customSigners?.dudi?.personName || '................................',
       nip: cleanNipValue(customSigners?.dudi?.nip),
       isAssigned: Boolean(customSigners?.dudi?.personName),
+    };
+
+    // ── Dynamic SSOT Resolver by Position Code ──
+    const getByPositionCode = (
+      codes: string | string[],
+      options?: {
+        unitId?: string;
+        kelasId?: string;
+        flag?: string;
+        fallbackRoleTitle?: string;
+      }
+    ): SignerPerson => {
+      const codeArray = Array.isArray(codes) ? codes : [codes];
+      const assigns = getAssignmentsForCode(codeArray);
+
+      let matchedAssign: any = null;
+      if (options?.kelasId) {
+        matchedAssign = assigns.find((a: any) => a.kelas_id === options.kelasId);
+      }
+      if (!matchedAssign && options?.unitId) {
+        matchedAssign = assigns.find((a: any) => a.unit_id === options.unitId);
+      }
+      if (!matchedAssign) {
+        matchedAssign = resolveLeaderAssignment(assigns, options?.flag);
+      }
+
+      const defaultTitle = options?.fallbackRoleTitle || codeArray[0].replace(/_/g, ' ');
+      return mapAssignToSigner(matchedAssign, defaultTitle);
     };
 
     return {
@@ -289,11 +396,19 @@ export const useDocumentSigners = (params: UseDocumentSignersParams = {}): Docum
       walas,
       kaprog,
       wakaKurikulum,
+      wakaKesiswaan,
       wakaSarpras,
       wakaHubin,
+      kepalaTu,
+      kabeng,
+      toolman,
+      koordinatorBk,
+      ketuaKoperasi,
+      bendaharaKoperasi,
       parent,
       dudi,
       isLoading: isLoadingStruktur || isLoadingRaporSettings || isLoadingSekolah,
+      getByPositionCode,
     };
   }, [
     titimangsaCity,

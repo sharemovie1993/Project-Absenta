@@ -31,6 +31,9 @@ export interface AssignGuruInput {
   kelas_id?: string | null;
   unit_id?: string | null;
   jenis_kegiatan_id?: string | null;
+  is_leader?: boolean;
+  assignment_flag?: string | null;
+  custom_title?: string | null;
 }
 
 export interface AssignSiswaInput {
@@ -186,6 +189,9 @@ export class StrukturOrganisasiService {
           type: a.User?.Guru ? 'GURU' : 'SISWA',
           name,
           details,
+          is_leader: a.is_leader ?? false,
+          assignment_flag: a.assignment_flag || null,
+          custom_title: a.custom_title || null,
           updated_at: a.updated_at,
           structId: pos.id,
           structName: pos.name,
@@ -605,11 +611,29 @@ export class StrukturOrganisasiService {
       });
     }
 
+    // [IDEMPOTENSI LEADER / KOORDINATOR] Jika guru ini diset sebagai is_leader: true, reset leader lain pada posisi yang sama
+    if (input.is_leader) {
+      await prisma.organizationalAssignment.updateMany({
+        where: {
+          tenant_id: tenantId,
+          position_id: input.struktur_id,
+          unit_id: input.unit_id || null,
+          kelas_id: input.kelas_id || null,
+          is_leader: true,
+          NOT: { user_id: guru.user_id },
+        },
+        data: { is_leader: false, updated_at: new Date() },
+      });
+    }
+
     if (existing) {
       const updated = await prisma.organizationalAssignment.update({
         where: { id: existing.id },
         data: {
           is_active: true,
+          is_leader: input.is_leader !== undefined ? Boolean(input.is_leader) : undefined,
+          assignment_flag: input.assignment_flag !== undefined ? input.assignment_flag : undefined,
+          custom_title: input.custom_title !== undefined ? input.custom_title : undefined,
           start_date: input.start_date || new Date(),
           end_date: input.end_date || null,
           kelas_id: input.kelas_id || null,
@@ -632,6 +656,9 @@ export class StrukturOrganisasiService {
         unit_id: input.unit_id || null,
         jenis_kegiatan_id: input.jenis_kegiatan_id || null,
         is_active: true,
+        is_leader: Boolean(input.is_leader),
+        assignment_flag: input.assignment_flag || null,
+        custom_title: input.custom_title || null,
         start_date: input.start_date || new Date(),
         end_date: input.end_date || null,
         updated_at: new Date(),

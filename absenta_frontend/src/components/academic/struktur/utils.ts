@@ -1,4 +1,5 @@
 import { shortenPosition } from './StrukturConfig';
+import { getFlagLabel } from '@/config/assignmentFlags';
 import type { GroupedStruktur, TopologyNodeData } from './types';
 
 const cleanDetails = (details: string | null): string => {
@@ -27,19 +28,43 @@ export const transformManagementToTree = (
 
         const isKoordinatorTu = kode === 'TU_KEPALA';
 
-        const members = [...(n.members || [])].sort((a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
+        // 1. Urutkan personil: Leader selalu di atas (index 0), lalu berdasarkan waktu update
+        const hasExplicitLeader = (n.members || []).some((m: any) => m.is_leader === true);
+        const members = [...(n.members || [])].sort((a: any, b: any) => {
+          if (a.is_leader && !b.is_leader) return -1;
+          if (!a.is_leader && b.is_leader) return 1;
+          return new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
+        });
+
         const memberSlots: TopologyNodeData[] = members.map((m: any, idx: number) => {
-          const isBoss = idx === 0;
-          let rawLabel = isBoss ? `WAKA ${area}` : `STAF ${area}`;
-          if (isKoordinatorTu) {
-            rawLabel = isBoss ? 'Koordinator TU' : `Staf TU`;
+          const isBoss = m.is_leader === true || (!hasExplicitLeader && idx === 0);
+          
+          let rawLabel = m.custom_title;
+          if (!rawLabel && m.assignment_flag) {
+            rawLabel = getFlagLabel(kode, m.assignment_flag);
           }
+          if (!rawLabel) {
+            if (isKoordinatorTu) {
+              rawLabel = isBoss ? 'Koordinator TU' : 'Staf TU';
+            } else {
+              rawLabel = isBoss ? `WAKA ${area}` : `STAF ${area}`;
+            }
+          }
+
           return {
             id: isBoss ? `boss-${kode}-${n.id}-${m.id}` : `staff-${kode}-${n.id}-${m.id}`,
             label: shortenPosition(rawLabel),
             subLabel: m.name,
             type: 'STRUCT' as any,
-            data: { roleCode: kode, realMemberId: m.id, realStrukturId: n.id, unit_id: n.unit_id }
+            data: { 
+              roleCode: kode, 
+              realMemberId: m.id, 
+              realStrukturId: n.id, 
+              unit_id: n.unit_id,
+              isLeader: isBoss,
+              assignmentFlag: m.assignment_flag,
+              customTitle: m.custom_title,
+            }
           };
         });
 
@@ -132,7 +157,11 @@ export const transformDataToTree = (
       } else {
         // Logika Kaprog/Kabeng / Pembina Eskul (Horizontal Positions with Vertical Staff)
         const instanceNodes = nodes.map((n: any) => {
-          const sortedMembers = [...(n.members || [])].sort((a: any, b: any) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
+          const sortedMembers = [...(n.members || [])].sort((a: any, b: any) => {
+            if (a.is_leader && !b.is_leader) return -1;
+            if (!a.is_leader && b.is_leader) return 1;
+            return new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
+          });
           const headMember = sortedMembers[0];
           
           const isEskul = kode === 'PEMBINA_ESKUL';
@@ -186,7 +215,11 @@ export const transformDataToTree = (
     } else {
       // Jalur fallback untuk role lain (termasuk TU sub-codes)
       nodes.forEach(node => {
-        const sortedMembers = [...(node.members || [])].sort((a: any, b: any) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
+        const sortedMembers = [...(node.members || [])].sort((a: any, b: any) => {
+          if (a.is_leader && !b.is_leader) return -1;
+          if (!a.is_leader && b.is_leader) return 1;
+          return new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
+        });
         const headMember = sortedMembers[0];
         
         let displayLabel = node.nama;

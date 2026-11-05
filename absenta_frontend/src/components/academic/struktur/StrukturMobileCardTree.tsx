@@ -259,10 +259,11 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
               <RoleIcon className="w-3.5 h-3.5" />
             </div>
             <span className={cn(
-              "text-xs font-black truncate uppercase tracking-tight",
+              "text-xs font-black truncate uppercase tracking-tight flex items-center gap-1",
               isRoot ? "text-white" : "text-slate-800 dark:text-slate-200"
             )}>
-              {node.label || 'Jabatan'}
+              {node.data?.isLeader && <Crown className="w-3.5 h-3.5 text-amber-400 shrink-0 inline drop-shadow-xs" />}
+              <span>{node.label || 'Jabatan'}</span>
             </span>
           </div>
 

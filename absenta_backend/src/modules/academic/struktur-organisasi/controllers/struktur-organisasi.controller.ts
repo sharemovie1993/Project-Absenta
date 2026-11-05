@@ -1,6 +1,7 @@
 import { StrukturOrganisasiService } from '../services/struktur-organisasi.service';
 import { RoleName } from '@/constants/enums';
 import { z } from 'zod';
+import { DIVISION_ASSIGNMENT_FLAGS, getAssignmentFlagsForPosition } from '@/config/assignment-flags';
 import {
   createStrukturSchema,
   updateStrukturSchema,
@@ -32,6 +33,24 @@ const getEffectiveTenantId = (req: any) => {
 };
 
 export const strukturOrganisasiController = {
+  getAssignmentFlags: async (req: any, reply: any) => {
+    try {
+      const { positionCode } = req.query as any;
+      if (positionCode) {
+        return reply.status(200).send({
+          success: true,
+          data: getAssignmentFlagsForPosition(positionCode),
+        });
+      }
+      return reply.status(200).send({
+        success: true,
+        data: DIVISION_ASSIGNMENT_FLAGS,
+      });
+    } catch (error: any) {
+      return reply.status(400).send({ success: false, message: error.message });
+    }
+  },
+
   getTree: async (req: any, reply: any) => {
     try {
       const tenantId = getEffectiveTenantId(req);
