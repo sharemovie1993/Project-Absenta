@@ -30,7 +30,7 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
   // Filter mode: 'ALL' or a specific kelas_id
   const [filterKelasId, setFilterKelasId] = useState<string>(selectedKelasId || 'ALL');
   const [filterTingkat, setFilterTingkat] = useState<number | 'ALL'>('ALL');
-  const [showFullKop, setShowFullKop] = useState<boolean>(false); // Default: Minimalist/Zero-noise
+  const [showFullKop, setShowFullKop] = useState<boolean>(true); // Header Kop Resmi Tetap Aktif Sesuai Persetujuan
   const [showLogoDaerah, setShowLogoDaerah] = useState<boolean>(true);
   const [showLogoSekolah, setShowLogoSekolah] = useState<boolean>(true);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
@@ -215,13 +215,11 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
               orientation="landscape"
               className="flex flex-col justify-between"
             >
-              {/* ── 1. HEADER (KOP DINAS ATAU KOP BERSIH MINIMALIS) ── */}
+              {/* ── 1. HEADER KOP RESMI (TETAP DIPERTAHANKAN SESUAI PERSETUJUAN) ── */}
               {showFullKop ? (
-                <div className="shrink-0 mb-3">
+                <div className="shrink-0 mb-2">
                   <PrintHeader
-                    title={eventName.toUpperCase()}
-                    subtitle={`TAHUN AJARAN ${tenantInfo?.tahun_ajaran || '2026/2027'}`}
-                    nomorSurat="PANITIA PELAKSANA ASESMEN CBT"
+                    variant="landscape"
                     showLogoDaerah={showLogoDaerah}
                     showLogoSekolah={showLogoSekolah}
                   />
