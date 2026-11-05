@@ -92,76 +92,176 @@ import { UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
 
 ## ⚙️ Teknik Ekspor PDF: Dual-Engine Strategy
 
-Untuk mencegah isu *discrepancy* (tampilan layar berbeda dengan hasil unduh PDF), wajib gunakan strategi **Dual-Engine**:
+Untuk mencegah isu *discrepancy* (tampilan layar berbeda dengan hasil unduh PDF) dan **mencegah insiden teks saling bertumpuk (*kerning collapse*)**, wajib gunakan strategi **Dual-Engine** dengan kepatuhan protokol baku berikut:
 
-### Engine 1: Primary True WYSIWYG DOM Capture (`html2canvas-pro` + `jsPDF`)
-Menghasilkan file PDF yang **100% identik** dengan tampilan di layar monitor secara ringan dan efisien:
+### 🚨 Protokol Anti-Kerning Collapse & Anti-Teks Bertumpuk (Chromium / html2canvas Anomaly Resolution)
 
-1. Pasang ref `useRef<HTMLDivElement>(null)` pada container yang membungkus `PrintDocumentSheet`.
-2. Bidik elemen dengan selektor `.print-sheet`.
-3. Inisialisasi dokumen jsPDF dengan **Stream Compression**:
-   ```typescript
-   const pdf = new jsPDF({
-     orientation: isLandscape ? 'landscape' : 'portrait',
-     unit: 'mm',
-     format: 'a4',
-     compress: true, // Wajib: Mengaktifkan kompresi stream PDF
-   });
-   const pdfWidth = isLandscape ? 297 : 210;
-   const pdfHeight = isLandscape ? 210 : 297;
+> [!CAUTION]
+> **Masalah Paling Sering Terjadi di Produksi**: Teks pada Kop surat dinas, judul dokumen, diagram pohon, dan tabel saling bertumpuk/menimpa (*letters overlapping*) seperti `P E M E R I N T A H` di mana huruf saling menabrak dan memadat tak terbaca.
+
+#### 4 Akar Penyebab Teknis (The 4 Culprits):
+1. **CSS `zoom` pada Parent Container (`#print-desk-canvas-area`)**:
+   Untuk menampilkan lembar fisik A4 di monitor kecil/laptop secara responsif, komponen preview menggunakan CSS `zoom` (misalnya `zoom: 0.65`–`0.85` pada mode *Pas Layar*).
+   Saat `html2canvas` mengukur elemen anak, Chromium menghitung koordinat `getBoundingClientRect()` yang telah diskalakan turun oleh `zoom`, namun `ctx.font` tetap dirender pada ukuran nominal aslinya (misal 14px). Akibatnya, huruf digambar pada ukuran 14px tetapi diposisikan pada interval spasi 9px! Inilah penyebab 99% teks bertumpuk.
+2. **Asinkronitas Web Font (`document.fonts.ready`)**:
+   Jika ekspor canvas dimulai sebelum font kustom (`Plus Jakarta Sans`, `Inter`, `Cambria`) selesai dirasterisasi, `html2canvas` menggunakan metrik lebar font fallback sementara, lalu saat teks digambar dengan font asli, jarak antar karakter kolaps.
+3. **Ketiadaan Paint Tick Settle Delay**:
+   Mengubah `style.zoom = '1'` secara imperatif di JavaScript tidak seketika mengubah internal layout tree Chromium. Membutuhkan waktu bagi browser untuk mengeksekusi siklus reflow/repaint (~100–150ms). Jika `html2canvas` langsung dipanggil tanpa delay, ia masih membaca matriks layout lama yang termampatkan.
+4. **OpenType Features & Variable Font Tracking**:
+   Kelas Tailwind seperti `tracking-tight` atau varian ligatur OpenType memicu pembagian kalkulasi x-glyph yang salah pada Canvas 2D engine.
+
+---
+
+### Protokol Baku 5 Langkah Ekspor PDF True WYSIWYG:
+
+Wajib terapkan pola kode berikut di setiap handler `handleDownloadPdf`:
+
+```typescript
+const handleDownloadPdf = async () => {
+  // ── LANGKAH 1: Ambil container canvas preview & simpan zoom asli ──
+  const deskCanvas = document.getElementById('print-desk-canvas-area');
+  const prevZoom = deskCanvas ? deskCanvas.style.zoom : '';
+
+  try {
+    setIsExportingPdf(true);
+    toast.loading('Menyiapkan dokumen PDF True WYSIWYG...', { id: 'pdf-export-toast' });
+
+    // ── LANGKAH 2: Matikan zoom DOM riil & paksa reflow sinkron ──
+    if (deskCanvas) {
+      deskCanvas.style.zoom = '1';
+      deskCanvas.style.transform = 'none';
+      void deskCanvas.offsetHeight; // Wajib: Trigger synchronous browser reflow
+    }
+
+    // ── LANGKAH 3: Tunggu rasterisasi font & beri jeda settle repaint tick ──
+    if (document.fonts?.ready) {
+      await document.fonts.ready;
+    }
+    // Wajib: Beri jeda 120ms agar browser menstabilkan layout tree pada skala 100%
+    await new Promise((resolve) => setTimeout(resolve, 120));
+
+    // Target seluruh lembar cetak
+    const sheetElements = document.querySelectorAll<HTMLElement>('.print-sheet');
+    if (!sheetElements || sheetElements.length === 0) {
+      toast.error('Lembar dokumen tidak ditemukan', { id: 'pdf-export-toast' });
+      return;
+    }
+
+    const html2canvas = (await import('html2canvas-pro')).default;
+    const { jsPDF } = await import('jspdf');
+
+    const pdf = new jsPDF({
+      orientation: isLandscape ? 'landscape' : 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true, // Wajib: Stream compression aktif
+    });
+
+    const pdfWidth = isLandscape ? 297 : 210;
+    const pdfHeight = isLandscape ? 210 : 297;
+
+    for (let i = 0; i < sheetElements.length; i++) {
+      if (i > 0) {
+        pdf.addPage('a4', isLandscape ? 'landscape' : 'portrait');
+      }
+
+      const sheetElement = sheetElements[i];
+
+      // ── LANGKAH 4: Render canvas dengan onclone sanitizer ──
+      const canvas = await html2canvas(sheetElement, {
+        scale: 2.0, // Wajib: Skala 2.0 (setara ~200 DPI Retina). DILARANG > 2.5
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        // DILARANG menyetel windowWidth artifisial yang merusak rasio cetak fisik
+        onclone: (clonedDoc) => {
+          // A. Netralkan desk canvas pada DOM kloningan
+          const clonedDesk = clonedDoc.getElementById('print-desk-canvas-area');
+          if (clonedDesk) {
+            clonedDesk.style.zoom = '1';
+            clonedDesk.style.transform = 'none';
+          }
+          // B. Netralkan seluruh sheet kloningan: hilangkan border, shadow, dan paksa letterSpacing normal
+          const clonedSheets = clonedDoc.querySelectorAll<HTMLElement>('.print-sheet');
+          clonedSheets.forEach((s) => {
+            s.style.zoom = '1';
+            s.style.transform = 'none';
+            s.style.letterSpacing = 'normal';
+            s.style.fontVariantLigatures = 'none';
+            s.style.border = 'none';
+            s.style.boxShadow = 'none';
+            s.style.outline = 'none';
+          });
+        },
+      });
+
+      // ── LANGKAH 5: Preservasi Rasio Aspek (Anti-Gepeng & Anti-Bloat) ──
+      // Kompresi 98% (dari 25MB turun ke ~400KB per lembar)
+      const imgData = canvas.toDataURL('image/jpeg', 0.88);
+
+      const canvasRatio = canvas.height / canvas.width;
+      const imgHeight = pdfWidth * canvasRatio;
+
+      // Render proporsional: DILARANG keras memaksa tinggi pdfHeight jika canvas berbeda rasio
+      if (imgHeight <= pdfHeight + 1) {
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, imgHeight, undefined, 'FAST');
+      } else {
+        // Konten multi-page slicing otomatis jika melebihi batas lembar
+        let heightLeft = imgHeight;
+        let position = 0;
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= pdfHeight;
+
+        while (heightLeft > 0) {
+          position -= pdfHeight;
+          pdf.addPage('a4', isLandscape ? 'landscape' : 'portrait');
+          pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+          heightLeft -= pdfHeight;
+        }
+      }
+    }
+
+    pdf.save(filename);
+    toast.success('Dokumen PDF berhasil diunduh (True WYSIWYG)', { id: 'pdf-export-toast' });
+
+  } catch (err: any) {
+    console.error('[PDF Export Error]:', err);
+    toast.error(err.message || 'Gagal mengekspor PDF, gunakan menu cetak browser', { id: 'pdf-export-toast' });
+  } finally {
+    // ── SELALU KEMBALIKAN ZOOM DESK KE POSISI ASLI ──
+    if (deskCanvas) {
+      deskCanvas.style.zoom = prevZoom;
+    }
+    setIsExportingPdf(false);
+  }
+};
+```
+
+---
+
+### Aturan Tipografi & Tata Letak Lembar Cetak
+
+1. **Gunakan `letter-spacing: normal` Secara Eksplisit**:
+   Pada elemen root `.print-sheet`, berikan atribut `style={{ letterSpacing: 'normal' }}`. Hindari kelas `tracking-tight` atau `tracking-tighter` di dokumen cetak dinas.
+2. **Zero-Truncation pada Nama Pejabat**:
+   Dilarang keras menggunakan kelas `truncate` atau `overflow-hidden` pada kotak nama pejabat atau staf di diagram bagan! Gunakan:
+   ```tsx
+   className="text-xs font-bold text-black text-center whitespace-normal break-words leading-tight px-1 line-clamp-2"
    ```
-4. Render canvas menggunakan `html2canvas-pro` dengan skala optimal dan pembersihan border lembar:
+   sehingga nama panjang seperti `Yulianti Demo`, `Himal Demo`, `Asep Demo` selalu ditampilkan utuh tanpa elipsis `...`.
+3. **Pembersihan Judul Dokumen (Title Hygiene Guard)**:
+   Hindari penggabungan kata yang menimbulkan redundansi seperti `BAGAN STRUKTUR ORGANISASI STRUKTUR ORGANISASI KURIKULUM`. Selalu bersihkan dengan regex:
    ```typescript
-   const canvas = await html2canvas(sheetElement, {
-     scale: 2, // Wajib: 2.0 (setara ~200 DPI Retina, tajam dan hemat RAM). DILARANG > 2.5
-     useCORS: true,
-     allowTaint: true,
-     backgroundColor: '#ffffff',
-     logging: false,
-     onclone: (clonedDoc) => {
-       // Wajib: Bersihkan border dan shadow lembar agar tepi dokumen PDF bersih tanpa garis bingkai di kiri/kanan
-       const sheets = clonedDoc.querySelectorAll('.print-sheet');
-       sheets.forEach((s: any) => {
-         s.style.border = 'none';
-         s.style.boxShadow = 'none';
-         s.style.outline = 'none';
-       });
-     },
-   });
+   const cleanDivisionName = useMemo(() => {
+     return rawTitle.replace(/BAGAN|STRUKTUR ORGANISASI|STRUKTUR|ORGANISASI|DIVISI/gi, '').trim().toUpperCase();
+   }, [rawTitle]);
    ```
-5. **Anti-Bloat Guard & Aspect Ratio Preservation (PENTING - Mencegah File 20MB+ & Mencegah Teks Gepeng/Terpadatkan)**:
-   > **DILARANG KERAS** menggunakan `image/png` untuk embedding canvas lembar penuh ke jsPDF! PNG tanpa kompresi akan menghasilkan file PDF raksasa (15–25 MB per lembar).
-   > **WAJIB** gunakan format `image/jpeg` dengan kualitas `0.88`.
-   > **DILARANG KERAS** memaksa `pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight)` tanpa menghitung rasio aspek canvas! Memaksa tinggi `pdfHeight` saat tinggi canvas berbeda akan membuat logo pemda/sekolah menjadi lonjong/oval dan teks/tabel terdistorsi vertikal ("terpadatkan/gepeng").
-   > **WAJIB** hitung rasio canvas dan render secara proporsional presisi:
-   ```typescript
-   // Kompresi 98% (dari 24 MB turun ke ~400 KB) dengan teks dan logo tajam
-   const imgData = canvas.toDataURL('image/jpeg', 0.88);
-
-   // Preservasi Rasio Aspek 100% True WYSIWYG
-   const canvasRatio = canvas.height / canvas.width;
-   const imgHeight = pdfWidth * canvasRatio;
-
-   if (imgHeight <= pdfHeight + 1) {
-     // Pas 1 lembar utuh tanpa distorsi apapun
-     pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, imgHeight, undefined, 'FAST');
-   } else {
-     // Jika konten melebihi 1 lembar fisik, lakukan slicing proporsional antar halaman
-     let heightLeft = imgHeight;
-     let position = 0;
-
-     pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
-     heightLeft -= pdfHeight;
-
-     while (heightLeft > 0) {
-       position -= pdfHeight;
-       pdf.addPage('a4', isLandscape ? 'landscape' : 'portrait');
-       pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
-       heightLeft -= pdfHeight;
-     }
-   }
-   ```
-6. Unduh otomatis melalui `pdf.save(filename)`.
+4. **Pemisahan Lembar Dinas Terstruktur (Multi-Sheet Separation)**:
+   Jika suatu dokumen memiliki bagan pohon hierarki DAN tabel matriks tupoksi panjang, **DILARANG** memaksakan keduanya masuk ke dalam 1 lembar A4 Landscape:
+   - **Lembar 1**: Kop Surat Resmi + Bagan Visual Pohon + Blok Tanda Tangan 2-Tier SSOT.
+   - **Lembar 2**: Kop Surat Resmi + Matriks Rincian Formasi & Tugas Pokok + Blok Tanda Tangan 2-Tier SSOT.
+   Ini menjamin dokumen mematuhi standar arsip tata naskah dinas pemerintah.
 
 ### Engine 2: Fallback Programmatic Vector Generator (`jsPDF` + `autotable`)
 Modul terisolasi di `src/utils/print/modules/pdf<NamaModul>.ts` yang digunakan jika rendering canvas mengalami kendala:

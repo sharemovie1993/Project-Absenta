@@ -212,6 +212,8 @@ export const StrukturDivisiPrintModal: React.FC<StrukturDivisiPrintModalProps> =
       if (document.fonts && document.fonts.ready) {
         await document.fonts.ready;
       }
+      // Wajib: Beri jeda 120ms agar browser menstabilkan layout tree pada skala 100%
+      await new Promise((resolve) => setTimeout(resolve, 120));
 
       const sheetElements = document.querySelectorAll('.print-sheet');
       if (!sheetElements || sheetElements.length === 0) {
