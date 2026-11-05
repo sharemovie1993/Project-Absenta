@@ -32,6 +32,8 @@ interface InteractiveDenahCanvasToolbarProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onResetZoom: () => void;
+  onSetZoomScale: (scale: number) => void;
+  onFitToScreen: () => void;
   onUndo: () => void;
   onRedo: () => void;
   canUndo: boolean;
@@ -191,40 +193,69 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
           {isLightMode ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
         </button>
 
-        {/* Zoom Controls */}
-        <div
-          className={`flex items-center rounded-lg p-0.5 border ${
-            isLightMode ? 'bg-slate-100 border-slate-200' : 'bg-slate-800 border-slate-700'
-          }`}
-        >
-          <button
-            type="button"
-            onClick={onZoomOut}
-            className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 cursor-pointer"
-            title="Perkecil (-)"
+          {/* Zoom Controls */}
+          <div
+            className={`flex items-center rounded-lg p-0.5 border ${
+              isLightMode ? 'bg-slate-100 border-slate-200' : 'bg-slate-800 border-slate-700'
+            }`}
           >
-            <ZoomOut className="w-3.5 h-3.5" />
-          </button>
-          <span className="text-[11px] font-mono font-bold px-1.5 min-w-[38px] text-center">
-            {Math.round(scale * 100)}%
-          </span>
-          <button
-            type="button"
-            onClick={onZoomIn}
-            className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 cursor-pointer"
-            title="Perbesar (+)"
-          >
-            <ZoomIn className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={onResetZoom}
-            className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 border-l border-slate-200 dark:border-slate-700 cursor-pointer"
-            title="Reset Skala"
-          >
-            <Maximize className="w-3.5 h-3.5" />
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={onZoomOut}
+              className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 cursor-pointer"
+              title="Perkecil (-)"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+            <select
+              value={(() => {
+                const rounded = Math.round(scale * 100);
+                if ([50, 60, 75, 100, 125, 150].includes(rounded)) return rounded.toString();
+                return 'custom';
+              })()}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === 'fit') {
+                  onFitToScreen();
+                } else if (val !== 'custom') {
+                  onSetZoomScale(parseInt(val, 10) / 100);
+                }
+              }}
+              className="text-[11px] font-mono font-bold px-1 py-0.5 bg-transparent border-0 text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-hidden text-center"
+              title="Preset Zoom / Pas Layar"
+            >
+              <option value="fit" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+                Pas Layar
+              </option>
+              <option value="50" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">50%</option>
+              <option value="60" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">60%</option>
+              <option value="75" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">75%</option>
+              <option value="100" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">100%</option>
+              <option value="125" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">125%</option>
+              <option value="150" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">150%</option>
+              {![50, 60, 75, 100, 125, 150].includes(Math.round(scale * 100)) && (
+                <option value="custom" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+                  {Math.round(scale * 100)}%
+                </option>
+              )}
+            </select>
+            <button
+              type="button"
+              onClick={onZoomIn}
+              className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 cursor-pointer"
+              title="Perbesar (+)"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={onFitToScreen}
+              className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 border-l border-slate-200 dark:border-slate-700 cursor-pointer"
+              title="Pas Layar (Fit to Screen)"
+            >
+              <Maximize className="w-3.5 h-3.5" />
+            </button>
+          </div>
 
         {/* Undo / Redo */}
         {!isReadOnly && (

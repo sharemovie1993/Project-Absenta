@@ -10,12 +10,21 @@ export function generateAutoFloorplan(unassignedRooms: UnassignedRoomItem[]): De
   const gap = 20;
 
   if (unassignedRooms.length > 0) {
-    const perRow = 5;
+    const total = unassignedRooms.length;
+    // Landscape aspect ratio: adapt column count based on room count
+    let perRow = 5;
+    if (total > 40) perRow = 10;
+    else if (total > 24) perRow = 8;
+    else if (total > 12) perRow = 6;
+
+    const totalRows = Math.ceil(total / perRow);
+    const corridorRow = Math.max(1, Math.floor(totalRows / 2));
+
     unassignedRooms.forEach((room, idx) => {
       const col = idx % perRow;
       const row = Math.floor(idx / perRow);
       // Place blocks with corridor separation
-      const yOffset = row >= 2 ? row * (roomHeight + gap) + 50 : row * (roomHeight + gap);
+      const yOffset = row >= corridorRow ? row * (roomHeight + gap) + 50 : row * (roomHeight + gap);
       generated.push({
         id: `node-auto-${room.kelas_id}-${idx}`,
         x: snap(60 + col * (roomWidth + gap)),
@@ -35,7 +44,7 @@ export function generateAutoFloorplan(unassignedRooms: UnassignedRoomItem[]): De
     generated.push({
       id: `node-auto-corridor-1`,
       x: 60,
-      y: snap(60 + 2 * (roomHeight + gap)),
+      y: snap(60 + corridorRow * (roomHeight + gap)),
       width: snap(perRow * (roomWidth + gap) - gap),
       height: 40,
       rotation: 0,

@@ -105,15 +105,9 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-        if (e.shiftKey) {
-          e.preventDefault();
-          handleRedo();
-        } else {
-          e.preventDefault();
-          handleUndo();
-        }
+        e.preventDefault();
+        e.shiftKey ? handleRedo() : handleUndo();
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
         e.preventDefault();
         handleRedo();
@@ -166,34 +160,69 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
     toast.success(`Menambahkan ${virtual.label_utama}`);
   };
 
+  // Fit canvas view to screen without manual zooming
+  const handleFitToScreen = useCallback((targetNodes: DenahElementNode[] = nodes) => {
+    const container = canvasRef.current;
+    if (!container) return;
+    const containerW = container.clientWidth;
+    const containerH = container.clientHeight;
+    if (containerW <= 0 || containerH <= 0) return;
+
+    if (targetNodes.length === 0) {
+      setScale(1);
+      setPanOffset({ x: 40, y: 40 });
+      return;
+    }
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const n of targetNodes) {
+      minX = Math.min(minX, n.x);
+      minY = Math.min(minY, n.y);
+      maxX = Math.max(maxX, n.x + (n.width || 100));
+      maxY = Math.max(maxY, n.y + (n.height || 60));
+    }
+
+    const contentW = Math.max(200, maxX - minX);
+    const contentH = Math.max(160, maxY - minY);
+    const padding = 40;
+    const availW = Math.max(100, containerW - padding * 2);
+    const availH = Math.max(100, containerH - padding * 2);
+
+    const fitScale = Math.min(availW / contentW, availH / contentH);
+    const clampedScale = Math.max(0.4, Math.min(1.25, Math.round(fitScale * 100) / 100));
+
+    const offsetX = Math.round((containerW - contentW * clampedScale) / 2 - minX * clampedScale);
+    const offsetY = Math.round((containerH - contentH * clampedScale) / 2 - minY * clampedScale);
+
+    setScale(clampedScale);
+    setPanOffset({ x: Math.max(16, offsetX), y: Math.max(16, offsetY) });
+    container.scrollLeft = 0;
+    container.scrollTop = 0;
+  }, [nodes]);
+
+  // Auto-fit on initial render when nodes exist
+  useEffect(() => {
+    if (initialNodes.length > 0) {
+      const timer = setTimeout(() => handleFitToScreen(initialNodes), 150);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   // Auto-generate layout
   const handleAutoGenerateLayout = () => {
     const generated = generateAutoFloorplan(unassignedRooms);
     pushHistory(generated);
+    setTimeout(() => handleFitToScreen(generated), 50);
     toast.success(`Berhasil menyusun tata letak otomatis (${generated.length} elemen)`);
   };
 
   // Node transformations
-  const handleRotateNode = (nodeId: string) => {
-    const updated = nodes.map((n) =>
-      n.id === nodeId ? { ...n, rotation: (n.rotation + 90) % 360 } : n
-    );
-    pushHistory(updated);
-  };
-
-  const handleFlipH = (nodeId: string) => {
-    const updated = nodes.map((n) =>
-      n.id === nodeId ? { ...n, flip_h: !n.flip_h } : n
-    );
-    pushHistory(updated);
-  };
-
-  const handleFlipV = (nodeId: string) => {
-    const updated = nodes.map((n) =>
-      n.id === nodeId ? { ...n, flip_v: !n.flip_v } : n
-    );
-    pushHistory(updated);
-  };
+  const handleRotateNode = (id: string) =>
+    pushHistory(nodes.map((n) => (n.id === id ? { ...n, rotation: (n.rotation + 90) % 360 } : n)));
+  const handleFlipH = (id: string) =>
+    pushHistory(nodes.map((n) => (n.id === id ? { ...n, flip_h: !n.flip_h } : n)));
+  const handleFlipV = (id: string) =>
+    pushHistory(nodes.map((n) => (n.id === id ? { ...n, flip_v: !n.flip_v } : n)));
 
   // Multi-selection & batch drag engine
   const {
@@ -266,6 +295,8 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
           setScale(1);
           setPanOffset({ x: 40, y: 40 });
         }}
+        onSetZoomScale={(val) => setScale(val)}
+        onFitToScreen={() => handleFitToScreen()}
         onUndo={handleUndo}
         onRedo={handleRedo}
         canUndo={historyIdx > 0}
@@ -377,21 +408,20 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
             )}
 
             {nodes.map((node) => (
-                <DenahNodeCard
-                  key={node.id}
-                  node={node}
-                  isSelected={selectedNodeIds.includes(node.id)}
-                  onSelect={handleSelectNode}
-                  onRotate={handleRotateNode}
-                  onFlipH={handleFlipH}
-                  onFlipV={handleFlipV}
-                  onDelete={handleDeleteNode}
-                  onStartDrag={handleStartDrag}
-                  onStartResize={handleStartResize}
-                  isReadOnly={isReadOnly}
-                />
-              ))
-            )}
+              <DenahNodeCard
+                key={node.id}
+                node={node}
+                isSelected={selectedNodeIds.includes(node.id)}
+                onSelect={handleSelectNode}
+                onRotate={handleRotateNode}
+                onFlipH={handleFlipH}
+                onFlipV={handleFlipV}
+                onDelete={handleDeleteNode}
+                onStartDrag={handleStartDrag}
+                onStartResize={handleStartResize}
+                isReadOnly={isReadOnly}
+              />
+            ))}
 
             {/* Marquee Area Selection Rectangle */}
             {marqueeBox && (
