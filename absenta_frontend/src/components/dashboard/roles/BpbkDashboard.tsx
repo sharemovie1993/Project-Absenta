@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   SlidersHorizontal,
   RefreshCw,
+  Network,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -32,6 +33,7 @@ import { BpbkHomeVisitTab } from './bpbk/tabs/BpbkHomeVisitTab';
 import { BpbkRujukanTab } from './bpbk/tabs/BpbkRujukanTab';
 import { BpbkAsesmenTab } from './bpbk/tabs/BpbkAsesmenTab';
 import { BpbkRekapTab } from './bpbk/tabs/BpbkRekapTab';
+import { DivisiStrukturOrganisasiView } from '@/components/academic/struktur/DivisiStrukturOrganisasiView';
 
 const Modal = lazy(() => import('@/components/ui/Modal').then((m) => ({ default: m.Modal })));
 const SiswaForm = lazy(() =>
@@ -61,6 +63,7 @@ export const BpbkDashboard: React.FC<BpbkDashboardProps> = () => {
     'rujukan',
     'asesmen',
     'rekap',
+    'struktur_organisasi',
   ];
 
   // Mobile Filter Collapsible State

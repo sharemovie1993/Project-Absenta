@@ -11,6 +11,7 @@ import {
   ArrowLeft,
   SlidersHorizontal,
   RefreshCw,
+  Network,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -28,6 +29,7 @@ import { BkkPelamarTab } from './bkk/tabs/BkkPelamarTab';
 import { BkkTracerTab } from './bkk/tabs/BkkTracerTab';
 import { BkkMitraTab } from './bkk/tabs/BkkMitraTab';
 import { BkkRekapTab } from './bkk/tabs/BkkRekapTab';
+import { DivisiStrukturOrganisasiView } from '@/components/academic/struktur/DivisiStrukturOrganisasiView';
 
 export interface BkkDashboardProps {
   user?: {
@@ -50,6 +52,7 @@ export const BkkDashboard: React.FC<BkkDashboardProps> = () => {
     'tracer',
     'mitra',
     'rekap',
+    'struktur_organisasi',
   ];
 
   // Mobile Filter Collapsible State

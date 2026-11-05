@@ -9,7 +9,8 @@ export type BpbkTabId =
   | 'homevisit'
   | 'rujukan'
   | 'asesmen'
-  | 'rekap';
+  | 'rekap'
+  | 'struktur_organisasi';
 
 export interface BpbkNavTabItem {
   id: BpbkTabId;

@@ -1,6 +1,7 @@
 import React from 'react';
 
-export type BkkTabId = 'ringkasan' | 'loker' | 'pelamar' | 'tracer' | 'mitra' | 'rekap';
+export type BkkTabId = 'ringkasan' | 'loker' | 'pelamar' | 'tracer' | 'mitra' | 'rekap'
+  | 'struktur_organisasi';
 
 export interface BkkNavTabItem {
   id: BkkTabId;
