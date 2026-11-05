@@ -7,13 +7,26 @@ const cleanDetails = (details: string | null): string => {
   return details.replace(/NIP[:.]?\s?\d+/gi, '').replace(/•\s*$/, '').trim();
 };
 
+export interface TransformManagementOptions {
+  /**
+   * Jika true, slot formasi sub-bidang resmi yang belum diisi akan dirender sebagai slot kosong interaktif.
+   * Digunakan khusus untuk sub-tab Dashboard Role agar Waka/Koordinator dapat langsung klik "+ Klik Isi Slot".
+   * Jika false (default), halaman pusat (StrukturOrganisasiPage) hanya merender personil yang aktif tanpa slot kosong.
+   */
+  includeEmptySlots?: boolean;
+}
+
 /**
  * JALUR VVIP PIMPINAN & MANAJEMEN (ISOLASI TOTAL)
+ * Mendukung 2 Perilaku UI:
+ * 1. Pusat (Struktur Organisasi Makro): Tampilan bersih tanpa slot kosong, tetap horizontal & vertikal sesuai desain asli.
+ * 2. Dashboard Sub-Tab: Formasi lengkap sub-bidang dengan slot kosong vertikal.
  */
 export const transformManagementToTree = (
   roleCodes: string[],
   data: GroupedStruktur,
-  jurusans: Record<string, string>
+  jurusans: Record<string, string>,
+  options: TransformManagementOptions = {}
 ): TopologyNodeData | null => {
   if (!data) return null;
 
@@ -91,80 +104,105 @@ export const transformManagementToTree = (
             });
           }
 
-          // 2. Petakan Sub-Bidang Resmi sebagai Slot
           const remainingMembers = members.filter((m: any) => m.id !== leaderMember?.id);
-          const legacyUnflaggedMembers = remainingMembers.filter((m: any) => !m.assignment_flag);
-          const assignedMembers = new Set<string>();
 
-          subFlags.forEach(subFlag => {
-            // Cari yang eksplisit punya flag
-            let matched = remainingMembers.find((m: any) => m.assignment_flag === subFlag.flag && !assignedMembers.has(m.id));
-            
-            // Jika tidak ada yang match flag, gunakan member legacy yang belum punya flag
-            if (!matched && legacyUnflaggedMembers.length > 0) {
-              matched = legacyUnflaggedMembers.shift();
-            }
-
-            if (matched) {
-              assignedMembers.add(matched.id);
-              const rawLabel = matched.custom_title || subFlag.label;
+          if (!options.includeEmptySlots) {
+            // ── PERILAKU 1: STRUKTUR ORGANISASI PUSAT (MAKRO) ──
+            // Tampilan Pusat TIDAK BOLEH BERUBAH: HANYA menampilkan staf yang aktif terdaftar.
+            // Tidak menampilkan slot kosong sub-bidang, sehingga struktur makro tetap bersih dan proporsional.
+            remainingMembers.forEach((m: any) => {
+              const rawLabel = m.custom_title || (m.assignment_flag ? getFlagLabel(kode, m.assignment_flag) : (isKoordinatorTu ? 'Staf TU' : `STAF ${area}`));
               memberSlots.push({
-                id: `slot-${kode}-${n.id}-${subFlag.flag}-${matched.id}`,
+                id: `staff-${kode}-${n.id}-${m.id}`,
                 label: shortenPosition(rawLabel),
-                subLabel: matched.name,
+                subLabel: m.name,
                 type: 'STRUCT' as any,
                 data: {
                   roleCode: kode,
-                  realMemberId: matched.id,
+                  realMemberId: m.id,
                   realStrukturId: n.id,
                   unit_id: n.unit_id,
                   isLeader: false,
-                  assignmentFlag: subFlag.flag,
-                  customTitle: matched.custom_title,
-                  isSlot: true,
+                  assignmentFlag: m.assignment_flag,
+                  customTitle: m.custom_title,
                 }
               });
-            } else {
-              // SLOT KOSONG: Siap diklik langsung untuk penugasan tanpa dropdown manual
-              memberSlots.push({
-                id: `slot-empty-${kode}-${n.id}-${subFlag.flag}`,
-                label: shortenPosition(subFlag.label),
-                subLabel: 'Belum Diisi',
-                type: 'STRUCT' as any,
-                data: {
-                  roleCode: kode,
-                  realStrukturId: n.id,
-                  unit_id: n.unit_id,
-                  isLeader: false,
-                  assignmentFlag: subFlag.flag,
-                  customTitle: subFlag.label,
-                  isUnassigned: true,
-                  isSlot: true,
-                }
-              });
-            }
-          });
+            });
+          } else {
+            // ── PERILAKU 2: SUB-TAB DASHBOARD ROLE (MIKRO / VERTIKAL) ──
+            // Tampilan Sub-Tab: Menampilkan seluruh formasi slot resmi (terisi maupun kosong).
+            // Waka / Koordinator dapat langsung klik "+ Klik Isi Slot" pada slot yang kosong.
+            const legacyUnflaggedMembers = remainingMembers.filter((m: any) => !m.assignment_flag);
+            const assignedMembers = new Set<string>();
 
-          // 3. Tambahan personil non-slot jika melebihi kuota standar
-          const leftoverMembers = remainingMembers.filter((m: any) => !assignedMembers.has(m.id) && !legacyUnflaggedMembers.includes(m));
-          leftoverMembers.forEach((extra: any) => {
-            const rawLabel = extra.custom_title || (extra.assignment_flag ? getFlagLabel(kode, extra.assignment_flag) : `STAF ${area}`);
-            memberSlots.push({
-              id: `staff-extra-${kode}-${n.id}-${extra.id}`,
-              label: shortenPosition(rawLabel),
-              subLabel: extra.name,
-              type: 'STRUCT' as any,
-              data: {
-                roleCode: kode,
-                realMemberId: extra.id,
-                realStrukturId: n.id,
-                unit_id: n.unit_id,
-                isLeader: false,
-                assignmentFlag: extra.assignment_flag,
-                customTitle: extra.custom_title,
+            subFlags.forEach(subFlag => {
+              let matched = remainingMembers.find((m: any) => m.assignment_flag === subFlag.flag && !assignedMembers.has(m.id));
+              
+              if (!matched && legacyUnflaggedMembers.length > 0) {
+                matched = legacyUnflaggedMembers.shift();
+              }
+
+              if (matched) {
+                assignedMembers.add(matched.id);
+                const rawLabel = matched.custom_title || subFlag.label;
+                memberSlots.push({
+                  id: `slot-${kode}-${n.id}-${subFlag.flag}-${matched.id}`,
+                  label: shortenPosition(rawLabel),
+                  subLabel: matched.name,
+                  type: 'STRUCT' as any,
+                  data: {
+                    roleCode: kode,
+                    realMemberId: matched.id,
+                    realStrukturId: n.id,
+                    unit_id: n.unit_id,
+                    isLeader: false,
+                    assignmentFlag: subFlag.flag,
+                    customTitle: matched.custom_title,
+                    isSlot: true,
+                  }
+                });
+              } else {
+                // SLOT KOSONG: Siap diklik langsung untuk penugasan tanpa dropdown manual
+                memberSlots.push({
+                  id: `slot-empty-${kode}-${n.id}-${subFlag.flag}`,
+                  label: shortenPosition(subFlag.label),
+                  subLabel: 'Belum Diisi',
+                  type: 'STRUCT' as any,
+                  data: {
+                    roleCode: kode,
+                    realStrukturId: n.id,
+                    unit_id: n.unit_id,
+                    isLeader: false,
+                    assignmentFlag: subFlag.flag,
+                    customTitle: subFlag.label,
+                    isUnassigned: true,
+                    isSlot: true,
+                  }
+                });
               }
             });
-          });
+
+            // Tambahan personil non-slot jika melebihi kuota standar
+            const leftoverMembers = remainingMembers.filter((m: any) => !assignedMembers.has(m.id) && !legacyUnflaggedMembers.includes(m));
+            leftoverMembers.forEach((extra: any) => {
+              const rawLabel = extra.custom_title || (extra.assignment_flag ? getFlagLabel(kode, extra.assignment_flag) : `STAF ${area}`);
+              memberSlots.push({
+                id: `staff-extra-${kode}-${n.id}-${extra.id}`,
+                label: shortenPosition(rawLabel),
+                subLabel: extra.name,
+                type: 'STRUCT' as any,
+                data: {
+                  roleCode: kode,
+                  realMemberId: extra.id,
+                  realStrukturId: n.id,
+                  unit_id: n.unit_id,
+                  isLeader: false,
+                  assignmentFlag: extra.assignment_flag,
+                  customTitle: extra.custom_title,
+                }
+              });
+            });
+          }
 
         } else {
           // Fallback jalur non-flags

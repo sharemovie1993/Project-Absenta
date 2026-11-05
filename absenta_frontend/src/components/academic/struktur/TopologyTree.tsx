@@ -11,12 +11,14 @@ interface TopologyTreeProps {
   data: TopologyNodeData;
   onAction?: (node: TopologyNodeData, actionType?: string, element?: HTMLElement | null) => void;
   editingId?: string | null;
+  isVerticalLayout?: boolean;
 }
 
 export const TopologyTree = React.memo<TopologyTreeProps>(({ 
   data, 
   onAction,
-  editingId
+  editingId,
+  isVerticalLayout = false
 }) => {
   if (data.type === 'ROOT' && data.children) {
     return (
@@ -44,6 +46,7 @@ export const TopologyTree = React.memo<TopologyTreeProps>(({
                     isLast={idx === data.children!.length - 1} 
                     onAction={onAction}
                     editingId={editingId}
+                    isVerticalLayout={isVerticalLayout}
                   />
                 </div>
               ))}
@@ -55,18 +58,20 @@ export const TopologyTree = React.memo<TopologyTreeProps>(({
   }
 
   return (
-    <div className="p-8">
+    <div className={cn("p-4 sm:p-8 flex flex-col items-center", isVerticalLayout && "w-full max-w-xl mx-auto")}>
       <TreeNode 
         node={data} 
         depth={0} 
         isLast={true} 
         onAction={onAction}
         editingId={editingId}
+        isVerticalLayout={isVerticalLayout}
       />
     </div>
   );
 }, (prev, next) => {
   return prev.editingId === next.editingId &&
+         prev.isVerticalLayout === next.isVerticalLayout &&
          prev.data === next.data;
 });
 
@@ -130,9 +135,10 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
   
   const shouldBeVertical = 
     !isRoot && !isTopLeader && 
-    (node.data?.forceVertical === true || 
+    (isVerticalLayout || 
+     node.data?.forceVertical === true || 
      (node.data?.forceVertical !== false && 
-      (isVerticalLayout || (node.type === 'GROUP' && depth >= 1) || (node.type === 'STRUCT' && depth >= 2) || (node.type === 'CATEGORY' && depth >= 2))
+      ((node.type === 'GROUP' && depth >= 1) || (node.type === 'STRUCT' && depth >= 2) || (node.type === 'CATEGORY' && depth >= 2))
      )
     );
   const isExpanded = true; 

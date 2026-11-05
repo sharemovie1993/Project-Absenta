@@ -146,7 +146,7 @@ export const DivisiStrukturOrganisasiView: React.FC<UniversalDivisiStrukturViewP
   // 3. Transform Tree for Specific Division
   const divisionTreeData = useMemo(() => {
     if (!treeRes?.data) return null;
-    const tree = transformManagementToTree([divisionCode], treeRes.data, jurusans);
+    const tree = transformManagementToTree([divisionCode], treeRes.data, jurusans, { includeEmptySlots: true });
     // Jika tree memiliki children (kategori divisi), ambil langsung kategori divisinya sebagai root tampilan
     if (tree && tree.children && tree.children.length === 1) {
       return tree.children[0];
@@ -341,6 +341,7 @@ export const DivisiStrukturOrganisasiView: React.FC<UniversalDivisiStrukturViewP
                 data={divisionTreeData}
                 editingId={editingNode?.node.id}
                 onAction={handleNodeAction}
+                isVerticalLayout={true}
               />
             )}
           </TreeErrorBoundary>
