@@ -228,16 +228,6 @@ export const RaporSettingsRekapTable: React.FC<RaporSettingsRekapTableProps> = R
               </tbody>
             </table>
           </div>
-                          <Settings className="w-3.5 h-3.5" />
-                          <span>Atur Slot</span>
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
 
           {/* ========================================================== */}
           {/* 2. MOBILE CARD VIEW (< md)                                 */}
