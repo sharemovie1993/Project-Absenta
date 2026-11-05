@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
+  UniversalDocumentSignatures,
   PrintHeader,
   usePrintHeaderData,
 } from '@/components/ui/PrintHeader';
@@ -634,39 +635,28 @@ export const TrackingSiswaPrintModal: React.FC<TrackingSiswaPrintModalProps> = (
             <span><strong className="text-slate-400 print:text-black">·</strong>: Tidak Ada Jadwal/Non-Aktif</span>
           </div>
 
-          {/* 6. TANDA TANGAN 2-TIER RESMI (Wali Kelas, Orang Tua & Kepala Sekolah) */}
-          <div className="pt-2 text-[9px] print:text-[8.5px]">
-            {/* Baris 1: Wali Kelas & Orang Tua */}
-            <div className="flex justify-between items-start">
-              <div className="text-center w-56">
-                <p className="font-semibold text-slate-600 print:text-black">Mengetahui,</p>
-                <p className="font-bold">Wali Kelas {kelasNama}</p>
-                <div className="h-10 print:h-9" />
-                <p className="font-bold underline uppercase">{customWalasNama}</p>
-                <p className="text-[7.5px] font-mono text-slate-600 print:text-black">
-                  {customWalasNip ? `NIP. ${customWalasNip}` : 'NIP. .....................................'}
-                </p>
-              </div>
-
-              <div className="text-center w-56">
-                <p className="text-slate-600 print:text-black">{customTitimangsa}</p>
-                <p className="font-bold">Orang Tua / Wali Siswa</p>
-                <div className="h-10 print:h-9" />
-                <p className="font-bold underline uppercase">( .................................................... )</p>
-                <p className="text-[7.5px] text-slate-500 print:text-black">Tanda Tangan & Nama Terang</p>
-              </div>
-            </div>
-
-            {/* Baris 2: Kepala Sekolah (Tengah Bawah) */}
-            <div className="text-center w-64 mx-auto -mt-2">
-              <p className="font-semibold text-slate-600 print:text-black">Mengesahkan,</p>
-              <p className="font-bold">Kepala Sekolah</p>
-              <div className="h-10 print:h-9" />
-              <p className="font-bold underline uppercase">{customKepsekNama}</p>
-              <p className="text-[7.5px] font-mono text-slate-600 print:text-black">
-                {customKepsekNip ? `NIP. ${customKepsekNip}` : 'NIP. .....................................'}
-              </p>
-            </div>
+          {/* 6. TANDA TANGAN MENGGUNAKAN UNIVERSAL SIGNATURE ENGINE */}
+          <div className="pt-2 w-full page-break-inside-avoid">
+            <UniversalDocumentSignatures
+              layout="triangle_rapor"
+              titimangsaDate={customTitimangsa}
+              showTitimangsa={false}
+              overrideSignerLeft={{
+                roleTitle: `Mengetahui,\nWali Kelas ${kelasNama}`,
+                personName: customWalasNama,
+                nip: customWalasNip,
+              }}
+              overrideSignerRight={{
+                roleTitle: `${customTitimangsa}\nOrang Tua / Wali Siswa`,
+                personName: '( .................................................... )',
+              }}
+              overrideSignerCenter={{
+                roleTitle: 'Mengesahkan,\nKepala Sekolah',
+                personName: customKepsekNama,
+                nip: customKepsekNip,
+              }}
+              spacingHeightMm={12}
+            />
           </div>
         </div>
       </PrintDocumentSheet>

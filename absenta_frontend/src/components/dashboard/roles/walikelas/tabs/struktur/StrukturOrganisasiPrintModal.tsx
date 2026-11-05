@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
+  UniversalDocumentSignatures,
   PrintHeader,
   usePrintHeaderData,
 } from '@/components/ui/PrintHeader';
@@ -456,46 +457,29 @@ export const StrukturOrganisasiPrintModal: React.FC<StrukturOrganisasiPrintModal
           </div>
         </div>
 
-        {/* ── TANDA TANGAN RESMI 2-TIER (Kemenag/Kemdikbud Standard) ── */}
-        <div className="mt-8 pt-2">
-          {/* Tier 1: Wali Kelas (Kanan) & Ketua Murid (Kiri) */}
-          <div className="flex justify-between items-start text-center">
-            <div className="w-56 font-serif">
-              <p className="text-[11px] mb-1">Mengetahui,</p>
-              <p className="text-[11px] font-bold mb-16">{kmTitle}</p>
-              <p className="text-[11.5px] font-bold underline uppercase">
-                {activeKmNama ? activeKmNama : '( ........................................ )'}
-              </p>
-              <p className="text-[10px] text-slate-600">Perwakilan Siswa</p>
-            </div>
-
-            <div className="w-56 font-serif">
-              <p className="text-[11px] mb-1">
-                {activeKota}, {activeTanggal}
-              </p>
-              <p className="text-[11px] font-bold mb-16">Wali Kelas {kelasNama}</p>
-              <p className="text-[11.5px] font-bold underline uppercase">
-                {activeWaliKelasNama}
-              </p>
-              <p className="text-[10px] text-slate-700 font-mono">
-                {activeWaliKelasNip ? `NIP. ${activeWaliKelasNip}` : 'NIP. ........................................'}
-              </p>
-            </div>
-          </div>
-
-          {/* Tier 2: Kepala Sekolah (Tengah Bawah) */}
-          <div className="flex justify-center mt-6 text-center">
-            <div className="w-64 font-serif">
-              <p className="text-[11px] mb-1">Mengesahkan,</p>
-              <p className="text-[11px] font-bold mb-16">Kepala Sekolah</p>
-              <p className="text-[11.5px] font-bold underline uppercase">
-                {activeKepsekNama}
-              </p>
-              <p className="text-[10px] text-slate-700 font-mono">
-                {activeKepsekNip ? `NIP. ${activeKepsekNip}` : 'NIP. ........................................'}
-              </p>
-            </div>
-          </div>
+        {/* ── TANDA TANGAN MENGGUNAKAN UNIVERSAL SIGNATURE ENGINE ── */}
+        <div className="mt-8 pt-2 w-full page-break-inside-avoid">
+          <UniversalDocumentSignatures
+            layout="triangle_rapor"
+            titimangsaCity={activeKota}
+            titimangsaDate={activeTanggal}
+            overrideSignerLeft={{
+              roleTitle: `Mengetahui,\n${kmTitle || 'Perwakilan Siswa'}`,
+              personName: activeKmNama ? activeKmNama : '( ........................................ )',
+            }}
+            overrideSignerRight={{
+              roleTitle: `Wali Kelas ${kelasNama},`,
+              personName: activeWaliKelasNama,
+              nip: activeWaliKelasNip,
+            }}
+            overrideSignerCenter={{
+              roleTitle: 'Mengesahkan,\nKepala Sekolah',
+              personName: activeKepsekNama,
+              nip: activeKepsekNip,
+            }}
+            fontFamilyClass="font-serif"
+            spacingHeightMm={16}
+          />
         </div>
       </PrintDocumentSheet>
     </UniversalDocumentModal>

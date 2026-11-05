@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
+  UniversalDocumentSignatures,
   PrintHeader,
   usePrintHeaderData,
 } from '@/components/ui/PrintHeader';
@@ -771,46 +772,29 @@ export const RekapPresensiPrintModal: React.FC<RekapPresensiPrintModalProps> = (
                   <div className="italic text-[7.5px]">Dokumen Resmi Absenta Digital Platform</div>
                 </div>
 
-                {/* Penandatangan 3 Kolom Sejajar (Efisien Ruang Vertikal) */}
-                <div className="grid grid-cols-3 gap-2 text-center font-serif">
-                  {/* Kolom 1: Perwakilan Siswa / KM */}
-                  <div>
-                    <p className={`${sigTextClass} mb-0.5`}>Mengetahui,</p>
-                    <p className={`${sigTextClass} font-bold`}>{kmTitle}</p>
-                    <div className={sigGapClass} />
-                    <p className={`${sigNameClass} font-bold underline uppercase`}>
-                      {activeKmNama ? activeKmNama : '( ........................................ )'}
-                    </p>
-                    <p className={`${sigSubClass} text-slate-600`}>Perwakilan Siswa</p>
-                  </div>
-
-                  {/* Kolom 2: Kepala Sekolah */}
-                  <div>
-                    <p className={`${sigTextClass} mb-0.5`}>Mengesahkan,</p>
-                    <p className={`${sigTextClass} font-bold`}>Kepala Sekolah</p>
-                    <div className={sigGapClass} />
-                    <p className={`${sigNameClass} font-bold underline uppercase`}>
-                      {activeKepsekNama}
-                    </p>
-                    <p className={`${sigSubClass} text-slate-700 font-mono`}>
-                      {activeKepsekNip ? `NIP. ${activeKepsekNip}` : 'NIP. ........................................'}
-                    </p>
-                  </div>
-
-                  {/* Kolom 3: Guru Mapel atau Wali Kelas */}
-                  <div>
-                    <p className={`${sigTextClass} mb-0.5`}>
-                      {activeKota}, {activeTanggal}
-                    </p>
-                    <p className={`${sigTextClass} font-bold`}>{guruMapelNama ? 'Guru Mata Pelajaran' : `Wali Kelas ${kelasNama}`}</p>
-                    <div className={sigGapClass} />
-                    <p className={`${sigNameClass} font-bold underline uppercase`}>
-                      {guruMapelNama || activeWaliKelasNama}
-                    </p>
-                    <p className={`${sigSubClass} text-slate-700 font-mono`}>
-                      {(guruMapelNip || activeWaliKelasNip) ? `NIP. ${guruMapelNip || activeWaliKelasNip}` : 'NIP. ........................................'}
-                    </p>
-                  </div>
+                {/* Penandatangan 3 Kolom Sejajar Menggunakan Universal Signature Engine */}
+                <div className="w-full page-break-inside-avoid">
+                  <UniversalDocumentSignatures
+                    layout="tri_party_row"
+                    titimangsaCity={activeKota}
+                    titimangsaDate={activeTanggal}
+                    overrideSignerLeft={{
+                      roleTitle: `Mengetahui,\n${kmTitle || 'Perwakilan Siswa'}`,
+                      personName: activeKmNama ? activeKmNama : '( ........................................ )',
+                    }}
+                    overrideSignerCenter={{
+                      roleTitle: 'Mengesahkan,\nKepala Sekolah',
+                      personName: activeKepsekNama,
+                      nip: activeKepsekNip,
+                    }}
+                    overrideSignerRight={{
+                      roleTitle: guruMapelNama ? 'Guru Mata Pelajaran,' : `Wali Kelas ${kelasNama},`,
+                      personName: guruMapelNama || activeWaliKelasNama,
+                      nip: guruMapelNip || activeWaliKelasNip,
+                    }}
+                    fontFamilyClass="font-serif"
+                    spacingHeightMm={16}
+                  />
                 </div>
               </div>
             )}

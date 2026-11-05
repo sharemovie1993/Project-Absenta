@@ -1,5 +1,5 @@
 import React from 'react';
-import { PrintDocumentSheet, PrintHeader } from '@/components/ui/PrintHeader';
+import { PrintDocumentSheet, PrintHeader, UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
 import { MapPin, Camera, CheckCircle2 } from 'lucide-react';
 import type { SiswaPkl } from '@/api/hubin.api';
 
@@ -241,45 +241,27 @@ export const KunjunganPrintSheet: React.FC<KunjunganPrintSheetProps> = React.mem
         * Lembar ini wajib diisi dan diparaf oleh Pembimbing DU/DI serta Guru Pembimbing setiap kali kunjungan monitoring berlangsung sebagai bukti otentik kegiatan bimbingan PKL sesuai regulasi Kemendikbudristek &amp; Ditjen Vokasi.
       </p>
 
-      {/* 7. Tanda Tangan 2-Tier Standar Industri */}
-      <div className="mt-6 text-black text-xs font-sans">
-        {/* Baris 1: Pembimbing Industri & Guru Pembimbing */}
-        <div className="flex justify-between items-start text-center">
-          <div className="w-56">
-            <p className="font-medium text-gray-700 mb-0.5">Mengetahui,</p>
-            <p className="font-bold uppercase text-[11px]">{activeMitraNama}</p>
-            <div className="h-16" />
-            <p className="font-bold underline text-[11px]">( .................................................... )</p>
-            <p className="text-[10px] text-gray-600">Pembimbing Industri / DU/DI</p>
-          </div>
-
-          <div className="w-64">
-            <p className="text-gray-700 mb-0.5">
-              {activeKota}, {activeTanggal}
-            </p>
-            <p className="font-bold uppercase text-[11px]">Guru Pembimbing PKL</p>
-            <div className="h-16" />
-            <p className="font-bold underline text-[11px]">
-              {activePembimbingNama || '( .................................................... )'}
-            </p>
-            <p className="text-[10px] text-gray-600">Guru Pembimbing Sekolah</p>
-          </div>
-        </div>
-
-        {/* Baris 2: Waka Hubungan Industri (Hubin) / Kepala Sekolah */}
-        <div className="text-center mt-6 w-full flex justify-center">
-          <div className="w-72">
-            <p className="font-medium text-gray-700 mb-0.5">Mengesahkan,</p>
-            <p className="font-bold uppercase text-[11px]">Waka. Bidang Hubungan Industri</p>
-            <div className="h-14" />
-            <p className="font-bold underline text-[11px]">
-              {activeHubinNama || activeKepsekNama || '( .................................................... )'}
-            </p>
-            <p className="text-[10px] text-gray-600">
-              NIP. {activeHubinNip || activeKepsekNip || '....................................................'}
-            </p>
-          </div>
-        </div>
+      {/* 7. Tanda Tangan Menggunakan Universal Signature Engine */}
+      <div className="mt-6 w-full page-break-inside-avoid">
+        <UniversalDocumentSignatures
+          layout="triangle_rapor"
+          titimangsaCity={activeKota}
+          titimangsaDate={activeTanggal}
+          overrideSignerLeft={{
+            roleTitle: `Mengetahui,\n${activeMitraNama || 'Pembimbing Industri / DU/DI'}`,
+            personName: '( .................................................... )',
+          }}
+          overrideSignerRight={{
+            roleTitle: 'Guru Pembimbing PKL,',
+            personName: activePembimbingNama || '( .................................................... )',
+          }}
+          overrideSignerCenter={{
+            roleTitle: 'Mengesahkan,\nWaka. Bidang Hubungan Industri',
+            personName: activeHubinNama || activeKepsekNama || '( .................................................... )',
+            nip: activeHubinNip || activeKepsekNip,
+          }}
+          spacingHeightMm={16}
+        />
       </div>
     </PrintDocumentSheet>
   );

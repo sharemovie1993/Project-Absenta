@@ -1,5 +1,5 @@
 import React from 'react';
-import { PrintDocumentSheet, PrintHeader } from '@/components/ui/PrintHeader';
+import { PrintDocumentSheet, PrintHeader, UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
 import { MapPin, Camera } from 'lucide-react';
 import { resolveAttachmentUrl, getDriveThumbnailUrl } from '@/utils/hubinUtils';
 import type { MitraTargetGroup } from './types';
@@ -238,44 +238,27 @@ export const KunjunganMitraPrintSheet: React.FC<KunjunganMitraPrintSheetProps> =
         </div>
       )}
 
-      {/* 7. Pengesahan 3 Pihak (2-Tier Tanda Tangan Resmi SPJ) */}
-      <div className="mt-4 text-black text-xs font-sans">
-        <div className="flex justify-between items-start text-center">
-          <div className="w-56">
-            <p className="font-medium text-gray-700 mb-0.5">Mengetahui,</p>
-            <p className="font-bold uppercase text-[11px]">{activeMitraNama}</p>
-            <div className="h-16" />
-            <p className="font-bold underline text-[11px]">( .................................................... )</p>
-            <p className="text-[10px] text-gray-600">Pembimbing Industri / DU/DI</p>
-          </div>
-
-          <div className="w-64">
-            <p className="text-gray-700 mb-0.5">
-              {activeKota}, {activeTanggal}
-            </p>
-            <p className="font-bold uppercase text-[11px]">Guru Pembimbing PKL</p>
-            <div className="h-16" />
-            <p className="font-bold underline text-[11px]">
-              {activePembimbingNama || '( .................................................... )'}
-            </p>
-            <p className="text-[10px] text-gray-600">Guru Pembimbing Lapangan</p>
-          </div>
-        </div>
-
-        {/* Baris 2: Waka Hubin / Kepala Sekolah */}
-        <div className="text-center mt-5 w-full flex justify-center">
-          <div className="w-72">
-            <p className="font-medium text-gray-700 mb-0.5">Mengesahkan,</p>
-            <p className="font-bold uppercase text-[11px]">Waka. Bidang Hubungan Industri</p>
-            <div className="h-14" />
-            <p className="font-bold underline text-[11px]">
-              {activeHubinNama || '( .................................................... )'}
-            </p>
-            <p className="text-[10px] text-gray-600">
-              NIP. {activeHubinNip || '....................................................'}
-            </p>
-          </div>
-        </div>
+      {/* 7. Pengesahan 3 Pihak Menggunakan Universal Signature Engine */}
+      <div className="mt-4 w-full page-break-inside-avoid">
+        <UniversalDocumentSignatures
+          layout="triangle_rapor"
+          titimangsaCity={activeKota}
+          titimangsaDate={activeTanggal}
+          overrideSignerLeft={{
+            roleTitle: `Mengetahui,\n${activeMitraNama || 'Pembimbing Industri / DU/DI'}`,
+            personName: '( .................................................... )',
+          }}
+          overrideSignerRight={{
+            roleTitle: 'Guru Pembimbing PKL,',
+            personName: activePembimbingNama || '( .................................................... )',
+          }}
+          overrideSignerCenter={{
+            roleTitle: 'Mengesahkan,\nWaka. Bidang Hubungan Industri',
+            personName: activeHubinNama || '( .................................................... )',
+            nip: activeHubinNip,
+          }}
+          spacingHeightMm={16}
+        />
       </div>
     </PrintDocumentSheet>
   );

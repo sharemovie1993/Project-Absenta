@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
+  UniversalDocumentSignatures,
   PrintHeader,
   usePrintHeaderData,
 } from '@/components/ui/PrintHeader';
@@ -624,93 +625,29 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
 
             {/* Standar Penandatangan Dokumen (2-Tier Signatures - Simetris Sempurna) */}
             {pageIdx === pages.length - 1 && (
-              <div className="pt-2 text-[10px] text-black break-inside-avoid">
-                {/* Baris Titimangsa di Kanan (Tepat di atas kolom Guru Pembimbing) */}
-                <div className="flex justify-end mb-1 text-[10px] text-black">
-                  <div className="w-1/2 text-center">
-                    {activeKota ? `${activeKota}, ` : ''}{activeTanggal}
-                  </div>
-                </div>
-
-                {/* Baris 1: Grid 2 Kolom Sejajar & Simetris Sempurna */}
-                <div className="grid grid-cols-2 gap-8 text-[10px]">
-                  {/* Kolom Kiri: Waka Hubin (HUBIN) */}
-                  <div className="flex flex-col justify-between h-[125px] text-center">
-                    <div>
-                      <p className="font-semibold text-slate-800">Mengetahui,</p>
-                      <p className="font-bold text-black min-h-[24px] flex items-center justify-center leading-snug">
-                        {hubinTitle || 'Waka. Bidang Hubungan Industri'}
-                      </p>
-                    </div>
-                    <div>
-                      {activeHubinNama ? (
-                        <>
-                          <p className="font-bold underline uppercase text-black text-[10px]">{activeHubinNama}</p>
-                          <p className="text-[9px] text-slate-700">
-                            {activeHubinNip ? `NIP. ${activeHubinNip}` : 'NIP. -'}
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <p className="font-bold underline uppercase tracking-widest text-black text-[10px]">( ............................................................ )</p>
-                          <p className="text-[9px] text-slate-700">NIP. ........................................</p>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Kolom Kanan: Guru Pembimbing PKL / Ketua Program Keahlian */}
-                  <div className="flex flex-col justify-between h-[125px] text-center">
-                    <div>
-                      <p className="font-semibold text-slate-800">Mengetahui,</p>
-                      <p className="font-bold text-black min-h-[24px] flex items-center justify-center leading-snug">
-                        {pembimbingTitle || (isJurusanContext ? (jurusanNama ? `Ketua Program Keahlian ${jurusanNama}` : 'Ketua Program Keahlian') : 'Guru Pembimbing PKL')}
-                      </p>
-                    </div>
-                    <div>
-                      {activePembimbingNama ? (
-                        <>
-                          <p className="font-bold underline uppercase text-black text-[10px]">{activePembimbingNama}</p>
-                          <p className="text-[9px] text-slate-700">
-                            {activePembimbingNip ? `NIP. ${activePembimbingNip}` : 'NIP. -'}
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <p className="font-bold underline uppercase tracking-widest text-black text-[10px]">( ............................................................ )</p>
-                          <p className="text-[9px] text-slate-700">NIP. ........................................</p>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Baris 2: Pengesahan Kepala Sekolah (Tengah Bawah) */}
-                <div className="mt-4 flex justify-center text-center text-[10px]">
-                  <div className="w-80 flex flex-col justify-between h-[115px] text-center">
-                    <div>
-                      <p className="font-semibold text-slate-800">Menyetujui,</p>
-                      <p className="font-bold text-black min-h-[24px] flex items-center justify-center leading-snug">
-                        Kepala Sekolah
-                      </p>
-                    </div>
-                    <div>
-                      {activeKepsekNama ? (
-                        <>
-                          <p className="font-bold underline uppercase text-black text-[10px]">{activeKepsekNama}</p>
-                          <p className="text-[9px] text-slate-700">
-                            {activeKepsekNip ? `NIP. ${activeKepsekNip}` : 'NIP. -'}
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <p className="font-bold underline uppercase tracking-widest text-black text-[10px]">( ............................................................ )</p>
-                          <p className="text-[9px] text-slate-700">NIP. ........................................</p>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
+              {/* Standar Penandatangan Dokumen Menggunakan Universal Signature Engine */}
+              <div className="pt-2 w-full break-inside-avoid">
+                <UniversalDocumentSignatures
+                  layout="triangle_rapor"
+                  titimangsaCity={activeKota}
+                  titimangsaDate={activeTanggal}
+                  overrideSignerLeft={{
+                    roleTitle: `Mengetahui,\n${hubinTitle || 'Waka. Bidang Hubungan Industri'}`,
+                    personName: activeHubinNama || '( ............................................................ )',
+                    nip: activeHubinNip,
+                  }}
+                  overrideSignerRight={{
+                    roleTitle: `Mengetahui,\n${pembimbingTitle || (isJurusanContext ? (jurusanNama ? `Ketua Program Keahlian ${jurusanNama}` : 'Ketua Program Keahlian') : 'Guru Pembimbing PKL')}`,
+                    personName: activePembimbingNama || '( ............................................................ )',
+                    nip: activePembimbingNip,
+                  }}
+                  overrideSignerCenter={{
+                    roleTitle: 'Menyetujui,\nKepala Sekolah',
+                    personName: activeKepsekNama || '( ............................................................ )',
+                    nip: activeKepsekNip,
+                  }}
+                  spacingHeightMm={16}
+                />
               </div>
             )}
           </PrintDocumentSheet>

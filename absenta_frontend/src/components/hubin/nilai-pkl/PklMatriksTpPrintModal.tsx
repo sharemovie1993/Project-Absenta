@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
+  UniversalDocumentSignatures,
   PrintHeader,
   usePrintHeaderData,
 } from '@/components/ui';
@@ -649,63 +650,29 @@ export const PklMatriksTpPrintModal: React.FC<PklMatriksTpPrintModalProps> = ({
                   <strong>Catatan Kepatuhan Kurikulum:</strong> Rumusan Tujuan Pembelajaran (TP) di atas diselaraskan berdasarkan Standard Operating Procedure (SOP) mitra dunia usaha/industri dan disahkan untuk dicetak pada buku Rapor PKL serta Sertifikat Praktik Kerja Lapangan siswa.
                 </div>
 
-                {/* TANDA TANGAN RESMI 3-TIER SIMETRIS */}
-                <div className="mt-3">
-                  {/* Baris Tanggal di Kanan (Tepat di atas kolom Kaprog) */}
-                  <div className="flex justify-end mb-1 text-[10px] text-black">
-                    <div className="w-1/2 text-center">
-                      {(sekolahData as any)?.kota || 'Purwakarta'}, {tanggalPengesahan}
-                    </div>
-                  </div>
-
-                  {/* Grid 2 Kolom Sejajar Sempurna */}
-                  <div className="grid grid-cols-2 gap-8 text-[10px]">
-                    {/* Kolom Kiri: Verifikator (Wakasek Hubin) */}
-                    <div className="flex flex-col justify-between h-[130px] text-center">
-                      <div>
-                        <p className="text-slate-800">Diverifikasi oleh,</p>
-                        <p className="font-bold text-black min-h-[28px] flex items-center justify-center leading-snug">
-                          Wakil Kepala Sekolah Bidang Hubinmas
-                        </p>
-                      </div>
-                      <div>
-                        <p className="font-bold underline text-black text-[10.5px]">{wakasekHubinNama}</p>
-                        <p className="text-[9px] text-slate-700">NIP. {wakasekHubinNip}</p>
-                      </div>
-                    </div>
-
-                    {/* Kolom Kanan: Penyusun (Kaprog) */}
-                    <div className="flex flex-col justify-between h-[130px] text-center">
-                      <div>
-                        <p className="text-slate-800">Dibuat oleh,</p>
-                        <p className="font-bold text-black min-h-[28px] flex items-center justify-center leading-snug">
-                          Ketua Program Keahlian {jurusanNama}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="font-bold underline text-black text-[10.5px]">{kaprogNama}</p>
-                        <p className="text-[9px] text-slate-700">NIP. {kaprogNip}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Baris 2: Pengesahan Kepala Sekolah (Di Tengah Bawah) */}
-                  <div className="mt-3 flex justify-center text-center text-[10px]">
-                    <div className="w-80 flex flex-col justify-between h-[115px]">
-                      <div>
-                        <p className="text-slate-800">Mengetahui / Mengesahkan,</p>
-                        <p className="font-bold text-black">Kepala Sekolah</p>
-                      </div>
-                      <div>
-                        <p className="font-bold underline text-black text-[10.5px]">
-                          {kepalaSekolahNama || (sekolahData as any)?.kepala_sekolah || 'Kepala Sekolah'}
-                        </p>
-                        <p className="text-[9px] text-slate-700">
-                          NIP. {kepalaSekolahNip || (sekolahData as any)?.nip_kepala || '-'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                {/* TANDA TANGAN RESMI MENGGUNAKAN UNIVERSAL SIGNATURE ENGINE */}
+                <div className="mt-3 w-full page-break-inside-avoid">
+                  <UniversalDocumentSignatures
+                    layout="triangle_rapor"
+                    titimangsaCity={(sekolahData as any)?.kota || 'Purwakarta'}
+                    titimangsaDate={tanggalPengesahan}
+                    overrideSignerLeft={{
+                      roleTitle: 'Diverifikasi oleh,\nWakil Kepala Sekolah Bidang Hubinmas',
+                      personName: wakasekHubinNama || '( .................................................... )',
+                      nip: wakasekHubinNip,
+                    }}
+                    overrideSignerRight={{
+                      roleTitle: `Dibuat oleh,\nKetua Program Keahlian ${jurusanNama || ''}`,
+                      personName: kaprogNama || '( .................................................... )',
+                      nip: kaprogNip,
+                    }}
+                    overrideSignerCenter={{
+                      roleTitle: 'Mengetahui / Mengesahkan,\nKepala Sekolah',
+                      personName: kepalaSekolahNama || (sekolahData as any)?.kepala_sekolah || 'Kepala Sekolah',
+                      nip: kepalaSekolahNip || (sekolahData as any)?.nip_kepala,
+                    }}
+                    spacingHeightMm={16}
+                  />
                 </div>
               </div>
             )}
