@@ -40,6 +40,8 @@ export interface StudentIdentity {
   tingkatRomawi: string;
   fase: 'E' | 'F';
   jurusanNama: string; // Konsentrasi Keahlian (e.g. "Kuliner")
+  namaJurusan: string; // Alias untuk kemudahan akses komponen
+  konsentrasiKeahlian: string; // Alias untuk kemudahan akses komponen
   programKeahlian: string; // Program Keahlian (e.g. "Kuliner")
   bidangKeahlian: string; // Bidang Keahlian (e.g. "Pariwisata")
 
@@ -149,7 +151,7 @@ export function formatTtl(tempat?: string | null, tanggal?: string | Date | null
   const tStr = (tempat || '').trim();
   const dStr = formatTanggalIndonesia(tanggal).trim();
   if (tStr && dStr) return `${tStr}, ${dStr}`;
-  return tStr || dStr || '-';
+  return tStr || dStr || '';
 }
 
 /**
@@ -178,10 +180,17 @@ export function cleanNip(nip?: string | null): string {
  * Format NIP dengan Zero-Fallback Mandate:
  * Mengembalikan string kosong "" jika NIP tidak valid/non-PNS.
  * DILARANG keras mengembalikan "NIP. -" atau "NIP. null".
+ * Jika 18 digit PNS, format resmi: YYYYMMDD YYYYMM G NNN (misal: NIP. 19711102 200801 1 001)
  */
 export function formatNip(nip?: string | null): string {
   const c = cleanNip(nip);
-  return c ? `NIP. ${c}` : '';
+  if (!c) return '';
+  const digitsOnly = c.replace(/\D/g, '');
+  if (digitsOnly.length === 18) {
+    const formatted = `${digitsOnly.slice(0, 8)} ${digitsOnly.slice(8, 14)} ${digitsOnly.slice(14, 15)} ${digitsOnly.slice(15, 18)}`;
+    return `NIP. ${formatted}`;
+  }
+  return `NIP. ${c}`;
 }
 
 /**
@@ -192,9 +201,9 @@ export function formatAlamatLengkap(obj: Record<string, any>): string {
   if (obj.alamat_lengkap) return String(obj.alamat_lengkap).trim();
 
   const parts: string[] = [];
-  if (obj.alamat) parts.push(String(obj.alamat).trim());
+  if (obj.alamat_jalan || obj.alamat) parts.push(String(obj.alamat_jalan || obj.alamat).trim());
   
-  const rtRw = [obj.rt ? `RT ${obj.rt}` : '', obj.rw ? `RW ${obj.rw}` : ''].filter(Boolean).join('/');
+  const rtRw = [obj.rt ? `RT ${obj.rt}` : '', obj.rw ? `RW ${obj.rw}` : ''].filter(Boolean).join(' / ');
   if (rtRw) parts.push(rtRw);
   
   if (obj.dusun) parts.push(`Dsn. ${obj.dusun}`);
@@ -236,6 +245,8 @@ export function normalizeStudentIdentity(raw: any): StudentIdentity {
       tingkatRomawi: 'X',
       fase: 'E',
       jurusanNama: '-',
+      namaJurusan: '-',
+      konsentrasiKeahlian: '-',
       programKeahlian: '-',
       bidangKeahlian: '-',
       namaAyah: '-',
@@ -270,16 +281,39 @@ export function normalizeStudentIdentity(raw: any): StudentIdentity {
 
   // Relasi Kelas & Jurusan (Pengecekan bertingkat multi-source)
   const kelas = raw.Kelas || raw.kelas || raw.Siswa?.Kelas || raw.Siswa?.kelas || {};
-  const jurusanDirect = raw.Jurusan || raw.jurusan || raw.Siswa?.Jurusan || raw.Siswa?.jurusan || {};
-  const jurusanViaKelas = kelas.Jurusan || kelas.jurusan || {};
-  const effectiveJurusan = jurusanViaKelas.nama ? jurusanViaKelas : jurusanDirect;
+  const jurusanDirect = raw.Jurusan || raw.jurusan || raw.Siswa?.Jurusan || raw.Siswa?.jurusan;
+  const jurusanViaKelas = kelas.Jurusan || kelas.jurusan;
 
-  const progDirect = effectiveJurusan.ProgramKeahlian || effectiveJurusan.programKeahlian || {};
-  const progViaKelas = jurusanViaKelas.ProgramKeahlian || jurusanViaKelas.programKeahlian || {};
-  const effectiveProg = progViaKelas.nama ? progViaKelas : progDirect;
+  const jurusanObj = (typeof jurusanViaKelas === 'object' && jurusanViaKelas !== null)
+    ? jurusanViaKelas
+    : (typeof jurusanDirect === 'object' && jurusanDirect !== null ? jurusanDirect : null);
+
+  const jurusanStr = typeof raw.jurusan === 'string'
+    ? raw.jurusan
+    : (typeof raw.Jurusan === 'string' ? raw.Jurusan : (typeof raw.nama_jurusan === 'string' ? raw.nama_jurusan : ''));
+
+  const rawJurusanNama = jurusanObj?.nama || jurusanObj?.nama_jurusan || jurusanStr || '';
+
+  const progViaJurusan = jurusanObj?.ProgramKeahlian || jurusanObj?.programKeahlian;
+  const progDirect = raw.ProgramKeahlian || raw.program_keahlian || raw.Siswa?.ProgramKeahlian;
+  const progObj = (typeof progViaJurusan === 'object' && progViaJurusan !== null)
+    ? progViaJurusan
+    : (typeof progDirect === 'object' && progDirect !== null ? progDirect : null);
+  const progStr = typeof raw.program_keahlian === 'string' ? raw.program_keahlian : '';
+
+  const rawProgNama = progObj?.nama || progObj?.nama_program_keahlian || progStr || '';
+
+  const bidangViaProg = progObj?.BidangKeahlian || progObj?.bidangKeahlian;
+  const bidangDirect = raw.BidangKeahlian || raw.bidang_keahlian;
+  const bidangObj = (typeof bidangViaProg === 'object' && bidangViaProg !== null)
+    ? bidangViaProg
+    : (typeof bidangDirect === 'object' && bidangDirect !== null ? bidangDirect : null);
+  const bidangStr = typeof raw.bidang_keahlian === 'string' ? raw.bidang_keahlian : '';
+
+  const rawBidangNama = bidangObj?.nama || bidangObj?.bidang_keahlian || bidangStr || '-';
 
   // Nama Kelas & Tingkat
-  const rawNamaKelas = kelas.nama_kelas || kelas.nama || raw.nama_kelas || raw.nama_rombel || '';
+  const rawNamaKelas = kelas.nama_kelas || kelas.nama || raw.nama_kelas || raw.nama_rombel || raw.kelas || '';
   let tingkat = Number(kelas.tingkat || raw.tingkat || 10);
   if (isNaN(tingkat) || tingkat <= 0) {
     if (rawNamaKelas.startsWith('XII') || rawNamaKelas.startsWith('12')) tingkat = 12;
@@ -290,9 +324,9 @@ export function normalizeStudentIdentity(raw: any): StudentIdentity {
   const fase: 'E' | 'F' = tingkat === 10 ? 'E' : 'F';
 
   // Konsentrasi Keahlian, Program Keahlian, & Bidang Keahlian
-  const jurusanNama = effectiveJurusan.nama || raw.konsentrasi_keahlian || rawNamaKelas || '-';
-  const programKeahlian = effectiveProg.nama || raw.program_keahlian || effectiveJurusan.nama || '-';
-  const bidangKeahlian = effectiveProg.bidang_keahlian || raw.bidang_keahlian || '-';
+  const jurusanNama = rawJurusanNama || raw.konsentrasi_keahlian || (rawNamaKelas ? '' : '-') || '-';
+  const programKeahlian = rawProgNama || rawJurusanNama || '-';
+  const bidangKeahlian = rawBidangNama;
 
   // Identitas Personal
   const nama = raw.nama_siswa || raw.nama || raw.Siswa?.nama_siswa || raw.Siswa?.nama || '';
@@ -341,6 +375,8 @@ export function normalizeStudentIdentity(raw: any): StudentIdentity {
     tingkatRomawi,
     fase,
     jurusanNama,
+    namaJurusan: jurusanNama,
+    konsentrasiKeahlian: jurusanNama,
     programKeahlian,
     bidangKeahlian,
     namaAyah,
@@ -420,10 +456,23 @@ export function normalizeTeacherIdentity(raw: any): TeacherIdentity {
   const jkRaw = String(raw.jenis_kelamin || 'L').toUpperCase();
   const jenisKelaminLabel = jkRaw.startsWith('P') ? 'Perempuan' : 'Laki-laki';
 
+  let namaLengkapGelar = raw.nama_lengkap || raw.nama_dengan_gelar || '';
+  if (!namaLengkapGelar && nama) {
+    const gDepan = (raw.gelar_depan || '').trim();
+    const gBelakang = (raw.gelar_belakang || '').trim();
+    const parts: string[] = [];
+    if (gDepan) parts.push(gDepan);
+    parts.push(nama);
+    let base = parts.join(' ');
+    if (gBelakang) base = `${base}, ${gBelakang}`;
+    namaLengkapGelar = base;
+  }
+  if (!namaLengkapGelar) namaLengkapGelar = nama || 'Guru';
+
   return {
     id: raw.id || raw.guru_id || '',
     nama,
-    namaLengkapGelar: raw.nama_lengkap || raw.nama_dengan_gelar || nama,
+    namaLengkapGelar,
     nip: nipCleanVal || null,
     nipClean: nipCleanVal,
     nipFormatted: nipFormattedVal,
