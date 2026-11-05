@@ -18,49 +18,50 @@ import {
   deleteDenah,
 } from '@/api/spasial.api';
 import { useKelasOptions } from '@/hooks/useKelasOptions';
-import { useRuanganOptions } from '@/hooks/useRuanganOptions';
+import { useAuthStore } from '@/store/authStore';
+import {
+  generateClassRoomMappings,
+  loadPersistedRoomMappings,
+} from '@/components/cbt/jadwal/cbtOrchestratorHelper';
 import type { DenahSpasial, TipeDenah } from '@/types/spasial.types';
 import type { UnassignedRoomItem } from '@/components/spasial/DenahPaletteSidebar';
 
 export const SarprasDenahTab: React.FC = () => {
+  const { user } = useAuthStore();
+  const tenantId = (user as any)?.tenant_id || user?.tenantId;
+
   const [loading, setLoading] = useState(false);
   const [denahList, setDenahList] = useState<DenahSpasial[]>([]);
   const [activeDenah, setActiveDenah] = useState<DenahSpasial | null>(null);
   const [filterTipe, setFilterTipe] = useState<TipeDenah | 'ALL'>('MASTER_SARPRAS');
 
-  // Load school classes and physical sarpras rooms
+  // Load active school classes (exact 55 rombel)
   const { rawList: kelasList = [] } = useKelasOptions();
-  const { rawList: ruanganList = [] } = useRuanganOptions();
 
-  // Convert classes and sarpras locations into room items for the palette
+  const activeKelasList = useMemo(() => {
+    return kelasList.filter(
+      (k) =>
+        k.is_active !== false &&
+        String((k as any).status || '').toUpperCase() !== 'NONAKTIF'
+    );
+  }, [kelasList]);
+
+  // Convert exact active classes into unassigned room items (R.01 s/d R.55)
   const unassignedRooms: UnassignedRoomItem[] = useMemo(() => {
-    const list: UnassignedRoomItem[] = [];
+    if (!activeKelasList.length) return [];
+    const persisted = loadPersistedRoomMappings(tenantId);
+    const mappings = generateClassRoomMappings(activeKelasList);
 
-    // 1. Rombel Kelas Aktif
-    kelasList.forEach((k, idx) => {
-      list.push({
-        kelas_id: k.id,
-        kelas_nama: k.nama_kelas,
-        slot_ruang: `R.${String(idx + 1).padStart(2, '0')}`,
-        nama_ruang: (k as any).Ruangan?.nama_ruangan || `Ruang Kelas ${k.nama_kelas}`,
-      });
+    return mappings.map((m) => {
+      const saved = persisted?.[m.kelas_id];
+      return {
+        kelas_id: m.kelas_id,
+        kelas_nama: m.nama_kelas,
+        slot_ruang: saved?.slot_ruang || m.slot_ruang,
+        nama_ruang: saved?.nama_ruang || m.nama_ruang,
+      };
     });
-
-    // 2. Lokasi Fisik Sarpras (Lab, Ruang Guru, dsb)
-    ruanganList.forEach((r: any) => {
-      const id = r.id || r.nama_ruangan || r.nama_lokasi;
-      if (!list.some((existing) => existing.kelas_id === id)) {
-        list.push({
-          kelas_id: `sarpras-loc-${id}`,
-          kelas_nama: r.nama_ruangan || r.nama_lokasi || r.nama,
-          slot_ruang: r.kode_ruangan || 'LAB/FAS',
-          nama_ruang: r.gedung || 'Fasilitas Kampus',
-        });
-      }
-    });
-
-    return list;
-  }, [kelasList, ruanganList]);
+  }, [activeKelasList, tenantId]);
 
   const loadData = async () => {
     setLoading(true);
