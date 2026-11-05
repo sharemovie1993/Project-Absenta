@@ -243,13 +243,6 @@ export const JadwalPiketPrintModal: React.FC<JadwalPiketPrintModalProps> = ({
       setIsExporting(false);
     }
   };
-      console.error('[PDF Export Error]', err);
-      toast.error('Gagal mengekspor canvas, membuka dialog cetak browser...', { id: toastId });
-      window.print();
-    } finally {
-      setIsExporting(false);
-    }
-  };
 
   return (
     <UniversalDocumentModal
