@@ -180,17 +180,14 @@ export function cleanNip(nip?: string | null): string {
  * Format NIP dengan Zero-Fallback Mandate:
  * Mengembalikan string kosong "" jika NIP tidak valid/non-PNS.
  * DILARANG keras mengembalikan "NIP. -" atau "NIP. null".
- * Jika 18 digit PNS, format resmi: YYYYMMDD YYYYMM G NNN (misal: NIP. 19711102 200801 1 001)
+ * Sesuai Pedoman Tata Naskah Dinas Resmi (TND Kemendikbudristek & BKN):
+ * 18 digit angka NIP ditulis bersambung/digabung tanpa spasi (misal: NIP. 197111022008011001).
  */
 export function formatNip(nip?: string | null): string {
   const c = cleanNip(nip);
   if (!c) return '';
   const digitsOnly = c.replace(/\D/g, '');
-  if (digitsOnly.length === 18) {
-    const formatted = `${digitsOnly.slice(0, 8)} ${digitsOnly.slice(8, 14)} ${digitsOnly.slice(14, 15)} ${digitsOnly.slice(15, 18)}`;
-    return `NIP. ${formatted}`;
-  }
-  return `NIP. ${c}`;
+  return `NIP. ${digitsOnly || c}`;
 }
 
 /**
