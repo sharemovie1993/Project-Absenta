@@ -9,8 +9,8 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 | Metrik Evaluasi | Hasil Peminidaian | Persentase | Status |
 |---|---|---|---|
 | **Total Halaman Utama** | **230 Halaman** | 100% | - |
-| **✅ Lolos Sempurna (Hardened)** | **146 Halaman** | 63% | **Sangat Baik** |
-| **⚠️ Sebagian Terstandar (Partial)** | **67 Halaman** | 29% | **Butuh Sentuhan Ringan** |
+| **✅ Lolos Sempurna (Hardened)** | **147 Halaman** | 64% | **Sangat Baik** |
+| **⚠️ Sebagian Terstandar (Partial)** | **66 Halaman** | 29% | **Butuh Sentuhan Ringan** |
 | **❌ Belum Terstandar (Non-Compliant)** | **17 Halaman** | 7% | **Prioritas Utama Refaktor** |
 
 ---
@@ -198,15 +198,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `BukuIndukPage.tsx`
 * **Lokasi File:** [BukuIndukPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/BukuIndukPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Menggunakan Layout tetapi belum melampirkan properti 'hardeningModuleKey' pada komponen AcademicPageLayout.
-  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
-
----
-
-### 📄 Halaman: `DapodikIntegrationPage.tsx`
-* **Lokasi File:** [DapodikIntegrationPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/DapodikIntegrationPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Menggunakan Layout tetapi belum melampirkan properti 'hardeningModuleKey' pada komponen AcademicPageLayout.
@@ -793,6 +784,13 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `CetakBerkasPage.tsx`
 * **Lokasi File:** [CetakBerkasPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/CetakBerkasPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `DapodikIntegrationPage.tsx`
+* **Lokasi File:** [DapodikIntegrationPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/DapodikIntegrationPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 

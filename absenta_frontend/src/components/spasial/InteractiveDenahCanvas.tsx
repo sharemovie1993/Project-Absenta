@@ -65,27 +65,59 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
 
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  const pushHistory = (newNodes: DenahElementNode[]) => {
-    const nextHistory = history.slice(0, historyIdx + 1);
-    nextHistory.push(newNodes);
-    setHistory(nextHistory);
-    setHistoryIdx(nextHistory.length - 1);
-    setNodes(newNodes);
-  };
+  const pushHistory = useCallback(
+    (newNodes: DenahElementNode[]) => {
+      setHistory((prev) => {
+        const next = prev.slice(0, historyIdx + 1);
+        next.push(newNodes);
+        return next;
+      });
+      setHistoryIdx((prev) => prev + 1);
+      setNodes(newNodes);
+    },
+    [historyIdx]
+  );
 
-  const handleUndo = () => {
+  const handleUndo = useCallback(() => {
     if (historyIdx > 0) {
-      setHistoryIdx(historyIdx - 1);
-      setNodes(history[historyIdx - 1]);
+      const targetIdx = historyIdx - 1;
+      setHistoryIdx(targetIdx);
+      setNodes(history[targetIdx]);
+      toast('Mengurungkan posisi kotak (Undo)', { icon: '↩️' });
     }
-  };
+  }, [historyIdx, history]);
 
-  const handleRedo = () => {
+  const handleRedo = useCallback(() => {
     if (historyIdx < history.length - 1) {
-      setHistoryIdx(historyIdx + 1);
-      setNodes(history[historyIdx + 1]);
+      const targetIdx = historyIdx + 1;
+      setHistoryIdx(targetIdx);
+      setNodes(history[targetIdx]);
+      toast('Mengulangi posisi kotak (Redo)', { icon: '↪️' });
     }
-  };
+  }, [historyIdx, history]);
+
+  // Keyboard shortcut Ctrl+Z (Undo) and Ctrl+Y (Redo)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        if (e.shiftKey) {
+          e.preventDefault();
+          handleRedo();
+        } else {
+          e.preventDefault();
+          handleUndo();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleRedo]);
 
   const snap = (val: number, step = 20) => Math.round(val / step) * step;
 

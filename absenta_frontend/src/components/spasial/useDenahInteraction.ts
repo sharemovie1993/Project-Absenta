@@ -24,6 +24,13 @@ export function useDenahInteraction({
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [marqueeBox, setMarqueeBox] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
+
+  const hasMovedRef = useRef(false);
+  const hasResizedRef = useRef(false);
+  const latestNodesRef = useRef<DenahElementNode[]>(nodes);
+
   const marqueeStartRef = useRef<{ isSelecting: boolean; startX: number; startY: number } | null>(null);
   const dragState = useRef<{
     isDragging: boolean;
@@ -86,6 +93,9 @@ export function useDenahInteraction({
         setSelectedNodeIds([nodeId]);
       }
 
+      hasMovedRef.current = false;
+      latestNodesRef.current = nodes;
+
       const targetNodes = nodes.filter((n) => activeSelection.includes(n.id));
       dragState.current = {
         isDragging: true,
@@ -103,6 +113,8 @@ export function useDenahInteraction({
       const target = nodes.find((n) => n.id === nodeId);
       if (!target) return;
       setSelectedNodeIds([nodeId]);
+      hasResizedRef.current = false;
+      latestNodesRef.current = nodes;
 
       resizeState.current = {
         isResizing: true,
@@ -144,6 +156,7 @@ export function useDenahInteraction({
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (dragState.current.isDragging && dragState.current.initialPositions.length > 0) {
+        hasMovedRef.current = true;
         const dx = (e.clientX - dragState.current.startX) / scale;
         const dy = (e.clientY - dragState.current.startY) / scale;
         const snappedDx = snap(dx);
@@ -151,8 +164,8 @@ export function useDenahInteraction({
 
         const posMap = new Map(dragState.current.initialPositions.map((p) => [p.id, p]));
 
-        setNodes((prev) =>
-          prev.map((n) => {
+        setNodes((prev) => {
+          const updated = prev.map((n) => {
             const initial = posMap.get(n.id);
             if (initial) {
               return {
@@ -162,21 +175,26 @@ export function useDenahInteraction({
               };
             }
             return n;
-          })
-        );
+          });
+          latestNodesRef.current = updated;
+          return updated;
+        });
       } else if (resizeState.current.isResizing && resizeState.current.nodeId) {
+        hasResizedRef.current = true;
         const dx = (e.clientX - resizeState.current.startX) / scale;
         const dy = (e.clientY - resizeState.current.startY) / scale;
         const newW = Math.max(100, snap(resizeState.current.origW + dx));
         const newH = Math.max(60, snap(resizeState.current.origH + dy));
 
-        setNodes((prev) =>
-          prev.map((n) =>
+        setNodes((prev) => {
+          const updated = prev.map((n) =>
             n.id === resizeState.current.nodeId
               ? { ...n, width: newW, height: newH }
               : n
-          )
-        );
+          );
+          latestNodesRef.current = updated;
+          return updated;
+        });
       } else if (marqueeStartRef.current?.isSelecting && canvasRef.current) {
         const rect = canvasRef.current.getBoundingClientRect();
         const curX = (e.clientX - rect.left - panOffset.x + canvasRef.current.scrollLeft) / scale;
@@ -190,31 +208,37 @@ export function useDenahInteraction({
         setMarqueeBox({ x: bx, y: by, width: bw, height: bh });
 
         // Select all nodes intersecting marquee rectangle
-        const selected = nodes.filter(
+        const selected = nodesRef.current.filter(
           (n) => n.x < bx + bw && n.x + n.width > bx && n.y < by + bh && n.y + n.height > by
         );
         setSelectedNodeIds(selected.map((n) => n.id));
       }
     },
-    [scale, nodes, panOffset, setNodes, canvasRef]
+    [scale, panOffset, setNodes, canvasRef]
   );
 
   const handleMouseUp = useCallback(() => {
     if (dragState.current.isDragging) {
       dragState.current.isDragging = false;
       dragState.current.initialPositions = [];
-      pushHistory(nodes);
+      if (hasMovedRef.current) {
+        pushHistory(latestNodesRef.current);
+        hasMovedRef.current = false;
+      }
     }
     if (resizeState.current.isResizing) {
       resizeState.current.isResizing = false;
       resizeState.current.nodeId = null;
-      pushHistory(nodes);
+      if (hasResizedRef.current) {
+        pushHistory(latestNodesRef.current);
+        hasResizedRef.current = false;
+      }
     }
     if (marqueeStartRef.current?.isSelecting) {
       marqueeStartRef.current = null;
       setMarqueeBox(null);
     }
-  }, [nodes, pushHistory]);
+  }, [pushHistory]);
 
   // Batch actions on all selected rooms
   const handleBatchRotate = useCallback(() => {

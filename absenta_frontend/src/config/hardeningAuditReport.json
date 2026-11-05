@@ -119,11 +119,11 @@
     "filename": "CetakBerkasPage.tsx",
     "relativePath": "src\\pages\\academic\\CetakBerkasPage.tsx"
   },
-  "dapodikintegrationpage": {
+  "academic_dapodik": {
     "usesLayout": true,
     "usesAcademicLayout": true,
     "usesPageLayout": false,
-    "usesUiComponents": false,
+    "usesUiComponents": true,
     "usesMemo": false,
     "noAnyType": true,
     "safeMapping": true,
@@ -137,7 +137,7 @@
     "tablePagination": true,
     "standardToolbar": true,
     "standardFeedback": true,
-    "standardContainer": false,
+    "standardContainer": true,
     "advancedSelect": true,
     "tableToolbar": true,
     "breadcrumbNavigation": true,
