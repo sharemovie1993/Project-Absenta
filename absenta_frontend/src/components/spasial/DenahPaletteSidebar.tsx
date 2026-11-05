@@ -279,42 +279,39 @@ export const DenahPaletteSidebar: React.FC<DenahPaletteSidebarProps> = ({
               return (
                 <div
                   key={room.kelas_id}
-                  className={`p-2.5 rounded-xl border text-xs flex items-center justify-between transition-all ${
+                  onClick={() => !isPlaced && onAddRoomNode(room)}
+                  className={`px-2.5 py-1.5 rounded-lg border text-xs flex items-center justify-between transition-all group ${
                     isPlaced
-                      ? 'bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-60'
+                      ? 'bg-slate-50/60 dark:bg-slate-800/30 border-slate-200/80 dark:border-slate-800/80 opacity-50 cursor-default'
                       : isLightMode
-                      ? 'bg-white border-slate-200 hover:border-indigo-400 hover:shadow-xs'
-                      : 'bg-slate-850 border-slate-700 hover:border-indigo-400 hover:shadow-xs'
+                      ? 'bg-white border-slate-200 hover:border-indigo-400 hover:shadow-xs cursor-pointer'
+                      : 'bg-slate-850 border-slate-750 hover:border-indigo-500 hover:shadow-xs cursor-pointer'
                   }`}
+                  title={isPlaced ? 'Sudah diletakkan di denah' : `Klik untuk menambahkan ${room.slot_ruang} (${room.kelas_nama})`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-mono font-bold px-2 py-1 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 rounded-md text-xs shrink-0">
+                    <span className="font-mono font-black px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 rounded text-[11px] shrink-0 border border-indigo-100 dark:border-indigo-900">
                       {room.slot_ruang || 'R.XX'}
                     </span>
                     <div className="min-w-0">
-                      <div className="font-bold truncate">
+                      <div className="font-bold text-[11.5px] truncate text-slate-800 dark:text-slate-100">
                         {room.kelas_nama}
                       </div>
-                      <div className="text-[10px] text-slate-400 truncate">
+                      <div className="text-[10px] text-slate-400 truncate leading-none">
                         {room.nama_ruang}
                       </div>
                     </div>
                   </div>
 
                   {isPlaced ? (
-                    <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
+                      <CheckCircle2 className="w-3 h-3" />
                       Terpasang
                     </span>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => onAddRoomNode(room)}
-                      className="px-2.5 py-1 text-xs font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 rounded-lg flex items-center gap-1 transition-colors cursor-pointer shrink-0"
-                    >
-                      <Plus className="w-3 h-3" />
-                      Pasang
-                    </button>
+                    <span className="p-1 rounded-md text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-colors shrink-0">
+                      <Plus className="w-3.5 h-3.5" />
+                    </span>
                   )}
                 </div>
               );

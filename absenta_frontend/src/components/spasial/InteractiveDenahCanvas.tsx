@@ -18,6 +18,10 @@ interface InteractiveDenahCanvasProps {
   unassignedRooms?: UnassignedRoomItem[];
   onSaveSuccess?: (updated: DenahSpasial) => void;
   isReadOnly?: boolean;
+  denahList?: DenahSpasial[];
+  onSelectDenah?: (denah: DenahSpasial) => void;
+  onCreateNewDenah?: () => void;
+  onClose?: () => void;
 }
 
 export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
@@ -25,6 +29,10 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   unassignedRooms = [],
   onSaveSuccess,
   isReadOnly = false,
+  denahList,
+  onSelectDenah,
+  onCreateNewDenah,
+  onClose,
 }) => {
   // Canvas dimulai bersih jika denah baru dibuat (tidak langsung auto-generate seluruh ruang ke canvas)
   const initialNodes = denah.elements && denah.elements.length > 0 ? denah.elements : [];
@@ -279,6 +287,10 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
         isReadOnly={isReadOnly}
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+        denahList={denahList}
+        onSelectDenah={onSelectDenah}
+        onCreateNewDenah={onCreateNewDenah}
+        onClose={onClose}
       />
 
       {/* Main Studio Body: Palette Sidebar + Canvas Surface */}
@@ -344,35 +356,27 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
               />
             )}
 
-            {nodes.length === 0 ? (
+            {/* Subtle Floating Empty State (Non-intrusive) */}
+            {nodes.length === 0 && (
               <div
-                style={{ left: '60px', top: '60px', width: '560px' }}
-                className="absolute flex flex-col items-center justify-center p-8 text-center select-none bg-white/95 dark:bg-slate-900/95 rounded-2xl border border-slate-300 dark:border-slate-700 shadow-xl"
+                style={{ left: '50%', top: '40px', transform: 'translateX(-50%)' }}
+                className="absolute z-20 flex items-center gap-2.5 px-4 py-2 rounded-full bg-slate-900/85 text-white backdrop-blur-md shadow-lg border border-slate-700/60 text-xs select-none pointer-events-auto"
               >
-                <div className="p-4 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-3xl mb-3 shadow-xs">
-                  <Wand2 className="w-10 h-10 stroke-[1.5]" />
-                </div>
-                <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
-                  Canvas Denah Masih Kosong
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mt-1 mb-4">
-                  Mulai rancang denah lokasi ruang ujian. Anda dapat menata otomatis seluruh rombel kelas atau memilih dari panel kiri.
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleAutoGenerateLayout}
-                    className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs cursor-pointer transition-colors"
-                  >
-                    <Wand2 className="w-4 h-4" />
-                    <span>
-                      Susun Otomatis ({unassignedRooms.length > 0 ? `${unassignedRooms.length} Ruangan` : 'Template Gedung'})
-                    </span>
-                  </button>
-                </div>
+                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse shrink-0" />
+                <span className="text-slate-300">
+                  Kanvas denah kosong. Pilih ruang dari panel kiri, atau
+                </span>
+                <button
+                  type="button"
+                  onClick={handleAutoGenerateLayout}
+                  className="font-bold text-indigo-300 hover:text-white underline cursor-pointer"
+                >
+                  Susun Otomatis ({unassignedRooms.length > 0 ? `${unassignedRooms.length} Ruangan` : 'Template'})
+                </button>
               </div>
-            ) : (
-              nodes.map((node) => (
+            )}
+
+            {nodes.map((node) => (
                 <DenahNodeCard
                   key={node.id}
                   node={node}
