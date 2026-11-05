@@ -28,7 +28,6 @@ import { MobileAcademicList } from '../../../components/academic/shared/MobileAc
 
 // ─── Subkomponen ─────────────────────────────────────────────────────────────
 import { RekapBulananMapelToolbar } from '../../../components/attendance/rekap/RekapBulananMapelToolbar';
-import { RekapBulananKelasPdfModal } from '../../../components/attendance/rekap/RekapBulananKelasPdfModal';
 import { RekapPresensiPrintModal } from '../../../components/attendance/rekap/RekapPresensiPrintModal';
 import { useRekapBulananMapelColumns } from '../../../components/attendance/rekap/rekapBulananMapelColumns';
 import type { RekapBulananKelasRow, ViewMode } from '../../../components/attendance/rekap/types';

@@ -1,4 +1,5 @@
 import React from 'react';
+import { UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
 import type { LoanDetailData, Installment, CooperativeSettings } from './types';
 
 interface PrintLoanRepaymentProps {
@@ -127,33 +128,29 @@ export const PrintLoanRepayment = React.memo<PrintLoanRepaymentProps>(({
       </div>
 
       {/* Tanggal dan Tanda Tangan */}
-      <div className="flex justify-between items-end pt-12 font-semibold">
+      <div className="pt-8 page-break-inside-avoid space-y-4">
         <div className="space-y-1">
           <p className="text-[10px] text-slate-550 italic">Jumlah Uang Setoran:</p>
-          <div className="border-2 border-double border-black bg-slate-50 px-4 py-2 font-mono text-[16px] font-black text-slate-900 rounded-xl">
+          <div className="border-2 border-double border-black bg-slate-50 px-4 py-2 font-mono text-[16px] font-black text-slate-900 rounded-xl inline-block">
             RP {amountNumber.toLocaleString('id-ID')},-
           </div>
         </div>
 
-        <div className="text-center space-y-16">
-          <p>Bendahara Penerima</p>
-          <div>
-            <div className="font-bold uppercase text-[11px] underline">
-              {coopSettings?.signatures?.bendahara || '........................'}
-            </div>
-            <div className="text-[10px] text-slate-500 font-medium">Tanda Tangan & Cap KSP</div>
-          </div>
-        </div>
-
-        <div className="text-center space-y-16">
-          <p>Penyetor (Anggota)</p>
-          <div>
-            <div className="font-bold uppercase text-[11px] underline">
-              {loan.member?.name}
-            </div>
-            <div className="text-[10px] text-slate-500 font-medium">Tanda Tangan</div>
-          </div>
-        </div>
+        <UniversalDocumentSignatures
+          layout="dual_walas_kepsek"
+          showTitimangsa={false}
+          overrideSignerLeft={{
+            roleTitle: 'Bendahara Penerima',
+            personName: coopSettings?.signatures?.bendahara || '........................',
+            nip: undefined,
+          }}
+          overrideSignerRight={{
+            roleTitle: 'Penyetor (Anggota)',
+            personName: loan.member?.name || '........................',
+            nip: undefined,
+          }}
+          spacingHeightMm={18}
+        />
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import React from 'react';
+import { UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
 import type { CooperativeSettings } from './types';
 
 interface PayrollItem {
@@ -177,21 +178,19 @@ export const PrintPayrollDeductions = React.memo<PrintPayrollDeductionsProps>(({
         </tbody>
       </table>
 
-      {/* Signature block */}
-      <div className="flex justify-end pt-10 font-bold text-[9px]">
-        <div className="text-center space-y-14 w-60">
-          <p>
-            Purwakarta, {monthName.charAt(0) + monthName.slice(1).toLowerCase()} {year}
-            <br />
-            Ketua Koperasi
-          </p>
-          <div>
-            <div className="underline uppercase font-bold text-[10px]">
-              {coopSettings?.signatures?.ketua || '........................'}
-            </div>
-            <div className="text-[8px] font-medium text-slate-500">Ketua Koperasi</div>
-          </div>
-        </div>
+      {/* Signature block terstandarisasi */}
+      <div className="pt-8 page-break-inside-avoid">
+        <UniversalDocumentSignatures
+          layout="single_kepsek"
+          titimangsaCity="Purwakarta"
+          titimangsaDate={`${monthName.charAt(0) + monthName.slice(1).toLowerCase()} ${year}`}
+          overrideSignerRight={{
+            roleTitle: 'Ketua Koperasi',
+            personName: coopSettings?.signatures?.ketua || '........................',
+            nip: undefined,
+          }}
+          spacingHeightMm={16}
+        />
       </div>
     </div>
   );

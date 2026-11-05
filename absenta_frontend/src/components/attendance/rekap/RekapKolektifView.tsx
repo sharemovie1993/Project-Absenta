@@ -38,7 +38,6 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAcademicFilter, AcademicFilterToolbar } from '@/components/common';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { ViewModeSwitcher } from './RekapBulananKelasToolbar';
-import { RekapBulananKelasPdfModal } from './RekapBulananKelasPdfModal';
 import { RekapPresensiPrintModal } from './RekapPresensiPrintModal';
 import type { RekapBulananKelasRow, ViewMode } from './types';
 import { cn } from '@/lib/utils';

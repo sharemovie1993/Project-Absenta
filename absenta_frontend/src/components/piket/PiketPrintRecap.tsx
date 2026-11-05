@@ -1,7 +1,6 @@
 import React from 'react';
 import type { IzinKeluarSiswa } from '../../api/piket.api';
-import { PrintHeader } from '../ui/PrintHeader';
-import { PrintSignature } from '../ui/PrintSignature';
+import { PrintHeader, UniversalDocumentSignatures } from '../ui/PrintHeader';
 
 interface PiketPrintRecapProps {
   isPrintingRekap: boolean;
@@ -106,29 +105,22 @@ export const PiketPrintRecap: React.FC<PiketPrintRecapProps> = React.memo(({
           </tbody>
         </table>
 
-        {/* Signature Area (Tanda Tangan Khas Laporan Kesiswaan) */}
-        <div className="flex justify-between text-center mt-16 px-4">
-          <PrintSignature 
-            role="principal"
-            name={tenantInfo?.kepala_sekolah}
-            nip={tenantInfo?.nip_kepala}
-            customLabel={
-              <div className="flex flex-col items-center">
-                <p>Mengetahui,</p>
-                <p className="text-[12px] font-bold">Kepala {tenantInfo?.name || 'Sekolah'},</p>
-              </div>
-            }
-            widthClass="w-[240px]"
-          />
-          <PrintSignature 
-            role="custom"
-            kota={tenantInfo?.kota || 'Jakarta'}
-            date={signatureDate ? new Date(signatureDate) : new Date()}
-            showDate={true}
-            customLabel="Guru Piket Kesiswaan,"
-            name={user?.full_name || user?.name || '........................................'}
-            customSubLabel="NIP/NUPTK. ...................................."
-            widthClass="w-[240px]"
+        {/* Signature Area Menggunakan Universal Signature Engine */}
+        <div className="mt-12 px-4 w-full page-break-inside-avoid">
+          <UniversalDocumentSignatures
+            layout="dual_unit_kepsek"
+            titimangsaCity={tenantInfo?.kota || 'Purwakarta'}
+            titimangsaDate={signatureDate || new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+            overrideSignerLeft={{
+              roleTitle: `Mengetahui,\nKepala ${tenantInfo?.name || 'Sekolah'}`,
+              personName: tenantInfo?.kepala_sekolah || '( ........................................ )',
+              nip: tenantInfo?.nip_kepala,
+            }}
+            overrideSignerRight={{
+              roleTitle: 'Guru Piket Kesiswaan,',
+              personName: user?.full_name || user?.name || '( ........................................ )',
+            }}
+            spacingHeightMm={18}
           />
         </div>
       </div>

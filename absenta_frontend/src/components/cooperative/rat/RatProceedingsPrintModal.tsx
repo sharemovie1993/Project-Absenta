@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Badge } from '../../ui';
+import { UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
 import { Printer, Copy, Check, BookOpen, Users, CheckCircle2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/axiosInstance';
@@ -296,35 +297,30 @@ export const RatProceedingsPrintModal: React.FC<RatProceedingsPrintModalProps> =
               Demikian Berita Acara dan Risalah Resmi ini dibuat dengan sebenarnya sesuai jalannya musyawarah persidangan yang sah, tertib, dan berkekuatan hukum mengikat seluruh jajaran koperasi.
             </p>
 
-            <div className="text-center font-bold text-xs uppercase pt-2">
+            <div className="text-center font-bold text-xs uppercase pt-2 mb-4">
               PRESIDIUM SIDANG RAT TAHUN BUKU {docData?.meeting?.fiscalYear || new Date().getFullYear()}
             </div>
 
-            <div className="grid grid-cols-3 gap-4 text-center text-xs pt-2">
-              <div className="space-y-16">
-                <p className="font-bold">Ketua Presidium,</p>
-                <div>
-                  <p className="font-bold underline">{presidium.chairperson || '....................................'}</p>
-                  <p className="text-[10px] text-slate-500">Pimpinan Sidang Pleno</p>
-                </div>
-              </div>
-
-              <div className="space-y-16">
-                <p className="font-bold">Sekretaris / Notulis,</p>
-                <div>
-                  <p className="font-bold underline">{presidium.secretary || '....................................'}</p>
-                  <p className="text-[10px] text-slate-500">Pencatat Risalah Sidang</p>
-                </div>
-              </div>
-
-              <div className="space-y-16">
-                <p className="font-bold">Anggota Presidium,</p>
-                <div>
-                  <p className="font-bold underline">{presidium.member || '....................................'}</p>
-                  <p className="text-[10px] text-slate-500">Anggota Presidium</p>
-                </div>
-              </div>
-            </div>
+            <UniversalDocumentSignatures
+              layout="tri_party_row"
+              showTitimangsa={false}
+              overrideSignerLeft={{
+                roleTitle: 'Ketua Presidium',
+                personName: presidium.chairperson.trim() ? presidium.chairperson.trim() : '....................................',
+                nip: 'Pimpinan Sidang Pleno',
+              }}
+              overrideSignerCenter={{
+                roleTitle: 'Sekretaris / Notulis',
+                personName: presidium.secretary.trim() ? presidium.secretary.trim() : '....................................',
+                nip: 'Pencatat Risalah Sidang',
+              }}
+              overrideSignerRight={{
+                roleTitle: 'Anggota Presidium',
+                personName: presidium.member.trim() ? presidium.member.trim() : '....................................',
+                nip: 'Anggota Presidium',
+              }}
+              spacingHeightMm={16}
+            />
           </div>
         </div>
       </div>

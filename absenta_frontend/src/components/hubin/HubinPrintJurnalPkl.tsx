@@ -1,7 +1,7 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { id as localeID } from 'date-fns/locale';
-import { PrintHeader } from '../ui/PrintHeader';
+import { PrintHeader, UniversalDocumentSignatures } from '../ui/PrintHeader';
 
 interface PrintUser {
   full_name?: string;
@@ -139,35 +139,31 @@ export const HubinPrintJurnalPkl: React.FC<HubinPrintJurnalPklProps> = React.mem
         </tbody>
       </table>
 
-      {/* Signature Section */}
-      <div className="grid grid-cols-3 gap-4 text-[9px] font-sans text-center mt-8">
-        <div>
-          <p>Mengetahui,</p>
-          <p className="font-bold">Guru Pembimbing PKL</p>
-          <div className="h-14 flex items-center justify-center">
-            <span className="text-slate-300 italic text-[8px]">(Tanda Tangan)</span>
-          </div>
-          <p className="font-bold underline uppercase">{studentPkl?.Pembimbing?.nama_guru || '................................'}</p>
-          <p className="text-[8px] text-slate-500">NIP. ................................</p>
-        </div>
-        <div>
-          <p>Mengetahui,</p>
-          <p className="font-bold">Pembimbing Industri (DUDI)</p>
-          <div className="h-14 flex items-center justify-center">
-            <span className="text-slate-300 italic text-[8px]">(Tanda Tangan & Cap)</span>
-          </div>
-          <p className="font-bold underline uppercase">................................</p>
-          <p className="text-[8px] text-slate-500">Instruktur Lapangan</p>
-        </div>
-        <div>
-          <p>Merdeka, {format(new Date(), 'dd MMMM yyyy', { locale: localeID })}</p>
-          <p className="font-bold">Siswa Praktikan</p>
-          <div className="h-14 flex items-center justify-center">
-            <span className="text-slate-300 italic text-[8px]">(Tanda Tangan)</span>
-          </div>
-          <p className="font-bold underline uppercase">{user?.full_name}</p>
-          <p className="text-[8px] text-slate-500">NIS. {studentPkl?.Siswa?.nis || '................'}</p>
-        </div>
+      {/* Signature Section Terstandarisasi */}
+      <div className="pt-8 page-break-inside-avoid">
+        <UniversalDocumentSignatures
+          layout="tri_party_row"
+          showTitimangsa={false}
+          overrideSignerLeft={{
+            headerPrefix: 'Mengetahui,',
+            roleTitle: 'Guru Pembimbing PKL',
+            personName: studentPkl?.Pembimbing?.nama_guru || '................................',
+            nip: undefined,
+          }}
+          overrideSignerCenter={{
+            headerPrefix: 'Mengetahui,',
+            roleTitle: 'Pembimbing Industri (DUDI)',
+            personName: '................................',
+            nip: 'Instruktur Lapangan',
+          }}
+          overrideSignerRight={{
+            roleTitle: 'Siswa Praktikan',
+            personName: user?.full_name || '................................',
+            nip: studentPkl?.Siswa?.nis ? `NIS. ${studentPkl.Siswa.nis}` : undefined,
+            topDate: `Merdeka, ${format(new Date(), 'dd MMMM yyyy', { locale: localeID })}`,
+          }}
+          spacingHeightMm={16}
+        />
       </div>
     </div>
   );

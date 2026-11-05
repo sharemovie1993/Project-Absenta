@@ -1,4 +1,5 @@
 import React from 'react';
+import { UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
 import type { LoanDetailData, CooperativeSettings } from './types';
 
 interface PrintLoanCardProps {
@@ -123,27 +124,27 @@ export const PrintLoanCard = React.memo<PrintLoanCardProps>(({
         </table>
       </div>
 
-      {/* Tanda Tangan */}
-      <div className="grid grid-cols-2 gap-6 text-center pt-8 font-semibold text-xs mt-8 border-t border-dashed border-slate-300">
-        <div className="space-y-16">
-          <p>Mengetahui,<br/>Ketua Koperasi</p>
-          <div>
-            <div className="font-bold uppercase underline">
-              {coopSettings?.signatures?.ketua || '........................'}
-            </div>
-            <div className="text-[10px] text-slate-500 font-medium">Ketua Koperasi</div>
-          </div>
-        </div>
-
-        <div className="space-y-16">
-          <p>Purwakarta, {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}<br/>Bendahara Koperasi</p>
-          <div>
-            <div className="font-bold uppercase underline">
-              {coopSettings?.signatures?.bendahara || '........................'}
-            </div>
-            <div className="text-[10px] text-slate-500 font-medium">Bendahara Koperasi</div>
-          </div>
-        </div>
+      {/* Tanda Tangan Terstandarisasi */}
+      <div className="pt-6 page-break-inside-avoid border-t border-dashed border-slate-300">
+        <UniversalDocumentSignatures
+          layout="dual_unit_kepsek"
+          showTitimangsa={true}
+          titimangsaCity="Purwakarta"
+          titimangsaDate={new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
+          notesOrApprovalLabel="Mengetahui,"
+          overrideSignerLeft={{
+            headerPrefix: 'Mengetahui,',
+            roleTitle: 'Ketua Koperasi',
+            personName: coopSettings?.signatures?.ketua || '........................',
+            nip: undefined,
+          }}
+          overrideSignerRight={{
+            roleTitle: 'Bendahara Koperasi',
+            personName: coopSettings?.signatures?.bendahara || '........................',
+            nip: undefined,
+          }}
+          spacingHeightMm={18}
+        />
       </div>
     </div>
   );

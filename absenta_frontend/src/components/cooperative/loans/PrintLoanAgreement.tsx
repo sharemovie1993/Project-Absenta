@@ -1,4 +1,5 @@
 import React from 'react';
+import { UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
 import type { LoanDetailData, CooperativeSettings } from './types';
 
 interface PrintLoanAgreementProps {
@@ -132,37 +133,31 @@ export const PrintLoanAgreement = React.memo<PrintLoanAgreementProps>(({ loan, c
         Demikian Surat Perjanjian ini dibuat secara sadar, tanpa paksaan dari pihak mana pun, dan ditandatangani oleh kedua belah pihak di SMKN 1 Plered untuk dipergunakan sebagaimana mestinya.
       </p>
 
-      {/* Tanda Tangan */}
-      <div className="grid grid-cols-3 gap-6 text-center pt-8 font-semibold">
-        <div className="space-y-16">
-          <p>PIHAK PERTAMA<br/>Ketua Koperasi</p>
-          <div>
-            <div className="font-bold uppercase text-[11px] underline">
-              {coopSettings?.signatures?.ketua || '........................'}
-            </div>
-            <div className="text-[10px] text-slate-500 font-medium">Ketua Koperasi Sekolah</div>
-          </div>
-        </div>
-
-        <div className="space-y-16">
-          <p>PIHAK KEDUA<br/>Peminjam (Anggota)</p>
-          <div>
-            <div className="font-bold uppercase text-[11px] underline">
-              {loan.member?.name}
-            </div>
-            <div className="text-[10px] text-slate-500 font-medium">No. Anggota: {loan.member?.memberNo}</div>
-          </div>
-        </div>
-
-        <div className="space-y-16">
-          <p>MENGETAHUI<br/>Kepala Sekolah / Pembina</p>
-          <div>
-            <div className="font-bold uppercase text-[11px] underline">
-              {coopSettings?.signatures?.kepsek || '........................'}
-            </div>
-            <div className="text-[10px] text-slate-500 font-medium">Kepala Sekolah / Pembina Koperasi</div>
-          </div>
-        </div>
+      {/* Tanda Tangan Terstandarisasi */}
+      <div className="pt-6 page-break-inside-avoid">
+        <UniversalDocumentSignatures
+          layout="tri_party_row"
+          showTitimangsa={false}
+          overrideSignerLeft={{
+            headerPrefix: 'PIHAK PERTAMA,',
+            roleTitle: 'Ketua Koperasi',
+            personName: coopSettings?.signatures?.ketua || '........................',
+            nip: undefined,
+          }}
+          overrideSignerCenter={{
+            headerPrefix: 'PIHAK KEDUA,',
+            roleTitle: 'Peminjam (Anggota)',
+            personName: loan.member?.name || '........................',
+            nip: loan.member?.memberNo ? `No. Anggota: ${loan.member.memberNo}` : undefined,
+          }}
+          overrideSignerRight={{
+            headerPrefix: 'MENGETAHUI,',
+            roleTitle: 'Kepala Sekolah / Pembina',
+            personName: coopSettings?.signatures?.kepsek || '........................',
+            nip: undefined,
+          }}
+          spacingHeightMm={18}
+        />
       </div>
     </div>
   );

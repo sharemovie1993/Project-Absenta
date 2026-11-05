@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { format, addMonths } from 'date-fns';
 import { id as localeID } from 'date-fns/locale';
 import { PrintHeader } from '../ui/PrintHeader';
-import { PrintSignature } from '../ui/PrintSignature';
+import { UniversalDocumentSignatures } from '../ui/PrintHeader';
 import type { MonitoringPrintConfig } from './HubinPklPrintMonitoringModal';
 
 export interface SiswaData {
@@ -292,29 +292,26 @@ export const HubinPklPrintSurat: React.FC<HubinPklPrintSuratProps> = React.memo(
                 * Lembar ini wajib diisi dan diparaf oleh Pembimbing DU/DI serta Guru Pembimbing setiap kali kunjungan monitoring berlangsung sebagai bukti otentik kegiatan bimbingan PKL.
               </p>
 
-              {/* Tanda Tangan Pembimbing Industri & Guru Pembimbing */}
-              <div className="flex justify-between mt-8 text-center">
-                <div className="w-[240px]">
-                  <p className="text-xs font-semibold mb-1">Mengetahui,</p>
-                  <p className="text-xs font-bold uppercase">{printData.Mitra?.nama || 'Pembimbing DU/DI'}</p>
-                  <div className="h-16" />
-                  <p className="text-xs font-bold underline">( .................................................... )</p>
-                  <p className="text-[11px] text-gray-600">Pembimbing Industri / DU/DI</p>
-                </div>
-
-                <div className="w-[280px]">
-                  <p className="text-xs text-gray-700 mb-1">
-                    {tenantData?.data?.kota ? `${tenantData.data.kota}, ` : ''}{format(new Date(), 'd MMMM yyyy', { locale: localeID })}
-                  </p>
-                  <p className="text-xs font-bold uppercase">Guru Pembimbing PKL</p>
-                  <div className="h-16" />
-                  <p className="text-xs font-bold underline">
-                    {printData.Pembimbing?.nama_guru || '( .................................................... )'}
-                  </p>
-                  <p className="text-[11px] text-gray-600">
-                    {printData.Pembimbing?.nama_guru ? 'Guru Pembimbing Sekolah' : 'NIP. ....................................................'}
-                  </p>
-                </div>
+              {/* Tanda Tangan Pembimbing Industri & Guru Pembimbing Terstandarisasi */}
+              <div className="pt-6 page-break-inside-avoid">
+                <UniversalDocumentSignatures
+                  layout="dual_unit_kepsek"
+                  showTitimangsa={true}
+                  titimangsaCity={tenantData?.data?.kota || undefined}
+                  titimangsaDate={format(new Date(), 'd MMMM yyyy', { locale: localeID })}
+                  overrideSignerLeft={{
+                    headerPrefix: 'Mengetahui,',
+                    roleTitle: printData.Mitra?.nama || 'Pembimbing DU/DI',
+                    personName: '( .................................................... )',
+                    nip: 'Pembimbing Industri / DU/DI',
+                  }}
+                  overrideSignerRight={{
+                    roleTitle: 'Guru Pembimbing PKL',
+                    personName: printData.Pembimbing?.nama_guru || '( .................................................... )',
+                    nip: printData.Pembimbing?.nama_guru ? 'Guru Pembimbing Sekolah' : '....................................................',
+                  }}
+                  spacingHeightMm={16}
+                />
               </div>
             </>
           ) : (
@@ -372,20 +369,26 @@ export const HubinPklPrintSurat: React.FC<HubinPklPrintSuratProps> = React.memo(
                 Demikian surat tugas ini dibuat untuk dilaksanakan dengan penuh tanggung jawab, dedikasi, serta mematuhi seluruh tata tertib dan protokol kerja yang berlaku di Industri Mitra. Atas kerja sama dan dukungannya kami ucapkan terima kasih.
               </p>
 
-              {/* Tanda Tangan */}
-              <div className="flex justify-between mt-16 text-center">
-                <PrintSignature 
-                  role="mitra"
-                  widthClass="w-[240px]"
-                />
-                <PrintSignature 
-                  role="principal"
-                  kota={tenantData?.data?.kota || undefined}
-                  date={new Date()}
-                  name={tenantData?.data?.kepala_sekolah || undefined}
-                  nip={tenantData?.data?.nip_kepala || undefined}
-                  showDate={true}
-                  widthClass="w-[280px]"
+              {/* Tanda Tangan Surat Tugas Terstandarisasi */}
+              <div className="pt-8 page-break-inside-avoid">
+                <UniversalDocumentSignatures
+                  layout="dual_unit_kepsek"
+                  showTitimangsa={true}
+                  titimangsaCity={tenantData?.data?.kota || undefined}
+                  titimangsaDate={format(new Date(), 'd MMMM yyyy', { locale: localeID })}
+                  overrideSignerLeft={{
+                    headerPrefix: 'Pihak Industri / DU/DI,',
+                    roleTitle: printData.Mitra?.nama || 'Pimpinan Mitra Industri',
+                    personName: '( .................................................... )',
+                    nip: undefined,
+                  }}
+                  overrideSignerRight={{
+                    headerPrefix: 'Mengetahui,',
+                    roleTitle: 'Kepala Sekolah',
+                    personName: tenantData?.data?.kepala_sekolah || undefined,
+                    nip: tenantData?.data?.nip_kepala || undefined,
+                  }}
+                  spacingHeightMm={18}
                 />
               </div>
             </>
@@ -465,20 +468,26 @@ export const HubinPklPrintSurat: React.FC<HubinPklPrintSuratProps> = React.memo(
             Demikian surat tugas kolektif ini dibuat untuk dilaksanakan dengan penuh tanggung jawab, dedikasi tinggi, serta mematuhi seluruh tata tertib dan protokol kerja yang berlaku di Dunia Kerja Mitra terkait.
           </p>
 
-          {/* Tanda Tangan */}
-          <div className="flex justify-between mt-16 text-center">
-            <PrintSignature 
-              role="mitra"
-              widthClass="w-[240px]"
-            />
-            <PrintSignature 
-              role="principal"
-              kota={tenantData?.data?.kota || undefined}
-              date={new Date()}
-              name={tenantData?.data?.kepala_sekolah || undefined}
-              nip={tenantData?.data?.nip_kepala || undefined}
-              showDate={true}
-              widthClass="w-[280px]"
+          {/* Tanda Tangan Kolektif Terstandarisasi */}
+          <div className="pt-8 page-break-inside-avoid">
+            <UniversalDocumentSignatures
+              layout="dual_unit_kepsek"
+              showTitimangsa={true}
+              titimangsaCity={tenantData?.data?.kota || undefined}
+              titimangsaDate={format(new Date(), 'd MMMM yyyy', { locale: localeID })}
+              overrideSignerLeft={{
+                headerPrefix: 'Pihak Industri / DU/DI,',
+                roleTitle: representativeRow?.Mitra?.nama || 'Pimpinan Mitra Industri',
+                personName: '( .................................................... )',
+                nip: undefined,
+              }}
+              overrideSignerRight={{
+                headerPrefix: 'Mengetahui,',
+                roleTitle: 'Kepala Sekolah',
+                personName: tenantData?.data?.kepala_sekolah || undefined,
+                nip: tenantData?.data?.nip_kepala || undefined,
+              }}
+              spacingHeightMm={18}
             />
           </div>
         </div>,

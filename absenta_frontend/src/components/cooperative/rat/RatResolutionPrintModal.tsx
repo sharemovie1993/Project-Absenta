@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal, Button, Badge } from '../../ui';
+import { UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
 import { Printer, Copy, Check, FileCheck, ShieldCheck, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { CoopResolutionItem } from '../../../pages/cooperative/RatMeetingPage';
@@ -219,49 +220,29 @@ ${resolution.summary}
             <ResolutionTextRenderer text={resolution.summary} />
           </div>
 
-          {/* SIGNATURE SECTION */}
-          <div className="pt-8 border-t border-slate-200 mt-8 font-sans">
-            <div className="text-right text-xs text-slate-700 mb-6 space-y-0.5">
-              <div>Ditetapkan di: {meetingLocation || 'Tempat Sidang Pleno RAT'}</div>
-              <div>Pada tanggal: {formattedMeetingDate}</div>
-            </div>
-            <div className="text-center font-bold text-xs uppercase tracking-wider mb-8">
+          {/* SIGNATURE SECTION MENGGUNAKAN UNIVERSAL SIGNATURE ENGINE */}
+          <div className="pt-6 border-t border-slate-200 mt-8 w-full page-break-inside-avoid">
+            <div className="text-center font-bold text-xs uppercase tracking-wider mb-6">
               PRESIDIUM SIDANG RAPAT ANGGOTA TAHUNAN
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 print:grid-cols-3 gap-6 text-center text-xs">
-              {/* Ketua Sidang */}
-              <div className="flex flex-col justify-between h-28">
-                <span className="font-semibold text-slate-700 uppercase tracking-wide">Ketua Sidang</span>
-                <div className="space-y-1">
-                  <div className="border-b border-slate-900 pb-1 font-bold text-slate-900 text-xs sm:text-sm truncate">
-                    {presidium.chairperson.trim() ? `( ${presidium.chairperson.trim()} )` : '( .................................... )'}
-                  </div>
-                  <span className="text-[10px] text-slate-500">Tanda Tangan & Nama Terang</span>
-                </div>
-              </div>
-
-              {/* Sekretaris Sidang */}
-              <div className="flex flex-col justify-between h-28">
-                <span className="font-semibold text-slate-700 uppercase tracking-wide">Sekretaris Sidang</span>
-                <div className="space-y-1">
-                  <div className="border-b border-slate-900 pb-1 font-bold text-slate-900 text-xs sm:text-sm truncate">
-                    {presidium.secretary.trim() ? `( ${presidium.secretary.trim()} )` : '( .................................... )'}
-                  </div>
-                  <span className="text-[10px] text-slate-500">Tanda Tangan & Nama Terang</span>
-                </div>
-              </div>
-
-              {/* Anggota Presidium */}
-              <div className="flex flex-col justify-between h-28">
-                <span className="font-semibold text-slate-700 uppercase tracking-wide">Anggota Presidium</span>
-                <div className="space-y-1">
-                  <div className="border-b border-slate-900 pb-1 font-bold text-slate-900 text-xs sm:text-sm truncate">
-                    {presidium.member.trim() ? `( ${presidium.member.trim()} )` : '( .................................... )'}
-                  </div>
-                  <span className="text-[10px] text-slate-500">Tanda Tangan & Nama Terang</span>
-                </div>
-              </div>
-            </div>
+            <UniversalDocumentSignatures
+              layout="tri_party_row"
+              titimangsaCity={meetingLocation || 'Tempat Sidang Pleno RAT'}
+              titimangsaDate={formattedMeetingDate || undefined}
+              overrideSignerLeft={{
+                roleTitle: 'Ketua Sidang',
+                personName: presidium.chairperson.trim() ? presidium.chairperson.trim() : '( .................................... )',
+              }}
+              overrideSignerCenter={{
+                roleTitle: 'Sekretaris Sidang',
+                personName: presidium.secretary.trim() ? presidium.secretary.trim() : '( .................................... )',
+              }}
+              overrideSignerRight={{
+                roleTitle: 'Anggota Presidium',
+                personName: presidium.member.trim() ? presidium.member.trim() : '( .................................... )',
+              }}
+              spacingHeightMm={16}
+            />
           </div>
         </div>
       </div>

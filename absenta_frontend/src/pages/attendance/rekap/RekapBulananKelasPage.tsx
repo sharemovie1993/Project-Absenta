@@ -27,7 +27,6 @@ import { MobileAcademicList } from '../../../components/academic/shared/MobileAc
 
 // ─── Subkomponent yang diekstrak ──────────────────────────────────────────────
 import { RekapBulananKelasToolbar } from '../../../components/attendance/rekap/RekapBulananKelasToolbar';
-import { RekapBulananKelasPdfModal } from '../../../components/attendance/rekap/RekapBulananKelasPdfModal';
 import { RekapPresensiPrintModal } from '../../../components/attendance/rekap/RekapPresensiPrintModal';
 import { useRekapBulananKelasColumns } from '../../../components/attendance/rekap/rekapBulananKelasColumns';
 import type { RekapBulananKelasRow, ViewMode } from '../../../components/attendance/rekap/types';
