@@ -21,8 +21,10 @@ import {
   RefreshCw, 
   ShieldCheck, 
   X,
-  Sparkles
+  Sparkles,
+  Printer
 } from 'lucide-react';
+import { StrukturDivisiPrintModal } from './StrukturDivisiPrintModal';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import toast from 'react-hot-toast';
@@ -98,6 +100,7 @@ export const DivisiStrukturOrganisasiView: React.FC<UniversalDivisiStrukturViewP
 
   const [editingNode, setEditingNode] = useState<{ node: TopologyNodeData; element: HTMLElement | null } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false);
 
   // Screen detection: Mobile vs Desktop
   const [isMobile, setIsMobile] = useState<boolean>(() =>
@@ -304,6 +307,15 @@ export const DivisiStrukturOrganisasiView: React.FC<UniversalDivisiStrukturViewP
               <RefreshCw size={13} />
               <span>Muat Ulang</span>
             </Button>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setIsPrintModalOpen(true)}
+              className="gap-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+            >
+              <Printer size={13} />
+              <span>Cetak Bagan (A4 / GRC)</span>
+            </Button>
             {isModal && onClose && (
               <Button variant="ghost" size="sm" onClick={onClose} className="p-1.5">
                 <X size={18} />
@@ -314,13 +326,40 @@ export const DivisiStrukturOrganisasiView: React.FC<UniversalDivisiStrukturViewP
       )}
 
       {/* 2. Informational Banner for Waka / Koordinator */}
-      <div className="flex items-start gap-2.5 p-3 sm:p-3.5 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/70 dark:border-blue-900/50 rounded-xl text-blue-900 dark:text-blue-200 text-xs">
-        <Info size={16} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-        <div className="space-y-0.5">
-          <p className="font-bold">Formasi Mandiri Tim Divisi</p>
-          <p className="text-[11px] text-blue-700 dark:text-blue-300/90 leading-relaxed">
-            Klik langsung pada kartu formasi bertuliskan <strong>+ Klik Isi Slot</strong> untuk menugaskan guru pembantu sub-bidang Anda. Waka/Koordinator dapat secara leluasa mengatur penugasan tim tanpa perlu menunggu administrator.
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-3.5 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/70 dark:border-blue-900/50 rounded-xl text-blue-900 dark:text-blue-200 text-xs">
+        <div className="flex items-start gap-2.5">
+          <Info size={16} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            <p className="font-bold">Formasi Mandiri Tim Divisi</p>
+            <p className="text-[11px] text-blue-700 dark:text-blue-300/90 leading-relaxed">
+              Klik langsung pada kartu formasi bertuliskan <strong>+ Klik Isi Slot</strong> untuk menugaskan guru pembantu sub-bidang Anda. Waka/Koordinator dapat secara leluasa mengatur penugasan tim tanpa perlu menunggu administrator.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setRefreshKey((k) => k + 1);
+              refetch();
+              toast.success('Bagan struktur diperbarui');
+            }}
+            className="gap-1.5 text-xs font-bold bg-white dark:bg-slate-900 border-blue-300 dark:border-blue-800 text-blue-800 dark:text-blue-300 hover:bg-blue-100/50"
+          >
+            <RefreshCw size={13} />
+            <span>Muat Ulang</span>
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => setIsPrintModalOpen(true)}
+            className="gap-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+          >
+            <Printer size={13} />
+            <span>Cetak Bagan (A4 / GRC)</span>
+          </Button>
         </div>
       </div>
 
@@ -371,6 +410,17 @@ export const DivisiStrukturOrganisasiView: React.FC<UniversalDivisiStrukturViewP
             });
           }}
           onClose={() => setEditingNode(null)}
+        />
+      )}
+
+      {/* 5. Modal Cetak Universal Document Printing (A4 Landscape & Papan GRC 2:1) */}
+      {isPrintModalOpen && (
+        <StrukturDivisiPrintModal
+          isOpen={isPrintModalOpen}
+          onClose={() => setIsPrintModalOpen(false)}
+          divisionCode={divisionCode}
+          divisionTitle={effectiveTitle}
+          treeData={divisionTreeData}
         />
       )}
     </div>
