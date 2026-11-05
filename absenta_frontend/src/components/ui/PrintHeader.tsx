@@ -605,8 +605,16 @@ export const PrintHeaderPure: React.FC<PrintHeaderProps> = ({
 // ============================================================================
 
 const PrintHeaderConnected: React.FC<PrintHeaderProps> = (props) => {
-  const { tenantInfo: resolvedInfo } = usePrintHeaderData(props.tenantInfo);
-  return <PrintHeaderPure {...props} tenantInfo={resolvedInfo} />;
+  const { tenantInfo: resolvedInfo, logoDaerahBase64, logoSekolahBase64 } = usePrintHeaderData(props.tenantInfo);
+  const enrichedInfo = React.useMemo(
+    () => ({
+      ...resolvedInfo,
+      logo_daerah_url: logoDaerahBase64 || resolvedInfo.logo_daerah_url,
+      logo_url: logoSekolahBase64 || resolvedInfo.logo_url,
+    }),
+    [resolvedInfo, logoDaerahBase64, logoSekolahBase64]
+  );
+  return <PrintHeaderPure {...props} tenantInfo={enrichedInfo} />;
 };
 
 /**

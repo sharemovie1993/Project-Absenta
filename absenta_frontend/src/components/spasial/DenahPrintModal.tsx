@@ -1,6 +1,6 @@
 import React, { useRef, useState, useMemo } from 'react';
 import { X, Printer, Download, Loader2, ZoomIn, ZoomOut, RotateCcw, Globe } from 'lucide-react';
-import { PrintHeader } from '@/components/ui';
+import { PrintDocumentSheet, PrintHeader } from '@/components/ui';
 import { DenahMapGuideLayer } from './DenahMapGuideLayer';
 import toast from 'react-hot-toast';
 import type { DenahElementNode, DenahSpasial, DenahMapGuideConfig } from '../../types/spasial.types';
@@ -23,6 +23,14 @@ const KATEGORI_PRINT_STYLES: Record<string, { bg: string; border: string; text: 
   KORIDOR: { bg: '#f8fafc', border: '#64748b', text: '#334155' },
   LAINNYA: { bg: '#ffffff', border: '#475569', text: '#0f172a' },
 };
+
+const EVENT_TITLE_PRESETS = [
+  'DENAH PENEMPATAN RUANG UJIAN',
+  'DENAH RUANG UJIAN',
+  'DENAH LOKASI RUANG UJIAN',
+  'DENAH RUANG ASESMEN SUMATIF',
+];
+const SARPRAS_TITLE_PRESETS = ['DENAH TATA RUANG & FASILITAS KAMPUS', 'PETA LOKASI SARANA PRASARANA'];
 
 export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
   isOpen,
@@ -66,9 +74,9 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
     const contentW = Math.max(120, maxX - minX);
     const contentH = Math.max(80, maxY - minY);
 
-    // Ruang kanvas denah pada lembar cetak A4 Landscape (980px × 440px)
-    const mapCanvasWidth = 980;
-    const mapCanvasHeight = 440;
+    // Ruang kanvas denah pada lembar cetak A4 Landscape (1050px × 515px)
+    const mapCanvasWidth = 1050;
+    const mapCanvasHeight = 515;
     const padding = 20;
 
     // Skala Isotropik (Uniform): Scale X & Scale Y WAJIB SAMA persis agar kotak TIDAK GEPENG
@@ -103,55 +111,72 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
       const html2canvas = (await import('html2canvas-pro')).default;
       const { jsPDF } = await import('jspdf');
 
-      const element = printContentRef.current;
+      const sheetElement =
+        (printContentRef.current.querySelector('.print-sheet') as HTMLElement) ||
+        printContentRef.current;
+
       // Tunggu render tile satelit selesai sempurna
       await new Promise((r) => setTimeout(r, 600));
 
-      const canvas = await html2canvas(element, {
-        scale: 2, // 200 DPI Retina crisp
+      const canvas = await html2canvas(sheetElement, {
+        scale: 2, // Wajib: 2.0 (setara ~200 DPI Retina, tajam dan hemat RAM). DILARANG > 2.5
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
         logging: false,
+        onclone: (clonedDoc) => {
+          // Wajib: Bersihkan border dan shadow lembar agar tepi dokumen PDF bersih
+          const sheets = clonedDoc.querySelectorAll('.print-sheet');
+          sheets.forEach((s: any) => {
+            s.style.border = 'none';
+            s.style.boxShadow = 'none';
+            s.style.outline = 'none';
+          });
+          // Pastikan form input & toolbar tersembunyi, teks heading murni ditampilkan
+          const hiddenElements = clonedDoc.querySelectorAll('.export-pdf-hidden, .print\\:hidden');
+          hiddenElements.forEach((el: any) => {
+            el.style.display = 'none';
+          });
+          const showElements = clonedDoc.querySelectorAll('.export-pdf-show');
+          showElements.forEach((el: any) => {
+            el.style.display = 'block';
+          });
+        },
       });
 
-      let imgData: string;
-      try {
-        imgData = canvas.toDataURL('image/jpeg', 0.9);
-      } catch (taintErr) {
-        // Jika canvas terkena security taint dari tile server pihak ketiga tanpa CORS,
-        // alihkan langsung ke cetak browser native yang 100% mendukung cetak raster satelit
-        toast('Info: Mengalihkan ke Cetak Browser untuk mencetak peta satelit resolusi penuh...', { icon: 'ℹ️' });
-        window.print();
-        return;
-      }
+      // Anti-Bloat Guard & Aspect Ratio Preservation (Pilar SKILL universal-document-printing-pdf)
+      const imgData = canvas.toDataURL('image/jpeg', 0.88);
 
       const pdf = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
         format: 'a4',
-        compress: true,
+        compress: true, // Wajib: Mengaktifkan kompresi stream PDF
       });
 
       const pdfWidth = 297;
       const pdfHeight = 210;
-      const canvasAspect = canvas.width / canvas.height;
-      const pageAspect = pdfWidth / pdfHeight;
 
-      let renderW = pdfWidth;
-      let renderH = pdfHeight;
-      let posX = 0;
-      let posY = 0;
+      // Preservasi Rasio Aspek 100% True WYSIWYG
+      const canvasRatio = canvas.height / canvas.width;
+      const imgHeight = pdfWidth * canvasRatio;
 
-      if (canvasAspect > pageAspect) {
-        renderH = pdfWidth / canvasAspect;
-        posY = (pdfHeight - renderH) / 2;
+      if (imgHeight <= pdfHeight + 1) {
+        // Pas 1 lembar utuh tanpa distorsi ataupun gepeng
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, imgHeight, undefined, 'FAST');
       } else {
-        renderW = pdfHeight * canvasAspect;
-        posX = (pdfWidth - renderW) / 2;
+        let heightLeft = imgHeight;
+        let position = 0;
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= pdfHeight;
+        while (heightLeft > 0) {
+          position -= pdfHeight;
+          pdf.addPage('a4', 'landscape');
+          pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+          heightLeft -= pdfHeight;
+        }
       }
 
-      pdf.addImage(imgData, 'JPEG', posX, posY, renderW, renderH, undefined, 'FAST');
       pdf.save(`Denah_${denah.nama_denah.replace(/\s+/g, '_')}.pdf`);
       toast.success('PDF Denah True WYSIWYG berhasil diunduh', { id: toastId });
     } catch (err: any) {
@@ -167,29 +192,15 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
       {/* Aturan CSS Cetak Fisik Browser (@media print): Hanya cetak lembar A4 murni */}
       <style>{`
         @media print {
-          @page {
-            size: A4 landscape;
-            margin: 0;
-          }
-          body * {
-            visibility: hidden !important;
-          }
-          #absenta-denah-print-sheet, #absenta-denah-print-sheet * {
-            visibility: visible !important;
-          }
+          @page { size: A4 landscape; margin: 0; }
+          body * { visibility: hidden !important; }
+          #absenta-denah-print-sheet, #absenta-denah-print-sheet * { visibility: visible !important; }
           #absenta-denah-print-sheet {
-            position: fixed !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 297mm !important;
-            height: 210mm !important;
-            margin: 0 !important;
-            padding: 8mm 12mm !important;
-            background: white !important;
-            box-shadow: none !important;
-            border: none !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
+            position: fixed !important; left: 0 !important; top: 0 !important;
+            width: 297mm !important; height: 210mm !important; margin: 0 !important;
+            padding: 8mm 12mm !important; background: white !important;
+            box-shadow: none !important; border: none !important;
+            -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
           }
         }
       `}</style>
@@ -290,36 +301,31 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
         </div>
 
         {/* Printable Canvas Area */}
-        <div className="flex-1 overflow-auto p-6 flex justify-center bg-slate-200/70 dark:bg-slate-950">
-          <div
+        <div className="flex-1 overflow-auto p-6 flex justify-center bg-slate-200/70 dark:bg-slate-950" ref={printContentRef}>
+          <PrintDocumentSheet
             id="absenta-denah-print-sheet"
-            ref={printContentRef}
-            className="bg-white text-slate-900 shadow-xl border border-slate-300 print:shadow-none print:border-none flex flex-col justify-between"
+            orientation="landscape"
+            className="p-4 sm:p-5 flex flex-col justify-between overflow-hidden"
             style={{
-              width: '297mm',
-              height: '210mm',
-              padding: '10mm 14mm',
+              width: '1123px',
+              minWidth: '1123px',
+              maxWidth: '1123px',
+              height: '794px',
+              minHeight: '794px',
+              maxHeight: '794px',
               boxSizing: 'border-box',
             }}
           >
             <div>
-              {/* Kop Resmi Surat */}
-              <PrintHeader orientation="landscape" />
+              {/* Kop Resmi Surat Sesuai Standar Kedinasan (variant="landscape") */}
+              <PrintHeader variant="landscape" />
 
               {/* Denah Title & Meta (Standar Kedinasan & Penyelenggara Ujian, Editable In-Place) */}
               <div className="text-center my-1.5 border-b-2 border-slate-800 pb-1.5 group/title relative">
                 {/* Preset Cepat Event Ujian (Screen Only, Tersembunyi Saat Cetak/PDF) */}
-                <div className="print:hidden flex items-center justify-center gap-1 mb-1 flex-wrap">
+                <div className="print:hidden export-pdf-hidden flex items-center justify-center gap-1 mb-1 flex-wrap">
                   <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mr-0.5">Preset:</span>
-                  {(denah.tipe === 'MASTER_SARPRAS'
-                    ? ['DENAH TATA RUANG & FASILITAS KAMPUS', 'PETA LOKASI SARANA PRASARANA']
-                    : [
-                        'DENAH PENEMPATAN RUANG UJIAN',
-                        'DENAH RUANG UJIAN',
-                        'DENAH LOKASI RUANG UJIAN',
-                        'DENAH RUANG ASESMEN SUMATIF',
-                      ]
-                  ).map((preset) => (
+                  {(denah.tipe === 'MASTER_SARPRAS' ? SARPRAS_TITLE_PRESETS : EVENT_TITLE_PRESETS).map((preset) => (
                     <button
                       key={preset}
                       type="button"
@@ -335,14 +341,20 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
                   ))}
                 </div>
 
+                {/* Input interaktif pada layar preview */}
                 <input
                   type="text"
                   value={documentTitle}
                   onChange={(e) => setDocumentTitle(e.target.value.toUpperCase())}
-                  className="w-full text-center text-lg font-black uppercase tracking-wider text-slate-900 leading-tight bg-transparent border-b border-transparent hover:border-slate-300 focus:border-indigo-500 focus:outline-hidden transition-colors py-0.5 print:border-none print:p-0 cursor-text"
+                  className="w-full text-center text-lg font-black uppercase tracking-wider text-slate-900 leading-tight bg-transparent border-b border-transparent hover:border-slate-300 focus:border-indigo-500 focus:outline-hidden transition-colors py-0.5 print:hidden export-pdf-hidden cursor-text"
                   title="Klik untuk mengubah judul dokumen denah ini sesuai kebutuhan"
                   aria-label="Judul Dokumen Denah"
                 />
+                {/* Heading murni saat Cetak & Ekspor PDF untuk mencegah font baseline clipping pada html2canvas */}
+                <h1 className="hidden print:block export-pdf-show text-lg font-black uppercase tracking-wider text-slate-900 leading-tight py-0.5 m-0 text-center">
+                  {documentTitle}
+                </h1>
+
                 <div className="text-[11px] font-bold text-slate-600 mt-0.5">
                   {denah.nama_denah} • Lantai {denah.lantai} {denah.gedung ? `• Gedung ${denah.gedung}` : ''}
                 </div>
@@ -352,8 +364,8 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
               <div
                 className="relative border-2 border-slate-800 rounded-xl bg-slate-100 my-1 overflow-hidden"
                 style={{
-                  width: '980px',
-                  height: '440px',
+                  width: '1050px',
+                  height: '515px',
                   margin: '0 auto',
                 }}
               >
@@ -397,8 +409,8 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
                   const style = KATEGORI_PRINT_STYLES[node.kategori_ruang] || KATEGORI_PRINT_STYLES.LAINNYA;
 
                   // Proporsional Font Size: Menyesuaikan persis tinggi kotak agar tidak bertabrakan/overflow
-                  const mainFontSize = Math.max(8, Math.min(18, Math.round(height * 0.40)));
-                  const subFontSize = Math.max(6.5, Math.min(12, Math.round(height * 0.24)));
+                  const mainFontSize = Math.max(9, Math.min(16, Math.round(height * 0.38)));
+                  const subFontSize = Math.max(7, Math.min(11, Math.round(height * 0.24)));
 
                   return (
                     <div
@@ -422,12 +434,12 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
                       className="flex flex-col items-center justify-center shadow-md overflow-hidden"
                     >
                       <div
-                        className="flex flex-col items-center justify-center w-full h-full px-1 text-center select-none"
+                        className="flex flex-col items-center justify-center w-full h-full px-0.5 text-center select-none overflow-hidden"
                         style={{ transform: `scale(${flipX}, ${flipY})` }}
                       >
-                        {/* Nomor Ruang: R.01 (Bongsor & Jelas) */}
+                        {/* Nomor Ruang: R.01 (Bongsor, Bebas Truncate Ellipsis) */}
                         <div
-                          className="font-black font-mono tracking-tight leading-none truncate max-w-full"
+                          className="font-black font-sans tracking-tight leading-none whitespace-nowrap overflow-hidden select-none"
                           style={{
                             fontSize: `${mainFontSize}px`,
                             color: node.warna_teks || style.text,
@@ -439,8 +451,11 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
                         {/* Nama Kelas: X AKL 1 (Terbaca Sempurna di Bawah Nomor Ruang) */}
                         {node.label_sub && (
                           <div
-                            className="font-extrabold text-slate-800 truncate max-w-full leading-tight mt-0.5"
-                            style={{ fontSize: `${subFontSize}px` }}
+                            className="font-bold font-sans tracking-tight leading-tight whitespace-nowrap overflow-hidden select-none mt-0.5"
+                            style={{
+                              fontSize: `${subFontSize}px`,
+                              color: node.warna_teks || style.text,
+                            }}
                           >
                             {node.label_sub}
                           </div>
@@ -456,29 +471,17 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
             <div className="pt-2 border-t border-slate-300 flex items-center justify-between text-[10px] text-slate-600">
               <div className="flex items-center gap-4">
                 <span className="font-bold uppercase text-slate-800">Keterangan:</span>
-                <span className="flex items-center gap-1.5 font-medium">
-                  <span className="w-3 h-3 bg-white border-2 border-indigo-700 rounded-xs inline-block" />
-                  Ruang Ujian
-                </span>
-                <span className="flex items-center gap-1.5 font-medium">
-                  <span className="w-3 h-3 bg-cyan-100 border-2 border-cyan-600 rounded-xs inline-block" />
-                  Laboratorium
-                </span>
-                <span className="flex items-center gap-1.5 font-medium">
-                  <span className="w-3 h-3 bg-rose-100 border-2 border-rose-600 rounded-xs inline-block" />
-                  Toilet
-                </span>
-                <span className="flex items-center gap-1.5 font-medium">
-                  <span className="w-3 h-3 bg-purple-100 border-2 border-purple-600 rounded-xs inline-block" />
-                  Kantor / Panitia
-                </span>
+                <span className="flex items-center gap-1.5 font-medium"><span className="w-3 h-3 bg-white border-2 border-indigo-700 rounded-xs inline-block" />Ruang Ujian</span>
+                <span className="flex items-center gap-1.5 font-medium"><span className="w-3 h-3 bg-cyan-100 border-2 border-cyan-600 rounded-xs inline-block" />Laboratorium</span>
+                <span className="flex items-center gap-1.5 font-medium"><span className="w-3 h-3 bg-rose-100 border-2 border-rose-600 rounded-xs inline-block" />Toilet</span>
+                <span className="flex items-center gap-1.5 font-medium"><span className="w-3 h-3 bg-purple-100 border-2 border-purple-600 rounded-xs inline-block" />Kantor / Panitia</span>
               </div>
 
               <div className="font-mono text-slate-500 font-semibold">
                 Dicetak otomatis via Sistem Absenta Spasial (A4 True WYSIWYG)
               </div>
             </div>
-          </div>
+          </PrintDocumentSheet>
         </div>
       </div>
     </div>
