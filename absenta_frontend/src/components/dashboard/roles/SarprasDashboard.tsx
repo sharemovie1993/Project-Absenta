@@ -12,6 +12,7 @@ import {
   SlidersHorizontal,
   RefreshCw,
   Tv,
+  Map,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -31,6 +32,7 @@ import { SarprasPeminjamanTab } from './sarpras/tabs/SarprasPeminjamanTab';
 import { SarprasPerbaikanTab } from './sarpras/tabs/SarprasPerbaikanTab';
 import { SarprasKatalogTab } from './sarpras/tabs/SarprasKatalogTab';
 import { SarprasRekapTab } from './sarpras/tabs/SarprasRekapTab';
+import { SarprasDenahTab } from './sarpras/tabs/SarprasDenahTab';
 
 export interface SarprasDashboardProps {
   user?: {
@@ -53,6 +55,7 @@ export const SarprasDashboard: React.FC<SarprasDashboardProps> = ({ user }) => {
     'perbaikan',
     'katalog',
     'rekap',
+    'denah',
   ];
 
   // Mobile Filter Collapsible State
@@ -191,6 +194,12 @@ export const SarprasDashboard: React.FC<SarprasDashboardProps> = ({ user }) => {
         label: 'Cetak Berkas / DIR',
         shortLabel: 'Cetak DIR',
         icon: Printer,
+      },
+      {
+        id: 'denah',
+        label: 'Denah Kampus',
+        shortLabel: 'Denah',
+        icon: Map,
       },
     ],
     [stats?.total, stats?.borrowed, stats?.repair]
@@ -454,6 +463,17 @@ export const SarprasDashboard: React.FC<SarprasDashboardProps> = ({ user }) => {
                 className={cn('w-full min-w-0', activeTab === 'rekap' ? 'block' : 'hidden')}
               >
                 <SarprasRekapTab />
+              </div>
+            )}
+
+            {/* TAB 7: MASTER DENAH SPASIAL KAMPUS */}
+            {visitedTabs.has('denah') && (
+              <div
+                role="tabpanel"
+                aria-hidden={activeTab !== 'denah'}
+                className={cn('w-full min-w-0', activeTab === 'denah' ? 'block' : 'hidden')}
+              >
+                <SarprasDenahTab />
               </div>
             )}
           </main>

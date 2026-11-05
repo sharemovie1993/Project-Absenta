@@ -11,6 +11,7 @@ import {
   Plus,
   ScanLine,
   Activity,
+  Map,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -146,6 +147,13 @@ export const SarprasBerandaTab: React.FC<SarprasBerandaTabProps> = React.memo(({
         icon: Printer,
         iconColorClass: 'text-purple-600 dark:text-purple-400',
         onClick: () => onTabSelect('rekap'),
+      },
+      {
+        id: 'denah',
+        label: 'Denah Kampus',
+        icon: Map,
+        iconColorClass: 'text-indigo-600 dark:text-indigo-400',
+        onClick: () => onTabSelect('denah'),
       },
       {
         id: 'scan_pinjam',
