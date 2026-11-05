@@ -119,18 +119,18 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
   return (
     <Card className="p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl shadow-2xs space-y-4 w-full max-w-full min-w-0">
       {/* ── 1. Overview & Action Toolbar ── */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
         <div>
           <div className="flex items-center gap-2">
             <span className="p-1.5 rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">
               <DoorOpen size={18} />
             </span>
             <h4 className="text-sm font-black text-slate-900 dark:text-slate-100">
-              Tabel Ploting Ruang Ujian Kelas-Centrik
+              Ploting Ruang Ujian
             </h4>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Alokasikan kode slot ruang fisik (R.01 s/d R.n) untuk setiap rombel per tingkat jenjang {jenjang}.
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Atur penempatan kode ruang fisik untuk setiap rombel.
           </p>
         </div>
 
@@ -144,30 +144,26 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
             <CheckCircle2 size={13} className="mr-1" />
             <span>{mappedCount}/{totalClasses} Ruang Terpetakan</span>
           </Badge>
-          <Badge variant="outline" className="px-2.5 py-1 font-bold border-indigo-200 bg-indigo-50 text-indigo-700">
-            <Layers size={13} className="mr-1" />
-            <span>{tingkatList.length} Tingkat</span>
-          </Badge>
         </div>
       </div>
 
       {/* ── 2. Action Controls & Prefix Config ── */}
-      <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div className="flex items-center gap-2 flex-wrap">
-          <label className="text-xs font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">
-            Format Prefix Ruang:
-          </label>
-          <div className="flex items-center gap-1.5">
+          <span className="text-xs font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">
+            Format:
+          </span>
+          <div className="flex items-center gap-1">
             {['R.', 'Ruang ', 'R-LAB-'].map((pf) => (
               <button
                 key={pf}
                 type="button"
                 onClick={() => setRoomPrefix(pf)}
                 className={cn(
-                  'px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer',
+                  'px-2 py-0.5 text-xs font-bold rounded-md border transition-all cursor-pointer',
                   roomPrefix === pf
                     ? 'bg-violet-600 text-white border-violet-600 shadow-2xs'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 border-slate-200 dark:border-slate-700'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                 )}
               >
                 {pf}xx
@@ -182,11 +178,11 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
             variant="outline"
             size="sm"
             onClick={handleAutoPlottingRooms}
-            className="text-xs h-9 px-3.5 font-bold text-violet-700 border-violet-300 bg-white dark:bg-slate-900 hover:bg-violet-50 cursor-pointer"
-            title="Generate otomatis urutan slot R.01 s/d R.n sesuai struktur kelas"
+            className="text-xs h-8 px-3 font-bold text-violet-700 border-violet-300 bg-white dark:bg-slate-900 hover:bg-violet-50 cursor-pointer"
+            title="Generate otomatis urutan slot R.01 s/d R.n sesuai urutan kelas"
           >
-            <Wand2 size={14} className="mr-1.5 text-violet-600" />
-            <span>Ploting Ruang ke Kelas</span>
+            <Wand2 size={13} className="mr-1.5 text-violet-600" />
+            <span>Plot Otomatis</span>
           </Button>
 
           <Button
@@ -194,10 +190,11 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
             variant="primary"
             size="sm"
             onClick={handleSaveToStorage}
-            className="text-xs h-9 px-4 font-bold bg-violet-600 hover:bg-violet-700 text-white cursor-pointer"
+            className="text-xs h-8 px-3.5 font-bold bg-violet-600 hover:bg-violet-700 text-white cursor-pointer"
+            title="Simpan ploting ruang"
           >
-            <Save size={14} className="mr-1.5" />
-            <span>Simpan Ploting Ruang</span>
+            <Save size={13} className="mr-1.5" />
+            <span>Simpan</span>
           </Button>
 
           <Button
@@ -205,11 +202,11 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
             variant="outline"
             size="sm"
             onClick={handlePrintAllLabels}
-            className="text-xs h-9 px-3.5 font-bold text-emerald-700 border-emerald-300 bg-emerald-50/70 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300 cursor-pointer"
-            title="Cetak label ruang ujian seluruh rombel dalam format A4 Landscape"
+            className="text-xs h-8 px-3 font-bold text-emerald-700 border-emerald-300 bg-emerald-50/70 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300 cursor-pointer"
+            title="Cetak label ruang ujian seluruh rombel (A4 Landscape)"
           >
-            <Printer size={14} className="mr-1.5" />
-            <span>Cetak Label Ruang (A4)</span>
+            <Printer size={13} className="mr-1.5" />
+            <span>Cetak Label</span>
           </Button>
 
           <Button
@@ -217,11 +214,11 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
             variant="outline"
             size="sm"
             onClick={() => setIsDenahModalOpen(true)}
-            className="text-xs h-9 px-3.5 font-bold text-indigo-700 border-indigo-300 bg-indigo-50/70 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:border-indigo-800 dark:text-indigo-300 cursor-pointer shadow-2xs"
-            title="Buka studio canvas puzzle denah interaktif untuk tata letak ruang ujian dan fasilitas kampus"
+            className="text-xs h-8 px-3 font-bold text-indigo-700 border-indigo-300 bg-indigo-50/70 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:border-indigo-800 dark:text-indigo-300 cursor-pointer shadow-2xs"
+            title="Buka denah interaktif lokasi ujian dan kampus"
           >
-            <Map size={14} className="mr-1.5 text-indigo-600" />
-            <span>Denah Lokasi Ujian</span>
+            <Map size={13} className="mr-1.5 text-indigo-600" />
+            <span>Denah Ujian</span>
           </Button>
         </div>
       </div>
@@ -439,7 +436,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                         title={`Cetak banner pintu A4 Landscape untuk ${cls.slot_ruang || 'Slot'} (${cls.nama_kelas})`}
                       >
                         <Printer size={12} />
-                        <span>Cetak Label</span>
+                        <span>Cetak</span>
                       </button>
                     </td>
                   </tr>
