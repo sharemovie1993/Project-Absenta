@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
+  UniversalDocumentSignatures,
   PrintHeader,
   usePrintHeaderData,
 } from '@/components/ui/PrintHeader';
@@ -337,15 +338,18 @@ export const SertifikatPklPrintModal: React.FC<SertifikatPklPrintModalProps> = R
                 <span className="text-[9pt] font-normal">3 × 4</span>
               </div>
 
-              {/* Tanda Tangan Kepala Sekolah (Kanan) */}
+              {/* Tanda Tangan Kepala Sekolah (Kanan) Menggunakan Universal Signature Engine */}
               <div className="w-[70mm] text-center">
-                <div>{certData?.tanggal_terbit}</div>
-                <div>Kepala Sekolah,</div>
-                <div className="h-[23mm]" />
-                <div className="font-bold underline decoration-black decoration-[1px] underline-offset-2">
-                  {certData?.sekolah?.kepala_sekolah}
-                </div>
-                <div>NIP. {certData?.sekolah?.nip_kepala?.replace(/^NIP\.?\s*/i, '')}</div>
+                <UniversalDocumentSignatures
+                  layout="single_kepsek"
+                  tahunPelajaranId={tahunPelajaranId}
+                  titimangsaDate={certData?.tanggal_terbit}
+                  overrideSignerRight={{
+                    personName: certData?.sekolah?.kepala_sekolah,
+                    nip: certData?.sekolah?.nip_kepala,
+                  }}
+                  spacingHeightMm={23}
+                />
               </div>
             </div>
           </div>
@@ -491,25 +495,22 @@ export const SertifikatPklPrintModal: React.FC<SertifikatPklPrintModalProps> = R
               </div>
             </div>
 
-            {/* Tanda Tangan Halaman Belakang */}
-            <div className="flex justify-between items-start w-full text-[9pt] leading-tight text-black px-[6mm] mt-[6mm]">
-              <div className="w-[70mm] text-left">
-                <div>Instruktur Industri,</div>
-                <div className="h-[20mm]" />
-                <div className="font-bold underline decoration-black decoration-[1px] underline-offset-2">
-                  {certData?.mitra.instruktur_nama || certData?.mitra.penanggung_jawab_nama}
-                </div>
-              </div>
-
-              <div className="w-[70mm] text-right">
-                <div>{certData?.tanggal_terbit}</div>
-                <div>Kepala Sekolah,</div>
-                <div className="h-[20mm]" />
-                <div className="font-bold underline decoration-black decoration-[1px] underline-offset-2">
-                  {certData?.sekolah?.kepala_sekolah}
-                </div>
-                <div>NIP. {certData?.sekolah?.nip_kepala?.replace(/^NIP\.?\s*/i, '')}</div>
-              </div>
+            {/* Tanda Tangan Halaman Belakang Menggunakan Universal Signature Engine */}
+            <div className="w-full px-[6mm] mt-[6mm]">
+              <UniversalDocumentSignatures
+                layout="dual_unit_kepsek"
+                tahunPelajaranId={tahunPelajaranId}
+                titimangsaDate={certData?.tanggal_terbit}
+                overrideSignerLeft={{
+                  roleTitle: 'Instruktur Industri,',
+                  personName: certData?.mitra.instruktur_nama || certData?.mitra.penanggung_jawab_nama || 'Instruktur Industri',
+                }}
+                overrideSignerRight={{
+                  personName: certData?.sekolah?.kepala_sekolah,
+                  nip: certData?.sekolah?.nip_kepala,
+                }}
+                spacingHeightMm={20}
+              />
             </div>
           </div>
         </PrintDocumentSheet>

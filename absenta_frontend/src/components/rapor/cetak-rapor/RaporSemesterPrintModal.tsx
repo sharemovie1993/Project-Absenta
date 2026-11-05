@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
+  UniversalDocumentSignatures,
   usePrintHeaderData,
 } from '@/components/ui/PrintHeader';
 import { raporApi } from '@/api/rapor.api';
@@ -686,37 +687,27 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
               )}
             </div>
 
-            {/* Blok Tanda Tangan 3 Pihak */}
-            <div className="mt-[4mm] pt-[2mm] w-full text-[8.5pt] leading-[1.3] text-black">
-              {/* Row 1: Orang Tua (Kiri) & Wali Kelas (Kanan) */}
-              <div className="flex justify-between items-start px-[4mm]">
-                <div className="w-[55mm] text-left">
-                  <div>Orang Tua/Wali Siswa,</div>
-                  <div className="h-[18mm]" />
-                  <div className="tracking-widest">......................................................</div>
-                </div>
-
-                <div className="w-[60mm] text-left">
-                  <div>{kota}, {dateStr}</div>
-                  <div>Wali Kelas,</div>
-                  <div className="h-[18mm]" />
-                  <div className="font-bold underline decoration-black decoration-[1px] underline-offset-2 inline-block">
-                    {waliKelasNama}
-                  </div>
-                  <div>{waliKelasNip}</div>
-                </div>
-              </div>
-
-              {/* Row 2: Kepala Sekolah (Tengah Bawah) */}
-              <div className="mt-[4mm] flex flex-col items-center justify-center text-center">
-                <div>Mengetahui;</div>
-                <div>Kepala Sekolah,</div>
-                <div className="h-[18mm]" />
-                <div className="font-bold underline decoration-black decoration-[1px] underline-offset-2 inline-block">
-                  {kepalaSekolahNama}
-                </div>
-                <div>NIP. {kepalaSekolahNip.replace(/^NIP\.?\s*/i, '')}</div>
-              </div>
+            {/* Blok Tanda Tangan 3 Pihak Menggunakan Universal Signature Engine */}
+            <div className="mt-[4mm] pt-[2mm] w-full">
+              <UniversalDocumentSignatures
+                layout="triangle_rapor"
+                tahunPelajaranId={activeTpId}
+                semesterId={activeSemId}
+                kelasId={(siswa as any)?.kelas_id}
+                titimangsaCity={kota}
+                titimangsaDate={dateStr}
+                parentName={siswa?.nama_ayah || siswa?.nama_wali || '......................................................'}
+                overrideSignerRight={{
+                  personName: waliKelasNama,
+                  nip: waliKelasNip,
+                }}
+                overrideSignerCenter={{
+                  personName: kepalaSekolahNama,
+                  nip: kepalaSekolahNip,
+                }}
+                fontFamilyClass="font-cambria"
+                spacingHeightMm={18}
+              />
             </div>
           </div>
         </PrintDocumentSheet>

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
+  UniversalDocumentSignatures,
   usePrintHeaderData,
 } from '@/components/ui/PrintHeader';
 import { hubinApi } from '@/api/hubin.api';
@@ -651,55 +652,27 @@ export const RaporPklPrintModal: React.FC<RaporPklPrintModalProps> = React.memo(
               </div>
             </div>
 
-            {/* Pengesahan 3 Pihak */}
-            <div className="w-full text-[8.5pt] leading-[1.3] text-black mt-[6mm]">
-              {/* Baris Atas: Orang Tua & Wali Kelas (Symmetric 2-Column Layout) */}
-              <div className="flex justify-between items-start px-[2mm]">
-                {/* Sisi Kiri: Orang Tua/Wali (Sejajar Sempurna dengan Wali Kelas) */}
-                <div className="w-[50mm] text-left">
-                  {/* Spacer tak terlihat sejajar baris titimangsa di kanan */}
-                  <div className="select-none invisible" aria-hidden="true">&nbsp;</div>
-                  <div className="mt-[1.5mm]">Orang Tua/Wali,</div>
-                  <div className="h-[18mm]" />
-                  <div className="tracking-widest">..................................................</div>
-                  <div className="select-none invisible text-[8pt]" aria-hidden="true">&nbsp;</div>
-                </div>
-
-                {/* Sisi Kanan: Titimangsa & Wali Kelas */}
-                <div className="w-[60mm] text-left">
-                  <div>{raporItem?.sekolah.kota}, {raporItem?.tanggal_terbit}</div>
-                  <div className="mt-[1.5mm]">Wali Kelas,</div>
-                  <div className="h-[18mm]" />
-                  {raporItem?.wali_kelas?.nama ? (
-                    <>
-                      <div className="font-bold underline decoration-black decoration-[1px] underline-offset-2 inline-block">
-                        {raporItem.wali_kelas.nama}
-                      </div>
-                      <div className="text-[8pt]">
-                        {raporItem.wali_kelas.nip && raporItem.wali_kelas.nip !== '-'
-                          ? `NIP. ${raporItem.wali_kelas.nip}`
-                          : 'NIP. -'}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="tracking-widest">..................................................</div>
-                      <div className="text-[8pt]">NIP. -</div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Baris Bawah: Mengetahui Kepala Sekolah (Tengah) */}
-              <div className="mt-[5mm] flex flex-col items-center justify-center text-center">
-                <div>Mengetahui,</div>
-                <div className="mt-[1mm]">Kepala Sekolah,</div>
-                <div className="h-[18mm]" />
-                <div className="font-bold underline decoration-black decoration-[1px] underline-offset-2 inline-block">
-                  {raporItem?.sekolah.kepala_sekolah}
-                </div>
-                <div className="text-[8pt]">NIP. {raporItem?.sekolah.nip_kepala}</div>
-              </div>
+            {/* Pengesahan 3 Pihak Menggunakan Universal Signature Engine */}
+            <div className="w-full mt-[6mm]">
+              <UniversalDocumentSignatures
+                layout="triangle_rapor"
+                tahunPelajaranId={tahunPelajaranId}
+                semesterId={semesterId}
+                kelasId={targetKelasId}
+                titimangsaCity={raporItem?.sekolah.kota || resolvedKota}
+                titimangsaDate={raporItem?.tanggal_terbit || resolvedTitimangsa}
+                parentName={selectedStudent?.nama_ayah || (selectedStudent as any)?.nama_wali || '..................................................'}
+                overrideSignerRight={{
+                  personName: raporItem?.wali_kelas?.nama || resolvedWalas.nama,
+                  nip: raporItem?.wali_kelas?.nip || resolvedWalas.nip,
+                }}
+                overrideSignerCenter={{
+                  personName: raporItem?.sekolah.kepala_sekolah || resolvedKepsek.nama,
+                  nip: raporItem?.sekolah.nip_kepala || resolvedKepsek.nip,
+                }}
+                fontFamilyClass="font-cambria"
+                spacingHeightMm={18}
+              />
             </div>
           </div>
         </PrintDocumentSheet>

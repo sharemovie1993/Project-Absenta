@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
+  UniversalDocumentSignatures,
   usePrintHeaderData,
 } from '@/components/ui/PrintHeader';
 import { siswaApi } from '@/api/academic.api';
@@ -413,23 +414,21 @@ export const BiodataPrintModal: React.FC<BiodataPrintModalProps> = React.memo(({
                 <span className="text-[10pt] font-normal leading-tight">3x4</span>
               </div>
 
-              {/* Blok Tanda Tangan Kepala Sekolah (Sisi Kanan) */}
-              <div className="w-[75mm] text-left text-black text-[10pt] leading-[1.3]">
-                <div>{titimangsa}</div>
-                <div>Kepala Sekolah</div>
-
-                {/* Ruang Tanda Tangan (~20mm) */}
-                <div className="h-[20mm]" />
-
-                {/* Nama Kepala Sekolah (Bold + Underline) */}
-                <div className="font-bold underline decoration-black decoration-[1px] underline-offset-2 inline-block">
-                  {kepalaSekolahNama}
-                </div>
-
-                {/* NIP Kepala Sekolah */}
-                <div className="text-[9.5pt] font-normal">
-                  NIP. {kepalaSekolahNip.replace(/^NIP\.?\s*/i, '')}
-                </div>
+              {/* Blok Tanda Tangan Kepala Sekolah (Sisi Kanan) Menggunakan Universal Engine */}
+              <div className="w-[75mm] shrink-0 text-left">
+                <UniversalDocumentSignatures
+                  layout="single_kepsek"
+                  tahunPelajaranId={tahunPelajaranId}
+                  semesterId={semesterId}
+                  titimangsaCity={kota}
+                  titimangsaDate={titimangsaDate}
+                  overrideSignerRight={{
+                    personName: kepalaSekolahNama,
+                    nip: kepalaSekolahNip,
+                  }}
+                  fontFamilyClass="font-cambria"
+                  spacingHeightMm={20}
+                />
               </div>
             </div>
           </div>

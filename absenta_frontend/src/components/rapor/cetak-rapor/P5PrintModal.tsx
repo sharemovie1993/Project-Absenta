@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
+  UniversalDocumentSignatures,
   usePrintHeaderData,
 } from '@/components/ui/PrintHeader';
 import { siswaApi } from '@/api/academic.api';
@@ -442,37 +443,27 @@ export const P5PrintModal: React.FC<P5PrintModalProps> = React.memo(({
               </div>
             </div>
 
-            {/* 4. Blok Tanda Tangan 3 Pihak (Sesuai Referensi Resmi) */}
-            <div className="mt-[6mm] pt-[2mm] w-full text-[8.5pt] leading-[1.3] text-black">
-              {/* Baris Atas: Orang Tua (Kiri) & Wali Kelas (Kanan) */}
-              <div className="flex justify-between items-start px-[2mm]">
-                {/* Sisi Kiri: Orang Tua / Wali */}
-                <div className="w-[50mm] text-left">
-                  <div>Orang Tua/Wali Siswa,</div>
-                  <div className="h-[20mm]" />
-                  <div className="tracking-widest">....................................................</div>
-                </div>
-
-                {/* Sisi Kanan: Titimangsa & Wali Kelas */}
-                <div className="w-[55mm] text-left">
-                  <div>{effectiveKota}, {dateStr}</div>
-                  <div>Wali Kelas,</div>
-                  <div className="h-[20mm]" />
-                  <div className="font-bold">{walasNama}</div>
-                  <div className="text-[8pt]">NIP. {walasNip.replace(/^NIP\.?\s*/i, '')}</div>
-                </div>
-              </div>
-
-              {/* Baris Bawah: Mengetahui Kepala Sekolah (Tengah) */}
-              <div className="mt-[4mm] flex flex-col items-center justify-center text-center">
-                <div>Mengetahui;</div>
-                <div>Kepala Sekolah,</div>
-                <div className="h-[20mm]" />
-                <div className="font-bold underline decoration-black decoration-[1px] underline-offset-2 inline-block">
-                  {kepalaSekolahNama}
-                </div>
-                <div className="text-[8pt]">NIP. {kepalaSekolahNip.replace(/^NIP\.?\s*/i, '')}</div>
-              </div>
+            {/* 4. Blok Tanda Tangan 3 Pihak Menggunakan Universal Signature Engine */}
+            <div className="mt-[6mm] pt-[2mm] w-full">
+              <UniversalDocumentSignatures
+                layout="triangle_rapor"
+                tahunPelajaranId={tahunPelajaranId}
+                semesterId={semesterId}
+                kelasId={(siswa as any)?.kelas_id}
+                titimangsaCity={effectiveKota}
+                titimangsaDate={dateStr}
+                parentName={siswa?.nama_ayah || siswa?.nama_wali || '....................................................'}
+                overrideSignerRight={{
+                  personName: walasNama,
+                  nip: walasNip,
+                }}
+                overrideSignerCenter={{
+                  personName: kepalaSekolahNama,
+                  nip: kepalaSekolahNip,
+                }}
+                fontFamilyClass="font-cambria"
+                spacingHeightMm={20}
+              />
             </div>
           </div>
         </PrintDocumentSheet>
