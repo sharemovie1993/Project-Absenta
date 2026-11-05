@@ -9,7 +9,7 @@ import { TvModeToggle } from '@/components/ui/TvModeToggle';
 import { cn } from '@/lib/utils';
 import { formatDate } from '../../../utils/layoutUtils';
 import { type DeviceInfo, type LoanRecord, type RepairRecord } from './SarprasDashboardComponents';
-import { type AssetStats } from '../SarprasDashboard';
+import { type AssetStats } from '@/pages/sarpras/SarprasDashboard';
 
 interface SarprasTvModeLayoutProps {
   currentScene: number;

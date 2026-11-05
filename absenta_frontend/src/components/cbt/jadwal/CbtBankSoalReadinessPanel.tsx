@@ -21,7 +21,7 @@ import { CbtBankSoalDetailModal } from '../bank-soal/CbtBankSoalDetailModal';
 import { listGuruMapel } from '@/api/kurikulum/guru-mapel.api';
 import { useGuruOptions } from '@/hooks/useGuruOptions';
 import { useAuthStore } from '@/store/authStore';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui';
 import {
   AuditedTargetItem,
   MapelPaketTeoriItem,

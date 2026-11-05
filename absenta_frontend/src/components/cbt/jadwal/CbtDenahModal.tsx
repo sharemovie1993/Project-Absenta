@@ -3,7 +3,7 @@ import { X, Layers, MapPin, Loader2, Copy } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { InteractiveDenahCanvas } from '../../spasial/InteractiveDenahCanvas';
 import { fetchDenahList, createDenah, cloneDenah } from '@/api/spasial.api';
-import type { DenahSpasial } from '../../types/spasial.types';
+import type { DenahSpasial } from '@/types/spasial.types';
 import type { KelasRoomMapping } from './cbtOrchestratorHelper';
 
 interface CbtDenahModalProps {
