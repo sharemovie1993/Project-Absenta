@@ -162,15 +162,21 @@ export const DenahMapGuideLayer: React.FC<DenahMapGuideLayerProps> = ({
   }, [config.is_locked]);
 
   // Handle dimensions resize
+  const rotation = config.rotation || 0;
+  const oversize = 1.5;
+  const mapWidth = Math.round(width * oversize);
+  const mapHeight = Math.round(height * oversize);
+  const offsetX = Math.round((mapWidth - width) / 2);
+  const offsetY = Math.round((mapHeight - height) / 2);
+
   useEffect(() => {
     if (mapRef.current) {
       mapRef.current.invalidateSize();
     }
-  }, [width, height]);
+  }, [mapWidth, mapHeight]);
 
   return (
     <div
-      ref={containerRef}
       style={{
         width: `${width}px`,
         height: `${height}px`,
@@ -180,6 +186,20 @@ export const DenahMapGuideLayer: React.FC<DenahMapGuideLayerProps> = ({
       className={`absolute inset-0 select-none overflow-hidden rounded-xl transition-opacity duration-200 ${
         config.is_locked ? 'pointer-events-none' : 'pointer-events-auto cursor-grab active:cursor-grabbing'
       }`}
-    />
+    >
+      <div
+        ref={containerRef}
+        style={{
+          position: 'absolute',
+          width: `${mapWidth}px`,
+          height: `${mapHeight}px`,
+          left: `-${offsetX}px`,
+          top: `-${offsetY}px`,
+          transform: `rotate(${rotation}deg)`,
+          transformOrigin: 'center center',
+          transition: 'transform 0.1s ease-out',
+        }}
+      />
+    </div>
   );
 };

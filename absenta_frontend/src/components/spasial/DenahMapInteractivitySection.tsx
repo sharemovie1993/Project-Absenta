@@ -9,6 +9,8 @@ import {
   ArrowRight,
   ZoomIn,
   ZoomOut,
+  RotateCw,
+  RotateCcw,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import type { DenahMapGuideConfig } from '../../types/spasial.types';
@@ -42,6 +44,15 @@ export const DenahMapInteractivitySection: React.FC<DenahMapInteractivitySection
   const handleZoomStep = (delta: number) => {
     const nextZoom = Math.min(23.5, Math.max(14, Number((config.zoom + delta).toFixed(1))));
     onUpdateConfig({ zoom: nextZoom });
+  };
+
+  const rotation = config.rotation || 0;
+
+  const handleRotateStep = (delta: number) => {
+    let nextRot = Math.round((rotation + delta) * 10) / 10;
+    if (nextRot > 180) nextRot -= 360;
+    if (nextRot < -180) nextRot += 360;
+    onUpdateConfig({ rotation: nextRot });
   };
 
   return (
@@ -199,6 +210,115 @@ export const DenahMapInteractivitySection: React.FC<DenahMapInteractivitySection
             >
               23.0x 🔥
             </button>
+          </div>
+
+          {/* Map Rotation / Angle Alignment */}
+          <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <RotateCw className="w-3 h-3 text-blue-500" />
+                <span>Putar Sudut Gedung</span>
+              </span>
+              <div className="flex items-center gap-1">
+                <span className="font-mono font-bold text-slate-700 dark:text-slate-200 text-xs">
+                  {rotation > 0 ? `+${rotation}°` : `${rotation}°`}
+                </span>
+                {rotation !== 0 && (
+                  <button
+                    type="button"
+                    onClick={() => onUpdateConfig({ rotation: 0 })}
+                    className="text-[10px] px-1 py-0.2 text-blue-600 hover:underline cursor-pointer"
+                  >
+                    Reset 0°
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleRotateStep(-5)}
+                className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 cursor-pointer text-[10px] font-bold"
+                title="Putar Kiri (-5°)"
+              >
+                -5°
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRotateStep(-1)}
+                className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 cursor-pointer text-[10px]"
+                title="Putar Kiri Halus (-1°)"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+
+              <input
+                type="range"
+                min="-180"
+                max="180"
+                step="0.5"
+                value={rotation}
+                onChange={(e) => onUpdateConfig({ rotation: parseFloat(e.target.value) })}
+                className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+
+              <button
+                type="button"
+                onClick={() => handleRotateStep(1)}
+                className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 cursor-pointer text-[10px]"
+                title="Putar Kanan Halus (+1°)"
+              >
+                <RotateCw className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRotateStep(5)}
+                className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 cursor-pointer text-[10px] font-bold"
+                title="Putar Kanan (+5°)"
+              >
+                +5°
+              </button>
+            </div>
+
+            {/* Quick Angle Presets */}
+            <div className="grid grid-cols-5 gap-1 text-[10px]">
+              <button
+                type="button"
+                onClick={() => onUpdateConfig({ rotation: -45 })}
+                className="py-0.5 rounded border bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700 cursor-pointer"
+              >
+                -45°
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateConfig({ rotation: -15 })}
+                className="py-0.5 rounded border bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700 cursor-pointer"
+              >
+                -15°
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateConfig({ rotation: 0 })}
+                className="py-0.5 rounded border bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700 font-bold cursor-pointer"
+              >
+                0° Tegak
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateConfig({ rotation: 15 })}
+                className="py-0.5 rounded border bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700 cursor-pointer"
+              >
+                +15°
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateConfig({ rotation: 45 })}
+                className="py-0.5 rounded border bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700 cursor-pointer"
+              >
+                +45°
+              </button>
+            </div>
           </div>
 
           {/* Fine Tuning Micro Pan */}

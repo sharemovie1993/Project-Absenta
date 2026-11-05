@@ -39,6 +39,7 @@ export interface DenahMapGuideConfig {
   lat: number;
   lng: number;
   zoom: number;
+  rotation?: number; // Derajat rotasi peta (-180 s/d 180) agar gedung lurus dengan canvas
   opacity: number;
   layer: MapTileProvider;
   is_locked: boolean;
