@@ -14,46 +14,14 @@ interface DenahPrintModalProps {
 }
 
 const KATEGORI_PRINT_STYLES: Record<string, { bg: string; border: string; text: string }> = {
-  RUANG_UJIAN: {
-    bg: '#ffffff',
-    border: '#4338ca', // Indigo 700
-    text: '#1e1b4b',
-  },
-  LAB: {
-    bg: '#ecfeff',
-    border: '#0891b2',
-    text: '#164e63',
-  },
-  TOILET: {
-    bg: '#fff1f2',
-    border: '#e11d48',
-    text: '#881337',
-  },
-  KANTOR: {
-    bg: '#faf5ff',
-    border: '#7e22ce',
-    text: '#581c87',
-  },
-  PERPUSTAKAAN: {
-    bg: '#fffbeb',
-    border: '#b45309',
-    text: '#78350f',
-  },
-  LAPANGAN: {
-    bg: '#ecfdf5',
-    border: '#047857',
-    text: '#064e3b',
-  },
-  KORIDOR: {
-    bg: '#f8fafc',
-    border: '#64748b',
-    text: '#334155',
-  },
-  LAINNYA: {
-    bg: '#ffffff',
-    border: '#475569',
-    text: '#0f172a',
-  },
+  RUANG_UJIAN: { bg: '#ffffff', border: '#4338ca', text: '#1e1b4b' },
+  LAB: { bg: '#ecfeff', border: '#0891b2', text: '#164e63' },
+  TOILET: { bg: '#fff1f2', border: '#e11d48', text: '#881337' },
+  KANTOR: { bg: '#faf5ff', border: '#7e22ce', text: '#581c87' },
+  PERPUSTAKAAN: { bg: '#fffbeb', border: '#b45309', text: '#78350f' },
+  LAPANGAN: { bg: '#ecfdf5', border: '#047857', text: '#064e3b' },
+  KORIDOR: { bg: '#f8fafc', border: '#64748b', text: '#334155' },
+  LAINNYA: { bg: '#ffffff', border: '#475569', text: '#0f172a' },
 };
 
 export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
@@ -67,6 +35,16 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
   const [scaleMultiplier, setScaleMultiplier] = useState(1.0);
   const [showSatelliteLayer, setShowSatelliteLayer] = useState(mapGuideConfig?.enabled ?? true);
   const [satelliteOpacity, setSatelliteOpacity] = useState(mapGuideConfig?.opacity ?? 0.85);
+
+  // Standar Judul Dokumen Kedinasan & Penyelenggaraan Ujian Sekolah
+  const defaultDocTitle = useMemo(() => {
+    if (denah.tipe === 'MASTER_SARPRAS') {
+      return 'DENAH TATA RUANG & FASILITAS KAMPUS';
+    }
+    return 'DENAH PENEMPATAN RUANG UJIAN';
+  }, [denah.tipe]);
+
+  const [documentTitle, setDocumentTitle] = useState(defaultDocTitle);
   const printContentRef = useRef<HTMLDivElement>(null);
 
   // Hitung bounding box riil seluruh node untuk menjamin skala seragam 1:1 (True WYSIWYG)
@@ -328,11 +306,43 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
               {/* Kop Resmi Surat */}
               <PrintHeader orientation="landscape" />
 
-              {/* Denah Title & Meta */}
-              <div className="text-center my-2 border-b-2 border-slate-800 pb-1.5">
-                <h1 className="text-lg font-black uppercase tracking-wider text-slate-900 leading-tight">
-                  PETA &amp; DENAH SPASIAL RUANG UJIAN ASESMEN
-                </h1>
+              {/* Denah Title & Meta (Standar Kedinasan & Penyelenggara Ujian, Editable In-Place) */}
+              <div className="text-center my-1.5 border-b-2 border-slate-800 pb-1.5 group/title relative">
+                {/* Preset Cepat Event Ujian (Screen Only, Tersembunyi Saat Cetak/PDF) */}
+                <div className="print:hidden flex items-center justify-center gap-1 mb-1 flex-wrap">
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mr-0.5">Preset:</span>
+                  {(denah.tipe === 'MASTER_SARPRAS'
+                    ? ['DENAH TATA RUANG & FASILITAS KAMPUS', 'PETA LOKASI SARANA PRASARANA']
+                    : [
+                        'DENAH PENEMPATAN RUANG UJIAN',
+                        'DENAH RUANG UJIAN',
+                        'DENAH LOKASI RUANG UJIAN',
+                        'DENAH RUANG ASESMEN SUMATIF',
+                      ]
+                  ).map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setDocumentTitle(preset)}
+                      className={`text-[9.5px] px-2 py-0.5 rounded-full border transition-all cursor-pointer font-medium ${
+                        documentTitle === preset
+                          ? 'bg-indigo-600 text-white border-indigo-700 shadow-xs'
+                          : 'bg-slate-50 text-slate-600 border-slate-300 hover:bg-slate-200'
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+
+                <input
+                  type="text"
+                  value={documentTitle}
+                  onChange={(e) => setDocumentTitle(e.target.value.toUpperCase())}
+                  className="w-full text-center text-lg font-black uppercase tracking-wider text-slate-900 leading-tight bg-transparent border-b border-transparent hover:border-slate-300 focus:border-indigo-500 focus:outline-hidden transition-colors py-0.5 print:border-none print:p-0 cursor-text"
+                  title="Klik untuk mengubah judul dokumen denah ini sesuai kebutuhan"
+                  aria-label="Judul Dokumen Denah"
+                />
                 <div className="text-[11px] font-bold text-slate-600 mt-0.5">
                   {denah.nama_denah} • Lantai {denah.lantai} {denah.gedung ? `• Gedung ${denah.gedung}` : ''}
                 </div>

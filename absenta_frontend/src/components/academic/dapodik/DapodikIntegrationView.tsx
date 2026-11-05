@@ -1,22 +1,22 @@
 /**
  * DapodikIntegrationView.tsx
  * Universal Role-Ready View untuk Integrasi & Komparasi Data Dapodik.
- * Standar Industri: Shopee-Grade High Density, Caching Cerdas, & Virtual/Paginated Rendering.
+ * Standar Industri: Shopee-Grade Zero-Noise, High-Density Workspace, & Modals for Settings.
  */
 
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Key, CheckCircle2, AlertTriangle, Download, RefreshCw, 
-  Copy, Check, Users, School, Eye, EyeOff,
-  HelpCircle, Search, ArrowRight, Database, Server, ShieldAlert,
-  SlidersHorizontal, Settings2, ChevronDown, ChevronUp,
+  Copy, Check, Users, School, Eye,
+  HelpCircle, Search, ArrowRight, Database, Server,
+  SlidersHorizontal, Settings2,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Clock, Sparkles,
   Printer, Bookmark
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { SectionCard, Button, Input, Badge, Tabs, TabsList, TabsTrigger, TabsContent, Loader, Modal } from '@/components/ui';
+import { Button, Input, Badge, Loader, Modal } from '@/components/ui';
 import {
   getDapodikServerInfo,
   getDapodikConfig,
@@ -32,6 +32,8 @@ import {
 } from '@/api/dapodik.api';
 import { DAPODIK_AUDIT_TEMPLATES, type DapodikAuditTemplate } from './dapodikAuditTemplates';
 import { DapodikBeritaAcaraPrintModal } from './DapodikBeritaAcaraPrintModal';
+import { DapodikConnectionModal } from './DapodikConnectionModal';
+import { DapodikCriteriaModal } from './DapodikCriteriaModal';
 
 export interface UniversalDapodikIntegrationViewProps {
   hideLayout?: boolean;
@@ -39,7 +41,11 @@ export interface UniversalDapodikIntegrationViewProps {
 
 export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewProps> = () => {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'reconciliation' | 'connection' | 'guide'>('reconciliation');
+
+  // Modals Open State (Packaging All Settings in Modals to Eliminate Visual Noise)
+  const [isConnectionModalOpen, setIsConnectionModalOpen] = useState(false);
+  const [isCriteriaModalOpen, setIsCriteriaModalOpen] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   // Form State
   const [configForm, setConfigForm] = useState<DapodikConfig>({
@@ -48,8 +54,6 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
     api_token: '',
     is_active: true,
   });
-  const [showToken, setShowToken] = useState(false);
-  const [copiedIp, setCopiedIp] = useState(false);
 
   // Filter & Search State
   const [searchQuery, setSearchQuery] = useState('');
@@ -67,7 +71,6 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
     checkTempatLahir: false,
     ignoreClassWhitespace: true,
   });
-  const [showMatchingConfig, setShowMatchingConfig] = useState(false);
 
   // High-Performance Pagination State (Anti Lemot / Memory Optimization)
   const [currentPage, setCurrentPage] = useState(1);
@@ -76,9 +79,8 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
   // Explicit Fresh Fetch State (Tarik Data Baru dari Dapodik)
   const [isFetchingFresh, setIsFetchingFresh] = useState(false);
 
-  // Audit Template & Official Print Modal State
+  // Audit Template State
   const [activeTemplateId, setActiveTemplateId] = useState<string>('full_audit');
-  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   // Selection State
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
@@ -143,15 +145,6 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
 
   const primaryServerIp = serverInfoData?.data?.primaryIp || '10.10.10.116';
 
-  const handleCopyIp = useCallback(() => {
-    if (primaryServerIp) {
-      navigator.clipboard.writeText(primaryServerIp);
-      setCopiedIp(true);
-      toast.success(`IP Server Absenta (${primaryServerIp}) berhasil disalin!`);
-      setTimeout(() => setCopiedIp(false), 2500);
-    }
-  }, [primaryServerIp]);
-
   // Aksi Eksplisit: Tarik Data Baru Langsung dari Port 5774 Dapodik
   const handleFetchFreshDapodik = async () => {
     setIsFetchingFresh(true);
@@ -181,6 +174,7 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
     onSuccess: (res) => {
       toast.success(res.message || 'Konfigurasi Dapodik berhasil disimpan.');
       queryClient.invalidateQueries({ queryKey: ['dapodik-config'] });
+      setIsConnectionModalOpen(false);
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || err?.message || 'Gagal menyimpan konfigurasi');
@@ -220,7 +214,7 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
   const handleApplyTemplate = (tmpl: DapodikAuditTemplate) => {
     setActiveTemplateId(tmpl.id);
     setCompareOptions({ ...tmpl.options });
-    toast.success(`Template audit "${tmpl.name}" aktif.`);
+    toast.success(`Template audit "${tmpl.name}" diterapkan.`);
   };
 
   // Sync Students Mutation
@@ -410,19 +404,19 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
       case 'MISMATCH':
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
-            <AlertTriangle className="w-3 h-3" /> Beda Data (Mismatch)
+            <AlertTriangle className="w-3 h-3" /> Beda Data (MISMATCH)
           </span>
         );
       case 'DAPODIK_ONLY':
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300">
-            <Download className="w-3 h-3" /> Hanya di Dapodik
+            <Download className="w-3 h-3" /> Dapodik Saja
           </span>
         );
       case 'ABSENTA_ONLY':
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
-            <HelpCircle className="w-3 h-3" /> Hanya di Absenta
+            <HelpCircle className="w-3 h-3" /> Absenta Saja
           </span>
         );
     }
@@ -436,1105 +430,528 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
   }, [cacheInfo?.cachedAt]);
 
   return (
-    <div className="space-y-4">
-      {/* ─── TABS NAVIGASI UTAMA ─── */}
-      <Tabs value={activeTab} onValueChange={(val: any) => setActiveTab(val)}>
-        <TabsList className="bg-slate-100 dark:bg-slate-800/60 p-1 rounded-xl">
-          <TabsTrigger value="reconciliation" className="gap-2 font-medium">
-            <Database className="w-4 h-4" /> Audit &amp; Komparasi Siswa
-          </TabsTrigger>
-          <TabsTrigger value="connection" className="gap-2 font-medium">
-            <Key className="w-4 h-4" /> Pengaturan Koneksi &amp; Token
-          </TabsTrigger>
-          <TabsTrigger value="guide" className="gap-2 font-medium">
-            <HelpCircle className="w-4 h-4" /> Panduan &amp; Troubleshooting
-          </TabsTrigger>
-        </TabsList>
+    <div className="space-y-3.5">
+      {!configForm.api_token ? (
+        /* Empty State Jika Belum Dikonfigurasi */
+        <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 space-y-4 shadow-xs">
+          <div className="w-12 h-12 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto">
+            <Key className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <h4 className="text-base font-bold text-slate-800 dark:text-slate-100">
+              Koneksi Web Service Dapodik Belum Dikonfigurasi
+            </h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+              Untuk mulai membandingkan dan mengaudit data siswa, hubungkan aplikasi ke Web Service Dapodik lokal (port 5774).
+            </p>
+          </div>
+          <Button onClick={() => setIsConnectionModalOpen(true)} className="gap-2 text-xs">
+            <Key className="w-4 h-4" /> Atur Koneksi &amp; Token Sekarang
+          </Button>
+        </div>
+      ) : (
+        <>
+          {/* ═══════════════════════════════════════════════════════════════════
+              1. HEADER UTAMA RAMPING (ZERO-NOISE & HIGH-DENSITY ACTION STRIP)
+          ═══════════════════════════════════════════════════════════════════ */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs text-xs">
+            {/* Sisi Kiri: Status Lembaga & Snapshot */}
+            <div className="flex items-center gap-2.5 flex-wrap min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span className="font-bold text-slate-900 dark:text-slate-100 truncate max-w-[240px]">
+                  {configForm.school_name || `NPSN ${configForm.npsn}`}
+                </span>
+                <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
+                <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
+                  {configForm.dapodik_host}
+                </span>
+              </div>
 
-        {/* ════════════════════════════════════════════════════════════════════
-            TAB 1: AUDIT & KOMPARASI SISWA (HIGH DENSITY & SUPER LIGHTWEIGHT)
-        ════════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="reconciliation" className="space-y-4 pt-1">
-          {!configForm.api_token ? (
-            <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 space-y-4">
-              <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
-                <Key className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <h4 className="text-base font-bold text-slate-800 dark:text-slate-100">
-                  Konfigurasi Token Dapodik Belum Tersedia
-                </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                  Untuk mulai mengaudit dan membandingkan data siswa, silakan masukkan Host URL, NPSN, dan Token Web Service terlebih dahulu.
-                </p>
-              </div>
-              <Button onClick={() => setActiveTab('connection')} className="gap-2">
-                Atur Koneksi Sekarang <ArrowRight className="w-4 h-4" />
+              {formattedCacheTime && (
+                <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 px-2 py-0.5 rounded-lg border border-slate-200/60 dark:border-slate-700/60">
+                  <Clock className="w-3 h-3 text-slate-400" />
+                  <span>Snapshot: <strong>{formattedCacheTime}</strong></span>
+                  {cacheInfo?.isFromCache && (
+                    <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium">(In-Memory)</span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Sisi Kanan: Action Buttons Terpadu */}
+            <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+              {/* Tombol Pengaturan Koneksi (Modal) */}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsConnectionModalOpen(true)}
+                className="h-7 px-2.5 text-[11px] font-semibold gap-1.5 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                title="Buka Pengaturan Koneksi, Host, Token, dan Whitelist IP"
+              >
+                <Key className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                Pengaturan Koneksi
+              </Button>
+
+              {/* Tombol Kriteria Pencocokan & Template (Modal) */}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsCriteriaModalOpen(true)}
+                className="h-7 px-2.5 text-[11px] font-semibold gap-1.5 border-indigo-200 dark:border-indigo-800/70 text-indigo-700 dark:text-indigo-300 bg-indigo-50/50 dark:bg-indigo-950/30 hover:bg-indigo-100/60"
+                title="Atur Bidang Pencocokan dan Template Audit"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                Kriteria Audit ({activeCriteriaCount})
+              </Button>
+
+              {/* Cetak Berita Acara Resmi */}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsPrintModalOpen(true)}
+                disabled={!summary || isLoadingComparison}
+                className="h-7 px-2.5 text-[11px] font-semibold gap-1.5 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                title="Cetak Berita Acara Rekonsiliasi Data"
+              >
+                <Printer className="w-3.5 h-3.5 text-slate-500" />
+                Cetak Dokumen
+              </Button>
+
+              {/* Tarik Data Baru dari Dapodik Port 5774 */}
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={handleFetchFreshDapodik}
+                disabled={isFetchingFresh || isLoadingComparison}
+                className="h-7 px-2.5 text-[11px] font-semibold gap-1.5 shadow-xs"
+                title="Kueri data fresh dari komputer operator Dapodik"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isFetchingFresh ? 'animate-spin' : ''}`} />
+                {isFetchingFresh ? 'Mengambil...' : 'Tarik Data Baru'}
               </Button>
             </div>
-          ) : (
-            <>
-              {/* 1. SLIM STATUS STRIP (SHOPEE-GRADE HIGH-DENSITY BANNER) */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs text-xs">
-                <div className="flex items-center gap-3 flex-wrap min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="font-bold text-slate-900 dark:text-slate-100">
-                      {configForm.school_name || `NPSN ${configForm.npsn}`}
-                    </span>
-                    <span className="text-slate-400 hidden sm:inline">•</span>
-                    <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
-                      {configForm.dapodik_host}
-                    </span>
-                  </div>
+          </div>
 
-                  {/* Whitelist Server IP Pill */}
-                  <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 px-2 py-1 rounded-lg">
-                    <Server className="w-3.5 h-3.5 text-indigo-500" />
-                    <span className="text-[11px] text-slate-500">IP Server:</span>
-                    <code className="font-mono text-[11px] font-bold text-indigo-700 dark:text-indigo-400">
-                      {primaryServerIp}
-                    </code>
-                    <button
-                      type="button"
-                      onClick={handleCopyIp}
-                      title="Salin IP Whitelist"
-                      className="text-slate-400 hover:text-indigo-600 transition-colors ml-0.5"
-                    >
-                      {copiedIp ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
+          {/* ═══════════════════════════════════════════════════════════════════
+              2. BENTO STATS CARDS (RINGKAS & ZERO NOISE)
+          ═══════════════════════════════════════════════════════════════════ */}
+          {summary && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+              <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+                <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
+                  <span>Total Dapodik</span>
+                  <Users className="w-3.5 h-3.5 text-blue-500" />
+                </div>
+                <div className="text-lg font-black text-slate-900 dark:text-white mt-0.5">
+                  {summary.totalDapodik.toLocaleString('id-ID')}
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+                <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
+                  <span>Total Absenta</span>
+                  <School className="w-3.5 h-3.5 text-indigo-500" />
+                </div>
+                <div className="text-lg font-black text-slate-900 dark:text-white mt-0.5">
+                  {summary.totalAbsenta.toLocaleString('id-ID')}
+                </div>
+              </div>
+
+              <div className="bg-emerald-50/50 dark:bg-emerald-950/20 p-2.5 rounded-xl border border-emerald-200/70 dark:border-emerald-800/40 shadow-xs">
+                <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-400 text-[11px] font-semibold">
+                  <span>Selaras (100%)</span>
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                </div>
+                <div className="text-lg font-black text-emerald-800 dark:text-emerald-300 mt-0.5">
+                  {summary.matchCount.toLocaleString('id-ID')}
+                </div>
+              </div>
+
+              <div className="bg-amber-50/50 dark:bg-amber-950/20 p-2.5 rounded-xl border border-amber-200/70 dark:border-amber-800/40 shadow-xs">
+                <div className="flex items-center justify-between text-amber-800 dark:text-amber-300 text-[11px] font-semibold">
+                  <span>Selisih Data</span>
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                </div>
+                <div className="text-lg font-black text-amber-900 dark:text-amber-200 mt-0.5">
+                  {summary.mismatchCount.toLocaleString('id-ID')}
+                </div>
+              </div>
+
+              <div className="bg-blue-50/50 dark:bg-blue-950/20 p-2.5 rounded-xl border border-blue-200/70 dark:border-blue-800/40 shadow-xs">
+                <div className="flex items-center justify-between text-blue-700 dark:text-blue-300 text-[11px] font-semibold">
+                  <span>Dapodik Saja</span>
+                  <Download className="w-3.5 h-3.5" />
+                </div>
+                <div className="text-lg font-black text-blue-800 dark:text-blue-200 mt-0.5">
+                  {summary.dapodikOnlyCount.toLocaleString('id-ID')}
+                </div>
+              </div>
+
+              <div className="bg-rose-50/50 dark:bg-rose-950/20 p-2.5 rounded-xl border border-rose-200/70 dark:border-rose-800/40 shadow-xs">
+                <div className="flex items-center justify-between text-rose-700 dark:text-rose-300 text-[11px] font-semibold">
+                  <span>Absenta Saja</span>
+                  <HelpCircle className="w-3.5 h-3.5" />
+                </div>
+                <div className="text-lg font-black text-rose-800 dark:text-rose-200 mt-0.5">
+                  {summary.absentaOnlyCount.toLocaleString('id-ID')}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════════════════
+              3. TOOLBAR FILTER, PENCARIAN, & AKSI MASSAL
+          ═══════════════════════════════════════════════════════════════════ */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-2.5 shadow-xs space-y-2.5">
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2 flex-1">
+                {/* Search Bar */}
+                <div className="relative min-w-[200px] flex-1 max-w-sm">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <Input
+                    placeholder="Cari Nama, NISN, NIS, atau Rombel..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-8 h-7.5 text-xs"
+                  />
                 </div>
 
-                {/* Snapshot Cache Indicator & Explicit Sync Button */}
-                <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                  {formattedCacheTime && (
-                    <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/40 px-2 py-1 rounded-lg border border-slate-100 dark:border-slate-800">
-                      <Clock className="w-3 h-3 text-slate-400" />
-                      <span>Snapshot: <strong>{formattedCacheTime}</strong></span>
-                      {cacheInfo?.isFromCache && (
-                        <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium">(In-Memory)</span>
-                      )}
-                    </div>
-                  )}
+                {/* Status Filter Buttons */}
+                <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0">
+                  <Button
+                    size="sm"
+                    variant={statusFilter === 'ALL' ? 'primary' : 'outline'}
+                    onClick={() => setStatusFilter('ALL')}
+                    className="h-7 text-xs font-medium px-2.5"
+                  >
+                    Semua ({students.length})
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={statusFilter === 'MISMATCH' ? 'primary' : 'outline'}
+                    onClick={() => setStatusFilter('MISMATCH')}
+                    className="h-7 text-xs font-medium px-2.5 text-amber-700 dark:text-amber-300"
+                  >
+                    Selisih Data ({summary?.mismatchCount || 0})
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={statusFilter === 'DAPODIK_ONLY' ? 'primary' : 'outline'}
+                    onClick={() => setStatusFilter('DAPODIK_ONLY')}
+                    className="h-7 text-xs font-medium px-2.5 text-blue-700 dark:text-blue-300"
+                  >
+                    Hanya Dapodik ({summary?.dapodikOnlyCount || 0})
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={statusFilter === 'ABSENTA_ONLY' ? 'primary' : 'outline'}
+                    onClick={() => setStatusFilter('ABSENTA_ONLY')}
+                    className="h-7 text-xs font-medium px-2.5 text-rose-700 dark:text-rose-300"
+                  >
+                    Hanya Absenta ({summary?.absentaOnlyCount || 0})
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={statusFilter === 'MATCH' ? 'primary' : 'outline'}
+                    onClick={() => setStatusFilter('MATCH')}
+                    className="h-7 text-xs font-medium px-2.5 text-emerald-700 dark:text-emerald-300"
+                  >
+                    Selaras ({summary?.matchCount || 0})
+                  </Button>
+                </div>
+              </div>
 
-                  {/* Cetak Berita Acara Resmi Button */}
+              {/* Rows Per Page */}
+              <div className="flex items-center gap-1.5 text-xs shrink-0 self-end lg:self-auto">
+                <span className="text-slate-500 text-[11px]">Baris:</span>
+                <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-700">
+                  {[25, 50, 100, 200].map((sizeOption) => (
+                    <button
+                      key={sizeOption}
+                      type="button"
+                      onClick={() => setPageSize(sizeOption)}
+                      className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition-colors ${
+                        pageSize === sizeOption
+                          ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      {sizeOption}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Bulk Selection Bar */}
+            {selectedStudentIds.size > 0 && (
+              <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl border border-indigo-200/80 dark:border-indigo-800/60 flex items-center justify-between flex-wrap gap-2 text-xs animate-in fade-in duration-100">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-indigo-900 dark:text-indigo-200">
+                    {selectedStudentIds.size} siswa terpilih
+                  </span>
+                  {selectedStudentIds.size < filteredStudents.length && (
+                    <button
+                      type="button"
+                      onClick={handleSelectAllFiltered}
+                      className="text-[11px] text-indigo-700 dark:text-indigo-400 underline font-semibold hover:text-indigo-900"
+                    >
+                      Pilih seluruh {filteredStudents.length} siswa hasil filter
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleClearSelection}
+                    className="text-[11px] text-slate-500 hover:text-slate-700 underline"
+                  >
+                    Batal Pilih
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-1.5">
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => setIsPrintModalOpen(true)}
-                    disabled={!summary || isLoadingComparison}
-                    className="h-7 px-2.5 text-[11px] font-semibold gap-1.5 shadow-xs border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
-                    title="Cetak Berita Acara Rekonsiliasi Data"
+                    onClick={handleBulkUpdate}
+                    disabled={syncMutation.isPending}
+                    className="h-7 text-xs font-semibold gap-1.5 border-amber-300 bg-amber-50/50 text-amber-800 hover:bg-amber-100 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-300"
                   >
-                    <Printer className="w-3.5 h-3.5" />
-                    Cetak Berita Acara
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Perbarui Selisih Terpilih
                   </Button>
 
                   <Button
                     size="sm"
                     variant="primary"
-                    onClick={handleFetchFreshDapodik}
-                    disabled={isFetchingFresh || isLoadingComparison}
-                    className="h-7 px-3 text-[11px] font-semibold gap-1.5 shadow-xs"
+                    onClick={handleBulkImport}
+                    disabled={syncMutation.isPending}
+                    className="h-7 text-xs font-semibold gap-1.5"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isFetchingFresh ? 'animate-spin' : ''}`} />
-                    {isFetchingFresh ? 'Mengambil...' : 'Tarik Data Baru dari Dapodik'}
+                    <Download className="w-3.5 h-3.5" />
+                    Import Siswa Terpilih
                   </Button>
                 </div>
               </div>
+            )}
+          </div>
 
-              {/* 2. BENTO STATS CARDS (SLIM & CLEAN - SHOPEE HAIRLINE) */}
-              {summary && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-                  <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
-                    <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
-                      <span>Total Dapodik</span>
-                      <Users className="w-3.5 h-3.5 text-blue-500" />
-                    </div>
-                    <div className="text-lg font-black text-slate-900 dark:text-white mt-0.5">
-                      {summary.totalDapodik.toLocaleString('id-ID')}
-                    </div>
-                  </div>
+          {/* ═══════════════════════════════════════════════════════════════════
+              4. TABEL AUDIT & KOMPARASI DATA SISWA (HIGH DENSITY TABLE)
+          ═══════════════════════════════════════════════════════════════════ */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
+            {isLoadingComparison ? (
+              <div className="p-12 text-center space-y-2">
+                <Loader className="w-6 h-6 animate-spin mx-auto text-indigo-600" />
+                <p className="text-xs text-slate-500">Mengkonsolidasi data Dapodik &amp; Absenta...</p>
+              </div>
+            ) : comparisonError ? (
+              <div className="p-8 text-center space-y-2">
+                <AlertTriangle className="w-8 h-8 text-rose-500 mx-auto" />
+                <h4 className="font-bold text-sm text-slate-900 dark:text-white">Gagal Memuat Komparasi Data</h4>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  {(comparisonError as any)?.response?.data?.message || (comparisonError as any)?.message || 'Terjadi kesalahan sistem.'}
+                </p>
+                <Button size="sm" onClick={() => refetchComparison()} className="h-7 text-xs gap-1 mt-2">
+                  <RefreshCw className="w-3.5 h-3.5" /> Coba Lagi
+                </Button>
+              </div>
+            ) : filteredStudents.length === 0 ? (
+              <div className="p-10 text-center space-y-1">
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                  Tidak ada data siswa yang cocok dengan kriteria pencarian/filter.
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  Coba ubah kata kunci atau pilih status filter lain di atas.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-semibold text-[11px]">
+                      <th className="p-2.5 w-8 text-center">
+                        <input
+                          type="checkbox"
+                          checked={isAllPageSelected}
+                          onChange={handleToggleSelectPage}
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        />
+                      </th>
+                      <th className="p-2.5">Status</th>
+                      <th className="p-2.5">NISN &amp; NIK</th>
+                      <th className="p-2.5">Nama di Dapodik</th>
+                      <th className="p-2.5">Nama di Absenta</th>
+                      <th className="p-2.5">Rombel Dapodik</th>
+                      <th className="p-2.5">Rombel Absenta</th>
+                      <th className="p-2.5 text-right">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {paginatedStudents.map((s) => {
+                      const isSelected = selectedStudentIds.has(s.id);
+                      return (
+                        <tr
+                          key={s.id}
+                          className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors ${
+                            isSelected ? 'bg-indigo-50/40 dark:bg-indigo-950/20' : ''
+                          }`}
+                        >
+                          <td className="p-2.5 text-center">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleSelect(s.id)}
+                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                            />
+                          </td>
+                          <td className="p-2.5 whitespace-nowrap">
+                            {renderStatusBadge(s.status)}
+                          </td>
+                          <td className="p-2.5">
+                            <div className="font-mono font-bold text-slate-900 dark:text-slate-100">
+                              {s.nisn || '-'}
+                            </div>
+                            <div className="font-mono text-[10px] text-slate-400">
+                              NIK: {s.nik || '-'}
+                            </div>
+                          </td>
+                          <td className="p-2.5 font-medium text-slate-800 dark:text-slate-200">
+                            {s.dapodikRaw?.nama || s.nama}
+                          </td>
+                          <td className="p-2.5 font-medium text-slate-800 dark:text-slate-200">
+                            {s.absentaRaw ? (
+                              s.absentaRaw.nama
+                            ) : (
+                              <span className="text-slate-400 italic">Belum Ada</span>
+                            )}
+                          </td>
+                          <td className="p-2.5 text-slate-600 dark:text-slate-400">
+                            {s.dapodikRaw?.nama_rombel || '-'}
+                          </td>
+                          <td className="p-2.5 text-slate-600 dark:text-slate-400">
+                            {s.absentaRaw?.SiswaAkademik?.[0]?.kelas?.nama_kelas || '-'}
+                          </td>
+                          <td className="p-2.5 text-right whitespace-nowrap">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setInspectedStudent(s)}
+                              className="h-6 px-2 text-[11px] gap-1 text-slate-500 hover:text-indigo-600"
+                            >
+                              <Eye className="w-3 h-3" /> Intip Detail
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-                  <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
-                    <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
-                      <span>Total Absenta</span>
-                      <School className="w-3.5 h-3.5 text-indigo-500" />
-                    </div>
-                    <div className="text-lg font-black text-slate-900 dark:text-white mt-0.5">
-                      {summary.totalAbsenta.toLocaleString('id-ID')}
-                    </div>
-                  </div>
-
-                  <div className="bg-emerald-50/50 dark:bg-emerald-950/20 p-3 rounded-xl border border-emerald-200/70 dark:border-emerald-800/40 shadow-xs">
-                    <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-400 text-[11px] font-semibold">
-                      <span>Selaras (100%)</span>
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                    </div>
-                    <div className="text-lg font-black text-emerald-800 dark:text-emerald-300 mt-0.5">
-                      {summary.matchCount.toLocaleString('id-ID')}
-                    </div>
-                  </div>
-
-                  <div className="bg-amber-50/50 dark:bg-amber-950/20 p-3 rounded-xl border border-amber-200/70 dark:border-amber-800/40 shadow-xs">
-                    <div className="flex items-center justify-between text-amber-800 dark:text-amber-300 text-[11px] font-semibold">
-                      <span>Selisih Data</span>
-                      <AlertTriangle className="w-3.5 h-3.5" />
-                    </div>
-                    <div className="text-lg font-black text-amber-900 dark:text-amber-200 mt-0.5">
-                      {summary.mismatchCount.toLocaleString('id-ID')}
-                    </div>
-                  </div>
-
-                  <div className="bg-blue-50/50 dark:bg-blue-950/20 p-3 rounded-xl border border-blue-200/70 dark:border-blue-800/40 shadow-xs">
-                    <div className="flex items-center justify-between text-blue-700 dark:text-blue-300 text-[11px] font-semibold">
-                      <span>Dapodik Saja</span>
-                      <Download className="w-3.5 h-3.5" />
-                    </div>
-                    <div className="text-lg font-black text-blue-800 dark:text-blue-200 mt-0.5">
-                      {summary.dapodikOnlyCount.toLocaleString('id-ID')}
-                    </div>
-                  </div>
-
-                  <div className="bg-rose-50/50 dark:bg-rose-950/20 p-3 rounded-xl border border-rose-200/70 dark:border-rose-800/40 shadow-xs">
-                    <div className="flex items-center justify-between text-rose-700 dark:text-rose-300 text-[11px] font-semibold">
-                      <span>Absenta Saja</span>
-                      <HelpCircle className="w-3.5 h-3.5" />
-                    </div>
-                    <div className="text-lg font-black text-rose-800 dark:text-rose-200 mt-0.5">
-                      {summary.absentaOnlyCount.toLocaleString('id-ID')}
-                    </div>
-                  </div>
+            {/* Paginasi Footer */}
+            {filteredStudents.length > 0 && (
+              <div className="p-2.5 bg-slate-50/60 dark:bg-slate-800/40 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2 text-xs">
+                <div className="text-slate-500 text-[11px]">
+                  Menampilkan <strong>{startIndex + 1}</strong> - <strong>{endIndex}</strong> dari <strong>{filteredStudents.length}</strong> siswa
                 </div>
-              )}
 
-              {/* 3. PENGATURAN BIDANG PENCOCOKAN (COLLAPSIBLE MATCHING CRITERIA) */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3 shadow-xs space-y-2.5">
-                {/* TEMPLATE SKENARIO AUDIT BAR (1-CLICK TEMPLATES) */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 no-scrollbar">
-                  <div className="flex items-center gap-1 text-[11px] font-bold text-slate-700 dark:text-slate-300 shrink-0 pr-1">
-                    <Bookmark className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                    <span>Template Audit:</span>
-                  </div>
-                  {DAPODIK_AUDIT_TEMPLATES.map((tmpl) => {
-                    const isSelected = activeTemplateId === tmpl.id;
-                    return (
-                      <button
-                        key={tmpl.id}
-                        type="button"
-                        onClick={() => handleApplyTemplate(tmpl)}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 border cursor-pointer ${
-                          isSelected
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                            : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/60'
-                        }`}
-                        title={tmpl.scenario}
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-indigo-500'}`} />
-                        <span>{tmpl.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className="h-6.5 w-6.5 p-0"
+                    title="Halaman Pertama"
+                  >
+                    <ChevronsLeft className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="h-6.5 w-6.5 p-0"
+                    title="Halaman Sebelumnya"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </Button>
 
-                <div className="flex items-center justify-between flex-wrap gap-2 pt-1 border-t border-slate-100 dark:border-slate-800/80">
-                  <div className="flex items-center gap-2 flex-wrap min-w-0">
-                    <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                      <SlidersHorizontal className="w-3.5 h-3.5" />
-                    </div>
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                      Bidang yang Dicocokkan ({activeCriteriaCount} Aktif):
-                    </span>
-                    <div className="flex items-center gap-1 flex-wrap">
-                      {compareOptions.checkNama && (
-                        <Badge className="text-[10px] px-1.5 py-0.2 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200/60">
-                          Nama
-                        </Badge>
-                      )}
-                      {compareOptions.checkNisn && (
-                        <Badge className="text-[10px] px-1.5 py-0.2 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200/60">
-                          NISN
-                        </Badge>
-                      )}
-                      {compareOptions.checkNis && (
-                        <Badge className="text-[10px] px-1.5 py-0.2 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200/60">
-                          NIS
-                        </Badge>
-                      )}
-                      {compareOptions.checkNik && (
-                        <Badge className="text-[10px] px-1.5 py-0.2 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200/60">
-                          NIK
-                        </Badge>
-                      )}
-                      {compareOptions.checkKelas && (
-                        <Badge className="text-[10px] px-1.5 py-0.2 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200/60">
-                          Rombel {compareOptions.ignoreClassWhitespace ? '(Abaikan Spasi)' : ''}
-                        </Badge>
-                      )}
-                      {compareOptions.checkJenisKelamin && (
-                        <Badge className="text-[10px] px-1.5 py-0.2 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200/60">
-                          Gender
-                        </Badge>
-                      )}
-                      {compareOptions.checkTanggalLahir && (
-                        <Badge className="text-[10px] px-1.5 py-0.2 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200/60">
-                          Tgl Lahir
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
+                  <span className="px-2 text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                    Hal {currentPage} / {totalPages}
+                  </span>
 
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => setShowMatchingConfig(!showMatchingConfig)}
-                    className="h-7 text-xs font-semibold gap-1 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="h-6.5 w-6.5 p-0"
+                    title="Halaman Selanjutnya"
                   >
-                    <Settings2 className="w-3.5 h-3.5" />
-                    {showMatchingConfig ? 'Sembunyikan' : 'Atur Bidang'}
-                    {showMatchingConfig ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="h-6.5 w-6.5 p-0"
+                    title="Halaman Terakhir"
+                  >
+                    <ChevronsRight className="w-3.5 h-3.5" />
                   </Button>
                 </div>
-
-                {showMatchingConfig && (
-                  <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 space-y-2.5 animate-in fade-in duration-150">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                      <label className="flex items-center gap-2 p-2 rounded-lg border border-slate-200/60 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={compareOptions.checkNama}
-                          onChange={(e) => setCompareOptions({ ...compareOptions, checkNama: e.target.checked })}
-                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">Nama Siswa</span>
-                      </label>
-
-                      <label className="flex items-center gap-2 p-2 rounded-lg border border-slate-200/60 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={compareOptions.checkNisn}
-                          onChange={(e) => setCompareOptions({ ...compareOptions, checkNisn: e.target.checked })}
-                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">NISN</span>
-                      </label>
-
-                      <label className="flex items-center gap-2 p-2 rounded-lg border border-slate-200/60 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={compareOptions.checkNis}
-                          onChange={(e) => setCompareOptions({ ...compareOptions, checkNis: e.target.checked })}
-                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">NIS (NIPD)</span>
-                      </label>
-
-                      <label className="flex items-center gap-2 p-2 rounded-lg border border-slate-200/60 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={compareOptions.checkNik}
-                          onChange={(e) => setCompareOptions({ ...compareOptions, checkNik: e.target.checked })}
-                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">NIK (KTP)</span>
-                      </label>
-
-                      <label className="flex items-center gap-2 p-2 rounded-lg border border-slate-200/60 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={compareOptions.checkKelas}
-                          onChange={(e) => setCompareOptions({ ...compareOptions, checkKelas: e.target.checked })}
-                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">Rombongan Belajar</span>
-                      </label>
-
-                      <label className="flex items-center gap-2 p-2 rounded-lg border border-slate-200/60 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={compareOptions.checkJenisKelamin}
-                          onChange={(e) => setCompareOptions({ ...compareOptions, checkJenisKelamin: e.target.checked })}
-                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">Jenis Kelamin</span>
-                      </label>
-
-                      <label className="flex items-center gap-2 p-2 rounded-lg border border-slate-200/60 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={compareOptions.checkTanggalLahir}
-                          onChange={(e) => setCompareOptions({ ...compareOptions, checkTanggalLahir: e.target.checked })}
-                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">Tanggal Lahir</span>
-                      </label>
-
-                      <label className="flex items-center gap-2 p-2 rounded-lg border border-slate-200/60 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={compareOptions.checkTempatLahir}
-                          onChange={(e) => setCompareOptions({ ...compareOptions, checkTempatLahir: e.target.checked })}
-                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">Tempat Lahir</span>
-                      </label>
-                    </div>
-
-                    {compareOptions.checkKelas && (
-                      <div className="p-2 rounded-lg bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/40 text-xs flex items-center justify-between">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={compareOptions.ignoreClassWhitespace}
-                            onChange={(e) => setCompareOptions({ ...compareOptions, ignoreClassWhitespace: e.target.checked })}
-                            className="rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
-                          />
-                          <span className="font-semibold text-indigo-900 dark:text-indigo-200">
-                            Abaikan Perbedaan Spasi Rombel (XI TAV2 dianggap cocok dengan XI TAV 2)
-                          </span>
-                        </label>
-                      </div>
-                    )}
-
-                    {/* Presets Cepat */}
-                    <div className="flex items-center gap-1.5 pt-1 flex-wrap">
-                      <span className="text-[11px] font-semibold text-slate-500">Pilihan Cepat:</span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-6 text-[10px] px-2"
-                        onClick={() => setCompareOptions({
-                          checkNama: true, checkNis: true, checkNisn: true, checkNik: true,
-                          checkKelas: true, checkJenisKelamin: true, checkTanggalLahir: true,
-                          checkTempatLahir: false, ignoreClassWhitespace: true
-                        })}
-                      >
-                        Standar (Semua)
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-6 text-[10px] px-2"
-                        onClick={() => setCompareOptions({
-                          checkNama: true, checkNis: true, checkNisn: true, checkNik: true,
-                          checkKelas: false, checkJenisKelamin: true, checkTanggalLahir: true,
-                          checkTempatLahir: false, ignoreClassWhitespace: true
-                        })}
-                      >
-                        Biodata Saja (Abaikan Kelas)
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-6 text-[10px] px-2"
-                        onClick={() => setCompareOptions({
-                          checkNama: false, checkNis: false, checkNisn: false, checkNik: false,
-                          checkKelas: true, checkJenisKelamin: false, checkTanggalLahir: false,
-                          checkTempatLahir: false, ignoreClassWhitespace: true
-                        })}
-                      >
-                        Rombel / Kelas Saja
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-6 text-[10px] px-2"
-                        onClick={() => setCompareOptions({
-                          checkNama: true, checkNis: false, checkNisn: true, checkNik: false,
-                          checkKelas: false, checkJenisKelamin: false, checkTanggalLahir: false,
-                          checkTempatLahir: false, ignoreClassWhitespace: true
-                        })}
-                      >
-                        Hanya Nama &amp; NISN
-                      </Button>
-                    </div>
-                  </div>
-                )}
               </div>
+            )}
+          </div>
+        </>
+      )}
 
-              {/* 4. TOOLBAR SEARCH, STATUS FILTERS, & BULK ACTIONS */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3 shadow-xs space-y-3">
-                <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5">
-                  <div className="flex flex-wrap items-center gap-2 flex-1">
-                    <div className="relative min-w-[200px] flex-1 max-w-sm">
-                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                      <Input
-                        placeholder="Cari Nama, NISN, NIS, atau Rombel..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-8 h-8 text-xs"
-                      />
-                    </div>
+      {/* ─── MODAL 1: PENGATURAN KONEKSI & TOKEN (CLEAN & DIKEMAS DALAM MODAL) ─── */}
+      <DapodikConnectionModal
+        isOpen={isConnectionModalOpen}
+        onClose={() => setIsConnectionModalOpen(false)}
+        configForm={configForm}
+        setConfigForm={setConfigForm}
+        primaryServerIp={primaryServerIp}
+        onSave={() => saveMutation.mutate(configForm)}
+        isSaving={saveMutation.isPending}
+        testResult={testResult}
+        isTesting={isTesting}
+        onTestConnection={handleTestConnection}
+      />
 
-                    <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0">
-                      <Button
-                        size="sm"
-                        variant={statusFilter === 'ALL' ? 'primary' : 'outline'}
-                        onClick={() => setStatusFilter('ALL')}
-                        className="h-7 text-xs font-medium px-2.5"
-                      >
-                        Semua ({students.length})
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={statusFilter === 'MISMATCH' ? 'primary' : 'outline'}
-                        onClick={() => setStatusFilter('MISMATCH')}
-                        className="h-7 text-xs font-medium px-2.5 text-amber-700 dark:text-amber-300"
-                      >
-                        Selisih Data ({summary?.mismatchCount || 0})
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={statusFilter === 'DAPODIK_ONLY' ? 'primary' : 'outline'}
-                        onClick={() => setStatusFilter('DAPODIK_ONLY')}
-                        className="h-7 text-xs font-medium px-2.5 text-blue-700 dark:text-blue-300"
-                      >
-                        Hanya Dapodik ({summary?.dapodikOnlyCount || 0})
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={statusFilter === 'ABSENTA_ONLY' ? 'primary' : 'outline'}
-                        onClick={() => setStatusFilter('ABSENTA_ONLY')}
-                        className="h-7 text-xs font-medium px-2.5 text-rose-700 dark:text-rose-300"
-                      >
-                        Hanya Absenta ({summary?.absentaOnlyCount || 0})
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={statusFilter === 'MATCH' ? 'primary' : 'outline'}
-                        onClick={() => setStatusFilter('MATCH')}
-                        className="h-7 text-xs font-medium px-2.5 text-emerald-700 dark:text-emerald-300"
-                      >
-                        Selaras ({summary?.matchCount || 0})
-                      </Button>
-                    </div>
-                  </div>
+      {/* ─── MODAL 2: KRITERIA PENCOCOKAN & TEMPLATE AUDIT ─── */}
+      <DapodikCriteriaModal
+        isOpen={isCriteriaModalOpen}
+        onClose={() => setIsCriteriaModalOpen(false)}
+        activeTemplateId={activeTemplateId}
+        onApplyTemplate={handleApplyTemplate}
+        compareOptions={compareOptions}
+        setCompareOptions={setCompareOptions}
+      />
 
-                  {/* Page Size Segmented Buttons (Shopee-Grade & Zero Select Clutter) */}
-                  <div className="flex items-center gap-1.5 text-xs shrink-0 self-end lg:self-auto">
-                    <span className="text-slate-500 text-[11px]">Baris:</span>
-                    <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-700">
-                      {[25, 50, 100, 200].map((sizeOption) => (
-                        <button
-                          key={sizeOption}
-                          type="button"
-                          onClick={() => setPageSize(sizeOption)}
-                          className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition-colors ${
-                            pageSize === sizeOption
-                              ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs'
-                              : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                          }`}
-                        >
-                          {sizeOption}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+      {/* ─── MODAL 3: CETAK BERITA ACARA RESMI (PDF / WYSIWYG) ─── */}
+      <DapodikBeritaAcaraPrintModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        summary={summary}
+        students={students}
+        templateName={activeTemplate?.name || 'Audit Kustom'}
+        dapodikHost={configForm.dapodik_host}
+        npsn={configForm.npsn}
+        lastCheckAt={comparisonData?.data?.lastCheckAt}
+      />
 
-                {/* BULK ACTION BAR JIKA ADA DATA YANG DIPILIH */}
-                {selectedStudentIds.size > 0 && (
-                  <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl border border-indigo-200/80 dark:border-indigo-800/60 flex items-center justify-between flex-wrap gap-2 text-xs animate-in fade-in duration-100">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-indigo-900 dark:text-indigo-200">
-                        {selectedStudentIds.size} siswa terpilih
-                      </span>
-                      {selectedStudentIds.size < filteredStudents.length && (
-                        <button
-                          type="button"
-                          onClick={handleSelectAllFiltered}
-                          className="text-[11px] text-indigo-700 dark:text-indigo-400 underline font-semibold hover:text-indigo-900"
-                        >
-                          Pilih seluruh {filteredStudents.length} siswa hasil filter
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={handleClearSelection}
-                        className="text-[11px] text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 ml-1"
-                      >
-                        Batal
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleBulkUpdate}
-                        disabled={syncMutation.isPending}
-                        className="h-7 px-2.5 text-xs font-semibold text-amber-700 dark:text-amber-400 border-amber-300 hover:bg-amber-100/50"
-                      >
-                        Perbarui Biodata ke Absenta
-                      </Button>
-
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        onClick={handleBulkImport}
-                        disabled={syncMutation.isPending}
-                        className="h-7 px-2.5 text-xs font-semibold"
-                      >
-                        Import Siswa Baru
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* 5. TABEL KOMPARASI SISWA (VIRTUAL / PAGINATED SUPER RINGAN) */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
-                {isLoadingComparison ? (
-                  <div className="py-16 text-center space-y-3">
-                    <Loader size="lg" className="mx-auto text-indigo-600" />
-                    <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                      Sedang memproses data dan menjalankan komparasi in-memory...
-                    </p>
-                  </div>
-                ) : comparisonError ? (
-                  <div className="p-8 text-center space-y-3">
-                    <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-950/50 text-rose-600 mx-auto flex items-center justify-center">
-                      <AlertTriangle className="w-5 h-5" />
-                    </div>
-                    <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                      Gagal Menarik Data Komparasi
-                    </h4>
-                    <p className="text-xs text-rose-600 dark:text-rose-400 max-w-md mx-auto">
-                      {(comparisonError as any)?.response?.data?.message || (comparisonError as any)?.message}
-                    </p>
-                    <Button size="sm" variant="outline" onClick={() => refetchComparison()}>
-                      Coba Lagi
-                    </Button>
-                  </div>
-                ) : filteredStudents.length === 0 ? (
-                  <div className="py-12 text-center text-slate-400 text-xs">
-                    Tidak ada data siswa yang cocok dengan kriteria filter atau pencarian.
-                  </div>
-                ) : (
-                  <>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300 border-collapse">
-                        <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
-                          <tr>
-                            <th className="p-2.5 w-8 text-center">
-                              <input
-                                type="checkbox"
-                                onChange={handleToggleSelectPage}
-                                checked={isAllPageSelected}
-                                title="Pilih semua baris di halaman ini"
-                                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                              />
-                            </th>
-                            <th className="p-2.5">Status</th>
-                            <th className="p-2.5">NISN &amp; NIK</th>
-                            <th className="p-2.5">Nama di Dapodik</th>
-                            <th className="p-2.5">Nama di Absenta</th>
-                            <th className="p-2.5">Rombel Dapodik</th>
-                            <th className="p-2.5">Rombel Absenta</th>
-                            <th className="p-2.5">Detail Selisih</th>
-                            <th className="p-2.5 text-right">Aksi</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                          {paginatedStudents.map((student) => {
-                            const isSelected = selectedStudentIds.has(student.id);
-                            return (
-                              <tr
-                                key={student.id}
-                                className={`hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors ${
-                                  isSelected ? 'bg-indigo-50/40 dark:bg-indigo-950/20' : ''
-                                }`}
-                              >
-                                <td className="p-2.5 text-center">
-                                  <input
-                                    type="checkbox"
-                                    checked={isSelected}
-                                    onChange={() => handleToggleSelect(student.id)}
-                                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                                  />
-                                </td>
-                                <td className="p-2.5 whitespace-nowrap">
-                                  {renderStatusBadge(student.status)}
-                                </td>
-                                <td className="p-2.5 whitespace-nowrap font-mono text-[11px]">
-                                  <div className="font-semibold text-slate-900 dark:text-white">
-                                    {student.nisn || '-'}
-                                  </div>
-                                  <div className="text-[10px] text-slate-400">
-                                    NIK: {student.nik || '-'}
-                                  </div>
-                                </td>
-                                <td className="p-2.5 font-medium text-slate-900 dark:text-slate-100">
-                                  {student.dapodikRaw?.nama || student.nama}
-                                </td>
-                                <td className="p-2.5 font-medium">
-                                  {student.absentaRaw ? (
-                                    <span
-                                      className={
-                                        student.diffs.some((d) => d.field === 'nama_siswa')
-                                          ? 'text-amber-700 dark:text-amber-300 font-bold bg-amber-50 dark:bg-amber-950/40 px-1 py-0.5 rounded'
-                                          : 'text-slate-900 dark:text-slate-100'
-                                      }
-                                    >
-                                      {student.absentaRaw.nama_siswa}
-                                    </span>
-                                  ) : (
-                                    <span className="text-slate-400 italic">Belum terdaftar</span>
-                                  )}
-                                </td>
-                                <td className="p-2.5 whitespace-nowrap text-slate-600 dark:text-slate-400">
-                                  {student.dapodikRaw?.nama_rombel || student.dapodikRaw?.rombel || '-'}
-                                </td>
-                                <td className="p-2.5 whitespace-nowrap">
-                                  {student.absentaRaw?.SiswaAkademik?.[0]?.kelas?.nama_kelas ? (
-                                    <span
-                                      className={
-                                        student.diffs.some((d) => d.field === 'kelas')
-                                          ? 'text-amber-700 dark:text-amber-300 font-bold bg-amber-50 dark:bg-amber-950/40 px-1 py-0.5 rounded'
-                                          : 'text-slate-600 dark:text-slate-400'
-                                      }
-                                    >
-                                      {student.absentaRaw.SiswaAkademik[0].kelas.nama_kelas}
-                                    </span>
-                                  ) : (
-                                    <span className="text-slate-400">-</span>
-                                  )}
-                                </td>
-                                <td className="p-2.5">
-                                  {student.diffs.length > 0 ? (
-                                    <div className="flex flex-wrap gap-1">
-                                      {student.diffs.map((d) => (
-                                        <span
-                                          key={d.field}
-                                          className="px-1.5 py-0.5 text-[9px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 rounded border border-amber-200 dark:border-amber-800/40"
-                                        >
-                                          {d.label}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  ) : student.status === 'MATCH' ? (
-                                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                                      Sesuai
-                                    </span>
-                                  ) : (
-                                    <span className="text-[10px] text-slate-400">-</span>
-                                  )}
-                                </td>
-                                <td className="p-2.5 text-right whitespace-nowrap">
-                                  <div className="flex items-center justify-end gap-1">
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => setInspectedStudent(student)}
-                                      className="h-7 px-2 text-[11px] text-slate-500 hover:text-slate-900"
-                                      title="Lihat Perbandingan Lengkap"
-                                    >
-                                      <Eye className="w-3.5 h-3.5" />
-                                    </Button>
-
-                                    {student.status === 'MISMATCH' && student.absentaRaw && (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() =>
-                                          syncMutation.mutate({
-                                            action: 'UPDATE_SELECTED',
-                                            students: [
-                                              {
-                                                absentaId: student.absentaRaw.id,
-                                                nisn: student.dapodikRaw?.nisn || student.nisn,
-                                                nik: student.dapodikRaw?.nik || student.nik || undefined,
-                                                nis: student.dapodikRaw?.registrasi_peserta_didik?.nipd || student.nis || undefined,
-                                                nama: student.dapodikRaw?.nama || student.nama,
-                                                jenis_kelamin: student.dapodikRaw?.jenis_kelamin || student.jenis_kelamin,
-                                                tempat_lahir: student.dapodikRaw?.tempat_lahir || student.tempat_lahir || undefined,
-                                                tanggal_lahir: student.dapodikRaw?.tanggal_lahir || student.tanggal_lahir || undefined,
-                                              },
-                                            ],
-                                          })
-                                        }
-                                        disabled={syncMutation.isPending}
-                                        className="h-7 px-2 text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:bg-amber-50"
-                                      >
-                                        Update Absenta
-                                      </Button>
-                                    )}
-
-                                    {student.status === 'DAPODIK_ONLY' && (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() =>
-                                          syncMutation.mutate({
-                                            action: 'IMPORT_SELECTED',
-                                            students: [
-                                              {
-                                                nisn: student.nisn,
-                                                nik: student.nik || undefined,
-                                                nis: student.nis || undefined,
-                                                nama: student.nama,
-                                                jenis_kelamin: student.jenis_kelamin,
-                                                tempat_lahir: student.tempat_lahir || undefined,
-                                                tanggal_lahir: student.tanggal_lahir || undefined,
-                                                rombel: student.rombel || undefined,
-                                              },
-                                            ],
-                                          })
-                                        }
-                                        disabled={syncMutation.isPending}
-                                        className="h-7 px-2 text-[11px] font-semibold text-blue-700 dark:text-blue-400 hover:bg-blue-50"
-                                      >
-                                        Import
-                                      </Button>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* SHOPEE-GRADE HIGH PERFORMANCE PAGINATION BAR */}
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-xs">
-                      <div className="text-slate-500 text-[11px]">
-                        Menampilkan <strong className="text-slate-800 dark:text-slate-200">{filteredStudents.length > 0 ? startIndex + 1 : 0}</strong>–<strong className="text-slate-800 dark:text-slate-200">{endIndex}</strong> dari <strong className="text-slate-800 dark:text-slate-200">{filteredStudents.length.toLocaleString('id-ID')}</strong> siswa
-                        <span className="text-slate-400 ml-1.5">(Halaman {currentPage} dari {totalPages})</span>
-                      </div>
-
-                      <div className="flex items-center gap-1">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setCurrentPage(1)}
-                          disabled={currentPage === 1}
-                          className="h-7 w-7 p-0"
-                          title="Halaman Pertama"
-                        >
-                          <ChevronsLeft className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                          disabled={currentPage === 1}
-                          className="h-7 w-7 p-0"
-                          title="Halaman Sebelumnya"
-                        >
-                          <ChevronLeft className="w-3.5 h-3.5" />
-                        </Button>
-
-                        {/* Page Numbers */}
-                        <div className="flex items-center gap-1 px-1">
-                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                            let pageNum = currentPage;
-                            if (totalPages <= 5) {
-                              pageNum = i + 1;
-                            } else if (currentPage <= 3) {
-                              pageNum = i + 1;
-                            } else if (currentPage >= totalPages - 2) {
-                              pageNum = totalPages - 4 + i;
-                            } else {
-                              pageNum = currentPage - 2 + i;
-                            }
-
-                            return (
-                              <button
-                                key={pageNum}
-                                type="button"
-                                onClick={() => setCurrentPage(pageNum)}
-                                className={`h-7 min-w-7 px-2 rounded-lg text-xs font-semibold transition-colors ${
-                                  currentPage === pageNum
-                                    ? 'bg-indigo-600 text-white shadow-xs'
-                                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
-                                }`}
-                              >
-                                {pageNum}
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                          disabled={currentPage === totalPages}
-                          className="h-7 w-7 p-0"
-                          title="Halaman Berikutnya"
-                        >
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setCurrentPage(totalPages)}
-                          disabled={currentPage === totalPages}
-                          className="h-7 w-7 p-0"
-                          title="Halaman Terakhir"
-                        >
-                          <ChevronsRight className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </>
-          )}
-        </TabsContent>
-
-        {/* ════════════════════════════════════════════════════════════════════
-            TAB 2: PENGATURAN KONEKSI & TOKEN DAPODIK
-        ════════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="connection" className="space-y-4 pt-1">
-          {/* WHITELIST SERVER CARD (CLEANLY PLACED HERE) */}
-          <SectionCard className="p-4 bg-gradient-to-r from-blue-50/60 to-indigo-50/40 dark:from-slate-800/80 dark:to-indigo-950/20 border-indigo-100 dark:border-indigo-900/40 space-y-3">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                    IP Server Absenta untuk Whitelist Dapodik
-                  </h3>
-                  <span className="px-2 py-0.5 text-[10px] font-semibold tracking-wide bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-400 rounded-full border border-emerald-200 dark:border-emerald-800/40">
-                    Wajib Didaftarkan
-                  </span>
-                </div>
-                <p className="text-xs text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
-                  Web Service Dapodik hanya menerima panggilan dari IP yang didaftarkan. Masukkan IP di bawah ini pada menu 
-                  <strong className="text-slate-800 dark:text-slate-200"> Pengaturan &gt; Web Service </strong> di aplikasi Dapodik lokal operator.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-indigo-200/80 dark:border-indigo-900/50 rounded-xl p-1.5 shadow-xs shrink-0">
-                <code className="px-3 py-1 font-mono text-sm font-bold text-indigo-700 dark:text-indigo-400 tracking-wider">
-                  {primaryServerIp}
-                </code>
-                <Button
-                  size="sm"
-                  variant={copiedIp ? "primary" : "outline"}
-                  onClick={handleCopyIp}
-                  className="gap-1.5 h-8 text-xs font-semibold"
-                >
-                  {copiedIp ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  {copiedIp ? 'Tersalin' : 'Salin IP'}
-                </Button>
-              </div>
-            </div>
-          </SectionCard>
-
-          <SectionCard className="max-w-2xl space-y-5">
-            <div className="space-y-1">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Key className="w-4 h-4 text-indigo-600" />
-                Formulir Koneksi Web Service Dapodik
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Konfigurasikan alamat host dan token autentikasi Web Service Dapodik lokal port 5774.
-              </p>
-            </div>
-
-            <div className="space-y-3.5">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Host / Alamat Web Service Dapodik
-                </label>
-                <Input
-                  placeholder="http://10.10.10.50:5774"
-                  value={configForm.dapodik_host}
-                  onChange={(e) => setConfigForm({ ...configForm, dapodik_host: e.target.value })}
-                  className="font-mono text-xs h-9"
-                />
-                <p className="text-[11px] text-slate-400">
-                  Masukkan URL komputer operator Dapodik (misal: <code>http://10.10.10.50:5774</code>).
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  NPSN Sekolah
-                </label>
-                <Input
-                  placeholder="Contoh: 20229659"
-                  value={configForm.npsn}
-                  onChange={(e) => setConfigForm({ ...configForm, npsn: e.target.value })}
-                  className="font-mono text-xs h-9"
-                />
-                <p className="text-[11px] text-slate-400">
-                  NPSN sekolah digunakan sebagai parameter query wajib pemanggilan API Dapodik.
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Token Web Service Dapodik
-                </label>
-                <div className="relative">
-                  <Input
-                    type={showToken ? 'text' : 'password'}
-                    placeholder="Masukkan Token Web Service Dapodik..."
-                    value={configForm.api_token}
-                    onChange={(e) => setConfigForm({ ...configForm, api_token: e.target.value })}
-                    className="font-mono text-xs pr-10 h-9"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowToken(!showToken)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  >
-                    {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                <p className="text-[11px] text-slate-400">
-                  Didapatkan dari menu Pengaturan &gt; Web Service pada aplikasi Dapodik setelah mendaftarkan IP Server Absenta.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2.5 pt-2">
-                <Button
-                  variant="outline"
-                  onClick={handleTestConnection}
-                  disabled={isTesting || !configForm.dapodik_host || !configForm.npsn || !configForm.api_token}
-                  className="gap-2 font-semibold text-xs h-8"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isTesting ? 'animate-spin' : ''}`} />
-                  {isTesting ? 'Menguji Koneksi...' : 'Uji Koneksi (Handshake)'}
-                </Button>
-
-                <Button
-                  variant="primary"
-                  onClick={() => saveMutation.mutate(configForm)}
-                  disabled={saveMutation.isPending || !configForm.dapodik_host || !configForm.npsn || !configForm.api_token}
-                  className="gap-2 font-semibold text-xs h-8"
-                >
-                  {saveMutation.isPending ? 'Menyimpan...' : 'Simpan Konfigurasi'}
-                </Button>
-              </div>
-
-              {testResult && (
-                <div
-                  className={`p-3.5 rounded-xl border space-y-2 mt-3 text-xs ${
-                    testResult.success
-                      ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/40 text-emerald-900 dark:text-emerald-200'
-                      : 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800/40 text-rose-900 dark:text-rose-200'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 font-bold text-xs">
-                    {testResult.success ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    ) : (
-                      <AlertTriangle className="w-4 h-4 text-rose-600" />
-                    )}
-                    <span>{testResult.message}</span>
-                  </div>
-
-                  {testResult.schoolInfo && (
-                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-emerald-200/60 dark:border-emerald-800/40 text-[11px]">
-                      <div>
-                        <span className="text-[10px] text-slate-500 uppercase font-semibold">Nama Sekolah:</span>
-                        <div className="font-bold">{testResult.schoolInfo.nama}</div>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-slate-500 uppercase font-semibold">NPSN:</span>
-                        <div className="font-mono font-bold">{testResult.schoolInfo.npsn}</div>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-slate-500 uppercase font-semibold">Bentuk / Status:</span>
-                        <div>{testResult.schoolInfo.bentuk_pendidikan} ({testResult.schoolInfo.status_sekolah})</div>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-slate-500 uppercase font-semibold">Kecamatan:</span>
-                        <div>{testResult.schoolInfo.kecamatan}</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </SectionCard>
-        </TabsContent>
-
-        {/* ════════════════════════════════════════════════════════════════════
-            TAB 3: PANDUAN PENDAFTARAN & TROUBLESHOOTING
-        ════════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="guide" className="space-y-4 pt-1">
-          <SectionCard className="max-w-3xl space-y-4">
-            <div className="space-y-1">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <HelpCircle className="w-4 h-4 text-indigo-600" />
-                Panduan Menghubungkan Dapodik ke Absenta
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Ikuti 3 langkah di bawah ini untuk mengaktifkan integrasi di komputer operator Dapodik:
-              </p>
-            </div>
-
-            <div className="space-y-3 text-xs text-slate-700 dark:text-slate-300">
-              <div className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-                <span className="w-5 h-5 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center shrink-0 text-[11px]">
-                  1
-                </span>
-                <div className="space-y-0.5">
-                  <strong className="text-slate-900 dark:text-white">Buka Aplikasi Dapodik Lokal</strong>
-                  <p className="text-slate-600 dark:text-slate-400">
-                    Buka browser di komputer operator Dapodik dan akses <code className="bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded">http://localhost:5774</code>. Login menggunakan akun Operator Sekolah.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-                <span className="w-5 h-5 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center shrink-0 text-[11px]">
-                  2
-                </span>
-                <div className="space-y-0.5">
-                  <strong className="text-slate-900 dark:text-white">Daftarkan Aplikasi di Menu Web Service</strong>
-                  <p className="text-slate-600 dark:text-slate-400">
-                    Masuk ke menu <strong>Pengaturan</strong> &gt; pilih <strong>Web Service</strong> &gt; klik tombol <strong>Tambah</strong>.
-                  </p>
-                  <ul className="list-disc list-inside space-y-0.5 pt-1 text-slate-600 dark:text-slate-400">
-                    <li><strong>Nama Aplikasi:</strong> Absenta Platform</li>
-                    <li>
-                      <strong>IP Address:</strong> Masukkan IP Server Absenta: <strong className="text-indigo-600 dark:text-indigo-400 font-mono">{primaryServerIp}</strong>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-                <span className="w-5 h-5 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center shrink-0 text-[11px]">
-                  3
-                </span>
-                <div className="space-y-0.5">
-                  <strong className="text-slate-900 dark:text-white">Salin Token Key yang Dihasilkan</strong>
-                  <p className="text-slate-600 dark:text-slate-400">
-                    Setelah disimpan, sistem Dapodik akan menghasilkan sebuah <strong>Token / Key</strong> unik. Salin token tersebut dan tempelkan pada formulir di Tab Pengaturan Koneksi platform Absenta ini.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-800/40 space-y-1.5">
-              <h4 className="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-                <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
-                Tips Mengatasi Masalah Koneksi (Troubleshooting):
-              </h4>
-              <ul className="list-disc list-inside space-y-0.5 text-[11px] text-amber-800 dark:text-amber-300">
-                <li>Pastikan Service Windows <strong>DapodikDB</strong> dan <strong>DapodikWebSvc</strong> di komputer operator berstatus <em>Running</em>.</li>
-                <li>Jika server Absenta dan komputer Dapodik berada di LAN sekolah, pastikan firewall Windows di komputer operator mengizinkan inbound port 5774 dari IP {primaryServerIp}.</li>
-                <li>Jika status tes koneksi mengembalikan 401/403, pastikan Token sudah sesuai dan IP yang didaftarkan di Dapodik sama persis dengan IP Server Absenta ({primaryServerIp}).</li>
-              </ul>
-            </div>
-          </SectionCard>
-        </TabsContent>
-      </Tabs>
-
-      {/* ─── MODAL DETAIL INTIP RAW COMPARISON ─── */}
+      {/* ─── MODAL 4: DETAIL INTIP RAW COMPARISON ─── */}
       {inspectedStudent && (
         <Modal
           isOpen={Boolean(inspectedStudent)}
           onClose={() => setInspectedStudent(null)}
+          size="2xl"
           title={`Detail Data Siswa: ${inspectedStudent.nama}`}
         >
           <div className="space-y-4 text-xs">
@@ -1599,7 +1016,7 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
         </Modal>
       )}
 
-      {/* MODAL KONFIRMASI AKSI MASSAL (STANDARD FEEDBACK GUARD - PILAR 15) */}
+      {/* ─── MODAL 5: KONFIRMASI AKSI MASSAL ─── */}
       {confirmDialog && (
         <Modal
           isOpen={confirmDialog.isOpen}
@@ -1633,17 +1050,6 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
           </div>
         </Modal>
       )}
-      {/* MODAL CETAK BERITA ACARA RESMI (WYSIWYG PDF / CETAK - STANDAR UNIVERSAL DOCUMENT) */}
-      <DapodikBeritaAcaraPrintModal
-        isOpen={isPrintModalOpen}
-        onClose={() => setIsPrintModalOpen(false)}
-        summary={summary}
-        students={students}
-        templateName={activeTemplate?.name || 'Audit Kustom'}
-        dapodikHost={configForm.dapodik_host}
-        npsn={configForm.npsn}
-        lastCheckAt={comparisonData?.data?.lastCheckAt}
-      />
     </div>
   );
 };
