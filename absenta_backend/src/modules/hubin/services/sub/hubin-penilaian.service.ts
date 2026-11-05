@@ -1037,6 +1037,8 @@ export class HubinPenilaianService extends HubinCommonHelper {
     }
 
     void cacheInvalidationService.invalidatePklCache(tenantId);
+    void cacheInvalidationService.invalidateHubinCache(tenantId);
+    void cacheInvalidationService.invalidateRaporCache(tenantId);
     return result;
   }
 
@@ -1138,6 +1140,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
 
     void cacheInvalidationService.invalidatePklCache(tenantId);
     void cacheInvalidationService.invalidateHubinCache(tenantId);
+    void cacheInvalidationService.invalidateRaporCache(tenantId);
 
     return {
       count: createdCount,
@@ -1174,6 +1177,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
     });
     void cacheInvalidationService.invalidatePklCache(tenantId);
     void cacheInvalidationService.invalidateHubinCache(tenantId);
+    void cacheInvalidationService.invalidateRaporCache(tenantId);
     return { success: true };
   }
 

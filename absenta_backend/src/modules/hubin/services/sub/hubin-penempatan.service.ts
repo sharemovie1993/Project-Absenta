@@ -205,7 +205,7 @@ export class HubinPenempatanService extends HubinCommonHelper {
         include: {
           Siswa: { 
             include: { 
-              Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
+              Kelas: { select: { id: true, nama_kelas: true, tingkat: true, jurusan_id: true } },
               Jurusan: {
                 select: {
                   id: true,
@@ -238,7 +238,14 @@ export class HubinPenempatanService extends HubinCommonHelper {
               alamat: true, 
               pic_nama: true,
               SettingDeskripsiPkl: {
-                where: targetTpId ? { tahun_pelajaran_id: targetTpId } : undefined,
+                where: targetTpId
+                  ? {
+                      OR: [
+                        { tahun_pelajaran_id: targetTpId },
+                        { tahun_pelajaran_id: null },
+                      ],
+                    }
+                  : undefined,
                 select: { id: true, deskripsi_tp: true, jurusan_id: true, tahun_pelajaran_id: true }
               }
             } 
@@ -280,9 +287,11 @@ export class HubinPenempatanService extends HubinCommonHelper {
 
     const enrichedData = data.map((item: any) => {
       const stats = countMap.get(item.id) || { sakit: 0, izin: 0, alpa: 0, hadir: 0 };
-      const studentJurusanId = item.Siswa?.jurusan_id || item.Siswa?.Jurusan?.id;
+      const studentJurusanId = item.Siswa?.jurusan_id || item.Siswa?.Jurusan?.id || item.Siswa?.Kelas?.jurusan_id;
       const matchedTp = (item.Mitra?.SettingDeskripsiPkl || []).find(
-        (s: any) => !s.jurusan_id || s.jurusan_id === studentJurusanId
+        (s: any) =>
+          (!s.tahun_pelajaran_id || !targetTpId || s.tahun_pelajaran_id === targetTpId) &&
+          (!s.jurusan_id || s.jurusan_id === studentJurusanId)
       );
       const effectiveDeskripsiTp = item.deskripsi_tp || matchedTp?.deskripsi_tp || undefined;
 

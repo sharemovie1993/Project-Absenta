@@ -67,6 +67,12 @@ export const StaffKaprogTab: React.FC<StaffKaprogTabProps> = ({
       queryClient.invalidateQueries({ queryKey: ['kaprog-pkl-summary'] });
       queryClient.invalidateQueries({ queryKey: ['deskripsi-tp-list'] });
       queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-student-pkl'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-penempatan'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-leger'] });
+      queryClient.invalidateQueries({ queryKey: ['rapor-data'] });
+      queryClient.invalidateQueries({ queryKey: ['rapor-leger'] });
       toast.success('Deskripsi TP berhasil disimpan!');
       setActiveEditingSlot(null);
     },
@@ -82,6 +88,12 @@ export const StaffKaprogTab: React.FC<StaffKaprogTabProps> = ({
       queryClient.invalidateQueries({ queryKey: ['kaprog-pkl-summary'] });
       queryClient.invalidateQueries({ queryKey: ['deskripsi-tp-list'] });
       queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-student-pkl'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-penempatan'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-leger'] });
+      queryClient.invalidateQueries({ queryKey: ['rapor-data'] });
+      queryClient.invalidateQueries({ queryKey: ['rapor-leger'] });
       toast.success('Deskripsi TP berhasil dihapus!');
       setActiveEditingSlot(null);
     },

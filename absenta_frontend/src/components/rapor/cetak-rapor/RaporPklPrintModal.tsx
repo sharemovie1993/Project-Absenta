@@ -64,7 +64,8 @@ export const RaporPklPrintModal: React.FC<RaporPklPrintModalProps> = React.memo(
         limit: 10,
       }),
     enabled: isOpen && Boolean(siswaId),
-    staleTime: 60 * 1000,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   // Ambil record placement siswa yang sesuai

@@ -475,6 +475,20 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
     []
   );
 
+  // Cache Invalidation Helper: Sinkronisasi Real-Time ke seluruh Modul Rapor & Hubin
+  const invalidateAllPklAndRaporQueries = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['kaprog-pkl-summary'] });
+    queryClient.invalidateQueries({ queryKey: ['kaprog-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-student-pkl'] });
+    queryClient.invalidateQueries({ queryKey: ['hubin-penempatan'] });
+    queryClient.invalidateQueries({ queryKey: ['pkl-penempatan'] });
+    queryClient.invalidateQueries({ queryKey: ['pkl-leger'] });
+    queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
+    queryClient.invalidateQueries({ queryKey: ['rapor-data'] });
+    queryClient.invalidateQueries({ queryKey: ['rapor-leger'] });
+    queryClient.invalidateQueries({ queryKey: ['deskripsi-tp-list'] });
+  }, [queryClient]);
+
   // Mutation: Simpan Deskripsi TP Inline
   const saveTpMutation = useMutation({
     mutationFn: (payload: { mitra_id: string; jurusan_id?: string; tahun_pelajaran_id?: string; deskripsi_tp: string }) =>
@@ -487,8 +501,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
     onSuccess: () => {
       toast.success('Deskripsi Tujuan Pembelajaran berhasil disimpan');
       setActiveEditingSlot(null);
-      queryClient.invalidateQueries({ queryKey: ['kaprog-pkl-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['kaprog-stats'] });
+      invalidateAllPklAndRaporQueries();
     },
     onError: (err: { response?: { data?: { message?: string } } }) => {
       const msg = err.response?.data?.message || 'Gagal menyimpan deskripsi TP';
@@ -505,8 +518,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
       }),
     onSuccess: (res: any) => {
       toast.success(res?.message || 'Berhasil menyalin seluruh rumusan TP dari tahun sebelumnya');
-      queryClient.invalidateQueries({ queryKey: ['kaprog-pkl-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['kaprog-stats'] });
+      invalidateAllPklAndRaporQueries();
     },
     onError: (err: { response?: { data?: { message?: string } } }) => {
       const msg = err.response?.data?.message || 'Gagal melakukan rollover TP';
@@ -520,8 +532,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
     onSuccess: () => {
       toast.success('Deskripsi TP berhasil dihapus');
       setActiveEditingSlot(null);
-      queryClient.invalidateQueries({ queryKey: ['kaprog-pkl-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['kaprog-stats'] });
+      invalidateAllPklAndRaporQueries();
     },
     onError: (err: { response?: { data?: { message?: string } } }) => {
       const msg = err.response?.data?.message || 'Gagal menghapus deskripsi TP';
