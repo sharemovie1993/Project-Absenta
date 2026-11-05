@@ -1,4 +1,5 @@
 // auth-tenant.controller.ts — Tenant Resolution & Multi-tenant Domain Operations
+import jwt from 'jsonwebtoken';
 import { authDb as prisma } from '../../services/repositories/auth.db';
 import { getDomainBases, getSmartFrontendBaseUrl } from '@/utils/url-helper';
 import { checkSlugAvailability, checkLicenseStatus } from '@/services/licenseClient';
@@ -90,6 +91,13 @@ export const authTenantController = {
     }
   },
 async resolveTenantByHost(headers: any): Promise<any | null> {
+    if (headers?.['x-tenant-id']) {
+      const byHeader = await prisma.tenant.findUnique({
+        where: { id: String(headers['x-tenant-id']) }
+      });
+      if (byHeader) return byHeader;
+    }
+
     const isSingleTenant = isOnPremiseScenario();
     if (isSingleTenant) {
       const singleTenant = await prisma.tenant.findFirst({
@@ -152,6 +160,25 @@ async resolveTenantByHost(headers: any): Promise<any | null> {
        });
     }
 
+    // 4. Localhost / Private LAN Fallback (Development & On-Premise)
+    const isLocalHost = hostNoPort === 'localhost' || hostNoPort === '127.0.0.1';
+    const isPrivateLan =
+      /^10\./.test(hostNoPort) ||
+      /^192\.168\./.test(hostNoPort) ||
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostNoPort);
+    if (isLocalHost || isPrivateLan) {
+      const devTenant = await prisma.tenant.findFirst({
+        where: {
+          subdomain: { not: 'app' },
+          status: 'ACTIVE'
+        },
+        orderBy: { created_at: 'asc' }
+      }) || await prisma.tenant.findFirst({
+        where: { subdomain: { not: 'app' } }
+      }) || await prisma.tenant.findFirst();
+      if (devTenant) return devTenant;
+    }
+
     return null;
   },
 async getDevTenants(request: any, reply: any) {
@@ -201,7 +228,17 @@ async getDevTenants(request: any, reply: any) {
   },
 async tenantInfo(request: any, reply: any) {
     try {
-      const tenantRecord = await authTenantController.resolveTenantByHost(request.headers);
+      let tenantRecord = await authTenantController.resolveTenantByHost(request.headers);
+      if (!tenantRecord && request.headers?.authorization?.startsWith('Bearer ')) {
+        try {
+          const token = request.headers.authorization.split(' ')[1];
+          const decoded: any = jwt.decode(token);
+          const tId = decoded?.tenantId || decoded?.tenant_id;
+          if (tId) {
+            tenantRecord = await prisma.tenant.findUnique({ where: { id: tId } });
+          }
+        } catch (_) {}
+      }
       if (!tenantRecord) {
         reply.status(404);
         return { success: false, message: 'Tenant not found' };

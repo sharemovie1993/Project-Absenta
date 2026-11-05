@@ -90,7 +90,7 @@ export const updateBankSoalSchema = bankSoalBaseSchema
 
 export const queryBankSoalSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(10),
+  limit: z.coerce.number().int().min(1).max(500).default(10),
   search: z.string().optional(),
   tingkat: z.string().optional(),
   status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']).optional(),
@@ -185,7 +185,7 @@ export const updateJadwalUjianSchema = jadwalUjianBaseSchema
 
 export const queryJadwalUjianSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(10),
+  limit: z.coerce.number().int().min(1).max(500).default(10),
   search: z.string().optional(),
   status: z.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED', 'ARCHIVED']).optional(),
   bank_soal_id: z.string().optional(),
