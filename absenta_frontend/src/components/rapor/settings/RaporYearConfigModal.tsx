@@ -1,20 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  FileText,
-  Save,
-  CheckCircle2,
-  Sparkles,
-  X,
   Calendar,
   UserCheck,
-  Settings2,
-  RotateCcw,
   Printer,
-  Sliders,
-  ChevronDown,
-  ChevronUp,
+  Save,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Modal, Button, Input } from '@/components/ui';
@@ -117,7 +108,6 @@ export const RaporYearConfigModal: React.FC<RaporYearConfigModalProps> = React.m
   const handleSave = useCallback(() => {
     if (!yearRow) return;
 
-    // Validate using Zod
     const result = raporSlotSchema.safeParse({
       tempatTerbit,
       tanggalRaporGanjil,
@@ -181,234 +171,147 @@ export const RaporYearConfigModal: React.FC<RaporYearConfigModalProps> = React.m
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      size="2xl"
-      className="p-0 overflow-hidden rounded-2xl max-w-3xl"
+      size="lg"
+      className="p-0 overflow-hidden rounded-2xl max-w-lg"
     >
-      <div className="flex flex-col h-full max-h-[88vh] bg-white dark:bg-slate-900">
-        {/* Modal Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/40">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-              <Calendar className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                  Konfigurasi Slot Rapor • {yearRow.tahun_ajaran}
-                </h3>
-                {yearRow.is_active && (
-                  <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-700">
-                    Aktif
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Atur titimangsa resmi, identitas kepala sekolah, dan standar blanko rapor untuk tahun pelajaran ini.
-              </p>
-            </div>
+      <div className="flex flex-col bg-white dark:bg-slate-900">
+        {/* Header Bersih & Ringkas */}
+        <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-sm text-slate-900 dark:text-white">
+              Slot Rapor • {yearRow.tahun_ajaran}
+            </span>
+            {yearRow.is_active && (
+              <span className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                Aktif
+              </span>
+            )}
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
-        {/* Modal Inner Tabs */}
-        <div className="flex items-center gap-1 px-4 sm:px-6 pt-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+        {/* Tab Switcher Bersih (Bebas Tabrakan Emoji) */}
+        <div className="flex items-center gap-1 px-5 pt-1.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
           <button
             type="button"
             onClick={() => setModalTab('titimangsa')}
             className={cn(
-              'flex items-center gap-2 px-3 py-2 text-xs font-bold border-b-2 transition-colors',
+              'flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 transition-colors',
               modalTab === 'titimangsa'
-                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400'
+                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
                 : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400'
             )}
           >
             <Calendar className="w-3.5 h-3.5" />
-            <span>📅 Titimangsa Rapor</span>
+            <span>Titimangsa</span>
           </button>
 
           <button
             type="button"
             onClick={() => setModalTab('penandatangan')}
             className={cn(
-              'flex items-center gap-2 px-3 py-2 text-xs font-bold border-b-2 transition-colors',
+              'flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 transition-colors',
               modalTab === 'penandatangan'
-                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400'
+                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
                 : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400'
             )}
           >
             <UserCheck className="w-3.5 h-3.5" />
-            <span>✍️ Kepala Sekolah</span>
+            <span>Kepala Sekolah</span>
           </button>
 
           <button
             type="button"
             onClick={() => setModalTab('format')}
             className={cn(
-              'flex items-center gap-2 px-3 py-2 text-xs font-bold border-b-2 transition-colors',
+              'flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 transition-colors',
               modalTab === 'format'
-                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400'
+                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
                 : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400'
             )}
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>📄 Format & Cetak</span>
+            <span>Format Blanko</span>
           </button>
         </div>
 
-        {/* Modal Scrollable Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+        {/* Body Ringkas & Nyaman */}
+        <div className="p-5 space-y-3.5 text-xs">
           {/* TAB 1: TITIMANGSA */}
           {modalTab === 'titimangsa' && (
-            <div className="space-y-4">
-              <div className="p-3 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 rounded-xl">
-                <span className="font-bold text-indigo-900 dark:text-indigo-300 block mb-0.5">
-                  Titimangsa Pokok Pembagian Rapor
-                </span>
-                <span className="text-indigo-700 dark:text-indigo-400 text-[11px] block">
-                  Tanggal ini dicetak otomatis pada seluruh lembar Rapor Capaian, Rapor P5, Transkrip, dan Rapor PKL.
-                </span>
-              </div>
-
+            <div className="space-y-3">
               <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  Tempat Terbit Dokumen (Kota)
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Kota / Tempat Terbit
                 </label>
                 <Input
                   value={tempatTerbit}
                   onChange={(e) => setTempatTerbit(e.target.value)}
                   placeholder="Contoh: Purwakarta"
-                  className="h-9 text-xs"
+                  className="h-8.5 text-xs font-medium"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
-                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="font-bold text-slate-800 dark:text-slate-200">
-                      Tgl Rapor Semester Ganjil
-                    </label>
-                    <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.5 rounded">
-                      Desember
-                    </span>
-                  </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Tgl Rapor Ganjil
+                  </label>
                   <Input
                     type="date"
                     value={tanggalRaporGanjil}
                     onChange={(e) => setTanggalRaporGanjil(e.target.value)}
-                    className="h-9 text-xs bg-white dark:bg-slate-900"
+                    className="h-8.5 text-xs font-medium"
                   />
-                  <span className="text-[10px] text-slate-400 block">
-                    Penyerahan buku rapor pertengahan/akhir semester 1.
-                  </span>
                 </div>
 
-                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="font-bold text-slate-800 dark:text-slate-200">
-                      Tgl Rapor Semester Genap
-                    </label>
-                    <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded">
-                      Juni
-                    </span>
-                  </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Tgl Rapor Genap
+                  </label>
                   <Input
                     type="date"
                     value={tanggalRaporGenap}
                     onChange={(e) => setTanggalRaporGenap(e.target.value)}
-                    className="h-9 text-xs bg-white dark:bg-slate-900"
+                    className="h-8.5 text-xs font-medium"
                   />
-                  <span className="text-[10px] text-slate-400 block">
-                    Penyerahan rapor kenaikan kelas & kelulusan siswa.
-                  </span>
                 </div>
               </div>
 
-              {/* Collapsible Advanced Dates */}
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+              {/* Opsi Tambahan / Khusus (Collapsible Bersih) */}
+              <div className="pt-2">
                 <button
                   type="button"
                   onClick={() => setShowAdvancedDates(!showAdvancedDates)}
-                  className="flex items-center justify-between w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-100 transition-colors"
+                  className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1"
                 >
-                  <span className="flex items-center gap-2">
-                    <Sliders className="w-3.5 h-3.5 text-indigo-500" />
-                    <span>Opsi Titimangsa Tambahan / Khusus (PTS, P5, Pleno, Kelulusan)</span>
-                  </span>
-                  {showAdvancedDates ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  <span>{showAdvancedDates ? '− Sembunyikan' : '+ Opsi Tambahan'} (PTS, P5, Pleno, Kelulusan)</span>
                 </button>
 
                 {showAdvancedDates && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
+                  <div className="grid grid-cols-2 gap-2.5 pt-2.5 mt-2 border-t border-slate-100 dark:border-slate-800">
                     <div>
-                      <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                        Tgl PTS Ganjil (Opsi)
-                      </label>
-                      <Input
-                        type="date"
-                        value={tanggalPtsGanjil}
-                        onChange={(e) => setTanggalPtsGanjil(e.target.value)}
-                        className="h-8 text-xs"
-                      />
+                      <label className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block mb-0.5">PTS Ganjil</label>
+                      <Input type="date" value={tanggalPtsGanjil} onChange={(e) => setTanggalPtsGanjil(e.target.value)} className="h-8 text-xs" />
                     </div>
                     <div>
-                      <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                        Tgl PTS Genap (Opsi)
-                      </label>
-                      <Input
-                        type="date"
-                        value={tanggalPtsGenap}
-                        onChange={(e) => setTanggalPtsGenap(e.target.value)}
-                        className="h-8 text-xs"
-                      />
+                      <label className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block mb-0.5">PTS Genap</label>
+                      <Input type="date" value={tanggalPtsGenap} onChange={(e) => setTanggalPtsGenap(e.target.value)} className="h-8 text-xs" />
                     </div>
                     <div>
-                      <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                        Tgl Projek P5 Ganjil
-                      </label>
-                      <Input
-                        type="date"
-                        value={tanggalP5Ganjil}
-                        onChange={(e) => setTanggalP5Ganjil(e.target.value)}
-                        className="h-8 text-xs"
-                      />
+                      <label className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block mb-0.5">P5 Ganjil</label>
+                      <Input type="date" value={tanggalP5Ganjil} onChange={(e) => setTanggalP5Ganjil(e.target.value)} className="h-8 text-xs" />
                     </div>
                     <div>
-                      <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                        Tgl Projek P5 Genap
-                      </label>
-                      <Input
-                        type="date"
-                        value={tanggalP5Genap}
-                        onChange={(e) => setTanggalP5Genap(e.target.value)}
-                        className="h-8 text-xs"
-                      />
+                      <label className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block mb-0.5">P5 Genap</label>
+                      <Input type="date" value={tanggalP5Genap} onChange={(e) => setTanggalP5Genap(e.target.value)} className="h-8 text-xs" />
                     </div>
                     <div>
-                      <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                        Tgl Rapat Pleno Kenaikan
-                      </label>
-                      <Input
-                        type="date"
-                        value={tanggalPlenoGenap}
-                        onChange={(e) => setTanggalPlenoGenap(e.target.value)}
-                        className="h-8 text-xs"
-                      />
+                      <label className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block mb-0.5">Pleno Kenaikan</label>
+                      <Input type="date" value={tanggalPlenoGenap} onChange={(e) => setTanggalPlenoGenap(e.target.value)} className="h-8 text-xs" />
                     </div>
                     <div>
-                      <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                        Tgl Surat Kelulusan (SKL)
-                      </label>
-                      <Input
-                        type="date"
-                        value={tanggalKelulusan}
-                        onChange={(e) => setTanggalKelulusan(e.target.value)}
-                        className="h-8 text-xs"
-                      />
+                      <label className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block mb-0.5">Kelulusan (SKL)</label>
+                      <Input type="date" value={tanggalKelulusan} onChange={(e) => setTanggalKelulusan(e.target.value)} className="h-8 text-xs" />
                     </div>
                   </div>
                 )}
@@ -416,187 +319,157 @@ export const RaporYearConfigModal: React.FC<RaporYearConfigModalProps> = React.m
             </div>
           )}
 
-          {/* TAB 2: PEJABAT PENANDATANGAN */}
+          {/* TAB 2: PEJABAT KEPALA SEKOLAH */}
           {modalTab === 'penandatangan' && (
-            <div className="space-y-4">
-              <div className="p-3 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 rounded-xl">
-                <span className="font-bold text-amber-900 dark:text-amber-300 block mb-0.5">
-                  Pejabat Kepala Sekolah Penandatangan
-                </span>
-                <span className="text-amber-700 dark:text-amber-400 text-[11px] block">
-                  Identitas resmi kepala sekolah yang dicetak pada halaman biodata, rapor akhir, transkrip, dan buku induk.
-                </span>
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  Status Jabatan
+            <div className="space-y-3">
+              <div className="flex items-center gap-4 py-1">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Status Jabatan:</span>
+                <label className="flex items-center gap-1.5 cursor-pointer font-medium text-slate-800 dark:text-slate-200">
+                  <input
+                    type="radio"
+                    name="kepsekStatus"
+                    checked={kepsekStatus === 'DEFINITIF'}
+                    onChange={() => setKepsekStatus('DEFINITIF')}
+                    className="text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span>Definitif</span>
                 </label>
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-1.5 cursor-pointer font-medium text-slate-800 dark:text-slate-200">
-                    <input
-                      type="radio"
-                      name="kepsekStatus"
-                      checked={kepsekStatus === 'DEFINITIF'}
-                      onChange={() => setKepsekStatus('DEFINITIF')}
-                      className="text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span>Kepala Sekolah Definitif</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer font-medium text-slate-800 dark:text-slate-200">
-                    <input
-                      type="radio"
-                      name="kepsekStatus"
-                      checked={kepsekStatus === 'PLT'}
-                      onChange={() => setKepsekStatus('PLT')}
-                      className="text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span>Pelaksana Tugas (Plt.)</span>
-                  </label>
-                </div>
+                <label className="flex items-center gap-1.5 cursor-pointer font-medium text-slate-800 dark:text-slate-200">
+                  <input
+                    type="radio"
+                    name="kepsekStatus"
+                    checked={kepsekStatus === 'PLT'}
+                    onChange={() => setKepsekStatus('PLT')}
+                    className="text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span>Pelaksana Tugas (Plt.)</span>
+                </label>
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  Nama Lengkap &amp; Gelar Kepala Sekolah
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Nama Lengkap &amp; Gelar
                 </label>
                 <Input
                   value={kepsekNama}
                   onChange={(e) => setKepsekNama(e.target.value)}
                   placeholder="Contoh: WAHYU TAMIMBARKAH, S.Pd."
-                  className="h-9 text-xs font-semibold"
+                  className="h-8.5 text-xs font-semibold"
                 />
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
                   NIP Kepala Sekolah
                 </label>
                 <Input
                   value={kepsekNip}
                   onChange={(e) => setKepsekNip(e.target.value)}
-                  placeholder="Contoh: 197111022008011001"
-                  className="h-9 text-xs font-mono"
+                  placeholder="Contoh: 197111022008011001 atau -"
+                  className="h-8.5 text-xs font-mono"
                 />
-                <span className="text-[10px] text-slate-400 block mt-1">
-                  Ketik strip (-) jika belum memiliki NIP resmi.
-                </span>
               </div>
             </div>
           )}
 
           {/* TAB 3: FORMAT & CETAK */}
           {modalTab === 'format' && (
-            <div className="space-y-4">
-              <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 rounded-xl">
-                <span className="font-bold text-blue-900 dark:text-blue-300 block mb-0.5">
-                  Tata Letak Lembar &amp; Model Penilaian Rapor
-                </span>
-                <span className="text-blue-700 dark:text-blue-400 text-[11px] block">
-                  Standar fisik kertas dan formula nilai rapor resmi untuk tahun pelajaran {yearRow.tahun_ajaran}.
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    Ukuran Kertas Blanko
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Ukuran Kertas
                   </label>
                   <select
                     value={ukuranKertas}
                     onChange={(e) => setUkuranKertas(e.target.value as 'A4' | 'F4')}
-                    className="w-full h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-800 dark:text-slate-200"
+                    className="w-full h-8.5 px-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200"
                   >
-                    <option value="A4">A4 (210 mm × 297 mm) - Standar Kurikulum Merdeka</option>
-                    <option value="F4">F4 / Folio (215 mm × 330 mm)</option>
+                    <option value="A4">A4 (Standar)</option>
+                    <option value="F4">F4 / Folio</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    Mode Lembar Rapor
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Mode Lembar
                   </label>
                   <select
                     value={modeCetakRapor}
                     onChange={(e) => setModeCetakRapor(e.target.value as any)}
-                    className="w-full h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-800 dark:text-slate-200"
+                    className="w-full h-8.5 px-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200"
                   >
                     <option value="CP_ONLY">Hanya Capaian Kompetensi (CP)</option>
-                    <option value="SUMATIF_AND_CP">Sumatif Angka + Capaian Kompetensi (Rekomendasi)</option>
-                    <option value="SUMATIF_ONLY">Hanya Nilai Sumatif Angka</option>
+                    <option value="SUMATIF_AND_CP">Sumatif Angka + CP</option>
+                    <option value="SUMATIF_ONLY">Hanya Sumatif</option>
                   </select>
                 </div>
               </div>
 
-              {/* Toggles */}
-              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-2.5">
-                <label className="flex items-center justify-between cursor-pointer">
-                  <span className="font-medium text-slate-800 dark:text-slate-200">
-                    Tampilkan Kop Surat Resmi (Dinas &amp; Sekolah)
-                  </span>
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={tampilkanKop}
                     onChange={(e) => setTampilkanKop(e.target.checked)}
-                    className="w-4 h-4 text-indigo-600 rounded"
+                    className="w-3.5 h-3.5 text-indigo-600 rounded"
                   />
+                  <span className="font-medium text-slate-700 dark:text-slate-300">Tampilkan Kop Surat Resmi</span>
                 </label>
 
-                <label className="flex items-center justify-between cursor-pointer">
-                  <span className="font-medium text-slate-800 dark:text-slate-200">
-                    Sertakan QR Code Validasi Dokumen Digital
-                  </span>
+                <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={tampilkanQr}
                     onChange={(e) => setTampilkanQr(e.target.checked)}
-                    className="w-4 h-4 text-indigo-600 rounded"
+                    className="w-3.5 h-3.5 text-indigo-600 rounded"
                   />
+                  <span className="font-medium text-slate-700 dark:text-slate-300">Sertakan QR Code Validasi Dokumen</span>
                 </label>
 
-                <label className="flex items-center justify-between cursor-pointer">
-                  <span className="font-medium text-slate-800 dark:text-slate-200">
-                    Tampilkan Kolom Nilai Kokurikuler (P5)
-                  </span>
+                <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={tampilkanKokurikuler}
                     onChange={(e) => setTampilkanKokurikuler(e.target.checked)}
-                    className="w-4 h-4 text-indigo-600 rounded"
+                    className="w-3.5 h-3.5 text-indigo-600 rounded"
                   />
+                  <span className="font-medium text-slate-700 dark:text-slate-300">Tampilkan Nilai Kokurikuler (P5)</span>
                 </label>
               </div>
             </div>
           )}
         </div>
 
-        {/* Modal Footer */}
-        <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 flex items-center justify-between shrink-0">
+        {/* Footer Rapi & Langsung Terlihat */}
+        <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 flex items-center justify-end gap-2 shrink-0">
           <Button
             type="button"
             variant="ghost"
+            size="sm"
             onClick={onClose}
             disabled={saveMutation.isPending}
-            className="h-9 px-4 text-xs font-semibold"
+            className="h-8 px-3 text-xs"
           >
             Batal
           </Button>
 
           <Button
             type="button"
+            size="sm"
             onClick={handleSave}
             disabled={saveMutation.isPending}
-            className="h-9 px-5 text-xs font-bold gap-2 shadow-xs"
+            className="h-8 px-4 text-xs font-bold gap-1.5 shadow-2xs"
           >
             {saveMutation.isPending ? (
               <>
-                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 <span>Menyimpan...</span>
               </>
             ) : (
               <>
-                <Save className="w-4 h-4" />
-                <span>Simpan Pengaturan Slot</span>
+                <Save className="w-3.5 h-3.5" />
+                <span>Simpan Perubahan</span>
               </>
             )}
           </Button>
