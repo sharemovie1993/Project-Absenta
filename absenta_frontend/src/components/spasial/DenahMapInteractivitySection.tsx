@@ -40,7 +40,7 @@ export const DenahMapInteractivitySection: React.FC<DenahMapInteractivitySection
   };
 
   const handleZoomStep = (delta: number) => {
-    const nextZoom = Math.min(20, Math.max(14, Number((config.zoom + delta).toFixed(1))));
+    const nextZoom = Math.min(23.5, Math.max(14, Number((config.zoom + delta).toFixed(1))));
     onUpdateConfig({ zoom: nextZoom });
   };
 
@@ -119,7 +119,7 @@ export const DenahMapInteractivitySection: React.FC<DenahMapInteractivitySection
               <input
                 type="range"
                 min="15"
-                max="20"
+                max="23.5"
                 step="0.1"
                 value={config.zoom}
                 onChange={(e) => onUpdateConfig({ zoom: parseFloat(e.target.value) })}
@@ -137,51 +137,67 @@ export const DenahMapInteractivitySection: React.FC<DenahMapInteractivitySection
             </div>
           </div>
 
-          {/* Quick Zoom Presets */}
-          <div className="grid grid-cols-4 gap-1 text-[10px]">
-            <button
-              type="button"
-              onClick={() => onUpdateConfig({ zoom: 16.5 })}
-              className={`py-1 rounded border font-semibold cursor-pointer ${
-                config.zoom === 16.5
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
-              }`}
-            >
-              Kawasan
-            </button>
+          {/* Quick Zoom Presets up to Super Detail */}
+          <div className="grid grid-cols-5 gap-1 text-[10px]">
             <button
               type="button"
               onClick={() => onUpdateConfig({ zoom: 17.5 })}
-              className={`py-1 rounded border font-semibold cursor-pointer ${
+              className={`py-1 rounded border font-semibold cursor-pointer truncate ${
                 config.zoom === 17.5
                   ? 'bg-blue-600 text-white border-blue-600'
                   : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
               }`}
+              title="Skala Kawasan & Kompleks Sekolah"
             >
-              Kompleks
+              17.5x
             </button>
             <button
               type="button"
-              onClick={() => onUpdateConfig({ zoom: 18.5 })}
-              className={`py-1 rounded border font-semibold cursor-pointer ${
-                config.zoom === 18.5
+              onClick={() => onUpdateConfig({ zoom: 19.0 })}
+              className={`py-1 rounded border font-semibold cursor-pointer truncate ${
+                config.zoom === 19.0
                   ? 'bg-blue-600 text-white border-blue-600'
                   : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
               }`}
+              title="Skala Blok Gedung"
             >
-              Gedung
+              19.0x
             </button>
             <button
               type="button"
-              onClick={() => onUpdateConfig({ zoom: 19.5 })}
-              className={`py-1 rounded border font-semibold cursor-pointer ${
-                config.zoom === 19.5
+              onClick={() => onUpdateConfig({ zoom: 20.5 })}
+              className={`py-1 rounded border font-semibold cursor-pointer truncate ${
+                config.zoom === 20.5
                   ? 'bg-blue-600 text-white border-blue-600'
                   : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
               }`}
+              title="Skala Atap Ruang Kelas"
             >
-              Ruang
+              20.5x
+            </button>
+            <button
+              type="button"
+              onClick={() => onUpdateConfig({ zoom: 22.0 })}
+              className={`py-1 rounded border font-semibold cursor-pointer truncate ${
+                config.zoom === 22.0
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+              }`}
+              title="Skala Detail Sekat Ruang"
+            >
+              22.0x
+            </button>
+            <button
+              type="button"
+              onClick={() => onUpdateConfig({ zoom: 23.0 })}
+              className={`py-1 rounded border font-semibold cursor-pointer truncate ${
+                config.zoom === 23.0
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+              }`}
+              title="Skala Ultra Maksimal"
+            >
+              23.0x 🔥
             </button>
           </div>
 

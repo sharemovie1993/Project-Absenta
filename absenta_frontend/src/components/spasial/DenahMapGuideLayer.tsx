@@ -10,24 +10,24 @@ interface DenahMapGuideLayerProps {
   onMapChange: (updated: Partial<DenahMapGuideConfig>) => void;
 }
 
-const TILE_URLS: Record<MapTileProvider, { url: string; maxZoom: number; subdomains?: string[] }> = {
+const TILE_URLS: Record<MapTileProvider, { url: string; maxNativeZoom: number; subdomains?: string[] }> = {
   esri_satelit: {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    maxZoom: 19,
+    maxNativeZoom: 19,
   },
   google_hybrid: {
     url: 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
-    maxZoom: 20,
+    maxNativeZoom: 20,
     subdomains: ['0', '1', '2', '3'],
   },
   google_satelit: {
     url: 'https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-    maxZoom: 20,
+    maxNativeZoom: 20,
     subdomains: ['0', '1', '2', '3'],
   },
   osm: {
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    maxZoom: 19,
+    maxNativeZoom: 19,
     subdomains: ['a', 'b', 'c'],
   },
 };
@@ -50,6 +50,8 @@ export const DenahMapGuideLayer: React.FC<DenahMapGuideLayerProps> = ({
     const map = L.map(containerRef.current, {
       center: [config.lat, config.lng],
       zoom: config.zoom,
+      minZoom: 12,
+      maxZoom: 24,
       zoomSnap: 0.1,
       zoomDelta: 0.2,
       wheelPxPerZoomLevel: 100,
@@ -63,10 +65,11 @@ export const DenahMapGuideLayer: React.FC<DenahMapGuideLayerProps> = ({
 
     mapRef.current = map;
 
-    // Attach initial tile layer
+    // Attach initial tile layer with digital oversampling up to zoom 24
     const tileConfig = TILE_URLS[config.layer] || TILE_URLS.google_hybrid;
     const tileLayer = L.tileLayer(tileConfig.url, {
-      maxZoom: tileConfig.maxZoom,
+      maxNativeZoom: tileConfig.maxNativeZoom,
+      maxZoom: 24,
       subdomains: tileConfig.subdomains || 'abc',
     }).addTo(map);
     currentTileLayerRef.current = tileLayer;
@@ -111,7 +114,8 @@ export const DenahMapGuideLayer: React.FC<DenahMapGuideLayerProps> = ({
 
     const tileConfig = TILE_URLS[config.layer] || TILE_URLS.google_hybrid;
     const newLayer = L.tileLayer(tileConfig.url, {
-      maxZoom: tileConfig.maxZoom,
+      maxNativeZoom: tileConfig.maxNativeZoom,
+      maxZoom: 24,
       subdomains: tileConfig.subdomains || 'abc',
     }).addTo(map);
 
