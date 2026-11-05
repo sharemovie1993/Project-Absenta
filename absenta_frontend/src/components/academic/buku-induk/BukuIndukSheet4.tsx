@@ -1,4 +1,5 @@
 import React from 'react';
+import { UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
 
 interface BukuIndukSheet4Props {
   siswa: any;
@@ -255,21 +256,14 @@ export const BukuIndukSheet4: React.FC<BukuIndukSheet4Props> = ({ siswa, tenantI
         </p>
       )}
 
-      {/* Section 6: Tanda Tangan */}
-      <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'space-between', fontSize: '10.5pt' }}>
-        <div style={{ textAlign: 'center', width: '40%' }}>
-          <div>Wali Kelas,</div>
-          <div style={{ marginTop: '48px', borderBottom: '1px solid black', width: '100%' }}></div>
-          <div style={{ fontWeight: 'bold' }}>(...............................)</div>
-          <div style={{ fontSize: '9pt' }}>NIP. ................................</div>
-        </div>
-        <div style={{ textAlign: 'center', width: '40%' }}>
-          <div>{cityName}, {today}</div>
-          <div style={{ marginTop: '4px' }}>Kepala Sekolah,</div>
-          <div style={{ marginTop: '48px', borderBottom: '1px solid black', width: '100%' }}></div>
-          <div style={{ fontWeight: 'bold' }}>(...............................)</div>
-          <div style={{ fontSize: '9pt' }}>NIP. ................................</div>
-        </div>
+      {/* Section 6: Tanda Tangan Menggunakan Universal Signature Engine */}
+      <div className="mt-6 w-full page-break-inside-avoid">
+        <UniversalDocumentSignatures
+          layout="dual_walas_kepsek"
+          titimangsaCity={cityName}
+          titimangsaDate={today}
+          spacingHeightMm={18}
+        />
       </div>
     </div>
   );

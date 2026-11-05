@@ -1,5 +1,5 @@
 import React from 'react';
-import { PrintDocumentSheet, PrintHeader } from '@/components/ui/PrintHeader';
+import { PrintDocumentSheet, PrintHeader, UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
 import type { PreviewMutasiKeluarResponse } from '@/api/correspondence/mutasi.api';
 
 interface SuratPindahSheetProps {
@@ -150,49 +150,19 @@ export const SuratPindahSheet: React.FC<SuratPindahSheetProps> = ({ data, tenant
           *Catatan: Setelah peserta didik tersebut diterima secara resmi di sekolah tujuan, lembar konfirmasi tanda terima mohon dikirimkan kembali ke sekolah asal.
         </p>
 
-        {/* 6. BLOK TANDA TANGAN KEPALA SEKOLAH MANUAL BASAH */}
-        <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', pageBreakInside: 'avoid' }}>
-          <div style={{ width: '260px', textAlign: 'left', fontSize: '10.5pt' }}>
-            <div>
-              {penandatangan.kota}, {tanggalSuratFormatted}
-            </div>
-            <div style={{ marginTop: '2px' }}>Kepala Sekolah,</div>
-
-            {/* Ruang stempel & tanda tangan manual basah berjarak 28 mm (~90px) */}
-            <div
-              style={{
-                height: '75px',
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
+        {/* 6. BLOK TANDA TANGAN KEPALA SEKOLAH MENGGUNAKAN UNIVERSAL SIGNATURE ENGINE */}
+        <div className="flex justify-end mt-6 page-break-inside-avoid">
+          <div className="w-[70mm]">
+            <UniversalDocumentSignatures
+              layout="single_kepsek"
+              titimangsaCity={penandatangan.kota}
+              titimangsaDate={tanggalSuratFormatted}
+              overrideSignerRight={{
+                personName: penandatangan.nama_kepala_sekolah,
+                nip: penandatangan.nip_kepala_sekolah,
               }}
-            >
-              <div
-                style={{
-                  position: 'absolute',
-                  left: '-48px',
-                  width: '68px',
-                  height: '68px',
-                  border: '1px dashed #cbd5e1',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '8pt',
-                  color: '#94a3b8',
-                  transform: 'rotate(-15deg)',
-                }}
-              >
-                Cap Dinas
-              </div>
-            </div>
-
-            <div style={{ fontWeight: 'bold', textDecoration: 'underline', textTransform: 'uppercase' }}>
-              {penandatangan.nama_kepala_sekolah}
-            </div>
-            <div style={{ fontSize: '9.5pt', marginTop: '2px', fontFamily: 'monospace' }}>
-              NIP. {penandatangan.nip_kepala_sekolah}
-            </div>
+              spacingHeightMm={20}
+            />
           </div>
         </div>
       </div>

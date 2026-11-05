@@ -1,5 +1,5 @@
 import React from 'react';
-import { PrintDocumentSheet, PrintHeader } from '@/components/ui/PrintHeader';
+import { PrintDocumentSheet, PrintHeader, UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
 import type { PreviewBastResponse } from '@/api/correspondence/bastIjazah.api';
 
 interface BastIjazahSheetProps {
@@ -212,42 +212,19 @@ export const BastIjazahSheet: React.FC<BastIjazahSheetProps> = ({ data, tenantIn
             </div>
           </div>
 
-          {/* Mengetahui Kepala Sekolah */}
-          <div style={{ textAlign: 'center', marginTop: '8px' }}>
-            <div>Mengetahui,</div>
-            <div style={{ fontWeight: 'bold', marginTop: '2px' }}>Kepala Sekolah,</div>
-            <div
-              style={{
-                height: '65px',
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <div
-                style={{
-                  position: 'absolute',
-                  width: '60px',
-                  height: '60px',
-                  border: '1px dashed #cbd5e1',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '7.5pt',
-                  color: '#94a3b8',
-                  transform: 'rotate(-15deg)',
+          {/* Mengetahui Kepala Sekolah Menggunakan Universal Signature Engine */}
+          <div className="flex justify-center mt-3">
+            <div className="w-[70mm]">
+              <UniversalDocumentSignatures
+                layout="single_kepsek"
+                showTitimangsa={false}
+                overrideSignerRight={{
+                  roleTitle: 'Mengetahui,\nKepala Sekolah,',
+                  personName: penandatangan.nama_kepala_sekolah,
+                  nip: penandatangan.nip_kepala_sekolah,
                 }}
-              >
-                Cap Dinas
-              </div>
-            </div>
-            <div style={{ fontWeight: 'bold', textDecoration: 'underline', textTransform: 'uppercase' }}>
-              {penandatangan.nama_kepala_sekolah}
-            </div>
-            <div style={{ fontSize: '9pt', fontFamily: 'monospace' }}>
-              NIP. {penandatangan.nip_kepala_sekolah}
+                spacingHeightMm={16}
+              />
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { PrintDocumentSheet, PrintHeader } from '@/components/ui/PrintHeader';
+import { PrintDocumentSheet, PrintHeader, UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
 import type { PreviewSuratPengantarResponse } from '@/api/correspondence/dkn.api';
 
 interface SuratPengantarDknSheetProps {
@@ -152,39 +152,19 @@ export const SuratPengantarDknSheet: React.FC<SuratPengantarDknSheetProps> = ({ 
           Demikian surat pengantar ini kami sampaikan. Atas perhatian, bimbingan, dan kerja sama yang baik dari Bapak/Ibu Kepala Cabang Dinas Pendidikan Wilayah, kami ucapkan terima kasih.
         </div>
 
-        {/* 6. TANDA TANGAN KEPALA SEKOLAH RESMI */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-          <div style={{ width: '45%', textAlign: 'center', position: 'relative' }}>
-            <div>Kepala Sekolah,</div>
-
-            {/* Cap Stempel Lingkaran 28mm wet signature area */}
-            <div style={{ height: '56px', position: 'relative' }}>
-              <div
-                style={{
-                  position: 'absolute',
-                  left: '12px',
-                  top: '6px',
-                  width: '46px',
-                  height: '46px',
-                  border: '1.5px dashed #94a3b8',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '6.5pt',
-                  color: '#94a3b8',
-                  textAlign: 'center',
-                  transform: 'rotate(-12deg)',
-                }}
-              >
-                Cap Stempel Sekolah
-              </div>
-            </div>
-
-            <div style={{ fontWeight: 'bold', textDecoration: 'underline' }}>
-              {pejabat.kepala_sekolah.nama}
-            </div>
-            <div>NIP. {pejabat.kepala_sekolah.nip}</div>
+        {/* 6. TANDA TANGAN KEPALA SEKOLAH RESMI MENGGUNAKAN UNIVERSAL SIGNATURE ENGINE */}
+        <div className="flex justify-end mt-4 page-break-inside-avoid">
+          <div className="w-[70mm]">
+            <UniversalDocumentSignatures
+              layout="single_kepsek"
+              showTitimangsa={false}
+              overrideSignerRight={{
+                roleTitle: 'Kepala Sekolah,',
+                personName: pejabat.kepala_sekolah.nama,
+                nip: pejabat.kepala_sekolah.nip,
+              }}
+              spacingHeightMm={18}
+            />
           </div>
         </div>
       </div>

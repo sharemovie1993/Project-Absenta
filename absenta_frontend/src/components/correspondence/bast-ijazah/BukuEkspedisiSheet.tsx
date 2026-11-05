@@ -1,5 +1,5 @@
 import React from 'react';
-import { PrintDocumentSheet, PrintHeader } from '@/components/ui/PrintHeader';
+import { PrintDocumentSheet, PrintHeader, UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
 import type { BukuEkspedisiResponse } from '@/api/correspondence/bastIjazah.api';
 
 interface BukuEkspedisiSheetProps {
@@ -137,25 +137,22 @@ export const BukuEkspedisiSheet: React.FC<BukuEkspedisiSheetProps> = ({
           </tbody>
         </table>
 
-        {/* 5. TANDA TANGAN KOORDINATOR TU & KEPALA SEKOLAH */}
-        <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', pageBreakInside: 'avoid', fontSize: '9pt' }}>
-          <div style={{ width: '220px', textAlign: 'center' }}>
-            <div>Pengelola Ijazah,</div>
-            <div style={{ marginTop: '2px' }}>Koordinator Tata Usaha,</div>
-            <div style={{ height: '48px' }}></div>
-            <div style={{ fontWeight: 'bold', textDecoration: 'underline' }}>..........................................</div>
-            <div style={{ fontSize: '8pt' }}>NIP. .....................................</div>
-          </div>
-
-          <div style={{ width: '240px', textAlign: 'center' }}>
-            <div>{penandatangan.kota}, {today}</div>
-            <div style={{ marginTop: '2px' }}>Kepala Sekolah,</div>
-            <div style={{ height: '48px' }}></div>
-            <div style={{ fontWeight: 'bold', textDecoration: 'underline', textTransform: 'uppercase' }}>
-              {penandatangan.nama_kepala_sekolah}
-            </div>
-            <div style={{ fontSize: '8pt' }}>NIP. {penandatangan.nip_kepala_sekolah}</div>
-          </div>
+        {/* 5. TANDA TANGAN KOORDINATOR TU & KEPALA SEKOLAH MENGGUNAKAN UNIVERSAL SIGNATURE ENGINE */}
+        <div className="mt-4 w-full page-break-inside-avoid">
+          <UniversalDocumentSignatures
+            layout="dual_unit_kepsek"
+            titimangsaCity={penandatangan.kota}
+            titimangsaDate={today}
+            overrideSignerLeft={{
+              roleTitle: 'Pengelola Ijazah,\nKoordinator Tata Usaha,',
+              personName: '..........................................',
+            }}
+            overrideSignerRight={{
+              personName: penandatangan.nama_kepala_sekolah,
+              nip: penandatangan.nip_kepala_sekolah,
+            }}
+            spacingHeightMm={16}
+          />
         </div>
       </div>
     </PrintDocumentSheet>

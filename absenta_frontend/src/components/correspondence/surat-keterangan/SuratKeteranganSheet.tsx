@@ -1,5 +1,5 @@
 import React from 'react';
-import { PrintDocumentSheet, PrintHeader } from '@/components/ui/PrintHeader';
+import { PrintDocumentSheet, PrintHeader, UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
 import type { PreviewSuratKeteranganResponse } from '@/api/correspondence/suratKeterangan.api';
 
 interface SuratKeteranganSheetProps {
@@ -115,37 +115,20 @@ export const SuratKeteranganSheet: React.FC<SuratKeteranganSheetProps> = ({ data
           Demikian surat keterangan ini kami buat dengan sebenarnya, agar dapat dipergunakan sebagaimana mestinya.
         </p>
 
-        {/* 7. BLOK TANDA TANGAN BASAH & STEMPEL RESMI KEPALA SEKOLAH */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-          <div style={{ width: '260px', textAlign: 'center' }}>
-            <p style={{ margin: '0 0 2px 0' }}>
-              {kota_sekolah}, {tanggal_surat_formatted}
-            </p>
-            <p style={{ fontWeight: 'bold', margin: '0 0 4px 0' }}>
-              {penandatangan.jabatan},
-            </p>
-
-            {/* Ruang Cap Stempel Basah & Tanda Tangan Basah Fisik (Tinggi 70px / ~28mm) */}
-            <div
-              style={{
-                height: '75px',
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+        {/* 7. BLOK TANDA TANGAN MENGGUNAKAN UNIVERSAL SIGNATURE ENGINE */}
+        <div className="flex justify-end mt-4">
+          <div className="w-[70mm]">
+            <UniversalDocumentSignatures
+              layout="single_kepsek"
+              titimangsaCity={kota_sekolah}
+              titimangsaDate={tanggal_surat_formatted}
+              overrideSignerRight={{
+                roleTitle: penandatangan.jabatan,
+                personName: penandatangan.nama,
+                nip: penandatangan.nip,
               }}
-            >
-              <span style={{ fontSize: '8pt', color: '#94a3b8', fontStyle: 'italic', border: '1px dashed #cbd5e1', padding: '2px 8px', borderRadius: '4px' }}>
-                [ Tanda Tangan & Cap Stempel Basah ]
-              </span>
-            </div>
-
-            <p style={{ fontWeight: 'bold', textDecoration: 'underline', margin: '0 0 2px 0', fontSize: '11pt' }}>
-              {penandatangan.nama}
-            </p>
-            <p style={{ fontSize: '10pt', margin: 0, fontFamily: 'monospace' }}>
-              NIP. {penandatangan.nip}
-            </p>
+              spacingHeightMm={20}
+            />
           </div>
         </div>
       </div>

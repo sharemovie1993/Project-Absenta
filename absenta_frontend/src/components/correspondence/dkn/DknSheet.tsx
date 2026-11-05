@@ -1,5 +1,5 @@
 import React from 'react';
-import { PrintDocumentSheet, PrintHeader } from '@/components/ui/PrintHeader';
+import { PrintDocumentSheet, PrintHeader, UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
 import type { DknMatriksData, DknSiswaRow } from '@/api/correspondence/dkn.api';
 
 interface DknSheetProps {
@@ -216,74 +216,29 @@ export const DknSheet: React.FC<DknSheetProps> = ({ data, tahunPelajaran, tenant
                 </tbody>
               </table>
 
-              {/* 5. BLOK 3 TANDA TANGAN RESMI (HANYA PADA LEMBAR TERAKHIR) */}
+              {/* 5. BLOK 3 TANDA TANGAN RESMI MENGGUNAKAN UNIVERSAL SIGNATURE ENGINE */}
               {isLastPage && (
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr 1fr',
-                    gap: '12px',
-                    marginTop: '16px',
-                    fontSize: '8.5pt',
-                    pageBreakInside: 'avoid',
-                  }}
-                >
-                  {/* KIRI: WAKA KURIKULUM */}
-                  <div style={{ textAlign: 'center' }}>
-                    <div>Mengetahui,</div>
-                    <div style={{ fontWeight: 'bold' }}>Wakil Kepala Sekolah Bidang Kurikulum</div>
-                    <div style={{ height: '42px' }} />
-                    <div style={{ fontWeight: 'bold', textDecoration: 'underline' }}>
-                      {pejabat.waka_kurikulum.nama}
-                    </div>
-                    <div>NIP. {pejabat.waka_kurikulum.nip}</div>
-                  </div>
-
-                  {/* TENGAH: PENGAWAS PEMBINA DINAS */}
-                  <div style={{ textAlign: 'center' }}>
-                    <div>Mengetahui,</div>
-                    <div style={{ fontWeight: 'bold' }}>Pengawas Pembina Cabang Dinas</div>
-                    <div style={{ height: '42px' }} />
-                    <div style={{ fontWeight: 'bold', textDecoration: 'underline' }}>
-                      ( ............................................................ )
-                    </div>
-                    <div>NIP. .......................................................</div>
-                  </div>
-
-                  {/* KANAN: KEPALA SEKOLAH + STEMPEL RESMI */}
-                  <div style={{ textAlign: 'center', position: 'relative' }}>
-                    <div>{pejabat.kota}, {today}</div>
-                    <div style={{ fontWeight: 'bold' }}>Kepala Sekolah,</div>
-                    
-                    {/* Cap Stempel 28mm wet indicator */}
-                    <div style={{ height: '42px', position: 'relative' }}>
-                      <div
-                        style={{
-                          position: 'absolute',
-                          left: '10px',
-                          top: '2px',
-                          width: '40px',
-                          height: '40px',
-                          border: '1px dashed #94a3b8',
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '6pt',
-                          color: '#94a3b8',
-                          textAlign: 'center',
-                          transform: 'rotate(-10deg)',
-                        }}
-                      >
-                        Cap Sekolah
-                      </div>
-                    </div>
-
-                    <div style={{ fontWeight: 'bold', textDecoration: 'underline' }}>
-                      {pejabat.kepala_sekolah.nama}
-                    </div>
-                    <div>NIP. {pejabat.kepala_sekolah.nip}</div>
-                  </div>
+                <div className="mt-4 w-full page-break-inside-avoid">
+                  <UniversalDocumentSignatures
+                    layout="tri_party_row"
+                    titimangsaCity={pejabat.kota}
+                    titimangsaDate={today}
+                    overrideSignerLeft={{
+                      roleTitle: 'Mengetahui,\nWakil Kepala Sekolah Bidang Kurikulum',
+                      personName: pejabat.waka_kurikulum.nama,
+                      nip: pejabat.waka_kurikulum.nip,
+                    }}
+                    overrideSignerCenter={{
+                      roleTitle: 'Mengetahui,\nPengawas Pembina Cabang Dinas',
+                      personName: '( ............................................................ )',
+                      nip: '.......................................................',
+                    }}
+                    overrideSignerRight={{
+                      personName: pejabat.kepala_sekolah.nama,
+                      nip: pejabat.kepala_sekolah.nip,
+                    }}
+                    spacingHeightMm={16}
+                  />
                 </div>
               )}
             </div>

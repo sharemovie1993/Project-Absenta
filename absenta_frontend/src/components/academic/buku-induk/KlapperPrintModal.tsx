@@ -2,6 +2,7 @@ import React from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
+  UniversalDocumentSignatures,
   PrintHeader,
   usePrintHeaderData,
 } from '@/components/ui/PrintHeader';
@@ -261,6 +262,20 @@ export const KlapperPrintModal: React.FC<KlapperPrintModalProps> = ({
                   })}
                 </tbody>
               </table>
+
+              {/* Tanda Tangan Pengesahan Buku Klapper pada Lembar Terakhir Menggunakan Universal Engine */}
+              {pageIndex === pages.length - 1 && (
+                <div className="mt-6 flex justify-end page-break-inside-avoid">
+                  <div className="w-[70mm]">
+                    <UniversalDocumentSignatures
+                      layout="single_kepsek"
+                      titimangsaCity={tenantInfo?.kabupaten || 'Purwakarta'}
+                      titimangsaDate={new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      spacingHeightMm={18}
+                    />
+                  </div>
+                </div>
+              )}
             </PrintDocumentSheet>
           ))
         )}
