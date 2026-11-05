@@ -122,6 +122,17 @@ export class RaporController {
     }
   }
 
+  static async getSettingsSummary(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const result = await RaporService.getAllSettingsSummary(tenant_id);
+      return sendResponse(reply, 200, true, 'Ringkasan pengaturan rapor per tahun ajaran berhasil dimuat', result);
+    } catch (error: any) {
+      appLogger.error({ err: error }, 'Rapor getSettingsSummary error');
+      return sendError(reply, 500, error.message || 'Gagal memuat ringkasan pengaturan rapor', error);
+    }
+  }
+
   static async getSettings(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;

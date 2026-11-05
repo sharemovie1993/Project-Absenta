@@ -893,9 +893,9 @@ export class RaporService {
     const semGanjil = allTenantSem.find((s) => (s.nama_semester || '').toLowerCase().includes('ganjil') || (s.nama_semester || '').includes('1')) || allTenantSem[0];
     const semGenap = allTenantSem.find((s) => (s.nama_semester || '').toLowerCase().includes('genap') || (s.nama_semester || '').includes('2')) || allTenantSem[1] || allTenantSem[0];
 
-    // Resolusi Nama & NIP Wali Kelas
-    let walasNama = 'Wali Kelas';
-    let walasNip = '-';
+    // Resolusi Nama & NIP Wali Kelas Murni dari OrganizationalAssignment (Konteks Akademik Sah - Zero Fallback)
+    let walasNama = '';
+    let walasNip = '';
 
     const waliAssignment = await prisma.organizationalAssignment.findFirst({
       where: {
@@ -903,6 +903,7 @@ export class RaporService {
         kelas_id: params.kelas_id,
         is_active: true,
         Position: { OR: [{ code: 'WALIKELAS' }, { name: { contains: 'Wali', mode: 'insensitive' } }] },
+        ...(params.tahun_pelajaran_id ? { tahun_pelajaran_id: params.tahun_pelajaran_id } : {}),
       },
       include: {
         User: {
@@ -914,23 +915,11 @@ export class RaporService {
     });
 
     if (waliAssignment?.User?.Guru) {
-      walasNama = waliAssignment.User.Guru.nama_guru;
-      walasNip = waliAssignment.User.Guru.nip || '-';
+      walasNama = waliAssignment.User.Guru.nama_guru || '';
+      walasNip = waliAssignment.User.Guru.nip || '';
     } else if (waliAssignment?.User?.full_name) {
       walasNama = waliAssignment.User.full_name;
-      walasNip = '-';
-    } else {
-      const stagingSheet = await prisma.raporStagingSheet.findFirst({
-        where: {
-          tenant_id: tenantId,
-          kelas_id: params.kelas_id,
-          wali_kelas_nama: { not: null },
-        },
-        orderBy: { updated_at: 'desc' },
-      });
-      if (stagingSheet?.wali_kelas_nama) {
-        walasNama = stagingSheet.wali_kelas_nama;
-      }
+      walasNip = '';
     }
 
     // Ambil Struktur Kurikulum resmi untuk tingkat & jurusan kelas ini sebagai Single Source of Truth
@@ -1740,6 +1729,127 @@ export class RaporService {
     );
   }
 
+  /**
+   * Mengambil ringkasan pengaturan rapor untuk SELURUH tahun pelajaran (Tabel Slot Rekapitulasi)
+   */
+  static async getAllSettingsSummary(tenantId: string) {
+    const [tpList, allConfigs, sekolah] = await Promise.all([
+      prisma.tahunPelajaran.findMany({
+        where: { tenant_id: tenantId },
+        orderBy: { tahun: 'desc' },
+      }),
+      prisma.config.findMany({
+        where: {
+          tenant_id: tenantId,
+          key: { startsWith: 'RAPOR_' },
+        },
+      }),
+      prisma.sekolah.findFirst({ where: { tenant_id: tenantId } }),
+    ]);
+
+    const configMap = new Map<string, string>();
+    allConfigs.forEach((c) => {
+      if (c.key && c.value !== null && c.value !== undefined) {
+        configMap.set(c.key, c.value);
+      }
+    });
+
+    const globalTempat = configMap.get('RAPOR_TEMPAT_TERBIT') || sekolah?.kota || 'Purwakarta';
+    const globalGanjil = configMap.get('RAPOR_TANGGAL_RAPOR_GANJIL') || '';
+    const globalGenap = configMap.get('RAPOR_TANGGAL_RAPOR_GENAP') || '';
+    const globalKepsekStatus = configMap.get('RAPOR_KEPSEK_STATUS') || 'DEFINITIF';
+    const globalKepsekNama = configMap.get('RAPOR_KEPSEK_NAMA') || sekolah?.kepala_sekolah || '';
+    const globalKepsekNip = configMap.get('RAPOR_KEPSEK_NIP') || sekolah?.nip_kepala || '';
+    const globalKertas = (configMap.get('RAPOR_UKURAN_KERTAS') || 'A4') as 'A4' | 'F4';
+    const globalKop = configMap.get('RAPOR_TAMPILKAN_KOP') !== 'false';
+    const globalQr = configMap.get('RAPOR_TAMPILKAN_QR') !== 'false';
+    const globalKokurikuler = configMap.get('RAPOR_SHOW_KOKURIKULER') !== 'false';
+    const globalMode = (configMap.get('RAPOR_MODE_CETAK') || 'CP_ONLY') as 'CP_ONLY' | 'SUMATIF_AND_CP' | 'SUMATIF_ONLY';
+    const globalSumber = (configMap.get('RAPOR_SUMBER_NILAI') || 'FORMULA_SUMATIF') as 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL';
+
+    return tpList.map((tp) => {
+      const tpId = tp.id;
+      const tpTempat = configMap.get(`RAPOR_TEMPAT_TERBIT_${tpId}`);
+      const tpGanjil = configMap.get(`RAPOR_TANGGAL_RAPOR_${tpId}_ganjil`);
+      const tpGenap = configMap.get(`RAPOR_TANGGAL_RAPOR_${tpId}_genap`);
+      const tpP5Ganjil = configMap.get(`RAPOR_TANGGAL_P5_${tpId}_ganjil`);
+      const tpP5Genap = configMap.get(`RAPOR_TANGGAL_P5_${tpId}_genap`);
+      const tpPtsGanjil = configMap.get(`RAPOR_TANGGAL_PTS_${tpId}_ganjil`);
+      const tpPtsGenap = configMap.get(`RAPOR_TANGGAL_PTS_${tpId}_genap`);
+      const tpPlenoGenap = configMap.get(`RAPOR_TANGGAL_PLENO_${tpId}_genap`);
+      const tpKelulusan = configMap.get(`RAPOR_TANGGAL_KELULUSAN_${tpId}`);
+      const tpKepsekStatus = configMap.get(`RAPOR_KEPSEK_STATUS_${tpId}`);
+      const tpKepsekNama = configMap.get(`RAPOR_KEPSEK_NAMA_${tpId}`);
+      const tpKepsekNip = configMap.get(`RAPOR_KEPSEK_NIP_${tpId}`);
+      const tpKertas = configMap.get(`RAPOR_UKURAN_KERTAS_${tpId}`);
+      const tpKop = configMap.get(`RAPOR_TAMPILKAN_KOP_${tpId}`);
+      const tpQr = configMap.get(`RAPOR_TAMPILKAN_QR_${tpId}`);
+      const tpKokurikuler = configMap.get(`RAPOR_SHOW_KOKURIKULER_${tpId}`);
+      const tpMode = configMap.get(`RAPOR_MODE_CETAK_${tpId}`);
+      const tpSumber = configMap.get(`RAPOR_SUMBER_NILAI_${tpId}`);
+
+      let foundTpGanjil = tpGanjil;
+      let foundTpGenap = tpGenap;
+      let foundTpP5Ganjil = tpP5Ganjil;
+      let foundTpP5Genap = tpP5Genap;
+      let foundTpPtsGanjil = tpPtsGanjil;
+      let foundTpPtsGenap = tpPtsGenap;
+      let foundTpPleno = tpPlenoGenap;
+
+      for (const [k, v] of configMap.entries()) {
+        if (k.startsWith(`RAPOR_TANGGAL_RAPOR_${tpId}_`) && v) {
+          if (!foundTpGanjil) foundTpGanjil = v;
+          else if (!foundTpGenap && v !== foundTpGanjil) foundTpGenap = v;
+        }
+        if (k.startsWith(`RAPOR_TANGGAL_P5_${tpId}_`) && v) {
+          if (!foundTpP5Ganjil) foundTpP5Ganjil = v;
+          else if (!foundTpP5Genap && v !== foundTpP5Ganjil) foundTpP5Genap = v;
+        }
+        if (k.startsWith(`RAPOR_TANGGAL_PTS_${tpId}_`) && v) {
+          if (!foundTpPtsGanjil) foundTpPtsGanjil = v;
+          else if (!foundTpPtsGenap && v !== foundTpPtsGanjil) foundTpPtsGenap = v;
+        }
+        if (k.startsWith(`RAPOR_TANGGAL_PLENO_${tpId}_`) && v) {
+          if (!foundTpPleno) foundTpPleno = v;
+        }
+      }
+
+      const isConfigured = Boolean(
+        tpTempat ||
+        foundTpGanjil ||
+        foundTpGenap ||
+        tpKepsekNama ||
+        tpKertas ||
+        tpMode
+      );
+
+      return {
+        tahun_pelajaran_id: tpId,
+        tahun_ajaran: tp.tahun,
+        is_active: tp.is_active,
+        is_configured: isConfigured,
+        tempat_terbit: tpTempat || globalTempat,
+        tanggal_rapor_ganjil: foundTpGanjil || (tp.is_active ? globalGanjil : ''),
+        tanggal_rapor_genap: foundTpGenap || (tp.is_active ? globalGenap : ''),
+        tanggal_p5_ganjil: foundTpP5Ganjil || '',
+        tanggal_p5_genap: foundTpP5Genap || '',
+        tanggal_pts_ganjil: foundTpPtsGanjil || '',
+        tanggal_pts_genap: foundTpPtsGenap || '',
+        tanggal_pleno_genap: foundTpPleno || '',
+        tanggal_kelulusan: tpKelulusan || '',
+        kepsek_status: (tpKepsekStatus || globalKepsekStatus) as 'DEFINITIF' | 'PLT',
+        kepsek_nama: tpKepsekNama || (isConfigured ? globalKepsekNama : (tp.is_active ? globalKepsekNama : '')),
+        kepsek_nip: tpKepsekNip || (isConfigured ? globalKepsekNip : (tp.is_active ? globalKepsekNip : '')),
+        ukuran_kertas: (tpKertas || globalKertas) as 'A4' | 'F4',
+        tampilkan_kop: tpKop ? tpKop === 'true' : globalKop,
+        tampilkan_qr: tpQr ? tpQr === 'true' : globalQr,
+        tampilkan_kokurikuler: tpKokurikuler ? tpKokurikuler === 'true' : globalKokurikuler,
+        mode_cetak_rapor: (tpMode || globalMode) as 'CP_ONLY' | 'SUMATIF_AND_CP' | 'SUMATIF_ONLY',
+        sumber_nilai_rapor: (tpSumber || globalSumber) as 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL',
+      };
+    });
+  }
+
   static async updateSettings(
     tenantId: string,
     payload: {
@@ -1822,15 +1932,20 @@ export class RaporService {
         if (ganjilId) {
           await this.updateConfig(tenantId, `RAPOR_TANGGAL_RAPOR_${tpId}_${ganjilId}`, payload.tanggal_rapor_ganjil);
         }
+        await this.updateConfig(tenantId, `RAPOR_TANGGAL_RAPOR_${tpId}_ganjil`, payload.tanggal_rapor_ganjil);
         await this.updateConfig(tenantId, 'RAPOR_TANGGAL_RAPOR_GANJIL', payload.tanggal_rapor_ganjil);
       }
-      if (ganjilId) {
-        if (payload.tanggal_p5_ganjil !== undefined) {
+      if (payload.tanggal_p5_ganjil !== undefined) {
+        if (ganjilId) {
           await this.updateConfig(tenantId, `RAPOR_TANGGAL_P5_${tpId}_${ganjilId}`, payload.tanggal_p5_ganjil);
         }
-        if (payload.tanggal_pts_ganjil !== undefined) {
+        await this.updateConfig(tenantId, `RAPOR_TANGGAL_P5_${tpId}_ganjil`, payload.tanggal_p5_ganjil);
+      }
+      if (payload.tanggal_pts_ganjil !== undefined) {
+        if (ganjilId) {
           await this.updateConfig(tenantId, `RAPOR_TANGGAL_PTS_${tpId}_${ganjilId}`, payload.tanggal_pts_ganjil);
         }
+        await this.updateConfig(tenantId, `RAPOR_TANGGAL_PTS_${tpId}_ganjil`, payload.tanggal_pts_ganjil);
       }
 
       // Save Genap Specifics
@@ -1838,18 +1953,26 @@ export class RaporService {
         if (genapId) {
           await this.updateConfig(tenantId, `RAPOR_TANGGAL_RAPOR_${tpId}_${genapId}`, payload.tanggal_rapor_genap);
         }
+        await this.updateConfig(tenantId, `RAPOR_TANGGAL_RAPOR_${tpId}_genap`, payload.tanggal_rapor_genap);
         await this.updateConfig(tenantId, 'RAPOR_TANGGAL_RAPOR_GENAP', payload.tanggal_rapor_genap);
       }
-      if (genapId) {
-        if (payload.tanggal_p5_genap !== undefined) {
+      if (payload.tanggal_p5_genap !== undefined) {
+        if (genapId) {
           await this.updateConfig(tenantId, `RAPOR_TANGGAL_P5_${tpId}_${genapId}`, payload.tanggal_p5_genap);
         }
-        if (payload.tanggal_pts_genap !== undefined) {
+        await this.updateConfig(tenantId, `RAPOR_TANGGAL_P5_${tpId}_genap`, payload.tanggal_p5_genap);
+      }
+      if (payload.tanggal_pts_genap !== undefined) {
+        if (genapId) {
           await this.updateConfig(tenantId, `RAPOR_TANGGAL_PTS_${tpId}_${genapId}`, payload.tanggal_pts_genap);
         }
-        if (payload.tanggal_pleno_genap !== undefined) {
+        await this.updateConfig(tenantId, `RAPOR_TANGGAL_PTS_${tpId}_genap`, payload.tanggal_pts_genap);
+      }
+      if (payload.tanggal_pleno_genap !== undefined) {
+        if (genapId) {
           await this.updateConfig(tenantId, `RAPOR_TANGGAL_PLENO_${tpId}_${genapId}`, payload.tanggal_pleno_genap);
         }
+        await this.updateConfig(tenantId, `RAPOR_TANGGAL_PLENO_${tpId}_genap`, payload.tanggal_pleno_genap);
       }
 
       // Legacy fallback per semester_id
@@ -1910,6 +2033,7 @@ export class RaporService {
     }
 
     void cacheInvalidationService.invalidateRaporCache(tenantId);
+    await cacheService.deletePattern(`rapor:${tenantId}:settings:*`);
     return { success: true };
   }
 

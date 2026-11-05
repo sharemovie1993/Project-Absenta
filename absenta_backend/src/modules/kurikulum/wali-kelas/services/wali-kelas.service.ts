@@ -12,6 +12,7 @@ export interface WaliKelasStrukturAssignmentResponse {
   tenant_id: string;
   guru_id: string;
   struktur_organisasi_id: string;
+  tahun_pelajaran_id?: string | null;
   is_active: boolean;
   start_date: Date | null;
   end_date: Date | null;
@@ -29,6 +30,7 @@ export interface WaliKelasStrukturAssignmentResponse {
 export interface AssignWaliKelasStrukturInput {
   kelas_id: string;
   guru_id: string;
+  tahun_pelajaran_id?: string;
 }
 
 export interface PaginatedWaliKelasStrukturAssignmentResponse {
@@ -150,6 +152,7 @@ export class WaliKelasService {
       search?: string;
       guru_id?: string;
       kelas_id?: string;
+      tahun_pelajaran_id?: string;
       include_inactive?: boolean;
     }
   ): Promise<PaginatedWaliKelasStrukturAssignmentResponse> {
@@ -172,6 +175,7 @@ export class WaliKelasService {
 
     if (!params?.include_inactive) whereClause.is_active = true;
     if (params?.kelas_id) whereClause.kelas_id = params.kelas_id;
+    if (params?.tahun_pelajaran_id) whereClause.tahun_pelajaran_id = params.tahun_pelajaran_id;
 
     if (params?.guru_id) {
       const guru = await prisma.guru.findFirst({
@@ -200,7 +204,7 @@ export class WaliKelasService {
     const search = params?.search || '';
     const includeInactive = params?.include_inactive || false;
 
-    const cacheKey = CACHE_KEYS.ACADEMIC.WALI_KELAS_LIST(tenantId, page, limit, search, includeInactive);
+    const cacheKey = CACHE_KEYS.ACADEMIC.WALI_KELAS_LIST(tenantId, page, limit, search, includeInactive, params?.tahun_pelajaran_id);
     const cached = await CacheService.getInstance().get<any>(cacheKey);
     if (cached) return cached;
 
@@ -233,6 +237,7 @@ export class WaliKelasService {
         tenant_id: a.tenant_id,
         guru_id: String(a.User?.Guru?.id || ''),
         struktur_organisasi_id: a.position_id,
+        tahun_pelajaran_id: a.tahun_pelajaran_id,
         is_active: Boolean(a.is_active),
         start_date: a.start_date,
         end_date: a.end_date,
@@ -291,6 +296,15 @@ export class WaliKelasService {
       update: { updated_at: new Date(), is_active: true },
     });
 
+    let tahunPelajaranId = input.tahun_pelajaran_id;
+    if (!tahunPelajaranId) {
+      const activeTp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true },
+      });
+      tahunPelajaranId = activeTp?.id;
+    }
+
     const existingWaliKelasStruktur = await prisma.organizationalAssignment.findFirst({
       where: {
         tenant_id: tenantId,
@@ -298,6 +312,7 @@ export class WaliKelasService {
         position_id: position.id,
         user_id: guru.user_id,
         kelas_id: { not: input.kelas_id },
+        ...(tahunPelajaranId ? { tahun_pelajaran_id: tahunPelajaranId } : {}),
       },
       select: { id: true },
     });
@@ -311,19 +326,37 @@ export class WaliKelasService {
 
     const assignment = await prisma.$transaction(async (tx) => {
       await tx.organizationalAssignment.updateMany({
-        where: { tenant_id: tenantId, position_id: position.id, kelas_id: input.kelas_id, is_active: true },
+        where: {
+          tenant_id: tenantId,
+          position_id: position.id,
+          kelas_id: input.kelas_id,
+          ...(tahunPelajaranId ? { tahun_pelajaran_id: tahunPelajaranId } : {}),
+          is_active: true,
+        },
         data: { is_active: false, end_date: new Date(), updated_at: new Date() },
       });
 
       const existing = await tx.organizationalAssignment.findFirst({
-        where: { tenant_id: tenantId, user_id: guru.user_id, position_id: position.id, kelas_id: input.kelas_id },
+        where: {
+          tenant_id: tenantId,
+          user_id: guru.user_id,
+          position_id: position.id,
+          kelas_id: input.kelas_id,
+          ...(tahunPelajaranId ? { tahun_pelajaran_id: tahunPelajaranId } : {}),
+        },
         select: { id: true },
       });
 
       if (existing) {
         return tx.organizationalAssignment.update({
           where: { id: existing.id },
-          data: { is_active: true, start_date: new Date(), end_date: null, updated_at: new Date() },
+          data: {
+            is_active: true,
+            start_date: new Date(),
+            end_date: null,
+            tahun_pelajaran_id: tahunPelajaranId || null,
+            updated_at: new Date(),
+          },
         });
       }
 
@@ -335,6 +368,7 @@ export class WaliKelasService {
           user_id: guru.user_id,
           kelas_id: input.kelas_id,
           unit_id: null,
+          tahun_pelajaran_id: tahunPelajaranId || null,
           start_date: new Date(),
           end_date: null,
           is_active: true,
@@ -379,12 +413,14 @@ export class WaliKelasService {
     }
 
     await cacheInvalidationService.invalidateStrukturTree(tenantId);
+    await CacheService.getInstance().deletePattern(`academic:${tenantId}:wali_kelas:*`);
 
     return {
       id: full.id,
       tenant_id: full.tenant_id,
       guru_id: String(full.User?.Guru?.id || ''),
       struktur_organisasi_id: full.position_id,
+      tahun_pelajaran_id: full.tahun_pelajaran_id,
       is_active: Boolean(full.is_active),
       start_date: full.start_date,
       end_date: full.end_date,
@@ -399,6 +435,98 @@ export class WaliKelasService {
         kelas_id: full.kelas_id,
         Kelas: full.Kelas ? { id: full.Kelas.id, nama_kelas: full.Kelas.nama_kelas, tingkat: full.Kelas.tingkat } : undefined,
       },
+    };
+  }
+
+  /**
+   * 1-Click Roll-Over: Salin Penugasan Wali Kelas dari Tahun Pelajaran Sebelumnya
+   */
+  async copyStrukturFromPreviousYear(
+    tenantId: string,
+    sourceTahunPelajaranId: string,
+    targetTahunPelajaranId: string
+  ): Promise<{ success: boolean; message: string; copiedCount: number; skippedCount: number }> {
+    if (!tenantId || !sourceTahunPelajaranId || !targetTahunPelajaranId) {
+      throw new Error('Tenant ID, sumber Tahun Pelajaran, dan target Tahun Pelajaran wajib diisi');
+    }
+
+    if (sourceTahunPelajaranId === targetTahunPelajaranId) {
+      throw new Error('Tahun pelajaran sumber dan target tidak boleh sama');
+    }
+
+    const position = await prisma.organizationalPosition.findFirst({
+      where: { tenant_id: tenantId, code: 'WALIKELAS' },
+      select: { id: true },
+    });
+    if (!position?.id) {
+      throw new Error('Posisi Wali Kelas tidak ditemukan');
+    }
+
+    // 1. Ambil assignment aktif di tahun sumber
+    const sourceAssignments = await prisma.organizationalAssignment.findMany({
+      where: {
+        tenant_id: tenantId,
+        position_id: position.id,
+        tahun_pelajaran_id: sourceTahunPelajaranId,
+        is_active: true,
+        kelas_id: { not: null },
+      },
+    });
+
+    if (sourceAssignments.length === 0) {
+      return {
+        success: true,
+        message: 'Tidak ada penugasan Wali Kelas aktif pada tahun pelajaran sumber untuk disalin.',
+        copiedCount: 0,
+        skippedCount: 0,
+      };
+    }
+
+    // 2. Ambil penugasan yang sudah ada di target tahun pelajaran (agar tidak duplikasi)
+    const existingTarget = await prisma.organizationalAssignment.findMany({
+      where: {
+        tenant_id: tenantId,
+        position_id: position.id,
+        tahun_pelajaran_id: targetTahunPelajaranId,
+        is_active: true,
+      },
+      select: { kelas_id: true, user_id: true },
+    });
+    const existingTargetKelasSet = new Set(existingTarget.map((e) => e.kelas_id));
+
+    // 3. Filter assignment yang belum ada di target
+    const toInsert = sourceAssignments.filter((sa) => sa.kelas_id && !existingTargetKelasSet.has(sa.kelas_id));
+
+    if (toInsert.length > 0) {
+      await prisma.$transaction(
+        toInsert.map((item) =>
+          prisma.organizationalAssignment.create({
+            data: {
+              id: randomUUID(),
+              tenant_id: tenantId,
+              position_id: position.id,
+              user_id: item.user_id,
+              kelas_id: item.kelas_id,
+              unit_id: item.unit_id,
+              tahun_pelajaran_id: targetTahunPelajaranId,
+              start_date: new Date(),
+              end_date: null,
+              is_active: true,
+            },
+          })
+        )
+      );
+    }
+
+    // 4. Invalidate Cache
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
+    await CacheService.getInstance().deletePattern(`academic:${tenantId}:wali_kelas:*`);
+
+    return {
+      success: true,
+      message: `Berhasil menyalin ${toInsert.length} penugasan Wali Kelas ke tahun ajaran target.`,
+      copiedCount: toInsert.length,
+      skippedCount: sourceAssignments.length - toInsert.length,
     };
   }
 

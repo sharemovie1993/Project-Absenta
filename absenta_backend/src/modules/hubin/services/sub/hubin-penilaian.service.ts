@@ -1460,7 +1460,24 @@ export class HubinPenilaianService extends HubinCommonHelper {
             tempat_lahir: true,
             tanggal_lahir: true,
             foto: true,
-            Kelas: { select: { nama_kelas: true, tingkat: true } },
+            Kelas: {
+              select: {
+                nama_kelas: true,
+                tingkat: true,
+                Jurusan: {
+                  select: {
+                    nama: true,
+                    singkatan: true,
+                    ProgramKeahlian: {
+                      select: {
+                        nama: true,
+                        bidang_keahlian: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
             Jurusan: {
               select: {
                 nama: true,

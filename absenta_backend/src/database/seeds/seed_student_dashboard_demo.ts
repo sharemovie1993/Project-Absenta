@@ -267,17 +267,25 @@ async function main() {
         where: { tenant_id: tenantId, code: 'PETUGAS_KELAS' }
     });
     if (posPetugas) {
-        await prisma.organizationalAssignment.upsert({
-            where: { user_id_position_id_kelas_id: { user_id: uPetugas.id, position_id: posPetugas.id, kelas_id: firstKelas.id } },
-            update: { is_active: true },
-            create: {
-                tenant_id: tenantId,
-                user_id: uPetugas.id,
-                position_id: posPetugas.id,
-                kelas_id: firstKelas.id,
-                is_active: true
-            }
+        const existingPetugas = await prisma.organizationalAssignment.findFirst({
+            where: { tenant_id: tenantId, user_id: uPetugas.id, position_id: posPetugas.id, kelas_id: firstKelas.id }
         });
+        if (existingPetugas) {
+            await prisma.organizationalAssignment.update({
+                where: { id: existingPetugas.id },
+                data: { is_active: true }
+            });
+        } else {
+            await prisma.organizationalAssignment.create({
+                data: {
+                    tenant_id: tenantId,
+                    user_id: uPetugas.id,
+                    position_id: posPetugas.id,
+                    kelas_id: firstKelas.id,
+                    is_active: true
+                }
+            });
+        }
         console.log('✅ Siswa Petugas assigned to PETUGAS_KELAS');
     }
 
@@ -328,17 +336,25 @@ async function main() {
     });
     const targetKelas = await prisma.kelas.findFirst({ where: { tenant_id: tenantId, nama_kelas: 'X-RPL-1' } });
     if (posWalas && targetKelas) {
-        await prisma.organizationalAssignment.upsert({
-            where: { user_id_position_id_kelas_id: { user_id: uWalas.id, position_id: posWalas.id, kelas_id: targetKelas.id } },
-            update: { is_active: true },
-            create: {
-                tenant_id: tenantId,
-                user_id: uWalas.id,
-                position_id: posWalas.id,
-                kelas_id: targetKelas.id,
-                is_active: true
-            }
+        const existingWalas = await prisma.organizationalAssignment.findFirst({
+            where: { tenant_id: tenantId, user_id: uWalas.id, position_id: posWalas.id, kelas_id: targetKelas.id }
         });
+        if (existingWalas) {
+            await prisma.organizationalAssignment.update({
+                where: { id: existingWalas.id },
+                data: { is_active: true }
+            });
+        } else {
+            await prisma.organizationalAssignment.create({
+                data: {
+                    tenant_id: tenantId,
+                    user_id: uWalas.id,
+                    position_id: posWalas.id,
+                    kelas_id: targetKelas.id,
+                    is_active: true
+                }
+            });
+        }
         console.log('✅ Guru Walas assigned to WALIKELAS (X-RPL-1)');
     }
 

@@ -58,6 +58,7 @@ import { KurikulumPiketTab } from './kurikulum/tabs/KurikulumPiketTab';
 import { KurikulumPerangkatTab } from './kurikulum/tabs/KurikulumPerangkatTab';
 import { KurikulumSupervisiTab } from './kurikulum/tabs/KurikulumSupervisiTab';
 import { KurikulumRaporTab } from './kurikulum/tabs/KurikulumRaporTab';
+import { KurikulumTitimangsaRaporTab } from './kurikulum/tabs/KurikulumTitimangsaRaporTab';
 import { KurikulumKalenderTab } from './kurikulum/tabs/KurikulumKalenderTab';
 import { KurikulumJamKbmTab } from './kurikulum/tabs/KurikulumJamKbmTab';
 import { KurikulumDelegasiTab } from './kurikulum/tabs/KurikulumDelegasiTab';
@@ -89,6 +90,7 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
     'supervisi',
     'cbt',
     'rapor',
+    'titimangsa_rapor',
     'kalender',
     'jam_kbm',
     'aturan_absensi',
@@ -477,6 +479,13 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
         shortLabel: 'Piket',
         category: 'persiapan',
         icon: ShieldCheck,
+      },
+      {
+        id: 'titimangsa_rapor',
+        label: 'Titimangsa Rapor',
+        shortLabel: 'Titimangsa Rapor',
+        category: 'persiapan',
+        icon: FileText,
       },
       {
         id: 'cetak',
@@ -993,6 +1002,17 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               >
                 <TenantAttendanceForm hideLayout={true} />
               </Suspense>
+            </div>
+          )}
+
+          {/* TAB TITIMANGSA RAPOR */}
+          {visitedTabs.has('titimangsa_rapor') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'titimangsa_rapor'}
+              className={cn('w-full min-w-0', activeTab === 'titimangsa_rapor' ? 'block' : 'hidden')}
+            >
+              <KurikulumTitimangsaRaporTab />
             </div>
           )}
 

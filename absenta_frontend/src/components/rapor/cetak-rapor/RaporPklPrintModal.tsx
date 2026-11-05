@@ -6,6 +6,7 @@ import {
   usePrintHeaderData,
 } from '@/components/ui/PrintHeader';
 import { hubinApi } from '@/api/hubin.api';
+import { raporApi } from '@/api/rapor.api';
 import { sekolahApi } from '@/api/academic/sekolah.api';
 import { getMyTenant } from '@/api/tenants.api';
 import { generateRaporPklSinglePdf, type RaporPklItemData } from '@/utils/print/modules/pdfRaporPkl';
@@ -49,7 +50,7 @@ export const RaporPklPrintModal: React.FC<RaporPklPrintModalProps> = React.memo(
 
   const currentUser = useAuthStore((s) => s.user);
   const { tenantInfo, rawSekolah } = usePrintHeaderData();
-  const { rawList: allWaliKelas } = useWaliKelasOptions({ onlyActive: true });
+  const { rawList: allWaliKelas } = useWaliKelasOptions({ onlyActive: true, tahunPelajaranId });
 
   const siswaId = selectedStudent?.id;
 
@@ -68,6 +69,27 @@ export const RaporPklPrintModal: React.FC<RaporPklPrintModalProps> = React.memo(
     refetchOnMount: 'always',
   });
 
+  // 1b. Fetch Pengaturan Dokumen Rapor Resmi (Titimangsa & Pejabat Penandatangan)
+  const { data: settingsRes } = useQuery({
+    queryKey: ['rapor-settings', tahunPelajaranId, semesterId],
+    queryFn: () =>
+      raporApi.getRaporSettings({
+        tahun_pelajaran_id: tahunPelajaranId,
+        semester_id: semesterId,
+      }),
+    enabled: isOpen && Boolean(tahunPelajaranId),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const raporSettings = useMemo(() => {
+    return (settingsRes as any)?.data || settingsRes || null;
+  }, [settingsRes]);
+
+  const isGenap = useMemo(() => {
+    const s = (semesterNama || '').toLowerCase();
+    return s.includes('genap') || s.includes('2') || s.includes('smt 2');
+  }, [semesterNama]);
+
   // Ambil record placement siswa yang sesuai
   const placement = useMemo(() => {
     const raw = (penempatanRes as any)?.list || (Array.isArray((penempatanRes as any)?.data) ? (penempatanRes as any).data : (penempatanRes as any)?.data?.list) || [];
@@ -80,7 +102,7 @@ export const RaporPklPrintModal: React.FC<RaporPklPrintModalProps> = React.memo(
     ) || null;
   }, [penempatanRes, siswaId, selectedStudent]);
 
-  // Resolusi Wali Kelas Siswa Terkait
+  // Resolusi Wali Kelas Murni dari SK OrganizationalAssignment Tahun Pelajaran Ini (Zero Fallback)
   const targetKelasId = selectedKelas || (placement as any)?.Siswa?.kelas_id || (selectedStudent as any)?.kelas_id;
   const matchedWalas = useMemo(() => {
     if (!targetKelasId || !allWaliKelas?.length) return null;
@@ -93,19 +115,19 @@ export const RaporPklPrintModal: React.FC<RaporPklPrintModalProps> = React.memo(
   }, []);
 
   const resolvedWalas = useMemo(() => {
-    // Priority 1: Prop passed from parent (mis. dari Leger backend)
-    if (propWaliKelasNama && propWaliKelasNama !== 'Wali Kelas') {
+    // 1. Dari data Leger Backend (yang murni query OrganizationalAssignment per TP)
+    if (propWaliKelasNama && propWaliKelasNama.trim() !== '' && propWaliKelasNama !== 'Wali Kelas') {
       return {
         nama: propWaliKelasNama,
         nip: cleanNip(propWaliKelasNip),
       };
     }
 
-    // Priority 2: Dari master struktur penugasan Wali Kelas
+    // 2. Dari master struktur penugasan Wali Kelas per TP
     if (matchedWalas) {
       const nama = matchedWalas.Guru?.nama_guru || (matchedWalas as any)?.User?.Guru?.nama_guru || (matchedWalas as any)?.User?.full_name;
       const nip = matchedWalas.Guru?.nip || (matchedWalas as any)?.User?.Guru?.nip || '-';
-      if (nama) {
+      if (nama && nama.trim() !== '') {
         return {
           nama,
           nip: cleanNip(nip),
@@ -113,26 +135,45 @@ export const RaporPklPrintModal: React.FC<RaporPklPrintModalProps> = React.memo(
       }
     }
 
-    // Priority 3: Dari current logged in user (jika yang membuka adalah walas rombel ini)
-    const userRole = (currentUser as any)?.role;
-    const userKelas = (currentUser as any)?.walikelas_kelas || (currentUser as any)?.kelas_id;
-    if (userRole === 'wali_kelas' || userKelas === targetKelasId) {
-      const nama = (currentUser as any)?.guru_profile?.nama_guru || (currentUser as any)?.nama || (currentUser as any)?.name || (currentUser as any)?.full_name;
-      const nip = (currentUser as any)?.guru_profile?.nip || (currentUser as any)?.nip || '-';
-      if (nama && nama !== 'Wali Kelas') {
-        return {
-          nama,
-          nip: cleanNip(nip),
-        };
-      }
-    }
-
-    // Priority 4: Fallback
+    // Zero Fallback: Jika belum ada SK di tahun pelajaran ini, kosongkan
     return {
-      nama: (currentUser as any)?.nama || (currentUser as any)?.name || 'Wali Kelas',
-      nip: cleanNip((currentUser as any)?.nip),
+      nama: '',
+      nip: '',
     };
-  }, [propWaliKelasNama, propWaliKelasNip, matchedWalas, currentUser, targetKelasId, cleanNip]);
+  }, [propWaliKelasNama, propWaliKelasNip, matchedWalas, cleanNip]);
+
+  // Resolusi Titimangsa Resmi: Prioritas 1 Pengaturan Dokumen Rapor (/rapor/settings)
+  const resolvedTitimangsa = useMemo(() => {
+    let rawDate = isGenap ? raporSettings?.tanggal_rapor_genap : raporSettings?.tanggal_rapor_ganjil;
+    if (!rawDate) rawDate = raporSettings?.tanggal_rapor;
+
+    // Prioritas 2 (Cadangan Hubin jika belum diset di Rapor)
+    if (!rawDate && (placement as any)?.referensi_sertifikat?.tanggal_terbit) {
+      rawDate = (placement as any).referensi_sertifikat.tanggal_terbit;
+    }
+
+    if (rawDate) {
+      const parts = String(rawDate).split('-');
+      if (parts.length === 3) {
+        const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        return `${parseInt(parts[2], 10)} ${months[parseInt(parts[1], 10) - 1]} ${parts[0]}`;
+      }
+      return formatTanggalIndonesia(rawDate);
+    }
+
+    return formatTanggalIndonesia(new Date());
+  }, [isGenap, raporSettings, placement]);
+
+  const resolvedKota = useMemo(() => {
+    return raporSettings?.tempat_terbit || (rawSekolah as any)?.kota || tenantInfo?.city || 'Purwakarta';
+  }, [raporSettings, rawSekolah, tenantInfo]);
+
+  const resolvedKepsek = useMemo(() => {
+    const nama = raporSettings?.kepsek_nama || (rawSekolah as any)?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.';
+    const rawNip = cleanNip(raporSettings?.kepsek_nip || (rawSekolah as any)?.nip_kepala_sekolah || tenantInfo?.nip_kepala_sekolah || '197111022008011001');
+    const nip = rawNip !== '-' && rawNip !== '' ? rawNip : '197111022008011001';
+    return { nama, nip };
+  }, [raporSettings, rawSekolah, tenantInfo, cleanNip]);
 
   // Index siswa untuk navigasi batch
   const currentIndex = useMemo(() => {
@@ -167,8 +208,17 @@ export const RaporPklPrintModal: React.FC<RaporPklPrintModalProps> = React.memo(
         nis: selectedStudent.nis || placement?.Siswa?.nis || '-',
         nisn: placement?.Siswa?.nisn || '-',
         nama_kelas: selectedStudent.nama_kelas || placement?.Siswa?.Kelas?.nama_kelas || '-',
-        program_keahlian: placement?.Siswa?.Jurusan?.ProgramKeahlian?.nama || 'Teknik Kejuruan',
-        konsentrasi_keahlian: placement?.Siswa?.Jurusan?.nama || selectedStudent.nama_kelas || '-',
+        program_keahlian:
+          placement?.Siswa?.Kelas?.Jurusan?.ProgramKeahlian?.nama ||
+          placement?.Siswa?.Jurusan?.ProgramKeahlian?.nama ||
+          (placement as any)?.program_keahlian ||
+          'Teknik Kejuruan',
+        konsentrasi_keahlian:
+          placement?.Siswa?.Kelas?.Jurusan?.nama ||
+          placement?.Siswa?.Jurusan?.nama ||
+          (placement as any)?.konsentrasi_keahlian ||
+          selectedStudent.nama_kelas ||
+          '-',
       },
       pkl: {
         mitra_nama: placement?.Mitra?.nama || placement?.mitra_nama || 'DUDI MITRA',
@@ -198,9 +248,9 @@ export const RaporPklPrintModal: React.FC<RaporPklPrintModalProps> = React.memo(
       },
       sekolah: {
         nama: rawSekolah?.nama || tenantInfo?.name || 'SMK NEGERI 1 PLERED',
-        kota: (rawSekolah as any)?.kota || tenantInfo?.city || 'Purwakarta',
-        kepala_sekolah: (rawSekolah as any)?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.',
-        nip_kepala: (rawSekolah as any)?.nip_kepala_sekolah || tenantInfo?.nip_kepala_sekolah || '197111022008011001',
+        kota: resolvedKota,
+        kepala_sekolah: resolvedKepsek.nama,
+        nip_kepala: resolvedKepsek.nip,
       },
       wali_kelas: {
         nama: resolvedWalas.nama,
@@ -208,9 +258,9 @@ export const RaporPklPrintModal: React.FC<RaporPklPrintModalProps> = React.memo(
       },
       tahun_pelajaran: tahunPelajaranNama || '2025 / 2026',
       semester: semesterNama || 'Ganjil',
-      tanggal_terbit: formatTanggalIndonesia(new Date()),
+      tanggal_terbit: resolvedTitimangsa,
     };
-  }, [selectedStudent, placement, rawSekolah, tenantInfo, resolvedWalas, tahunPelajaranNama, semesterNama]);
+  }, [selectedStudent, placement, rawSekolah, tenantInfo, resolvedWalas, tahunPelajaranNama, semesterNama, resolvedKota, resolvedKepsek, resolvedTitimangsa]);
 
   // Handler Download PDF Resmi
   const handleDownloadPdf = useCallback(async () => {
@@ -602,39 +652,53 @@ export const RaporPklPrintModal: React.FC<RaporPklPrintModalProps> = React.memo(
             </div>
 
             {/* Pengesahan 3 Pihak */}
-            <div className="w-full text-[8.5pt] leading-[1.3] text-black">
-              {/* Baris Atas: Orang Tua & Wali Kelas */}
+            <div className="w-full text-[8.5pt] leading-[1.3] text-black mt-[6mm]">
+              {/* Baris Atas: Orang Tua & Wali Kelas (Symmetric 2-Column Layout) */}
               <div className="flex justify-between items-start px-[2mm]">
+                {/* Sisi Kiri: Orang Tua/Wali (Sejajar Sempurna dengan Wali Kelas) */}
                 <div className="w-[50mm] text-left">
-                  <div>Orang Tua/Wali</div>
-                  <div className="h-[20mm]" />
+                  {/* Spacer tak terlihat sejajar baris titimangsa di kanan */}
+                  <div className="select-none invisible" aria-hidden="true">&nbsp;</div>
+                  <div className="mt-[1.5mm]">Orang Tua/Wali,</div>
+                  <div className="h-[18mm]" />
                   <div className="tracking-widest">..................................................</div>
+                  <div className="select-none invisible text-[8pt]" aria-hidden="true">&nbsp;</div>
                 </div>
 
+                {/* Sisi Kanan: Titimangsa & Wali Kelas */}
                 <div className="w-[60mm] text-left">
                   <div>{raporItem?.sekolah.kota}, {raporItem?.tanggal_terbit}</div>
-                  <div>Wali Kelas,</div>
-                  <div className="h-[20mm]" />
-                  <div className="font-bold underline decoration-black decoration-[1px] underline-offset-2 inline-block">
-                    {raporItem?.wali_kelas?.nama || 'Wali Kelas'}
-                  </div>
-                  <div>
-                    {raporItem?.wali_kelas?.nip && raporItem?.wali_kelas?.nip !== '-'
-                      ? `NIP. ${raporItem.wali_kelas.nip}`
-                      : 'NIP. -'}
-                  </div>
+                  <div className="mt-[1.5mm]">Wali Kelas,</div>
+                  <div className="h-[18mm]" />
+                  {raporItem?.wali_kelas?.nama ? (
+                    <>
+                      <div className="font-bold underline decoration-black decoration-[1px] underline-offset-2 inline-block">
+                        {raporItem.wali_kelas.nama}
+                      </div>
+                      <div className="text-[8pt]">
+                        {raporItem.wali_kelas.nip && raporItem.wali_kelas.nip !== '-'
+                          ? `NIP. ${raporItem.wali_kelas.nip}`
+                          : 'NIP. -'}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="tracking-widest">..................................................</div>
+                      <div className="text-[8pt]">NIP. -</div>
+                    </>
+                  )}
                 </div>
               </div>
 
               {/* Baris Bawah: Mengetahui Kepala Sekolah (Tengah) */}
-              <div className="mt-[6mm] flex flex-col items-center justify-center text-center">
-                <div>Mengetahui</div>
-                <div>Kepala Sekolah,</div>
-                <div className="h-[20mm]" />
+              <div className="mt-[5mm] flex flex-col items-center justify-center text-center">
+                <div>Mengetahui,</div>
+                <div className="mt-[1mm]">Kepala Sekolah,</div>
+                <div className="h-[18mm]" />
                 <div className="font-bold underline decoration-black decoration-[1px] underline-offset-2 inline-block">
                   {raporItem?.sekolah.kepala_sekolah}
                 </div>
-                <div>NIP. {raporItem?.sekolah.nip_kepala}</div>
+                <div className="text-[8pt]">NIP. {raporItem?.sekolah.nip_kepala}</div>
               </div>
             </div>
           </div>

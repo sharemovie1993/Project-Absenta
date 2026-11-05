@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import useConfirm from '../../../hooks/useConfirm';
-import { Search, RefreshCw, User, School, Plus, Edit, Power, CheckCircle2, Download, FileText, Network, ChevronRight, Printer } from 'lucide-react';
+import { Search, RefreshCw, User, School, Plus, Edit, Power, CheckCircle2, Download, FileText, Network, ChevronRight, Printer, Copy, Calendar, Loader2 } from 'lucide-react';
 import { Table, Button, Modal, Switch, Input, Badge, SectionCard } from '../../ui';
 import { MethodPickerModal } from '../../common/MethodPickerModal';
-import { getWaliKelasStrukturList, assignWaliKelasStruktur, nonaktifWaliKelasStruktur } from '../../../api/kurikulum/waliKelas.api';
+import { getWaliKelasStrukturList, assignWaliKelasStruktur, nonaktifWaliKelasStruktur, copyWaliKelasFromPreviousYear } from '../../../api/kurikulum/waliKelas.api';
+import { getTahunPelajaranList, academicQueryKeys } from '../../../api/academic/tahunPelajaran.api';
 import type { WaliKelasStrukturAssignment } from '../../../types/academic';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
@@ -63,12 +64,37 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
   const [arsipOpen, setArsipOpen] = useState(false);
   const [bulkGenerateOpen, setBulkGenerateOpen] = useState(false);
 
+  // Query Tahun Pelajaran untuk Konteks Akademik Sah
+  const { data: tpRes } = useQuery({
+    queryKey: academicQueryKeys.tahunPelajaran.lists(),
+    queryFn: () => getTahunPelajaranList(1, 50),
+    staleTime: 5 * 60 * 1000,
+  });
+  const tahunPelajaranList = useMemo(() => tpRes?.data || [], [tpRes]);
+  const activeTp = useMemo(() => tahunPelajaranList.find((tp) => tp.is_active), [tahunPelajaranList]);
+  const [selectedTpId, setSelectedTpId] = useState<string>('');
+
+  useEffect(() => {
+    if (!selectedTpId && activeTp?.id) {
+      setSelectedTpId(activeTp.id);
+    }
+  }, [activeTp, selectedTpId]);
+
+  // Roll-Over 1-Click State
+  const [isRollOverModalOpen, setIsRollOverModalOpen] = useState(false);
+  const [sourceTpId, setSourceTpId] = useState('');
+  const [isCopying, setIsCopying] = useState(false);
+
   const canManage = useMemo(() => isAdmin || can('academic.homeroom.manage'), [isAdmin, can]);
 
-  const fetchData = useCallback(async (page = 1, search = '', include_inactive = false) => {
+  const fetchData = useCallback(async (page = 1, search = '', include_inactive = false, tpId?: string) => {
     try {
       setLoading(true);
-      const response = await getWaliKelasStrukturList(page, itemsPerPage, search, { include_inactive });
+      const targetTpId = tpId !== undefined ? tpId : selectedTpId;
+      const response = await getWaliKelasStrukturList(page, itemsPerPage, search, {
+        include_inactive,
+        tahun_pelajaran_id: targetTpId || undefined,
+      });
       if (response.success) {
         setItems(response.data);
         setTotalPages(response.pagination.totalPages);
@@ -83,15 +109,41 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
     } finally {
       setLoading(false);
     }
-  }, [itemsPerPage]);
+  }, [itemsPerPage, selectedTpId]);
 
   useEffect(() => {
-    fetchData(1, debouncedSearchTerm, includeInactive);
-  }, [debouncedSearchTerm, includeInactive, fetchData]);
+    fetchData(1, debouncedSearchTerm, includeInactive, selectedTpId);
+  }, [debouncedSearchTerm, includeInactive, selectedTpId, fetchData]);
 
   useEffect(() => {
-    fetchData(currentPage, debouncedSearchTerm, includeInactive);
-  }, [refreshTrigger, currentPage, fetchData]);
+    fetchData(currentPage, debouncedSearchTerm, includeInactive, selectedTpId);
+  }, [refreshTrigger, currentPage, selectedTpId, fetchData]);
+
+  const handleRollOver = async () => {
+    if (!sourceTpId || !selectedTpId) {
+      toast.error('Pilih tahun pelajaran sumber dan target');
+      return;
+    }
+    try {
+      setIsCopying(true);
+      const res = await copyWaliKelasFromPreviousYear({
+        source_tahun_pelajaran_id: sourceTpId,
+        target_tahun_pelajaran_id: selectedTpId,
+      });
+      if (res.success) {
+        toast.success(res.message || 'Penugasan berhasil disalin!');
+        setIsRollOverModalOpen(false);
+        invalidateWaliKelasCache();
+        fetchData(1, debouncedSearchTerm, includeInactive, selectedTpId);
+      } else {
+        toast.error(res.message || 'Gagal menyalin');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Gagal menyalin penugasan');
+    } finally {
+      setIsCopying(false);
+    }
+  };
 
   const handlePageChange = (page: number) => {
     if (page < 1 || page > totalPages) return;
@@ -406,6 +458,24 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
     <div className="flex flex-col">
       {/* Toolbar Baris Kedua - Filter & Search */}
       <div className="flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
+        {/* Filter Tahun Pelajaran Konteks Akademik */}
+        <div className="flex items-center gap-2 bg-white dark:bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm h-10 shrink-0 w-full md:w-auto">
+          <Calendar className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <span className="text-[11px] font-black uppercase text-slate-400 select-none tracking-wider">TP:</span>
+          <select
+            value={selectedTpId}
+            onChange={(e) => setSelectedTpId(e.target.value)}
+            className="bg-transparent text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer pr-2 w-full md:w-auto"
+            aria-label="Filter Tahun Pelajaran"
+          >
+            {tahunPelajaranList.map((tp) => (
+              <option key={tp.id} value={tp.id} className="dark:bg-slate-900 text-slate-900 dark:text-white">
+                {tp.tahun} {tp.is_active ? '⭐ (Aktif)' : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="flex-1 relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
           <Input
@@ -434,6 +504,24 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
                 >
                   <Plus className="w-4 h-4 mr-1.5" />
                   Tambah Penugasan
+                </Button>
+              )}
+
+              {canManage && (
+                <Button
+                  variant="toolbarOutline"
+                  size="toolbar"
+                  onClick={() => {
+                    const currentIdx = tahunPelajaranList.findIndex((t) => t.id === selectedTpId);
+                    const candidateSource = tahunPelajaranList[currentIdx + 1] || tahunPelajaranList.find((t) => t.id !== selectedTpId);
+                    setSourceTpId(candidateSource?.id || '');
+                    setIsRollOverModalOpen(true);
+                  }}
+                  className="rounded-xl border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 font-extrabold"
+                  title="1-Klik Salin Penugasan Wali Kelas dari Tahun Pelajaran Sebelumnya"
+                >
+                  <Copy className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
+                  Salin dari Tahun Lalu
                 </Button>
               )}
 
@@ -513,6 +601,24 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
                       <Plus className="w-4 h-4 mr-1.5" />
                       Tambah Penugasan
                     </Button>
+                 )}
+
+                 {canManage && (
+                   <Button
+                     variant="toolbarOutline"
+                     size="toolbar"
+                     onClick={() => {
+                       const currentIdx = tahunPelajaranList.findIndex((t) => t.id === selectedTpId);
+                       const candidateSource = tahunPelajaranList[currentIdx + 1] || tahunPelajaranList.find((t) => t.id !== selectedTpId);
+                       setSourceTpId(candidateSource?.id || '');
+                       setIsRollOverModalOpen(true);
+                     }}
+                     className="rounded-xl border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 font-extrabold"
+                     title="1-Klik Salin Penugasan Wali Kelas dari Tahun Pelajaran Sebelumnya"
+                   >
+                     <Copy className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
+                     Salin dari Tahun Lalu
+                   </Button>
                  )}
 
                  {canManage && (
@@ -634,10 +740,91 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
           onCancel={closeAssignModal}
           onSuccess={() => {
             closeAssignModal();
-            fetchData(currentPage, debouncedSearchTerm, includeInactive);
+            fetchData(currentPage, debouncedSearchTerm, includeInactive, selectedTpId);
           }}
           preset={presetData}
+          tahunPelajaranId={selectedTpId}
         />
+      </Modal>
+
+      {/* Modal 1-Click Roll-Over Penugasan Wali Kelas */}
+      <Modal
+        isOpen={isRollOverModalOpen}
+        onClose={() => !isCopying && setIsRollOverModalOpen(false)}
+        title="Salin Penugasan Wali Kelas (Roll-Over)"
+        description="Duplikasi seluruh SK & penugasan Wali Kelas dari tahun ajaran lampau ke tahun ajaran target dalam 1 kali klik."
+        size="md"
+      >
+        <div className="space-y-5 p-1">
+          <div className="p-3.5 bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl flex items-start gap-3">
+            <Copy className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+            <div className="text-xs text-emerald-900 dark:text-emerald-200 leading-relaxed">
+              Fitur ini akan menyalin seluruh penugasan Wali Kelas yang aktif pada tahun ajaran sumber ke tahun ajaran target. Kelas yang sudah memiliki penugasan di tahun target tidak akan ditimpa.
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                Tahun Pelajaran Sumber (Asal Salinan)
+              </label>
+              <select
+                value={sourceTpId}
+                onChange={(e) => setSourceTpId(e.target.value)}
+                className="w-full h-10 px-3 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">-- Pilih Tahun Pelajaran Sumber --</option>
+                {tahunPelajaranList
+                  .filter((tp) => tp.id !== selectedTpId)
+                  .map((tp) => (
+                    <option key={tp.id} value={tp.id}>
+                      {tp.tahun} {tp.is_active ? '(Aktif)' : ''}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                Tahun Pelajaran Target (Tujuan Salinan)
+              </label>
+              <div className="h-10 px-3.5 flex items-center bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black text-slate-900 dark:text-white">
+                {tahunPelajaranList.find((tp) => tp.id === selectedTpId)?.tahun || 'Tahun Terpilih'}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsRollOverModalOpen(false)}
+              disabled={isCopying}
+              className="rounded-xl"
+            >
+              Batal
+            </Button>
+            <Button
+              variant="success"
+              size="sm"
+              onClick={handleRollOver}
+              disabled={isCopying || !sourceTpId || !selectedTpId}
+              className="rounded-xl px-4 font-bold"
+            >
+              {isCopying ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                  Menyalin...
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4 mr-1.5" />
+                  Salin Sekarang
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       {/* Modal SK Wali Kelas Word Editor */}

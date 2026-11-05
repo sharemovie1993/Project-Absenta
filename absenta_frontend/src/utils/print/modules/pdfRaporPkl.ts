@@ -328,23 +328,26 @@ export const renderRaporPklPage2 = (doc: jsPDF, data: RaporPklItemData) => {
     margin: { left: 16 }
   });
 
-  y = (doc as any).lastAutoTable.finalY + 18;
+  y = (doc as any).lastAutoTable.finalY + 11;
 
-  // 3. Pengesahan 3 Pihak (Orang Tua & Wali Kelas)
+  // 3. Pengesahan 3 Pihak (Orang Tua & Wali Kelas - Layout Simetris Sempurna)
   const kotaStr = data.sekolah.kota || 'Purwakarta';
   const tglTerbitStr = data.tanggal_terbit || '22 Desember 2025';
 
-  // Sisi Kiri: Orang Tua/Wali
+  const rightColX = 135;
+
+  // Baris 1: Titimangsa hanya di sisi kanan
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(8.5);
-  doc.text('Orang Tua/Wali', 16, y);
-
-  // Sisi Kanan: Wali Kelas
-  const rightColX = 135;
   doc.text(`${kotaStr}, ${tglTerbitStr}`, rightColX, y);
-  doc.text('Wali Kelas,', rightColX, y + 4.5);
 
-  y += 24;
+  // Baris 2: Jabatan Simetris (Orang Tua/Wali sejajar vertikal dengan Wali Kelas,)
+  y += 5;
+  doc.text('Orang Tua/Wali,', 16, y);
+  doc.text('Wali Kelas,', rightColX, y);
+
+  // Ruang Tanda Tangan Simetris (19mm)
+  y += 19;
   doc.text('..................................................', 16, y);
 
   const cleanNip = (nip?: string | null) => {
@@ -352,26 +355,32 @@ export const renderRaporPklPage2 = (doc: jsPDF, data: RaporPklItemData) => {
     return nip.replace(/^NIP\.?\s*/i, '').trim();
   };
 
-  const waliKelasNama = data.wali_kelas?.nama || 'Wali Kelas';
+  const waliKelasNama = data.wali_kelas?.nama?.trim() || '';
   const rawNip = cleanNip(data.wali_kelas?.nip);
-  const waliKelasNipLabel = rawNip !== '-' ? `NIP. ${rawNip}` : 'NIP. -';
+  const waliKelasNipLabel = rawNip !== '-' && rawNip !== '' ? `NIP. ${rawNip}` : 'NIP. -';
 
-  doc.setFont('Helvetica', 'bold');
-  doc.text(waliKelasNama, rightColX, y);
-  doc.setLineWidth(0.3);
-  doc.line(rightColX, y + 0.8, rightColX + doc.getTextWidth(waliKelasNama), y + 0.8);
+  if (waliKelasNama) {
+    doc.setFont('Helvetica', 'bold');
+    doc.text(waliKelasNama, rightColX, y);
+    doc.setLineWidth(0.3);
+    doc.line(rightColX, y + 0.8, rightColX + doc.getTextWidth(waliKelasNama), y + 0.8);
+  } else {
+    doc.setFont('Helvetica', 'normal');
+    doc.text('..................................................', rightColX, y);
+  }
 
   doc.setFont('Helvetica', 'normal');
   doc.text(waliKelasNipLabel, rightColX, y + 4.5);
 
-  // 4. Pengesahan Bawah: Mengetahui Kepala Sekolah (Center)
-  y += 18;
-  doc.text('Mengetahui', pageWidth / 2, y, { align: 'center' });
+  // 4. Pengesahan Bawah: Mengetahui Kepala Sekolah (Center Simetris)
+  y += 10;
+  doc.text('Mengetahui,', pageWidth / 2, y, { align: 'center' });
   doc.text('Kepala Sekolah,', pageWidth / 2, y + 4.5, { align: 'center' });
 
-  y += 24;
+  y += 19;
   const kepsekNama = data.sekolah.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.';
-  const kepsekNip = data.sekolah.nip_kepala || '197111022008011001';
+  const rawKepsekNip = cleanNip(data.sekolah.nip_kepala);
+  const kepsekNipLabel = rawKepsekNip !== '-' && rawKepsekNip !== '' ? `NIP. ${rawKepsekNip}` : 'NIP. -';
 
   doc.setFont('Helvetica', 'bold');
   doc.text(kepsekNama, pageWidth / 2, y, { align: 'center' });
@@ -379,7 +388,7 @@ export const renderRaporPklPage2 = (doc: jsPDF, data: RaporPklItemData) => {
   doc.line(pageWidth / 2 - doc.getTextWidth(kepsekNama) / 2, y + 0.8, pageWidth / 2 + doc.getTextWidth(kepsekNama) / 2, y + 0.8);
 
   doc.setFont('Helvetica', 'normal');
-  doc.text(`NIP. ${kepsekNip}`, pageWidth / 2, y + 4.5, { align: 'center' });
+  doc.text(kepsekNipLabel, pageWidth / 2, y + 4.5, { align: 'center' });
 };
 
 /**

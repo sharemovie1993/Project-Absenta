@@ -16,6 +16,7 @@ export const waliKelasController = {
       const search = request.query.search as string;
       let guru_id = request.query.guru_id as string | undefined;
       const kelas_id = request.query.kelas_id as string | undefined;
+      const tahun_pelajaran_id = request.query.tahun_pelajaran_id as string | undefined;
       const include_inactive =
         request.query.include_inactive === 'true' || request.query.include_inactive === true;
 
@@ -33,6 +34,7 @@ export const waliKelasController = {
         search,
         guru_id,
         kelas_id,
+        tahun_pelajaran_id,
         include_inactive,
       });
 
@@ -79,6 +81,41 @@ export const waliKelasController = {
         }
       }
       return reply.status(500).send({ success: false, message: 'Internal server error', data: null });
+    }
+  },
+
+  async copyStrukturFromPreviousYear(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      if (!tenantId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized: tenant_id not found' });
+      }
+
+      const { source_tahun_pelajaran_id, target_tahun_pelajaran_id } = request.body || {};
+      if (!source_tahun_pelajaran_id || !target_tahun_pelajaran_id) {
+        return reply.status(400).send({
+          success: false,
+          message: 'source_tahun_pelajaran_id dan target_tahun_pelajaran_id wajib diisi',
+        });
+      }
+
+      const result = await waliKelasService.copyStrukturFromPreviousYear(
+        tenantId,
+        source_tahun_pelajaran_id,
+        target_tahun_pelajaran_id
+      );
+
+      return reply.status(200).send({
+        success: true,
+        message: result.message,
+        data: result,
+      });
+    } catch (error: any) {
+      appLogger.error({ err: error }, 'copyStrukturFromPreviousYear error');
+      return reply.status(400).send({
+        success: false,
+        message: error?.message || 'Gagal menyalin penugasan wali kelas dari tahun sebelumnya',
+      });
     }
   },
 

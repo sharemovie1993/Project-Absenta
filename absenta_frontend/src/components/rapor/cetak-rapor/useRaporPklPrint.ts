@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { hubinApi } from '../../../api/hubin.api';
+import { raporApi } from '../../../api/rapor.api';
 import { sekolahApi } from '../../../api/academic/sekolah.api';
 import { getMyTenant } from '../../../api/tenants.api';
 import { generateRaporPklSinglePdf, generateRaporPklBatchPdf, RaporPklItemData } from '../../../utils/print/modules/pdfRaporPkl';
@@ -195,8 +196,17 @@ function buildCertPrintData(
       tempat_lahir: rawSiswa.tempat_lahir || 'Purwakarta',
       tanggal_lahir: rawSiswa.tanggal_lahir || new Date('2008-10-15'),
       foto: rawSiswa.foto || null,
-      program_keahlian: rawSiswa.Jurusan?.ProgramKeahlian?.nama || 'Teknik Kejuruan',
-      konsentrasi_keahlian: rawSiswa.Jurusan?.nama || currentKelasObj?.nama_kelas || '',
+      program_keahlian:
+        rawSiswa.Kelas?.Jurusan?.ProgramKeahlian?.nama ||
+        rawSiswa.Jurusan?.ProgramKeahlian?.nama ||
+        (placement as any)?.program_keahlian ||
+        'Teknik Kejuruan',
+      konsentrasi_keahlian:
+        rawSiswa.Kelas?.Jurusan?.nama ||
+        rawSiswa.Jurusan?.nama ||
+        (placement as any)?.konsentrasi_keahlian ||
+        currentKelasObj?.nama_kelas ||
+        '',
       nama_kelas: currentKelasObj?.nama_kelas || rawSiswa.Kelas?.nama_kelas || '',
     },
     mitra: {
@@ -237,7 +247,7 @@ export function useRaporPklPrint({
   waliKelasNama: propWaliKelasNama,
   waliKelasNip: propWaliKelasNip,
 }: UseRaporPklPrintProps) {
-  const { rawList: allWaliKelas } = useWaliKelasOptions({ onlyActive: true });
+  const { rawList: allWaliKelas } = useWaliKelasOptions({ onlyActive: true, tahunPelajaranId: activeYear?.id });
   const [isBatchPklPrinting, setIsBatchPklPrinting] = useState(false);
   const [isBatchSertifikatPrinting, setIsBatchSertifikatPrinting] = useState(false);
   const [showLogoKananSertifikat, setShowLogoKananSertifikat] = useState<boolean>(() => {
@@ -262,7 +272,7 @@ export function useRaporPklPrint({
   const resolveWaliKelas = useCallback(
     (targetKelasId?: string) => {
       const kId = targetKelasId || selectedKelas;
-      if (propWaliKelasNama && propWaliKelasNama !== 'Wali Kelas') {
+      if (propWaliKelasNama && propWaliKelasNama.trim() !== '' && propWaliKelasNama !== 'Wali Kelas') {
         return {
           nama: propWaliKelasNama,
           nip: propWaliKelasNip || '-',
@@ -278,17 +288,17 @@ export function useRaporPklPrint({
           matched.Guru?.nip ||
           (matched as any)?.User?.Guru?.nip ||
           '-';
-        if (nama) {
+        if (nama && nama.trim() !== '') {
           return { nama, nip };
         }
       }
-      const extUser = user as unknown as ExtendedUserContext | null;
+      // Zero fallback: jika belum ada SK di tahun pelajaran ini, kosongkan
       return {
-        nama: extUser?.nama || extUser?.name || extUser?.full_name || 'Wali Kelas',
-        nip: extUser?.nip || '-',
+        nama: '',
+        nip: '',
       };
     },
-    [selectedKelas, propWaliKelasNama, propWaliKelasNip, allWaliKelas, user]
+    [selectedKelas, propWaliKelasNama, propWaliKelasNip, allWaliKelas]
   );
 
   // ── 1. Cetak Rapor PKL Single (2 Halaman) ──
@@ -330,15 +340,46 @@ export function useRaporPklPrint({
           progressPercent: 60,
         });
 
-        const [sekolahRes, tenantRes] = await Promise.allSettled([
+        const [sekolahRes, tenantRes, raporSettingsRes] = await Promise.allSettled([
           sekolahApi.getProfile(),
           getMyTenant().catch(() => null),
+          raporApi.getRaporSettings({
+            tahun_pelajaran_id: activeYear?.id,
+            semester_id: activeSemester?.id,
+          }).catch(() => null),
         ]);
         const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
         const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
+        const raporSettings = raporSettingsRes.status === 'fulfilled' ? (raporSettingsRes.value?.data || raporSettingsRes.value) : null;
         const currentKelasObj = (classList ?? []).find((k) => k.id === selectedKelas);
         const extUser = user as unknown as ExtendedUserContext | null;
         const walasInfo = resolveWaliKelas(selectedKelas || (placement.Siswa as any)?.kelas_id);
+
+        const isGenap = Boolean(
+          (activeSemester?.nama || activeSemester?.nama_semester || '').toLowerCase().includes('genap') ||
+          (activeSemester?.nama || '').toLowerCase().includes('2')
+        );
+
+        let effectiveDateVal = isGenap ? raporSettings?.tanggal_rapor_genap : raporSettings?.tanggal_rapor_ganjil;
+        if (!effectiveDateVal) effectiveDateVal = raporSettings?.tanggal_rapor;
+        if (!effectiveDateVal && (placement as any)?.referensi_sertifikat?.tanggal_terbit) {
+          effectiveDateVal = (placement as any).referensi_sertifikat.tanggal_terbit;
+        }
+
+        let formattedTanggalTerbit = formatTanggalIndonesia(new Date());
+        if (effectiveDateVal) {
+          const parts = String(effectiveDateVal).split('-');
+          if (parts.length === 3) {
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            formattedTanggalTerbit = `${parseInt(parts[2], 10)} ${months[parseInt(parts[1], 10) - 1]} ${parts[0]}`;
+          } else {
+            formattedTanggalTerbit = formatTanggalIndonesia(effectiveDateVal);
+          }
+        }
+
+        const resolvedKota = raporSettings?.tempat_terbit || sekolah?.kota || tenantInfo?.city || 'Purwakarta';
+        const resolvedKepsekNama = raporSettings?.kepsek_nama || sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.';
+        const resolvedKepsekNip = raporSettings?.kepsek_nip || sekolah?.nip_kepala || tenantInfo?.nip_kepala || '197111022008011001';
 
         const raporItem: RaporPklItemData = {
           siswa: {
@@ -347,8 +388,17 @@ export function useRaporPklPrint({
             nis: student.nis || placement.Siswa?.nis || '-',
             nisn: placement.Siswa?.nisn || '-',
             nama_kelas: currentKelasObj?.nama_kelas || currentKelasObj?.nama || placement.Siswa?.Kelas?.nama_kelas || '',
-            program_keahlian: placement.Siswa?.Jurusan?.ProgramKeahlian?.nama || 'Teknik Kejuruan',
-            konsentrasi_keahlian: placement.Siswa?.Jurusan?.nama || currentKelasObj?.nama_kelas || '',
+            program_keahlian:
+              placement.Siswa?.Kelas?.Jurusan?.ProgramKeahlian?.nama ||
+              placement.Siswa?.Jurusan?.ProgramKeahlian?.nama ||
+              (placement as any)?.program_keahlian ||
+              'Teknik Kejuruan',
+            konsentrasi_keahlian:
+              placement.Siswa?.Kelas?.Jurusan?.nama ||
+              placement.Siswa?.Jurusan?.nama ||
+              (placement as any)?.konsentrasi_keahlian ||
+              currentKelasObj?.nama_kelas ||
+              '',
           },
           pkl: {
             mitra_nama: placement.Mitra?.nama || placement.mitra_nama || 'DUDI MITRA',
@@ -378,9 +428,9 @@ export function useRaporPklPrint({
           },
           sekolah: {
             nama: sekolah?.nama || tenantInfo?.name || 'SMK NEGERI 1 PLERED',
-            kota: sekolah?.kota || 'Purwakarta',
-            kepala_sekolah: sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.',
-            nip_kepala: sekolah?.nip_kepala || tenantInfo?.nip_kepala || '197111022008011001',
+            kota: resolvedKota,
+            kepala_sekolah: resolvedKepsekNama,
+            nip_kepala: resolvedKepsekNip,
           },
           wali_kelas: {
             nama: walasInfo.nama,
@@ -388,6 +438,7 @@ export function useRaporPklPrint({
           },
           tahun_pelajaran: activeYear?.nama || '',
           semester: activeSemester?.nama || '',
+          tanggal_terbit: formattedTanggalTerbit,
         };
 
         updateProgress({
@@ -449,18 +500,52 @@ export function useRaporPklPrint({
         total: placementList.length,
       });
 
-      const [sekolahRes, tenantRes] = await Promise.allSettled([
+      const [sekolahRes, tenantRes, raporSettingsRes] = await Promise.allSettled([
         sekolahApi.getProfile(),
         getMyTenant().catch(() => null),
+        raporApi.getRaporSettings({
+          tahun_pelajaran_id: activeYear?.id,
+          semester_id: activeSemester?.id,
+        }).catch(() => null),
       ]);
       const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
       const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
+      const raporSettings = raporSettingsRes.status === 'fulfilled' ? (raporSettingsRes.value?.data || raporSettingsRes.value) : null;
       const currentKelasObj = (classList ?? []).find((k) => k.id === selectedKelas);
       const extUser = user as unknown as ExtendedUserContext | null;
       const walasInfo = resolveWaliKelas(selectedKelas);
 
+      const isGenap = Boolean(
+        (activeSemester?.nama || activeSemester?.nama_semester || '').toLowerCase().includes('genap') ||
+        (activeSemester?.nama || '').toLowerCase().includes('2')
+      );
+
+      const resolvedKota = raporSettings?.tempat_terbit || sekolah?.kota || tenantInfo?.city || 'Purwakarta';
+      const resolvedKepsekNama = raporSettings?.kepsek_nama || sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.';
+      const resolvedKepsekNip = raporSettings?.kepsek_nip || sekolah?.nip_kepala || tenantInfo?.nip_kepala || '197111022008011001';
+
+      let defaultDateVal = isGenap ? raporSettings?.tanggal_rapor_genap : raporSettings?.tanggal_rapor_ganjil;
+      if (!defaultDateVal) defaultDateVal = raporSettings?.tanggal_rapor;
+
       const raporItems: RaporPklItemData[] = (placementList ?? []).map((placement: PlacementRecord) => {
         const s = placement.Siswa || {};
+
+        let effectiveDateVal = defaultDateVal;
+        if (!effectiveDateVal && (placement as any)?.referensi_sertifikat?.tanggal_terbit) {
+          effectiveDateVal = (placement as any).referensi_sertifikat.tanggal_terbit;
+        }
+
+        let formattedTanggalTerbit = formatTanggalIndonesia(new Date());
+        if (effectiveDateVal) {
+          const parts = String(effectiveDateVal).split('-');
+          if (parts.length === 3) {
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            formattedTanggalTerbit = `${parseInt(parts[2], 10)} ${months[parseInt(parts[1], 10) - 1]} ${parts[0]}`;
+          } else {
+            formattedTanggalTerbit = formatTanggalIndonesia(effectiveDateVal);
+          }
+        }
+
         return {
           siswa: {
             id: s.id || placement.siswa_id || '',
@@ -468,8 +553,17 @@ export function useRaporPklPrint({
             nis: s.nis || '-',
             nisn: s.nisn || '-',
             nama_kelas: currentKelasObj?.nama_kelas || currentKelasObj?.nama || s.Kelas?.nama_kelas || '',
-            program_keahlian: s.Jurusan?.ProgramKeahlian?.nama || 'Teknik Kejuruan',
-            konsentrasi_keahlian: s.Jurusan?.nama || currentKelasObj?.nama_kelas || '',
+            program_keahlian:
+              s.Kelas?.Jurusan?.ProgramKeahlian?.nama ||
+              s.Jurusan?.ProgramKeahlian?.nama ||
+              (placement as any)?.program_keahlian ||
+              'Teknik Kejuruan',
+            konsentrasi_keahlian:
+              s.Kelas?.Jurusan?.nama ||
+              s.Jurusan?.nama ||
+              (placement as any)?.konsentrasi_keahlian ||
+              currentKelasObj?.nama_kelas ||
+              '',
           },
           pkl: {
             mitra_nama: placement.Mitra?.nama || placement.mitra_nama || 'DUDI MITRA',
@@ -499,9 +593,9 @@ export function useRaporPklPrint({
           },
           sekolah: {
             nama: sekolah?.nama || tenantInfo?.name || 'SMK NEGERI 1 PLERED',
-            kota: sekolah?.kota || 'Purwakarta',
-            kepala_sekolah: sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.',
-            nip_kepala: sekolah?.nip_kepala || tenantInfo?.nip_kepala || '197111022008011001',
+            kota: resolvedKota,
+            kepala_sekolah: resolvedKepsekNama,
+            nip_kepala: resolvedKepsekNip,
           },
           wali_kelas: {
             nama: walasInfo.nama,
@@ -509,6 +603,7 @@ export function useRaporPklPrint({
           },
           tahun_pelajaran: activeYear?.nama || '',
           semester: activeSemester?.nama || '',
+          tanggal_terbit: formattedTanggalTerbit,
         };
       });
 

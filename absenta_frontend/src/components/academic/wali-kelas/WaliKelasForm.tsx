@@ -12,12 +12,14 @@ interface WaliKelasFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
   preset?: { guru_id?: string; kelas_id?: string };
+  tahunPelajaranId?: string;
 }
 
 export const WaliKelasForm = React.memo<WaliKelasFormProps>(({
   onSuccess,
   onCancel,
-  preset
+  preset,
+  tahunPelajaranId,
 }) => {
   const queryClient = useQueryClient();
   const [assigning, setAssigning] = useState(false);
@@ -31,7 +33,11 @@ export const WaliKelasForm = React.memo<WaliKelasFormProps>(({
     }
     try {
       setAssigning(true);
-      const res = await assignWaliKelasStruktur({ guru_id: selectedGuruId, kelas_id: selectedKelasId });
+      const res = await assignWaliKelasStruktur({
+        guru_id: selectedGuruId,
+        kelas_id: selectedKelasId,
+        tahun_pelajaran_id: tahunPelajaranId,
+      });
       if (!res.success) {
         toast.error(res.message || 'Gagal menyimpan penugasan');
         return;

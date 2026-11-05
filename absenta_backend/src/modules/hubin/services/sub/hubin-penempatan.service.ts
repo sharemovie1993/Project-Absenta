@@ -205,7 +205,15 @@ export class HubinPenempatanService extends HubinCommonHelper {
         include: {
           Siswa: { 
             include: { 
-              Kelas: { select: { id: true, nama_kelas: true, tingkat: true, jurusan_id: true } },
+              Kelas: { 
+                include: {
+                  Jurusan: {
+                    include: {
+                      ProgramKeahlian: true
+                    }
+                  }
+                }
+              },
               Jurusan: {
                 select: {
                   id: true,
@@ -287,7 +295,8 @@ export class HubinPenempatanService extends HubinCommonHelper {
 
     const enrichedData = data.map((item: any) => {
       const stats = countMap.get(item.id) || { sakit: 0, izin: 0, alpa: 0, hadir: 0 };
-      const studentJurusanId = item.Siswa?.jurusan_id || item.Siswa?.Jurusan?.id || item.Siswa?.Kelas?.jurusan_id;
+      const effectiveJurusan = item.Siswa?.Jurusan || item.Siswa?.Kelas?.Jurusan;
+      const studentJurusanId = effectiveJurusan?.id || item.Siswa?.jurusan_id || item.Siswa?.Kelas?.jurusan_id;
       const matchedTp = (item.Mitra?.SettingDeskripsiPkl || []).find(
         (s: any) =>
           (!s.tahun_pelajaran_id || !targetTpId || s.tahun_pelajaran_id === targetTpId) &&
@@ -295,8 +304,13 @@ export class HubinPenempatanService extends HubinCommonHelper {
       );
       const effectiveDeskripsiTp = item.deskripsi_tp || matchedTp?.deskripsi_tp || undefined;
 
+      const programKeahlianNama = effectiveJurusan?.ProgramKeahlian?.nama || item.Siswa?.Jurusan?.ProgramKeahlian?.nama || '';
+      const konsentrasiKeahlianNama = effectiveJurusan?.nama || item.Siswa?.Jurusan?.nama || '';
+
       return {
         ...item,
+        program_keahlian: programKeahlianNama,
+        konsentrasi_keahlian: konsentrasiKeahlianNama,
         deskripsi_tp: effectiveDeskripsiTp,
         auto_sakit: stats.sakit,
         auto_izin: stats.izin,

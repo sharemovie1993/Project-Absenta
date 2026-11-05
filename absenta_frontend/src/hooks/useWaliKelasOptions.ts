@@ -7,14 +7,19 @@ import type { SearchableSelectOption } from '../components/ui/SearchableSelect';
 export interface UseWaliKelasOptionsParams {
   onlyActive?: boolean;
   valueKey?: 'guru_id' | 'kelas_id' | 'assignment_id';
+  tahunPelajaranId?: string;
 }
 
 export function useWaliKelasOptions(params: UseWaliKelasOptionsParams = {}) {
-  const { onlyActive = true, valueKey = 'guru_id' } = params;
+  const { onlyActive = true, valueKey = 'guru_id', tahunPelajaranId } = params;
 
   const query = useQuery({
-    queryKey: ['wali-kelas-options-list', onlyActive],
-    queryFn: () => getWaliKelasStrukturList(1, 1000, '', { include_inactive: !onlyActive }).catch(() => ({ data: [] as any })),
+    queryKey: ['wali-kelas-options-list', onlyActive, tahunPelajaranId],
+    queryFn: () =>
+      getWaliKelasStrukturList(1, 1000, '', {
+        include_inactive: !onlyActive,
+        tahun_pelajaran_id: tahunPelajaranId,
+      }).catch(() => ({ data: [] as any })),
     staleTime: 5 * 60 * 1000,
   });
 

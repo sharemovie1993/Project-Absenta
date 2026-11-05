@@ -31,6 +31,7 @@ export default async function raporRoutes(fastify: any) {
     'core.sekolah.update.profile',
   ];
 
+  fastify.get('/settings/summary', { preHandler: [requireCapability(settingsReadCaps), determineDataScope()] }, RaporController.getSettingsSummary);
   fastify.get('/settings', { preHandler: [requireCapability(settingsReadCaps), determineDataScope()] }, RaporController.getSettings);
   fastify.put('/settings', { preHandler: [requireCapability(['academic.manage.academic', 'dashboard.view.kepsek', 'core.sekolah.update.profile']), determineDataScope()] }, RaporController.updateSettings);
 

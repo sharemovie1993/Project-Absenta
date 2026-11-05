@@ -471,6 +471,10 @@ export const raporApi = {
     });
   },
   // === RAPOR SETTINGS & REFERENSI PERSURATAN ===
+  getSettingsSummary: async () => {
+    const response = await api.get('/rapor/settings/summary');
+    return response.data;
+  },
   getRaporSettings: async (params?: { tahun_pelajaran_id?: string; semester_id?: string }) => {
     const response = await api.get('/rapor/settings', { params });
     return response.data;
@@ -706,6 +710,31 @@ export interface RaporStagingDetail extends RaporStagingItem {
     keputusanTransisi?: string;
     ekskul?: Array<{ nama: string; predikat: string; keterangan: string }>;
   }>;
+}
+
+export interface RaporSettingSummaryRow {
+  tahun_pelajaran_id: string;
+  tahun_ajaran: string;
+  is_active: boolean;
+  is_configured: boolean;
+  tempat_terbit?: string;
+  tanggal_rapor_ganjil?: string;
+  tanggal_rapor_genap?: string;
+  tanggal_p5_ganjil?: string;
+  tanggal_p5_genap?: string;
+  tanggal_pts_ganjil?: string;
+  tanggal_pts_genap?: string;
+  tanggal_pleno_genap?: string;
+  tanggal_kelulusan?: string;
+  kepsek_nama?: string;
+  kepsek_nip?: string;
+  kepsek_status?: 'DEFINITIF' | 'PLT';
+  ukuran_kertas?: 'A4' | 'F4';
+  tampilkan_kop?: boolean;
+  tampilkan_qr?: boolean;
+  tampilkan_kokurikuler?: boolean;
+  mode_cetak_rapor?: 'CP_ONLY' | 'SUMATIF_AND_CP' | 'SUMATIF_ONLY';
+  sumber_nilai_rapor?: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL';
 }
 
 export interface RaporSettings {

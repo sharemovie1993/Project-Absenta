@@ -7759,12 +7759,12 @@
     "filename": "RaporPklPage.tsx",
     "relativePath": "src\\pages\\rapor\\RaporPklPage.tsx"
   },
-  "rapor_settings_page": {
+  "rapor_settings": {
     "usesLayout": true,
     "usesAcademicLayout": true,
     "usesPageLayout": false,
     "usesUiComponents": true,
-    "usesMemo": true,
+    "usesMemo": false,
     "noAnyType": true,
     "safeMapping": true,
     "strictColors": true,
@@ -7782,7 +7782,7 @@
     "tableToolbar": true,
     "breadcrumbNavigation": true,
     "premiumFeatureGate": null,
-    "godFileGuard": false,
+    "godFileGuard": true,
     "hardcodedConfig": true,
     "analyticsCardGuard": true,
     "importExportGuard": true,

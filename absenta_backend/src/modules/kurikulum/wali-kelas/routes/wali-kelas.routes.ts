@@ -22,6 +22,15 @@ export async function waliKelasRoutes(fastify: any) {
     handler: waliKelasController.assignStrukturWaliKelas
   });
 
+  fastify.post('/struktur/copy-previous', {
+    preHandler: [
+      requireCapability('academic.homeroom.manage'),
+      organizationalScopeMiddleware,
+      determineDataScope(),
+    ],
+    handler: waliKelasController.copyStrukturFromPreviousYear
+  });
+
   fastify.put('/struktur/:id/nonaktif', {
     preHandler: [
       requireCapability('academic.homeroom.manage'),
