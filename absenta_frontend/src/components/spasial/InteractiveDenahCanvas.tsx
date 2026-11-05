@@ -22,7 +22,15 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   onSaveSuccess,
   isReadOnly = false,
 }) => {
-  const [nodes, setNodes] = useState<DenahElementNode[]>(denah.elements || []);
+  // If denah has no elements yet, auto-generate from unassigned rooms
+  const initialNodes =
+    denah.elements && denah.elements.length > 0
+      ? denah.elements
+      : unassignedRooms.length > 0
+      ? generateAutoFloorplan(unassignedRooms)
+      : [];
+
+  const [nodes, setNodes] = useState<DenahElementNode[]>(initialNodes);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [scale, setScale] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 40, y: 40 });
@@ -31,7 +39,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   const [isLightMode, setIsLightMode] = useState(true);
 
   // History for Undo/Redo
-  const [history, setHistory] = useState<DenahElementNode[][]>([denah.elements || []]);
+  const [history, setHistory] = useState<DenahElementNode[][]>([initialNodes]);
   const [historyIdx, setHistoryIdx] = useState(0);
 
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -269,7 +277,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
 
   return (
     <div
-      className={`flex flex-col h-[750px] w-full rounded-2xl overflow-hidden shadow-xl select-none transition-colors border ${
+      className={`flex flex-col h-full min-h-[620px] flex-1 w-full rounded-2xl overflow-hidden shadow-xl select-none transition-colors border ${
         isLightMode
           ? 'bg-slate-100 border-slate-300'
           : 'bg-slate-900 border-slate-700/80'
@@ -342,7 +350,10 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
             }`}
           >
             {nodes.length === 0 ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center select-none">
+              <div
+                style={{ left: '60px', top: '60px', width: '560px' }}
+                className="absolute flex flex-col items-center justify-center p-8 text-center select-none bg-white/95 dark:bg-slate-900/95 rounded-2xl border border-slate-300 dark:border-slate-700 shadow-xl"
+              >
                 <div className="p-4 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-3xl mb-3 shadow-xs">
                   <Wand2 className="w-10 h-10 stroke-[1.5]" />
                 </div>
@@ -350,13 +361,13 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
                   Canvas Denah Masih Kosong
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mt-1 mb-4">
-                  Mulai rancang peta denah fisik sekolah. Anda dapat menyusun otomatis dari data kelas &amp; fasilitas atau memilih preset dari panel samping kiri.
+                  Mulai rancang denah lokasi ruang ujian. Anda dapat menata otomatis seluruh rombel kelas atau memilih dari panel kiri.
                 </p>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={handleAutoGenerateLayout}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs cursor-pointer transition-colors"
+                    className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs cursor-pointer transition-colors"
                   >
                     <Wand2 className="w-4 h-4" />
                     <span>
