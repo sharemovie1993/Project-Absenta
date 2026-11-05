@@ -64,18 +64,18 @@ export class HubinPenilaianService extends HubinCommonHelper {
     allConfigs.forEach((c) => configMap.set(c.key, c.value));
 
     const tpKey = (prefix: string) => (targetTpId ? configMap.get(`${prefix}_${targetTpId}`) : undefined);
-    const getVal = (key: string) => tpKey(key) || configMap.get(key);
+    const tpHasConfig = targetTpId ? Boolean(tpKey('HUBIN_PKL_NOMOR_SURAT') || tpKey('HUBIN_PKL_TANGGAL_TERBIT') || tpKey('HUBIN_PKL_DURASI_JP') || tpKey('HUBIN_PKL_TEMPAT_TERBIT') || tpKey('HUBIN_PKL_PENANDATANGAN_NAMA')) : true;
 
-    const resolvedAssessmentMode = (tpKey('HUBIN_PKL_ASSESSMENT_MODE') || configMap.get('HUBIN_PKL_ASSESSMENT_MODE') || 'DUDI_ONLY') as 'DUDI_ONLY' | 'COMPOSITE';
-    const resolvedWeightDudi = Number(tpKey('HUBIN_PKL_WEIGHT_DUDI') || configMap.get('HUBIN_PKL_WEIGHT_DUDI') || 70);
-    const resolvedWeightLaporan = Number(tpKey('HUBIN_PKL_WEIGHT_LAPORAN') || configMap.get('HUBIN_PKL_WEIGHT_LAPORAN') || 15);
-    const resolvedWeightSidang = Number(tpKey('HUBIN_PKL_WEIGHT_SIDANG') || configMap.get('HUBIN_PKL_WEIGHT_SIDANG') || 15);
+    const resolvedAssessmentMode = (tpKey('HUBIN_PKL_ASSESSMENT_MODE') || (targetTpId ? 'DUDI_ONLY' : (configMap.get('HUBIN_PKL_ASSESSMENT_MODE') || 'DUDI_ONLY'))) as 'DUDI_ONLY' | 'COMPOSITE';
+    const resolvedWeightDudi = Number(tpKey('HUBIN_PKL_WEIGHT_DUDI') || (targetTpId ? 70 : (configMap.get('HUBIN_PKL_WEIGHT_DUDI') || 70)));
+    const resolvedWeightLaporan = Number(tpKey('HUBIN_PKL_WEIGHT_LAPORAN') || (targetTpId ? 15 : (configMap.get('HUBIN_PKL_WEIGHT_LAPORAN') || 15)));
+    const resolvedWeightSidang = Number(tpKey('HUBIN_PKL_WEIGHT_SIDANG') || (targetTpId ? 15 : (configMap.get('HUBIN_PKL_WEIGHT_SIDANG') || 15)));
 
-    const resolvedCycleTarget = Number(tpKey('HUBIN_PKL_VISIT_CYCLE_TARGET') || configMap.get('HUBIN_PKL_VISIT_CYCLE_TARGET') || 3);
-    const resolvedCycleMode = (tpKey('HUBIN_PKL_VISIT_CYCLE_MODE') || configMap.get('HUBIN_PKL_VISIT_CYCLE_MODE') || 'THREE_CYCLE') as 'THREE_CYCLE' | 'FOUR_CYCLE' | 'CUSTOM';
-    const resolvedRequirePhoto = (tpKey('HUBIN_PKL_VISIT_REQUIRE_PHOTO') ?? configMap.get('HUBIN_PKL_VISIT_REQUIRE_PHOTO') ?? 'true') === 'true';
-    const resolvedRequireSignature = (tpKey('HUBIN_PKL_VISIT_REQUIRE_SIGNATURE') ?? configMap.get('HUBIN_PKL_VISIT_REQUIRE_SIGNATURE') ?? 'true') === 'true';
-    const resolvedRequireJournal = (tpKey('HUBIN_PKL_VISIT_REQUIRE_JOURNAL') ?? configMap.get('HUBIN_PKL_VISIT_REQUIRE_JOURNAL') ?? 'true') === 'true';
+    const resolvedCycleTarget = Number(tpKey('HUBIN_PKL_VISIT_CYCLE_TARGET') || (targetTpId ? 3 : (configMap.get('HUBIN_PKL_VISIT_CYCLE_TARGET') || 3)));
+    const resolvedCycleMode = (tpKey('HUBIN_PKL_VISIT_CYCLE_MODE') || (targetTpId ? 'THREE_CYCLE' : (configMap.get('HUBIN_PKL_VISIT_CYCLE_MODE') || 'THREE_CYCLE'))) as 'THREE_CYCLE' | 'FOUR_CYCLE' | 'CUSTOM';
+    const resolvedRequirePhoto = (tpKey('HUBIN_PKL_VISIT_REQUIRE_PHOTO') ?? (targetTpId ? 'true' : (configMap.get('HUBIN_PKL_VISIT_REQUIRE_PHOTO') ?? 'true'))) === 'true';
+    const resolvedRequireSignature = (tpKey('HUBIN_PKL_VISIT_REQUIRE_SIGNATURE') ?? (targetTpId ? 'true' : (configMap.get('HUBIN_PKL_VISIT_REQUIRE_SIGNATURE') ?? 'true'))) === 'true';
+    const resolvedRequireJournal = (tpKey('HUBIN_PKL_VISIT_REQUIRE_JOURNAL') ?? (targetTpId ? 'true' : (configMap.get('HUBIN_PKL_VISIT_REQUIRE_JOURNAL') ?? 'true'))) === 'true';
 
     return {
       folderUrl: configMap.get('HUBIN_GOOGLE_DRIVE_FOLDER_URL') || '',
@@ -85,12 +85,14 @@ export class HubinPenilaianService extends HubinCommonHelper {
       weightLaporan: resolvedWeightLaporan,
       weightSidang: resolvedWeightSidang,
       tahun_pelajaran_id: targetTpId || null,
-      nomorSuratSertifikat: getVal('HUBIN_PKL_NOMOR_SURAT') || '425.1/0630/SMKN1PLD-KCD Wil.IV',
-      tanggalTerbitSertifikat: getVal('HUBIN_PKL_TANGGAL_TERBIT') || '',
-      durasiJp: getVal('HUBIN_PKL_DURASI_JP') || '792',
-      tempatTerbit: getVal('HUBIN_PKL_TEMPAT_TERBIT') || sekolah?.kota || 'Purwakarta',
-      penandatanganNama: getVal('HUBIN_PKL_PENANDATANGAN_NAMA') || sekolah?.kepala_sekolah || '',
-      penandatanganNip: getVal('HUBIN_PKL_PENANDATANGAN_NIP') || sekolah?.nip_kepala || '',
+      is_configured: tpHasConfig,
+      // STRICT ISOLATION: Jika targetTpId dispesifikasikan dan belum dikonfigurasi, kosongkan!
+      nomorSuratSertifikat: targetTpId ? (tpKey('HUBIN_PKL_NOMOR_SURAT') || '') : (configMap.get('HUBIN_PKL_NOMOR_SURAT') || ''),
+      tanggalTerbitSertifikat: targetTpId ? (tpKey('HUBIN_PKL_TANGGAL_TERBIT') || '') : (configMap.get('HUBIN_PKL_TANGGAL_TERBIT') || ''),
+      durasiJp: targetTpId ? (tpKey('HUBIN_PKL_DURASI_JP') || '') : (configMap.get('HUBIN_PKL_DURASI_JP') || ''),
+      tempatTerbit: targetTpId ? (tpKey('HUBIN_PKL_TEMPAT_TERBIT') || '') : (configMap.get('HUBIN_PKL_TEMPAT_TERBIT') || ''),
+      penandatanganNama: targetTpId ? (tpKey('HUBIN_PKL_PENANDATANGAN_NAMA') || '') : (configMap.get('HUBIN_PKL_PENANDATANGAN_NAMA') || ''),
+      penandatanganNip: targetTpId ? (tpKey('HUBIN_PKL_PENANDATANGAN_NIP') || '') : (configMap.get('HUBIN_PKL_PENANDATANGAN_NIP') || ''),
       visitCycleTarget: resolvedCycleTarget,
       visitCycleMode: resolvedCycleMode,
       visitRequirePhoto: resolvedRequirePhoto,
@@ -158,21 +160,22 @@ export class HubinPenilaianService extends HubinCommonHelper {
         tahun_ajaran: tp.tahun,
         is_active: Boolean(tp.is_active),
         is_configured: isConfigured,
-        nomorSuratSertifikat: tpNomor || globalNomor || '',
-        tanggalTerbitSertifikat: tpTgl || globalTgl || '',
-        durasiJp: tpJp || globalJp || '792',
-        tempatTerbit: tpTempat || globalTempat || '',
-        penandatanganNama: tpKepsek || globalKepsek || '',
-        penandatanganNip: tpNip || globalNip || '',
-        assessmentMode: (tpMode || globalMode) as 'DUDI_ONLY' | 'COMPOSITE',
-        weightDudi: Number(tpWeightDudi || globalWeightDudi || 70),
-        weightLaporan: Number(tpWeightLaporan || globalWeightLaporan || 15),
-        weightSidang: Number(tpWeightSidang || globalWeightSidang || 15),
-        visitCycleTarget: Number(tpCycleTarget || globalCycleTarget || 3),
-        visitCycleMode: (tpCycleMode || globalCycleMode || 'THREE_CYCLE') as 'THREE_CYCLE' | 'FOUR_CYCLE' | 'CUSTOM',
-        visitRequirePhoto: (tpRequirePhoto ?? globalRequirePhoto ?? 'true') === 'true',
-        visitRequireSignature: (tpRequireSignature ?? globalRequireSignature ?? 'true') === 'true',
-        visitRequireJournal: (tpRequireJournal ?? globalRequireJournal ?? 'true') === 'true',
+        // MODE STRICT: Terisolasi 100% per tahun pelajaran. Jika belum diatur, KOSONGKAN!
+        nomorSuratSertifikat: isConfigured ? (tpNomor || '') : '',
+        tanggalTerbitSertifikat: isConfigured ? (tpTgl || '') : '',
+        durasiJp: isConfigured ? (tpJp || '') : '',
+        tempatTerbit: isConfigured ? (tpTempat || '') : '',
+        penandatanganNama: isConfigured ? (tpKepsek || '') : '',
+        penandatanganNip: isConfigured ? (tpNip || '') : '',
+        assessmentMode: (tpMode || 'DUDI_ONLY') as 'DUDI_ONLY' | 'COMPOSITE',
+        weightDudi: tpWeightDudi ? Number(tpWeightDudi) : 70,
+        weightLaporan: tpWeightLaporan ? Number(tpWeightLaporan) : 15,
+        weightSidang: tpWeightSidang ? Number(tpWeightSidang) : 15,
+        visitCycleTarget: tpCycleTarget ? Number(tpCycleTarget) : 3,
+        visitCycleMode: (tpCycleMode || 'THREE_CYCLE') as 'THREE_CYCLE' | 'FOUR_CYCLE' | 'CUSTOM',
+        visitRequirePhoto: tpRequirePhoto !== undefined ? tpRequirePhoto === 'true' : true,
+        visitRequireSignature: tpRequireSignature !== undefined ? tpRequireSignature === 'true' : true,
+        visitRequireJournal: tpRequireJournal !== undefined ? tpRequireJournal === 'true' : true,
       };
     });
   }
@@ -182,36 +185,29 @@ export class HubinPenilaianService extends HubinCommonHelper {
     if (data.folderUrl !== undefined) await this.updateConfig(tenantId, 'HUBIN_GOOGLE_DRIVE_FOLDER_URL', data.folderUrl);
     if (data.driveMode !== undefined) await this.updateConfig(tenantId, 'HUBIN_GOOGLE_DRIVE_MODE', data.driveMode);
 
-    // Scoped Academic Year settings
+    // Scoped Academic Year settings (Terisolasi per Tahun Pelajaran, Zero Global Leak)
     const tpId = data.tahun_pelajaran_id;
     if (tpId) {
       if (data.assessmentMode !== undefined) {
         await this.updateConfig(tenantId, `HUBIN_PKL_ASSESSMENT_MODE_${tpId}`, data.assessmentMode);
-        await this.updateConfig(tenantId, 'HUBIN_PKL_ASSESSMENT_MODE', data.assessmentMode);
       }
       if (data.weightDudi !== undefined) {
         await this.updateConfig(tenantId, `HUBIN_PKL_WEIGHT_DUDI_${tpId}`, String(data.weightDudi));
-        await this.updateConfig(tenantId, 'HUBIN_PKL_WEIGHT_DUDI', String(data.weightDudi));
       }
       if (data.weightLaporan !== undefined) {
         await this.updateConfig(tenantId, `HUBIN_PKL_WEIGHT_LAPORAN_${tpId}`, String(data.weightLaporan));
-        await this.updateConfig(tenantId, 'HUBIN_PKL_WEIGHT_LAPORAN', String(data.weightLaporan));
       }
       if (data.weightSidang !== undefined) {
         await this.updateConfig(tenantId, `HUBIN_PKL_WEIGHT_SIDANG_${tpId}`, String(data.weightSidang));
-        await this.updateConfig(tenantId, 'HUBIN_PKL_WEIGHT_SIDANG', String(data.weightSidang));
       }
       if (data.nomorSuratSertifikat !== undefined) {
         await this.updateConfig(tenantId, `HUBIN_PKL_NOMOR_SURAT_${tpId}`, data.nomorSuratSertifikat);
-        await this.updateConfig(tenantId, 'HUBIN_PKL_NOMOR_SURAT', data.nomorSuratSertifikat);
       }
       if (data.tanggalTerbitSertifikat !== undefined) {
         await this.updateConfig(tenantId, `HUBIN_PKL_TANGGAL_TERBIT_${tpId}`, data.tanggalTerbitSertifikat);
-        await this.updateConfig(tenantId, 'HUBIN_PKL_TANGGAL_TERBIT', data.tanggalTerbitSertifikat);
       }
       if (data.durasiJp !== undefined) {
         await this.updateConfig(tenantId, `HUBIN_PKL_DURASI_JP_${tpId}`, String(data.durasiJp));
-        await this.updateConfig(tenantId, 'HUBIN_PKL_DURASI_JP', String(data.durasiJp));
       }
       if (data.tempatTerbit !== undefined) {
         await this.updateConfig(tenantId, `HUBIN_PKL_TEMPAT_TERBIT_${tpId}`, data.tempatTerbit);
@@ -224,23 +220,18 @@ export class HubinPenilaianService extends HubinCommonHelper {
       }
       if (data.visitCycleTarget !== undefined) {
         await this.updateConfig(tenantId, `HUBIN_PKL_VISIT_CYCLE_TARGET_${tpId}`, String(data.visitCycleTarget));
-        await this.updateConfig(tenantId, 'HUBIN_PKL_VISIT_CYCLE_TARGET', String(data.visitCycleTarget));
       }
       if (data.visitCycleMode !== undefined) {
         await this.updateConfig(tenantId, `HUBIN_PKL_VISIT_CYCLE_MODE_${tpId}`, data.visitCycleMode);
-        await this.updateConfig(tenantId, 'HUBIN_PKL_VISIT_CYCLE_MODE', data.visitCycleMode);
       }
       if (data.visitRequirePhoto !== undefined) {
         await this.updateConfig(tenantId, `HUBIN_PKL_VISIT_REQUIRE_PHOTO_${tpId}`, String(data.visitRequirePhoto));
-        await this.updateConfig(tenantId, 'HUBIN_PKL_VISIT_REQUIRE_PHOTO', String(data.visitRequirePhoto));
       }
       if (data.visitRequireSignature !== undefined) {
         await this.updateConfig(tenantId, `HUBIN_PKL_VISIT_REQUIRE_SIGNATURE_${tpId}`, String(data.visitRequireSignature));
-        await this.updateConfig(tenantId, 'HUBIN_PKL_VISIT_REQUIRE_SIGNATURE', String(data.visitRequireSignature));
       }
       if (data.visitRequireJournal !== undefined) {
         await this.updateConfig(tenantId, `HUBIN_PKL_VISIT_REQUIRE_JOURNAL_${tpId}`, String(data.visitRequireJournal));
-        await this.updateConfig(tenantId, 'HUBIN_PKL_VISIT_REQUIRE_JOURNAL', String(data.visitRequireJournal));
       }
     } else {
       if (data.assessmentMode !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_ASSESSMENT_MODE', data.assessmentMode);

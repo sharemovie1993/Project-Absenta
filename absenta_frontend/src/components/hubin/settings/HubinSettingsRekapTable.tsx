@@ -162,7 +162,7 @@ export const HubinSettingsRekapTable: React.FC<HubinSettingsRekapTableProps> = R
 
                       {/* Nomor Surat Resmi TU */}
                       <td className="px-3 py-3.5">
-                        {row.nomorSuratSertifikat ? (
+                        {isConfigured && row.nomorSuratSertifikat ? (
                           <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200 block truncate max-w-[260px]">
                             {row.nomorSuratSertifikat}
                           </span>
@@ -173,13 +173,13 @@ export const HubinSettingsRekapTable: React.FC<HubinSettingsRekapTableProps> = R
 
                       {/* Titimangsa & Kota */}
                       <td className="px-3 py-3.5">
-                        {formattedTgl || row.tempatTerbit ? (
+                        {isConfigured && (formattedTgl || row.tempatTerbit) ? (
                           <div className="space-y-0.5">
                             <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 block">
                               {formattedTgl || '—'}
                             </span>
                             <span className="text-[10px] text-slate-400 block">
-                              {row.tempatTerbit || 'Purwakarta'}
+                              {row.tempatTerbit || '—'}
                             </span>
                           </div>
                         ) : (
@@ -189,14 +189,18 @@ export const HubinSettingsRekapTable: React.FC<HubinSettingsRekapTableProps> = R
 
                       {/* Durasi JP */}
                       <td className="px-3 py-3.5 text-center">
-                        <span className="inline-flex items-center justify-center bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold px-2 py-0.5 rounded-lg text-xs tabular-nums">
-                          {row.durasiJp || 792} JP
-                        </span>
+                        {isConfigured && row.durasiJp ? (
+                          <span className="inline-flex items-center justify-center bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold px-2 py-0.5 rounded-lg text-xs tabular-nums">
+                            {row.durasiJp} JP
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 font-mono text-xs">—</span>
+                        )}
                       </td>
 
                       {/* Penandatangan Sertifikat */}
                       <td className="px-3 py-3.5">
-                        {row.penandatanganNama ? (
+                        {isConfigured && row.penandatanganNama ? (
                           <div className="space-y-0.5">
                             <span className="font-bold text-xs text-slate-900 dark:text-white block truncate max-w-[220px]">
                               {row.penandatanganNama}
@@ -206,7 +210,7 @@ export const HubinSettingsRekapTable: React.FC<HubinSettingsRekapTableProps> = R
                             </span>
                           </div>
                         ) : (
-                          <span className="text-slate-400 italic text-[11px]">Sesuai profil sekolah</span>
+                          <span className="text-slate-400 italic text-[11px]">—</span>
                         )}
                       </td>
 
@@ -270,12 +274,12 @@ export const HubinSettingsRekapTable: React.FC<HubinSettingsRekapTableProps> = R
                     <div className="text-slate-600 dark:text-slate-400">
                       <span className="font-bold">Nomor Surat:</span>{' '}
                       <span className="font-mono text-slate-800 dark:text-slate-200">
-                        {row.nomorSuratSertifikat || '(belum diset)'}
+                        {row.is_configured && row.nomorSuratSertifikat ? row.nomorSuratSertifikat : '(belum diset)'}
                       </span>
                     </div>
                     <div className="text-slate-600 dark:text-slate-400 flex items-center justify-between">
-                      <span>Durasi: {row.durasiJp || 792} JP</span>
-                      <span>Kota: {row.tempatTerbit || 'Purwakarta'}</span>
+                      <span>Durasi: {row.is_configured && row.durasiJp ? `${row.durasiJp} JP` : '—'}</span>
+                      <span>Kota: {row.is_configured && row.tempatTerbit ? row.tempatTerbit : '—'}</span>
                     </div>
                   </div>
 

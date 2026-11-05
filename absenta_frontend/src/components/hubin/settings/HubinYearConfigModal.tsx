@@ -42,9 +42,9 @@ export const HubinYearConfigModal: React.FC<HubinYearConfigModalProps> = React.m
   const [modalTab, setModalTab] = useState<'sertifikat' | 'siklus'>('sertifikat');
 
   const [nomorSurat, setNomorSurat] = useState('');
-  const [tempatTerbit, setTempatTerbit] = useState('Purwakarta');
+  const [tempatTerbit, setTempatTerbit] = useState('');
   const [tanggalTerbit, setTanggalTerbit] = useState('');
-  const [durasiJp, setDurasiJp] = useState('792');
+  const [durasiJp, setDurasiJp] = useState('');
   const [penandatanganNama, setPenandatanganNama] = useState('');
   const [penandatanganNip, setPenandatanganNip] = useState('');
 
@@ -56,12 +56,22 @@ export const HubinYearConfigModal: React.FC<HubinYearConfigModalProps> = React.m
 
   useEffect(() => {
     if (yearRow && isOpen) {
-      setNomorSurat(yearRow.nomorSuratSertifikat || '425.1/0630/SMKN1PLD-KCD Wil.IV');
-      setTempatTerbit(yearRow.tempatTerbit || 'Purwakarta');
-      setTanggalTerbit(yearRow.tanggalTerbitSertifikat || '');
-      setDurasiJp(String(yearRow.durasiJp || '792'));
-      setPenandatanganNama(yearRow.penandatanganNama || '');
-      setPenandatanganNip(yearRow.penandatanganNip || '');
+      if (yearRow.is_configured) {
+        setNomorSurat(yearRow.nomorSuratSertifikat || '');
+        setTempatTerbit(yearRow.tempatTerbit || '');
+        setTanggalTerbit(yearRow.tanggalTerbitSertifikat || '');
+        setDurasiJp(yearRow.durasiJp ? String(yearRow.durasiJp) : '');
+        setPenandatanganNama(yearRow.penandatanganNama || '');
+        setPenandatanganNip(yearRow.penandatanganNip || '');
+      } else {
+        // MODE STRICT: Slot belum diatur = 100% kosong, TIDAK ADA FALLBACK ke slot/tahun lain!
+        setNomorSurat('');
+        setTempatTerbit('');
+        setTanggalTerbit('');
+        setDurasiJp('');
+        setPenandatanganNama('');
+        setPenandatanganNip('');
+      }
 
       const m = yearRow.visitCycleMode || 'THREE_CYCLE';
       setCycleMode(m);
@@ -129,24 +139,10 @@ export const HubinYearConfigModal: React.FC<HubinYearConfigModalProps> = React.m
       visitRequireSignature: requireSignature,
       visitRequireJournal: requireJournal,
     });
-  }, [
-    yearRow,
-    nomorSurat,
-    tempatTerbit,
-    tanggalTerbit,
-    durasiJp,
-    penandatanganNama,
-    penandatanganNip,
-    cycleMode,
-    cycleTarget,
-    requirePhoto,
-    requireSignature,
-    requireJournal,
-    saveMutation,
-  ]);
+  }, [yearRow, nomorSurat, tempatTerbit, tanggalTerbit, durasiJp, penandatanganNama, penandatanganNip, cycleMode, cycleTarget, requirePhoto, requireSignature, requireJournal, saveMutation]);
 
   const formattedPreviewDate = useMemo(() => {
-    if (!tanggalTerbit) return 'Tanggal belum diatur';
+    if (!tanggalTerbit) return null;
     try {
       const d = new Date(tanggalTerbit);
       return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -326,15 +322,21 @@ export const HubinYearConfigModal: React.FC<HubinYearConfigModalProps> = React.m
                       Nomor : {nomorSurat || '(belum di set)'}
                     </div>
                     <div className="text-xs text-slate-300 font-medium">
-                      {tempatTerbit || 'Purwakarta'}, {formattedPreviewDate}
+                      {tempatTerbit || formattedPreviewDate
+                        ? `${tempatTerbit || '—'}, ${formattedPreviewDate || '—'}`
+                        : '(Titimangsa belum diatur)'}
                     </div>
                     <div className="inline-block px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[11px] font-semibold">
-                      Durasi Resmi: {durasiJp || 792} Jam Pelajaran
+                      Durasi Resmi: {durasiJp ? `${durasiJp} Jam Pelajaran` : '(belum di set)'}
                     </div>
-                    {penandatanganNama && (
+                    {penandatanganNama ? (
                       <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-400">
                         <span className="block font-bold text-white">{penandatanganNama}</span>
                         <span>NIP. {penandatanganNip || '-'}</span>
+                      </div>
+                    ) : (
+                      <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-500 italic">
+                        (Penandatangan belum diatur)
                       </div>
                     )}
                   </div>
