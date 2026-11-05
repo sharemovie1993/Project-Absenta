@@ -11,9 +11,9 @@ Panduan standar arsitektur dan alur kerja pembuatan dokumen resmi institusi (Ber
 
 ---
 
-## 🏛️ Arsitektur Tiga Komponen Inti
+## 🏛️ Arsitektur Empat Pilar Komponen Inti
 
-Seluruh antarmuka dokumen cetak di frontend wajib dibangun menggunakan 3 pilar komponen standar:
+Seluruh antarmuka dokumen cetak di frontend wajib dibangun menggunakan 4 pilar komponen standar:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -28,7 +28,7 @@ Seluruh antarmuka dokumen cetak di frontend wajib dibangun menggunakan 3 pilar k
 │  │  │  Naskah Konten, Tabel Data, Rekapitulasi        │  │  │
 │  │  └─────────────────────────────────────────────────┘  │  │
 │  │  ┌─────────────────────────────────────────────────┐  │  │
-│  │  │  Tanda Tangan 2-Tier (Kaprog, Sarpras, Kepsek)  │  │  │
+│  │  │  UniversalDocumentSignatures (Engine TTD SSOT)  │  │  │
 │  │  └─────────────────────────────────────────────────┘  │  │
 │  └───────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
@@ -49,6 +49,44 @@ Wadah simulasi lembar kertas fisik A4 (`210mm × 297mm` portrait atau `297mm × 
 Komponen kop surat dinas dan sekolah terpadu:
 - Mengambil identitas sekolah, alamat, kontak, dan logo base64 secara reaktif via hook `usePrintHeaderData()`.
 - Menampilkan garis ganda resmi (*double line border* kop surat pemerintah: garis tebal 2px atas, garis tipis 0.8px bawah).
+
+### 4. `UniversalDocumentSignatures` & `useDocumentSigners()`
+Komponen dan hook tanda tangan resmi siap pakai (Plug-and-Play) yang terhubung langsung ke **`OrganizationalAssignment`** sebagai Single Source of Truth (SSOT):
+- **Otomatis Me-resolve Pejabat**: Kepala Sekolah, Wali Kelas (berdasarkan `kelasId`), Kaprog (berdasarkan `jurusanId`), Waka Kurikulum, Waka Sarpras, Waka Hubin.
+- **Dukungan 5 Pola Tata Letak Standar**:
+  1. `single_kepsek`: Kepala Sekolah saja di sisi kanan bawah (Biodata Siswa, SK, SKL).
+  2. `dual_walas_kepsek`: Wali Kelas di kiri, Titimangsa + Kepsek di kanan sejajar (Rapor Semester, Rapor P5, Transkrip).
+  3. `dual_unit_kepsek`: Kaprog / Waka di kiri, Titimangsa + Kepsek di kanan (Kalender Akademik, KBM, Berita Acara).
+  4. `triangle_rapor`: Orang Tua di kiri & Walas di kanan sejajar simetris, Mengetahui Kepala Sekolah di tengah bawah (Pengesahan Rapor Capaian & Rapor PKL).
+  5. `tri_party_row`: Mitra DUDI, Penguji/Kaprog, dan Kepsek dalam 3 kolom horizontal (Sertifikat UKK & PKL).
+- **Zero Fallback & Zero Leakage**: Mencegah teks cacat seperti `NIP. -`, otomatis menyelaraskan perataan garis dan tanggal titimangsa resmi slot tahun ajaran.
+
+Contoh Penggunaan Langsung:
+```tsx
+import { UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
+
+// 1. Dokumen Rapor Semester (Wali Kelas + Kepsek)
+<UniversalDocumentSignatures
+  layout="dual_walas_kepsek"
+  tahunPelajaranId={tahunPelajaranId}
+  semesterId={semesterId}
+  kelasId={selectedStudent.kelas_id}
+/>
+
+// 2. Dokumen Biodata Siswa / SK (Kepsek Saja)
+<UniversalDocumentSignatures
+  layout="single_kepsek"
+  tahunPelajaranId={tahunPelajaranId}
+/>
+
+// 3. Dokumen Pengesahan Rapor (Orang Tua + Walas + Kepsek Simetris)
+<UniversalDocumentSignatures
+  layout="triangle_rapor"
+  tahunPelajaranId={tahunPelajaranId}
+  kelasId={selectedStudent.kelas_id}
+  signers={{ parent: { personName: siswa.nama_ayah || '................................' } }}
+/>
+```
 
 ---
 
@@ -183,5 +221,6 @@ Sebelum fitur cetak dirilis ke produksi:
 - [ ] Tombol cetak memanggil `window.print()` dan format lembar rapi di print preview browser.
 - [ ] Tombol unduh PDF menghasilkan dokumen presisi 1:1 (*True WYSIWYG*).
 - [ ] **Anti-Bloat & Anti-Distortion Guard**: Ekspor PDF menggunakan `scale: 2`, `image/jpeg` kualitas `0.88`, `compress: true`, serta **wajib** menghitung `canvasRatio` agar aspek rasio visual 1:1 identik dengan layar modal (ukuran file < 1 MB per lembar dan dilarang memaksakan `pdfHeight` yang menyebabkan gambar gepeng/terpadatkan).
+- [ ] Blok tanda tangan menggunakan `UniversalDocumentSignatures` (atau hook `useDocumentSigners`) terhubung ke `OrganizationalAssignment` (DILARANG membuat blok tanda tangan ad-hoc baru).
 - [ ] Tata letak tanda tangan memenuhi standar 2-tier dan tidak terpotong batas margin bawah kertas.
 - [ ] Lolos verifikasi build TypeScript (`npx tsc --noEmit`).

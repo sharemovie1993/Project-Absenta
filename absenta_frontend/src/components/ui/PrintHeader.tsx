@@ -1750,4 +1750,10 @@ export const PrintDocumentCanvas = PrintDocumentSheet;
 export const UniversalPrintModal = UniversalDocumentModal;
 export const UniversalPrintTab = UniversalDocumentTab;
 
+export {
+  UniversalDocumentSignatures,
+  type UniversalDocumentSignaturesProps,
+  type DocumentSignatureLayout,
+} from './UniversalDocumentSignatures';
+
 export default PrintHeader;

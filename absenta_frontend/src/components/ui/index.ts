@@ -91,5 +91,11 @@ export {
   type UsePrintHeaderDataResult,
 } from './PrintHeader';
 
+export {
+  UniversalDocumentSignatures,
+  type UniversalDocumentSignaturesProps,
+  type DocumentSignatureLayout,
+} from './UniversalDocumentSignatures';
+
 export * from './hub';
 
