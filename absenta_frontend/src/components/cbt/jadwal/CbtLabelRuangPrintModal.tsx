@@ -1,11 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
   PrintHeader,
   usePrintHeaderData,
 } from '@/components/ui';
-import { Printer, Download, Filter } from 'lucide-react';
+import { Printer, Download, Filter, Edit3 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatTingkatRomawi } from '../bank-soal/cbtAsesmenHelper';
 import { KelasRoomMapping } from './cbtOrchestratorHelper';
@@ -23,7 +23,7 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
   onClose,
   items,
   selectedKelasId,
-  eventName = 'PENILAIAN AKHIR SEMESTER (PAS) / SUMATIF AKHIR SEMESTER (SAS)',
+  eventName = 'PENILAIAN AKHIR SEMESTER (PAS) GANJIL',
 }) => {
   const sheetContainerRef = useRef<HTMLDivElement>(null);
 
@@ -35,17 +35,28 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
   const [showLogoSekolah, setShowLogoSekolah] = useState<boolean>(true);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
+  // State nama event yang dapat diedit langsung oleh panitia
+  const [customEventName, setCustomEventName] = useState<string>(
+    eventName || 'PENILAIAN AKHIR SEMESTER (PAS) GANJIL'
+  );
+
   const { tenantInfo, rawSekolah } = usePrintHeaderData();
   const sekolah = (rawSekolah || {}) as any;
 
-  // Sync selectedKelasId if changed from parent
-  React.useEffect(() => {
+  // Sync state when props change
+  useEffect(() => {
     if (selectedKelasId) {
       setFilterKelasId(selectedKelasId);
     } else {
       setFilterKelasId('ALL');
     }
   }, [selectedKelasId, isOpen]);
+
+  useEffect(() => {
+    if (eventName) {
+      setCustomEventName(eventName);
+    }
+  }, [eventName]);
 
   // Filtered rooms to render
   const targetRooms = React.useMemo(() => {
@@ -170,6 +181,20 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
       size="5xl"
       extraActions={
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Input Edit Nama Event Asesmen */}
+          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-lg">
+            <Edit3 size={12} className="text-violet-600 shrink-0" />
+            <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">Event:</span>
+            <input
+              type="text"
+              value={customEventName}
+              onChange={(e) => setCustomEventName(e.target.value)}
+              placeholder="Nama Event Asesmen..."
+              aria-label="Edit nama event asesmen pada label ruang"
+              className="text-xs font-bold bg-transparent text-slate-800 dark:text-slate-100 focus:outline-hidden w-52 sm:w-64"
+            />
+          </div>
+
           {/* Filter Ruang Dropdown */}
           <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-1 rounded-lg">
             <Filter size={12} className="text-slate-400" />
@@ -182,24 +207,11 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
               <option value="ALL">Cetak Semua Ruang ({items.length} Rombel)</option>
               {items.map((r) => (
                 <option key={r.kelas_id} value={r.kelas_id}>
-                  {r.slot_ruang || 'Slot'} - {r.nama_kelas} ({r.nama_ruang || 'Ruang'})
+                  {r.slot_ruang || 'Slot'} - {r.nama_kelas}
                 </option>
               ))}
             </select>
           </div>
-
-          {/* Toggle Kop Dinas / Minimalis */}
-          <button
-            type="button"
-            onClick={() => setShowFullKop((prev) => !prev)}
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold border cursor-pointer transition-all ${
-              showFullKop
-                ? 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300'
-                : 'bg-white dark:bg-slate-800 text-slate-600 border-slate-200 dark:border-slate-700'
-            }`}
-          >
-            {showFullKop ? '✓ Kop Dinas Aktif' : 'Kop Minimalis (Rekomendasi)'}
-          </button>
         </div>
       }
     >
@@ -207,7 +219,6 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
         {targetRooms.map((room, idx) => {
           const slot = room.slot_ruang || `R.${String(idx + 1).padStart(2, '0')}`;
           const namaKelas = room.nama_kelas || 'KELAS UJIAN';
-          const namaRuang = room.nama_ruang || '';
 
           return (
             <PrintDocumentSheet
@@ -215,54 +226,35 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
               orientation="landscape"
               className="flex flex-col justify-between"
             >
-              {/* ── 1. HEADER KOP RESMI (TETAP DIPERTAHANKAN SESUAI PERSETUJUAN) ── */}
-              {showFullKop ? (
-                <div className="shrink-0 mb-2">
+              {/* ── 1. HEADER KOP RESMI (DIPERTAHANKAN SESUAI PERSETUJUAN) ── */}
+              {showFullKop && (
+                <div className="shrink-0 mb-3">
                   <PrintHeader
                     variant="landscape"
                     showLogoDaerah={showLogoDaerah}
                     showLogoSekolah={showLogoSekolah}
                   />
                 </div>
-              ) : (
-                <div className="shrink-0 flex items-center justify-between pb-3 border-b-2 border-slate-900 mb-3">
-                  <div className="flex items-center gap-3">
-                    {showLogoSekolah && sekolah?.logo_url && (
-                      <img
-                        src={sekolah.logo_url}
-                        alt="Logo Sekolah"
-                        className="w-11 h-11 object-contain shrink-0"
-                      />
-                    )}
-                    <div className="text-left">
-                      <h3 className="text-base font-black tracking-wider uppercase text-slate-900 leading-tight">
-                        {sekolah?.nama_sekolah || 'PANITIA PELAKSANA CBT'}
-                      </h3>
-                      <p className="text-[11px] font-bold text-slate-600 tracking-wide mt-0.5">
-                        {eventName} • TAHUN AJARAN {tenantInfo?.tahun_ajaran || '2026/2027'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <span className="text-xs font-mono font-black px-3 py-1 rounded-lg bg-slate-100 text-slate-900 border border-slate-300">
-                      SLOT {slot}
-                    </span>
-                  </div>
-                </div>
               )}
 
-              {/* ── 2. MAIN CENTER HERO BANNER (MAKSIMAL & BEBAS NOISE) ── */}
+              {/* ── 2. MAIN CENTER HERO BANNER (BEBAS NOISE & FOKUS MAKSIMAL) ── */}
               <div className="flex-1 flex flex-col justify-center items-center my-auto w-full">
-                <div className="w-full border-4 border-slate-900 rounded-3xl p-6 sm:p-10 bg-white text-center flex flex-col justify-center items-center">
-                  {/* Judul: RUANG UJIAN (Cukup judul tegas, tanpa noise) */}
+                <div className="w-full border-4 border-slate-900 rounded-3xl p-6 sm:p-10 bg-white text-center flex flex-col justify-center items-center shadow-xs">
+                  {/* Nama Event Asesmen (Dapat diedit dari toolbar) */}
+                  {customEventName && (
+                    <div className="text-xs sm:text-sm font-extrabold tracking-wider uppercase text-slate-700 mb-1">
+                      {customEventName}
+                    </div>
+                  )}
+
+                  {/* Judul: RUANG UJIAN (Cukup judul tegas) */}
                   <h2 className="text-2xl sm:text-3xl font-black tracking-widest uppercase text-slate-900 mb-2">
                     RUANG UJIAN
                   </h2>
 
                   {/* KODE RUANG (R.05 / R.01) - TYPOGRAPHY RAKSASA & FOKUS */}
                   <div className="my-1 sm:my-2">
-                    <span className="text-8xl sm:text-[135px] font-black text-slate-900 tracking-tight font-mono leading-none select-all">
+                    <span className="text-8xl sm:text-[140px] font-black text-slate-900 tracking-tight font-mono leading-none select-all">
                       {slot}
                     </span>
                   </div>
@@ -276,13 +268,7 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
                       {namaKelas}
                     </span>
                   </div>
-
-                  {/* NAMA RUANG FISIK (Ruang 05 / Lab Komputer) */}
-                  {namaRuang && (
-                    <div className="mt-3 text-lg sm:text-2xl font-bold text-slate-600">
-                      ({namaRuang})
-                    </div>
-                  )}
+                  {/* Di bawah kelas TIDAK ADA nama ruang sesuai instruksi (bersih & bebas noise) */}
                 </div>
               </div>
             </PrintDocumentSheet>
