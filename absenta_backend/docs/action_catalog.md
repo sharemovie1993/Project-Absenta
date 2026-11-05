@@ -20,13 +20,17 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - academic.backups.create
 - academic.backups.restore
 - academic.backups.view.list
+- academic.dapodik.manage
+- academic.dapodik.view
 - academic.homeroom.manage
 - academic.manage.academic
+- academic.pleno.
 - academic.pleno.attend
 - academic.pleno.finalize
 - academic.pleno.manage
 - academic.pleno.view
 - academic.promotions.manage
+- academic.schedules.
 - academic.schedules.create
 - academic.schedules.delete
 - academic.schedules.manage
@@ -44,6 +48,8 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - academic.structures.assign.teacher
 - academic.structures.create
 - academic.structures.delete
+- academic.structures.flags.manage
+- academic.structures.flags.view
 - academic.structures.revoke.student
 - academic.structures.revoke.teacher
 - academic.structures.update
@@ -96,6 +102,7 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 
 ## affairs
 
+- affairs.achievements.
 - affairs.achievements.create
 - affairs.achievements.view.list
 - affairs.schedules.view.list
@@ -234,6 +241,18 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - bk.summons.view.detail
 - bk.summons.view.list
 
+## cbt
+
+- cbt.analisis.view
+- cbt.bank.manage
+- cbt.bank.view
+- cbt.denah.manage
+- cbt.denah.view
+- cbt.exam.take
+- cbt.jadwal.manage
+- cbt.jadwal.view
+- cbt.sesi.monitor
+
 ## cooperative
 
 - cooperative.announcements.create
@@ -308,18 +327,6 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - cooperative.tickets.view.list
 - cooperative.vouchers.manage
 - cooperative.vouchers.view.list
-
-## cbt
-
-- cbt.analisis.view
-- cbt.bank.manage
-- cbt.bank.view
-- cbt.denah.manage
-- cbt.denah.view
-- cbt.exam.take
-- cbt.jadwal.manage
-- cbt.jadwal.view
-- cbt.sesi.monitor
 
 ## core
 
@@ -419,6 +426,10 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - hubin.tefa.manage
 - hubin.tracer.view
 
+## kesiswaan
+
+- kesiswaan.schedules.view.list
+
 ## notify
 
 - notify.announcements.manage
@@ -462,6 +473,7 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - sarpras.inventory.delete
 - sarpras.inventory.manage
 - sarpras.inventory.view.list
+- sarpras.loans.
 - sarpras.loans.manage
 - sarpras.loans.request
 - sarpras.loans.view.list

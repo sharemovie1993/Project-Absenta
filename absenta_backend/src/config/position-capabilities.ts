@@ -101,7 +101,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'sarpras.repairs.manage',
 
     // Referensi Data
-    'academic.structures.view.list', 'academic.structures.view.tree', 'academic.structures.assign.teacher', 'academic.structures.revoke.teacher',
+    'academic.structures.view.list', 'academic.structures.view.tree', 'academic.structures.assign.teacher', 'academic.structures.revoke.teacher', 'academic.structures.flags.view', 'academic.structures.flags.manage',
     'academic.teachers.view.list',
     'academic.students.view.list',
   ],
@@ -205,6 +205,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.structures.delete',
     'academic.structures.assign.teacher',
     'academic.structures.revoke.teacher',
+    'academic.structures.flags.view',
+    'academic.structures.flags.manage',
     'academic.structures.assign.student',
     'academic.structures.revoke.student',
 
@@ -499,6 +501,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.structures.view.tree',
     'academic.structures.assign.teacher',
     'academic.structures.revoke.teacher',
+    'academic.structures.flags.view',
+    'academic.structures.flags.manage',
     'academic.teachers.view.list',
     'academic.students.view.list',
   ],
@@ -523,7 +527,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.promotions.manage', 'academic.transitions.manage',
     'academic.pleno.view', 'academic.pleno.manage', 'academic.pleno.attend', 'academic.pleno.finalize',
     'academic.structures.view.list', 'academic.structures.view.tree', 'academic.structures.create', 'academic.structures.update', 'academic.structures.delete', 'academic.structure.manage',
-    'academic.structures.assign.teacher', 'academic.structures.revoke.teacher', 'academic.structures.assign.student', 'academic.structures.revoke.student',
+    'academic.structures.assign.teacher', 'academic.structures.revoke.teacher', 'academic.structures.flags.view', 'academic.structures.flags.manage', 'academic.structures.assign.student', 'academic.structures.revoke.student',
 
     // Master Mapel, Plotting Jam Mengajar, & Wali Kelas
     'academic.subjects.view.list', 'academic.subjects.view.detail', 'academic.subjects.create', 'academic.subjects.update', 'academic.subjects.delete', 'academic.subjects.manage',
@@ -667,6 +671,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.structures.view.tree',
     'academic.structures.assign.teacher',
     'academic.structures.revoke.teacher',
+    'academic.structures.flags.view',
+    'academic.structures.flags.manage',
     'hubin.pkl.view.list',
     'hubin.mou.view.list',
   ],
@@ -697,6 +703,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.structures.view.tree',
     'academic.structures.assign.teacher',
     'academic.structures.revoke.teacher',
+    'academic.structures.flags.view',
+    'academic.structures.flags.manage',
     'academic.teachers.view.list',
     'academic.students.view.list',
   ],
@@ -722,7 +730,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.students.view.list', 'academic.students.view.detail', 'academic.students.create', 'academic.students.update', 'academic.students.delete', 'academic.students.manage',
     'academic.teachers.view.list', 'academic.teachers.view.detail', 'academic.teachers.create', 'academic.teachers.update', 'academic.teachers.delete', 'academic.teachers.manage',
     'academic.structures.view.list', 'academic.structure.manage', 'academic.structures.create', 'academic.structures.update', 'academic.structures.delete',
-    'academic.structures.assign.teacher', 'academic.structures.revoke.teacher', 'academic.structures.assign.student', 'academic.structures.revoke.student',
+    'academic.structures.assign.teacher', 'academic.structures.revoke.teacher', 'academic.structures.flags.view', 'academic.structures.flags.manage', 'academic.structures.assign.student', 'academic.structures.revoke.student',
 
     // SPP & Keuangan Sekolah (tu.finance.*)
     'tu.finance.invoices.view.list', 'tu.finance.invoices.view.detail', 'tu.finance.invoices.generate', 'tu.finance.invoices.cancel',

@@ -133,6 +133,7 @@ const ORGANIZATIONAL_ALLOWLIST_NON_ORG_DOMAIN = new Set<string>([
   'hubin.absensi.view.history',
   'academic.structures.view.list',
   'academic.structures.view.tree',
+  'academic.structures.flags.view',
   'academic.students.view.history',
   'affairs.violation.types.view.list',
   'affairs.violations.view.list',

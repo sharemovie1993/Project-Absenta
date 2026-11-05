@@ -39,6 +39,7 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'academic.structures.view.list',
     'academic.structures.view.detail',
     'academic.structures.view.tree',
+    'academic.structures.flags.view',
     'academic.students.view.list',
     'academic.students.view.detail',
     'academic.homeroom.manage',
@@ -340,6 +341,8 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'academic.structures.assign.teacher',
     'academic.structures.revoke.student',
     'academic.structures.revoke.teacher',
+    'academic.structures.flags.view',
+    'academic.structures.flags.manage',
     'academic.activities.view.list',
     'academic.activities.create',
     'academic.activities.update',
@@ -592,6 +595,11 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
         id === 'organization.scope.teaching_restricted' ||
         id.startsWith('cooperative.tickets.') ||
         id.startsWith('bk.') ||
+        id.startsWith('cbt.') ||
+        id.startsWith('academic.pleno.') ||
+        id === 'sarpras.denah.view' ||
+        id === 'academic.activities.grades.view' ||
+        id === 'academic.structures.flags.view' ||
         // Cooperative member capabilities — GURU anggota koperasi membutuhkan akses
         // ke fitur ini namun capabilities-nya berdomain ORGANIZATIONAL sehingga
         // perlu di-whitelist di sini agar seed tidak gagal.

@@ -1,14 +1,14 @@
 # Capability Domain Classification Report
-Generated on: 2026-10-15T05:31:09.504Z
+Generated on: 2026-11-05T13:11:11.222Z
 
 ## Summary Statistics
-Total Catalog: 416
+Total Catalog: 443
 
 - PLATFORM: 27
-- TENANT: 81
+- TENANT: 84
 - SHARED: 72
-- ORGANIZATIONAL: 221
-- UNCLASSIFIED: 15
+- ORGANIZATIONAL: 244
+- UNCLASSIFIED: 16
 
 ## Validation Results
 - Conflicts: 7
@@ -23,6 +23,7 @@ Total Catalog: 416
 ## Unclassified Capabilities
 - organization.scope.
 - organization.scope.teaching_restricted
+- cbt.exam.take
 - payments.test.simulate
 - admin.tickets.view.list
 - admin.tickets.view.detail

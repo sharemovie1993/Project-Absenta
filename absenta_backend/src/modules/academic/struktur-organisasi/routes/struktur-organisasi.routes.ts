@@ -4,7 +4,11 @@ import { determineDataScope } from '@/middlewares/dataScope';
 
 export default async function strukturOrganisasiRoutes(fastify: any) {
   // Master Assignment Flags
-  fastify.get('/assignment-flags', strukturOrganisasiController.getAssignmentFlags);
+  fastify.get(
+    '/assignment-flags',
+    { preHandler: [requireCapability('academic.structures.flags.view'), determineDataScope()] },
+    strukturOrganisasiController.getAssignmentFlags
+  );
 
   // CRUD Struktur
   fastify.get(
