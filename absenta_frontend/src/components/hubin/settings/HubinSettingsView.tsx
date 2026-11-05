@@ -67,7 +67,10 @@ export const HubinSettingsView: React.FC<UniversalHubinSettingsViewProps> = Reac
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
-  const urlTab = searchParams.get('tab');
+  
+  // Guard: In dashboard context (hideLayout = true), 'tab' is the dashboard role/category (e.g. 'hubin').
+  // Therefore, inner subtab must use 'hubin_tab' to avoid clobbering the dashboard route!
+  const urlTab = searchParams.get(hideLayout ? 'hubin_tab' : 'tab');
 
   const [activeTab, setActiveTab] = useState<string>(() => {
     if (urlTab && ['sertifikat', 'skema', 'siklus', 'storage'].includes(urlTab)) return urlTab;
@@ -85,11 +88,15 @@ export const HubinSettingsView: React.FC<UniversalHubinSettingsViewProps> = Reac
     if (!isModal) {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
-        next.set('tab', newTab);
+        if (hideLayout) {
+          next.set('hubin_tab', newTab);
+        } else {
+          next.set('tab', newTab);
+        }
         return next;
       }, { replace: true });
     }
-  }, [isModal, setSearchParams]);
+  }, [isModal, hideLayout, setSearchParams]);
 
   // Academic Year options
   const { options: tpOptions, activeYear } = useTahunPelajaranOptions();

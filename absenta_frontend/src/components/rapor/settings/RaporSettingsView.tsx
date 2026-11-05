@@ -53,7 +53,10 @@ export const RaporSettingsView: React.FC<UniversalRaporSettingsViewProps> = Reac
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
-  const urlTab = searchParams.get('tab');
+  
+  // Guard: In dashboard context (hideLayout = true), 'tab' is the dashboard role/category (e.g. 'kurikulum').
+  // Therefore, inner subtab must use 'rapor_tab' to avoid clobbering the dashboard route!
+  const urlTab = searchParams.get(hideLayout ? 'rapor_tab' : 'tab');
 
   const [activeTab, setActiveTab] = useState<string>(() => {
     if (urlTab && ['slot_titimangsa', 'tim_p5', 'p5'].includes(urlTab)) {
@@ -73,11 +76,15 @@ export const RaporSettingsView: React.FC<UniversalRaporSettingsViewProps> = Reac
     if (!isModal) {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
-        next.set('tab', newTab);
+        if (hideLayout) {
+          next.set('rapor_tab', newTab);
+        } else {
+          next.set('tab', newTab);
+        }
         return next;
       }, { replace: true });
     }
-  }, [isModal, setSearchParams]);
+  }, [isModal, hideLayout, setSearchParams]);
 
   // Capabilities Guard
   const { isAdmin, isKurikulum, isKepsek, isTuHead, can } = useCapabilities();
