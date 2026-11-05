@@ -154,14 +154,14 @@ function buildCertPrintData(
 
   const printSettings = getStoredSertifikatSettings();
   const refSertifikat = certDetail?.referensi_sertifikat;
-  const nomorResmi = certDetail?.nomor_sertifikat || refSertifikat?.nomor_surat || placement.nomor_sertifikat || '425.1/0630/SMKN1PLD-KCD Wil.IV';
+  const nomorResmi = certDetail?.nomor_sertifikat || refSertifikat?.nomor_surat || placement.nomor_sertifikat || '-';
   const durasiResmi = printSettings.overrideDurasiJp || String(refSertifikat?.durasi_jp || '792');
   const tempatResmi = refSertifikat?.tempat_terbit || rawSekolah.kota || sekolah?.kota || tenantInfo?.city || 'Purwakarta';
   const rawTanggalTerbit = refSertifikat?.tanggal_terbit;
-  const formattedTanggal = rawTanggalTerbit ? formatTanggalIndonesia(rawTanggalTerbit) : '22 Desember 2025';
+  const formattedTanggal = rawTanggalTerbit ? formatTanggalIndonesia(rawTanggalTerbit) : formatTanggalIndonesia(new Date());
   const tanggalResmi = printSettings.overrideTanggalTerbit || `${tempatResmi}, ${formattedTanggal}`;
-  const kepalaResmi = printSettings.overrideKepalaSekolah || refSertifikat?.penandatangan_nama || rawSekolah.kepala_sekolah || sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.';
-  const nipResmi = printSettings.overrideNipKepala || refSertifikat?.penandatangan_nip || rawSekolah.nip_kepala || sekolah?.nip_kepala || tenantInfo?.nip_kepala || '197111022008011001';
+  const kepalaResmi = printSettings.overrideKepalaSekolah || refSertifikat?.penandatangan_nama || rawSekolah.kepala_sekolah || sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || '';
+  const nipResmi = printSettings.overrideNipKepala || refSertifikat?.penandatangan_nip || rawSekolah.nip_kepala || sekolah?.nip_kepala || tenantInfo?.nip_kepala || '';
   const picJabatanResmi = printSettings.overrideJabatan || certDetail?.penanggung_jawab_jabatan || rawMitra.pic_jabatan || placement.penanggung_jawab_jabatan || 'Pimpinan / Pembimbing Lapangan';
 
   return {
@@ -173,13 +173,13 @@ function buildCertPrintData(
     weight_laporan: certDetail?.weight_laporan ?? 15,
     weight_sidang: certDetail?.weight_sidang ?? 15,
     sekolah: {
-      nama: rawSekolah.nama || sekolah?.nama || tenantInfo?.name || 'SEKOLAH MENENGAH KEJURUAN NEGERI 1 PLERED',
-      alamat: rawSekolah.alamat || sekolah?.alamat || tenantInfo?.address || 'Jl. Raya Rawasari Kec. Plered Kab. Purwakarta Telp. (0264) 7504001',
+      nama: rawSekolah.nama || sekolah?.nama || tenantInfo?.name || 'SMK NEGERI 1 PLERED',
+      alamat: rawSekolah.alamat || sekolah?.alamat || tenantInfo?.address || '',
       kota: tempatResmi,
-      kode_pos: rawSekolah.kode_pos || sekolah?.kode_pos || tenantInfo?.kode_pos || '41162',
-      telepon: rawSekolah.telepon || sekolah?.telepon || tenantInfo?.phone || '(0264) 7504001',
-      email: rawSekolah.email || sekolah?.email || tenantInfo?.email || 'smkneple@gmail.com',
-      website: rawSekolah.website || sekolah?.website || tenantInfo?.website || 'smknegeri1plered.sch.id',
+      kode_pos: rawSekolah.kode_pos || sekolah?.kode_pos || tenantInfo?.kode_pos || '',
+      telepon: rawSekolah.telepon || sekolah?.telepon || tenantInfo?.phone || '',
+      email: rawSekolah.email || sekolah?.email || tenantInfo?.email || '',
+      website: rawSekolah.website || sekolah?.website || tenantInfo?.website || '',
       kepala_sekolah: kepalaResmi,
       nip_kepala: nipResmi,
       logo_url: tenantInfo?.logo_url || rawSekolah.logo_url || sekolah?.logo_url || undefined,
@@ -193,20 +193,22 @@ function buildCertPrintData(
       nama_siswa: rawSiswa.nama_siswa || 'Siswa',
       nis: rawSiswa.nis || placement.Siswa?.nis || '-',
       nisn: rawSiswa.nisn || placement.Siswa?.nisn || '-',
-      tempat_lahir: rawSiswa.tempat_lahir || 'Purwakarta',
-      tanggal_lahir: rawSiswa.tanggal_lahir || new Date('2008-10-15'),
+      tempat_lahir: rawSiswa.tempat_lahir || '',
+      tanggal_lahir: rawSiswa.tanggal_lahir || null,
       foto: rawSiswa.foto || null,
       program_keahlian:
         rawSiswa.Kelas?.Jurusan?.ProgramKeahlian?.nama ||
         rawSiswa.Jurusan?.ProgramKeahlian?.nama ||
+        placement.Siswa?.Kelas?.Jurusan?.ProgramKeahlian?.nama ||
+        placement.Siswa?.Jurusan?.ProgramKeahlian?.nama ||
         (placement as any)?.program_keahlian ||
-        'Teknik Kejuruan',
+        '-',
       konsentrasi_keahlian:
         rawSiswa.Kelas?.Jurusan?.nama ||
         rawSiswa.Jurusan?.nama ||
-        (placement as any)?.konsentrasi_keahlian ||
-        currentKelasObj?.nama_kelas ||
-        '',
+        placement.Siswa?.Kelas?.Jurusan?.nama ||
+        placement.Siswa?.Jurusan?.nama ||
+        '-',
       nama_kelas: currentKelasObj?.nama_kelas || rawSiswa.Kelas?.nama_kelas || '',
     },
     mitra: {
@@ -385,8 +387,8 @@ export function useRaporPklPrint({
         }
 
         const resolvedKota = raporSettings?.tempat_terbit || sekolah?.kota || tenantInfo?.city || 'Purwakarta';
-        const resolvedKepsekNama = raporSettings?.kepsek_nama || sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.';
-        const resolvedKepsekNip = raporSettings?.kepsek_nip || sekolah?.nip_kepala || tenantInfo?.nip_kepala || '197111022008011001';
+        const resolvedKepsekNama = raporSettings?.kepsek_nama || sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || '';
+        const resolvedKepsekNip = raporSettings?.kepsek_nip || sekolah?.nip_kepala || tenantInfo?.nip_kepala || '';
 
         const raporItem: RaporPklItemData = {
           siswa: {
@@ -399,7 +401,8 @@ export function useRaporPklPrint({
               placement.Siswa?.Kelas?.Jurusan?.ProgramKeahlian?.nama ||
               placement.Siswa?.Jurusan?.ProgramKeahlian?.nama ||
               (placement as any)?.program_keahlian ||
-              'Teknik Kejuruan',
+              currentKelasObj?.nama_kelas ||
+              '-',
             konsentrasi_keahlian:
               placement.Siswa?.Kelas?.Jurusan?.nama ||
               placement.Siswa?.Jurusan?.nama ||
@@ -528,8 +531,8 @@ export function useRaporPklPrint({
       );
 
       const resolvedKota = raporSettings?.tempat_terbit || sekolah?.kota || tenantInfo?.city || 'Purwakarta';
-      const resolvedKepsekNama = raporSettings?.kepsek_nama || sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.';
-      const resolvedKepsekNip = raporSettings?.kepsek_nip || sekolah?.nip_kepala || tenantInfo?.nip_kepala || '197111022008011001';
+      const resolvedKepsekNama = raporSettings?.kepsek_nama || sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || '';
+      const resolvedKepsekNip = raporSettings?.kepsek_nip || sekolah?.nip_kepala || tenantInfo?.nip_kepala || '';
 
       let defaultDateVal = isGenap ? raporSettings?.tanggal_rapor_genap : raporSettings?.tanggal_rapor_ganjil;
       if (!defaultDateVal) defaultDateVal = raporSettings?.tanggal_rapor;
@@ -564,7 +567,8 @@ export function useRaporPklPrint({
               s.Kelas?.Jurusan?.ProgramKeahlian?.nama ||
               s.Jurusan?.ProgramKeahlian?.nama ||
               (placement as any)?.program_keahlian ||
-              'Teknik Kejuruan',
+              currentKelasObj?.nama_kelas ||
+              '-',
             konsentrasi_keahlian:
               s.Kelas?.Jurusan?.nama ||
               s.Jurusan?.nama ||

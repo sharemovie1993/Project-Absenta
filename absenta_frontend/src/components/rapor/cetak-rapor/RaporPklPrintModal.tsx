@@ -170,9 +170,9 @@ export const RaporPklPrintModal: React.FC<RaporPklPrintModalProps> = React.memo(
   }, [raporSettings, rawSekolah, tenantInfo]);
 
   const resolvedKepsek = useMemo(() => {
-    const nama = raporSettings?.kepsek_nama || (rawSekolah as any)?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.';
-    const rawNip = cleanNip(raporSettings?.kepsek_nip || (rawSekolah as any)?.nip_kepala_sekolah || tenantInfo?.nip_kepala_sekolah || '197111022008011001');
-    const nip = rawNip !== '-' && rawNip !== '' ? rawNip : '197111022008011001';
+    const nama = raporSettings?.kepsek_nama || (rawSekolah as any)?.kepala_sekolah || tenantInfo?.kepala_sekolah || '';
+    const rawNip = cleanNip(raporSettings?.kepsek_nip || (rawSekolah as any)?.nip_kepala_sekolah || tenantInfo?.nip_kepala_sekolah || '');
+    const nip = rawNip !== '-' && rawNip !== '' ? rawNip : '';
     return { nama, nip };
   }, [raporSettings, rawSekolah, tenantInfo, cleanNip]);
 
@@ -213,7 +213,8 @@ export const RaporPklPrintModal: React.FC<RaporPklPrintModalProps> = React.memo(
           placement?.Siswa?.Kelas?.Jurusan?.ProgramKeahlian?.nama ||
           placement?.Siswa?.Jurusan?.ProgramKeahlian?.nama ||
           (placement as any)?.program_keahlian ||
-          'Teknik Kejuruan',
+          selectedStudent.nama_kelas ||
+          '-',
         konsentrasi_keahlian:
           placement?.Siswa?.Kelas?.Jurusan?.nama ||
           placement?.Siswa?.Jurusan?.nama ||

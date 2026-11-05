@@ -175,12 +175,12 @@ export const renderSertifikatFront = (
   const emailSekolah = data.sekolah?.email || 'smkneple@gmail.com';
   const kotaSekolah = data.sekolah?.kota || 'Purwakarta';
   const kodePosSekolah = data.sekolah?.kode_pos || '41162';
-  const kepalaSekolahNama = data.sekolah?.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.';
-  const kepalaSekolahNip = data.sekolah?.nip_kepala || '197111022008011001';
-  const nomorSertifikat = data.nomor_sertifikat || '425.1/0630/SMKN1PLD-KCD Wil.IV';
+  const kepalaSekolahNama = data.sekolah?.kepala_sekolah || '';
+  const kepalaSekolahNip = data.sekolah?.nip_kepala || '';
+  const nomorSertifikat = data.nomor_sertifikat || '-';
 
   const durasiJp = data.durasi_jp || '792';
-  const tanggalTerbit = data.tanggal_terbit || `${kotaSekolah}, 22 Desember 2025`;
+  const tanggalTerbit = data.tanggal_terbit || `${kotaSekolah}, ${formatTanggalIndonesia(new Date())}`;
 
   const { siswa, mitra, penilaian } = data;
 
@@ -349,7 +349,9 @@ export const renderSertifikatFront = (
   doc.setFont('Helvetica', 'normal');
   doc.text('Tempat, Tanggal Lahir', colLabelX, curY);
   doc.text(':', colColonX, curY);
-  const ttlStr = `${siswa.tempat_lahir || kotaSekolah}, ${formatTanggalIndonesia(siswa.tanggal_lahir)}`;
+  const tglLahirStr = siswa.tanggal_lahir ? formatTanggalIndonesia(siswa.tanggal_lahir) : '';
+  const tempatLahirStr = siswa.tempat_lahir || '';
+  const ttlStr = tempatLahirStr && tglLahirStr ? `${tempatLahirStr}, ${tglLahirStr}` : (tempatLahirStr || tglLahirStr || '-');
   doc.text(ttlStr, colValX, curY);
 
   curY += lineSpacing;
@@ -360,12 +362,12 @@ export const renderSertifikatFront = (
   curY += lineSpacing;
   doc.text('Program Keahlian', colLabelX, curY);
   doc.text(':', colColonX, curY);
-  doc.text(siswa.program_keahlian || 'Teknik Otomotif', colValX, curY);
+  doc.text(siswa.program_keahlian || '-', colValX, curY);
 
   curY += lineSpacing;
   doc.text('Konsentrasi Keahlian', colLabelX, curY);
   doc.text(':', colColonX, curY);
-  doc.text(siswa.konsentrasi_keahlian || 'Teknik Sepeda Motor', colValX, curY);
+  doc.text(siswa.konsentrasi_keahlian || '-', colValX, curY);
 
   // E. Data Pelaksanaan PKL
   curY += lineSpacing + 1;
@@ -382,7 +384,7 @@ export const renderSertifikatFront = (
   doc.setFont('Helvetica', 'normal');
   doc.text('Alamat', colLabelX, curY);
   doc.text(':', colColonX, curY);
-  doc.text(`(${mitra.alamat || 'Jl. Raya Citeko-Plered-Purwakarta'})`, colValX, curY);
+  doc.text(`(${mitra.alamat || '-'})`, colValX, curY);
 
   // F. Klausul Pemenuhan JP & Ijazah
   curY += 8;
@@ -526,7 +528,7 @@ export const renderSertifikatBack = (
   curY += rowGap;
   doc.text('Konsentrasi Keahlian', leftLabelX, curY);
   doc.text(':', leftColonX, curY);
-  doc.text(siswa.konsentrasi_keahlian || 'Teknik Sepeda Motor', leftValX, curY);
+  doc.text(siswa.konsentrasi_keahlian || '-', leftValX, curY);
 
   curY += rowGap;
   doc.text('Nama Perusahaan/Instansi', leftLabelX, curY);

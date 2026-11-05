@@ -378,17 +378,21 @@ export const renderRaporPklPage2 = (doc: jsPDF, data: RaporPklItemData) => {
   doc.text('Kepala Sekolah,', pageWidth / 2, y + 4.5, { align: 'center' });
 
   y += 19;
-  const kepsekNama = data.sekolah.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.';
+  const kepsekNama = data.sekolah.kepala_sekolah || '';
   const rawKepsekNip = cleanNip(data.sekolah.nip_kepala);
-  const kepsekNipLabel = rawKepsekNip !== '-' && rawKepsekNip !== '' ? `NIP. ${rawKepsekNip}` : 'NIP. -';
+  const kepsekNipLabel = rawKepsekNip && rawKepsekNip !== '-' ? `NIP. ${rawKepsekNip}` : '';
 
-  doc.setFont('Helvetica', 'bold');
-  doc.text(kepsekNama, pageWidth / 2, y, { align: 'center' });
-  doc.setLineWidth(0.3);
-  doc.line(pageWidth / 2 - doc.getTextWidth(kepsekNama) / 2, y + 0.8, pageWidth / 2 + doc.getTextWidth(kepsekNama) / 2, y + 0.8);
+  if (kepsekNama) {
+    doc.setFont('Helvetica', 'bold');
+    doc.text(kepsekNama, pageWidth / 2, y, { align: 'center' });
+    doc.setLineWidth(0.3);
+    doc.line(pageWidth / 2 - doc.getTextWidth(kepsekNama) / 2, y + 0.8, pageWidth / 2 + doc.getTextWidth(kepsekNama) / 2, y + 0.8);
+  }
 
-  doc.setFont('Helvetica', 'normal');
-  doc.text(kepsekNipLabel, pageWidth / 2, y + 4.5, { align: 'center' });
+  if (kepsekNipLabel) {
+    doc.setFont('Helvetica', 'normal');
+    doc.text(kepsekNipLabel, pageWidth / 2, y + 4.5, { align: 'center' });
+  }
 };
 
 /**

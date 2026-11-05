@@ -72,14 +72,39 @@ export const SertifikatPklPrintModal: React.FC<SertifikatPklPrintModalProps> = R
 
   const placement = useMemo(() => {
     const raw = (penempatanRes as any)?.list || (Array.isArray((penempatanRes as any)?.data) ? (penempatanRes as any).data : (penempatanRes as any)?.data?.list) || [];
-    const list = Array.isArray(raw) ? raw : [];
-    return list.find(
+    const list: any[] = Array.isArray(raw) ? raw : [];
+    const matchingPlacements = list.filter(
       (p: any) =>
         p.siswa_id === siswaId ||
         p.Siswa?.id === siswaId ||
         p.Siswa?.nis === selectedStudent?.nis
-    ) || null;
+    );
+    if (matchingPlacements.length === 0) return null;
+
+    // Prioritaskan status != 'BATAL', memiliki nilai_akhir_pkl, dan paling mutakhir
+    return [...matchingPlacements].sort((a, b) => {
+      const aNotBatal = a.status !== 'BATAL' ? 1 : 0;
+      const bNotBatal = b.status !== 'BATAL' ? 1 : 0;
+      if (bNotBatal !== aNotBatal) return bNotBatal - aNotBatal;
+
+      const aHasScore = a.nilai_akhir_pkl != null ? 1 : 0;
+      const bHasScore = b.nilai_akhir_pkl != null ? 1 : 0;
+      if (bHasScore !== aHasScore) return bHasScore - aHasScore;
+
+      return new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime();
+    })[0];
   }, [penempatanRes, siswaId, selectedStudent]);
+
+  // 3. Fetch Detail Data Sertifikat PKL Resmi (Single Source of Truth dari Pengaturan Hubin & Akademik)
+  const placementId = placement?.id;
+  const { data: certDetailRes, isLoading: isLoadingCertDetail } = useQuery({
+    queryKey: ['hubin-sertifikat-data', placementId],
+    queryFn: () => hubinApi.getSertifikatPklData(placementId!),
+    enabled: isOpen && Boolean(placementId),
+    staleTime: 60 * 1000,
+  });
+
+  const certDetail = certDetailRes?.data || certDetailRes || null;
 
   // Index siswa untuk navigasi batch
   const currentIndex = useMemo(() => {
@@ -106,61 +131,143 @@ export const SertifikatPklPrintModal: React.FC<SertifikatPklPrintModalProps> = R
 
     const storedSettings = getStoredSertifikatSettings();
     const kotaSekolah = (rawSekolah as any)?.kota || tenantInfo?.city || 'Purwakarta';
-    const tglTerbit = storedSettings.tanggal_terbit || `${kotaSekolah}, ${formatTanggalIndonesia(new Date())}`;
+
+    // Resolusi Titimangsa sesuai Pengaturan Hubin (Tahun Pelajaran spesifik atau global)
+    const rawTglTerbit =
+      certDetail?.referensi_sertifikat?.tanggal_terbit ||
+      storedSettings.tanggal_terbit;
+
+    let formattedTglTerbit = '';
+    if (rawTglTerbit) {
+      const parts = String(rawTglTerbit).split('-');
+      if (parts.length === 3) {
+        const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        formattedTglTerbit = `${parseInt(parts[2], 10)} ${months[parseInt(parts[1], 10) - 1]} ${parts[0]}`;
+      } else {
+        formattedTglTerbit = formatTanggalIndonesia(rawTglTerbit);
+      }
+    } else {
+      formattedTglTerbit = formatTanggalIndonesia(new Date());
+    }
+
+    const tempatTerbit =
+      certDetail?.referensi_sertifikat?.tempat_terbit ||
+      kotaSekolah;
+
+    const tglTerbit = `${tempatTerbit}, ${formattedTglTerbit}`;
+
+    const nomorSertifikat =
+      certDetail?.referensi_sertifikat?.nomor_surat ||
+      placement?.nomor_sertifikat ||
+      certDetail?.nomor_sertifikat ||
+      storedSettings.nomor_sertifikat ||
+      '-';
+
+    const durasiJp =
+      certDetail?.referensi_sertifikat?.durasi_jp ||
+      placement?.durasi_jp ||
+      certDetail?.durasi_jp ||
+      storedSettings.durasi_jp ||
+      '792';
+
+    const assessmentMode =
+      certDetail?.assessment_mode ||
+      storedSettings.assessment_mode ||
+      'DUDI_ONLY';
+
+    const kepsekNama =
+      certDetail?.referensi_sertifikat?.penandatangan_nama ||
+      certDetail?.sekolah?.kepala_sekolah ||
+      tenantInfo?.kepala_sekolah ||
+      rawSekolah?.kepala_sekolah ||
+      '';
+
+    const kepsekNip =
+      certDetail?.referensi_sertifikat?.penandatangan_nip ||
+      certDetail?.sekolah?.nip_kepala ||
+      tenantInfo?.nip_kepala ||
+      (rawSekolah as any)?.nip_kepala_sekolah ||
+      '';
+
+    // Resolusi Program & Konsentrasi Keahlian (Relasi: Siswa -> Kelas -> Jurusan -> ProgramKeahlian)
+    const programKeahlian =
+      certDetail?.Siswa?.Kelas?.Jurusan?.ProgramKeahlian?.nama ||
+      certDetail?.Siswa?.Jurusan?.ProgramKeahlian?.nama ||
+      detailSiswa?.Kelas?.Jurusan?.ProgramKeahlian?.nama ||
+      detailSiswa?.Jurusan?.ProgramKeahlian?.nama ||
+      placement?.Siswa?.Kelas?.Jurusan?.ProgramKeahlian?.nama ||
+      placement?.Siswa?.Jurusan?.ProgramKeahlian?.nama ||
+      (placement as any)?.program_keahlian ||
+      '-';
+
+    const konsentrasiKeahlian =
+      certDetail?.Siswa?.Kelas?.Jurusan?.nama ||
+      certDetail?.Siswa?.Jurusan?.nama ||
+      detailSiswa?.Kelas?.Jurusan?.nama ||
+      detailSiswa?.Jurusan?.nama ||
+      placement?.Siswa?.Kelas?.Jurusan?.nama ||
+      placement?.Siswa?.Jurusan?.nama ||
+      selectedStudent?.nama_kelas ||
+      '-';
 
     return {
-      nomor_sertifikat: placement?.nomor_sertifikat || storedSettings.nomor_sertifikat || '425.1/0630/SMKN1PLD-KCD Wil.IV',
-      durasi_jp: placement?.durasi_jp || storedSettings.durasi_jp || '792',
+      nomor_sertifikat: nomorSertifikat,
+      durasi_jp: durasiJp,
       tanggal_terbit: tglTerbit,
-      assessment_mode: storedSettings.assessment_mode || 'DUDI_ONLY',
+      assessment_mode: assessmentMode,
+      weight_dudi: certDetail?.weight_dudi ?? 70,
+      weight_laporan: certDetail?.weight_laporan ?? 15,
+      weight_sidang: certDetail?.weight_sidang ?? 15,
       sekolah: {
-        nama: rawSekolah?.nama || tenantInfo?.name || 'SEKOLAH MENENGAH KEJURUAN NEGERI 1 PLERED',
-        alamat: rawSekolah?.alamat || tenantInfo?.address || 'Jl. Raya Rawasari Kec. Plered Kab. Purwakarta',
-        kota: kotaSekolah,
-        kode_pos: (rawSekolah as any)?.kode_pos || '41162',
+        nama: certDetail?.sekolah?.nama || rawSekolah?.nama || tenantInfo?.name || 'SMK NEGERI 1 PLERED',
+        alamat: certDetail?.sekolah?.alamat || rawSekolah?.alamat || tenantInfo?.address || '',
+        kota: tempatTerbit,
+        kode_pos: (rawSekolah as any)?.kode_pos || '',
         telepon: (rawSekolah as any)?.telepon || '',
         email: (rawSekolah as any)?.email || '',
         website: (rawSekolah as any)?.website || '',
-        kepala_sekolah: (rawSekolah as any)?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.',
-        nip_kepala: (rawSekolah as any)?.nip_kepala_sekolah || tenantInfo?.nip_kepala_sekolah || '197111022008011001',
+        kepala_sekolah: kepsekNama,
+        nip_kepala: kepsekNip,
         print_header_lines: tenantInfo?.print_header_lines,
       },
       siswa: {
-        nama_siswa: selectedStudent.nama_siswa,
-        nis: selectedStudent.nis || placement?.Siswa?.nis || '-',
-        nisn: placement?.Siswa?.nisn || (detailSiswa as any)?.nisn || '-',
-        tempat_lahir: (detailSiswa as any)?.tempat_lahir || 'Purwakarta',
-        tanggal_lahir: (detailSiswa as any)?.tanggal_lahir || null,
-        foto: (detailSiswa as any)?.foto || null,
-        program_keahlian: placement?.Siswa?.Jurusan?.ProgramKeahlian?.nama || 'Teknik Kejuruan',
-        konsentrasi_keahlian: placement?.Siswa?.Jurusan?.nama || selectedStudent.nama_kelas || '-',
-        nama_kelas: selectedStudent.nama_kelas || placement?.Siswa?.Kelas?.nama_kelas || '-',
+        nama_siswa: selectedStudent.nama_siswa || certDetail?.Siswa?.nama_siswa || placement?.Siswa?.nama_siswa || '',
+        nis: selectedStudent.nis || certDetail?.Siswa?.nis || placement?.Siswa?.nis || '-',
+        nisn: certDetail?.Siswa?.nisn || placement?.Siswa?.nisn || (detailSiswa as any)?.nisn || '-',
+        tempat_lahir: certDetail?.Siswa?.tempat_lahir || (detailSiswa as any)?.tempat_lahir || '',
+        tanggal_lahir: certDetail?.Siswa?.tanggal_lahir || (detailSiswa as any)?.tanggal_lahir || null,
+        foto: (detailSiswa as any)?.foto || certDetail?.Siswa?.foto || null,
+        program_keahlian: programKeahlian,
+        konsentrasi_keahlian: konsentrasiKeahlian,
+        nama_kelas: certDetail?.Siswa?.Kelas?.nama_kelas || selectedStudent.nama_kelas || placement?.Siswa?.Kelas?.nama_kelas || '-',
       },
       mitra: {
-        nama: placement?.Mitra?.nama || placement?.mitra_nama || 'PT. MITRA INDUSTRI DUDI',
-        alamat: placement?.alamat_dudi || placement?.Mitra?.alamat || '',
-        penanggung_jawab_nama: placement?.Mitra?.pimpinan_nama || placement?.penanggung_jawab_nama || 'Pimpinan Industri',
-        penanggung_jawab_jabatan: placement?.penanggung_jawab_jabatan || 'Pimpinan Perusahaan',
-        instruktur_nama: placement?.instruktur_nama || placement?.Mitra?.pic_nama || '-',
+        nama: certDetail?.Mitra?.nama || placement?.Mitra?.nama || placement?.mitra_nama || 'DU/DI Mitra',
+        alamat: certDetail?.Mitra?.alamat || placement?.alamat_dudi || placement?.Mitra?.alamat || '',
+        penanggung_jawab_nama: certDetail?.Mitra?.pimpinan_nama || placement?.Mitra?.pimpinan_nama || placement?.penanggung_jawab_nama || certDetail?.Mitra?.nama || 'Pimpinan Perusahaan',
+        penanggung_jawab_jabatan: placement?.penanggung_jawab_jabatan || certDetail?.Mitra?.pimpinan_jabatan || 'Pimpinan Perusahaan',
+        instruktur_nama: certDetail?.Mitra?.pic_nama || placement?.instruktur_nama || placement?.Mitra?.pic_nama || certDetail?.Mitra?.pimpinan_nama || '-',
       },
       pembimbing: {
-        nama: placement?.Pembimbing?.nama_guru || placement?.Pembimbing?.nama || null,
-        nip: placement?.Pembimbing?.nip || null,
+        nama: certDetail?.pembimbing_nama || certDetail?.Pembimbing?.nama_guru || placement?.Pembimbing?.nama_guru || null,
+        nip: certDetail?.pembimbing_nip || certDetail?.Pembimbing?.nip || placement?.Pembimbing?.nip || null,
       },
       penilaian: {
-        hard_kompetensi_teknis: placement?.hard_kompetensi_teknis ?? 88,
-        hard_sop_k3lh: placement?.hard_sop_k3lh ?? 89,
-        hard_alur_bisnis: placement?.hard_alur_bisnis ?? 87,
-        soft_kedisiplinan: placement?.soft_kedisiplinan ?? 83,
-        soft_kerajinan_inisiatif: placement?.soft_kerajinan_inisiatif ?? 84,
-        soft_kerjasama: placement?.soft_kerjasama ?? 86,
-        soft_kejujuran: placement?.soft_kejujuran ?? 88,
-        soft_tanggung_jawab: placement?.soft_tanggung_jawab ?? 85,
-        nilai_akhir_pkl: placement?.nilai_akhir_pkl ?? null,
-        predikat_pkl: placement?.predikat_pkl || null,
+        hard_kompetensi_teknis: certDetail?.hard_kompetensi_teknis ?? placement?.hard_kompetensi_teknis ?? 0,
+        hard_sop_k3lh: certDetail?.hard_sop_k3lh ?? placement?.hard_sop_k3lh ?? 0,
+        hard_alur_bisnis: certDetail?.hard_alur_bisnis ?? placement?.hard_alur_bisnis ?? 0,
+        soft_kedisiplinan: certDetail?.soft_kedisiplinan ?? placement?.soft_kedisiplinan ?? 0,
+        soft_kerajinan_inisiatif: certDetail?.soft_kerajinan_inisiatif ?? placement?.soft_kerajinan_inisiatif ?? 0,
+        soft_kerjasama: certDetail?.soft_kerjasama ?? placement?.soft_kerjasama ?? 0,
+        soft_kejujuran: certDetail?.soft_kejujuran ?? placement?.soft_kejujuran ?? 0,
+        soft_tanggung_jawab: certDetail?.soft_tanggung_jawab ?? placement?.soft_tanggung_jawab ?? 0,
+        nilai_akhir_pkl: certDetail?.nilai_akhir_pkl ?? placement?.nilai_akhir_pkl ?? null,
+        predikat_pkl: certDetail?.predikat_pkl || placement?.predikat_pkl || null,
+        nilai_laporan: certDetail?.nilai_laporan ?? null,
+        nilai_sidang: certDetail?.nilai_sidang ?? null,
       },
     };
-  }, [selectedStudent, placement, detailSiswa, rawSekolah, tenantInfo]);
+  }, [selectedStudent, placement, certDetail, detailSiswa, rawSekolah, tenantInfo]);
 
   // Handler Download PDF Resmi True WYSIWYG
   const handleDownloadPdf = useCallback(async () => {
@@ -196,11 +303,16 @@ export const SertifikatPklPrintModal: React.FC<SertifikatPklPrintModalProps> = R
   const finalNilai = p?.nilai_akhir_pkl ?? avgScore;
   const finalPredikat = p?.predikat_pkl ? p.predikat_pkl.toUpperCase() : getPredikatLabel(finalNilai);
 
-  const tglLahirStr = certData?.siswa.tanggal_lahir ? formatTanggalIndonesia(certData.siswa.tanggal_lahir) : '-';
-  const ttl = `${certData?.siswa.tempat_lahir || 'Purwakarta'}, ${tglLahirStr}`;
+  const tglLahirStr = certData?.siswa.tanggal_lahir ? formatTanggalIndonesia(certData.siswa.tanggal_lahir) : '';
+  const tempatLahirStr = certData?.siswa.tempat_lahir || '';
+  const ttl = tempatLahirStr && tglLahirStr
+    ? `${tempatLahirStr}, ${tglLahirStr}`
+    : (tempatLahirStr || tglLahirStr || '-');
 
-  const tglMulaiStr = placement?.tanggal_mulai ? formatTanggalIndonesia(placement.tanggal_mulai) : '14 Juli 2025';
-  const tglSelesaiStr = placement?.tanggal_selesai ? formatTanggalIndonesia(placement.tanggal_selesai) : '15 Desember 2025';
+  const rawMulai = placement?.tanggal_mulai || certDetail?.tanggal_mulai;
+  const rawSelesai = placement?.tanggal_selesai || certDetail?.tanggal_selesai;
+  const tglMulaiStr = rawMulai ? formatTanggalIndonesia(rawMulai) : '-';
+  const tglSelesaiStr = rawSelesai ? formatTanggalIndonesia(rawSelesai) : '-';
 
   return (
     <UniversalDocumentModal
@@ -343,8 +455,8 @@ export const SertifikatPklPrintModal: React.FC<SertifikatPklPrintModalProps> = R
                 <UniversalDocumentSignatures
                   layout="single_kepsek"
                   tahunPelajaranId={tahunPelajaranId}
-                  titimangsaDate={certData?.tanggal_terbit}
                   overrideSignerRight={{
+                    topDate: certData?.tanggal_terbit,
                     personName: certData?.sekolah?.kepala_sekolah,
                     nip: certData?.sekolah?.nip_kepala,
                   }}
@@ -500,12 +612,12 @@ export const SertifikatPklPrintModal: React.FC<SertifikatPklPrintModalProps> = R
               <UniversalDocumentSignatures
                 layout="dual_unit_kepsek"
                 tahunPelajaranId={tahunPelajaranId}
-                titimangsaDate={certData?.tanggal_terbit}
                 overrideSignerLeft={{
                   roleTitle: 'Instruktur Industri,',
                   personName: certData?.mitra.instruktur_nama || certData?.mitra.penanggung_jawab_nama || 'Instruktur Industri',
                 }}
                 overrideSignerRight={{
+                  topDate: certData?.tanggal_terbit,
                   personName: certData?.sekolah?.kepala_sekolah,
                   nip: certData?.sekolah?.nip_kepala,
                 }}
