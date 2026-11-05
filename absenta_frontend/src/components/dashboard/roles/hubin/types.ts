@@ -9,7 +9,8 @@ export type HubinTabId =
   | 'bkk'
   | 'tracer'
   | 'rekap'
-  | 'pengaturan';
+  | 'pengaturan'
+  | 'struktur_organisasi';
 
 export interface HubinNavTabItem {
   id: HubinTabId;

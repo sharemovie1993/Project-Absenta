@@ -15,6 +15,7 @@ import {
   RefreshCw,
   Tv,
   Settings,
+  Network,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -35,6 +36,7 @@ import { HubinBkkTab } from './hubin/tabs/HubinBkkTab';
 import { HubinTracerTab } from './hubin/tabs/HubinTracerTab';
 import { HubinRekapTab } from './hubin/tabs/HubinRekapTab';
 import { HubinSettingsTab } from './hubin/tabs/HubinSettingsTab';
+import { DivisiStrukturOrganisasiView } from '@/components/academic/struktur/DivisiStrukturOrganisasiView';
 
 export interface HubinDashboardProps {
   user?: {
@@ -60,6 +62,7 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
     'tracer',
     'rekap',
     'pengaturan',
+    'struktur_organisasi',
   ];
 
   // Mobile Filter Collapsible State
@@ -202,6 +205,12 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
         label: 'Pengaturan & Referensi',
         shortLabel: 'Pengaturan',
         icon: Settings,
+      },
+      {
+        id: 'struktur_organisasi',
+        label: 'Struktur Organisasi Hubin',
+        shortLabel: 'Tim Hubin',
+        icon: Network,
       },
     ],
     [stats?.mouExpiringCount, stats?.pklAktif, stats?.todayPresensi?.unverified, stats?.penilaianStats?.belumDinilai, stats?.totalLowonganAktif]
@@ -533,6 +542,21 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
                 className={cn('w-full min-w-0', activeTab === 'pengaturan' ? 'block' : 'hidden')}
               >
                 <HubinSettingsTab />
+              </div>
+            )}
+
+            {/* TAB: STRUKTUR ORGANISASI HUBIN */}
+            {visitedTabs.has('struktur_organisasi') && (
+              <div
+                role="tabpanel"
+                aria-hidden={activeTab !== 'struktur_organisasi'}
+                className={cn('w-full min-w-0', activeTab === 'struktur_organisasi' ? 'block' : 'hidden')}
+              >
+                <DivisiStrukturOrganisasiView
+                  divisionCode="HUBIN"
+                  divisionTitle="Struktur Organisasi Hubin"
+                  hideLayout={true}
+                />
               </div>
             )}
           </main>

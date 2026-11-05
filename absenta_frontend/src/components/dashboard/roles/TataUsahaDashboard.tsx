@@ -17,6 +17,7 @@ import {
   Inbox,
   Send,
   Database,
+  Network,
 } from 'lucide-react';
 import { Loader } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -25,6 +26,7 @@ import { useAuthStore } from '@/store/authStore';
 import { getTuStats } from '@/api/dashboard.api';
 import { TuBerandaTab } from './tu/tabs/TuBerandaTab';
 import type { TuTabId, TuNavTabItem, TuStatsData } from './tu/types';
+import { DivisiStrukturOrganisasiView } from '@/components/academic/struktur/DivisiStrukturOrganisasiView';
 
 // Code-splitting Universal Views (Pilar 21B & TBT Optimization)
 const SuratMasukView = lazy(() =>
@@ -88,7 +90,7 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
   const [activeTab, setActiveTab] = useState<TuTabId>(() => {
     if (
       subtabParam &&
-      ['beranda', 'surat-masuk', 'surat-keluar', 'buku-induk', 'surat-keterangan', 'mutasi', 'bast-ijazah', 'dkn', 'kepegawaian', 'dapodik'].includes(subtabParam)
+      ['beranda', 'surat-masuk', 'surat-keluar', 'buku-induk', 'surat-keterangan', 'mutasi', 'bast-ijazah', 'dkn', 'kepegawaian', 'dapodik', 'struktur_organisasi'].includes(subtabParam)
     ) {
       return subtabParam;
     }
@@ -101,7 +103,7 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
   useEffect(() => {
     if (
       subtabParam &&
-      ['beranda', 'surat-masuk', 'surat-keluar', 'buku-induk', 'surat-keterangan', 'mutasi', 'bast-ijazah', 'dkn', 'kepegawaian', 'dapodik'].includes(subtabParam)
+      ['beranda', 'surat-masuk', 'surat-keluar', 'buku-induk', 'surat-keterangan', 'mutasi', 'bast-ijazah', 'dkn', 'kepegawaian', 'dapodik', 'struktur_organisasi'].includes(subtabParam)
     ) {
       setActiveTab((curr) => (curr !== subtabParam ? subtabParam : curr));
       setVisitedTabs((prev) => (prev.has(subtabParam) ? prev : new Set(prev).add(subtabParam)));
@@ -202,6 +204,11 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
         id: 'dapodik',
         label: 'Integrasi Dapodik',
         icon: Database,
+      },
+      {
+        id: 'struktur_organisasi',
+        label: 'Struktur Organisasi Tata Usaha',
+        icon: Network,
       },
     ],
     [tuStats]
@@ -436,6 +443,17 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
               <Suspense fallback={<div className="py-20 flex justify-center"><Loader /></div>}>
                 <DapodikIntegrationView hideLayout={true} />
               </Suspense>
+            </div>
+          )}
+
+          {/* TAB: STRUKTUR ORGANISASI TU */}
+          {visitedTabs.has('struktur_organisasi') && (
+            <div className={activeTab === 'struktur_organisasi' ? 'block animate-in fade-in duration-100' : 'hidden'}>
+              <DivisiStrukturOrganisasiView
+                divisionCode="TU_KEPALA"
+                divisionTitle="Struktur Organisasi Tata Usaha"
+                hideLayout={true}
+              />
             </div>
           )}
         </main>

@@ -13,6 +13,7 @@ import {
   RefreshCw,
   Tv,
   Map,
+  Network,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -33,6 +34,7 @@ import { SarprasPerbaikanTab } from './sarpras/tabs/SarprasPerbaikanTab';
 import { SarprasKatalogTab } from './sarpras/tabs/SarprasKatalogTab';
 import { SarprasRekapTab } from './sarpras/tabs/SarprasRekapTab';
 import { SarprasDenahTab } from './sarpras/tabs/SarprasDenahTab';
+import { DivisiStrukturOrganisasiView } from '@/components/academic/struktur/DivisiStrukturOrganisasiView';
 
 export interface SarprasDashboardProps {
   user?: {
@@ -56,6 +58,7 @@ export const SarprasDashboard: React.FC<SarprasDashboardProps> = ({ user }) => {
     'katalog',
     'rekap',
     'denah',
+    'struktur_organisasi',
   ];
 
   // Mobile Filter Collapsible State
@@ -200,6 +203,12 @@ export const SarprasDashboard: React.FC<SarprasDashboardProps> = ({ user }) => {
         label: 'Denah Kampus',
         shortLabel: 'Denah',
         icon: Map,
+      },
+      {
+        id: 'struktur_organisasi',
+        label: 'Struktur Organisasi Sarpras',
+        shortLabel: 'Tim Sarpras',
+        icon: Network,
       },
     ],
     [stats?.total, stats?.borrowed, stats?.repair]
@@ -474,6 +483,21 @@ export const SarprasDashboard: React.FC<SarprasDashboardProps> = ({ user }) => {
                 className={cn('w-full min-w-0', activeTab === 'denah' ? 'block' : 'hidden')}
               >
                 <SarprasDenahTab />
+              </div>
+            )}
+
+            {/* TAB: STRUKTUR ORGANISASI SARPRAS */}
+            {visitedTabs.has('struktur_organisasi') && (
+              <div
+                role="tabpanel"
+                aria-hidden={activeTab !== 'struktur_organisasi'}
+                className={cn('w-full min-w-0', activeTab === 'struktur_organisasi' ? 'block' : 'hidden')}
+              >
+                <DivisiStrukturOrganisasiView
+                  divisionCode="SARPRAS"
+                  divisionTitle="Struktur Organisasi Sarpras"
+                  hideLayout={true}
+                />
               </div>
             )}
           </main>

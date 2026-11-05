@@ -10,7 +10,8 @@ export type TuTabId =
   | 'bast-ijazah'
   | 'dkn'
   | 'kepegawaian'
-  | 'dapodik';
+  | 'dapodik'
+  | 'struktur_organisasi';
 
 export interface TuNavTabItem {
   id: TuTabId;

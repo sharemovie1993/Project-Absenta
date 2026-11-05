@@ -15,6 +15,7 @@ import {
   Activity,
   Tv,
   Clock,
+  Network,
 } from 'lucide-react';
 import { Loader } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -32,6 +33,7 @@ import { KesiswaanDhuhaTab } from './kesiswaan/tabs/KesiswaanDhuhaTab';
 import { KesiswaanKetarunaanTab } from './kesiswaan/tabs/KesiswaanKetarunaanTab';
 import { KesiswaanTatibTab } from './kesiswaan/tabs/KesiswaanTatibTab';
 import { KesiswaanRekapTab } from './kesiswaan/tabs/KesiswaanRekapTab';
+import { DivisiStrukturOrganisasiView } from '@/components/academic/struktur/DivisiStrukturOrganisasiView';
 const TenantAttendanceForm = React.lazy(() => import('@/components/attendance/settings/TenantAttendanceForm'));
 
 export interface KesiswaanDashboardProps {
@@ -57,6 +59,7 @@ export const KesiswaanDashboard: React.FC<KesiswaanDashboardProps> = ({ user }) 
     'tatib',
     'rekap',
     'aturan_absensi',
+    'struktur_organisasi',
   ];
 
   // Mobile Filter Collapsible State
@@ -215,6 +218,12 @@ export const KesiswaanDashboard: React.FC<KesiswaanDashboardProps> = ({ user }) 
         label: 'Aturan Absensi',
         shortLabel: 'Aturan Absensi',
         icon: Clock,
+      },
+      {
+        id: 'struktur_organisasi',
+        label: 'Struktur Organisasi Kesiswaan',
+        shortLabel: 'Tim Kesiswaan',
+        icon: Network,
       },
     ],
     [stats.today, leaderboard?.data]
@@ -507,6 +516,21 @@ export const KesiswaanDashboard: React.FC<KesiswaanDashboardProps> = ({ user }) 
               >
                 <TenantAttendanceForm hideLayout={true} />
               </Suspense>
+            </div>
+          )}
+
+          {/* TAB: STRUKTUR ORGANISASI KESISWAAN */}
+          {visitedTabs.has('struktur_organisasi') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'struktur_organisasi'}
+              className={cn('w-full min-w-0', activeTab === 'struktur_organisasi' ? 'block' : 'hidden')}
+            >
+              <DivisiStrukturOrganisasiView
+                divisionCode="KESISWAAN"
+                divisionTitle="Struktur Organisasi Kesiswaan"
+                hideLayout={true}
+              />
             </div>
           )}
         </main>

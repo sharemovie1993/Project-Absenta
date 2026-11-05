@@ -24,6 +24,7 @@ import {
   UserCheck,
   Settings2,
   Laptop,
+  Network,
 } from 'lucide-react';
 import { Loader } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -66,6 +67,7 @@ import { KurikulumCetakTab } from './kurikulum/tabs/KurikulumCetakTab';
 import { KurikulumRekapKbmTab } from './kurikulum/tabs/KurikulumRekapKbmTab';
 import { KurikulumWaliKelasTab } from './kurikulum/tabs/KurikulumWaliKelasTab';
 import { KurikulumCbtTab } from './kurikulum/tabs/KurikulumCbtTab';
+import { DivisiStrukturOrganisasiView } from '@/components/academic/struktur/DivisiStrukturOrganisasiView';
 const TenantAttendanceForm = React.lazy(() => import('@/components/attendance/settings/TenantAttendanceForm'));
 
 export interface KurikulumDashboardProps {
@@ -100,6 +102,7 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
     'jadwal',
     'piket',
     'cetak',
+    'struktur_organisasi',
   ];
 
   // Mobile Filter Collapsible State
@@ -493,6 +496,13 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
         shortLabel: 'Cetak Dokumen',
         category: 'persiapan',
         icon: Printer,
+      },
+      {
+        id: 'struktur_organisasi',
+        label: 'Struktur Organisasi Kurikulum',
+        shortLabel: 'Struktur Divisi',
+        category: 'persiapan',
+        icon: Network,
       },
     ],
     [conflicts.length, overloadCount, perangkatStats.pending]
@@ -1024,6 +1034,21 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               className={cn('w-full min-w-0', activeTab === 'cetak' ? 'block' : 'hidden')}
             >
               <KurikulumCetakTab />
+            </div>
+          )}
+
+          {/* TAB: STRUKTUR ORGANISASI KURIKULUM */}
+          {visitedTabs.has('struktur_organisasi') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'struktur_organisasi'}
+              className={cn('w-full min-w-0', activeTab === 'struktur_organisasi' ? 'block' : 'hidden')}
+            >
+              <DivisiStrukturOrganisasiView
+                divisionCode="KURIKULUM"
+                divisionTitle="Struktur Organisasi Kurikulum"
+                hideLayout={true}
+              />
             </div>
           )}
         </main>

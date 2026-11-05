@@ -101,7 +101,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'sarpras.repairs.manage',
 
     // Referensi Data
-    'academic.structures.view.list',
+    'academic.structures.view.list', 'academic.structures.view.tree', 'academic.structures.assign.teacher', 'academic.structures.revoke.teacher',
     'academic.teachers.view.list',
     'academic.students.view.list',
   ],
@@ -496,6 +496,9 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
 
     // Referensi Data
     'academic.structures.view.list',
+    'academic.structures.view.tree',
+    'academic.structures.assign.teacher',
+    'academic.structures.revoke.teacher',
     'academic.teachers.view.list',
     'academic.students.view.list',
   ],
@@ -661,6 +664,9 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.students.view.list',
     'academic.students.view.detail',
     'academic.structures.view.list',
+    'academic.structures.view.tree',
+    'academic.structures.assign.teacher',
+    'academic.structures.revoke.teacher',
     'hubin.pkl.view.list',
     'hubin.mou.view.list',
   ],
@@ -688,6 +694,9 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
 
     // Referensi Data
     'academic.structures.view.list',
+    'academic.structures.view.tree',
+    'academic.structures.assign.teacher',
+    'academic.structures.revoke.teacher',
     'academic.teachers.view.list',
     'academic.students.view.list',
   ],

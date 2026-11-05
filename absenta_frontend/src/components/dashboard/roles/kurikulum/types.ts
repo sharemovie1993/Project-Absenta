@@ -17,7 +17,8 @@ export type KurikulumTabId =
   | 'jadwal'
   | 'piket'
   | 'cbt'
-  | 'cetak';
+  | 'cetak'
+  | 'struktur_organisasi';
 
 export interface KurikulumNavTabItem {
   id: KurikulumTabId;

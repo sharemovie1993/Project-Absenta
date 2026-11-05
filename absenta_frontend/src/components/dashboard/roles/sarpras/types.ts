@@ -7,7 +7,8 @@ export type SarprasTabId =
   | 'perbaikan'
   | 'katalog'
   | 'rekap'
-  | 'denah';
+  | 'denah'
+  | 'struktur_organisasi';
 
 export interface SarprasNavTabItem {
   id: SarprasTabId;
