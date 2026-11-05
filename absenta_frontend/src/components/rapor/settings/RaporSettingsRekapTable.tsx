@@ -60,18 +60,18 @@ export const RaporSettingsRekapTable: React.FC<RaporSettingsRekapTableProps> = R
           {/* ========================================================== */}
           {/* 1. DESKTOP & TABLET VIEW (md ke atas)                      */}
           {/* ========================================================== */}
-          <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+          <div className="hidden md:block rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/70 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[11px]">
-                  <th className="text-left px-4 py-3.5 w-40">Tahun Pelajaran</th>
-                  <th className="text-left px-3 py-3.5 w-28">Status</th>
-                  <th className="text-left px-3 py-3.5 w-36">Tempat Terbit</th>
-                  <th className="text-left px-3 py-3.5 min-w-[170px]">Titimangsa Ganjil</th>
-                  <th className="text-left px-3 py-3.5 min-w-[170px]">Titimangsa Genap</th>
-                  <th className="text-left px-3 py-3.5 min-w-[200px]">Kepala Sekolah</th>
-                  <th className="text-center px-3 py-3.5 w-32">Format Blanko</th>
-                  <th className="text-center px-4 py-3.5 w-28">Aksi</th>
+                <tr className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/70 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                  <th className="text-left px-3 py-2.5 whitespace-nowrap">Tahun Pelajaran</th>
+                  <th className="text-left px-2 py-2.5 whitespace-nowrap">Status</th>
+                  <th className="text-left px-2 py-2.5 whitespace-nowrap">Tempat Terbit</th>
+                  <th className="text-left px-2.5 py-2.5 whitespace-nowrap">Titimangsa Ganjil</th>
+                  <th className="text-left px-2.5 py-2.5 whitespace-nowrap">Titimangsa Genap</th>
+                  <th className="text-left px-2.5 py-2.5 whitespace-nowrap">Kepala Sekolah</th>
+                  <th className="text-center px-2 py-2.5 whitespace-nowrap">Format Blanko</th>
+                  <th className="text-center px-2.5 py-2.5 w-24 shrink-0 whitespace-nowrap">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -95,118 +95,118 @@ export const RaporSettingsRekapTable: React.FC<RaporSettingsRekapTableProps> = R
                       )}
                     >
                       {/* Tahun Pelajaran */}
-                      <td className="px-4 py-3.5">
+                      <td className="px-3 py-2.5">
                         <div className="flex items-center gap-1.5">
                           {isActive && (
                             <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
                           )}
                           <span
                             className={cn(
-                              'font-bold text-sm tabular-nums',
+                              'font-bold text-xs tabular-nums whitespace-nowrap',
                               isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-900 dark:text-white'
                             )}
                           >
                             {row.tahun_ajaran}
                           </span>
                         </div>
-                        <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 font-medium">
+                        <div className="text-[9.5px] text-slate-400 dark:text-slate-500 mt-0.5 font-medium whitespace-nowrap">
                           {isActive ? 'Tahun Ajaran Aktif' : 'Arsip Akademik'}
                         </div>
                       </td>
 
                       {/* Status Konfigurasi */}
-                      <td className="px-3 py-3.5">
+                      <td className="px-2 py-2.5">
                         {isConfigured ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2.5 py-0.5 rounded-full shadow-2xs">
-                            <CheckCircle2 className="w-3 h-3 shrink-0" />
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full whitespace-nowrap">
+                            <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
                             Tersimpan
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
-                            <AlertCircle className="w-3 h-3 shrink-0" />
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700 whitespace-nowrap">
+                            <AlertCircle className="w-2.5 h-2.5 shrink-0" />
                             Belum diatur
                           </span>
                         )}
                       </td>
 
                       {/* Tempat Terbit */}
-                      <td className="px-3 py-3.5">
-                        <div className="flex items-center gap-1 text-slate-800 dark:text-slate-200 font-semibold">
-                          <MapPin size={12} className="text-slate-400 shrink-0" />
+                      <td className="px-2 py-2.5">
+                        <div className="flex items-center gap-1 text-slate-700 dark:text-slate-300 font-medium whitespace-nowrap">
+                          <MapPin size={11} className="text-slate-400 shrink-0" />
                           <span>{row.tempatTerbit || row.tempat_terbit || 'Purwakarta'}</span>
                         </div>
                       </td>
 
                       {/* Titimangsa Ganjil */}
-                      <td className="px-3 py-3.5">
+                      <td className="px-2.5 py-2.5">
                         {tglGanjil ? (
-                          <div className="space-y-0.5">
+                          <div className="space-y-0.5 whitespace-nowrap">
                             <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
                               {tglGanjil}
                             </span>
                             {row.tanggal_pts_ganjil && (
-                              <span className="text-[10px] text-slate-400 block">
+                              <span className="text-[9.5px] text-slate-400 block">
                                 PTS: {formatIndoDate(row.tanggal_pts_ganjil)}
                               </span>
                             )}
                           </div>
                         ) : (
-                          <span className="text-slate-400 italic font-mono text-[11px]">(belum diset)</span>
+                          <span className="text-slate-400 italic font-mono text-[10px] whitespace-nowrap">(belum diset)</span>
                         )}
                       </td>
 
                       {/* Titimangsa Genap */}
-                      <td className="px-3 py-3.5">
+                      <td className="px-2.5 py-2.5">
                         {tglGenap ? (
-                          <div className="space-y-0.5">
+                          <div className="space-y-0.5 whitespace-nowrap">
                             <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
                               {tglGenap}
                             </span>
                             {row.tanggal_pleno_genap && (
-                              <span className="text-[10px] text-slate-400 block">
+                              <span className="text-[9.5px] text-slate-400 block">
                                 Pleno: {formatIndoDate(row.tanggal_pleno_genap)}
                               </span>
                             )}
                           </div>
                         ) : (
-                          <span className="text-slate-400 italic font-mono text-[11px]">(belum diset)</span>
+                          <span className="text-slate-400 italic font-mono text-[10px] whitespace-nowrap">(belum diset)</span>
                         )}
                       </td>
 
                       {/* Kepala Sekolah */}
-                      <td className="px-3 py-3.5">
+                      <td className="px-2.5 py-2.5">
                         {row.kepsek_nama ? (
                           <div className="space-y-0.5">
-                            <span className="font-bold text-xs text-slate-900 dark:text-white block truncate max-w-[200px]">
+                            <span className="font-bold text-xs text-slate-900 dark:text-white block truncate max-w-[140px] lg:max-w-[180px]">
                               {row.kepsek_nama}
                             </span>
-                            <span className="text-[10px] text-slate-400 block font-mono">
+                            <span className="text-[9.5px] text-slate-400 block font-mono whitespace-nowrap">
                               NIP. {row.kepsek_nip || '-'}
                             </span>
                           </div>
                         ) : (
-                          <span className="text-slate-400 italic text-[11px]">—</span>
+                          <span className="text-slate-400 italic text-[10px]">—</span>
                         )}
                       </td>
 
                       {/* Format Blanko */}
-                      <td className="px-3 py-3.5 text-center">
-                        <div className="inline-flex items-center gap-1.5">
-                          <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold px-2 py-0.5 rounded text-[11px] border border-slate-200 dark:border-slate-700">
+                      <td className="px-2 py-2.5 text-center">
+                        <div className="inline-flex items-center gap-1 justify-center whitespace-nowrap">
+                          <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold px-1.5 py-0.5 rounded text-[10px] border border-slate-200 dark:border-slate-700">
                             {row.ukuran_kertas || 'A4'}
                           </span>
-                          <span className="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-semibold px-2 py-0.5 rounded text-[10px] border border-indigo-200 dark:border-indigo-800">
+                          <span className="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-semibold px-1.5 py-0.5 rounded text-[9.5px] border border-indigo-200 dark:border-indigo-800">
                             {row.mode_cetak_rapor === 'SUMATIF_AND_CP'
                               ? 'Sumatif + CP'
                               : row.mode_cetak_rapor === 'SUMATIF_ONLY'
-                              ? 'Sumatif Only'
+                              ? 'Sumatif'
                               : 'CP Only'}
                           </span>
                         </div>
                       </td>
 
                       {/* Aksi Button */}
-                      <td className="px-4 py-3.5 text-center">
+                      <td className="px-2.5 py-2.5 text-center shrink-0">
                         <Button
                           type="button"
                           size="sm"
@@ -214,10 +214,20 @@ export const RaporSettingsRekapTable: React.FC<RaporSettingsRekapTableProps> = R
                           onClick={() => onEditSlot(row)}
                           disabled={!canManage}
                           className={cn(
-                            'h-7 px-3 text-xs font-bold gap-1 rounded-lg',
+                            'h-6.5 px-2.5 text-[11px] font-bold gap-1 rounded-md shrink-0 whitespace-nowrap',
                             isActive && 'shadow-xs'
                           )}
                         >
+                          <Settings className="w-3 h-3" />
+                          <span>Atur Slot</span>
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
                           <Settings className="w-3.5 h-3.5" />
                           <span>Atur Slot</span>
                         </Button>
