@@ -39,9 +39,14 @@ export const DenahMapInteractivitySection: React.FC<DenahMapInteractivitySection
     });
   };
 
+  const handleZoomStep = (delta: number) => {
+    const nextZoom = Math.min(20, Math.max(14, Number((config.zoom + delta).toFixed(1))));
+    onUpdateConfig({ zoom: nextZoom });
+  };
+
   return (
-    <div className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850/70">
-      <div className="flex items-center justify-between mb-2">
+    <div className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850/70 space-y-2.5">
+      <div className="flex items-center justify-between">
         <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
           Interaksi Peta:
         </span>
@@ -81,66 +86,145 @@ export const DenahMapInteractivitySection: React.FC<DenahMapInteractivitySection
       <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
         {config.is_locked
           ? '✅ Posisi peta terkunci tetap. Geser kotak ruangan di atas foto atap gedung sekolah.'
-          : '⚠️ Peta aktif. Geser / perbesar peta sampai letak gedung sekolah pas di canvas.'}
+          : '⚠️ Peta aktif. Geser peta atau atur zoom di bawah hingga ukuran gedung pas dengan canvas.'}
       </p>
 
-      {/* Fine Tuning Micro Pan & Zoom */}
+      {/* Zoom Controls & Slider when Unlocked */}
       {!config.is_locked && (
-        <div className="mt-2.5 pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-1 text-[10px] font-mono text-slate-400">
-            <Move className="w-3 h-3" />
-            <span>Geser Halus:</span>
+        <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
+          {/* Zoom Slider */}
+          <div>
+            <div className="flex items-center justify-between text-xs mb-1">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Skala Zoom Peta
+              </span>
+              <div className="flex items-center gap-1">
+                <span className="font-mono font-bold text-slate-700 dark:text-slate-200 text-xs">
+                  {config.zoom.toFixed(1)}x
+                </span>
+                <span className="text-[10px] text-slate-400">(Scroll mouse juga bisa)</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleZoomStep(-0.2)}
+                className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 cursor-pointer"
+                title="Perkecil Zoom (-0.2)"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+
+              <input
+                type="range"
+                min="15"
+                max="20"
+                step="0.1"
+                value={config.zoom}
+                onChange={(e) => onUpdateConfig({ zoom: parseFloat(e.target.value) })}
+                className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+
+              <button
+                type="button"
+                onClick={() => handleZoomStep(0.2)}
+                className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 cursor-pointer"
+                title="Perbesar Zoom (+0.2)"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
+
+          {/* Quick Zoom Presets */}
+          <div className="grid grid-cols-4 gap-1 text-[10px]">
             <button
               type="button"
-              onClick={() => handleMicroPan('LEFT')}
-              className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-700 dark:text-slate-200 cursor-pointer"
-              title="Geser Kiri"
+              onClick={() => onUpdateConfig({ zoom: 16.5 })}
+              className={`py-1 rounded border font-semibold cursor-pointer ${
+                config.zoom === 16.5
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+              }`}
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
+              Kawasan
             </button>
             <button
               type="button"
-              onClick={() => handleMicroPan('UP')}
-              className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-700 dark:text-slate-200 cursor-pointer"
-              title="Geser Atas"
+              onClick={() => onUpdateConfig({ zoom: 17.5 })}
+              className={`py-1 rounded border font-semibold cursor-pointer ${
+                config.zoom === 17.5
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+              }`}
             >
-              <ArrowUp className="w-3.5 h-3.5" />
+              Kompleks
             </button>
             <button
               type="button"
-              onClick={() => handleMicroPan('DOWN')}
-              className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-700 dark:text-slate-200 cursor-pointer"
-              title="Geser Bawah"
+              onClick={() => onUpdateConfig({ zoom: 18.5 })}
+              className={`py-1 rounded border font-semibold cursor-pointer ${
+                config.zoom === 18.5
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+              }`}
             >
-              <ArrowDown className="w-3.5 h-3.5" />
+              Gedung
             </button>
             <button
               type="button"
-              onClick={() => handleMicroPan('RIGHT')}
-              className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-700 dark:text-slate-200 cursor-pointer"
-              title="Geser Kanan"
+              onClick={() => onUpdateConfig({ zoom: 19.5 })}
+              className={`py-1 rounded border font-semibold cursor-pointer ${
+                config.zoom === 19.5
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+              }`}
             >
-              <ArrowRight className="w-3.5 h-3.5" />
+              Ruang
             </button>
-            <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-1" />
-            <button
-              type="button"
-              onClick={() => onUpdateConfig({ zoom: Math.max(12, config.zoom - 1) })}
-              className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-700 dark:text-slate-200 cursor-pointer"
-              title="Perkecil Peta"
-            >
-              <ZoomOut className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => onUpdateConfig({ zoom: Math.min(20, config.zoom + 1) })}
-              className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-700 dark:text-slate-200 cursor-pointer"
-              title="Perbesar Peta"
-            >
-              <ZoomIn className="w-3.5 h-3.5" />
-            </button>
+          </div>
+
+          {/* Fine Tuning Micro Pan */}
+          <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-1 text-[10px] font-mono text-slate-400">
+              <Move className="w-3 h-3" />
+              <span>Geser Halus:</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => handleMicroPan('LEFT')}
+                className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-700 dark:text-slate-200 cursor-pointer"
+                title="Geser Kiri"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleMicroPan('UP')}
+                className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-700 dark:text-slate-200 cursor-pointer"
+                title="Geser Atas"
+              >
+                <ArrowUp className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleMicroPan('DOWN')}
+                className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-700 dark:text-slate-200 cursor-pointer"
+                title="Geser Bawah"
+              >
+                <ArrowDown className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleMicroPan('RIGHT')}
+                className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-700 dark:text-slate-200 cursor-pointer"
+                title="Geser Kanan"
+              >
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
       )}

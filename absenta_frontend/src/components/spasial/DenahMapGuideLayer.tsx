@@ -50,6 +50,9 @@ export const DenahMapGuideLayer: React.FC<DenahMapGuideLayerProps> = ({
     const map = L.map(containerRef.current, {
       center: [config.lat, config.lng],
       zoom: config.zoom,
+      zoomSnap: 0.1,
+      zoomDelta: 0.2,
+      wheelPxPerZoomLevel: 100,
       zoomControl: false,
       attributionControl: false,
       dragging: !config.is_locked,
