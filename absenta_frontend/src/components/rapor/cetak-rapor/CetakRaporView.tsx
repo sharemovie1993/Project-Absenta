@@ -686,6 +686,10 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
   });
 
   // ── Hook Cetak Rapor & Sertifikat PKL Terpadu ──
+  const rawWalas = (leger as any)?.data?.walas || (leger as any)?.walas;
+  const currentWalasNama = rawWalas?.nama && rawWalas.nama !== 'Wali Kelas' ? rawWalas.nama : undefined;
+  const currentWalasNip = rawWalas?.nip && rawWalas.nip !== '-' ? rawWalas.nip : undefined;
+
   const {
     handlePrintRaporPkl,
     handleBatchPrintRaporPkl,
@@ -702,6 +706,8 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
     activeSemester,
     user,
     setPdfLoading,
+    waliKelasNama: currentWalasNama,
+    waliKelasNip: currentWalasNip,
   });
 
   return (
@@ -1213,6 +1219,8 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
           semesterId={activeSemester?.id}
           tahunPelajaranNama={activeYear?.nama || academicActiveYear?.tahun}
           semesterNama={activeSemester?.nama || academicActiveSemester?.nama_semester}
+          waliKelasNama={currentWalasNama}
+          waliKelasNip={currentWalasNip}
         />
       </Suspense>
 

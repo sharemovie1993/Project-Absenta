@@ -15,6 +15,7 @@ import { getStoredSertifikatSettings } from '../../hubin/PengaturanCetakSertifik
 import { LegerStudent, AcademicYear, Semester } from '../../../types/cetakRapor.types';
 import { User, useAuthStore } from '../../../store/authStore';
 import { useRaporRenderStore } from '../../../store/raporRenderStore';
+import { useWaliKelasOptions } from '../../../hooks/useWaliKelasOptions';
 
 export interface KelasOptionItem {
   id: string;
@@ -117,6 +118,8 @@ export interface UseRaporPklPrintProps {
   activeSemester: Semester | null;
   user: User | null;
   setPdfLoading: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  waliKelasNama?: string;
+  waliKelasNip?: string;
 }
 
 /**
@@ -231,7 +234,10 @@ export function useRaporPklPrint({
   activeSemester,
   user,
   setPdfLoading,
+  waliKelasNama: propWaliKelasNama,
+  waliKelasNip: propWaliKelasNip,
 }: UseRaporPklPrintProps) {
+  const { rawList: allWaliKelas } = useWaliKelasOptions({ onlyActive: true });
   const [isBatchPklPrinting, setIsBatchPklPrinting] = useState(false);
   const [isBatchSertifikatPrinting, setIsBatchSertifikatPrinting] = useState(false);
   const [showLogoKananSertifikat, setShowLogoKananSertifikat] = useState<boolean>(() => {
@@ -252,6 +258,38 @@ export function useRaporPklPrint({
       return next;
     });
   }, []);
+
+  const resolveWaliKelas = useCallback(
+    (targetKelasId?: string) => {
+      const kId = targetKelasId || selectedKelas;
+      if (propWaliKelasNama && propWaliKelasNama !== 'Wali Kelas') {
+        return {
+          nama: propWaliKelasNama,
+          nip: propWaliKelasNip || '-',
+        };
+      }
+      const matched = allWaliKelas?.find((w) => w.kelas_id === kId);
+      if (matched) {
+        const nama =
+          matched.Guru?.nama_guru ||
+          (matched as any)?.User?.Guru?.nama_guru ||
+          (matched as any)?.User?.full_name;
+        const nip =
+          matched.Guru?.nip ||
+          (matched as any)?.User?.Guru?.nip ||
+          '-';
+        if (nama) {
+          return { nama, nip };
+        }
+      }
+      const extUser = user as unknown as ExtendedUserContext | null;
+      return {
+        nama: extUser?.nama || extUser?.name || extUser?.full_name || 'Wali Kelas',
+        nip: extUser?.nip || '-',
+      };
+    },
+    [selectedKelas, propWaliKelasNama, propWaliKelasNip, allWaliKelas, user]
+  );
 
   // ── 1. Cetak Rapor PKL Single (2 Halaman) ──
   const handlePrintRaporPkl = useCallback(
@@ -300,6 +338,7 @@ export function useRaporPklPrint({
         const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
         const currentKelasObj = (classList ?? []).find((k) => k.id === selectedKelas);
         const extUser = user as unknown as ExtendedUserContext | null;
+        const walasInfo = resolveWaliKelas(selectedKelas || (placement.Siswa as any)?.kelas_id);
 
         const raporItem: RaporPklItemData = {
           siswa: {
@@ -344,8 +383,8 @@ export function useRaporPklPrint({
             nip_kepala: sekolah?.nip_kepala || tenantInfo?.nip_kepala || '197111022008011001',
           },
           wali_kelas: {
-            nama: extUser?.nama || extUser?.name || extUser?.full_name || 'Wali Kelas',
-            nip: extUser?.nip || '',
+            nama: walasInfo.nama,
+            nip: walasInfo.nip,
           },
           tahun_pelajaran: activeYear?.nama || '',
           semester: activeSemester?.nama || '',
@@ -372,7 +411,7 @@ export function useRaporPklPrint({
         });
       }
     },
-    [selectedKelas, classList, activeYear, activeSemester, user, setPdfLoading]
+    [selectedKelas, classList, activeYear, activeSemester, user, setPdfLoading, resolveWaliKelas]
   );
 
   // ── 2. Cetak Rapor PKL Batch Sekelas ──
@@ -418,6 +457,7 @@ export function useRaporPklPrint({
       const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
       const currentKelasObj = (classList ?? []).find((k) => k.id === selectedKelas);
       const extUser = user as unknown as ExtendedUserContext | null;
+      const walasInfo = resolveWaliKelas(selectedKelas);
 
       const raporItems: RaporPklItemData[] = (placementList ?? []).map((placement: PlacementRecord) => {
         const s = placement.Siswa || {};
@@ -464,8 +504,8 @@ export function useRaporPklPrint({
             nip_kepala: sekolah?.nip_kepala || tenantInfo?.nip_kepala || '197111022008011001',
           },
           wali_kelas: {
-            nama: extUser?.nama || extUser?.name || extUser?.full_name || 'Wali Kelas',
-            nip: extUser?.nip || '',
+            nama: walasInfo.nama,
+            nip: walasInfo.nip,
           },
           tahun_pelajaran: activeYear?.nama || '',
           semester: activeSemester?.nama || '',
@@ -504,7 +544,7 @@ export function useRaporPklPrint({
     } finally {
       setIsBatchPklPrinting(false);
     }
-  }, [selectedKelas, classList, activeYear, activeSemester, user]);
+  }, [selectedKelas, classList, activeYear, activeSemester, user, resolveWaliKelas]);
 
   // ── 3. Cetak Sertifikat PKL Single (Langsung ke PDF Viewer / Tab Baru) ──
   const handlePrintSertifikatPkl = useCallback(

@@ -11,7 +11,9 @@ import { getMyTenant } from '@/api/tenants.api';
 import { generateRaporPklSinglePdf, type RaporPklItemData } from '@/utils/print/modules/pdfRaporPkl';
 import { formatTanggalIndonesia } from '@/utils/print/modules/pdfSertifikatPkl';
 import { useAuthStore } from '@/store/authStore';
+import { useWaliKelasOptions } from '@/hooks/useWaliKelasOptions';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { LegerStudent } from './LegerStudentTable';
 
 export interface RaporPklPrintModalProps {
@@ -25,6 +27,8 @@ export interface RaporPklPrintModalProps {
   semesterId?: string;
   tahunPelajaranNama?: string;
   semesterNama?: string;
+  waliKelasNama?: string;
+  waliKelasNip?: string;
 }
 
 export const RaporPklPrintModal: React.FC<RaporPklPrintModalProps> = React.memo(({
@@ -38,11 +42,14 @@ export const RaporPklPrintModal: React.FC<RaporPklPrintModalProps> = React.memo(
   semesterId = '',
   tahunPelajaranNama = '',
   semesterNama = '',
+  waliKelasNama: propWaliKelasNama,
+  waliKelasNip: propWaliKelasNip,
 }) => {
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const currentUser = useAuthStore((s) => s.user);
   const { tenantInfo, rawSekolah } = usePrintHeaderData();
+  const { rawList: allWaliKelas } = useWaliKelasOptions({ onlyActive: true });
 
   const siswaId = selectedStudent?.id;
 
@@ -71,6 +78,60 @@ export const RaporPklPrintModal: React.FC<RaporPklPrintModalProps> = React.memo(
         p.Siswa?.nis === selectedStudent?.nis
     ) || null;
   }, [penempatanRes, siswaId, selectedStudent]);
+
+  // Resolusi Wali Kelas Siswa Terkait
+  const targetKelasId = selectedKelas || (placement as any)?.Siswa?.kelas_id || (selectedStudent as any)?.kelas_id;
+  const matchedWalas = useMemo(() => {
+    if (!targetKelasId || !allWaliKelas?.length) return null;
+    return allWaliKelas.find((w) => w.kelas_id === targetKelasId);
+  }, [targetKelasId, allWaliKelas]);
+
+  const cleanNip = useCallback((nip?: string | null) => {
+    if (!nip || nip === '-' || nip.trim() === '') return '-';
+    return nip.replace(/^NIP\.?\s*/i, '').trim();
+  }, []);
+
+  const resolvedWalas = useMemo(() => {
+    // Priority 1: Prop passed from parent (mis. dari Leger backend)
+    if (propWaliKelasNama && propWaliKelasNama !== 'Wali Kelas') {
+      return {
+        nama: propWaliKelasNama,
+        nip: cleanNip(propWaliKelasNip),
+      };
+    }
+
+    // Priority 2: Dari master struktur penugasan Wali Kelas
+    if (matchedWalas) {
+      const nama = matchedWalas.Guru?.nama_guru || (matchedWalas as any)?.User?.Guru?.nama_guru || (matchedWalas as any)?.User?.full_name;
+      const nip = matchedWalas.Guru?.nip || (matchedWalas as any)?.User?.Guru?.nip || '-';
+      if (nama) {
+        return {
+          nama,
+          nip: cleanNip(nip),
+        };
+      }
+    }
+
+    // Priority 3: Dari current logged in user (jika yang membuka adalah walas rombel ini)
+    const userRole = (currentUser as any)?.role;
+    const userKelas = (currentUser as any)?.walikelas_kelas || (currentUser as any)?.kelas_id;
+    if (userRole === 'wali_kelas' || userKelas === targetKelasId) {
+      const nama = (currentUser as any)?.guru_profile?.nama_guru || (currentUser as any)?.nama || (currentUser as any)?.name || (currentUser as any)?.full_name;
+      const nip = (currentUser as any)?.guru_profile?.nip || (currentUser as any)?.nip || '-';
+      if (nama && nama !== 'Wali Kelas') {
+        return {
+          nama,
+          nip: cleanNip(nip),
+        };
+      }
+    }
+
+    // Priority 4: Fallback
+    return {
+      nama: (currentUser as any)?.nama || (currentUser as any)?.name || 'Wali Kelas',
+      nip: cleanNip((currentUser as any)?.nip),
+    };
+  }, [propWaliKelasNama, propWaliKelasNip, matchedWalas, currentUser, targetKelasId, cleanNip]);
 
   // Index siswa untuk navigasi batch
   const currentIndex = useMemo(() => {
@@ -141,14 +202,14 @@ export const RaporPklPrintModal: React.FC<RaporPklPrintModalProps> = React.memo(
         nip_kepala: (rawSekolah as any)?.nip_kepala_sekolah || tenantInfo?.nip_kepala_sekolah || '197111022008011001',
       },
       wali_kelas: {
-        nama: (currentUser as any)?.nama || (currentUser as any)?.name || 'Wali Kelas',
-        nip: (currentUser as any)?.nip || '-',
+        nama: resolvedWalas.nama,
+        nip: resolvedWalas.nip,
       },
       tahun_pelajaran: tahunPelajaranNama || '2025 / 2026',
       semester: semesterNama || 'Ganjil',
       tanggal_terbit: formatTanggalIndonesia(new Date()),
     };
-  }, [selectedStudent, placement, rawSekolah, tenantInfo, currentUser, tahunPelajaranNama, semesterNama]);
+  }, [selectedStudent, placement, rawSekolah, tenantInfo, resolvedWalas, tahunPelajaranNama, semesterNama]);
 
   // Handler Download PDF Resmi
   const handleDownloadPdf = useCallback(async () => {
@@ -202,7 +263,7 @@ export const RaporPklPrintModal: React.FC<RaporPklPrintModalProps> = React.memo(
   const hasCustomTp = Boolean(raporItem?.pkl.deskripsi_tp?.trim());
   const deskripsiTeknis = hasCustomTp
     ? raporItem!.pkl.deskripsi_tp!.trim()
-    : 'Peserta didik telah mampu menerapkan kompetensi keahlian teknis pada divisi kerja operasional dengan baik sesuai prosedur kerja industri.';
+    : '[Tujuan Pembelajaran belum dirumuskan oleh Ketua Program Keahlian untuk tahun ajaran aktif]';
 
   const deskripsiAlurBisnis =
     'Peserta didik telah mampu membekali kemandiriannya dengan menguasai dan menjelaskan rencana usaha yang akan dilaksanakan namun masih perlu bimbingan dalam mengidentifikasi kegiatan usaha di tempat kerja';
@@ -392,7 +453,14 @@ export const RaporPklPrintModal: React.FC<RaporPklPrintModalProps> = React.memo(
                       <td className="py-[2.5mm] text-center align-middle border-r border-black font-bold">
                         {skorTeknis}
                       </td>
-                      <td className="py-[2.5mm] px-[2.5mm] text-justify align-middle leading-normal">
+                      <td
+                        className={cn(
+                          'py-[2.5mm] px-[2.5mm] align-middle leading-normal',
+                          hasCustomTp
+                            ? 'text-justify text-black'
+                            : 'text-left text-[#dc2626] italic font-medium'
+                        )}
+                      >
                         {deskripsiTeknis}
                       </td>
                     </tr>
@@ -547,9 +615,13 @@ export const RaporPklPrintModal: React.FC<RaporPklPrintModalProps> = React.memo(
                   <div>Wali Kelas,</div>
                   <div className="h-[20mm]" />
                   <div className="font-bold underline decoration-black decoration-[1px] underline-offset-2 inline-block">
-                    {raporItem?.wali_kelas?.nama}
+                    {raporItem?.wali_kelas?.nama || 'Wali Kelas'}
                   </div>
-                  <div>NIP. {raporItem?.wali_kelas?.nip}</div>
+                  <div>
+                    {raporItem?.wali_kelas?.nip && raporItem?.wali_kelas?.nip !== '-'
+                      ? `NIP. ${raporItem.wali_kelas.nip}`
+                      : 'NIP. -'}
+                  </div>
                 </div>
               </div>
 

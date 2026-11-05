@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { SectionCard } from '@/components/ui';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
 import { NilaiPklView, type UniversalNilaiPklViewProps } from '../../components/hubin/nilai-pkl/NilaiPklView';
@@ -48,7 +49,9 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo((p
           ]
         }}
       >
-        <NilaiPklView {...props} isModal={false} hideHeaderStats={false} />
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+          <NilaiPklView {...props} isModal={false} hideHeaderStats={false} />
+        </SectionCard>
       </AcademicPageLayout>
     </InfraErrorBoundary>
   );

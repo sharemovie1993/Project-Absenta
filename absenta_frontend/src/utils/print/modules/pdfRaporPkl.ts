@@ -347,8 +347,14 @@ export const renderRaporPklPage2 = (doc: jsPDF, data: RaporPklItemData) => {
   y += 24;
   doc.text('..................................................', 16, y);
 
-  const waliKelasNama = data.wali_kelas?.nama || 'SITI NURUL FALAHIYAH, S.Kom.I.';
-  const waliKelasNip = data.wali_kelas?.nip || '199110292022212020';
+  const cleanNip = (nip?: string | null) => {
+    if (!nip || nip === '-' || nip.trim() === '') return '-';
+    return nip.replace(/^NIP\.?\s*/i, '').trim();
+  };
+
+  const waliKelasNama = data.wali_kelas?.nama || 'Wali Kelas';
+  const rawNip = cleanNip(data.wali_kelas?.nip);
+  const waliKelasNipLabel = rawNip !== '-' ? `NIP. ${rawNip}` : 'NIP. -';
 
   doc.setFont('Helvetica', 'bold');
   doc.text(waliKelasNama, rightColX, y);
@@ -356,7 +362,7 @@ export const renderRaporPklPage2 = (doc: jsPDF, data: RaporPklItemData) => {
   doc.line(rightColX, y + 0.8, rightColX + doc.getTextWidth(waliKelasNama), y + 0.8);
 
   doc.setFont('Helvetica', 'normal');
-  doc.text(`NIP. ${waliKelasNip}`, rightColX, y + 4.5);
+  doc.text(waliKelasNipLabel, rightColX, y + 4.5);
 
   // 4. Pengesahan Bawah: Mengetahui Kepala Sekolah (Center)
   y += 18;
