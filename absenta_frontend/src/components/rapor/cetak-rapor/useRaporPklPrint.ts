@@ -320,12 +320,19 @@ export function useRaporPklPrint({
         const rawList = res?.list || (Array.isArray(res?.data) ? res.data : (res?.data as { list?: PlacementRecord[] })?.list) || [];
         const placementList: PlacementRecord[] = Array.isArray(rawList) ? rawList : [];
 
-        const placement = placementList.find(
+        // Prioritaskan record penempatan yang sudah memiliki nilai dan paling mutakhir
+        const matchingPlacements = placementList.filter(
           (p: PlacementRecord) =>
             p.siswa_id === student.id ||
             p.Siswa?.id === student.id ||
             p.Siswa?.nis === student.nis
         );
+        const placement = matchingPlacements.sort((a, b) => {
+          const aHasScore = (a as any).nilai_akhir_pkl != null ? 1 : 0;
+          const bHasScore = (b as any).nilai_akhir_pkl != null ? 1 : 0;
+          if (bHasScore !== aHasScore) return bHasScore - aHasScore;
+          return new Date((b as any).updated_at || 0).getTime() - new Date((a as any).updated_at || 0).getTime();
+        })[0];
 
         if (!placement) {
           const warningMsg = `Siswa ${student.nama_siswa} belum memiliki data penempatan PKL di modul Hubin.`;
@@ -660,12 +667,19 @@ export function useRaporPklPrint({
         const rawList = res?.list || (Array.isArray(res?.data) ? res.data : (res?.data as { list?: PlacementRecord[] })?.list) || [];
         const placementList: PlacementRecord[] = Array.isArray(rawList) ? rawList : [];
 
-        const placement = placementList.find(
+        // Prioritaskan record penempatan yang sudah memiliki nilai dan paling mutakhir
+        const matchingPlacements = placementList.filter(
           (p: PlacementRecord) =>
             p.siswa_id === student.id ||
             p.Siswa?.id === student.id ||
             p.Siswa?.nis === student.nis
         );
+        const placement = matchingPlacements.sort((a, b) => {
+          const aHasScore = (a as any).nilai_akhir_pkl != null ? 1 : 0;
+          const bHasScore = (b as any).nilai_akhir_pkl != null ? 1 : 0;
+          if (bHasScore !== aHasScore) return bHasScore - aHasScore;
+          return new Date((b as any).updated_at || 0).getTime() - new Date((a as any).updated_at || 0).getTime();
+        })[0];
 
         if (!placement?.id) {
           const warningMsg = `Siswa ${student.nama_siswa} belum memiliki data penempatan PKL di modul Hubin.`;
@@ -802,8 +816,24 @@ export function useRaporPklPrint({
         logoSekolahUrl ? resolveCoverImageBase64(logoSekolahUrl) : Promise.resolve(null),
       ]);
 
+      // Deduplikasi placement per siswa: prioritaskan yang memiliki nilai & paling mutakhir
+      const studentPlacementMap = new Map<string, PlacementRecord>();
+      const sortedPlacements = [...placementList].sort((a, b) => {
+        const aHasScore = (a as any).nilai_akhir_pkl != null ? 1 : 0;
+        const bHasScore = (b as any).nilai_akhir_pkl != null ? 1 : 0;
+        if (bHasScore !== aHasScore) return bHasScore - aHasScore;
+        return new Date((b as any).updated_at || 0).getTime() - new Date((a as any).updated_at || 0).getTime();
+      });
+      sortedPlacements.forEach((p) => {
+        const sId = p.siswa_id || p.Siswa?.id;
+        if (sId && !studentPlacementMap.has(sId)) {
+          studentPlacementMap.set(sId, p);
+        }
+      });
+      const uniquePlacements = Array.from(studentPlacementMap.values());
+
       // Fetch detailed cert data in parallel
-      const certPromises = placementList.map(async (placement) => {
+      const certPromises = uniquePlacements.map(async (placement) => {
         try {
           if (!placement.id) return null;
           const certRes = await hubinApi.getSertifikatPklData(placement.id);
@@ -895,12 +925,19 @@ export function useRaporPklPrint({
         const rawList = res?.list || (Array.isArray(res?.data) ? res.data : (res?.data as { list?: PlacementRecord[] })?.list) || [];
         const placementList: PlacementRecord[] = Array.isArray(rawList) ? rawList : [];
 
-        const placement = placementList.find(
+        // Prioritaskan record penempatan yang sudah memiliki nilai dan paling mutakhir
+        const matchingPlacements = placementList.filter(
           (p: PlacementRecord) =>
             p.siswa_id === student.id ||
             p.Siswa?.id === student.id ||
             p.Siswa?.nis === student.nis
         );
+        const placement = matchingPlacements.sort((a, b) => {
+          const aHasScore = (a as any).nilai_akhir_pkl != null ? 1 : 0;
+          const bHasScore = (b as any).nilai_akhir_pkl != null ? 1 : 0;
+          if (bHasScore !== aHasScore) return bHasScore - aHasScore;
+          return new Date((b as any).updated_at || 0).getTime() - new Date((a as any).updated_at || 0).getTime();
+        })[0];
 
         if (!placement?.id) {
           toast.warning(`Siswa ${student.nama_siswa} belum memiliki data penempatan PKL di modul Hubin.`);

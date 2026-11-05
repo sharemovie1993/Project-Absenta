@@ -610,6 +610,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
         prisma.siswaPkl.update({
           where: { id: item.siswa_pkl_id },
           data: {
+            status: nilaiAkhir !== null && predikat !== null ? 'SELESAI' : undefined,
             instruktur_nama: item.instruktur_nama ?? undefined,
             penanggung_jawab_nama: item.penanggung_jawab_nama ?? undefined,
             alamat_dudi: item.alamat_dudi ?? undefined,

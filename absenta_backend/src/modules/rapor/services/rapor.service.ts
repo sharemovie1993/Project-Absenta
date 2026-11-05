@@ -811,8 +811,22 @@ export class RaporService {
       }).catch(() => []),
     ]);
 
+    // Sort pklList agar penempatan yang memiliki nilai & paling mutakhir selalu menang
     const pklMap = new Map<string, any>();
-    pklList.forEach((p) => pklMap.set(p.siswa_id, p));
+    const sortedPklList = [...pklList].sort((a, b) => {
+      const aScore = a.nilai_akhir_pkl != null ? 1 : 0;
+      const bScore = b.nilai_akhir_pkl != null ? 1 : 0;
+      if (bScore !== aScore) return bScore - aScore;
+      const aDone = a.status === 'SELESAI' ? 1 : 0;
+      const bDone = b.status === 'SELESAI' ? 1 : 0;
+      if (bDone !== aDone) return bDone - aDone;
+      return new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime();
+    });
+    sortedPklList.forEach((p) => {
+      if (!pklMap.has(p.siswa_id)) {
+        pklMap.set(p.siswa_id, p);
+      }
+    });
 
     const ukkMap = new Map<string, any>();
     ukkList.forEach((u) => ukkMap.set(u.siswa_id, u));
@@ -1165,11 +1179,10 @@ export class RaporService {
       let pklSertifikatReason = '';
       if (!pklRecord) {
         pklSertifikatReason = 'Belum memiliki data penempatan PKL di Hubin';
-      } else if (pklRecord.status !== 'SELESAI') {
-        pklSertifikatReason = 'Masa pelaksanaan PKL belum berstatus SELESAI';
       } else if (!pklRecord.nilai_akhir_pkl || pklRecord.nilai_akhir_pkl <= 0 || !pklRecord.predikat_pkl) {
-        pklSertifikatReason = 'Nilai akhir & predikat PKL belum tervalidasi';
+        pklSertifikatReason = 'Nilai akhir & predikat PKL belum lengkap / belum tervalidasi';
       } else {
+        // Siswa yang nilai akhir dan predikat PKL-nya telah tervalidasi sah berhak mencetak sertifikat
         pklSertifikatEligible = true;
       }
 
