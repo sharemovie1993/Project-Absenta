@@ -1,25 +1,33 @@
-import React from 'react';
-import { RotateCw, FlipHorizontal, Trash2, X, CheckSquare, Layers } from 'lucide-react';
+import React, { useState } from 'react';
+import { RotateCw, FlipHorizontal, Trash2, X, CheckSquare, Layers, Minimize2, Maximize2, Sliders } from 'lucide-react';
 
 interface DenahBatchActionBarProps {
   selectedCount: number;
   totalCount: number;
+  currentSize?: { width: number; height: number };
   onRotateAll: () => void;
   onFlipHAll: () => void;
   onDeleteAll: () => void;
   onDeselectAll: () => void;
   onSelectAll: () => void;
+  onResizeStep: (deltaW: number, deltaH: number) => void;
+  onSetSize: (width: number, height: number) => void;
 }
 
 export const DenahBatchActionBar: React.FC<DenahBatchActionBarProps> = ({
   selectedCount,
   totalCount,
+  currentSize,
   onRotateAll,
   onFlipHAll,
   onDeleteAll,
   onDeselectAll,
   onSelectAll,
+  onResizeStep,
+  onSetSize,
 }) => {
+  const [showPresets, setShowPresets] = useState(false);
+
   if (selectedCount <= 0) return null;
 
   return (
@@ -49,6 +57,97 @@ export const DenahBatchActionBar: React.FC<DenahBatchActionBarProps> = ({
           <span className="hidden sm:inline">Pilih Semua</span>
         </button>
       )}
+
+      {/* Size Adjustment Controls (Perkecil / Perbesar / Presets) */}
+      <div className="flex items-center gap-1 px-1.5 border-r border-slate-700 relative">
+        <button
+          type="button"
+          onClick={() => onResizeStep(-20, -15)}
+          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 active:scale-95 text-amber-300 hover:text-amber-200 border border-slate-700 hover:border-amber-500/50 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all shadow-xs"
+          title="Perkecil Ukuran Kotak (-20px × -15px)"
+        >
+          <Minimize2 className="w-3.5 h-3.5" />
+          <span>Perkecil</span>
+        </button>
+
+        {/* Current Size & Presets Trigger */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowPresets((prev) => !prev)}
+            className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-mono font-bold flex items-center gap-1 transition-colors border border-slate-700 cursor-pointer"
+            title="Klik untuk memilih ukuran standar ruangan"
+          >
+            <Sliders className="w-3 h-3 text-cyan-400" />
+            <span>{currentSize ? `${currentSize.width}×${currentSize.height}` : 'Ukuran'}</span>
+          </button>
+
+          {/* Preset Popup */}
+          {showPresets && (
+            <div
+              className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 bg-slate-900 border border-slate-700 shadow-2xl rounded-xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150 flex flex-col gap-0.5"
+            >
+              <div className="text-[10px] font-bold text-slate-400 px-2 py-1 uppercase tracking-wider border-b border-slate-800 mb-0.5">
+                Preset Ukuran Kotak
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onSetSize(100, 60);
+                  setShowPresets(false);
+                }}
+                className="px-2.5 py-1 text-left text-xs font-medium hover:bg-slate-800 rounded-lg text-slate-200 hover:text-white flex items-center justify-between cursor-pointer"
+              >
+                <span>Mini</span>
+                <span className="font-mono text-[10px] text-slate-400">100 × 60</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onSetSize(130, 80);
+                  setShowPresets(false);
+                }}
+                className="px-2.5 py-1 text-left text-xs font-medium hover:bg-slate-800 rounded-lg text-slate-200 hover:text-white flex items-center justify-between cursor-pointer"
+              >
+                <span>Kompak</span>
+                <span className="font-mono text-[10px] text-slate-400">130 × 80</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onSetSize(160, 100);
+                  setShowPresets(false);
+                }}
+                className="px-2.5 py-1 text-left text-xs font-medium hover:bg-slate-800 rounded-lg text-slate-200 hover:text-white flex items-center justify-between cursor-pointer"
+              >
+                <span>Standar</span>
+                <span className="font-mono text-[10px] text-slate-400">160 × 100</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onSetSize(180, 110);
+                  setShowPresets(false);
+                }}
+                className="px-2.5 py-1 text-left text-xs font-medium hover:bg-slate-800 rounded-lg text-slate-200 hover:text-white flex items-center justify-between cursor-pointer"
+              >
+                <span>Lega</span>
+                <span className="font-mono text-[10px] text-slate-400">180 × 110</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onResizeStep(20, 15)}
+          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 active:scale-95 text-emerald-300 hover:text-emerald-200 border border-slate-700 hover:border-emerald-500/50 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all shadow-xs"
+          title="Perbesar Ukuran Kotak (+20px × +15px)"
+        >
+          <Maximize2 className="w-3.5 h-3.5" />
+          <span>Perbesar</span>
+        </button>
+      </div>
 
       {/* Rotate all selected */}
       <button

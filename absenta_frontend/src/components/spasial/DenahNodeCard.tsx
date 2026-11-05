@@ -81,6 +81,8 @@ export const DenahNodeCard: React.FC<DenahNodeCardProps> = ({
   const catStyle = KATEGORI_STYLES[node.kategori_ruang] || KATEGORI_STYLES.LAINNYA;
   const scaleX = node.flip_h ? -1 : 1;
   const scaleY = node.flip_v ? -1 : 1;
+  const isMicro = node.width < 115 || node.height < 70;
+  const isCompact = node.width < 145 || node.height < 85;
 
   return (
     <div
@@ -101,9 +103,9 @@ export const DenahNodeCard: React.FC<DenahNodeCardProps> = ({
         backgroundColor: node.warna_bg || undefined,
         borderColor: node.warna_border || undefined,
       }}
-      className={`absolute select-none cursor-move rounded-xl border-2 shadow-sm transition-shadow duration-150 flex flex-col justify-between p-2.5 overflow-hidden group ${
-        catStyle.bg
-      } ${node.warna_border ? '' : catStyle.border} ${
+      className={`absolute select-none cursor-move rounded-xl border-2 shadow-sm transition-shadow duration-150 flex flex-col justify-between overflow-hidden group ${
+        isMicro ? 'p-1' : isCompact ? 'p-1.5' : 'p-2.5'
+      } ${catStyle.bg} ${node.warna_border ? '' : catStyle.border} ${
         isSelected
           ? 'ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 shadow-md z-30'
           : 'hover:shadow hover:z-20 z-10'
@@ -116,13 +118,19 @@ export const DenahNodeCard: React.FC<DenahNodeCardProps> = ({
       >
         <div className="flex items-center gap-1 min-w-0">
           <span
-            className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded truncate max-w-[90px] ${catStyle.badge}`}
+            className={`font-bold uppercase tracking-wider rounded truncate ${catStyle.badge} ${
+              isMicro
+                ? 'text-[7px] px-1 py-0 max-w-[60px]'
+                : isCompact
+                ? 'text-[8px] px-1 py-0 max-w-[75px]'
+                : 'text-[9px] px-1.5 py-0.5 max-w-[90px]'
+            }`}
           >
             {node.kategori_ruang === 'RUANG_UJIAN' ? 'RUANG UJIAN' : node.kategori_ruang}
           </span>
-          {(node.flip_h || node.flip_v) && (
+          {(node.flip_h || node.flip_v) && !isMicro && (
             <span
-              className="text-[8px] font-mono font-bold px-1 py-0.2 bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 rounded"
+              className="text-[7.5px] font-mono font-bold px-1 py-0.2 bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 rounded"
               title="Status cermin aktif"
             >
               {node.flip_h && node.flip_v ? 'FLIP XY' : node.flip_h ? 'FLIP H' : 'FLIP V'}
@@ -188,26 +196,40 @@ export const DenahNodeCard: React.FC<DenahNodeCardProps> = ({
         )}
       </div>
 
-      {/* Main Center Content: R.01 (giant bold) & X TJKT 1 (Counter-scaled so text is NEVER backwards) */}
+      {/* Main Center Content: R.01 (bold) & X TJKT 1 (Counter-scaled so text is NEVER backwards) */}
       <div
-        className="flex-1 flex flex-col items-center justify-center text-center cursor-move my-1"
+        className="flex-1 flex flex-col items-center justify-center text-center cursor-move my-0.5"
         style={{ transform: `scale(${scaleX}, ${scaleY})` }}
         onMouseDown={(e) => !isReadOnly && onStartDrag(e, node.id)}
       >
         <div
-          className={`font-black tracking-tight leading-none text-xl sm:text-2xl font-mono ${catStyle.text}`}
+          className={`font-black tracking-tight leading-none font-mono ${catStyle.text} ${
+            isMicro
+              ? 'text-xs sm:text-sm'
+              : isCompact
+              ? 'text-base sm:text-lg'
+              : 'text-xl sm:text-2xl'
+          }`}
           style={{ color: node.warna_teks || undefined }}
         >
           {node.label_utama || 'R.XX'}
         </div>
 
         {node.label_sub && (
-          <div className="mt-1 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 truncate max-w-full px-1">
+          <div
+            className={`font-bold text-slate-700 dark:text-slate-200 truncate max-w-full px-1 ${
+              isMicro
+                ? 'text-[8.5px] mt-0.5 leading-tight'
+                : isCompact
+                ? 'text-[10px] sm:text-xs mt-0.5'
+                : 'text-xs sm:text-sm mt-1'
+            }`}
+          >
             {node.label_sub}
           </div>
         )}
 
-        {node.catatan && (
+        {node.catatan && !isCompact && (
           <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-full italic mt-0.5">
             {node.catatan}
           </div>

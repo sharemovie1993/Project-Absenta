@@ -49,15 +49,13 @@ export function useDenahInteraction({
     nodeId: string | null;
     startX: number;
     startY: number;
-    origW: number;
-    origH: number;
+    initialSizes: { id: string; origW: number; origH: number }[];
   }>({
     isResizing: false,
     nodeId: null,
     startX: 0,
     startY: 0,
-    origW: 0,
-    origH: 0,
+    initialSizes: [],
   });
 
   const snap = (val: number, step = 20) => Math.round(val / step) * step;
@@ -110,9 +108,17 @@ export function useDenahInteraction({
   const handleStartResize = useCallback(
     (e: React.MouseEvent, nodeId: string) => {
       e.stopPropagation();
-      const target = nodes.find((n) => n.id === nodeId);
-      if (!target) return;
-      setSelectedNodeIds([nodeId]);
+      if (isReadOnly) return;
+
+      let activeSelection = selectedNodeIds;
+      if (!selectedNodeIds.includes(nodeId)) {
+        activeSelection = [nodeId];
+        setSelectedNodeIds([nodeId]);
+      }
+
+      const targetNodes = nodes.filter((n) => activeSelection.includes(n.id));
+      if (targetNodes.length === 0) return;
+
       hasResizedRef.current = false;
       latestNodesRef.current = nodes;
 
@@ -121,11 +127,10 @@ export function useDenahInteraction({
         nodeId,
         startX: e.clientX,
         startY: e.clientY,
-        origW: target.width,
-        origH: target.height,
+        initialSizes: targetNodes.map((n) => ({ id: n.id, origW: n.width, origH: n.height })),
       };
     },
-    [nodes]
+    [isReadOnly, selectedNodeIds, nodes]
   );
 
   // Marquee selection start on canvas empty area
@@ -179,19 +184,25 @@ export function useDenahInteraction({
           latestNodesRef.current = updated;
           return updated;
         });
-      } else if (resizeState.current.isResizing && resizeState.current.nodeId) {
+      } else if (resizeState.current.isResizing && resizeState.current.initialSizes.length > 0) {
         hasResizedRef.current = true;
         const dx = (e.clientX - resizeState.current.startX) / scale;
         const dy = (e.clientY - resizeState.current.startY) / scale;
-        const newW = Math.max(100, snap(resizeState.current.origW + dx));
-        const newH = Math.max(60, snap(resizeState.current.origH + dy));
+        const snappedDx = snap(dx);
+        const snappedDy = snap(dy);
+
+        const sizeMap = new Map(resizeState.current.initialSizes.map((s) => [s.id, s]));
 
         setNodes((prev) => {
-          const updated = prev.map((n) =>
-            n.id === resizeState.current.nodeId
-              ? { ...n, width: newW, height: newH }
-              : n
-          );
+          const updated = prev.map((n) => {
+            const initial = sizeMap.get(n.id);
+            if (initial) {
+              const newW = Math.max(80, initial.origW + snappedDx);
+              const newH = Math.max(50, initial.origH + snappedDy);
+              return { ...n, width: newW, height: newH };
+            }
+            return n;
+          });
           latestNodesRef.current = updated;
           return updated;
         });
@@ -229,6 +240,7 @@ export function useDenahInteraction({
     if (resizeState.current.isResizing) {
       resizeState.current.isResizing = false;
       resizeState.current.nodeId = null;
+      resizeState.current.initialSizes = [];
       if (hasResizedRef.current) {
         pushHistory(latestNodesRef.current);
         hasResizedRef.current = false;
@@ -302,10 +314,66 @@ export function useDenahInteraction({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleSelectAll, handleBatchDelete, selectedNodeIds.length]);
 
+  // Batch resize by delta (e.g. -20, -15 to shrink; +20, +15 to enlarge)
+  const handleBatchResizeStep = useCallback(
+    (deltaW: number, deltaH: number) => {
+      if (selectedNodeIds.length === 0) return;
+      const count = selectedNodeIds.length;
+      let sampleW = 0;
+      let sampleH = 0;
+
+      const updated = nodes.map((n) => {
+        if (!selectedNodeIds.includes(n.id)) return n;
+        const newW = Math.min(360, Math.max(80, n.width + deltaW));
+        const newH = Math.min(240, Math.max(50, n.height + deltaH));
+        sampleW = newW;
+        sampleH = newH;
+        return { ...n, width: newW, height: newH };
+      });
+
+      pushHistory(updated);
+      toast.success(
+        deltaW < 0
+          ? `Perkecil kotak: ${sampleW}×${sampleH} px (${count} ruangan)`
+          : `Perbesar kotak: ${sampleW}×${sampleH} px (${count} ruangan)`
+      );
+    },
+    [selectedNodeIds, nodes, pushHistory]
+  );
+
+  // Batch set exact size (e.g. 100x60, 130x80, 160x100, 180x110)
+  const handleBatchSetSize = useCallback(
+    (width: number, height: number) => {
+      if (selectedNodeIds.length === 0) return;
+      const count = selectedNodeIds.length;
+      const targetW = Math.min(360, Math.max(80, width));
+      const targetH = Math.min(240, Math.max(50, height));
+
+      const updated = nodes.map((n) =>
+        selectedNodeIds.includes(n.id) ? { ...n, width: targetW, height: targetH } : n
+      );
+
+      pushHistory(updated);
+      toast.success(`Ukuran disetel: ${targetW}×${targetH} px (${count} ruangan)`);
+    },
+    [selectedNodeIds, nodes, pushHistory]
+  );
+
+  // Calculate current average size of selected nodes
+  const selectedNodes = nodes.filter((n) => selectedNodeIds.includes(n.id));
+  const currentSize =
+    selectedNodes.length > 0
+      ? {
+          width: Math.round(selectedNodes.reduce((acc, n) => acc + n.width, 0) / selectedNodes.length),
+          height: Math.round(selectedNodes.reduce((acc, n) => acc + n.height, 0) / selectedNodes.length),
+        }
+      : undefined;
+
   return {
     selectedNodeIds,
     setSelectedNodeIds,
     marqueeBox,
+    currentSize,
     handleSelectNode,
     handleStartDrag,
     handleStartResize,
@@ -314,5 +382,7 @@ export function useDenahInteraction({
     handleBatchFlipH,
     handleBatchDelete,
     handleSelectAll,
+    handleBatchResizeStep,
+    handleBatchSetSize,
   };
 }

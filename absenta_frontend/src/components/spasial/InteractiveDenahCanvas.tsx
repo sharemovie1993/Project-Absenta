@@ -196,6 +196,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
     selectedNodeIds,
     setSelectedNodeIds,
     marqueeBox,
+    currentSize,
     handleSelectNode,
     handleStartDrag,
     handleStartResize,
@@ -204,6 +205,8 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
     handleBatchFlipH,
     handleBatchDelete,
     handleSelectAll,
+    handleBatchResizeStep,
+    handleBatchSetSize,
   } = useDenahInteraction({
     nodes,
     setNodes,
@@ -428,11 +431,14 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
         <DenahBatchActionBar
           selectedCount={selectedNodeIds.length}
           totalCount={nodes.length}
+          currentSize={currentSize}
           onRotateAll={handleBatchRotate}
           onFlipHAll={handleBatchFlipH}
           onDeleteAll={handleBatchDelete}
           onDeselectAll={() => setSelectedNodeIds([])}
           onSelectAll={handleSelectAll}
+          onResizeStep={handleBatchResizeStep}
+          onSetSize={handleBatchSetSize}
         />
       </div>
 
