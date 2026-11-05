@@ -19,6 +19,7 @@ import { LegerStudent, TranskripNilaiData } from '../../../types/cetakRapor.type
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { usePrintHeaderData } from '@/components/ui';
 import { generatePdfTranskripNilai } from '@/utils/print/modules/pdfTranskripNilai';
+import { normalizeStudentIdentity } from '@/utils/academic/academicIdentityNormalizer';
 import { toast } from 'sonner';
 
 interface TranskripModalProps {
@@ -58,6 +59,11 @@ export const TranskripModal: React.FC<TranskripModalProps> = React.memo(({
     if (!data) return;
     try {
       setIsExportingPdf(true);
+      const studentIdentity = normalizeStudentIdentity({
+        ...(selectedStudent || {}),
+        ...(data.siswa || {}),
+      });
+
       const printPayload = {
         sekolah: {
           nama: tenantInfo.name || 'SEKOLAH MENENGAH KEJURUAN',
@@ -73,15 +79,15 @@ export const TranskripModal: React.FC<TranskripModalProps> = React.memo(({
           nama_cabang_dinas: tenantInfo.nama_cabang_dinas,
         },
         siswa: {
-          id: selectedStudent.id,
-          nama_siswa: data.siswa?.nama_siswa || selectedStudent.nama_siswa,
-          nis: data.siswa?.nis || selectedStudent.nis,
-          nisn: data.siswa?.nisn || selectedStudent.nisn,
-          tempat_lahir: data.siswa?.tempat_lahir || '-',
-          tanggal_lahir: data.siswa?.tanggal_lahir || '-',
-          kelas: data.siswa?.kelas || selectedStudent.nama_kelas,
-          jurusan: data.siswa?.jurusan,
-          program_keahlian: data.siswa?.program_keahlian,
+          id: studentIdentity.id,
+          nama_siswa: studentIdentity.nama,
+          nis: studentIdentity.nis,
+          nisn: studentIdentity.nisn,
+          tempat_lahir: studentIdentity.tempatLahir || '-',
+          tanggal_lahir: studentIdentity.tanggalLahir || '-',
+          kelas: studentIdentity.namaKelas,
+          jurusan: studentIdentity.namaJurusan,
+          program_keahlian: studentIdentity.programKeahlian,
         },
         headers: headers.map((h: any) => ({ index: h.index, label: h.label, sublabel: h.sublabel || '' })),
         mata_pelajaran: (data.transkrip || data.mata_pelajaran || []).map((m: any) => ({

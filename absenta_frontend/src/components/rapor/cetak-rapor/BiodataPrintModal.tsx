@@ -5,6 +5,8 @@ import {
   PrintDocumentSheet,
   UniversalDocumentSignatures,
   usePrintHeaderData,
+  UniversalStudentIdentity,
+  normalizeStudentIdentity,
 } from '@/components/ui/PrintHeader';
 import { siswaApi } from '@/api/academic.api';
 import { raporApi } from '@/api/rapor.api';
@@ -168,10 +170,13 @@ export const BiodataPrintModal: React.FC<BiodataPrintModalProps> = React.memo(({
   const cleanKepsekNip = rawKepsekNip ? String(rawKepsekNip).replace(/^NIP\.?\s*/i, '').trim() : '-';
   const kepalaSekolahNip = cleanKepsekNip || '-';
 
+  // SSoT Universal Academic Identity Siswa
+  const studentIdentity = useMemo(() => {
+    return normalizeStudentIdentity(siswa);
+  }, [siswa]);
+
   // Formulasi data 17 Butir Resmi
-  const jk = (siswa.jenis_kelamin || '').toUpperCase().startsWith('L') ? 'Laki-Laki' : 'Perempuan';
-  const ttl = `${siswa.tempat_lahir || '-'} , ${formatIndoDate(siswa.tanggal_lahir)}`;
-  const tglMasuk = formatIndoDate(siswa.tanggal_masuk);
+  const tglMasuk = studentIdentity.tanggalMasuk || formatIndoDate((siswa as any).tanggal_masuk);
 
   const alamatSiswaDuaBaris = formatAlamatDuaBaris(
     siswa.alamat,
@@ -205,31 +210,31 @@ export const BiodataPrintModal: React.FC<BiodataPrintModalProps> = React.memo(({
 
   // Tabel 17 Butir (Identik dengan renderBiodata.ts)
   const butirItems: Array<{ no: string; label: string; titik: string; val: string; isIndent?: boolean; isHeader?: boolean; isBold?: boolean }> = [
-    { no: '1.', label: 'Nama Peserta Didik Lengkap', titik: ':', val: (siswa.nama_siswa || siswa.nama || '-').toUpperCase(), isBold: true },
-    { no: '2.', label: 'Nomor Induk Siswa / NISN', titik: ':', val: `${siswa.nis || '-'} / ${siswa.nisn || '-'}` },
-    { no: '3.', label: 'Tempat Tanggal Lahir', titik: ':', val: ttl },
-    { no: '4.', label: 'Jenis Kelamin', titik: ':', val: jk },
-    { no: '5.', label: 'Agama / Kepercayaan', titik: ':', val: siswa.agama || '-' },
-    { no: '6.', label: 'Status dalam Keluarga', titik: ':', val: siswa.status_dalam_keluarga || 'Anak Kandung' },
-    { no: '7.', label: 'Anak ke', titik: ':', val: formatAnakKe(siswa.anak_ke) },
+    { no: '1.', label: 'Nama Peserta Didik Lengkap', titik: ':', val: studentIdentity.nama.toUpperCase(), isBold: true },
+    { no: '2.', label: 'Nomor Induk Siswa / NISN', titik: ':', val: `${studentIdentity.nis} / ${studentIdentity.nisn}` },
+    { no: '3.', label: 'Tempat Tanggal Lahir', titik: ':', val: studentIdentity.ttlFormatted },
+    { no: '4.', label: 'Jenis Kelamin', titik: ':', val: studentIdentity.jenisKelaminLabel },
+    { no: '5.', label: 'Agama / Kepercayaan', titik: ':', val: studentIdentity.agama },
+    { no: '6.', label: 'Status dalam Keluarga', titik: ':', val: (siswa as any).status_dalam_keluarga || 'Anak Kandung' },
+    { no: '7.', label: 'Anak ke', titik: ':', val: formatAnakKe((siswa as any).anak_ke) },
     { no: '8.', label: 'Alamat Peserta Didik', titik: ':', val: alamatSiswaDuaBaris },
-    { no: '9.', label: 'Nomor Telepon Rumah', titik: ':', val: siswa.no_telepon || siswa.no_hp || '-' },
-    { no: '10.', label: 'Sekolah Asal', titik: ':', val: siswa.sekolah_asal || '-' },
+    { no: '9.', label: 'Nomor Telepon Rumah', titik: ':', val: (siswa as any).no_telepon || (siswa as any).no_hp || studentIdentity.kontakOrtu },
+    { no: '10.', label: 'Sekolah Asal', titik: ':', val: studentIdentity.sekolahAsal },
     { no: '11.', label: 'Diterima di sekolah ini', titik: '', val: '', isHeader: true },
-    { no: '', label: 'Di kelas', titik: ':', val: siswa.kelas_awal || siswa.nama_kelas || siswa.kelas || '-', isIndent: true },
+    { no: '', label: 'Di kelas', titik: ':', val: (siswa as any).kelas_awal || studentIdentity.namaKelas, isIndent: true },
     { no: '', label: 'Pada tanggal', titik: ':', val: tglMasuk, isIndent: true },
     { no: '12.', label: 'Nama Orang Tua', titik: '', val: '', isHeader: true },
-    { no: '', label: 'a. Ayah', titik: ':', val: siswa.nama_ayah || '-', isIndent: true },
-    { no: '', label: 'b. Ibu', titik: ':', val: siswa.nama_ibu || '-', isIndent: true },
+    { no: '', label: 'a. Ayah', titik: ':', val: studentIdentity.namaAyah, isIndent: true },
+    { no: '', label: 'b. Ibu', titik: ':', val: studentIdentity.namaIbu, isIndent: true },
     { no: '13.', label: 'Alamat Orang Tua', titik: ':', val: alamatOrtuDuaBaris },
-    { no: '', label: 'Nomor Telepon Rumah', titik: ':', val: siswa.no_telepon_ortu || siswa.no_hp_ortu || siswa.no_hp_ayah || '-', isIndent: true },
+    { no: '', label: 'Nomor Telepon Rumah', titik: ':', val: (siswa as any).no_telepon_ortu || studentIdentity.kontakOrtu, isIndent: true },
     { no: '14.', label: 'Pekerjaan Orang Tua', titik: '', val: '', isHeader: true },
-    { no: '', label: 'a. Ayah', titik: ':', val: siswa.pekerjaan_ayah || '-', isIndent: true },
-    { no: '', label: 'b. Ibu', titik: ':', val: siswa.pekerjaan_ibu || '-', isIndent: true },
-    { no: '15.', label: 'Nama Wali Peserta Didik', titik: ':', val: siswa.nama_wali || '-' },
+    { no: '', label: 'a. Ayah', titik: ':', val: studentIdentity.pekerjaanAyah, isIndent: true },
+    { no: '', label: 'b. Ibu', titik: ':', val: studentIdentity.pekerjaanIbu, isIndent: true },
+    { no: '15.', label: 'Nama Wali Peserta Didik', titik: ':', val: studentIdentity.namaWali },
     { no: '16.', label: 'Alamat Wali Peserta Didik', titik: ':', val: alamatWaliDuaBaris },
-    { no: '', label: 'Nomor Telepon Rumah', titik: ':', val: siswa.no_telepon_wali || siswa.no_hp_wali || '-', isIndent: true },
-    { no: '17.', label: 'Pekerjaan Wali Peserta Didik', titik: ':', val: siswa.pekerjaan_wali || '-' },
+    { no: '', label: 'Nomor Telepon Rumah', titik: ':', val: (siswa as any).no_telepon_wali || '-', isIndent: true },
+    { no: '17.', label: 'Pekerjaan Wali Peserta Didik', titik: ':', val: studentIdentity.pekerjaanWali },
   ];
 
   return (
@@ -408,10 +413,16 @@ export const BiodataPrintModal: React.FC<BiodataPrintModalProps> = React.memo(({
 
             {/* Blok Bawah: Pas Foto 3x4 & Tanda Tangan Kepala Sekolah */}
             <div className="mt-[5mm] flex items-end justify-between w-full">
-              {/* Kotak Pas Foto 3x4 (28mm x 36mm) - Terletak di area kiri sejajar X=62mm */}
-              <div className="ml-[46mm] w-[28mm] h-[36mm] border-[1.5px] border-black bg-white flex flex-col items-center justify-center text-center text-black shrink-0">
-                <span className="text-[10pt] font-normal leading-tight">Pas Foto</span>
-                <span className="text-[10pt] font-normal leading-tight">3x4</span>
+              {/* Kotak Pas Foto 3x4 Menggunakan Universal Photo Subsystem */}
+              <div className="ml-[46mm] shrink-0">
+                <UniversalStudentIdentity
+                  identityOverride={studentIdentity}
+                  mode="print"
+                  showPhoto={true}
+                  photoSizeMm={{ width: 28, height: 36 }}
+                  variant="print_kv"
+                  fields={[]}
+                />
               </div>
 
               {/* Blok Tanda Tangan Kepala Sekolah (Sisi Kanan) Menggunakan Universal Engine */}

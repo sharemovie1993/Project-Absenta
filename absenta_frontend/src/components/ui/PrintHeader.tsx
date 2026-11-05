@@ -1756,4 +1756,33 @@ export {
   type DocumentSignatureLayout,
 } from './UniversalDocumentSignatures';
 
+export {
+  UniversalStudentIdentity,
+  type UniversalStudentIdentityProps,
+  type StudentIdentityVariant,
+} from '@/components/common/UniversalStudentIdentity';
+
+export {
+  UniversalTeacherIdentity,
+  type UniversalTeacherIdentityProps,
+  type TeacherIdentityVariant,
+} from '@/components/common/UniversalTeacherIdentity';
+
+export {
+  useStudentIdentity,
+  useTeacherIdentity,
+} from '@/hooks/useAcademicIdentity';
+
+export {
+  normalizeStudentIdentity,
+  normalizeTeacherIdentity,
+  formatTtl,
+  formatTanggalIndonesia,
+  cleanNip,
+  formatNip,
+  formatInitials,
+  type StudentIdentity,
+  type TeacherIdentity,
+} from '@/utils/academic/academicIdentityNormalizer';
+
 export default PrintHeader;

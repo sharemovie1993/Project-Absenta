@@ -7,6 +7,7 @@
 
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { normalizeStudentIdentity } from '../../academic/academicIdentityNormalizer';
 
 export interface TranskripPrintMapelItem {
   mapel_id: string;
@@ -148,32 +149,33 @@ export function generatePdfTranskripNilai(data: TranskripPrintData): { blobUrl: 
   const leftColX = 14;
   const colGap = 32;
 
+  const student = normalizeStudentIdentity(data.siswa);
   const rowH = 4.2;
   doc.setFont('Helvetica', 'normal');
 
   doc.text('Nama Peserta Didik', leftColX, y);
   doc.text(':', leftColX + colGap, y);
   doc.setFont('Helvetica', 'bold');
-  doc.text(data.siswa.nama_siswa.toUpperCase(), leftColX + colGap + 3, y);
+  doc.text((student.nama || '-').toUpperCase(), leftColX + colGap + 3, y);
   doc.setFont('Helvetica', 'normal');
 
   doc.text('NIS / NISN', pageWidth / 2 + 5, y);
   doc.text(':', pageWidth / 2 + 30, y);
-  doc.text(`${data.siswa.nis || '-'} / ${data.siswa.nisn || '-'}`, pageWidth / 2 + 33, y);
+  doc.text(`${student.nis || '-'} / ${student.nisn || '-'}`, pageWidth / 2 + 33, y);
 
   y += rowH;
   doc.text('Tempat, Tgl Lahir', leftColX, y);
   doc.text(':', leftColX + colGap, y);
-  doc.text(`${data.siswa.tempat_lahir || '-'}, ${data.siswa.tanggal_lahir || '-'}`, leftColX + colGap + 3, y);
+  doc.text(student.ttlFormatted || '-', leftColX + colGap + 3, y);
 
   doc.text('Rombel / Kelas', pageWidth / 2 + 5, y);
   doc.text(':', pageWidth / 2 + 30, y);
-  doc.text(data.siswa.kelas || '-', pageWidth / 2 + 33, y);
+  doc.text(student.namaKelas || '-', pageWidth / 2 + 33, y);
 
   y += rowH;
   doc.text('Program Keahlian', leftColX, y);
   doc.text(':', leftColX + colGap, y);
-  doc.text(data.siswa.program_keahlian || data.siswa.jurusan || 'Teknik Pemesinan', leftColX + colGap + 3, y);
+  doc.text(student.programKeahlian || student.namaJurusan || '-', leftColX + colGap + 3, y);
 
   doc.text('Status Kelulusan', pageWidth / 2 + 5, y);
   doc.text(':', pageWidth / 2 + 30, y);

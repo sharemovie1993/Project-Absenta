@@ -5,6 +5,7 @@ import {
   PrintDocumentSheet,
   UniversalDocumentSignatures,
   usePrintHeaderData,
+  normalizeStudentIdentity,
 } from '@/components/ui/PrintHeader';
 import { hubinApi } from '@/api/hubin.api';
 import { raporApi } from '@/api/rapor.api';
@@ -195,7 +196,14 @@ export const RaporPklPrintModal: React.FC<RaporPklPrintModalProps> = React.memo(
     }
   }, [currentIndex, students, onSelectStudent]);
 
-  // Susun data item rapor PKL
+  // Susun data item rapor PKL menggunakan Universal Academic Identity
+  const studentIdentity = useMemo(() => {
+    return normalizeStudentIdentity({
+      ...(selectedStudent || {}),
+      ...(placement?.Siswa || {}),
+    });
+  }, [selectedStudent, placement]);
+
   const raporItem: RaporPklItemData | null = useMemo(() => {
     if (!selectedStudent) return null;
 
@@ -204,23 +212,13 @@ export const RaporPklPrintModal: React.FC<RaporPklPrintModalProps> = React.memo(
 
     return {
       siswa: {
-        id: selectedStudent.id,
-        nama_siswa: selectedStudent.nama_siswa,
-        nis: selectedStudent.nis || placement?.Siswa?.nis || '-',
-        nisn: placement?.Siswa?.nisn || '-',
-        nama_kelas: selectedStudent.nama_kelas || placement?.Siswa?.Kelas?.nama_kelas || '-',
-        program_keahlian:
-          placement?.Siswa?.Kelas?.Jurusan?.ProgramKeahlian?.nama ||
-          placement?.Siswa?.Jurusan?.ProgramKeahlian?.nama ||
-          (placement as any)?.program_keahlian ||
-          selectedStudent.nama_kelas ||
-          '-',
-        konsentrasi_keahlian:
-          placement?.Siswa?.Kelas?.Jurusan?.nama ||
-          placement?.Siswa?.Jurusan?.nama ||
-          (placement as any)?.konsentrasi_keahlian ||
-          selectedStudent.nama_kelas ||
-          '-',
+        id: studentIdentity.id,
+        nama_siswa: studentIdentity.nama,
+        nis: studentIdentity.nis,
+        nisn: studentIdentity.nisn,
+        nama_kelas: studentIdentity.namaKelas,
+        program_keahlian: studentIdentity.programKeahlian,
+        konsentrasi_keahlian: studentIdentity.jurusanNama,
       },
       pkl: {
         mitra_nama: placement?.Mitra?.nama || placement?.mitra_nama || 'DUDI MITRA',

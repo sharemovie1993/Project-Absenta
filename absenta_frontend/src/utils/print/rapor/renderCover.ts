@@ -10,6 +10,7 @@ import {
   resolveCoverImageBase64,
   resolveJenjangLines,
 } from './raporShared';
+import { normalizeStudentIdentity } from '../../academic/academicIdentityNormalizer';
 
 export interface RenderCoverRaporOptions {
   namaSiswa: string;
@@ -172,9 +173,10 @@ export const generateCoverRaporPdf = async (options: {
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
   const fontFamily = await ensureCambriaFont(doc);
 
-  const namaSiswa = (siswa.nama_siswa || siswa.nama || siswaDirect?.nama_siswa || siswaDirect?.nama || '-').toUpperCase();
-  const nis = siswa.nis || siswaDirect?.nis || '-';
-  const nisn = siswa.nisn || siswaDirect?.nisn || '-';
+  const normalizedStudent = normalizeStudentIdentity(siswa);
+  const namaSiswa = (normalizedStudent.nama || '-').toUpperCase();
+  const nis = normalizedStudent.nis || '-';
+  const nisn = normalizedStudent.nisn || '-';
 
   renderOfficialCoverRaporPage(doc, {
     namaSiswa,

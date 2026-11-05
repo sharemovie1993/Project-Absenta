@@ -5,6 +5,7 @@ import {
   UniversalDocumentSignatures,
   PrintHeader,
   usePrintHeaderData,
+  normalizeTeacherIdentity,
 } from '@/components/ui/PrintHeader';
 import { useQuery } from '@tanstack/react-query';
 import { listGuruMapel } from '@/api/kurikulum/guru-mapel.api';
@@ -14,6 +15,7 @@ import { safeArr } from '@/components/kurikulum/dashboard/DashboardComponents';
 interface BebanMengajarPrintModalProps {
   isOpen: boolean;
   onClose: () => void;
+  tahunPelajaranId?: string;
   tahunPelajaranNama?: string;
   semesterNama?: string;
 }
@@ -21,6 +23,7 @@ interface BebanMengajarPrintModalProps {
 export const BebanMengajarPrintModal: React.FC<BebanMengajarPrintModalProps> = ({
   isOpen,
   onClose,
+  tahunPelajaranId,
   tahunPelajaranNama = '2026/2027',
   semesterNama = 'Ganjil',
 }) => {
@@ -72,12 +75,14 @@ export const BebanMengajarPrintModal: React.FC<BebanMengajarPrintModalProps> = (
         0
       );
 
+      const teacherIdentity = normalizeTeacherIdentity(g);
+
       return {
         no: idx + 1,
         id: g.id,
-        nama: g.nama_guru || g.nama || 'Guru',
-        nip: g.nip || '-',
-        golongan: g.pangkat_golongan || g.golongan || '-',
+        nama: teacherIdentity.namaLengkapGelar,
+        nip: teacherIdentity.nipClean || '-',
+        golongan: teacherIdentity.pangkatGolongan,
         mapel: mapelList.join(', ') || '-',
         kelas: kelasList.join(', ') || '-',
         totalJp,

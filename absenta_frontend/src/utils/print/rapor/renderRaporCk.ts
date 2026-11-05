@@ -8,6 +8,10 @@ import {
   PrintRaporBatchOptions,
   PrintRaporOptions,
 } from './raporShared';
+import {
+  normalizeStudentIdentity,
+  normalizeTeacherIdentity,
+} from '../../academic/academicIdentityNormalizer';
 
 /**
  * Helper untuk merender 2 halaman Rapor Semester Siswa ke dalam instance jsPDF.
@@ -25,7 +29,18 @@ export const renderStudentRaporPages = (
   fontFamily: string = 'Helvetica'
 ): void => {
   const font = fontFamily || 'Helvetica';
-  const siswa = data?.siswa || {};
+  const rawSiswa = data?.siswa || {};
+  const normalizedStudent = normalizeStudentIdentity(rawSiswa);
+  const siswa = {
+    ...rawSiswa,
+    nama_siswa: normalizedStudent.nama,
+    nis: normalizedStudent.nis,
+    nisn: normalizedStudent.nisn,
+    kelas: normalizedStudent.namaKelas || rawSiswa.kelas,
+    bidang_keahlian: normalizedStudent.bidangKeahlian || rawSiswa.bidang_keahlian,
+    program_keahlian: normalizedStudent.programKeahlian || rawSiswa.program_keahlian,
+    konsentrasi_keahlian: normalizedStudent.konsentrasiKeahlian || normalizedStudent.namaJurusan || rawSiswa.konsentrasi_keahlian,
+  };
   const effectiveSettings = raporSettings || data?.rapor_settings;
 
   // Multi-layered resolution: Parameter -> Data Payload -> Settings Map -> Smart Fallback
@@ -702,11 +717,13 @@ export const renderStudentRaporPages = (
 
   const kepalaSekolahNama = effectiveSettings?.kepsek_nama || sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'WAHYU TAMIMBARKAH, S.Pd.';
   const kepalaSekolahNip = effectiveSettings?.kepsek_nip || sekolah?.nip_kepala || tenantInfo?.nip_kepala || '197111022008011001';
-  const waliKelasNama = data?.wali_kelas_nama || data?.wali_kelas?.nama || data?.walas?.nama || 'Wali Kelas';
-  const rawWalasNip = data?.wali_kelas_nip || data?.wali_kelas?.nip || data?.walas?.nip;
-  const waliKelasNip = rawWalasNip && rawWalasNip !== '-' 
-    ? (rawWalasNip.startsWith('NIP.') ? rawWalasNip : `NIP. ${rawWalasNip}`)
-    : 'NIP. -';
+  const walasRaw = {
+    nama: data?.wali_kelas_nama || data?.wali_kelas?.nama || data?.walas?.nama || 'Wali Kelas',
+    nip: data?.wali_kelas_nip || data?.wali_kelas?.nip || data?.walas?.nip,
+  };
+  const normalizedWalas = normalizeTeacherIdentity(walasRaw);
+  const waliKelasNama = normalizedWalas.nama;
+  const waliKelasNip = normalizedWalas.nipFormatted || 'NIP. -';
 
   // Row 1: Orang Tua & Wali Kelas
   const leftBlockX = 22;

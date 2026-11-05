@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { normalizeStudentIdentity } from '../../academic/academicIdentityNormalizer';
 import { raporApi } from '../../../api/rapor.api';
 import { sekolahApi } from '../../../api/academic/sekolah.api';
 import { siswaApi } from '../../../api/academic.api';
@@ -58,36 +59,37 @@ export const renderOfficialBiodataPage = (
     siswa.kabupaten_ortu || siswa.kabupaten
   );
 
-  const jk = (siswa.jenis_kelamin || '').toUpperCase().startsWith('L') ? 'Laki-Laki' : 'Perempuan';
-  const ttl = `${siswa.tempat_lahir || '-'} , ${formatIndoDate(siswa.tanggal_lahir)}`;
-  const tglMasuk = formatIndoDate(siswa.tanggal_masuk);
+  const identity = normalizeStudentIdentity(siswa);
+  const jk = identity.jenisKelaminLabel;
+  const ttl = identity.ttlFormatted;
+  const tglMasuk = identity.tanggalMasuk || formatIndoDate(siswa.tanggal_masuk);
 
   const tableBody: Array<[string, string, string, string]> = [
-    ['1.', 'Nama Peserta Didik Lengkap', ':', (siswa.nama_siswa || siswa.nama || '-').toUpperCase()],
-    ['2.', 'Nomor Induk Siswa / NISN', ':', `${siswa.nis || '-'} / ${siswa.nisn || '-'}`],
+    ['1.', 'Nama Peserta Didik Lengkap', ':', identity.nama.toUpperCase()],
+    ['2.', 'Nomor Induk Siswa / NISN', ':', `${identity.nis} / ${identity.nisn}`],
     ['3.', 'Tempat Tanggal Lahir', ':', ttl],
     ['4.', 'Jenis Kelamin', ':', jk],
-    ['5.', 'Agama / Kepercayaan', ':', siswa.agama || '-'],
+    ['5.', 'Agama / Kepercayaan', ':', identity.agama],
     ['6.', 'Status dalam Keluarga', ':', siswa.status_dalam_keluarga || 'Anak Kandung'],
     ['7.', 'Anak ke', ':', formatAnakKe(siswa.anak_ke)],
     ['8.', 'Alamat Peserta Didik', ':', alamatSiswaDuaBaris],
-    ['9.', 'Nomor Telepon Rumah', ':', siswa.no_telepon || '-'],
-    ['10.', 'Sekolah Asal', ':', siswa.sekolah_asal || '-'],
+    ['9.', 'Nomor Telepon Rumah', ':', siswa.no_telepon || identity.kontakOrtu],
+    ['10.', 'Sekolah Asal', ':', identity.sekolahAsal],
     ['11.', 'Diterima di sekolah ini', '', ''],
-    ['', 'Di kelas', ':', siswa.kelas_awal || siswa.kelas || '-'],
+    ['', 'Di kelas', ':', siswa.kelas_awal || identity.namaKelas],
     ['', 'Pada tanggal', ':', tglMasuk],
     ['12.', 'Nama Orang Tua', '', ''],
-    ['', 'a. Ayah', ':', siswa.nama_ayah || '-'],
-    ['', 'b. Ibu', ':', siswa.nama_ibu || '-'],
+    ['', 'a. Ayah', ':', identity.namaAyah],
+    ['', 'b. Ibu', ':', identity.namaIbu],
     ['13.', 'Alamat Orang Tua', ':', alamatOrtuDuaBaris],
-    ['', 'Nomor Telepon Rumah', ':', siswa.no_telepon_ortu || '-'],
+    ['', 'Nomor Telepon Rumah', ':', siswa.no_telepon_ortu || identity.kontakOrtu],
     ['14.', 'Pekerjaan Orang Tua', '', ''],
-    ['', 'a. Ayah', ':', siswa.pekerjaan_ayah || '-'],
-    ['', 'b. Ibu', ':', siswa.pekerjaan_ibu || '-'],
-    ['15.', 'Nama Wali Peserta Didik', ':', siswa.nama_wali || '-'],
-    ['16.', 'Alamat Wali Peserta Didik', ':', siswa.alamat_wali || '-'],
+    ['', 'a. Ayah', ':', identity.pekerjaanAyah],
+    ['', 'b. Ibu', ':', identity.pekerjaanIbu],
+    ['15.', 'Nama Wali Peserta Didik', ':', identity.namaWali],
+    ['16.', 'Alamat Wali Peserta Didik', ':', alamatWaliDuaBaris],
     ['', 'Nomor Telepon Rumah', ':', siswa.no_telepon_wali || '-'],
-    ['17.', 'Pekerjaan Wali Peserta Didik', ':', siswa.pekerjaan_wali || '-'],
+    ['17.', 'Pekerjaan Wali Peserta Didik', ':', identity.pekerjaanWali],
   ];
 
   autoTable(doc, {

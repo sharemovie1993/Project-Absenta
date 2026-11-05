@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { normalizeStudentIdentity } from '@/utils/academic/academicIdentityNormalizer';
 
 export interface SertifikatPklPrintData {
   nomor_sertifikat?: string;
@@ -183,6 +184,7 @@ export const renderSertifikatFront = (
   const tanggalTerbit = data.tanggal_terbit || `${kotaSekolah}, ${formatTanggalIndonesia(new Date())}`;
 
   const { siswa, mitra, penilaian } = data;
+  const normalizedSiswa = normalizeStudentIdentity(siswa);
 
   const hardScores = [
     penilaian.hard_kompetensi_teknis ?? 88,
@@ -349,25 +351,22 @@ export const renderSertifikatFront = (
   doc.setFont('Helvetica', 'normal');
   doc.text('Tempat, Tanggal Lahir', colLabelX, curY);
   doc.text(':', colColonX, curY);
-  const tglLahirStr = siswa.tanggal_lahir ? formatTanggalIndonesia(siswa.tanggal_lahir) : '';
-  const tempatLahirStr = siswa.tempat_lahir || '';
-  const ttlStr = tempatLahirStr && tglLahirStr ? `${tempatLahirStr}, ${tglLahirStr}` : (tempatLahirStr || tglLahirStr || '-');
-  doc.text(ttlStr, colValX, curY);
+  doc.text(normalizedSiswa.ttlFormatted, colValX, curY);
 
   curY += lineSpacing;
   doc.text('Nomor Induk Siswa', colLabelX, curY);
   doc.text(':', colColonX, curY);
-  doc.text(siswa.nis || '-', colValX, curY);
+  doc.text(normalizedSiswa.nis || '-', colValX, curY);
 
   curY += lineSpacing;
   doc.text('Program Keahlian', colLabelX, curY);
   doc.text(':', colColonX, curY);
-  doc.text(siswa.program_keahlian || '-', colValX, curY);
+  doc.text(normalizedSiswa.programKeahlian, colValX, curY);
 
   curY += lineSpacing;
   doc.text('Konsentrasi Keahlian', colLabelX, curY);
   doc.text(':', colColonX, curY);
-  doc.text(siswa.konsentrasi_keahlian || '-', colValX, curY);
+  doc.text(normalizedSiswa.jurusanNama, colValX, curY);
 
   // E. Data Pelaksanaan PKL
   curY += lineSpacing + 1;
@@ -455,6 +454,7 @@ export const renderSertifikatBack = (
   const showPicName = options?.showPicName ?? true;
   const pageWidth = 297;
   const { siswa, mitra, penilaian } = data;
+  const normalizedSiswa = normalizeStudentIdentity(siswa);
   const isComposite = data.assessment_mode === 'COMPOSITE';
   const wDudi = data.weight_dudi ?? 70;
   const wLaporan = data.weight_laporan ?? 15;
@@ -528,7 +528,7 @@ export const renderSertifikatBack = (
   curY += rowGap;
   doc.text('Konsentrasi Keahlian', leftLabelX, curY);
   doc.text(':', leftColonX, curY);
-  doc.text(siswa.konsentrasi_keahlian || '-', leftValX, curY);
+  doc.text(normalizedSiswa.jurusanNama, leftValX, curY);
 
   curY += rowGap;
   doc.text('Nama Perusahaan/Instansi', leftLabelX, curY);

@@ -10,6 +10,10 @@ import {
   PrintRaporBatchOptions,
   PrintRaporOptions,
 } from './raporShared';
+import {
+  normalizeStudentIdentity,
+  normalizeTeacherIdentity,
+} from '../../academic/academicIdentityNormalizer';
 
 // Fallback P5 metadata & dimensions matching official reference format
 const DEFAULT_P5_PROJECT = {
@@ -82,18 +86,19 @@ export const renderOfficialP5Page = (
   doc.setTextColor(0, 0, 0);
   doc.text('PROJEK PENGUATAN PROFIL PELAJAR PANCASILA (P5)', pageWidth / 2, 17, { align: 'center' });
 
-  // 2. Student & Project Metadata
-  const namaSiswa = (siswa.nama_siswa || siswa.nama || '-').toUpperCase();
-  const nis = siswa.nis || '-';
-  const nisn = siswa.nisn || '-';
-  const klsText = siswa.kelas || siswa.nama_kelas || siswa.kelas_nama || '-';
+  // 2. Student & Project Metadata (Universal Academic Identity Engine)
+  const normalizedStudent = normalizeStudentIdentity(siswa);
+  const namaSiswa = (normalizedStudent.nama || '-').toUpperCase();
+  const nis = normalizedStudent.nis || '-';
+  const nisn = normalizedStudent.nisn || '-';
+  const klsText = normalizedStudent.namaKelas || siswa.kelas || siswa.nama_kelas || siswa.kelas_nama || '-';
   const semText = semesterNama || 'Ganjil';
-  const tingkatNum = Number(siswa.tingkat || 10);
-  const faseText = siswa.fase || (tingkatNum === 10 ? 'E' : 'F');
+  const tingkatNum = Number(normalizedStudent.tingkat || 10);
+  const faseText = (siswa as any)?.fase || (tingkatNum === 10 ? 'E' : 'F');
   const namaSekolah = (sekolah?.nama || tenantInfo?.name || 'SMKN 1 PLERED').toUpperCase();
 
-  const programKeahlian = siswa.program_keahlian || siswa.jurusan || tenantInfo?.program_keahlian || 'Perhotelan';
-  const konsentrasiKeahlian = siswa.konsentrasi_keahlian || siswa.jurusan || programKeahlian;
+  const programKeahlian = normalizedStudent.programKeahlian || tenantInfo?.program_keahlian || 'Perhotelan';
+  const konsentrasiKeahlian = normalizedStudent.konsentrasiKeahlian || normalizedStudent.namaJurusan || programKeahlian;
 
   // Determine Project Details
   const firstP5 = allP5?.[0];
@@ -274,8 +279,13 @@ export const renderOfficialP5Page = (
 
   const kepalaSekolahNama = sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'WAHYU TAMIMBARKAH, S.Pd.';
   const kepalaSekolahNip = sekolah?.nip_kepala_sekolah || tenantInfo?.nip_kepala_sekolah || '197111022008011001';
-  const walasNama = siswa?.walas_nama || siswa?.walas?.nama || (siswa.kelas_detail?.wali_kelas?.nama) || tenantInfo?.walas_nama || 'HERI JUNAEDI, S.E.';
-  const walasNip = siswa?.walas_nip || siswa?.walas?.nip || (siswa.kelas_detail?.wali_kelas?.nip) || tenantInfo?.walas_nip || '196907222025211018';
+  const walasRaw = {
+    nama: siswa?.walas_nama || siswa?.walas?.nama || (siswa.kelas_detail?.wali_kelas?.nama) || tenantInfo?.walas_nama || 'HERI JUNAEDI, S.E.',
+    nip: siswa?.walas_nip || siswa?.walas?.nip || (siswa.kelas_detail?.wali_kelas?.nip) || tenantInfo?.walas_nip || '196907222025211018',
+  };
+  const normalizedWalas = normalizeTeacherIdentity(walasRaw);
+  const walasNama = normalizedWalas.nama;
+  const walasNip = normalizedWalas.nipFormatted || 'NIP. -';
 
   // 1. Ortu (Left)
   doc.setFont('Helvetica', 'normal');
@@ -291,7 +301,7 @@ export const renderOfficialP5Page = (
   doc.text(walasNama, rightSignX, walasSignY);
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(8);
-  doc.text(`NIP. ${walasNip}`, rightSignX, walasSignY + 4.5);
+  doc.text(walasNip, rightSignX, walasSignY + 4.5);
 
   // Ortu line (dotted)
   doc.setFont('Helvetica', 'normal');

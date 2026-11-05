@@ -36,6 +36,7 @@ import { formatAlamatLengkap } from '../../../lib/alamat.util';
 import { getStrukturList } from '../../../api/academic/strukturOrganisasi.api';
 import { uploadGuruDocument, getMemberDocPreviewUrl } from '../../../api/memberDocs.api';
 import { resolveProfilePhotoUrl } from '../../../lib/utils';
+import { normalizeTeacherIdentity } from '@/utils/academic/academicIdentityNormalizer';
 import { SelfMemberDocsSection } from '../../documents/SelfMemberDocsSection';
 import { studentCardConfigApi } from '../../../api/academic/student-card-config.api';
 import { PrintOverlay } from '@/components/academic/student-card/PrintOverlay';
@@ -445,10 +446,11 @@ export const GuruDetailView: React.FC<GuruDetailViewProps> = ({
     );
   }
 
-  const rawGuruPhoto = guru.foto || (guru as any).foto_url || null;
+  const teacherIdentity = normalizeTeacherIdentity(guru);
+  const rawGuruPhoto = teacherIdentity.fotoUrl;
   const resolvedPhotoUrl = rawGuruPhoto ? resolveProfilePhotoUrl(rawGuruPhoto) : null;
   const displayPhotoUrl = localPhotoPreview ?? resolvedPhotoUrl;
-  const guruInitials = (guru.nama_guru || 'Guru').split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase();
+  const guruInitials = teacherIdentity.initials;
 
   const alamatLengkapFormatted = formatAlamatLengkap({
     alamat: editAlamat,

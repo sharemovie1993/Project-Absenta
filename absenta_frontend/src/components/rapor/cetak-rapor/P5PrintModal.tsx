@@ -5,6 +5,7 @@ import {
   PrintDocumentSheet,
   UniversalDocumentSignatures,
   usePrintHeaderData,
+  normalizeStudentIdentity,
 } from '@/components/ui/PrintHeader';
 import { siswaApi } from '@/api/academic.api';
 import { raporApi } from '@/api/rapor.api';
@@ -188,18 +189,22 @@ export const P5PrintModal: React.FC<P5PrintModalProps> = React.memo(({
 
   if (!isOpen || !selectedStudent) return null;
 
-  // Metadata Format
-  const namaSiswa = (siswa.nama_siswa || siswa.nama || '-').toUpperCase();
-  const nis = siswa.nis || '-';
-  const nisn = siswa.nisn || '-';
-  const klsText = siswa.kelas || siswa.nama_kelas || siswa.kelas_nama || kelasNama || '-';
+  // Metadata Format (Universal Academic Identity Engine)
+  const normalizedStudent = useMemo(
+    () => normalizeStudentIdentity(siswa),
+    [siswa]
+  );
+  const namaSiswa = (normalizedStudent.nama || '-').toUpperCase();
+  const nis = normalizedStudent.nis || '-';
+  const nisn = normalizedStudent.nisn || '-';
+  const klsText = normalizedStudent.namaKelas || siswa.kelas || siswa.nama_kelas || siswa.kelas_nama || kelasNama || '-';
   const semText = semesterNama || 'Ganjil';
-  const tingkatNum = Number(siswa.tingkat || 10);
-  const faseText = siswa.fase || (tingkatNum === 10 ? 'E' : 'F');
+  const tingkatNum = Number(normalizedStudent.tingkat || 10);
+  const faseText = (siswa as any)?.fase || (tingkatNum === 10 ? 'E' : 'F');
   const namaSekolah = (rawSekolah?.nama || tenantInfo?.name || 'SMKN 1 PLERED').toUpperCase();
 
-  const programKeahlian = siswa.program_keahlian || siswa.jurusan || tenantInfo?.program_keahlian || '-';
-  const konsentrasiKeahlian = siswa.konsentrasi_keahlian || siswa.jurusan || programKeahlian;
+  const programKeahlian = normalizedStudent.programKeahlian || tenantInfo?.program_keahlian || '-';
+  const konsentrasiKeahlian = normalizedStudent.konsentrasiKeahlian || normalizedStudent.namaJurusan || programKeahlian;
 
   const firstP5 = allP5?.[0];
   const temaProjek = activeProjek?.tema || firstP5?.Projek?.tema || firstP5?.projek_tema || DEFAULT_P5_PROJECT.tema;

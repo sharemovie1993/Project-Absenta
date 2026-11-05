@@ -5,6 +5,7 @@ import {
   PrintDocumentSheet,
   UniversalDocumentSignatures,
   usePrintHeaderData,
+  normalizeStudentIdentity,
 } from '@/components/ui/PrintHeader';
 import { raporApi } from '@/api/rapor.api';
 import { generateRaporPdf } from '@/utils/print/rapor/renderRaporCk';
@@ -144,20 +145,24 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
 
   if (!isOpen || !selectedStudent) return null;
 
-  // Metadata Siswa
+  // Metadata Siswa (Universal Academic Identity Engine)
+  const normalizedStudent = useMemo(
+    () => normalizeStudentIdentity(raporData?.siswa || selectedStudent),
+    [raporData?.siswa, selectedStudent]
+  );
   const siswa = raporData?.siswa || selectedStudent || {};
-  const namaSiswa = (siswa.nama_siswa || siswa.nama || '-').toUpperCase();
-  const nis = siswa.nis || '-';
-  const nisn = siswa.nisn || '-';
+  const namaSiswa = (normalizedStudent.nama || '-').toUpperCase();
+  const nis = normalizedStudent.nis || '-';
+  const nisn = normalizedStudent.nisn || '-';
   const namaSekolah = (rawSekolah?.nama || tenantInfo?.name || 'SEKOLAH').toUpperCase();
   const alamatSekolah = rawSekolah?.alamat || tenantInfo?.address || '-';
 
-  const bidangKeahlian = siswa.bidang_keahlian || 'Teknologi Manufaktur dan Rekayasa';
-  const programKeahlian = siswa.program_keahlian || siswa.jurusan || tenantInfo?.program_keahlian || 'Teknik Elektronika';
-  const konsentrasiKeahlian = siswa.konsentrasi_keahlian || siswa.jurusan || programKeahlian;
+  const bidangKeahlian = normalizedStudent.bidangKeahlian || tenantInfo?.bidang_keahlian || 'Teknologi Manufaktur dan Rekayasa';
+  const programKeahlian = normalizedStudent.programKeahlian || tenantInfo?.program_keahlian || 'Teknik Elektronika';
+  const konsentrasiKeahlian = normalizedStudent.konsentrasiKeahlian || normalizedStudent.namaJurusan || programKeahlian;
 
-  const kelas = siswa.kelas || selectedStudent.nama_kelas || '-';
-  const tingkatNum = Number(siswa.tingkat || 10);
+  const kelas = normalizedStudent.namaKelas || selectedStudent.nama_kelas || '-';
+  const tingkatNum = Number(normalizedStudent.tingkat || 10);
   const fase = tingkatNum <= 10 ? 'E' : 'F';
 
   // Semester & Tahun Pelajaran Info

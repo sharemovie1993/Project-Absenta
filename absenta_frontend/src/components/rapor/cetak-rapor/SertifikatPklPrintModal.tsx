@@ -6,6 +6,8 @@ import {
   UniversalDocumentSignatures,
   PrintHeader,
   usePrintHeaderData,
+  UniversalStudentIdentity,
+  normalizeStudentIdentity,
 } from '@/components/ui/PrintHeader';
 import { hubinApi } from '@/api/hubin.api';
 import { siswaApi } from '@/api/academic.api';
@@ -125,6 +127,16 @@ export const SertifikatPklPrintModal: React.FC<SertifikatPklPrintModalProps> = R
     }
   }, [currentIndex, students, onSelectStudent]);
 
+  // SSoT Universal Academic Identity Siswa
+  const studentIdentity = useMemo(() => {
+    return normalizeStudentIdentity({
+      ...(selectedStudent || {}),
+      ...(detailSiswa || {}),
+      ...(placement?.Siswa || {}),
+      ...(certDetail?.Siswa || {}),
+    });
+  }, [selectedStudent, detailSiswa, placement, certDetail]);
+
   // Susun data cetak sertifikat
   const certData: SertifikatPklPrintData | null = useMemo(() => {
     if (!selectedStudent) return null;
@@ -189,27 +201,6 @@ export const SertifikatPklPrintModal: React.FC<SertifikatPklPrintModalProps> = R
       (rawSekolah as any)?.nip_kepala_sekolah ||
       '';
 
-    // Resolusi Program & Konsentrasi Keahlian (Relasi: Siswa -> Kelas -> Jurusan -> ProgramKeahlian)
-    const programKeahlian =
-      certDetail?.Siswa?.Kelas?.Jurusan?.ProgramKeahlian?.nama ||
-      certDetail?.Siswa?.Jurusan?.ProgramKeahlian?.nama ||
-      detailSiswa?.Kelas?.Jurusan?.ProgramKeahlian?.nama ||
-      detailSiswa?.Jurusan?.ProgramKeahlian?.nama ||
-      placement?.Siswa?.Kelas?.Jurusan?.ProgramKeahlian?.nama ||
-      placement?.Siswa?.Jurusan?.ProgramKeahlian?.nama ||
-      (placement as any)?.program_keahlian ||
-      '-';
-
-    const konsentrasiKeahlian =
-      certDetail?.Siswa?.Kelas?.Jurusan?.nama ||
-      certDetail?.Siswa?.Jurusan?.nama ||
-      detailSiswa?.Kelas?.Jurusan?.nama ||
-      detailSiswa?.Jurusan?.nama ||
-      placement?.Siswa?.Kelas?.Jurusan?.nama ||
-      placement?.Siswa?.Jurusan?.nama ||
-      selectedStudent?.nama_kelas ||
-      '-';
-
     return {
       nomor_sertifikat: nomorSertifikat,
       durasi_jp: durasiJp,
@@ -231,15 +222,15 @@ export const SertifikatPklPrintModal: React.FC<SertifikatPklPrintModalProps> = R
         print_header_lines: tenantInfo?.print_header_lines,
       },
       siswa: {
-        nama_siswa: selectedStudent.nama_siswa || certDetail?.Siswa?.nama_siswa || placement?.Siswa?.nama_siswa || '',
-        nis: selectedStudent.nis || certDetail?.Siswa?.nis || placement?.Siswa?.nis || '-',
-        nisn: certDetail?.Siswa?.nisn || placement?.Siswa?.nisn || (detailSiswa as any)?.nisn || '-',
-        tempat_lahir: certDetail?.Siswa?.tempat_lahir || (detailSiswa as any)?.tempat_lahir || '',
-        tanggal_lahir: certDetail?.Siswa?.tanggal_lahir || (detailSiswa as any)?.tanggal_lahir || null,
-        foto: (detailSiswa as any)?.foto || certDetail?.Siswa?.foto || null,
-        program_keahlian: programKeahlian,
-        konsentrasi_keahlian: konsentrasiKeahlian,
-        nama_kelas: certDetail?.Siswa?.Kelas?.nama_kelas || selectedStudent.nama_kelas || placement?.Siswa?.Kelas?.nama_kelas || '-',
+        nama_siswa: studentIdentity.nama,
+        nis: studentIdentity.nis,
+        nisn: studentIdentity.nisn,
+        tempat_lahir: studentIdentity.tempatLahir,
+        tanggal_lahir: studentIdentity.tanggalLahir,
+        foto: studentIdentity.fotoUrl,
+        program_keahlian: studentIdentity.programKeahlian,
+        konsentrasi_keahlian: studentIdentity.jurusanNama,
+        nama_kelas: studentIdentity.namaKelas,
       },
       mitra: {
         nama: certDetail?.Mitra?.nama || placement?.Mitra?.nama || placement?.mitra_nama || 'DU/DI Mitra',
@@ -382,42 +373,17 @@ export const SertifikatPklPrintModal: React.FC<SertifikatPklPrintModalProps> = R
                 Kepala {certData?.sekolah?.nama} menerangkan bahwa :
               </div>
 
-              {/* Biodata Siswa */}
-              <div className="w-full text-[9.5pt] leading-relaxed text-black pl-[6mm] mb-[3mm]">
-                <table className="table-fixed border-collapse">
-                  <tbody>
-                    <tr>
-                      <td className="w-[45mm] py-0.5">Nama</td>
-                      <td className="w-[4mm] py-0.5 text-center">:</td>
-                      <td className="py-0.5 font-bold uppercase">{certData?.siswa.nama_siswa}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-0.5">Tempat, Tanggal Lahir</td>
-                      <td className="py-0.5 text-center">:</td>
-                      <td className="py-0.5">{ttl}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-0.5">Nomor Induk Siswa/NISN</td>
-                      <td className="py-0.5 text-center">:</td>
-                      <td className="py-0.5">{certData?.siswa.nis || '-'} / {certData?.siswa.nisn || '-'}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-0.5">Program Keahlian</td>
-                      <td className="py-0.5 text-center">:</td>
-                      <td className="py-0.5">{certData?.siswa.program_keahlian}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-0.5">Konsentrasi Keahlian</td>
-                      <td className="py-0.5 text-center">:</td>
-                      <td className="py-0.5">{certData?.siswa.konsentrasi_keahlian}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-0.5">Sekolah Asal</td>
-                      <td className="py-0.5 text-center">:</td>
-                      <td className="py-0.5 font-bold uppercase">{certData?.sekolah?.nama}</td>
-                    </tr>
-                  </tbody>
-                </table>
+              {/* Biodata Siswa Menggunakan UniversalStudentIdentity */}
+              <div className="w-full pl-[6mm] mb-[3mm]">
+                <UniversalStudentIdentity
+                  identityOverride={{
+                    ...studentIdentity,
+                    sekolahAsal: certData?.sekolah?.nama || studentIdentity.sekolahAsal,
+                  }}
+                  mode="print"
+                  variant="print_kv"
+                  fields={['nama', 'ttl', 'nis_nisn', 'program_keahlian', 'konsentrasi_keahlian', 'sekolah_asal']}
+                />
               </div>
 
               {/* Paragraf Keterangan Pelaksanaan */}
@@ -444,10 +410,16 @@ export const SertifikatPklPrintModal: React.FC<SertifikatPklPrintModalProps> = R
                 </div>
               </div>
 
-              {/* Kotak Pas Foto Siswa (Tengah) */}
-              <div className="w-[28mm] h-[36mm] border-[1.5px] border-black bg-white flex flex-col items-center justify-center text-center text-black shrink-0 mx-auto">
-                <span className="text-[9pt] font-normal">Pas Foto</span>
-                <span className="text-[9pt] font-normal">3 × 4</span>
+              {/* Kotak Pas Foto Siswa (Tengah) Menggunakan Universal Photo Subsystem */}
+              <div className="mx-auto shrink-0">
+                <UniversalStudentIdentity
+                  identityOverride={studentIdentity}
+                  mode="print"
+                  showPhoto={true}
+                  photoSizeMm={{ width: 28, height: 36 }}
+                  variant="print_kv"
+                  fields={[]}
+                />
               </div>
 
               {/* Tanda Tangan Kepala Sekolah (Kanan) Menggunakan Universal Signature Engine */}
@@ -484,28 +456,19 @@ export const SertifikatPklPrintModal: React.FC<SertifikatPklPrintModalProps> = R
                 </h1>
               </div>
 
-              {/* Identitas Singkat Siswa & Industri */}
+              {/* Identitas Singkat Siswa & Industri Menggunakan UniversalStudentIdentity */}
               <div className="w-full text-[9pt] leading-tight text-black mb-[3.5mm]">
+                <UniversalStudentIdentity
+                  identityOverride={studentIdentity}
+                  mode="print"
+                  variant="print_kv"
+                  fields={['nama', 'nis', 'konsentrasi_keahlian']}
+                />
                 <table className="table-fixed border-collapse">
                   <tbody>
                     <tr>
-                      <td className="w-[45mm] py-0.5">Nama</td>
+                      <td className="w-[45mm] py-0.5">Nama Perusahaan/Instansi</td>
                       <td className="w-[4mm] py-0.5 text-center">:</td>
-                      <td className="py-0.5 font-bold uppercase">{certData?.siswa.nama_siswa}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-0.5">Nomor Induk Siswa</td>
-                      <td className="py-0.5 text-center">:</td>
-                      <td className="py-0.5">{certData?.siswa.nisn || certData?.siswa.nis || '-'}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-0.5">Konsentrasi Keahlian</td>
-                      <td className="py-0.5 text-center">:</td>
-                      <td className="py-0.5">{certData?.siswa.konsentrasi_keahlian}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-0.5">Nama Perusahaan/Instansi</td>
-                      <td className="py-0.5 text-center">:</td>
                       <td className="py-0.5 font-bold uppercase">{certData?.mitra.nama}</td>
                     </tr>
                   </tbody>

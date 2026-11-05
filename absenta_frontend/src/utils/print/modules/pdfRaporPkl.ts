@@ -10,6 +10,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatTanggalIndonesia } from './pdfSertifikatPkl';
+import { normalizeStudentIdentity, cleanNip } from '@/utils/academic/academicIdentityNormalizer';
 
 export interface RaporPklItemData {
   siswa: {
@@ -82,19 +83,20 @@ export const renderRaporPklPage1 = (doc: jsPDF, data: RaporPklItemData, isNewPag
   doc.text(tpText, pageWidth / 2, y, { align: 'center' });
   y += 10;
 
-  // 2. Identitas Siswa & PKL
+  // 2. Identitas Siswa & PKL (SSoT Universal Academic Identity)
+  const normalizedSiswa = normalizeStudentIdentity(data.siswa);
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(8.5);
 
-  const tglMulaiStr = data.pkl.tanggal_mulai ? formatTanggalIndonesia(data.pkl.tanggal_mulai) : '14 Jul 2025';
-  const tglSelesaiStr = data.pkl.tanggal_selesai ? formatTanggalIndonesia(data.pkl.tanggal_selesai) : '15 Des 2025';
+  const tglMulaiStr = data.pkl.tanggal_mulai ? formatTanggalIndonesia(data.pkl.tanggal_mulai) : '-';
+  const tglSelesaiStr = data.pkl.tanggal_selesai ? formatTanggalIndonesia(data.pkl.tanggal_selesai) : '-';
 
   const metaRows: [string, string, string?][] = [
-    ['Nama Peserta Didik', `:  ${(data.siswa.nama_siswa || '-').toUpperCase()}`],
-    ['NISN', `:  ${data.siswa.nisn || data.siswa.nis || '-'}`],
-    ['Kelas', `:  ${data.siswa.nama_kelas || '-'}`],
-    ['Program Keahlian', `:  ${data.siswa.program_keahlian || '-'}`],
-    ['Konsentrasi Keahlian', `:  ${data.siswa.konsentrasi_keahlian || '-'}`],
+    ['Nama Peserta Didik', `:  ${(normalizedSiswa.nama || '-').toUpperCase()}`],
+    ['NISN', `:  ${normalizedSiswa.nisn || normalizedSiswa.nis || '-'}`],
+    ['Kelas', `:  ${normalizedSiswa.namaKelas || '-'}`],
+    ['Program Keahlian', `:  ${normalizedSiswa.programKeahlian || '-'}`],
+    ['Konsentrasi Keahlian', `:  ${normalizedSiswa.jurusanNama || '-'}`],
     ['Tempat PKL', `:  ${(data.pkl.mitra_nama || '-').toUpperCase()}`],
     ['Tanggal PKL', `:  Mulai  :   ${tglMulaiStr}`, `Selesai  :   ${tglSelesaiStr}`],
     ['Nama Instruktur', `:  ${data.pkl.instruktur_nama || '-'}`],

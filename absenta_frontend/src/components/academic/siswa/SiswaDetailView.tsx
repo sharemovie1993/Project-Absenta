@@ -38,6 +38,7 @@ import { useProvinsiOptions, useKabupatenOptions, useKecamatanOptions, useKelura
 import { formatAlamatLengkap } from '../../../lib/alamat.util';
 import { uploadSiswaDocument, getMemberDocPreviewUrl } from '../../../api/memberDocs.api';
 import { resolveProfilePhotoUrl } from '../../../lib/utils';
+import { normalizeStudentIdentity } from '@/utils/academic/academicIdentityNormalizer';
 import { SelfMemberDocsSection } from '../../documents/SelfMemberDocsSection';
 import { getKelasForDropdown, type DropdownOption } from '../../../api/dropdown.api';
 import { SiswaTimelineAndExitTab } from './SiswaTimelineAndExitTab';
@@ -458,12 +459,13 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
     );
   }
 
-  const rawSiswaPhoto = siswa.foto || (siswa as any).foto_url || null;
+  const studentIdentity = normalizeStudentIdentity(siswa);
+  const rawSiswaPhoto = studentIdentity.fotoUrl;
   const resolvedPhotoUrl = rawSiswaPhoto ? resolveProfilePhotoUrl(rawSiswaPhoto) : null;
   const displayPhotoUrl = localPhotoPreview ?? resolvedPhotoUrl;
-  const siswaInitials = (siswa.nama_siswa || 'Siswa').split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase();
-  const namaKelas = (siswa as any).Kelas?.nama_kelas || (siswa as any).nama_kelas || '-';
-  const namaJurusan = (siswa as any).Jurusan?.nama || (siswa as any).nama_jurusan || '-';
+  const siswaInitials = studentIdentity.initials;
+  const namaKelas = studentIdentity.namaKelas;
+  const namaJurusan = studentIdentity.jurusanNama;
 
   const alamatLengkapFormatted = formatAlamatLengkap({
     alamat: editAlamat,
