@@ -26,13 +26,8 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   onSaveSuccess,
   isReadOnly = false,
 }) => {
-  // If denah has no elements yet, auto-generate from unassigned rooms
-  const initialNodes =
-    denah.elements && denah.elements.length > 0
-      ? denah.elements
-      : unassignedRooms.length > 0
-      ? generateAutoFloorplan(unassignedRooms)
-      : [];
+  // Canvas dimulai bersih jika denah baru dibuat (tidak langsung auto-generate seluruh ruang ke canvas)
+  const initialNodes = denah.elements && denah.elements.length > 0 ? denah.elements : [];
 
   const [nodes, setNodes] = useState<DenahElementNode[]>(initialNodes);
   const [scale, setScale] = useState(1);
@@ -134,8 +129,8 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
       id: `node-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       x: snap(80 + (nodes.length % 5) * 40),
       y: snap(80 + Math.floor(nodes.length / 5) * 40),
-      width: 180,
-      height: 110,
+      width: 100,
+      height: 60,
       rotation: 0,
       label_utama: room.slot_ruang || 'R.XX',
       label_sub: room.kelas_nama,

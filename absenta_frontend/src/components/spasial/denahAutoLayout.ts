@@ -5,8 +5,8 @@ const snap = (val: number, step = 20) => Math.round(val / step) * step;
 
 export function generateAutoFloorplan(unassignedRooms: UnassignedRoomItem[]): DenahElementNode[] {
   const generated: DenahElementNode[] = [];
-  const roomWidth = 180;
-  const roomHeight = 110;
+  const roomWidth = 100;
+  const roomHeight = 60;
   const gap = 20;
 
   if (unassignedRooms.length > 0) {
@@ -15,7 +15,7 @@ export function generateAutoFloorplan(unassignedRooms: UnassignedRoomItem[]): De
       const col = idx % perRow;
       const row = Math.floor(idx / perRow);
       // Place blocks with corridor separation
-      const yOffset = row >= 2 ? row * (roomHeight + gap) + 60 : row * (roomHeight + gap);
+      const yOffset = row >= 2 ? row * (roomHeight + gap) + 50 : row * (roomHeight + gap);
       generated.push({
         id: `node-auto-${room.kelas_id}-${idx}`,
         x: snap(60 + col * (roomWidth + gap)),
@@ -37,7 +37,7 @@ export function generateAutoFloorplan(unassignedRooms: UnassignedRoomItem[]): De
       x: 60,
       y: snap(60 + 2 * (roomHeight + gap)),
       width: snap(perRow * (roomWidth + gap) - gap),
-      height: 60,
+      height: 40,
       rotation: 0,
       label_utama: 'KORIDOR UTAMA',
       label_sub: 'Selasar Penghubung Gedung',
@@ -66,7 +66,7 @@ export function generateAutoFloorplan(unassignedRooms: UnassignedRoomItem[]): De
       x: 60,
       y: snap(60 + roomHeight + gap),
       width: snap(4 * (roomWidth + gap) - gap),
-      height: 60,
+      height: 40,
       rotation: 0,
       label_utama: 'KORIDOR UTAMA',
       label_sub: 'Akses Selasar Gedung',
@@ -77,9 +77,9 @@ export function generateAutoFloorplan(unassignedRooms: UnassignedRoomItem[]): De
     generated.push({
       id: `node-tpl-lab`,
       x: 60,
-      y: snap(60 + roomHeight + gap + 80),
-      width: 220,
-      height: 120,
+      y: snap(60 + roomHeight + gap + 60),
+      width: 140,
+      height: 80,
       rotation: 0,
       label_utama: 'LAB KOMPUTER 1',
       label_sub: 'Server CBT & Praktik',
@@ -87,10 +87,10 @@ export function generateAutoFloorplan(unassignedRooms: UnassignedRoomItem[]): De
     });
     generated.push({
       id: `node-tpl-office`,
-      x: snap(60 + 240),
-      y: snap(60 + roomHeight + gap + 80),
-      width: 220,
-      height: 120,
+      x: snap(60 + 160),
+      y: snap(60 + roomHeight + gap + 60),
+      width: 140,
+      height: 80,
       rotation: 0,
       label_utama: 'RUANG GURU',
       label_sub: 'Kantor Pengajar',
@@ -98,10 +98,10 @@ export function generateAutoFloorplan(unassignedRooms: UnassignedRoomItem[]): De
     });
     generated.push({
       id: `node-tpl-toilet`,
-      x: snap(60 + 480),
-      y: snap(60 + roomHeight + gap + 80),
-      width: 140,
-      height: 80,
+      x: snap(60 + 320),
+      y: snap(60 + roomHeight + gap + 60),
+      width: 90,
+      height: 60,
       rotation: 0,
       label_utama: 'TOILET',
       label_sub: 'Siswa / Guru',
