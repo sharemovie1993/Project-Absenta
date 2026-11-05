@@ -28,7 +28,6 @@ interface DenahPaletteSidebarProps {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
 }
-}
 
 const VIRTUAL_PRESETS: Array<{
   label: string;
