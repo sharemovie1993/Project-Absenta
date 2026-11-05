@@ -5,7 +5,7 @@ import {
   PrintHeader,
   usePrintHeaderData,
 } from '@/components/ui';
-import { Printer, Download, Eye, Layers, Filter } from 'lucide-react';
+import { Printer, Download, Filter } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatTingkatRomawi } from '../bank-soal/cbtAsesmenHelper';
 import { KelasRoomMapping } from './cbtOrchestratorHelper';
@@ -30,7 +30,7 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
   // Filter mode: 'ALL' or a specific kelas_id
   const [filterKelasId, setFilterKelasId] = useState<string>(selectedKelasId || 'ALL');
   const [filterTingkat, setFilterTingkat] = useState<number | 'ALL'>('ALL');
-  const [showKop, setShowKop] = useState<boolean>(true);
+  const [showFullKop, setShowFullKop] = useState<boolean>(false); // Default: Minimalist/Zero-noise
   const [showLogoDaerah, setShowLogoDaerah] = useState<boolean>(true);
   const [showLogoSekolah, setShowLogoSekolah] = useState<boolean>(true);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
@@ -152,7 +152,7 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
             Kertas A4 Landscape (297 × 210 mm)
           </span>
           <span className="text-[11px] text-muted-foreground">
-            • Siap ditempel di pintu ruang ujian
+            • Desain fokus &amp; bebas noise
           </span>
         </div>
       }
@@ -188,17 +188,17 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
             </select>
           </div>
 
-          {/* Toggle Tampilkan Kop */}
+          {/* Toggle Kop Dinas / Minimalis */}
           <button
             type="button"
-            onClick={() => setShowKop((prev) => !prev)}
+            onClick={() => setShowFullKop((prev) => !prev)}
             className={`px-2.5 py-1 rounded-lg text-xs font-semibold border cursor-pointer transition-all ${
-              showKop
+              showFullKop
                 ? 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300'
-                : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200'
+                : 'bg-white dark:bg-slate-800 text-slate-600 border-slate-200 dark:border-slate-700'
             }`}
           >
-            {showKop ? '✓ Kop Resmi Aktif' : 'Kop Minimalis'}
+            {showFullKop ? '✓ Kop Dinas Aktif' : 'Kop Minimalis (Rekomendasi)'}
           </button>
         </div>
       }
@@ -207,21 +207,17 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
         {targetRooms.map((room, idx) => {
           const slot = room.slot_ruang || `R.${String(idx + 1).padStart(2, '0')}`;
           const namaKelas = room.nama_kelas || 'KELAS UJIAN';
-          const namaRuang = room.nama_ruang || `Ruang ${String(idx + 1).padStart(2, '0')}`;
-          const jurusan = room.nama_jurusan || room.kode_jurusan || '';
+          const namaRuang = room.nama_ruang || '';
 
           return (
             <PrintDocumentSheet
               key={room.kelas_id}
               orientation="landscape"
-              pageNumber={idx + 1}
-              totalPages={targetRooms.length}
-              footerText={`${sekolah?.nama_sekolah || 'Absenta School'} • Panitia Pelaksana Asesmen CBT`}
               className="flex flex-col justify-between"
             >
-              {/* ── 1. HEADER KOP RESMI (JIKA DIAKTIFKAN) ── */}
-              {showKop ? (
-                <div className="shrink-0 mb-4">
+              {/* ── 1. HEADER (KOP DINAS ATAU KOP BERSIH MINIMALIS) ── */}
+              {showFullKop ? (
+                <div className="shrink-0 mb-3">
                   <PrintHeader
                     title={eventName.toUpperCase()}
                     subtitle={`TAHUN AJARAN ${tenantInfo?.tahun_ajaran || '2026/2027'}`}
@@ -231,62 +227,65 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
                   />
                 </div>
               ) : (
-                <div className="shrink-0 pb-3 mb-4 border-b-2 border-slate-900 text-center">
-                  <h3 className="text-sm font-black tracking-widest uppercase text-slate-800">
-                    {sekolah?.nama_sekolah || 'PANITIA CBT SEKOLAH'}
-                  </h3>
-                  <p className="text-[11px] font-bold text-slate-600 tracking-wider">
-                    {eventName} • TAHUN AJARAN {tenantInfo?.tahun_ajaran || '2026/2027'}
-                  </p>
+                <div className="shrink-0 flex items-center justify-between pb-3 border-b-2 border-slate-900 mb-3">
+                  <div className="flex items-center gap-3">
+                    {showLogoSekolah && sekolah?.logo_url && (
+                      <img
+                        src={sekolah.logo_url}
+                        alt="Logo Sekolah"
+                        className="w-11 h-11 object-contain shrink-0"
+                      />
+                    )}
+                    <div className="text-left">
+                      <h3 className="text-base font-black tracking-wider uppercase text-slate-900 leading-tight">
+                        {sekolah?.nama_sekolah || 'PANITIA PELAKSANA CBT'}
+                      </h3>
+                      <p className="text-[11px] font-bold text-slate-600 tracking-wide mt-0.5">
+                        {eventName} • TAHUN AJARAN {tenantInfo?.tahun_ajaran || '2026/2027'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="text-xs font-mono font-black px-3 py-1 rounded-lg bg-slate-100 text-slate-900 border border-slate-300">
+                      SLOT {slot}
+                    </span>
+                  </div>
                 </div>
               )}
 
-              {/* ── 2. MAIN CENTER HERO BANNER (A4 LANDSCAPE TRUE WYSIWYG) ── */}
-              <div className="flex-1 flex flex-col justify-center my-2">
-                <div className="border-4 border-slate-900 rounded-3xl p-6 sm:p-8 bg-white text-center flex flex-col justify-center items-center relative overflow-hidden shadow-sm">
-                  {/* Decorative Header Pill */}
-                  <div className="inline-block px-6 py-1.5 rounded-full bg-slate-900 text-white text-xs sm:text-sm font-black tracking-widest uppercase mb-4">
-                    RUANG UJIAN / EXAMINATION ROOM
-                  </div>
+              {/* ── 2. MAIN CENTER HERO BANNER (MAKSIMAL & BEBAS NOISE) ── */}
+              <div className="flex-1 flex flex-col justify-center items-center my-auto w-full">
+                <div className="w-full border-4 border-slate-900 rounded-3xl p-6 sm:p-10 bg-white text-center flex flex-col justify-center items-center">
+                  {/* Judul: RUANG UJIAN (Cukup judul tegas, tanpa noise) */}
+                  <h2 className="text-2xl sm:text-3xl font-black tracking-widest uppercase text-slate-900 mb-2">
+                    RUANG UJIAN
+                  </h2>
 
-                  {/* KODE RUANG (R.01) - TYPOGRAPHY RAKSASA */}
+                  {/* KODE RUANG (R.05 / R.01) - TYPOGRAPHY RAKSASA & FOKUS */}
                   <div className="my-1 sm:my-2">
-                    <span className="text-8xl sm:text-9xl font-black text-slate-900 tracking-tight font-mono leading-none select-all">
+                    <span className="text-8xl sm:text-[135px] font-black text-slate-900 tracking-tight font-mono leading-none select-all">
                       {slot}
                     </span>
                   </div>
 
-                  {/* Double Divider Line */}
-                  <div className="w-48 sm:w-64 h-1.5 bg-slate-900 rounded-full my-3 sm:my-4" />
+                  {/* Solid Divider Line */}
+                  <div className="w-48 sm:w-64 h-2 bg-slate-900 rounded-full my-3 sm:my-4" />
 
-                  {/* NAMA KELAS (X TKJ 1) - TYPOGRAPHY BESAR */}
+                  {/* NAMA KELAS (X PHT 1 / X TKJ 1) - BESAR & JELAS */}
                   <div className="mt-1">
-                    <span className="text-4xl sm:text-6xl font-black text-slate-800 tracking-wider uppercase leading-tight select-all">
+                    <span className="text-5xl sm:text-7xl font-black text-slate-900 tracking-wider uppercase leading-tight select-all">
                       {namaKelas}
                     </span>
                   </div>
 
-                  {/* Subtitle / Lokasi Fisik */}
-                  <div className="mt-4 flex items-center justify-center gap-3 text-xs sm:text-sm font-bold text-slate-600 flex-wrap">
-                    <span className="px-3 py-1 bg-slate-100 rounded-lg">
-                      Lokasi: {namaRuang}
-                    </span>
-                    {jurusan && (
-                      <span className="px-3 py-1 bg-slate-100 rounded-lg">
-                        {jurusan}
-                      </span>
-                    )}
-                    <span className="px-3 py-1 bg-slate-100 rounded-lg">
-                      Tingkat {formatTingkatRomawi(room.tingkat)}
-                    </span>
-                  </div>
+                  {/* NAMA RUANG FISIK (Ruang 05 / Lab Komputer) */}
+                  {namaRuang && (
+                    <div className="mt-3 text-lg sm:text-2xl font-bold text-slate-600">
+                      ({namaRuang})
+                    </div>
+                  )}
                 </div>
-              </div>
-
-              {/* ── 3. FOOTER INFORMASI TEMPEL ── */}
-              <div className="shrink-0 pt-3 border-t border-dashed border-slate-300 text-[10px] text-slate-500 flex items-center justify-between font-mono">
-                <span>Dokumen Resmi Panitia CBT • Tempelkan di bagian tengah luar pintu ruang ujian</span>
-                <span>Slot: {slot} / {namaKelas}</span>
               </div>
             </PrintDocumentSheet>
           );
