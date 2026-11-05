@@ -448,6 +448,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
         onClose={() => setIsPrintModalOpen(false)}
         denah={denah}
         nodes={nodes}
+        mapGuideConfig={mapGuideConfig}
       />
     </div>
   );

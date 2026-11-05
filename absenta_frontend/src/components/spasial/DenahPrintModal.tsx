@@ -1,14 +1,16 @@
 import React, { useRef, useState, useMemo } from 'react';
-import { X, Printer, Download, Loader2, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { X, Printer, Download, Loader2, ZoomIn, ZoomOut, RotateCcw, Globe } from 'lucide-react';
 import { PrintHeader } from '@/components/ui';
+import { DenahMapGuideLayer } from './DenahMapGuideLayer';
 import toast from 'react-hot-toast';
-import type { DenahElementNode, DenahSpasial } from '../../types/spasial.types';
+import type { DenahElementNode, DenahSpasial, DenahMapGuideConfig } from '../../types/spasial.types';
 
 interface DenahPrintModalProps {
   isOpen: boolean;
   onClose: () => void;
   denah: DenahSpasial;
   nodes: DenahElementNode[];
+  mapGuideConfig?: DenahMapGuideConfig;
 }
 
 const KATEGORI_PRINT_STYLES: Record<string, { bg: string; border: string; text: string }> = {
@@ -59,9 +61,12 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
   onClose,
   denah,
   nodes,
+  mapGuideConfig,
 }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [scaleMultiplier, setScaleMultiplier] = useState(1.0);
+  const [showSatelliteLayer, setShowSatelliteLayer] = useState(mapGuideConfig?.enabled ?? true);
+  const [satelliteOpacity, setSatelliteOpacity] = useState(mapGuideConfig?.opacity ?? 0.85);
   const printContentRef = useRef<HTMLDivElement>(null);
 
   // Hitung bounding box riil seluruh node untuk menjamin skala seragam 1:1 (True WYSIWYG)
@@ -121,6 +126,9 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
       const { jsPDF } = await import('jspdf');
 
       const element = printContentRef.current;
+      // Tunggu render tile satelit selesai sempurna
+      await new Promise((r) => setTimeout(r, 600));
+
       const canvas = await html2canvas(element, {
         scale: 2, // 200 DPI Retina crisp
         useCORS: true,
@@ -129,7 +137,17 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
         logging: false,
       });
 
-      const imgData = canvas.toDataURL('image/jpeg', 0.9);
+      let imgData: string;
+      try {
+        imgData = canvas.toDataURL('image/jpeg', 0.9);
+      } catch (taintErr) {
+        // Jika canvas terkena security taint dari tile server pihak ketiga tanpa CORS,
+        // alihkan langsung ke cetak browser native yang 100% mendukung cetak raster satelit
+        toast('Info: Mengalihkan ke Cetak Browser untuk mencetak peta satelit resolusi penuh...', { icon: 'ℹ️' });
+        window.print();
+        return;
+      }
+
       const pdf = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
@@ -211,6 +229,23 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Toggle Real Satellite Map Layer */}
+            {mapGuideConfig && (
+              <button
+                type="button"
+                onClick={() => setShowSatelliteLayer((prev) => !prev)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg flex items-center gap-1.5 border transition-all cursor-pointer ${
+                  showSatelliteLayer
+                    ? 'bg-blue-600 border-blue-700 text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50'
+                }`}
+                title="Sertakan atau sembunyikan foto udara satelit asli pada lembar cetak"
+              >
+                <Globe className="w-3.5 h-3.5" />
+                <span>{showSatelliteLayer ? 'Peta Satelit: Aktif' : 'Peta: Polos'}</span>
+              </button>
+            )}
+
             {/* Zoom Stepper for Fine-tuning Print Fit */}
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 mr-2">
               <span className="text-[11px] font-medium text-slate-500 mr-1 hidden sm:inline">Skala:</span>
@@ -305,13 +340,41 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
 
               {/* Scaled Visual Map Surface (True WYSIWYG) */}
               <div
-                className="relative border-2 border-slate-800 rounded-xl bg-slate-50/70 my-1 overflow-hidden"
+                className="relative border-2 border-slate-800 rounded-xl bg-slate-100 my-1 overflow-hidden"
                 style={{
                   width: '980px',
                   height: '440px',
                   margin: '0 auto',
                 }}
               >
+                {/* Realtime Satellite Google Maps Aerial Guide Layer */}
+                {showSatelliteLayer && mapGuideConfig && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: `${layout.offsetX}px`,
+                      top: `${layout.offsetY}px`,
+                      width: `${denah.canvas_width || 2400}px`,
+                      height: `${denah.canvas_height || 1600}px`,
+                      transform: `scale(${layout.uniformScale})`,
+                      transformOrigin: '0 0',
+                      pointerEvents: 'none',
+                      zIndex: 1,
+                    }}
+                  >
+                    <DenahMapGuideLayer
+                      config={{
+                        ...mapGuideConfig,
+                        is_locked: true,
+                        opacity: satelliteOpacity,
+                      }}
+                      width={denah.canvas_width || 2400}
+                      height={denah.canvas_height || 1600}
+                      onMapChange={() => {}}
+                    />
+                  </div>
+                )}
+
                 {nodes.map((node) => {
                   const { uniformScale, offsetX, offsetY } = layout;
                   const left = node.x * uniformScale + offsetX;
@@ -338,14 +401,15 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
                         height: `${height}px`,
                         transform: `rotate(${node.rotation}deg) scale(${flipX}, ${flipY})`,
                         transformOrigin: 'center center',
-                        backgroundColor: node.warna_bg || style.bg,
+                        backgroundColor: node.warna_bg || (showSatelliteLayer ? '#ffffff' : style.bg),
                         borderColor: node.warna_border || style.border,
                         borderWidth: '2px',
                         borderStyle: node.kategori_ruang === 'KORIDOR' ? 'dashed' : 'solid',
                         borderRadius: '6px',
                         boxSizing: 'border-box',
+                        zIndex: 10,
                       }}
-                      className="flex flex-col items-center justify-center shadow-xs overflow-hidden"
+                      className="flex flex-col items-center justify-center shadow-md overflow-hidden"
                     >
                       <div
                         className="flex flex-col items-center justify-center w-full h-full px-1 text-center select-none"
