@@ -5,7 +5,7 @@ import type { DenahElementNode } from '../../types/spasial.types';
 interface DenahNodeCardProps {
   node: DenahElementNode;
   isSelected: boolean;
-  onSelect: (id: string) => void;
+  onSelect: (e: React.MouseEvent, id: string) => void;
   onRotate: (id: string) => void;
   onFlipH: (id: string) => void;
   onFlipV: (id: string) => void;
@@ -86,7 +86,12 @@ export const DenahNodeCard: React.FC<DenahNodeCardProps> = ({
     <div
       onClick={(e) => {
         e.stopPropagation();
-        onSelect(node.id);
+        onSelect(e, node.id);
+      }}
+      onMouseDown={(e) => {
+        if (!isReadOnly && (e.target as HTMLElement).tagName !== 'BUTTON') {
+          onStartDrag(e, node.id);
+        }
       }}
       style={{
         transform: `translate(${node.x}px, ${node.y}px) rotate(${node.rotation}deg) scale(${scaleX}, ${scaleY})`,

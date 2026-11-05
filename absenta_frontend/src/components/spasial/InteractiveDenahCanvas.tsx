@@ -7,6 +7,8 @@ import { DenahPrintModal } from './DenahPrintModal';
 import { InteractiveDenahCanvasToolbar } from './InteractiveDenahCanvasToolbar';
 import { DenahMapGuideLayer } from './DenahMapGuideLayer';
 import { DenahMapGuideFloatingBar } from './DenahMapGuideFloatingBar';
+import { DenahBatchActionBar } from './DenahBatchActionBar';
+import { useDenahInteraction } from './useDenahInteraction';
 import { generateAutoFloorplan } from './denahAutoLayout';
 import { updateDenah } from '../../api/spasial.api';
 import type { DenahElementNode, DenahSpasial, DenahMapGuideConfig } from '../../types/spasial.types';
@@ -33,7 +35,6 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
       : [];
 
   const [nodes, setNodes] = useState<DenahElementNode[]>(initialNodes);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [scale, setScale] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 40, y: 40 });
   const [isSaving, setIsSaving] = useState(false);
@@ -63,37 +64,6 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   const [historyIdx, setHistoryIdx] = useState(0);
 
   const canvasRef = useRef<HTMLDivElement>(null);
-  const dragState = useRef<{
-    isDragging: boolean;
-    nodeId: string | null;
-    startX: number;
-    startY: number;
-    origX: number;
-    origY: number;
-  }>({
-    isDragging: false,
-    nodeId: null,
-    startX: 0,
-    startY: 0,
-    origX: 0,
-    origY: 0,
-  });
-
-  const resizeState = useRef<{
-    isResizing: boolean;
-    nodeId: string | null;
-    startX: number;
-    startY: number;
-    origW: number;
-    origH: number;
-  }>({
-    isResizing: false,
-    nodeId: null,
-    startX: 0,
-    startY: 0,
-    origW: 0,
-    origH: 0,
-  });
 
   const pushHistory = (newNodes: DenahElementNode[]) => {
     const nextHistory = history.slice(0, historyIdx + 1);
@@ -123,7 +93,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   const handleAddRoomNode = (room: UnassignedRoomItem) => {
     const existing = nodes.find((n) => n.kelas_id === room.kelas_id);
     if (existing) {
-      setSelectedNodeId(existing.id);
+      setSelectedNodeIds([existing.id]);
       toast('Ruang ini sudah diletakkan pada denah', { icon: 'ℹ️' });
       return;
     }
@@ -143,7 +113,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
     };
 
     pushHistory([...nodes, newNode]);
-    setSelectedNodeId(newNode.id);
+    setSelectedNodeIds([newNode.id]);
     toast.success(`Menambahkan ${room.slot_ruang || ''} ${room.kelas_nama}`);
   };
 
@@ -156,7 +126,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
       y: snap(120),
     };
     pushHistory([...nodes, newNode]);
-    setSelectedNodeId(newNode.id);
+    setSelectedNodeIds([newNode.id]);
     toast.success(`Menambahkan ${virtual.label_utama}`);
   };
 
@@ -189,92 +159,34 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
     pushHistory(updated);
   };
 
+  // Multi-selection & batch drag engine
+  const {
+    selectedNodeIds,
+    setSelectedNodeIds,
+    marqueeBox,
+    handleSelectNode,
+    handleStartDrag,
+    handleStartResize,
+    handleCanvasMouseDown,
+    handleBatchRotate,
+    handleBatchFlipH,
+    handleBatchDelete,
+    handleSelectAll,
+  } = useDenahInteraction({
+    nodes,
+    setNodes,
+    pushHistory,
+    scale,
+    panOffset,
+    canvasRef,
+    isReadOnly,
+  });
+
   const handleDeleteNode = (nodeId: string) => {
     const updated = nodes.filter((n) => n.id !== nodeId);
     pushHistory(updated);
-    if (selectedNodeId === nodeId) setSelectedNodeId(null);
+    setSelectedNodeIds((prev) => prev.filter((id) => id !== nodeId));
   };
-
-  const handleStartDrag = (e: React.MouseEvent, nodeId: string) => {
-    e.stopPropagation();
-    setSelectedNodeId(nodeId);
-    const target = nodes.find((n) => n.id === nodeId);
-    if (!target) return;
-
-    dragState.current = {
-      isDragging: true,
-      nodeId,
-      startX: e.clientX,
-      startY: e.clientY,
-      origX: target.x,
-      origY: target.y,
-    };
-  };
-
-  const handleStartResize = (e: React.MouseEvent, nodeId: string) => {
-    e.stopPropagation();
-    const target = nodes.find((n) => n.id === nodeId);
-    if (!target) return;
-
-    resizeState.current = {
-      isResizing: true,
-      nodeId,
-      startX: e.clientX,
-      startY: e.clientY,
-      origW: target.width,
-      origH: target.height,
-    };
-  };
-
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (dragState.current.isDragging && dragState.current.nodeId) {
-        const dx = (e.clientX - dragState.current.startX) / scale;
-        const dy = (e.clientY - dragState.current.startY) / scale;
-        const newX = Math.max(0, snap(dragState.current.origX + dx));
-        const newY = Math.max(0, snap(dragState.current.origY + dy));
-
-        setNodes((prev) =>
-          prev.map((n) =>
-            n.id === dragState.current.nodeId ? { ...n, x: newX, y: newY } : n
-          )
-        );
-      } else if (resizeState.current.isResizing && resizeState.current.nodeId) {
-        const dx = (e.clientX - resizeState.current.startX) / scale;
-        const dy = (e.clientY - resizeState.current.startY) / scale;
-        const newW = Math.max(100, snap(resizeState.current.origW + dx));
-        const newH = Math.max(60, snap(resizeState.current.origH + dy));
-
-        setNodes((prev) =>
-          prev.map((n) =>
-            n.id === resizeState.current.nodeId
-              ? { ...n, width: newW, height: newH }
-              : n
-          )
-        );
-      }
-    },
-    [scale]
-  );
-
-  const handleMouseUp = useCallback(() => {
-    if (dragState.current.isDragging || resizeState.current.isResizing) {
-      dragState.current.isDragging = false;
-      dragState.current.nodeId = null;
-      resizeState.current.isResizing = false;
-      resizeState.current.nodeId = null;
-      pushHistory(nodes);
-    }
-  }, [nodes]);
-
-  useEffect(() => {
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [handleMouseMove, handleMouseUp]);
 
   const handleSaveDenah = async () => {
     setIsSaving(true);
@@ -351,7 +263,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
         {/* Canvas Surface with Infinite Grid */}
         <div
           ref={canvasRef}
-          onClick={() => setSelectedNodeId(null)}
+          onMouseDown={handleCanvasMouseDown}
           className={`flex-1 overflow-auto relative transition-colors ${
             isLightMode ? 'bg-slate-100/90' : 'bg-slate-950'
           }`}
@@ -429,8 +341,8 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
                 <DenahNodeCard
                   key={node.id}
                   node={node}
-                  isSelected={selectedNodeId === node.id}
-                  onSelect={setSelectedNodeId}
+                  isSelected={selectedNodeIds.includes(node.id)}
+                  onSelect={handleSelectNode}
                   onRotate={handleRotateNode}
                   onFlipH={handleFlipH}
                   onFlipV={handleFlipV}
@@ -440,6 +352,21 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
                   isReadOnly={isReadOnly}
                 />
               ))
+            )}
+
+            {/* Marquee Area Selection Rectangle */}
+            {marqueeBox && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: `${marqueeBox.x}px`,
+                  top: `${marqueeBox.y}px`,
+                  width: `${marqueeBox.width}px`,
+                  height: `${marqueeBox.height}px`,
+                  pointerEvents: 'none',
+                }}
+                className="border-2 border-dashed border-blue-500 bg-blue-500/20 rounded-xl z-50 pointer-events-none"
+              />
             )}
           </div>
         </div>
@@ -464,6 +391,17 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
             isLightMode={isLightMode}
           />
         )}
+
+        {/* Floating Batch Action Bar for Multiple Selected Rooms */}
+        <DenahBatchActionBar
+          selectedCount={selectedNodeIds.length}
+          totalCount={nodes.length}
+          onRotateAll={handleBatchRotate}
+          onFlipHAll={handleBatchFlipH}
+          onDeleteAll={handleBatchDelete}
+          onDeselectAll={() => setSelectedNodeIds([])}
+          onSelectAll={handleSelectAll}
+        />
       </div>
 
       {/* Print & PDF Modal */}
