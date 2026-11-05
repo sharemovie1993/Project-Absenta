@@ -32,8 +32,8 @@ interface InteractiveDenahCanvasToolbarProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onResetZoom: () => void;
-  onSetZoomScale: (scale: number) => void;
-  onFitToScreen: () => void;
+  onSetZoomScale?: (scale: number) => void;
+  onFitToScreen?: () => void;
   onUndo: () => void;
   onRedo: () => void;
   canUndo: boolean;
@@ -61,6 +61,8 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
   onZoomIn,
   onZoomOut,
   onResetZoom,
+  onSetZoomScale,
+  onFitToScreen,
   onUndo,
   onRedo,
   canUndo,
@@ -216,9 +218,10 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
               onChange={(e) => {
                 const val = e.target.value;
                 if (val === 'fit') {
-                  onFitToScreen();
+                  if (onFitToScreen) onFitToScreen();
+                  else onResetZoom();
                 } else if (val !== 'custom') {
-                  onSetZoomScale(parseInt(val, 10) / 100);
+                  if (onSetZoomScale) onSetZoomScale(parseInt(val, 10) / 100);
                 }
               }}
               className="text-[11px] font-mono font-bold px-1 py-0.5 bg-transparent border-0 text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-hidden text-center"
@@ -249,7 +252,7 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
             </button>
             <button
               type="button"
-              onClick={onFitToScreen}
+              onClick={onFitToScreen || onResetZoom}
               className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 border-l border-slate-200 dark:border-slate-700 cursor-pointer"
               title="Pas Layar (Fit to Screen)"
             >
