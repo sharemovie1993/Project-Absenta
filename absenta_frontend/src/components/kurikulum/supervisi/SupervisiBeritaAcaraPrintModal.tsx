@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
+  UniversalDocumentSignatures,
   PrintHeader,
   usePrintHeaderData,
 } from '@/components/ui/PrintHeader';
@@ -522,39 +523,28 @@ export const SupervisiBeritaAcaraPrintModal: React.FC<SupervisiBeritaAcaraPrintM
             </div>
           )}
 
-          {/* 8. TANDA TANGAN 3-PIHAK RESMI (2-TIER BIROKRASI) */}
-          <div className="mt-5 pt-2 text-[10.5px]">
-            <div className="text-right mb-2 font-medium">
-              {activeKota}, {activeTanggal}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 text-center">
-              <div>
-                <p className="text-slate-800">Guru yang Disupervisi,</p>
-                <div className="h-16" />
-                <p className="font-bold text-black uppercase underline">
-                  {activeGuruNama || '........................................'}
-                </p>
-                <p className="text-[9.5px] text-slate-700">NIP. {activeGuruNip || '-'}</p>
-              </div>
-
-              <div>
-                <p className="text-slate-800">Supervisor / Penilai,</p>
-                <div className="h-16" />
-                <p className="font-bold text-black uppercase underline">
-                  {activeSupervisorNama || '........................................'}
-                </p>
-                <p className="text-[9.5px] text-slate-700">NIP. {activeSupervisorNip || '-'}</p>
-              </div>
-            </div>
-
-            <div className="mt-4 text-center">
-              <p className="text-slate-800">Mengetahui,</p>
-              <p className="font-semibold text-slate-900">Kepala Sekolah</p>
-              <div className="h-16" />
-              <p className="font-bold text-black uppercase underline">{activeKepsekNama}</p>
-              <p className="text-[9.5px] text-slate-700">NIP. {activeKepsekNip}</p>
-            </div>
+          {/* 8. TANDA TANGAN 3-PIHAK RESMI MENGGUNAKAN UNIVERSAL SIGNATURE ENGINE */}
+          <div className="mt-5 pt-2 w-full">
+            <UniversalDocumentSignatures
+              layout="triangle_rapor"
+              titimangsaCity={activeKota}
+              titimangsaDate={activeTanggal}
+              overrideSignerLeft={{
+                roleTitle: 'Guru yang Disupervisi,',
+                personName: activeGuruNama,
+                nip: activeGuruNip,
+              }}
+              overrideSignerRight={{
+                roleTitle: 'Supervisor / Penilai,',
+                personName: activeSupervisorNama,
+                nip: activeSupervisorNip,
+              }}
+              overrideSignerCenter={{
+                personName: activeKepsekNama,
+                nip: activeKepsekNip,
+              }}
+              spacingHeightMm={16}
+            />
           </div>
         </PrintDocumentSheet>
       </div>

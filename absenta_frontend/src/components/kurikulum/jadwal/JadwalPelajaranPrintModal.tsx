@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
+  UniversalDocumentSignatures,
   PrintHeader,
   usePrintHeaderData,
 } from '@/components/ui/PrintHeader';
@@ -267,35 +268,23 @@ export const JadwalPelajaranPrintModal: React.FC<JadwalPelajaranPrintModalProps>
             </tbody>
           </table>
 
-          {/* 2-Tier Signature (Kurikulum & Kepala Sekolah) */}
-          <div className="mt-8 flex justify-between items-start text-xs text-black page-break-inside-avoid">
-            {/* Signature 1: Waka Kurikulum */}
-            <div className="text-center w-64">
-              <div>Mengetahui,</div>
-              <div className="font-bold">Waka Bidang Kurikulum</div>
-              <div className="h-20" />
-              <div className="font-bold underline">
-                {tenantInfo?.waka_kurikulum_nama || '(..................................................)'}
-              </div>
-              <div className="text-[11px] font-mono">
-                NIP. {tenantInfo?.waka_kurikulum_nip || '................................'}
-              </div>
-            </div>
-
-            {/* Signature 2: Kepala Sekolah */}
-            <div className="text-center w-64">
-              <div>
-                {tenantInfo?.kabupaten || 'Bandung'}, {todayStr}
-              </div>
-              <div className="font-bold">Kepala Sekolah</div>
-              <div className="h-20" />
-              <div className="font-bold underline">
-                {tenantInfo?.kepala_sekolah_nama || '(..................................................)'}
-              </div>
-              <div className="text-[11px] font-mono">
-                NIP. {tenantInfo?.kepala_sekolah_nip || '................................'}
-              </div>
-            </div>
+          {/* 2-Tier Signature (Kurikulum & Kepala Sekolah) Menggunakan Universal Signature Engine */}
+          <div className="mt-8 w-full page-break-inside-avoid">
+            <UniversalDocumentSignatures
+              layout="dual_unit_kepsek"
+              titimangsaCity={tenantInfo?.kabupaten || 'Bandung'}
+              titimangsaDate={todayStr}
+              overrideSignerLeft={{
+                roleTitle: 'Waka Bidang Kurikulum',
+                personName: tenantInfo?.waka_kurikulum_nama,
+                nip: tenantInfo?.waka_kurikulum_nip,
+              }}
+              overrideSignerRight={{
+                personName: tenantInfo?.kepala_sekolah_nama,
+                nip: tenantInfo?.kepala_sekolah_nip,
+              }}
+              spacingHeightMm={20}
+            />
           </div>
         </PrintDocumentSheet>
       </div>

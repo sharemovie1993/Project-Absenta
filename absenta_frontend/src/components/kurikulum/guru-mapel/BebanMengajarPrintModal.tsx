@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
+  UniversalDocumentSignatures,
   PrintHeader,
   usePrintHeaderData,
 } from '@/components/ui/PrintHeader';
@@ -182,41 +183,25 @@ export const BebanMengajarPrintModal: React.FC<BebanMengajarPrintModalProps> = (
             )}
           </div>
 
-          {/* 4. TANDA TANGAN DINAS 2-TIER (Anti-Cutoff Guard) */}
-          <div className="mt-6 pt-2 break-inside-avoid text-black text-xs">
-            <div className="grid grid-cols-2 gap-4">
-              {/* Kolom Kiri: Verifikator Wakasek Kurikulum */}
-              <div className="space-y-14">
-                <div>
-                  <p className="font-normal">Mengetahui / Memeriksa,</p>
-                  <p className="font-bold">Wakasek Bidang Kurikulum</p>
-                </div>
-                <div>
-                  <p className="font-bold underline">
-                    {tenantInfo?.waka_kurikulum_nama || '( .................................................... )'}
-                  </p>
-                  <p className="text-[10px] text-slate-800">
-                    NIP. {tenantInfo?.waka_kurikulum_nip || '....................................................'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Kolom Kanan: Titimangsa & Kepala Sekolah */}
-              <div className="space-y-14">
-                <div>
-                  <p className="font-normal">{titimangsa}</p>
-                  <p className="font-bold">Kepala Sekolah</p>
-                </div>
-                <div>
-                  <p className="font-bold underline">
-                    {tenantInfo?.kepsek_nama || '( .................................................... )'}
-                  </p>
-                  <p className="text-[10px] text-slate-800">
-                    NIP. {tenantInfo?.kepsek_nip || '....................................................'}
-                  </p>
-                </div>
-              </div>
-            </div>
+          {/* 4. TANDA TANGAN DINAS MENGGUNAKAN UNIVERSAL SIGNATURE ENGINE */}
+          <div className="mt-6 pt-2 break-inside-avoid w-full">
+            <UniversalDocumentSignatures
+              layout="dual_unit_kepsek"
+              tahunPelajaranId={tahunPelajaranId}
+              titimangsaDate={titimangsa}
+              showTitimangsa={false}
+              overrideSignerLeft={{
+                roleTitle: 'Mengetahui / Memeriksa,\nWakasek Bidang Kurikulum',
+                personName: tenantInfo?.waka_kurikulum_nama,
+                nip: tenantInfo?.waka_kurikulum_nip,
+              }}
+              overrideSignerRight={{
+                roleTitle: `${titimangsa}\nKepala Sekolah`,
+                personName: tenantInfo?.kepsek_nama,
+                nip: tenantInfo?.kepsek_nip,
+              }}
+              spacingHeightMm={18}
+            />
           </div>
         </PrintDocumentSheet>
       </div>

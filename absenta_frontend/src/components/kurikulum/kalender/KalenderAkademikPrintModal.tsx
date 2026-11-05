@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
+  UniversalDocumentSignatures,
   PrintHeader,
   usePrintHeaderData,
 } from '@/components/ui/PrintHeader';
@@ -675,44 +676,25 @@ export const KalenderAkademikPrintModal: React.FC<KalenderAkademikPrintModalProp
     </div>
   );
 
-  // Render Tanda Tangan Resmi Dinas (Terintegrasi Otomatis)
+  // Render Tanda Tangan Resmi Dinas Menggunakan Universal Signature Engine
   const renderSignature = (titimangsaTanggalStr: string, compact = false) => (
-    <div className={cn("pt-1 break-inside-avoid text-black text-xs", compact ? "mt-3" : "mt-5")}>
-      <div className="grid grid-cols-2 gap-6">
-        {/* Kolom Kiri: Wakasek Kurikulum */}
-        <div className={compact ? "space-y-8" : "space-y-12"}>
-          <div>
-            <p className={cn("font-normal", compact ? "text-[10px]" : "text-[11px]")}>Mengetahui,</p>
-            <p className={cn("font-bold", compact ? "text-[10px]" : "text-[11px]")}>Wakasek Bidang Kurikulum</p>
-          </div>
-          <div>
-            <p className={cn("font-bold underline", compact ? "text-[10px]" : "text-[11px]")}>
-              {wakaKurikulumNama || '( .................................................... )'}
-            </p>
-            <p className={cn("text-slate-800", compact ? "text-[8.5px]" : "text-[9.5px]")}>
-              NIP. {wakaKurikulumNip && wakaKurikulumNip !== '-' ? wakaKurikulumNip : '....................................................'}
-            </p>
-          </div>
-        </div>
-
-        {/* Kolom Kanan: Titimangsa & Kepala Sekolah */}
-        <div className={compact ? "space-y-8" : "space-y-12"}>
-          <div>
-            <p className={cn("font-normal", compact ? "text-[10px]" : "text-[11px]")}>
-              {kotaTitimangsa}, {titimangsaTanggalStr}
-            </p>
-            <p className={cn("font-bold", compact ? "text-[10px]" : "text-[11px]")}>Kepala Sekolah</p>
-          </div>
-          <div>
-            <p className={cn("font-bold underline", compact ? "text-[10px]" : "text-[11px]")}>
-              {kepalaSekolahNama || '( .................................................... )'}
-            </p>
-            <p className={cn("text-slate-800", compact ? "text-[8.5px]" : "text-[9.5px]")}>
-              NIP. {kepalaSekolahNip && kepalaSekolahNip !== '-' ? kepalaSekolahNip : '....................................................'}
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className={cn("pt-1 break-inside-avoid text-black", compact ? "mt-2" : "mt-4")}>
+      <UniversalDocumentSignatures
+        layout="dual_unit_kepsek"
+        tahunPelajaranId={tahunPelajaranId}
+        titimangsaCity={kotaTitimangsa}
+        titimangsaDate={titimangsaTanggalStr}
+        overrideSignerLeft={{
+          roleTitle: 'Wakasek Bidang Kurikulum',
+          personName: wakaKurikulumNama,
+          nip: wakaKurikulumNip,
+        }}
+        overrideSignerRight={{
+          personName: kepalaSekolahNama,
+          nip: kepalaSekolahNip,
+        }}
+        spacingHeightMm={compact ? 12 : 18}
+      />
     </div>
   );
 

@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
+  UniversalDocumentSignatures,
   PrintHeader,
   usePrintHeaderData,
 } from '@/components/ui/PrintHeader';
@@ -779,31 +780,24 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
                   </ol>
                 </div>
 
-                {/* 5. TANDA TANGAN RESMI 2-TIER (KAPATUHAN SKILL UNIVERSAL DOCUMENT PRINTING) */}
-                <div className="flex justify-between items-start text-[10px] leading-normal page-break-inside-avoid">
-                  {/* Kolom Kiri: Wakasek Kurikulum */}
-                  <div className="text-center w-64">
-                    <div>Mengetahui,</div>
-                    <div className="font-bold">Wakil Kepala Sekolah Bidang Kurikulum</div>
-                    <div className="h-8 sm:h-9" />
-                    <div className="font-bold underline">{wakaKurikulumNama}</div>
-                    <div className="text-[9.5px] font-mono">
-                      {wakaKurikulumNip && wakaKurikulumNip !== '-' ? `NIP. ${wakaKurikulumNip}` : 'NIP. –'}
-                    </div>
-                  </div>
-
-                  {/* Kolom Kanan: Kepala Sekolah */}
-                  <div className="text-center w-64">
-                    <div>
-                      {kotaTitimangsa}, {tanggalTitimangsa}
-                    </div>
-                    <div className="font-bold">Kepala Sekolah</div>
-                    <div className="h-8 sm:h-9" />
-                    <div className="font-bold underline">{kepalaSekolahNama}</div>
-                    <div className="text-[9.5px] font-mono">
-                      {kepalaSekolahNip && kepalaSekolahNip !== '-' ? `NIP. ${kepalaSekolahNip}` : 'NIP. –'}
-                    </div>
-                  </div>
+                {/* 5. TANDA TANGAN RESMI MENGGUNAKAN UNIVERSAL SIGNATURE ENGINE */}
+                <div className="w-full page-break-inside-avoid">
+                  <UniversalDocumentSignatures
+                    layout="dual_unit_kepsek"
+                    tahunPelajaranId={tahunPelajaranId}
+                    titimangsaCity={kotaTitimangsa}
+                    titimangsaDate={tanggalTitimangsa}
+                    overrideSignerLeft={{
+                      roleTitle: 'Wakil Kepala Sekolah Bidang Kurikulum',
+                      personName: wakaKurikulumNama,
+                      nip: wakaKurikulumNip,
+                    }}
+                    overrideSignerRight={{
+                      personName: kepalaSekolahNama,
+                      nip: kepalaSekolahNip,
+                    }}
+                    spacingHeightMm={16}
+                  />
                 </div>
               </PrintDocumentSheet>
             );
