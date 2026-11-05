@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { X, Printer, Download, Loader2 } from 'lucide-react';
-import { PrintHeader } from '../print/PrintHeader';
-import { generateSinglePdfBlob } from '../../utils/pdfGenerator';
+import { PrintHeader } from '@/components/ui';
+import toast from 'react-hot-toast';
 import type { DenahElementNode, DenahSpasial } from '../../types/spasial.types';
 
 interface DenahPrintModalProps {
@@ -29,22 +29,34 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
   const handleDownloadPdf = async () => {
     if (!printContentRef.current) return;
     setIsExporting(true);
+    const toastId = toast.loading('Mempersiapkan PDF Denah A4 Landscape...');
     try {
-      const blob = await generateSinglePdfBlob(printContentRef.current, {
-        filename: `Denah_${denah.nama_denah.replace(/\s+/g, '_')}.pdf`,
-        orientation: 'landscape',
-        format: 'a4',
+      const html2canvas = (await import('html2canvas-pro')).default;
+      const { jsPDF } = await import('jspdf');
+
+      const element = printContentRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
       });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Denah_${denah.nama_denah.replace(/\s+/g, '_')}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (err) {
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.9);
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4',
+        compress: true,
+      });
+
+      pdf.addImage(imgData, 'JPEG', 0, 0, 297, 210, undefined, 'FAST');
+      pdf.save(`Denah_${denah.nama_denah.replace(/\s+/g, '_')}.pdf`);
+      toast.success('PDF Denah berhasil diunduh', { id: toastId });
+    } catch (err: any) {
       console.error('Gagal ekspor PDF:', err);
+      toast.error('Gagal membuat PDF denah', { id: toastId });
     } finally {
       setIsExporting(false);
     }
@@ -64,7 +76,7 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
               Pratinjau Cetak Denah Lokasi ({denah.nama_denah})
             </h3>
             <p className="text-xs text-slate-500">
-              Format Standar A4 Landscape • Siap Cetak Fisik & Ekspor PDF
+              Format Standar A4 Landscape • Siap Cetak Fisik &amp; Ekspor PDF
             </p>
           </div>
 
@@ -72,7 +84,7 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
             <button
               type="button"
               onClick={handleBrowserPrint}
-              className="px-3.5 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-1.5 shadow-xs transition-colors"
+              className="px-3.5 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
               Cetak Browser
@@ -81,7 +93,7 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
               type="button"
               onClick={handleDownloadPdf}
               disabled={isExporting}
-              className="px-3.5 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-1.5 shadow-xs transition-colors disabled:opacity-50"
+              className="px-3.5 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-1.5 shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
             >
               {isExporting ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -93,7 +105,7 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -118,7 +130,7 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
             {/* Denah Title & Meta */}
             <div className="text-center my-3 border-b-2 border-slate-800 pb-2">
               <h1 className="text-xl font-black uppercase tracking-wider text-slate-900">
-                PETA & DENAH SPASIAL RUANG UJIAN ASESMEN
+                PETA &amp; DENAH SPASIAL RUANG UJIAN ASESMEN
               </h1>
               <div className="text-xs font-semibold text-slate-600 mt-0.5">
                 {denah.nama_denah} • Lantai {denah.lantai} {denah.gedung ? `• Gedung ${denah.gedung}` : ''}
