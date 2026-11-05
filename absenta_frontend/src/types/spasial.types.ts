@@ -32,6 +32,19 @@ export interface DenahElementNode {
   catatan?: string;
 }
 
+export type MapTileProvider = 'esri_satelit' | 'google_hybrid' | 'google_satelit' | 'osm';
+
+export interface DenahMapGuideConfig {
+  enabled: boolean;
+  lat: number;
+  lng: number;
+  zoom: number;
+  opacity: number;
+  layer: MapTileProvider;
+  is_locked: boolean;
+  location_name?: string;
+}
+
 export interface DenahSpasial {
   id: string;
   tenant_id?: string;

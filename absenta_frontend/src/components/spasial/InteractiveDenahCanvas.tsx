@@ -5,9 +5,11 @@ import { DenahNodeCard } from './DenahNodeCard';
 import { DenahPaletteSidebar, UnassignedRoomItem } from './DenahPaletteSidebar';
 import { DenahPrintModal } from './DenahPrintModal';
 import { InteractiveDenahCanvasToolbar } from './InteractiveDenahCanvasToolbar';
+import { DenahMapGuideLayer } from './DenahMapGuideLayer';
+import { DenahMapGuideFloatingBar } from './DenahMapGuideFloatingBar';
 import { generateAutoFloorplan } from './denahAutoLayout';
 import { updateDenah } from '../../api/spasial.api';
-import type { DenahElementNode, DenahSpasial } from '../../types/spasial.types';
+import type { DenahElementNode, DenahSpasial, DenahMapGuideConfig } from '../../types/spasial.types';
 
 interface InteractiveDenahCanvasProps {
   denah: DenahSpasial;
@@ -37,6 +39,24 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isLightMode, setIsLightMode] = useState(true);
+
+  // Satellite Map Guide State
+  const [mapGuideConfig, setMapGuideConfig] = useState<DenahMapGuideConfig>(() => {
+    try {
+      const saved = localStorage.getItem(`absenta_denah_map_${denah.id}`);
+      if (saved) return JSON.parse(saved);
+    } catch (_) {}
+    return {
+      enabled: false,
+      lat: -6.837, // Default Jawa Barat / Indonesia
+      lng: 108.225,
+      zoom: 18,
+      opacity: 0.7,
+      layer: 'google_hybrid',
+      is_locked: true,
+    };
+  });
+  const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);
 
   // History for Undo/Redo
   const [history, setHistory] = useState<DenahElementNode[][]>([initialNodes]);
@@ -300,6 +320,16 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
         canUndo={historyIdx > 0}
         canRedo={historyIdx < history.length - 1}
         onAutoLayout={handleAutoGenerateLayout}
+        isMapGuideOpen={isMapGuideOpen}
+        onToggleMapGuide={() => {
+          setIsMapGuideOpen((prev) => {
+            const next = !prev;
+            if (next) {
+              setMapGuideConfig((c) => ({ ...c, enabled: true }));
+            }
+            return next;
+          });
+        }}
         onOpenPrint={() => setIsPrintModalOpen(true)}
         onSave={handleSaveDenah}
         isSaving={isSaving}
@@ -349,6 +379,24 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
                 : 'bg-slate-900/40 border-slate-700/60'
             }`}
           >
+            {/* Realtime Satellite/Map Guide Layer */}
+            {mapGuideConfig.enabled && (
+              <DenahMapGuideLayer
+                config={mapGuideConfig}
+                width={denah.canvas_width || 2400}
+                height={denah.canvas_height || 1600}
+                onMapChange={(updated) => {
+                  setMapGuideConfig((prev) => {
+                    const next = { ...prev, ...updated };
+                    try {
+                      localStorage.setItem(`absenta_denah_map_${denah.id}`, JSON.stringify(next));
+                    } catch (_) {}
+                    return next;
+                  });
+                }}
+              />
+            )}
+
             {nodes.length === 0 ? (
               <div
                 style={{ left: '60px', top: '60px', width: '560px' }}
@@ -395,6 +443,27 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
             )}
           </div>
         </div>
+
+        {/* Floating Map Guide Control HUD */}
+        {isMapGuideOpen && (
+          <DenahMapGuideFloatingBar
+            config={mapGuideConfig}
+            onUpdateConfig={(updated) => {
+              setMapGuideConfig((prev) => {
+                const next = { ...prev, ...updated };
+                try {
+                  localStorage.setItem(`absenta_denah_map_${denah.id}`, JSON.stringify(next));
+                } catch (_) {}
+                return next;
+              });
+            }}
+            onClose={() => {
+              setIsMapGuideOpen(false);
+              setMapGuideConfig((prev) => ({ ...prev, enabled: false }));
+            }}
+            isLightMode={isLightMode}
+          />
+        )}
       </div>
 
       {/* Print & PDF Modal */}

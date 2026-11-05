@@ -12,6 +12,7 @@ import {
   Wand2,
   Sun,
   Moon,
+  Globe,
 } from 'lucide-react';
 import type { DenahSpasial } from '../../types/spasial.types';
 
@@ -28,6 +29,8 @@ interface InteractiveDenahCanvasToolbarProps {
   canUndo: boolean;
   canRedo: boolean;
   onAutoLayout: () => void;
+  isMapGuideOpen?: boolean;
+  onToggleMapGuide?: () => void;
   onOpenPrint: () => void;
   onSave: () => void;
   isSaving: boolean;
@@ -47,6 +50,8 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
   canUndo,
   canRedo,
   onAutoLayout,
+  isMapGuideOpen = false,
+  onToggleMapGuide,
   onOpenPrint,
   onSave,
   isSaving,
@@ -92,6 +97,28 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
           >
             <Wand2 className="w-3.5 h-3.5" />
             <span>Susun Otomatis</span>
+          </button>
+        )}
+
+        {/* Satellite Map Guide Toggle */}
+        {onToggleMapGuide && (
+          <button
+            type="button"
+            onClick={onToggleMapGuide}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer border ${
+              isMapGuideOpen
+                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                : isLightMode
+                ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                : 'bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-750'
+            }`}
+            title="Panduan Peta Satelit / Google Maps untuk menyelaraskan pola denah"
+          >
+            <Globe className="w-3.5 h-3.5" />
+            <span>Peta Satelit</span>
+            {isMapGuideOpen && (
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            )}
           </button>
         )}
 
