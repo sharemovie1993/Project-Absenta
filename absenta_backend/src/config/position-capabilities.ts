@@ -89,6 +89,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'sarpras.inventory.manage',
     'sarpras.categories.manage',
     'sarpras.locations.manage',
+    'sarpras.denah.view',
 
     // Bon Peminjaman & Pengembalian Alat
     'sarpras.loans.view.list',
@@ -171,6 +172,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.transitions.manage',         // Mutasi & kelulusan siswa
     'academic.student.card.view.config',
     'academic.student.card.update.config',
+    'academic.dapodik.view',
+    'academic.dapodik.manage',
 
     // Master Data Induk Guru & Kepegawaian
     'academic.teachers.view.list',
@@ -236,11 +239,13 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'dashboard.view.tu',
     'core.tenants.view.detail',
 
-    // Administrasi Logistik & Labeling Aset (KIB)
+    // Administrasi Logistik & Labeling Aset (KIB) & Denah
     'sarpras.inventory.view.list',
     'sarpras.inventory.manage',
     'sarpras.categories.manage',
     'sarpras.locations.manage',
+    'sarpras.denah.manage',
+    'sarpras.denah.view',
 
     // Serah-Terima Peminjaman & Perbaikan
     'sarpras.loans.view.list',
@@ -533,8 +538,10 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     // Supervisi Akademik Guru
     'curriculum.supervision.manage', 'curriculum.supervision.view.report', 'curriculum.supervision.view.schedule', 'curriculum.supervision.create.record', 'curriculum.supervision.update.record', 'curriculum.supervision.delete.record',
 
-    // Computer-Based Test (CBT)
+    // Computer-Based Test (CBT) & Denah Spasial Ruangan Ujian
     'cbt.bank.manage', 'cbt.bank.view', 'cbt.jadwal.manage', 'cbt.jadwal.view', 'cbt.sesi.monitor', 'cbt.analisis.view',
+    'cbt.denah.manage', 'cbt.denah.view',
+    'sarpras.denah.manage', 'sarpras.denah.view',
 
     // Presensi & Kegiatan Akademik
     'attendance.sessions.view.list', 'attendance.sessions.view.detail', 'attendance.reports.view',
@@ -663,12 +670,14 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'organization.scope.tenant_wide',
     'dashboard.view.sarpras',
 
-    // Master Aset & Approval Afkir/Penghapusan
+    // Master Aset & Approval Afkir/Penghapusan & Denah Spasial Kampus
     'sarpras.inventory.view.list',
     'sarpras.inventory.manage',
     'sarpras.inventory.delete',            // Approval pengafkiran/penghapusan aset
     'sarpras.categories.manage',
     'sarpras.locations.manage',
+    'sarpras.denah.manage',
+    'sarpras.denah.view',
 
     // Approval Peminjaman & Servis Besar
     'sarpras.loans.view.list',
@@ -719,6 +728,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.semesters.view.list', 'academic.semesters.view.detail', 'academic.semesters.create', 'academic.semesters.update', 'academic.semesters.delete', 'academic.semesters.set.active', 'academic.semesters.manage',
     'academic.subjects.view.list', 'academic.subjects.create', 'academic.subjects.update', 'academic.subjects.delete', 'academic.subjects.manage',
     'core.sekolah.view.profile', 'core.sekolah.update.profile',
+    'academic.dapodik.view', 'academic.dapodik.manage',
     'core.users.view.list', 'core.users.view.detail', 'core.users.view.roles', 'core.users.permissions.view', 'core.users.effective.capabilities.view', 'core.users.create', 'core.users.update', 'core.users.delete', 'core.users.reset.password',
   ],
 
@@ -748,6 +758,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.sessions.view.list', 'attendance.sessions.view.detail',
     'attendance.recap.view.daily', 'attendance.recap.view.monthly', 'attendance.recap.view.global', 'attendance.gate.view.logs',
     'sarpras.inventory.view.list', 'sarpras.loans.view.list', 'sarpras.repairs.view.list',
+    'sarpras.denah.manage', 'sarpras.denah.view',
     'billing.subscriptions.view.active',
     'hubin.pkl.view.list', 'hubin.absensi.view.history', 'hubin.absensi.recap', 'hubin.mou.view.list', 'hubin.tracer.view',
     'bk.cases.view.list', 'bk.cases.view.detail', 'bk.reports.view', 'bk.audit.view',

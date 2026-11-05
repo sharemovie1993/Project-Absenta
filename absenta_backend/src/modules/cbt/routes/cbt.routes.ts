@@ -151,26 +151,26 @@ export async function cbtRoutes(fastify: any) {
   // 5. DENAH SPASIAL RUANG UJIAN (CBT)
   // ==========================================
   fastify.get('/denah', {
-    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+    preHandler: [requireCapability(['cbt.jadwal.manage', 'sarpras.denah.view', 'cbt.denah.view'], cbtGuruExempt), determineDataScope()],
   }, DenahSpasialController.list);
 
   fastify.get('/denah/:id', {
-    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+    preHandler: [requireCapability(['cbt.jadwal.manage', 'sarpras.denah.view', 'cbt.denah.view'], cbtGuruExempt), determineDataScope()],
   }, DenahSpasialController.getById);
 
   fastify.post('/denah', {
-    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+    preHandler: [requireCapability(['cbt.jadwal.manage', 'sarpras.denah.manage', 'cbt.denah.manage'], cbtGuruExempt), determineDataScope()],
   }, DenahSpasialController.create);
 
   fastify.put('/denah/:id', {
-    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+    preHandler: [requireCapability(['cbt.jadwal.manage', 'sarpras.denah.manage', 'cbt.denah.manage'], cbtGuruExempt), determineDataScope()],
   }, DenahSpasialController.update);
 
   fastify.delete('/denah/:id', {
-    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+    preHandler: [requireCapability(['cbt.jadwal.manage', 'sarpras.denah.manage', 'cbt.denah.manage'], cbtGuruExempt), determineDataScope()],
   }, DenahSpasialController.delete);
 
   fastify.post('/denah/:id/clone', {
-    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+    preHandler: [requireCapability(['cbt.jadwal.manage', 'sarpras.denah.manage', 'cbt.denah.manage'], cbtGuruExempt), determineDataScope()],
   }, DenahSpasialController.clone);
 }

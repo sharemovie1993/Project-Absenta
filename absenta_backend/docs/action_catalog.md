@@ -314,6 +314,8 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - cbt.analisis.view
 - cbt.bank.manage
 - cbt.bank.view
+- cbt.denah.manage
+- cbt.denah.view
 - cbt.exam.take
 - cbt.jadwal.manage
 - cbt.jadwal.view
@@ -455,10 +457,11 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 ## sarpras
 
 - sarpras.categories.manage
+- sarpras.denah.manage
+- sarpras.denah.view
 - sarpras.inventory.delete
 - sarpras.inventory.manage
 - sarpras.inventory.view.list
-- sarpras.loans.
 - sarpras.loans.manage
 - sarpras.loans.request
 - sarpras.loans.view.list

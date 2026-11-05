@@ -166,28 +166,52 @@ export async function sarprasRoutes(fastify: any) {
     preHandler: [requireCapability('sarpras.repairs.view.list'), organizationalScopeMiddleware, determineDataScope()]
   }, repairController.getRepairsCalendar.bind(repairController));
 
-  // --- Denah Spasial Kampus & Sarpras ---
+  // --- Denah Spasial Kampus & Sarpras (Universal: Sarpras, CBT & Kurikulum) ---
   fastify.get('/denah', {
-    preHandler: [requireCapability('sarpras.inventory.view.list'), organizationalScopeMiddleware, determineDataScope()]
+    preHandler: [
+      requireCapability(['sarpras.denah.view', 'sarpras.inventory.view.list', 'cbt.jadwal.manage', 'academic.manage.academic']),
+      organizationalScopeMiddleware,
+      determineDataScope()
+    ]
   }, DenahSpasialController.list);
 
   fastify.get('/denah/:id', {
-    preHandler: [requireCapability('sarpras.inventory.view.list'), organizationalScopeMiddleware, determineDataScope()]
+    preHandler: [
+      requireCapability(['sarpras.denah.view', 'sarpras.inventory.view.list', 'cbt.jadwal.manage', 'academic.manage.academic']),
+      organizationalScopeMiddleware,
+      determineDataScope()
+    ]
   }, DenahSpasialController.getById);
 
   fastify.post('/denah', {
-    preHandler: [requireCapability('sarpras.inventory.manage'), organizationalScopeMiddleware, determineDataScope()]
+    preHandler: [
+      requireCapability(['sarpras.denah.manage', 'sarpras.inventory.manage', 'cbt.jadwal.manage', 'academic.manage.academic']),
+      organizationalScopeMiddleware,
+      determineDataScope()
+    ]
   }, DenahSpasialController.create);
 
   fastify.put('/denah/:id', {
-    preHandler: [requireCapability('sarpras.inventory.manage'), organizationalScopeMiddleware, determineDataScope()]
+    preHandler: [
+      requireCapability(['sarpras.denah.manage', 'sarpras.inventory.manage', 'cbt.jadwal.manage', 'academic.manage.academic']),
+      organizationalScopeMiddleware,
+      determineDataScope()
+    ]
   }, DenahSpasialController.update);
 
   fastify.delete('/denah/:id', {
-    preHandler: [requireCapability('sarpras.inventory.manage'), organizationalScopeMiddleware, determineDataScope()]
+    preHandler: [
+      requireCapability(['sarpras.denah.manage', 'sarpras.inventory.manage', 'cbt.jadwal.manage', 'academic.manage.academic']),
+      organizationalScopeMiddleware,
+      determineDataScope()
+    ]
   }, DenahSpasialController.delete);
 
   fastify.post('/denah/:id/clone', {
-    preHandler: [requireCapability('sarpras.inventory.manage'), organizationalScopeMiddleware, determineDataScope()]
+    preHandler: [
+      requireCapability(['sarpras.denah.manage', 'sarpras.inventory.manage', 'cbt.jadwal.manage', 'academic.manage.academic']),
+      organizationalScopeMiddleware,
+      determineDataScope()
+    ]
   }, DenahSpasialController.clone);
 }
