@@ -447,6 +447,7 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
             roomMappings={roomMappings}
             onUpdateRoomMappings={setRoomMappings}
             tenantId={tenantId}
+            eventName={eventName}
             onProceedToNextPhase={() => setActiveTab('fase_3_jadwal')}
           />
         )}
