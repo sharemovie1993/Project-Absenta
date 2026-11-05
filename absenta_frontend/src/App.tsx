@@ -104,6 +104,7 @@ const BukuIndukPage = lazy(() => import('./pages/academic/BukuIndukPage').then(m
 // Named exports handled via lazy
 const GuruPage = lazy(() => import('./pages/academic/GuruPage').then(module => ({ default: module.GuruPage })));
 const SiswaPage = lazy(() => import('./pages/academic/SiswaPage'));
+const DapodikIntegrationPage = lazy(() => import('./pages/academic/DapodikIntegrationPage'));
 const KelasPage = lazy(() => import('./pages/academic/KelasPage').then(module => ({ default: module.KelasPage })));
 const MapelPage = lazy(() => import('./pages/academic/MapelPage'));
 const TahunPelajaranPage = lazy(() => import('./pages/academic/TahunPelajaranPage').then(module => ({ default: module.TahunPelajaranPage })));
@@ -634,6 +635,11 @@ function App() {
                     <Route path="/academic/buku-induk" element={
                       <ProtectedRoute requiredCapability="academic.students.view.list">
                         <BukuIndukPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/academic/dapodik" element={
+                      <ProtectedRoute requiredCapability="academic.dapodik.view">
+                        <DapodikIntegrationPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/academic/staff-logs" element={
@@ -1598,6 +1604,11 @@ function App() {
                     <Route path="/settings/whatsapp" element={
                       <ProtectedRoute requiredCapability="core.tenants.update">
                         <WhatsappSettingsPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/settings/dapodik" element={
+                      <ProtectedRoute requiredCapability="academic.dapodik.view">
+                        <DapodikIntegrationPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/settings/backup" element={

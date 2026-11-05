@@ -17,6 +17,7 @@ import {
   UserCheck,
   Building2,
   FileCheck,
+  Database,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
@@ -179,6 +180,15 @@ export const TuBerandaTab: React.FC<TuBerandaTabProps> = React.memo(({
               color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400',
               onClick: () => {
                 if (onSelectTab) onSelectTab('kepegawaian');
+              },
+            },
+            {
+              id: 'dapodik',
+              title: 'Integrasi Dapodik',
+              icon: Database,
+              color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
+              onClick: () => {
+                if (onSelectTab) onSelectTab('dapodik');
               },
             },
           ]}

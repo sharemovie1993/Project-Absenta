@@ -9,7 +9,8 @@ export type TuTabId =
   | 'mutasi'
   | 'bast-ijazah'
   | 'dkn'
-  | 'kepegawaian';
+  | 'kepegawaian'
+  | 'dapodik';
 
 export interface TuNavTabItem {
   id: TuTabId;

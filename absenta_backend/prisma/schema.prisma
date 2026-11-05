@@ -171,6 +171,7 @@ model Tenant {
   InternalParticipants     InternalParticipant[]
   InternalMessages         InternalMessage[]
   WhatsappConfig           WhatsappConfig?
+  DapodikConfig            DapodikConfig?
   GuruDocument             GuruDocument[]
   WaChatLog                WaChatLog[]
   SettingDeskripsiPkl      SettingDeskripsiPkl[]
@@ -4265,6 +4266,23 @@ model WhatsappConfig {
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+
+  Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+}
+
+model DapodikConfig {
+  id           String    @id @default(uuid())
+  tenant_id    String    @unique
+  dapodik_host String    @default("http://localhost:5774")
+  npsn         String    @default("")
+  api_token    String    @default("")
+  is_active    Boolean   @default(true)
+  last_sync_at DateTime?
+  last_status  String?   // SUCCESS, FAILED, TIMEOUT
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
 
   Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 

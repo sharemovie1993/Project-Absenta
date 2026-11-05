@@ -306,6 +306,47 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
       }
     ]
   },
+  academic_dapodik: {
+    moduleName: 'academic_dapodik',
+    displayName: 'Integrasi Web Service Dapodik & Audit Siswa (Akademik)',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan (Fault Isolation & Layout Protection)',
+        description: 'Membungkus halaman audit komparasi dengan AcademicPageLayout dan Error Boundary sehingga kegagalan koneksi atau timeout Web Service tidak merusak halaman utama.',
+        status: 'VERIFIED',
+        details: 'DapodikIntegrationPage terbungkus di dalam AcademicPageLayout.'
+      },
+      {
+        id: 'dual_layer_caching',
+        name: 'Dual-Layer Caching & Perlindungan Port 5774',
+        description: 'Mencegah flooding query ke komputer operator Dapodik menggunakan in-memory snapshot cache backend dan TanStack Query frontend staleTime.',
+        status: 'VERIFIED',
+        details: 'In-Memory snapshot cache backend + client cache terintegrasi.'
+      },
+      {
+        id: 'dom_churn_protection',
+        name: 'Standarisasi Virtual Pagination & DOM Churn Protection',
+        description: 'Membatasi render ribuan baris menjadi 25-100 baris dengan paginasi cerdas dan pememosisasian data list menggunakan useMemo.',
+        status: 'VERIFIED',
+        details: 'Pagination adaptif (25/50/100/200) + useMemo terpasang.'
+      },
+      {
+        id: 'architectural_user_guidance',
+        name: 'Sistem Panduan Pengguna (Responsive Operator Guide)',
+        description: 'Menyediakan panduan operator interaktif dan instruksi whitelist IP pada AcademicPageLayout.',
+        status: 'VERIFIED',
+        details: 'Instruction guide terintegrasi pada layout.'
+      },
+      {
+        id: 'shopee_high_density',
+        name: 'Standar Industri Shopee-Grade High-Density UI',
+        description: 'Mengintegrasikan status strip ramping, collapsible criteria selector, dan micro bento stats tanpa box-in-box berlebihan.',
+        status: 'VERIFIED',
+        details: 'Shopee-grade slim status strip & flat bento dividers terintegrasi.'
+      }
+    ]
+  },
   academic_kelas: {
     moduleName: 'academic_kelas',
     displayName: 'Database Master Kelas (Akademik)',

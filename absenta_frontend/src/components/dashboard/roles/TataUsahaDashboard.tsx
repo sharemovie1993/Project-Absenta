@@ -16,6 +16,7 @@ import {
   Users,
   Inbox,
   Send,
+  Database,
 } from 'lucide-react';
 import { Loader } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -52,6 +53,9 @@ const DknView = lazy(() =>
 const KepegawaianDashboard = lazy(() =>
   import('./KepegawaianDashboard').then((m) => ({ default: m.KepegawaianDashboard }))
 );
+const DapodikIntegrationView = lazy(() =>
+  import('@/components/academic/dapodik/DapodikIntegrationView').then((m) => ({ default: m.DapodikIntegrationView }))
+);
 
 // Modals untuk 1-click Action Center dari Beranda
 const SuratKeteranganModal = lazy(() =>
@@ -84,7 +88,7 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
   const [activeTab, setActiveTab] = useState<TuTabId>(() => {
     if (
       subtabParam &&
-      ['beranda', 'surat-masuk', 'surat-keluar', 'buku-induk', 'surat-keterangan', 'mutasi', 'bast-ijazah', 'dkn', 'kepegawaian'].includes(subtabParam)
+      ['beranda', 'surat-masuk', 'surat-keluar', 'buku-induk', 'surat-keterangan', 'mutasi', 'bast-ijazah', 'dkn', 'kepegawaian', 'dapodik'].includes(subtabParam)
     ) {
       return subtabParam;
     }
@@ -97,7 +101,7 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
   useEffect(() => {
     if (
       subtabParam &&
-      ['beranda', 'surat-masuk', 'surat-keluar', 'buku-induk', 'surat-keterangan', 'mutasi', 'bast-ijazah', 'dkn', 'kepegawaian'].includes(subtabParam)
+      ['beranda', 'surat-masuk', 'surat-keluar', 'buku-induk', 'surat-keterangan', 'mutasi', 'bast-ijazah', 'dkn', 'kepegawaian', 'dapodik'].includes(subtabParam)
     ) {
       setActiveTab((curr) => (curr !== subtabParam ? subtabParam : curr));
       setVisitedTabs((prev) => (prev.has(subtabParam) ? prev : new Set(prev).add(subtabParam)));
@@ -193,6 +197,11 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
         badge: tuStats?.kepegawaian?.totalPtk !== undefined && tuStats.kepegawaian.totalPtk > 0
           ? `${tuStats.kepegawaian.totalPtk}`
           : undefined,
+      },
+      {
+        id: 'dapodik',
+        label: 'Integrasi Dapodik',
+        icon: Database,
       },
     ],
     [tuStats]
@@ -417,6 +426,15 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
             <div className={activeTab === 'kepegawaian' ? 'block animate-in fade-in duration-100' : 'hidden'}>
               <Suspense fallback={<div className="py-20 flex justify-center"><Loader /></div>}>
                 <KepegawaianDashboard user={currentUser} hideLayout={true} />
+              </Suspense>
+            </div>
+          )}
+
+          {/* TAB 10: INTEGRASI & KOMPARASI DAPODIK */}
+          {visitedTabs.has('dapodik') && (
+            <div className={activeTab === 'dapodik' ? 'block animate-in fade-in duration-100' : 'hidden'}>
+              <Suspense fallback={<div className="py-20 flex justify-center"><Loader /></div>}>
+                <DapodikIntegrationView hideLayout={true} />
               </Suspense>
             </div>
           )}

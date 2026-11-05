@@ -451,8 +451,6 @@ export function normalizeFromSesiAbsensi(raw: any): KbmItem {
     is_overdue: status.isOverdue,
     isUpcoming: status.isUpcoming,
     isReadyToOpen: status.isReadyToOpen,
-    isVirtual,
-    is_virtual: isVirtual,
   };
 }
 

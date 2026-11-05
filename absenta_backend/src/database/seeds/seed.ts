@@ -234,6 +234,7 @@ async function main() {
         { label: 'Mata Pelajaran', icon: 'BookOpen', path: '/academic/mapel', required_capability: 'academic.subjects.view.list' },
         { label: 'Guru & Staf', icon: 'UserCog', path: '/academic/guru', required_capability: 'academic.teachers.view.list' },
         { label: 'Data Siswa', icon: 'GraduationCap', path: '/academic/siswa', required_capability: 'academic.students.view.list' },
+        { label: 'Integrasi Dapodik', icon: 'Database', path: '/academic/dapodik', required_capability: 'academic.dapodik.view' },
         { label: 'Dokumen', icon: 'FileText', path: '/documents', required_capability: 'documents.view.list' },
         // Divider 1
         { label: 'divider', icon: null, path: null },
