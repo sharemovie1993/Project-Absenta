@@ -150,6 +150,24 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
     pushHistory(updated);
   };
 
+  // Flip Horizontal (Mirror X)
+  const handleFlipH = (nodeId: string) => {
+    const updated = nodes.map((n) => {
+      if (n.id !== nodeId) return n;
+      return { ...n, flip_h: !n.flip_h };
+    });
+    pushHistory(updated);
+  };
+
+  // Flip Vertical (Mirror Y)
+  const handleFlipV = (nodeId: string) => {
+    const updated = nodes.map((n) => {
+      if (n.id !== nodeId) return n;
+      return { ...n, flip_v: !n.flip_v };
+    });
+    pushHistory(updated);
+  };
+
   // Delete node
   const handleDeleteNode = (nodeId: string) => {
     const updated = nodes.filter((n) => n.id !== nodeId);
@@ -424,6 +442,8 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
                   isSelected={selectedNodeId === node.id}
                   onSelect={setSelectedNodeId}
                   onRotate={handleRotateNode}
+                  onFlipH={handleFlipH}
+                  onFlipV={handleFlipV}
                   onDelete={handleDeleteNode}
                   onStartDrag={handleStartDrag}
                   onStartResize={handleStartResize}

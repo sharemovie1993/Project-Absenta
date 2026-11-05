@@ -17,6 +17,9 @@ export interface DenahElementNode {
   width: number;
   height: number;
   rotation: number; // 0, 90, 180, 270
+  flip_h?: boolean; // Mirror horizontal
+  flip_v?: boolean; // Mirror vertical
+  posisi_pintu?: 'BAWAH' | 'ATAS' | 'KIRI' | 'KANAN' | 'TIDAK_ADA';
   label_utama: string; // e.g. "R.01" or "LAB KOMPUTER 1"
   label_sub?: string; // e.g. "X TJKT 1"
   kategori_ruang: KategoriRuang;

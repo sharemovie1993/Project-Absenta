@@ -140,6 +140,8 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
                 const top = node.y * scaleY + 10;
                 const width = node.width * scaleX;
                 const height = node.height * scaleY;
+                const flipX = node.flip_h ? -1 : 1;
+                const flipY = node.flip_v ? -1 : 1;
 
                 return (
                   <div
@@ -149,19 +151,24 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
                       top: `${top}px`,
                       width: `${width}px`,
                       height: `${height}px`,
-                      transform: `rotate(${node.rotation}deg)`,
+                      transform: `rotate(${node.rotation}deg) scale(${flipX}, ${flipY})`,
                       transformOrigin: 'center center',
                     }}
                     className="absolute border-2 border-slate-800 bg-white rounded-md flex flex-col items-center justify-center p-1 text-center shadow-xs"
                   >
-                    <span className="font-mono font-black text-xs text-slate-900 leading-tight">
-                      {node.label_utama}
-                    </span>
-                    {node.label_sub && (
-                      <span className="text-[9px] font-bold text-slate-700 truncate max-w-full">
-                        {node.label_sub}
+                    <div
+                      className="flex flex-col items-center justify-center w-full"
+                      style={{ transform: `scale(${flipX}, ${flipY})` }}
+                    >
+                      <span className="font-mono font-black text-xs text-slate-900 leading-tight">
+                        {node.label_utama}
                       </span>
-                    )}
+                      {node.label_sub && (
+                        <span className="text-[9px] font-bold text-slate-700 truncate max-w-full">
+                          {node.label_sub}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })}

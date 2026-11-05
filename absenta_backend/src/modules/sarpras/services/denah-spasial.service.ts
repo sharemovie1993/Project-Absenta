@@ -8,6 +8,9 @@ export interface DenahElementNode {
   width: number;
   height: number;
   rotation: number; // 0, 90, 180, 270
+  flip_h?: boolean;
+  flip_v?: boolean;
+  posisi_pintu?: 'BAWAH' | 'ATAS' | 'KIRI' | 'KANAN' | 'TIDAK_ADA';
   label_utama: string; // e.g. "R.01", "LAB TKJ 1", "TOILET"
   label_sub?: string; // e.g. "X TJKT 1"
   kategori_ruang: 'RUANG_UJIAN' | 'LAB' | 'TOILET' | 'KANTOR' | 'PERPUSTAKAAN' | 'LAPANGAN' | 'KORIDOR' | 'LAINNYA';
