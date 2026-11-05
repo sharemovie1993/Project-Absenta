@@ -95,7 +95,7 @@ export const generateBundelRaporKelasBatchPdf = async (options: PrintRaporBatchO
 
       // 2. Biodata
       doc.addPage();
-      renderOfficialBiodataPage(doc, siswa, sekolah, tenantInfo, kota, fontFamily);
+      renderOfficialBiodataPage(doc, siswa, sekolah, tenantInfo, kota, fontFamily, raporSettings);
 
       // 3. Rapor Semester (CK1-CK2)
       if (data) {

@@ -6,6 +6,7 @@ import {
   usePrintHeaderData,
 } from '@/components/ui/PrintHeader';
 import { siswaApi } from '@/api/academic.api';
+import { raporApi } from '@/api/rapor.api';
 import { generateBiodataSiswaPdf } from '@/utils/print/rapor/renderBiodata';
 import {
   resolveJenjangLines,
@@ -57,6 +58,22 @@ export const BiodataPrintModal: React.FC<BiodataPrintModalProps> = React.memo(({
     enabled: isOpen && Boolean(siswaId),
     staleTime: 60 * 1000,
   });
+
+  // Query Pengaturan Titimangsa & Pejabat Rapor Resmi
+  const { data: raporSettingsRes } = useQuery({
+    queryKey: ['rapor-settings-biodata', tahunPelajaranId, semesterId],
+    queryFn: () =>
+      raporApi.getRaporSettings({
+        tahun_pelajaran_id: tahunPelajaranId,
+        semester_id: semesterId,
+      }),
+    enabled: isOpen,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const raporSettings = useMemo(() => {
+    return (raporSettingsRes as any)?.data || raporSettingsRes || null;
+  }, [raporSettingsRes]);
 
   const detailSiswa = siswaDetailRes?.data || null;
 
@@ -118,11 +135,37 @@ export const BiodataPrintModal: React.FC<BiodataPrintModalProps> = React.memo(({
 
   if (!isOpen || !selectedStudent) return null;
 
-  // Data Pejabat & Titimangsa Sesuai Kop Dokumen
-  const kota = (rawSekolah as any)?.kota || tenantInfo.city || 'Purwakarta';
-  const kepalaSekolahNama = (rawSekolah as any)?.kepala_sekolah || tenantInfo.kepala_sekolah || 'Kepala Sekolah';
-  const kepalaSekolahNip = (rawSekolah as any)?.nip_kepala_sekolah || tenantInfo.nip_kepala_sekolah || '-';
-  const titimangsa = `${kota}, ${formatIndoDate(new Date())}`;
+  // Data Pejabat & Titimangsa Sesuai Pengaturan Rapor Resmi
+  const kota =
+    raporSettings?.tempat_terbit ||
+    (rawSekolah as any)?.kota ||
+    tenantInfo.city ||
+    'Purwakarta';
+
+  const rawTanggalRapor =
+    raporSettings?.tanggal_rapor_ganjil ||
+    raporSettings?.tanggal_rapor ||
+    raporSettings?.tanggal_rapor_genap;
+
+  const titimangsaDate = rawTanggalRapor
+    ? formatIndoDate(rawTanggalRapor)
+    : formatIndoDate(new Date());
+
+  const titimangsa = `${kota}, ${titimangsaDate}`;
+
+  const kepalaSekolahNama =
+    raporSettings?.kepsek_nama ||
+    (rawSekolah as any)?.kepala_sekolah ||
+    tenantInfo.kepala_sekolah ||
+    'Kepala Sekolah';
+
+  const rawKepsekNip =
+    raporSettings?.kepsek_nip ||
+    (rawSekolah as any)?.nip_kepala_sekolah ||
+    tenantInfo.nip_kepala_sekolah ||
+    '-';
+  const cleanKepsekNip = rawKepsekNip ? String(rawKepsekNip).replace(/^NIP\.?\s*/i, '').trim() : '-';
+  const kepalaSekolahNip = cleanKepsekNip || '-';
 
   // Formulasi data 17 Butir Resmi
   const jk = (siswa.jenis_kelamin || '').toUpperCase().startsWith('L') ? 'Laki-Laki' : 'Perempuan';

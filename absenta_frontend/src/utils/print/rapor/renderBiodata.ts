@@ -26,7 +26,8 @@ export const renderOfficialBiodataPage = (
   sekolah: any,
   tenantInfo: any,
   kota: string,
-  fontFamily: string
+  fontFamily: string,
+  settingsData?: any
 ) => {
   const pageWidth = 210;
 
@@ -132,9 +133,30 @@ export const renderOfficialBiodataPage = (
 
   // Tanda Tangan Kepala Sekolah (Right, matching Gambar 2)
   const rightX = 125;
-  const kepalaSekolahNama = sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'WAHYU TAMIMBARKAH, S.Pd.';
-  const kepalaSekolahNip = sekolah?.nip_kepala_sekolah || tenantInfo?.nip_kepala_sekolah || '197111022008011001';
-  const titimangsa = `${kota}, ${formatIndoDate(new Date())}`;
+  const kepalaSekolahNama =
+    settingsData?.kepsek_nama ||
+    sekolah?.kepala_sekolah ||
+    tenantInfo?.kepala_sekolah ||
+    'Kepala Sekolah';
+
+  const rawKepsekNip =
+    settingsData?.kepsek_nip ||
+    sekolah?.nip_kepala_sekolah ||
+    tenantInfo?.nip_kepala_sekolah ||
+    '-';
+  const cleanKepsekNip = rawKepsekNip ? String(rawKepsekNip).replace(/^NIP\.?\s*/i, '').trim() : '-';
+
+  const rawTanggalRapor =
+    settingsData?.tanggal_rapor_ganjil ||
+    settingsData?.tanggal_rapor ||
+    settingsData?.tanggal_rapor_genap;
+
+  const titimangsaDate = rawTanggalRapor
+    ? formatIndoDate(rawTanggalRapor)
+    : formatIndoDate(new Date());
+
+  const effectiveKota = settingsData?.tempat_terbit || kota || 'Purwakarta';
+  const titimangsa = `${effectiveKota}, ${titimangsaDate}`;
 
   doc.setFont(fontFamily, 'normal');
   doc.setFontSize(10);
@@ -152,7 +174,7 @@ export const renderOfficialBiodataPage = (
 
   doc.setFont(fontFamily, 'normal');
   doc.setFontSize(9.5);
-  doc.text(`NIP. ${kepalaSekolahNip}`, rightX, photoY + 35);
+  doc.text(`NIP. ${cleanKepsekNip}`, rightX, photoY + 35);
 };
 
 /**
@@ -165,16 +187,18 @@ export const generateBiodataSiswaPdf = async (options: {
 }): Promise<{ blobUrl: string; filename: string }> => {
   const { siswaId, tahunPelajaranId = '', semesterId = '' } = options;
 
-  const [raporRes, siswaRes, sekolahRes, tenantRes] = await Promise.allSettled([
+  const [raporRes, siswaRes, sekolahRes, tenantRes, settingsRes] = await Promise.allSettled([
     raporApi.getRaporDetail({ siswa_id: siswaId, tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId }),
     siswaApi.getById(siswaId),
     sekolahApi.getProfile(),
     getMyTenant().catch(() => null),
+    raporApi.getRaporSettings({ tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId }).catch(() => null),
   ]);
 
   const raporRaw = raporRes.status === 'fulfilled' ? (raporRes.value?.data || raporRes.value) : null;
   const siswaDirect = siswaRes.status === 'fulfilled' ? (siswaRes.value?.data || siswaRes.value) : null;
   const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
+  const settingsData = settingsRes.status === 'fulfilled' ? ((settingsRes.value as any)?.data || settingsRes.value) : null;
 
   const currentUser = useAuthStore.getState().user;
   const tenantId = (siswaDirect as any)?.tenant_id || currentUser?.tenant_id;
@@ -231,7 +255,7 @@ export const generateBiodataSiswaPdf = async (options: {
 
   // ── HALAMAN 2: BIODATA SISWA 17 BUTIR RESMI ──
   doc.addPage();
-  renderOfficialBiodataPage(doc, siswa, sekolah, tenantInfo, kota, fontFamily);
+  renderOfficialBiodataPage(doc, siswa, sekolah, tenantInfo, kota, fontFamily, settingsData);
 
   const filename = `Biodata_Siswa_${namaSiswa.replace(/\s+/g, '_')}.pdf`;
   const blobUrl = URL.createObjectURL(doc.output('blob'));
@@ -247,12 +271,14 @@ export const generateBiodataKelasBatchPdf = async (options: PrintRaporBatchOptio
     throw new Error('Tidak ada data siswa untuk dicetak.');
   }
 
-  // Preload sekolah & tenant info ONCE
-  const [sekolahRes, tenantRes] = await Promise.allSettled([
+  // Preload sekolah, tenant info & rapor settings ONCE
+  const [sekolahRes, tenantRes, settingsRes] = await Promise.allSettled([
     sekolahApi.getProfile(),
     getMyTenant().catch(() => null),
+    raporApi.getRaporSettings({ tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId }).catch(() => null),
   ]);
   const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
+  const settingsData = settingsRes.status === 'fulfilled' ? ((settingsRes.value as any)?.data || settingsRes.value) : null;
   const currentUser = useAuthStore.getState().user;
   let tenantData = tenantRes.status === 'fulfilled' ? ((tenantRes.value as any)?.data || tenantRes.value) : null;
   if ((!tenantData?.logo_url && !tenantData?.logo_daerah_url) && currentUser?.tenant_id) {
@@ -319,7 +345,7 @@ export const generateBiodataKelasBatchPdf = async (options: PrintRaporBatchOptio
 
       // Halaman 2: Biodata
       doc.addPage();
-      renderOfficialBiodataPage(doc, siswa, sekolah, tenantInfo, kota, fontFamily);
+      renderOfficialBiodataPage(doc, siswa, sekolah, tenantInfo, kota, fontFamily, settingsData);
       renderedCount++;
     } catch (err: any) {
       console.warn(`Gagal memuat biodata untuk ${student.nama_siswa}:`, err);
