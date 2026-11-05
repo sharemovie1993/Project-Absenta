@@ -180,7 +180,8 @@ export const MemberNode = React.memo<NodeDesignProps>(({ node, isActionable }) =
 export const UnassignedNode = React.memo<NodeDesignProps>(({ node }) => {
   const cfg = STRUKTUR_CONFIG.design.leadership;
   const tokens = STRUKTUR_CONFIG.design;
-  const isStaff = node.label.toUpperCase().startsWith('STAF');
+  const isLeader = node.data?.isLeader === true;
+  const isStaff = !isLeader && (node.label.toUpperCase().startsWith('STAF') || Boolean(node.data?.isSlot) || Boolean(node.data?.assignmentFlag));
   const role = node.data?.roleCode;
 
   let headerBg = "bg-indigo-700 dark:bg-indigo-600";
@@ -191,7 +192,7 @@ export const UnassignedNode = React.memo<NodeDesignProps>(({ node }) => {
     else if (remainder === 1) headerBg = "bg-violet-600 dark:bg-violet-500";
     else headerBg = "bg-rose-600 dark:bg-rose-500";
   } else if (isStaff) {
-    headerBg = "bg-slate-500 dark:bg-slate-600";
+    headerBg = "bg-slate-600 dark:bg-slate-700";
   } else if (role === 'KEPALA_SEKOLAH') {
     headerBg = "bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-500 dark:to-indigo-500";
   } else if (role === 'KURIKULUM') {
@@ -204,7 +205,7 @@ export const UnassignedNode = React.memo<NodeDesignProps>(({ node }) => {
     headerBg = "bg-cyan-600 dark:bg-cyan-500";
   } else if (role === 'SARPRAS') {
     headerBg = "bg-indigo-600 dark:bg-indigo-500";
-  } else if (role === 'TU') {
+  } else if (role === 'TU' || role === 'TU_KEPALA') {
     headerBg = "bg-blue-600 dark:bg-blue-500";
   } else if (role === 'BKK') {
     headerBg = "bg-violet-600 dark:bg-violet-500";
@@ -212,20 +213,21 @@ export const UnassignedNode = React.memo<NodeDesignProps>(({ node }) => {
   
   const icon = getRoleIcon(node.data?.roleCode, 14, "text-white/90 mr-1.5 flex-shrink-0");
   return (
-    <div className={cn("flex flex-col w-full h-full", cfg.minHeight)}>
+    <div className={cn("flex flex-col w-full h-full cursor-pointer group", cfg.minHeight)}>
       {/* Position Header - Themed based on hierarchy */}
-      <div className={cn(headerBg, "px-4 flex-1 flex items-center justify-center gap-1")}>
+      <div className={cn(headerBg, "px-3 py-1 flex-1 flex items-center justify-center gap-1 transition-opacity group-hover:opacity-90")}>
+        {isLeader && <Crown size={12} className="text-amber-300 drop-shadow flex-shrink-0 mr-0.5" />}
         {icon}
-        <span className={cn(cfg.colors.textTop, "text-[10px] font-black uppercase tracking-widest block whitespace-nowrap truncate text-center")}>
+        <span className={cn(cfg.colors.textTop, "text-[9.5px] font-black uppercase tracking-wider block whitespace-normal break-words line-clamp-2 px-1 text-center leading-tight")}>
           {node.label}
         </span>
       </div>
       
-      {/* Occupant Area - White with RED alert text */}
-      <div className={cn(cfg.colors.bottom, "px-4 flex-1 border-t border-blue-100 dark:border-slate-700 w-full flex items-center justify-center bg-white dark:bg-slate-900")}>
-        <div className="flex items-center gap-2">
-          <span className={cn(tokens.unassigned.colors.text, "text-[11px] font-black uppercase tracking-tighter", tokens.animations.pulse)}>
-            Belum Diisi
+      {/* Occupant Area - White with pulse alert text */}
+      <div className={cn(cfg.colors.bottom, "px-3 flex-1 border-t border-dashed border-blue-200 dark:border-slate-700 w-full flex items-center justify-center bg-white dark:bg-slate-900 group-hover:bg-blue-50/50 dark:group-hover:bg-slate-800/80 transition-colors")}>
+        <div className="flex items-center gap-1.5">
+          <span className={cn(tokens.unassigned.colors.text, "text-[10px] font-black uppercase tracking-wider", tokens.animations.pulse)}>
+            + Klik Isi Slot
           </span>
         </div>
       </div>
@@ -233,9 +235,6 @@ export const UnassignedNode = React.memo<NodeDesignProps>(({ node }) => {
   );
 });
 
-/**
- * GroupNode: High-contrast design for ROOT and GROUP headers.
- */
 export const GroupNode = React.memo<NodeDesignProps>(({ node }) => {
   const cfg = STRUKTUR_CONFIG.design.group;
   const upperLabel = String(node.label || '').toUpperCase();

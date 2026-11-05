@@ -136,12 +136,17 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
     if (saving || !node) return;
     setSaving(true);
     try {
+      const isSlot = Boolean(node.data?.isSlot);
+      const finalIsLeader = isSlot ? Boolean(node.data?.isLeader) : isLeader;
+      const finalFlag = isSlot ? (node.data?.assignmentFlag || selectedFlag) : selectedFlag;
+      const finalTitle = isSlot ? (node.data?.customTitle || customTitle.trim()) : customTitle.trim();
+
       await onSave({ 
         value: val, 
         label,
-        is_leader: isLeader,
-        assignment_flag: selectedFlag || undefined,
-        custom_title: customTitle.trim() || undefined
+        is_leader: finalIsLeader,
+        assignment_flag: finalFlag || undefined,
+        custom_title: finalTitle || undefined
       });
     } catch (err) {
       console.error('Gagal menyimpan:', err);
@@ -156,6 +161,33 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
 
   // Sub-bidang config form block (reusable for mobile and desktop)
   const renderFlagConfiguration = () => {
+    if (node?.data?.isSlot) {
+      const isLeaderSlot = Boolean(node?.data?.isLeader);
+      return (
+        <div className="px-4 py-2.5 bg-gradient-to-r from-blue-50/80 to-indigo-50/80 dark:from-slate-800 dark:to-indigo-950/40 border-b border-indigo-100 dark:border-indigo-900/50 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className={cn(
+              "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 shadow-xs",
+              isLeaderSlot ? "bg-amber-500 text-white" : "bg-indigo-600 text-white"
+            )}>
+              {isLeaderSlot ? <Crown size={14} className="text-amber-200" /> : <Tag size={13} />}
+            </div>
+            <div className="min-w-0">
+              <span className="text-[9.5px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block leading-tight">
+                {isLeaderSlot ? 'Formasi Koordinator' : 'Formasi Sub-Bidang'}
+              </span>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate block">
+                {node.label}
+              </span>
+            </div>
+          </div>
+          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-indigo-600 text-white shadow-xs shrink-0">
+            Pilih Personil ↓
+          </span>
+        </div>
+      );
+    }
+
     if (availableFlags.length === 0) return null;
 
     return (
@@ -217,7 +249,7 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
     );
   };
 
-  if (isMobile) {
+    if (isMobile) {
     return createPortal(
       <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
         <div 
