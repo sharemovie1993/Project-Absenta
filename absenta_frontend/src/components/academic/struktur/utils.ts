@@ -14,6 +14,11 @@ export interface TransformManagementOptions {
    * Jika false (default), halaman pusat (StrukturOrganisasiPage) hanya merender personil yang aktif tanpa slot kosong.
    */
   includeEmptySlots?: boolean;
+  /**
+   * Jika true, sub-bidang di bawah Waka/Leader akan dirender secara HORIZONTAL menyamping.
+   * Digunakan untuk sub-tab Dashboard Role (Kurikulum, Kesiswaan, Hubin, dll).
+   */
+  horizontalSubSlots?: boolean;
 }
 
 /**
@@ -66,9 +71,10 @@ export const transformManagementToTree = (
 
           const defaultLeaderTitle = leaderFlagDef?.label || (isKoordinatorTu ? 'Koordinator TU' : `WAKA ${area}`);
 
+          let leaderNode: TopologyNodeData;
           if (leaderMember) {
             const rawLabel = leaderMember.custom_title || (leaderMember.assignment_flag ? getFlagLabel(kode, leaderMember.assignment_flag) : defaultLeaderTitle);
-            memberSlots.push({
+            leaderNode = {
               id: `boss-${kode}-${n.id}-${leaderMember.id}`,
               label: shortenPosition(rawLabel),
               subLabel: leaderMember.name,
@@ -82,11 +88,13 @@ export const transformManagementToTree = (
                 assignmentFlag: leaderMember.assignment_flag || leaderFlagDef?.flag,
                 customTitle: leaderMember.custom_title,
                 isSlot: true,
-              }
-            });
+                forceVertical: options.horizontalSubSlots ? false : true,
+              },
+              children: []
+            };
           } else {
             // Slot Kosong Leader jika belum ada pimpinan
-            memberSlots.push({
+            leaderNode = {
               id: `slot-empty-leader-${kode}-${n.id}`,
               label: shortenPosition(defaultLeaderTitle),
               subLabel: 'Belum Diisi',
@@ -100,16 +108,18 @@ export const transformManagementToTree = (
                 customTitle: defaultLeaderTitle,
                 isUnassigned: true,
                 isSlot: true,
-              }
-            });
+                forceVertical: options.horizontalSubSlots ? false : true,
+              },
+              children: []
+            };
           }
 
           const remainingMembers = members.filter((m: any) => m.id !== leaderMember?.id);
 
           if (!options.includeEmptySlots) {
             // ── PERILAKU 1: STRUKTUR ORGANISASI PUSAT (MAKRO) ──
-            // Tampilan Pusat TIDAK BOLEH BERUBAH: HANYA menampilkan staf yang aktif terdaftar.
-            // Tidak menampilkan slot kosong sub-bidang, sehingga struktur makro tetap bersih dan proporsional.
+            // Tampilan Pusat TIDAK BOLEH BERUBAH: HANYA menampilkan staf yang aktif terdaftar secara vertikal.
+            memberSlots.push(leaderNode);
             remainingMembers.forEach((m: any) => {
               const rawLabel = m.custom_title || (m.assignment_flag ? getFlagLabel(kode, m.assignment_flag) : (isKoordinatorTu ? 'Staf TU' : `STAF ${area}`));
               memberSlots.push({
@@ -128,10 +138,20 @@ export const transformManagementToTree = (
                 }
               });
             });
+
+            children.push({
+              id: uniqueId,
+              label: isKoordinatorTu ? 'BIDANG TU' : `BIDANG ${area.replace(/& STAF/gi, '').trim()}`, 
+              subLabel: '',
+              type: 'CATEGORY' as any,
+              data: { roleCode: kode, realStrukturId: n.id, unit_id: n.unit_id, forceVertical: true },
+              children: memberSlots
+            });
+
           } else {
-            // ── PERILAKU 2: SUB-TAB DASHBOARD ROLE (MIKRO / VERTIKAL) ──
-            // Tampilan Sub-Tab: Menampilkan seluruh formasi slot resmi (terisi maupun kosong).
-            // Waka / Koordinator dapat langsung klik "+ Klik Isi Slot" pada slot yang kosong.
+            // ── PERILAKU 2: SUB-TAB DASHBOARD ROLE (HORIZONTAL) ──
+            // Menampilkan formasi lengkap slot resmi (terisi maupun kosong) secara HORIZONTAL di bawah Waka.
+            const subSlots: TopologyNodeData[] = [];
             const legacyUnflaggedMembers = remainingMembers.filter((m: any) => !m.assignment_flag);
             const assignedMembers = new Set<string>();
 
@@ -145,7 +165,7 @@ export const transformManagementToTree = (
               if (matched) {
                 assignedMembers.add(matched.id);
                 const rawLabel = matched.custom_title || subFlag.label;
-                memberSlots.push({
+                subSlots.push({
                   id: `slot-${kode}-${n.id}-${subFlag.flag}-${matched.id}`,
                   label: shortenPosition(rawLabel),
                   subLabel: matched.name,
@@ -163,7 +183,7 @@ export const transformManagementToTree = (
                 });
               } else {
                 // SLOT KOSONG: Siap diklik langsung untuk penugasan tanpa dropdown manual
-                memberSlots.push({
+                subSlots.push({
                   id: `slot-empty-${kode}-${n.id}-${subFlag.flag}`,
                   label: shortenPosition(subFlag.label),
                   subLabel: 'Belum Diisi',
@@ -186,7 +206,7 @@ export const transformManagementToTree = (
             const leftoverMembers = remainingMembers.filter((m: any) => !assignedMembers.has(m.id) && !legacyUnflaggedMembers.includes(m));
             leftoverMembers.forEach((extra: any) => {
               const rawLabel = extra.custom_title || (extra.assignment_flag ? getFlagLabel(kode, extra.assignment_flag) : `STAF ${area}`);
-              memberSlots.push({
+              subSlots.push({
                 id: `staff-extra-${kode}-${n.id}-${extra.id}`,
                 label: shortenPosition(rawLabel),
                 subLabel: extra.name,
@@ -202,6 +222,35 @@ export const transformManagementToTree = (
                 }
               });
             });
+
+            if (options.horizontalSubSlots) {
+              // Sub-bagian berjajar secara HORIZONTAL di bawah Leader
+              leaderNode.children = subSlots;
+
+              children.push({
+                id: uniqueId,
+                label: isKoordinatorTu ? 'BIDANG TU' : `BIDANG ${area.replace(/& STAF/gi, '').trim()}`, 
+                subLabel: '',
+                type: 'CATEGORY' as any,
+                data: { 
+                  roleCode: kode, 
+                  realStrukturId: n.id, 
+                  unit_id: n.unit_id, 
+                  forceVertical: true // Banner terhubung vertikal ke Leader
+                },
+                children: [leaderNode]
+              });
+            } else {
+              memberSlots.push(leaderNode, ...subSlots);
+              children.push({
+                id: uniqueId,
+                label: isKoordinatorTu ? 'BIDANG TU' : `BIDANG ${area.replace(/& STAF/gi, '').trim()}`, 
+                subLabel: '',
+                type: 'CATEGORY' as any,
+                data: { roleCode: kode, realStrukturId: n.id, unit_id: n.unit_id, forceVertical: true },
+                children: memberSlots
+              });
+            }
           }
 
         } else {
@@ -228,14 +277,16 @@ export const transformManagementToTree = (
           });
         }
 
-        children.push({
-          id: uniqueId,
-          label: isKoordinatorTu ? 'BIDANG TU' : `BIDANG ${area.replace(/& STAF/gi, '').trim()}`, 
-          subLabel: '',
-          type: 'CATEGORY' as any,
-          data: { roleCode: kode, realStrukturId: n.id, unit_id: n.unit_id, forceVertical: true },
-          children: memberSlots
-        });
+        if (flags.length === 0) {
+          children.push({
+            id: uniqueId,
+            label: isKoordinatorTu ? 'BIDANG TU' : `BIDANG ${area.replace(/& STAF/gi, '').trim()}`, 
+            subLabel: '',
+            type: 'CATEGORY' as any,
+            data: { roleCode: kode, realStrukturId: n.id, unit_id: n.unit_id, forceVertical: true },
+            children: memberSlots
+          });
+        }
       });
     }
   });

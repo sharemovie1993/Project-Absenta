@@ -146,7 +146,7 @@ export const DivisiStrukturOrganisasiView: React.FC<UniversalDivisiStrukturViewP
   // 3. Transform Tree for Specific Division
   const divisionTreeData = useMemo(() => {
     if (!treeRes?.data) return null;
-    const tree = transformManagementToTree([divisionCode], treeRes.data, jurusans, { includeEmptySlots: true });
+    const tree = transformManagementToTree([divisionCode], treeRes.data, jurusans, { includeEmptySlots: true, horizontalSubSlots: true });
     // Jika tree memiliki children (kategori divisi), ambil langsung kategori divisinya sebagai root tampilan
     if (tree && tree.children && tree.children.length === 1) {
       return tree.children[0];
@@ -325,7 +325,7 @@ export const DivisiStrukturOrganisasiView: React.FC<UniversalDivisiStrukturViewP
       </div>
 
       {/* 3. Main Topology Diagram / Mobile Cards */}
-      <div className="w-full bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3 sm:p-6 shadow-xs overflow-x-auto min-h-[420px] flex items-center justify-center">
+      <div className="w-full bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3 sm:p-6 shadow-xs overflow-x-auto min-h-[420px] flex items-center justify-start xl:justify-center custom-scrollbar">
         {isTreeLoading ? (
           <TreeSkeleton />
         ) : divisionTreeData ? (
@@ -341,7 +341,6 @@ export const DivisiStrukturOrganisasiView: React.FC<UniversalDivisiStrukturViewP
                 data={divisionTreeData}
                 editingId={editingNode?.node.id}
                 onAction={handleNodeAction}
-                isVerticalLayout={true}
               />
             )}
           </TreeErrorBoundary>

@@ -58,15 +58,17 @@ export const TopologyTree = React.memo<TopologyTreeProps>(({
   }
 
   return (
-    <div className={cn("p-4 sm:p-8 flex flex-col items-center", isVerticalLayout && "w-full max-w-xl mx-auto")}>
-      <TreeNode 
-        node={data} 
-        depth={0} 
-        isLast={true} 
-        onAction={onAction}
-        editingId={editingId}
-        isVerticalLayout={isVerticalLayout}
-      />
+    <div className="w-full overflow-x-auto overflow-y-hidden custom-scrollbar">
+      <div className={cn("inline-block min-w-max mx-auto p-4 sm:p-8 flex flex-col items-center", isVerticalLayout && "w-full max-w-xl")}>
+        <TreeNode 
+          node={data} 
+          depth={0} 
+          isLast={true} 
+          onAction={onAction}
+          editingId={editingId}
+          isVerticalLayout={isVerticalLayout}
+        />
+      </div>
     </div>
   );
 }, (prev, next) => {
@@ -281,7 +283,11 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
                       )}></div>
                       <div className={cn(
                         "flex-1", 
-                        idx === (node.children || []).length - 1 ? "bg-transparent" : connectorColor,
+                        (idx === (node.children || []).length - 1 && (
+                        !(node.data?.roleCode?.includes('WAKIL') || 
+                          ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU_KEPALA', 'TU', 'BKK', 'BPBK', 'GERBANG', 'KETUA_PEMBINA_TARUNA'].includes(node.data?.roleCode)
+                        ) || isEditing
+                      )) ? "bg-transparent" : connectorColor,
                         idx !== (node.children || []).length - 1 && "mr-[-16px]" // Sambungkan ke kanan melewati gap
                       )}></div>
                     </div>
@@ -301,37 +307,75 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
                 </div>
               ))}
 
-              {/* Centered Vertical Add Button with Label */}
-              {shouldBeVertical && (
+              {/* Add Button for both Vertical and Horizontal */}
+              {(
                 node.data?.roleCode?.includes('WAKIL') || 
                 ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU_KEPALA', 'TU', 'BKK', 'BPBK', 'GERBANG', 'KETUA_PEMBINA_TARUNA'].includes(node.data?.roleCode)
               ) && !isEditing && (
-                <div className="relative flex flex-col w-full items-center pt-4 group">
-                  <div className={cn("w-[2px] h-8 mb-0", connectorColor, "opacity-50")}></div>
-                  <motion.div 
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Sinyal kuat: Ini adalah penambahan anggota (MEMBER_ADD)
-                      onAction?.({ 
-                        ...node, 
-                        id: `add-new-${node.id}`,
-                        actionType: 'MEMBER_ADD',
-                        parentStrukturId: node.data?.realStrukturId 
-                      }, 'MEMBER_ADD', e.currentTarget as HTMLElement);
-                    }}
-                    className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white dark:bg-slate-800 border-2 border-blue-600 dark:border-blue-500 cursor-pointer shadow-md hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all"
-                    aria-label={`Tambah anggota baru ke bidang ${node.label}`}
-                  >
-                    <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-white">
-                      <Plus size={14} strokeWidth={3} />
-                    </div>
-                    <span className="text-[11px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-tight">
-                      Tambah Anggota
-                    </span>
-                  </motion.div>
-                </div>
+                shouldBeVertical ? (
+                  <div className="relative flex flex-col w-full items-center pt-4 group">
+                    <div className={cn("w-[2px] h-8 mb-0", connectorColor, "opacity-50")}></div>
+                    <motion.div 
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAction?.({ 
+                          ...node, 
+                          id: `add-new-${node.id}`,
+                          actionType: 'MEMBER_ADD',
+                          parentStrukturId: node.data?.realStrukturId 
+                        }, 'MEMBER_ADD', e.currentTarget as HTMLElement);
+                      }}
+                      className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white dark:bg-slate-800 border-2 border-blue-600 dark:border-blue-500 cursor-pointer shadow-md hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all"
+                      aria-label={`Tambah anggota baru ke bidang ${node.label}`}
+                    >
+                      <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-white">
+                        <Plus size={14} strokeWidth={3} />
+                      </div>
+                      <span className="text-[11px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-tight">
+                        Tambah Anggota
+                      </span>
+                    </motion.div>
+                  </div>
+                ) : (
+                  <div className="relative flex flex-col items-center">
+                    {/* Horizontal Wing extending to Add Button */}
+                    {(node.children || []).length > 0 && (
+                      <div className="absolute top-0 left-0 right-1/2 h-[2px] flex">
+                        <div className={cn("flex-1", connectorColor, "ml-[-16px]")}></div>
+                      </div>
+                    )}
+                    <div className={cn("w-[2px] bg-slate-300 dark:bg-slate-700 h-10 mb-0")}></div>
+                    <motion.div 
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAction?.({ 
+                          ...node, 
+                          id: `add-new-${node.id}`,
+                          actionType: 'MEMBER_ADD',
+                          parentStrukturId: node.data?.realStrukturId 
+                        }, 'MEMBER_ADD', e.currentTarget as HTMLElement);
+                      }}
+                      className="flex flex-col items-center justify-center px-4 py-2.5 min-w-[200px] h-[70px] rounded-xl border-2 border-dashed border-blue-400 dark:border-blue-500 bg-blue-50/50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 cursor-pointer shadow-xs hover:bg-blue-100/60 dark:hover:bg-blue-900/40 transition-all"
+                      aria-label={`Tambah anggota baru ke bidang ${node.label}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white shadow-xs">
+                          <Plus size={14} strokeWidth={3} />
+                        </div>
+                        <span className="text-xs font-black uppercase tracking-tight">
+                          Tambah Anggota
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-blue-600/70 dark:text-blue-400/70 font-semibold mt-0.5">
+                        + Personil Pendukung
+                      </span>
+                    </motion.div>
+                  </div>
+                )
               )}
             </div>
           </div>
