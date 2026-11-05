@@ -166,7 +166,23 @@ export const JadwalPiketPrintModal: React.FC<JadwalPiketPrintModalProps> = ({
   const handleDownloadPdf = async () => {
     setIsExporting(true);
     const toastId = toast.loading('Sedang merender PDF Jadwal Piket...');
+    const deskCanvas = document.getElementById('print-desk-canvas-area');
+    const prevZoom = deskCanvas ? deskCanvas.style.zoom : '';
+
     try {
+      // 1. Matikan zoom DOM riil & trigger reflow sinkron
+      if (deskCanvas) {
+        deskCanvas.style.zoom = '1';
+        deskCanvas.style.transform = 'none';
+        void deskCanvas.offsetHeight;
+      }
+
+      // 2. Tunggu font stabil & paint settle tick
+      if (document.fonts?.ready) {
+        await document.fonts.ready;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 120));
+
       const sheetElement = document.querySelector('.print-sheet') as HTMLElement;
       if (!sheetElement) {
         window.print();
@@ -180,6 +196,23 @@ export const JadwalPiketPrintModal: React.FC<JadwalPiketPrintModalProps> = ({
         allowTaint: true,
         backgroundColor: '#ffffff',
         logging: false,
+        onclone: (clonedDoc) => {
+          const clonedDesk = clonedDoc.getElementById('print-desk-canvas-area');
+          if (clonedDesk) {
+            clonedDesk.style.zoom = '1';
+            (clonedDesk.style as any).transform = 'none';
+          }
+          const clonedSheets = clonedDoc.querySelectorAll<HTMLElement>('.print-sheet');
+          clonedSheets.forEach((s) => {
+            s.style.zoom = '1';
+            s.style.transform = 'none';
+            s.style.letterSpacing = 'normal';
+            s.style.fontVariantLigatures = 'none';
+            s.style.border = 'none';
+            s.style.boxShadow = 'none';
+            s.style.outline = 'none';
+          });
+        },
       });
 
       const imgData = canvas.toDataURL('image/jpeg', 0.88);
@@ -193,11 +226,23 @@ export const JadwalPiketPrintModal: React.FC<JadwalPiketPrintModalProps> = ({
 
       const pdfWidth = isLandscape ? 297 : 210;
       const pdfHeight = isLandscape ? 210 : 297;
+      const canvasRatio = canvas.height / canvas.width;
+      const imgHeight = pdfWidth * canvasRatio;
 
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, Math.min(pdfHeight, imgHeight), undefined, 'FAST');
       pdf.save(`Jadwal_Piket_${kelasNama.replace(/\s+/g, '_')}.pdf`);
-      toast.success('PDF Jadwal Piket berhasil diunduh!', { id: toastId });
+      toast.success('PDF Jadwal Piket berhasil diunduh (True WYSIWYG)!', { id: toastId });
     } catch (err) {
+      console.error('[PDF Export Error]', err);
+      toast.error('Gagal mengekspor canvas, membuka dialog cetak browser...', { id: toastId });
+      window.print();
+    } finally {
+      if (deskCanvas) {
+        deskCanvas.style.zoom = prevZoom;
+      }
+      setIsExporting(false);
+    }
+  };
       console.error('[PDF Export Error]', err);
       toast.error('Gagal mengekspor canvas, membuka dialog cetak browser...', { id: toastId });
       window.print();
