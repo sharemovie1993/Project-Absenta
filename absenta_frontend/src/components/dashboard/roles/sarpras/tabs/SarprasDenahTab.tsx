@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   MapPin,
   Plus,
@@ -17,13 +17,50 @@ import {
   cloneDenah,
   deleteDenah,
 } from '@/api/spasial.api';
+import { useKelasOptions } from '@/hooks/useKelasOptions';
+import { useRuanganOptions } from '@/hooks/useRuanganOptions';
 import type { DenahSpasial, TipeDenah } from '@/types/spasial.types';
+import type { UnassignedRoomItem } from '@/components/spasial/DenahPaletteSidebar';
 
 export const SarprasDenahTab: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [denahList, setDenahList] = useState<DenahSpasial[]>([]);
   const [activeDenah, setActiveDenah] = useState<DenahSpasial | null>(null);
   const [filterTipe, setFilterTipe] = useState<TipeDenah | 'ALL'>('MASTER_SARPRAS');
+
+  // Load school classes and physical sarpras rooms
+  const { rawList: kelasList = [] } = useKelasOptions();
+  const { rawList: ruanganList = [] } = useRuanganOptions();
+
+  // Convert classes and sarpras locations into room items for the palette
+  const unassignedRooms: UnassignedRoomItem[] = useMemo(() => {
+    const list: UnassignedRoomItem[] = [];
+
+    // 1. Rombel Kelas Aktif
+    kelasList.forEach((k, idx) => {
+      list.push({
+        kelas_id: k.id,
+        kelas_nama: k.nama_kelas,
+        slot_ruang: `R.${String(idx + 1).padStart(2, '0')}`,
+        nama_ruang: (k as any).Ruangan?.nama_ruangan || `Ruang Kelas ${k.nama_kelas}`,
+      });
+    });
+
+    // 2. Lokasi Fisik Sarpras (Lab, Ruang Guru, dsb)
+    ruanganList.forEach((r: any) => {
+      const id = r.id || r.nama_ruangan || r.nama_lokasi;
+      if (!list.some((existing) => existing.kelas_id === id)) {
+        list.push({
+          kelas_id: `sarpras-loc-${id}`,
+          kelas_nama: r.nama_ruangan || r.nama_lokasi || r.nama,
+          slot_ruang: r.kode_ruangan || 'LAB/FAS',
+          nama_ruang: r.gedung || 'Fasilitas Kampus',
+        });
+      }
+    });
+
+    return list;
+  }, [kelasList, ruanganList]);
 
   const loadData = async () => {
     setLoading(true);
@@ -153,7 +190,7 @@ export const SarprasDenahTab: React.FC = () => {
             </h2>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Susun dan kelola peta denah fisik sekolah (Lantai, Gedung, Lab, Toilet, Fasilitas) berbasis puzzle drag, rotate 90°, dan flip.
+            Susun dan kelola peta denah fisik sekolah ({unassignedRooms.length} Ruangan &amp; Kelas Terdata) berbasis puzzle drag, rotate 90°, dan flip.
           </p>
         </div>
 
@@ -164,7 +201,7 @@ export const SarprasDenahTab: React.FC = () => {
             <button
               type="button"
               onClick={() => setFilterTipe('MASTER_SARPRAS')}
-              className={`px-3 py-1 rounded-lg transition-all ${
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
                 filterTipe === 'MASTER_SARPRAS'
                   ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-2xs font-bold'
                   : 'text-slate-600 dark:text-slate-400'
@@ -175,7 +212,7 @@ export const SarprasDenahTab: React.FC = () => {
             <button
               type="button"
               onClick={() => setFilterTipe('EVENT_UJIAN')}
-              className={`px-3 py-1 rounded-lg transition-all ${
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
                 filterTipe === 'EVENT_UJIAN'
                   ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-2xs font-bold'
                   : 'text-slate-600 dark:text-slate-400'
@@ -186,7 +223,7 @@ export const SarprasDenahTab: React.FC = () => {
             <button
               type="button"
               onClick={() => setFilterTipe('ALL')}
-              className={`px-3 py-1 rounded-lg transition-all ${
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
                 filterTipe === 'ALL'
                   ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-2xs font-bold'
                   : 'text-slate-600 dark:text-slate-400'
@@ -269,6 +306,7 @@ export const SarprasDenahTab: React.FC = () => {
         <InteractiveDenahCanvas
           key={activeDenah.id}
           denah={activeDenah}
+          unassignedRooms={unassignedRooms}
           onSaveSuccess={(updated) => {
             setDenahList((prev) =>
               prev.map((d) => (d.id === updated.id ? updated : d))

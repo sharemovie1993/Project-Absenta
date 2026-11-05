@@ -6,11 +6,12 @@ import {
   Sparkles,
   Building2,
   CheckCircle2,
+  School,
 } from 'lucide-react';
 import type { DenahElementNode, KategoriRuang } from '../../types/spasial.types';
 
 export interface UnassignedRoomItem {
-  slot_ruang: string; // e.g. "R.01"
+  slot_ruang: string; // e.g. "R.01" or "LAB-1"
   nama_ruang: string; // e.g. "Ruang 01"
   kelas_nama: string; // e.g. "X TJKT 1"
   kelas_id: string;
@@ -21,45 +22,64 @@ interface DenahPaletteSidebarProps {
   placedKelasIds: Set<string>;
   onAddRoomNode: (item: UnassignedRoomItem) => void;
   onAddVirtualNode: (node: Omit<DenahElementNode, 'id' | 'x' | 'y'>) => void;
+  isLightMode?: boolean;
 }
 
 const VIRTUAL_PRESETS: Array<{
   label: string;
   sub?: string;
   kategori: KategoriRuang;
-  warna_bg?: string;
-  warna_border?: string;
-  warna_teks?: string;
   width: number;
   height: number;
 }> = [
   {
-    label: 'LAB KOMPUTER 1',
-    sub: 'Server Utama',
-    kategori: 'LAB',
-    width: 200,
-    height: 120,
-  },
-  {
-    label: 'LAB KOMPUTER 2',
-    sub: 'Lab CBT',
-    kategori: 'LAB',
-    width: 200,
-    height: 120,
-  },
-  {
-    label: 'RUANG PANITIA',
-    sub: 'Posko Asesmen',
-    kategori: 'KANTOR',
+    label: 'RUANG KELAS',
+    sub: 'Kelas Standar 36 Siswa',
+    kategori: 'RUANG_UJIAN',
     width: 180,
-    height: 100,
+    height: 110,
+  },
+  {
+    label: 'LAB KOMPUTER 1',
+    sub: 'Server & Lab CBT',
+    kategori: 'LAB',
+    width: 200,
+    height: 120,
+  },
+  {
+    label: 'LAB IPA / SAINS',
+    sub: 'Fisika & Kimia',
+    kategori: 'LAB',
+    width: 200,
+    height: 120,
+  },
+  {
+    label: 'BENGKEL / TEFA',
+    sub: 'Praktik Kejuruan',
+    kategori: 'LAB',
+    width: 240,
+    height: 130,
   },
   {
     label: 'RUANG GURU',
-    sub: 'Gedung Utama',
+    sub: 'Kantor Pengajar',
     kategori: 'KANTOR',
     width: 220,
     height: 120,
+  },
+  {
+    label: 'RUANG TU / KEPSEK',
+    sub: 'Administrasi',
+    kategori: 'KANTOR',
+    width: 200,
+    height: 110,
+  },
+  {
+    label: 'PERPUSTAKAAN',
+    sub: 'Ruang Baca & Arsip',
+    kategori: 'PERPUSTAKAAN',
+    width: 220,
+    height: 130,
   },
   {
     label: 'TOILET SISWA',
@@ -69,25 +89,46 @@ const VIRTUAL_PRESETS: Array<{
     height: 80,
   },
   {
-    label: 'PERPUSTAKAAN',
-    sub: 'Lantai 1',
-    kategori: 'PERPUSTAKAAN',
-    width: 220,
-    height: 140,
+    label: 'TOILET GURU',
+    sub: 'Fasilitas Pendidik',
+    kategori: 'TOILET',
+    width: 110,
+    height: 70,
   },
   {
-    label: 'LAPANGAN',
-    sub: 'Area Terbuka',
+    label: 'MUSHOLA',
+    sub: 'Sarana Ibadah',
+    kategori: 'LAINNYA',
+    width: 180,
+    height: 120,
+  },
+  {
+    label: 'KANTIN SEKOLAH',
+    sub: 'Pujasera Kampus',
+    kategori: 'LAINNYA',
+    width: 240,
+    height: 110,
+  },
+  {
+    label: 'LAPANGAN UTAMA',
+    sub: 'Upacara & Olahraga',
     kategori: 'LAPANGAN',
-    width: 320,
+    width: 340,
     height: 180,
   },
   {
-    label: 'KORIDOR UTAMA',
-    sub: 'Selasar Gedung',
+    label: 'KORIDOR / SELASAR',
+    sub: 'Jalur Penghubung',
     kategori: 'KORIDOR',
     width: 260,
-    height: 60,
+    height: 50,
+  },
+  {
+    label: 'TANGGA LANTAI',
+    sub: 'Akses Bertingkat',
+    kategori: 'KORIDOR',
+    width: 90,
+    height: 80,
   },
 ];
 
@@ -96,8 +137,12 @@ export const DenahPaletteSidebar: React.FC<DenahPaletteSidebarProps> = ({
   placedKelasIds,
   onAddRoomNode,
   onAddVirtualNode,
+  isLightMode = false,
 }) => {
-  const [activeTab, setActiveTab] = useState<'ruang_ujian' | 'virtual'>('ruang_ujian');
+  // If no exam rooms passed, start on 'virtual' tab automatically
+  const [activeTab, setActiveTab] = useState<'ruang_sekolah' | 'virtual'>(() =>
+    unassignedRooms.length > 0 ? 'ruang_sekolah' : 'virtual'
+  );
   const [search, setSearch] = useState('');
 
   // Custom virtual room form state
@@ -130,33 +175,55 @@ export const DenahPaletteSidebar: React.FC<DenahPaletteSidebarProps> = ({
   };
 
   return (
-    <aside className="w-80 flex-shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-full shadow-sm z-20">
+    <aside
+      className={`w-80 flex-shrink-0 border-r flex flex-col h-full shadow-sm z-20 transition-colors ${
+        isLightMode
+          ? 'bg-white border-slate-200 text-slate-800'
+          : 'bg-slate-900 border-slate-800 text-slate-100'
+      }`}
+    >
       {/* Header Tabs */}
-      <div className="p-3 border-b border-slate-200 dark:border-slate-800 space-y-2">
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
+      <div
+        className={`p-3 border-b space-y-2 ${
+          isLightMode ? 'border-slate-200 bg-slate-50/70' : 'border-slate-800 bg-slate-850'
+        }`}
+      >
+        <div
+          className={`flex items-center gap-1.5 p-1 rounded-xl ${
+            isLightMode ? 'bg-slate-200/80' : 'bg-slate-800'
+          }`}
+        >
           <button
             type="button"
-            onClick={() => setActiveTab('ruang_ujian')}
-            className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === 'ruang_ujian'
-                ? 'bg-white dark:bg-slate-700 text-primary-600 dark:text-primary-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            onClick={() => setActiveTab('ruang_sekolah')}
+            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === 'ruang_sekolah'
+                ? isLightMode
+                  ? 'bg-white text-indigo-700 shadow-xs'
+                  : 'bg-slate-700 text-indigo-300 shadow-xs'
+                : isLightMode
+                ? 'text-slate-600 hover:text-slate-900'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Layers className="w-3.5 h-3.5" />
-            Ruang Ujian ({unassignedRooms.length})
+            <School className="w-3.5 h-3.5" />
+            Ruang &amp; Kelas ({unassignedRooms.length})
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('virtual')}
-            className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === 'virtual'
-                ? 'bg-white dark:bg-slate-700 text-primary-600 dark:text-primary-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                ? isLightMode
+                  ? 'bg-white text-indigo-700 shadow-xs'
+                  : 'bg-slate-700 text-indigo-300 shadow-xs'
+                : isLightMode
+                ? 'text-slate-600 hover:text-slate-900'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
             <Sparkles className="w-3.5 h-3.5" />
-            Ruang Virtual
+            Fasilitas ({VIRTUAL_PRESETS.length})
           </button>
         </div>
 
@@ -166,23 +233,35 @@ export const DenahPaletteSidebar: React.FC<DenahPaletteSidebarProps> = ({
           <input
             type="text"
             placeholder={
-              activeTab === 'ruang_ujian'
-                ? 'Cari R.01, X TJKT 1...'
-                : 'Cari preset ruang...'
+              activeTab === 'ruang_sekolah'
+                ? 'Cari nama kelas / ruang...'
+                : 'Cari preset fasilitas...'
             }
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            className={`w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border focus:outline-hidden ${
+              isLightMode
+                ? 'bg-white border-slate-300 text-slate-800 focus:border-indigo-500'
+                : 'bg-slate-800 border-slate-700 text-slate-200 focus:border-indigo-500'
+            }`}
           />
         </div>
       </div>
 
       {/* Body content */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
-        {activeTab === 'ruang_ujian' ? (
+        {activeTab === 'ruang_sekolah' ? (
           filteredRooms.length === 0 ? (
-            <div className="text-center py-8 text-xs text-slate-400">
-              Tidak ada data ruang ujian yang cocok.
+            <div className="text-center py-8 text-xs text-slate-400 space-y-2">
+              <Layers className="w-8 h-8 text-slate-400 mx-auto opacity-50" />
+              <p>Belum ada data ruang kelas terdaftar.</p>
+              <button
+                type="button"
+                onClick={() => setActiveTab('virtual')}
+                className="text-xs text-indigo-600 dark:text-indigo-400 font-bold underline cursor-pointer"
+              >
+                Gunakan Preset Fasilitas &rarr;
+              </button>
             </div>
           ) : (
             filteredRooms.map((room) => {
@@ -190,18 +269,20 @@ export const DenahPaletteSidebar: React.FC<DenahPaletteSidebarProps> = ({
               return (
                 <div
                   key={room.kelas_id}
-                  className={`p-2.5 rounded-lg border text-xs flex items-center justify-between transition-all ${
+                  className={`p-2.5 rounded-xl border text-xs flex items-center justify-between transition-all ${
                     isPlaced
-                      ? 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-60'
-                      : 'bg-white dark:bg-slate-850 border-slate-200 dark:border-slate-700 hover:border-primary-400 hover:shadow-sm'
+                      ? 'bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-60'
+                      : isLightMode
+                      ? 'bg-white border-slate-200 hover:border-indigo-400 hover:shadow-xs'
+                      : 'bg-slate-850 border-slate-700 hover:border-indigo-400 hover:shadow-xs'
                   }`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-mono font-bold px-2 py-1 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 rounded text-xs">
-                      {room.slot_ruang}
+                    <span className="font-mono font-bold px-2 py-1 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 rounded-md text-xs shrink-0">
+                      {room.slot_ruang || 'R.XX'}
                     </span>
                     <div className="min-w-0">
-                      <div className="font-semibold text-slate-800 dark:text-slate-100 truncate">
+                      <div className="font-bold truncate">
                         {room.kelas_nama}
                       </div>
                       <div className="text-[10px] text-slate-400 truncate">
@@ -211,7 +292,7 @@ export const DenahPaletteSidebar: React.FC<DenahPaletteSidebarProps> = ({
                   </div>
 
                   {isPlaced ? (
-                    <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                    <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       Terpasang
                     </span>
@@ -219,7 +300,7 @@ export const DenahPaletteSidebar: React.FC<DenahPaletteSidebarProps> = ({
                     <button
                       type="button"
                       onClick={() => onAddRoomNode(room)}
-                      className="px-2.5 py-1 text-xs font-semibold bg-primary-50 hover:bg-primary-100 dark:bg-primary-950/60 dark:hover:bg-primary-900 text-primary-700 dark:text-primary-300 rounded flex items-center gap-1 transition-colors"
+                      className="px-2.5 py-1 text-xs font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 rounded-lg flex items-center gap-1 transition-colors cursor-pointer shrink-0"
                     >
                       <Plus className="w-3 h-3" />
                       Pasang
@@ -233,8 +314,8 @@ export const DenahPaletteSidebar: React.FC<DenahPaletteSidebarProps> = ({
           <div className="space-y-3">
             {/* Quick Presets */}
             <div className="space-y-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                Preset Ruang Bangunan
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Preset Bangunan &amp; Ruangan
               </span>
               <div className="grid grid-cols-1 gap-1.5">
                 {VIRTUAL_PRESETS.filter((p) =>
@@ -253,20 +334,22 @@ export const DenahPaletteSidebar: React.FC<DenahPaletteSidebarProps> = ({
                         rotation: 0,
                       })
                     }
-                    className="p-2 text-left rounded-lg border border-slate-200 dark:border-slate-700 hover:border-primary-500 dark:hover:border-primary-400 bg-white dark:bg-slate-800 hover:shadow-xs transition-all flex items-center justify-between"
+                    className={`p-2.5 text-left rounded-xl border transition-all flex items-center justify-between cursor-pointer ${
+                      isLightMode
+                        ? 'bg-white border-slate-200 hover:border-indigo-500 hover:shadow-xs'
+                        : 'bg-slate-850 border-slate-700 hover:border-indigo-400 hover:shadow-xs'
+                    }`}
                   >
                     <div>
-                      <div className="text-xs font-bold text-slate-800 dark:text-slate-100">
-                        {preset.label}
-                      </div>
+                      <div className="text-xs font-bold">{preset.label}</div>
                       {preset.sub && (
                         <div className="text-[10px] text-slate-400">
                           {preset.sub}
                         </div>
                       )}
                     </div>
-                    <span className="text-[10px] font-semibold text-primary-600 dark:text-primary-400 flex items-center gap-0.5">
-                      <Plus className="w-3 h-3" />
+                    <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-0.5">
+                      <Plus className="w-3.5 h-3.5" />
                       Tambah
                     </span>
                   </button>
@@ -277,44 +360,60 @@ export const DenahPaletteSidebar: React.FC<DenahPaletteSidebarProps> = ({
             {/* Form Buat Ruang Virtual Kustom */}
             <form
               onSubmit={handleCreateCustomVirtual}
-              className="p-2.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 space-y-2 mt-2"
+              className={`p-3 rounded-2xl border border-dashed space-y-2 mt-2 ${
+                isLightMode
+                  ? 'bg-slate-50 border-slate-300'
+                  : 'bg-slate-850 border-slate-700'
+              }`}
             >
-              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200">
-                <Building2 className="w-3.5 h-3.5 text-primary-500" />
+              <div className="flex items-center gap-1.5 text-xs font-bold">
+                <Building2 className="w-3.5 h-3.5 text-indigo-500" />
                 Buat Ruang Kustom
               </div>
 
               <div>
-                <label className="text-[10px] text-slate-500">Nama / Label Utama</label>
+                <label className="text-[10px] text-slate-400">Nama / Label Utama</label>
                 <input
                   type="text"
                   placeholder="Contoh: GUDANG ARSIP"
                   value={customLabel}
                   onChange={(e) => setCustomLabel(e.target.value)}
-                  className="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                  className={`w-full px-2.5 py-1 text-xs rounded-lg border focus:outline-hidden ${
+                    isLightMode
+                      ? 'bg-white border-slate-300 text-slate-800'
+                      : 'bg-slate-900 border-slate-700 text-slate-200'
+                  }`}
                   required
                 />
               </div>
 
               <div>
-                <label className="text-[10px] text-slate-500">Sub Label (Opsional)</label>
+                <label className="text-[10px] text-slate-400">Sub Label (Opsional)</label>
                 <input
                   type="text"
                   placeholder="Contoh: Gedung C Lantai 1"
                   value={customSub}
                   onChange={(e) => setCustomSub(e.target.value)}
-                  className="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                  className={`w-full px-2.5 py-1 text-xs rounded-lg border focus:outline-hidden ${
+                    isLightMode
+                      ? 'bg-white border-slate-300 text-slate-800'
+                      : 'bg-slate-900 border-slate-700 text-slate-200'
+                  }`}
                 />
               </div>
 
               <div>
-                <label className="text-[10px] text-slate-500">Kategori</label>
+                <label className="text-[10px] text-slate-400">Kategori</label>
                 <select
                   value={customCat}
                   onChange={(e) => setCustomCat(e.target.value as KategoriRuang)}
-                  className="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                  className={`w-full px-2.5 py-1 text-xs rounded-lg border focus:outline-hidden ${
+                    isLightMode
+                      ? 'bg-white border-slate-300 text-slate-800'
+                      : 'bg-slate-900 border-slate-700 text-slate-200'
+                  }`}
                 >
-                  <option value="RUANG_UJIAN">Ruang Ujian</option>
+                  <option value="RUANG_UJIAN">Ruang Kelas / Ujian</option>
                   <option value="LAB">Lab Komputer / Praktik</option>
                   <option value="TOILET">Toilet</option>
                   <option value="KANTOR">Kantor / Ruang Guru</option>
@@ -327,7 +426,7 @@ export const DenahPaletteSidebar: React.FC<DenahPaletteSidebarProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded text-xs font-semibold flex items-center justify-center gap-1 transition-colors"
+                className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Tambah ke Denah

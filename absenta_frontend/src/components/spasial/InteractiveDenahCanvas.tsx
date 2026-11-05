@@ -1,20 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import {
-  ZoomIn,
-  ZoomOut,
-  Maximize,
-  Save,
-  Printer,
-  Undo2,
-  Redo2,
-  Layers,
-  MapPin,
-  Loader2,
-} from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { Wand2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { DenahNodeCard } from './DenahNodeCard';
 import { DenahPaletteSidebar, UnassignedRoomItem } from './DenahPaletteSidebar';
 import { DenahPrintModal } from './DenahPrintModal';
+import { InteractiveDenahCanvasToolbar } from './InteractiveDenahCanvasToolbar';
+import { generateAutoFloorplan } from './denahAutoLayout';
 import { updateDenah } from '../../api/spasial.api';
 import type { DenahElementNode, DenahSpasial } from '../../types/spasial.types';
 
@@ -37,6 +28,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   const [panOffset, setPanOffset] = useState({ x: 40, y: 40 });
   const [isSaving, setIsSaving] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isLightMode, setIsLightMode] = useState(true);
 
   // History for Undo/Redo
   const [history, setHistory] = useState<DenahElementNode[][]>([denah.elements || []]);
@@ -99,7 +91,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
 
   const snap = (val: number, step = 20) => Math.round(val / step) * step;
 
-  // Add exam room node from palette
+  // Add room node from palette
   const handleAddRoomNode = (room: UnassignedRoomItem) => {
     const existing = nodes.find((n) => n.kelas_id === room.kelas_id);
     if (existing) {
@@ -115,7 +107,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
       width: 180,
       height: 110,
       rotation: 0,
-      label_utama: room.slot_ruang,
+      label_utama: room.slot_ruang || 'R.XX',
       label_sub: room.kelas_nama,
       kategori_ruang: 'RUANG_UJIAN',
       kelas_id: room.kelas_id,
@@ -124,10 +116,10 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
 
     pushHistory([...nodes, newNode]);
     setSelectedNodeId(newNode.id);
-    toast.success(`Menambahkan ${room.slot_ruang} (${room.kelas_nama})`);
+    toast.success(`Menambahkan ${room.slot_ruang || ''} ${room.kelas_nama}`);
   };
 
-  // Add virtual node (Toilet, Lab, Ruang Guru, etc.)
+  // Add virtual node
   const handleAddVirtualNode = (virtual: Omit<DenahElementNode, 'id' | 'x' | 'y'>) => {
     const newNode: DenahElementNode = {
       ...virtual,
@@ -140,42 +132,41 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
     toast.success(`Menambahkan ${virtual.label_utama}`);
   };
 
-  // Rotate node 90 deg
+  // Auto-generate layout
+  const handleAutoGenerateLayout = () => {
+    const generated = generateAutoFloorplan(unassignedRooms);
+    pushHistory(generated);
+    toast.success(`Berhasil menyusun tata letak otomatis (${generated.length} elemen)`);
+  };
+
+  // Node transformations
   const handleRotateNode = (nodeId: string) => {
-    const updated = nodes.map((n) => {
-      if (n.id !== nodeId) return n;
-      const nextRot = (n.rotation + 90) % 360;
-      return { ...n, rotation: nextRot };
-    });
+    const updated = nodes.map((n) =>
+      n.id === nodeId ? { ...n, rotation: (n.rotation + 90) % 360 } : n
+    );
     pushHistory(updated);
   };
 
-  // Flip Horizontal (Mirror X)
   const handleFlipH = (nodeId: string) => {
-    const updated = nodes.map((n) => {
-      if (n.id !== nodeId) return n;
-      return { ...n, flip_h: !n.flip_h };
-    });
+    const updated = nodes.map((n) =>
+      n.id === nodeId ? { ...n, flip_h: !n.flip_h } : n
+    );
     pushHistory(updated);
   };
 
-  // Flip Vertical (Mirror Y)
   const handleFlipV = (nodeId: string) => {
-    const updated = nodes.map((n) => {
-      if (n.id !== nodeId) return n;
-      return { ...n, flip_v: !n.flip_v };
-    });
+    const updated = nodes.map((n) =>
+      n.id === nodeId ? { ...n, flip_v: !n.flip_v } : n
+    );
     pushHistory(updated);
   };
 
-  // Delete node
   const handleDeleteNode = (nodeId: string) => {
     const updated = nodes.filter((n) => n.id !== nodeId);
     pushHistory(updated);
     if (selectedNodeId === nodeId) setSelectedNodeId(null);
   };
 
-  // Start Node Drag
   const handleStartDrag = (e: React.MouseEvent, nodeId: string) => {
     e.stopPropagation();
     setSelectedNodeId(nodeId);
@@ -192,7 +183,6 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
     };
   };
 
-  // Start Node Resize
   const handleStartResize = (e: React.MouseEvent, nodeId: string) => {
     e.stopPropagation();
     const target = nodes.find((n) => n.id === nodeId);
@@ -208,7 +198,6 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
     };
   };
 
-  // Mouse Move listener
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (dragState.current.isDragging && dragState.current.nodeId) {
@@ -240,14 +229,12 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
     [scale]
   );
 
-  // Mouse Up listener
   const handleMouseUp = useCallback(() => {
     if (dragState.current.isDragging || resizeState.current.isResizing) {
       dragState.current.isDragging = false;
       dragState.current.nodeId = null;
       resizeState.current.isResizing = false;
       resizeState.current.nodeId = null;
-      // sync history
       pushHistory(nodes);
     }
   }, [nodes]);
@@ -261,7 +248,6 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
     };
   }, [handleMouseMove, handleMouseUp]);
 
-  // Save to Database
   const handleSaveDenah = async () => {
     setIsSaving(true);
     try {
@@ -282,124 +268,45 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   );
 
   return (
-    <div className="flex flex-col h-[750px] w-full bg-slate-900 border border-slate-700/80 rounded-2xl overflow-hidden shadow-xl select-none">
-      {/* Top Toolbar */}
-      <header className="flex items-center justify-between px-4 py-2.5 bg-slate-850 border-b border-slate-750 text-slate-200 z-30">
-        <div className="flex items-center gap-3">
-          <div className="p-1.5 bg-indigo-600/30 text-indigo-400 rounded-lg">
-            <MapPin className="w-4 h-4" />
-          </div>
-          <div>
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              {denah.nama_denah}
-              <span className="text-[10px] px-2 py-0.5 rounded-full font-mono bg-indigo-950 text-indigo-300 border border-indigo-750">
-                {denah.tipe === 'EVENT_UJIAN' ? 'Event CBT' : 'Sarpras Master'}
-              </span>
-            </h2>
-            <p className="text-[11px] text-slate-400">
-              Lantai {denah.lantai} {denah.gedung ? `• Gedung ${denah.gedung}` : ''} • Grid Snap 20px
-            </p>
-          </div>
-        </div>
-
-        {/* Toolbar Controls */}
-        <div className="flex items-center gap-1.5">
-          {/* Zoom Controls */}
-          <div className="flex items-center bg-slate-800 rounded-lg p-0.5 border border-slate-700">
-            <button
-              type="button"
-              onClick={() => setScale((s) => Math.max(0.4, Number((s - 0.1).toFixed(1))))}
-              className="p-1.5 hover:bg-slate-700 rounded text-slate-300"
-              title="Perkecil (-)"
-            >
-              <ZoomOut className="w-3.5 h-3.5" />
-            </button>
-            <span className="text-xs font-mono font-bold px-2 text-slate-300 min-w-[45px] text-center">
-              {Math.round(scale * 100)}%
-            </span>
-            <button
-              type="button"
-              onClick={() => setScale((s) => Math.min(1.8, Number((s + 0.1).toFixed(1))))}
-              className="p-1.5 hover:bg-slate-700 rounded text-slate-300"
-              title="Perbesar (+)"
-            >
-              <ZoomIn className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setScale(1);
-                setPanOffset({ x: 40, y: 40 });
-              }}
-              className="p-1.5 hover:bg-slate-700 rounded text-slate-300 border-l border-slate-700"
-              title="Reset Tampilan"
-            >
-              <Maximize className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Undo / Redo */}
-          {!isReadOnly && (
-            <div className="flex items-center bg-slate-800 rounded-lg p-0.5 border border-slate-700">
-              <button
-                type="button"
-                onClick={handleUndo}
-                disabled={historyIdx <= 0}
-                className="p-1.5 hover:bg-slate-700 rounded text-slate-300 disabled:opacity-30"
-                title="Urungkan"
-              >
-                <Undo2 className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={handleRedo}
-                disabled={historyIdx >= history.length - 1}
-                className="p-1.5 hover:bg-slate-700 rounded text-slate-300 disabled:opacity-30"
-                title="Ulangi"
-              >
-                <Redo2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-
-          {/* Print Map Modal */}
-          <button
-            type="button"
-            onClick={() => setIsPrintModalOpen(true)}
-            className="px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-200 flex items-center gap-1.5 transition-colors"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            Cetak Denah A4
-          </button>
-
-          {/* Save Button */}
-          {!isReadOnly && (
-            <button
-              type="button"
-              onClick={handleSaveDenah}
-              disabled={isSaving}
-              className="px-3.5 py-1.5 text-xs font-semibold bg-primary-600 hover:bg-primary-700 text-white rounded-lg flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50"
-            >
-              {isSaving ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Save className="w-3.5 h-3.5" />
-              )}
-              Simpan Denah
-            </button>
-          )}
-        </div>
-      </header>
+    <div
+      className={`flex flex-col h-[750px] w-full rounded-2xl overflow-hidden shadow-xl select-none transition-colors border ${
+        isLightMode
+          ? 'bg-slate-100 border-slate-300'
+          : 'bg-slate-900 border-slate-700/80'
+      }`}
+    >
+      {/* Top Toolbar Component */}
+      <InteractiveDenahCanvasToolbar
+        denah={denah}
+        isLightMode={isLightMode}
+        onToggleLightMode={() => setIsLightMode((prev) => !prev)}
+        scale={scale}
+        onZoomIn={() => setScale((s) => Math.min(1.8, Number((s + 0.1).toFixed(1))))}
+        onZoomOut={() => setScale((s) => Math.max(0.4, Number((s - 0.1).toFixed(1))))}
+        onResetZoom={() => {
+          setScale(1);
+          setPanOffset({ x: 40, y: 40 });
+        }}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        canUndo={historyIdx > 0}
+        canRedo={historyIdx < history.length - 1}
+        onAutoLayout={handleAutoGenerateLayout}
+        onOpenPrint={() => setIsPrintModalOpen(true)}
+        onSave={handleSaveDenah}
+        isSaving={isSaving}
+        isReadOnly={isReadOnly}
+      />
 
       {/* Main Studio Body: Palette Sidebar + Canvas Surface */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Left Palette */}
         {!isReadOnly && (
           <DenahPaletteSidebar
             unassignedRooms={unassignedRooms}
             placedKelasIds={placedKelasIds}
             onAddRoomNode={handleAddRoomNode}
             onAddVirtualNode={handleAddVirtualNode}
+            isLightMode={isLightMode}
           />
         )}
 
@@ -407,9 +314,13 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
         <div
           ref={canvasRef}
           onClick={() => setSelectedNodeId(null)}
-          className="flex-1 overflow-auto bg-slate-950 relative"
+          className={`flex-1 overflow-auto relative transition-colors ${
+            isLightMode ? 'bg-slate-100/90' : 'bg-slate-950'
+          }`}
           style={{
-            backgroundImage: `radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px)`,
+            backgroundImage: isLightMode
+              ? `radial-gradient(rgba(100, 116, 139, 0.25) 1px, transparent 1px)`
+              : `radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px)`,
             backgroundSize: `${20 * scale}px ${20 * scale}px`,
           }}
         >
@@ -424,15 +335,35 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
               left: `${panOffset.x}px`,
               top: `${panOffset.y}px`,
             }}
-            className="border border-dashed border-slate-700/60 rounded-xl"
+            className={`rounded-xl border border-dashed transition-colors ${
+              isLightMode
+                ? 'bg-white/70 border-slate-300 shadow-sm'
+                : 'bg-slate-900/40 border-slate-700/60'
+            }`}
           >
             {nodes.length === 0 ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
-                <Layers className="w-12 h-12 stroke-[1.2] mb-2 text-slate-600" />
-                <p className="text-sm font-semibold">Canvas Denah Masih Kosong</p>
-                <p className="text-xs text-slate-500 mt-1 max-w-sm text-center">
-                  Tarik atau klik tombol <b>Pasang</b> pada panel kiri untuk menata posisi ruang ujian dan bangunan sekolah.
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center select-none">
+                <div className="p-4 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-3xl mb-3 shadow-xs">
+                  <Wand2 className="w-10 h-10 stroke-[1.5]" />
+                </div>
+                <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+                  Canvas Denah Masih Kosong
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mt-1 mb-4">
+                  Mulai rancang peta denah fisik sekolah. Anda dapat menyusun otomatis dari data kelas &amp; fasilitas atau memilih preset dari panel samping kiri.
                 </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleAutoGenerateLayout}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs cursor-pointer transition-colors"
+                  >
+                    <Wand2 className="w-4 h-4" />
+                    <span>
+                      Susun Otomatis ({unassignedRooms.length > 0 ? `${unassignedRooms.length} Ruangan` : 'Template Gedung'})
+                    </span>
+                  </button>
+                </div>
               </div>
             ) : (
               nodes.map((node) => (
