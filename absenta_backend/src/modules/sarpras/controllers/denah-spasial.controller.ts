@@ -1,4 +1,6 @@
 import { DenahSpasialService } from '../services/denah-spasial.service';
+import { createDenahSpasialSchema, updateDenahSpasialSchema } from '../services/sarpras.schema';
+import { z } from 'zod';
 
 function resolveTenantId(request: any): string {
   const tid = request.tenantId || request.user?.tenantId || request.user?.tenant_id;
@@ -39,9 +41,13 @@ export class DenahSpasialController {
   static async create(request: any, reply: any) {
     try {
       const tenantId = resolveTenantId(request);
-      const data = await DenahSpasialService.create(tenantId, request.body);
+      const parsed = createDenahSpasialSchema.parse(request.body);
+      const data = await DenahSpasialService.create(tenantId, parsed as any);
       return reply.status(201).send({ success: true, message: 'Denah spasial berhasil disimpan', data });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({ success: false, message: error.errors.map((e) => e.message).join(', ') });
+      }
       return reply.status(400).send({ success: false, message: error.message });
     }
   }
@@ -50,9 +56,13 @@ export class DenahSpasialController {
     try {
       const tenantId = resolveTenantId(request);
       const { id } = request.params;
-      const data = await DenahSpasialService.update(tenantId, id, request.body);
+      const parsed = updateDenahSpasialSchema.parse(request.body);
+      const data = await DenahSpasialService.update(tenantId, id, parsed as any);
       return reply.status(200).send({ success: true, message: 'Denah spasial berhasil diperbarui', data });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({ success: false, message: error.errors.map((e) => e.message).join(', ') });
+      }
       return reply.status(400).send({ success: false, message: error.message });
     }
   }

@@ -68,3 +68,20 @@ export const sarprasCatalogSchema = z.object({
 });
 
 export const updateSarprasCatalogSchema = sarprasCatalogSchema.partial();
+
+// ── Denah Spasial Hardening Schemas (Phase 4 Input Sanitization) ──
+export const createDenahSpasialSchema = z.object({
+  nama_denah: z.string().min(1, 'Nama denah wajib diisi').max(150, 'Nama denah maksimal 150 karakter'),
+  tipe: z.enum(['MASTER_SARPRAS', 'EVENT_UJIAN']).default('MASTER_SARPRAS'),
+  event_cbt_id: z.string().uuid('ID event CBT tidak valid').nullable().optional(),
+  lantai: z.coerce.number().int().min(-5).max(100).default(1),
+  gedung: z.string().max(100).nullable().optional(),
+  canvas_width: z.coerce.number().int().min(500).max(10000).default(2400),
+  canvas_height: z.coerce.number().int().min(500).max(10000).default(1600),
+  grid_size: z.coerce.number().int().min(5).max(100).default(20),
+  elements: z.array(z.any()).default([]),
+});
+
+export const updateDenahSpasialSchema = createDenahSpasialSchema.partial().extend({
+  is_active: z.boolean().optional(),
+});
