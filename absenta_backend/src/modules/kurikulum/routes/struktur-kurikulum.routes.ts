@@ -15,5 +15,7 @@ export default async function strukturKurikulumRoutes(fastify: any) {
   // Kurikulum structure clone & CRUD routes
   fastify.post('/', { preHandler: [requireCapability('academic.structure.manage'), determineDataScope()]}, StrukturKurikulumController.upsert);
   fastify.post('/clone', { preHandler: [requireCapability('academic.structure.manage'), determineDataScope()]}, StrukturKurikulumController.clone);
+  fastify.put('/order', { preHandler: [requireCapability('academic.structure.manage'), determineDataScope()]}, StrukturKurikulumController.updateOrdering);
+  fastify.post('/apply-standard', { preHandler: [requireCapability('academic.structure.manage'), determineDataScope()]}, StrukturKurikulumController.applyKemendikbudStandard);
   fastify.delete('/:id', { preHandler: [requireCapability('academic.structure.manage'), determineDataScope()]}, StrukturKurikulumController.delete);
 }

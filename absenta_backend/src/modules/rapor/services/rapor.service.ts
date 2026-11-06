@@ -505,7 +505,9 @@ export class RaporService {
       }));
     }
 
-    const finalAkademikList = Object.values(mapelGrades);
+    const finalAkademikList = Object.values(mapelGrades).sort(
+      (a, b) => (a.urutan ?? 999) - (b.urutan ?? 999)
+    );
 
     return {
       ekskul: studentEkskuls,

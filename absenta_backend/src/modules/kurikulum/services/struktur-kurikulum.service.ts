@@ -47,9 +47,11 @@ export class StrukturKurikulumService {
         Jurusan: true,
         TahunPelajaran: true,
       },
-      orderBy: {
-        tingkat: 'asc',
-      },
+      orderBy: [
+        { tingkat: 'asc' },
+        { urutan: 'asc' },
+        { created_at: 'asc' },
+      ],
     });
   }
 
@@ -412,7 +414,9 @@ export class StrukturKurikulumService {
         tingkat: rec.tingkat,
         jurusan_id: rec.jurusan_id || null,
         jp_per_minggu: rec.jp_per_minggu,
-        kelompok: rec.kelompok
+        kelompok: rec.kelompok,
+        urutan: (rec as any).urutan ?? 100,
+        is_active: (rec as any).is_active ?? true,
       }));
 
     if (recordsToCreate.length === 0) {
@@ -424,6 +428,107 @@ export class StrukturKurikulumService {
     });
 
     return { cloned_count: recordsToCreate.length };
+  }
+
+  static async updateOrdering(
+    tenantId: string,
+    items: Array<{ id: string; urutan: number; kelompok?: string; is_active?: boolean }>
+  ) {
+    if (!items || items.length === 0) {
+      return { count: 0 };
+    }
+
+    const updates = items.map(item =>
+      prisma.strukturKurikulum.updateMany({
+        where: { id: item.id, tenant_id: tenantId },
+        data: {
+          urutan: item.urutan,
+          ...(item.kelompok !== undefined ? { kelompok: item.kelompok } : {}),
+          ...(item.is_active !== undefined ? { is_active: item.is_active } : {}),
+        }
+      })
+    );
+
+    await prisma.$transaction(updates);
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
+    return { success: true, count: items.length };
+  }
+
+  static async applyKemendikbudStandard(
+    tenantId: string,
+    payload: { tahun_pelajaran_id: string; tingkat?: number }
+  ) {
+    const { tahun_pelajaran_id, tingkat } = payload;
+    if (!tahun_pelajaran_id) {
+      throw new Error('tahun_pelajaran_id wajib diisi');
+    }
+
+    const records = await prisma.strukturKurikulum.findMany({
+      where: {
+        tenant_id: tenantId,
+        tahun_pelajaran_id,
+        ...(tingkat ? { tingkat: Number(tingkat) } : {}),
+      },
+      include: { Mapel: true },
+    });
+
+    if (records.length === 0) {
+      return { count: 0, message: 'Tidak ada struktur kurikulum yang ditemukan untuk periode ini' };
+    }
+
+    const updates = records.map(rec => {
+      const mapelName = rec.Mapel?.nama_mapel || '';
+      const n = mapelName.toLowerCase().trim();
+      const g = (rec.kelompok || rec.Mapel?.kelompok_mapel || '').toLowerCase().trim();
+
+      let targetKelompok = 'Mata Pelajaran Umum';
+      let priority = 90;
+
+      if (g.includes('muatan') || g.includes('lokal') || n.includes('sunda') || n.includes('jawa') || n.includes('daerah')) {
+        targetKelompok = 'Muatan Lokal';
+        priority = 300;
+      } else if (n.includes('agama') || n.includes('budi pekerti') || n.includes('pai') || n.includes('pak')) {
+        priority = 10;
+      } else if (n.includes('pancasila') || n.includes('ppkn') || n.includes('kewarganegaraan')) {
+        priority = 20;
+      } else if (n.includes('bahasa indonesia') || n === 'indonesia') {
+        priority = 30;
+      } else if (n.includes('jasmani') || n.includes('olahraga') || n.includes('pjok') || n.includes('penjas')) {
+        priority = 40;
+      } else if (n.includes('sejarah')) {
+        priority = 50;
+      } else if (n.includes('seni') || n.includes('budaya') || n.includes('prakarya')) {
+        priority = 60;
+      } else if (n.includes('bimbingan konseling') || n.includes('bk')) {
+        priority = 70;
+      } else if (g.includes('pilihan') || n.includes('pilihan')) {
+        targetKelompok = 'Mata Pelajaran Pilihan';
+        priority = 200;
+      } else if (g.includes('kejuruan') || n.includes('matematika') || n.includes('inggris') || n.includes('informatika') || n.includes('ipas') || n.includes('dasar') || n.includes('konsentrasi') || n.includes('kk ') || n.includes('pkk') || n.includes('pkl')) {
+        targetKelompok = 'Mata Pelajaran Kejuruan';
+        if (n.includes('matematika')) priority = 110;
+        else if (n.includes('inggris')) priority = 120;
+        else if (n.includes('informatika')) priority = 130;
+        else if (n.includes('ipas') || (n.includes('alam') && n.includes('sosial'))) priority = 140;
+        else if (n.includes('dasar') || n.includes('ddpk')) priority = 150;
+        else if (n.includes('konsentrasi') || n.includes('kk')) priority = 160;
+        else if (n.includes('kreatif') || n.includes('pkk') || n.includes('kewirausahaan')) priority = 170;
+        else if (n.includes('pkl') || n.includes('praktik kerja')) priority = 180;
+        else priority = 190;
+      }
+
+      return prisma.strukturKurikulum.update({
+        where: { id: rec.id },
+        data: {
+          urutan: priority,
+          kelompok: targetKelompok,
+        },
+      });
+    });
+
+    await prisma.$transaction(updates);
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
+    return { success: true, count: updates.length, message: `Berhasil menerapkan urutan standar Kemendikbud untuk ${updates.length} mapel` };
   }
 }
 

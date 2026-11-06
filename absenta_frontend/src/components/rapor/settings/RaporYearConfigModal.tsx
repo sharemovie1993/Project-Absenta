@@ -6,10 +6,12 @@ import {
   UserCheck,
   Printer,
   Save,
+  Layers,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Modal, Button, Input } from '@/components/ui';
 import { raporApi, type RaporSettingSummaryRow } from '@/api/rapor.api';
+import { RaporMapelOrderingPanel } from './RaporMapelOrderingPanel';
 import { cn } from '@/lib/utils';
 
 // Zod Schema Validation Guard (Pilar 25)
@@ -35,7 +37,7 @@ export const RaporYearConfigModal: React.FC<RaporYearConfigModalProps> = React.m
   onSuccess,
 }) => {
   const queryClient = useQueryClient();
-  const [modalTab, setModalTab] = useState<'titimangsa' | 'penandatangan' | 'format'>('titimangsa');
+  const [modalTab, setModalTab] = useState<'titimangsa' | 'penandatangan' | 'format' | 'urutan_mapel'>('titimangsa');
   const [showAdvancedDates, setShowAdvancedDates] = useState(false);
 
   // Form States: Titimangsa
@@ -172,7 +174,10 @@ export const RaporYearConfigModal: React.FC<RaporYearConfigModalProps> = React.m
       isOpen={isOpen}
       onClose={onClose}
       size="lg"
-      className="p-0 overflow-hidden rounded-2xl max-w-lg"
+      className={cn(
+        'p-0 overflow-hidden rounded-2xl transition-all duration-200',
+        modalTab === 'urutan_mapel' ? 'max-w-4xl' : 'max-w-lg'
+      )}
     >
       <div className="flex flex-col bg-white dark:bg-slate-900">
         {/* Header Bersih & Ringkas */}
@@ -190,12 +195,12 @@ export const RaporYearConfigModal: React.FC<RaporYearConfigModalProps> = React.m
         </div>
 
         {/* Tab Switcher Bersih (Bebas Tabrakan Emoji) */}
-        <div className="flex items-center gap-1 px-5 pt-1.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
+        <div className="flex items-center gap-1 px-5 pt-1.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 overflow-x-auto">
           <button
             type="button"
             onClick={() => setModalTab('titimangsa')}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 transition-colors',
+              'flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 transition-colors whitespace-nowrap',
               modalTab === 'titimangsa'
                 ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
                 : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400'
@@ -209,7 +214,7 @@ export const RaporYearConfigModal: React.FC<RaporYearConfigModalProps> = React.m
             type="button"
             onClick={() => setModalTab('penandatangan')}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 transition-colors',
+              'flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 transition-colors whitespace-nowrap',
               modalTab === 'penandatangan'
                 ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
                 : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400'
@@ -223,7 +228,7 @@ export const RaporYearConfigModal: React.FC<RaporYearConfigModalProps> = React.m
             type="button"
             onClick={() => setModalTab('format')}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 transition-colors',
+              'flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 transition-colors whitespace-nowrap',
               modalTab === 'format'
                 ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
                 : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400'
@@ -231,6 +236,20 @@ export const RaporYearConfigModal: React.FC<RaporYearConfigModalProps> = React.m
           >
             <Printer className="w-3.5 h-3.5" />
             <span>Format Blanko</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setModalTab('urutan_mapel')}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 transition-colors whitespace-nowrap',
+              modalTab === 'urutan_mapel'
+                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400'
+            )}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Urutan Mapel</span>
           </button>
         </div>
 
@@ -439,40 +458,62 @@ export const RaporYearConfigModal: React.FC<RaporYearConfigModalProps> = React.m
               </div>
             </div>
           )}
+
+          {/* TAB 4: URUTAN & KELOMPOK MAPEL */}
+          {modalTab === 'urutan_mapel' && (
+            <div className="pt-1">
+              <RaporMapelOrderingPanel
+                tahunPelajaranId={yearRow.tahun_pelajaran_id}
+                tahunAjaran={yearRow.tahun_ajaran}
+                onSaved={onSuccess}
+              />
+            </div>
+          )}
         </div>
 
         {/* Footer Rapi & Langsung Terlihat */}
-        <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 flex items-center justify-end gap-2 shrink-0">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            disabled={saveMutation.isPending}
-            className="h-8 px-3 text-xs"
-          >
-            Batal
-          </Button>
-
-          <Button
-            type="button"
-            size="sm"
-            onClick={handleSave}
-            disabled={saveMutation.isPending}
-            className="h-8 px-4 text-xs font-bold gap-1.5 shadow-2xs"
-          >
-            {saveMutation.isPending ? (
-              <>
-                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Menyimpan...</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-3.5 h-3.5" />
-                <span>Simpan Perubahan</span>
-              </>
+        <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 flex items-center justify-between gap-2 shrink-0">
+          <div>
+            {modalTab === 'urutan_mapel' && (
+              <span className="text-[11px] text-slate-400">
+                Perubahan pada tab ini disimpan melalui tombol Simpan di atas tabel.
+              </span>
             )}
-          </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              disabled={saveMutation.isPending}
+              className="h-8 px-3 text-xs"
+            >
+              {modalTab === 'urutan_mapel' ? 'Selesai' : 'Batal'}
+            </Button>
+
+            {modalTab !== 'urutan_mapel' && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSave}
+                disabled={saveMutation.isPending}
+                className="h-8 px-4 text-xs font-bold gap-1.5 shadow-2xs"
+              >
+                {saveMutation.isPending ? (
+                  <>
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Menyimpan...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Simpan Perubahan</span>
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </Modal>

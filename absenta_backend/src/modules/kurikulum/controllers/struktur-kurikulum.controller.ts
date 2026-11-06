@@ -199,5 +199,47 @@ export class StrukturKurikulumController {
       return sendError(reply, 500, error.message || 'Failed to clone structure', error);
     }
   }
+
+  static async updateOrdering(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { items } = req.body || {};
+
+      if (!Array.isArray(items)) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Parameter items wajib berupa array'
+        });
+      }
+
+      const result = await StrukturKurikulumService.updateOrdering(tenant_id, items);
+      return sendResponse(reply, 200, true, 'Urutan dan kelompok mapel berhasil diperbarui', result);
+    } catch (error: any) {
+      return sendError(reply, 500, error.message || 'Gagal memperbarui urutan mapel', error);
+    }
+  }
+
+  static async applyKemendikbudStandard(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { tahun_pelajaran_id, tingkat } = req.body || {};
+
+      if (!tahun_pelajaran_id) {
+        return reply.status(400).send({
+          success: false,
+          message: 'tahun_pelajaran_id wajib diisi'
+        });
+      }
+
+      const result = await StrukturKurikulumService.applyKemendikbudStandard(tenant_id, {
+        tahun_pelajaran_id,
+        tingkat: tingkat ? Number(tingkat) : undefined
+      });
+
+      return sendResponse(reply, 200, true, result.message, result);
+    } catch (error: any) {
+      return sendError(reply, 500, error.message || 'Gagal menerapkan urutan standar Kemendikbud', error);
+    }
+  }
 }
 // End of controller class

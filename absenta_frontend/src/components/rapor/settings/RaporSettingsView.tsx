@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/Button';
 import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import { RaporSettingsRekapTable } from './RaporSettingsRekapTable';
 import { RaporYearConfigModal } from './RaporYearConfigModal';
+import { RaporMapelOrderingPanel } from './RaporMapelOrderingPanel';
 import { P5FacilitatorSettingsTab } from '../p5/P5FacilitatorSettingsTab';
 
 export interface UniversalRaporSettingsViewProps {
@@ -38,7 +39,7 @@ export interface UniversalRaporSettingsViewProps {
 
   // 3. Event Callbacks
   onClose?: () => void;
-  defaultTab?: 'slot_titimangsa' | 'tim_p5';
+  defaultTab?: 'slot_titimangsa' | 'tim_p5' | 'urutan_mapel';
 }
 
 export const RaporSettingsView: React.FC<UniversalRaporSettingsViewProps> = React.memo(({
@@ -59,14 +60,14 @@ export const RaporSettingsView: React.FC<UniversalRaporSettingsViewProps> = Reac
   const urlTab = searchParams.get(hideLayout ? 'rapor_tab' : 'tab');
 
   const [activeTab, setActiveTab] = useState<string>(() => {
-    if (urlTab && ['slot_titimangsa', 'tim_p5', 'p5'].includes(urlTab)) {
+    if (urlTab && ['slot_titimangsa', 'tim_p5', 'p5', 'urutan_mapel'].includes(urlTab)) {
       return urlTab === 'p5' ? 'tim_p5' : urlTab;
     }
     return defaultTab;
   });
 
   useEffect(() => {
-    if (!isModal && urlTab && ['slot_titimangsa', 'tim_p5', 'p5'].includes(urlTab)) {
+    if (!isModal && urlTab && ['slot_titimangsa', 'tim_p5', 'p5', 'urutan_mapel'].includes(urlTab)) {
       setActiveTab(urlTab === 'p5' ? 'tim_p5' : urlTab);
     }
   }, [urlTab, isModal]);
@@ -140,11 +141,21 @@ export const RaporSettingsView: React.FC<UniversalRaporSettingsViewProps> = Reac
     setSelectedYearRow(null);
   }, []);
 
+  const [selectedOrderingYearId, setSelectedOrderingYearId] = useState<string>('');
+
+  const effectiveOrderingYearId = useMemo(() => {
+    return selectedOrderingYearId || tahunPelajaranId || activeYear?.id || tpOptions[0]?.value || '';
+  }, [selectedOrderingYearId, tahunPelajaranId, activeYear, tpOptions]);
+
   // Tabs for TabSwitcher
   const tabs = useMemo(() => [
     {
       id: 'slot_titimangsa',
       label: isMobile ? '📅 Titimangsa Slot' : '📅 Slot Titimangsa per Tahun Pelajaran',
+    },
+    {
+      id: 'urutan_mapel',
+      label: isMobile ? '📚 Urutan Mapel' : '📚 Urutan & Kelompok Mapel Rapor',
     },
     {
       id: 'tim_p5',
@@ -247,6 +258,36 @@ export const RaporSettingsView: React.FC<UniversalRaporSettingsViewProps> = Reac
             activeTahunAjaran={activeYear?.nama}
             onEditSlot={handleOpenEditSlot}
             canManage={canManage}
+          />
+        </div>
+      )}
+
+      {activeTab === 'urutan_mapel' && (
+        <div className="space-y-4">
+          {/* Selector Tahun Pelajaran */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-2xs">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Pilih Periode Tahun Pelajaran:
+              </span>
+            </div>
+            <select
+              value={effectiveOrderingYearId}
+              onChange={(e) => setSelectedOrderingYearId(e.target.value)}
+              className="text-xs font-bold py-1.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              {tpOptions.map((tp) => (
+                <option key={tp.value} value={tp.value}>
+                  {tp.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <RaporMapelOrderingPanel
+            tahunPelajaranId={effectiveOrderingYearId}
+            tahunAjaran={tpOptions.find((tp) => tp.value === effectiveOrderingYearId)?.label}
           />
         </div>
       )}

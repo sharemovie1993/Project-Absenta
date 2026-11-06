@@ -2595,6 +2595,8 @@ model StrukturKurikulum {
   jurusan_id         String?
   jp_per_minggu      Int      @default(2)
   kelompok           String? // Nasional, Kejuruan, Pilihan
+  urutan             Int?     @default(100)
+  is_active          Boolean  @default(true)
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
 

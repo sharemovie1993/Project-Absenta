@@ -32,12 +32,22 @@ export interface StrukturKurikulum {
   jurusan_id?: string;
   jp_per_minggu: number;
   kelompok?: string;
+  urutan?: number;
+  is_active?: boolean;
   Mapel?: {
+    id?: string;
     nama_mapel: string;
     kode_mapel: string;
+    kelompok_mapel?: string;
   };
   Jurusan?: {
+    id?: string;
     nama: string;
+    nama_jurusan?: string;
+  };
+  TahunPelajaran?: {
+    id?: string;
+    tahun: string;
   };
 }
 
@@ -85,6 +95,14 @@ export const kurikulumApi = {
   },
   cloneStruktur: async (data: { from_tahun_pelajaran_id: string; to_tahun_pelajaran_id: string; overwrite?: boolean }) => {
     const response = await api.post('/kurikulum/struktur/clone', data);
+    return response.data;
+  },
+  updateStrukturOrdering: async (items: Array<{ id: string; urutan: number; kelompok?: string; is_active?: boolean }>) => {
+    const response = await api.put('/kurikulum/struktur/order', { items });
+    return response.data;
+  },
+  applyKemendikbudStandard: async (data: { tahun_pelajaran_id: string; tingkat?: number }) => {
+    const response = await api.post('/kurikulum/struktur/apply-standard', data);
     return response.data;
   },
 
