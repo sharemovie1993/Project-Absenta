@@ -187,13 +187,13 @@ export const P5PrintModal: React.FC<P5PrintModalProps> = React.memo(({
     }
   }, [siswaId, tahunPelajaranId, semesterId, tahunPelajaranNama, semesterNama, isExportingPdf]);
 
-  if (!isOpen || !selectedStudent) return null;
-
-  // Metadata Format (Universal Academic Identity Engine)
+  // Metadata Format (Universal Academic Identity Engine) - Diposisikan sebelum early return mematuhi Rules of Hooks
   const normalizedStudent = useMemo(
-    () => normalizeStudentIdentity(siswa),
+    () => normalizeStudentIdentity(siswa || {}),
     [siswa]
   );
+
+  if (!isOpen || !selectedStudent) return null;
   const namaSiswa = (normalizedStudent.nama || '-').toUpperCase();
   const nis = normalizedStudent.nis || '-';
   const nisn = normalizedStudent.nisn || '-';

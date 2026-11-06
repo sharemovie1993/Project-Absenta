@@ -136,6 +136,11 @@ export const BiodataPrintModal: React.FC<BiodataPrintModalProps> = React.memo(({
     return resolveJenjangLines(rawSekolah, tenantInfo, siswa);
   }, [rawSekolah, tenantInfo, siswa]);
 
+  // SSoT Universal Academic Identity Siswa (Wajib sebelum early return)
+  const studentIdentity = useMemo(() => {
+    return normalizeStudentIdentity(siswa || {});
+  }, [siswa]);
+
   if (!isOpen || !selectedStudent) return null;
 
   // Data Pejabat & Titimangsa Sesuai Pengaturan Rapor Resmi
@@ -169,11 +174,6 @@ export const BiodataPrintModal: React.FC<BiodataPrintModalProps> = React.memo(({
     '-';
   const cleanKepsekNip = rawKepsekNip ? String(rawKepsekNip).replace(/^NIP\.?\s*/i, '').trim() : '-';
   const kepalaSekolahNip = cleanKepsekNip || '-';
-
-  // SSoT Universal Academic Identity Siswa
-  const studentIdentity = useMemo(() => {
-    return normalizeStudentIdentity(siswa);
-  }, [siswa]);
 
   // Formulasi data 17 Butir Resmi
   const tglMasuk = studentIdentity.tanggalMasuk || formatIndoDate((siswa as any).tanggal_masuk);

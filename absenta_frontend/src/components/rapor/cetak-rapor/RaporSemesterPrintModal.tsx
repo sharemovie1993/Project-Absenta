@@ -143,13 +143,13 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
     }
   }, [siswaId, activeTpId, activeSemId, tahunPelajaranNama, semesterNama, isExportingPdf]);
 
-  if (!isOpen || !selectedStudent) return null;
-
-  // Metadata Siswa (Universal Academic Identity Engine)
+  // Metadata Siswa (Universal Academic Identity Engine) - Diposisikan sebelum early return mematuhi Rules of Hooks
   const normalizedStudent = useMemo(
-    () => normalizeStudentIdentity(raporData?.siswa || selectedStudent),
+    () => normalizeStudentIdentity(raporData?.siswa || selectedStudent || {}),
     [raporData?.siswa, selectedStudent]
   );
+
+  if (!isOpen || !selectedStudent) return null;
   const siswa = raporData?.siswa || selectedStudent || {};
   const namaSiswa = (normalizedStudent.nama || '-').toUpperCase();
   const nis = normalizedStudent.nis || '-';
