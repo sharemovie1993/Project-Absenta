@@ -840,6 +840,7 @@ export interface BackfillWalasPreviewItem {
   matchedKelas: { id: string; nama_kelas: string } | null;
   matchedGuru: { id: string; nama_guru: string; nip: string | null; user_id: string } | null;
   status: 'READY' | 'GURU_NOT_FOUND' | 'KELAS_NOT_FOUND' | 'BOTH_NOT_FOUND';
+  ambiguityNote?: string;
 }
 
 export interface MasterBackfillPreviewResult {
@@ -886,6 +887,8 @@ export interface ExecuteMasterBackfillPayload {
     kelasNama: string;
     kelas_id: string;
     guru_user_id: string;
+    walasNama?: string;
+    walasNip?: string;
   }>;
 }
 

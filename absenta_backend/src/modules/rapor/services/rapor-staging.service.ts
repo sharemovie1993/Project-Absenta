@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import bcrypt from 'bcryptjs';
 import { prisma } from '@/utils/prisma';
 import { appLogger } from '@/utils/app-logger';
 import { GoogleSheetRaporParserService, ParsedRaporClassData, MasterReferenceData } from './google-sheet-rapor-parser.service';
@@ -13,6 +14,7 @@ export interface BackfillWalasPreviewItem {
   matchedKelas: { id: string; nama_kelas: string } | null;
   matchedGuru: { id: string; nama_guru: string; nip: string | null; user_id: string } | null;
   status: 'READY' | 'GURU_NOT_FOUND' | 'KELAS_NOT_FOUND' | 'BOTH_NOT_FOUND';
+  ambiguityNote?: string;
 }
 
 export interface MasterBackfillPreviewResult {
@@ -59,6 +61,8 @@ export interface ExecuteMasterBackfillPayload {
     kelasNama: string;
     kelas_id: string;
     guru_user_id: string;
+    walasNama?: string;
+    walasNip?: string;
   }>;
 }
 
@@ -1413,10 +1417,11 @@ export class RaporStagingService {
 
       // b. Match Guru
       let matchedGuru: { id: string; nama_guru: string; nip: string | null; user_id: string } | null = null;
+      let ambiguityNote: string | undefined;
       const rowNipClean = this.cleanTeacherNip(row.walasNip);
       const rowNameClean = this.cleanTeacherName(row.walasNama);
 
-      // Prioritas 1: NIP Lengkap (jika >= 8 digit)
+      // Prioritas 1: NIP Lengkap (jika >= 8 digit angka)
       if (rowNipClean.length >= 8) {
         matchedGuru = allGurus.find((g) => this.cleanTeacherNip(g.nip) === rowNipClean) || null;
       }
@@ -1427,28 +1432,29 @@ export class RaporStagingService {
           allGurus.find((g) => this.cleanTeacherNip(g.nip).slice(0, 14) === rowNipClean.slice(0, 14)) || null;
       }
 
-      // Prioritas 3: Nama Bersih (Exact)
+      // Prioritas 3: Nama Bersih (Exact Full Cleaned Name)
       if (!matchedGuru && rowNameClean) {
         matchedGuru = allGurus.find((g) => this.cleanTeacherName(g.nama_guru) === rowNameClean) || null;
       }
 
-      // Prioritas 4: Distinctive Token Matching (Cerdas & Toleran Gelar / Ejaan)
+      // Prioritas 4: Cerdas Berbasis Nama Depan Unik (Unique First Name Matching)
+      // Aturan:
+      // - Jika tepat 1 guru di database yang memiliki nama depan tersebut -> OTOMATISKAN!
+      // - Jika terdapat > 1 guru dengan nama depan yang sama (misal 'Asep') -> JANGAN OTOMATISKAN, biar dipilih manual.
       if (!matchedGuru && rowNameClean) {
-        const rTokens = rowNameClean.split(' ').filter((t) => t.length >= 4);
-        if (rTokens.length > 0) {
-          const candidates = allGurus
-            .map((g) => {
-              const gTokens = this.cleanTeacherName(g.nama_guru)
-                .split(' ')
-                .filter((t) => t.length >= 4);
-              const common = rTokens.filter((t) => gTokens.includes(t));
-              return { g, score: common.length };
-            })
-            .filter((x) => x.score > 0)
-            .sort((a, b) => b.score - a.score);
+        const rowTokens = rowNameClean.split(' ').filter(Boolean);
+        const firstName = rowTokens[0];
+        if (firstName && firstName.length >= 3) {
+          const candidatesByFirstName = allGurus.filter((g) => {
+            const gClean = this.cleanTeacherName(g.nama_guru);
+            const gFirst = gClean.split(' ').filter(Boolean)[0];
+            return gFirst === firstName;
+          });
 
-          if (candidates.length > 0) {
-            matchedGuru = candidates[0].g;
+          if (candidatesByFirstName.length === 1) {
+            matchedGuru = candidatesByFirstName[0];
+          } else if (candidatesByFirstName.length > 1) {
+            ambiguityNote = `Ditemukan ${candidatesByFirstName.length} guru bernama depan "${firstName.toUpperCase()}". Silakan pilih guru yang tepat secara manual.`;
           }
         }
       }
@@ -1484,6 +1490,7 @@ export class RaporStagingService {
             }
           : null,
         status,
+        ambiguityNote,
       };
     });
 
@@ -1573,7 +1580,13 @@ export class RaporStagingService {
       }
 
       // Prioritaskan penugasan manual dari UI jika dikirimkan oleh pengguna
-      const assignmentsToProcess: Array<{ kelasId: string; guruUserId: string; kelasNama?: string }> = [];
+      const assignmentsToProcess: Array<{
+        kelasId: string;
+        guruUserId: string;
+        kelasNama?: string;
+        walasNama?: string;
+        walasNip?: string;
+      }> = [];
 
       if (payload.manual_walas_assignments && payload.manual_walas_assignments.length > 0) {
         for (const item of payload.manual_walas_assignments) {
@@ -1582,6 +1595,8 @@ export class RaporStagingService {
               kelasId: item.kelas_id,
               guruUserId: item.guru_user_id,
               kelasNama: item.kelasNama,
+              walasNama: item.walasNama,
+              walasNip: item.walasNip,
             });
           }
         }
@@ -1592,14 +1607,111 @@ export class RaporStagingService {
               kelasId: item.matchedKelas.id,
               guruUserId: item.matchedGuru.user_id,
               kelasNama: item.matchedKelas.nama_kelas,
+              walasNama: item.walasNama,
+              walasNip: item.walasNip,
             });
           }
         }
       }
 
       for (const item of assignmentsToProcess) {
-        const guruUserId = item.guruUserId;
+        let guruUserId = item.guruUserId;
         const kelasId = item.kelasId;
+
+        // Auto-provision jika guru_user_id bernilai '__AUTO_CREATE__'
+        if (guruUserId === '__AUTO_CREATE__') {
+          let tName = (item.walasNama || '').trim();
+          let tNip = (item.walasNip || '').trim() || null;
+
+          if (!tName) {
+            const previewRow = preview.walasPloting.find(
+              (p) => p.matchedKelas?.id === kelasId || p.kelasNama === item.kelasNama
+            );
+            tName = previewRow?.walasNama || 'Guru Pengampu';
+            if (!tNip && previewRow?.walasNip) tNip = previewRow.walasNip;
+          }
+
+          // Cek apakah guru ini sudah pernah di-auto-create sebelumnya (Idempotensi)
+          let existingGuru = null;
+          const cleanNip = tNip ? this.cleanTeacherNip(tNip) : '';
+          if (cleanNip.length >= 8) {
+            existingGuru = await prisma.guru.findFirst({
+              where: { tenant_id: tenantId, nip: tNip },
+              include: { User: true },
+            });
+          }
+          if (!existingGuru && tName) {
+            existingGuru = await prisma.guru.findFirst({
+              where: { tenant_id: tenantId, nama_guru: { equals: tName, mode: 'insensitive' } },
+              include: { User: true },
+            });
+          }
+
+          if (existingGuru) {
+            guruUserId = existingGuru.user_id;
+          } else {
+            // Ambil role GURU untuk tenant ini
+            const guruRole = await prisma.role.findFirst({
+              where: {
+                OR: [
+                  { tenant_id: tenantId, name: { contains: 'Guru', mode: 'insensitive' } },
+                  { is_system: true, name: { contains: 'Guru', mode: 'insensitive' } },
+                  { name: { contains: 'Guru', mode: 'insensitive' } },
+                ],
+              },
+            });
+
+            let roleId = guruRole?.id;
+            if (!roleId) {
+              const sampleGuru = await prisma.guru.findFirst({
+                where: { tenant_id: tenantId },
+                include: { User: { select: { role_id: true } } },
+              });
+              roleId = sampleGuru?.User?.role_id;
+            }
+            if (!roleId) {
+              const anyRole = await prisma.role.findFirst({ where: { tenant_id: tenantId } });
+              roleId = anyRole?.id || randomUUID();
+            }
+
+            const cleanSlug =
+              tName
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, '.')
+                .replace(/\.+/g, '.')
+                .replace(/^\.|\.$/g, '') || 'guru';
+            const randomSuffix = randomUUID().slice(0, 6);
+            const userEmail = `${cleanSlug}.${cleanNip || randomSuffix}@arsip.absenta.id`;
+            const dummyPasswordHash = await bcrypt.hash(`AbsentaArsip_${randomSuffix}`, 10);
+
+            const newUser = await prisma.user.create({
+              data: {
+                id: randomUUID(),
+                tenant_id: tenantId,
+                email: userEmail,
+                password: dummyPasswordHash,
+                full_name: tName,
+                role_id: roleId,
+                status: 'INACTIVE', // Guru arsip / masa lalu: non-aktif
+              },
+            });
+
+            await prisma.guru.create({
+              data: {
+                id: randomUUID(),
+                tenant_id: tenantId,
+                user_id: newUser.id,
+                nama_guru: tName,
+                nip: tNip,
+                status_kepegawaian: 'NON_AKTIF',
+                jenis_ptk: 'PENDIDIK',
+              },
+            });
+
+            guruUserId = newUser.id;
+          }
+        }
+
         affectedUserIds.push(guruUserId);
 
         // Cek penugasan untuk kelas ini di tahun pelajaran yang dipilih

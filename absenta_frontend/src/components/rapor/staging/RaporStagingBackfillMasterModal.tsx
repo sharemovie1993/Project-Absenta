@@ -41,6 +41,7 @@ interface EditableWalasRow {
   tahunPelajaran: string;
   selectedKelasId: string;
   selectedGuruUserId: string;
+  ambiguityNote?: string;
 }
 
 export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMasterModalProps> = React.memo(
@@ -104,6 +105,7 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
           tahunPelajaran: p.tahunPelajaran,
           selectedKelasId: p.matchedKelas?.id || '',
           selectedGuruUserId: p.matchedGuru?.user_id || '',
+          ambiguityNote: p.ambiguityNote,
         }));
         setWalasRows(initialRows);
 
@@ -167,6 +169,18 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
       return walasRows.filter((r) => !r.selectedGuruUserId || !r.selectedKelasId).length;
     }, [walasRows]);
 
+    const dynamicAutoCreatedCount = useMemo(() => {
+      return walasRows.filter((r) => r.selectedGuruUserId === '__AUTO_CREATE__').length;
+    }, [walasRows]);
+
+    // Tandai semua guru yang belum cocok untuk otomatis dibuatkan record baru
+    const handleAutoCreateAllUnmapped = useCallback(() => {
+      setWalasRows((prev) =>
+        prev.map((r) => (!r.selectedGuruUserId ? { ...r, selectedGuruUserId: '__AUTO_CREATE__' } : r))
+      );
+      toast.success('Semua rombel yang belum memiliki guru ditandai untuk dibuatkan Guru Baru (Non-Aktif/Arsip).');
+    }, []);
+
     // Filter daftar baris tabel berdasarkan pencarian teks dan toggle filter
     const filteredRows = useMemo(() => {
       return walasRows.filter((r) => {
@@ -199,6 +213,8 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
           kelasNama: r.kelasNama,
           kelas_id: r.selectedKelasId,
           guru_user_id: r.selectedGuruUserId,
+          walasNama: r.walasNama,
+          walasNip: r.walasNip,
         }));
 
       executeMutation.mutate({
@@ -316,6 +332,12 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
                   <CheckCircle2 size={13} className="mr-1 text-emerald-600" />
                   {dynamicReadyCount} / {walasRows.length} Siap Ditugaskan
                 </Badge>
+                {dynamicAutoCreatedCount > 0 && (
+                  <Badge variant="outline" className="text-xs bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 border-indigo-200">
+                    <Sparkles size={13} className="mr-1 text-indigo-600" />
+                    {dynamicAutoCreatedCount} Guru Baru
+                  </Badge>
+                )}
                 {dynamicUnmappedCount > 0 && (
                   <Badge variant="outline" className="text-xs bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200">
                     <AlertTriangle size={13} className="mr-1 text-amber-600" />
@@ -455,7 +477,21 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <div className="relative w-56 sm:w-64">
+                    {dynamicUnmappedCount > 0 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAutoCreateAllUnmapped}
+                        className="h-8 text-[11px] gap-1.5 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                        title="Otomatis buatkan record guru baru (status non-aktif) untuk semua wali kelas yang belum cocok"
+                      >
+                        <Sparkles size={13} className="text-emerald-600" />
+                        <span>Auto Buat Guru Baru ({dynamicUnmappedCount})</span>
+                      </Button>
+                    )}
+
+                    <div className="relative w-48 sm:w-56">
                       <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                       <Input
                         type="text"
@@ -519,7 +555,7 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
                                 value={row.selectedKelasId}
                                 onChange={(e) => handleKelasChange(origIdx, e.target.value)}
                                 className={cn(
-                                  'w-full text-[11px] font-medium rounded p-1 border transition-colors',
+                                    'w-full text-[11px] font-medium rounded p-1 border transition-colors',
                                   row.selectedKelasId
                                     ? 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
                                     : 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300'
@@ -550,33 +586,58 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
                                   onChange={(e) => handleGuruChange(origIdx, e.target.value)}
                                   className={cn(
                                     'w-full text-xs font-medium rounded-lg p-1.5 border transition-colors focus:ring-2 focus:ring-emerald-500',
-                                    row.selectedGuruUserId
+                                    row.selectedGuruUserId === '__AUTO_CREATE__'
+                                      ? 'border-indigo-300 dark:border-indigo-800 bg-indigo-50/70 dark:bg-indigo-950/30 text-indigo-900 dark:text-indigo-200 font-semibold'
+                                      : row.selectedGuruUserId
                                       ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 text-slate-800 dark:text-slate-100'
                                       : 'border-amber-300 dark:border-amber-700 bg-amber-50/70 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200'
                                   )}
                                 >
                                   <option value="">-- Pilih Guru Master Manual --</option>
+                                  <option
+                                    value="__AUTO_CREATE__"
+                                    className="text-indigo-700 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/50"
+                                  >
+                                    + Buat Record Guru Baru: &quot;{row.walasNama}&quot; (Non-Aktif/Arsip)
+                                  </option>
                                   {previewData.availableGurus.map((g) => (
                                     <option key={g.id} value={g.user_id}>
                                       {g.nama_guru} {g.nip ? `(NIP: ${g.nip})` : ''}
                                     </option>
                                   ))}
                                 </select>
-                                {!row.selectedGuruUserId && (
+                                {row.selectedGuruUserId === '__AUTO_CREATE__' ? (
+                                  <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium flex items-center gap-1">
+                                    <Sparkles size={11} className="shrink-0 text-indigo-600" />
+                                    <span>Akan dibuatkan record Guru &amp; Akun baru (Status: Non-Aktif/Arsip)</span>
+                                  </div>
+                                ) : !row.selectedGuruUserId ? (
                                   <div className="text-[10px] text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
                                     <AlertTriangle size={11} className="shrink-0" />
-                                    <span>Guru belum cocok di data master. Pilih guru di atas.</span>
+                                    <span>
+                                      {row.ambiguityNote || 'Guru belum cocok di data master. Pilih guru atau buat record baru di atas.'}
+                                    </span>
                                   </div>
-                                )}
+                                ) : null}
                               </div>
                             </td>
 
                             {/* Kolom Status */}
                             <td className="p-2 text-center">
-                              {isRowReady ? (
+                              {row.selectedGuruUserId === '__AUTO_CREATE__' ? (
+                                <Badge variant="outline" className="text-[10px] bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-300 font-semibold">
+                                  Record Baru
+                                </Badge>
+                              ) : isRowReady ? (
                                 <Badge variant="outline" className="text-[10px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200">
                                   Siap
                                 </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-[10px] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200">
+                                  Perlu Cek
+                                </Badge>
+                              )}
+                            </td>
                               ) : (
                                 <Badge variant="outline" className="text-[10px] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200">
                                   Perlu Cek
