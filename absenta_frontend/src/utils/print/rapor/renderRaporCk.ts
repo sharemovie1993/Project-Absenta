@@ -285,7 +285,19 @@ export const renderStudentRaporPages = (
       groupedMapel.get(groupCategory)!.push(n);
     });
 
-    const tableRows: any[] = [];
+    type Ck1RowSpec =
+      | { kind: 'group'; title: string }
+      | {
+          kind: 'mapel';
+          no: string;
+          name: string;
+          score: string;
+          isMissing: boolean;
+          capText: string;
+          isCapFallback: boolean;
+        };
+
+    const rowSpecs: Ck1RowSpec[] = [];
     const standardOrder = isLegacyEra
       ? ['Kelompok Umum', 'Kelompok Kejuruan']
       : ['Mata Pelajaran Umum', 'Mata Pelajaran Kejuruan', 'Mata Pelajaran Pilihan', 'Muatan Lokal'];
@@ -296,7 +308,6 @@ export const renderStudentRaporPages = (
     activeGroups.forEach((groupCategory, groupIdx) => {
       const items = groupedMapel.get(groupCategory) || [];
       const letterPrefix = letters[groupIdx] ? `${letters[groupIdx]}. ` : '';
-      const displayTitle = `${letterPrefix}${groupCategory}`;
 
       items.sort((a, b) => {
         const uA = typeof a.urutan === 'number' && a.urutan > 0 ? a.urutan : 999;
@@ -308,52 +319,126 @@ export const renderStudentRaporPages = (
         return (a.mapel_name || '').localeCompare(b.mapel_name || '');
       });
 
-      tableRows.push([
-        {
-          content: displayTitle,
-          colSpan: 4,
-          styles: {
-            fontStyle: 'bold',
-            fillColor: [255, 255, 255],
-            textColor: [0, 0, 0],
-            fontSize: 8.5,
-            halign: 'left',
-            valign: 'middle',
-            minCellHeight: 7.5,
-            cellPadding: { left: 3, top: 1.5, bottom: 1.5 },
-          },
-        },
-      ]);
+      rowSpecs.push({ kind: 'group', title: `${letterPrefix}${groupCategory}` });
 
       items.forEach((n: any, idx: number) => {
         const hasScore = (n.nilai_akhir && n.nilai_akhir > 0) || (n.nilai_components && n.nilai_components.length > 0);
-        const isMissing = !hasScore;
         const score = hasScore ? n.nilai_akhir : '-';
         const { text: capText, isFallback: isCapFallback } = resolveCapaianKompetensi(n, score);
+        rowSpecs.push({
+          kind: 'mapel',
+          no: String(idx + 1),
+          name: n.mapel_name || '-',
+          score: String(score),
+          isMissing: !hasScore,
+          capText,
+          isCapFallback,
+        });
+      });
+    });
 
-        tableRows.push([
-          { content: String(idx + 1), styles: { halign: 'center', valign: 'middle' } },
-          { content: n.mapel_name || '-', styles: { halign: 'left', valign: 'middle' } },
+    // ── CK1 WAJIB 1 HALAMAN: Auto-fit skala tipografi tabel ──
+    // Tinggi tabel diestimasi memakai metrik font jsPDF yang identik dengan autoTable,
+    // lalu skala (font, padding, tinggi minimum baris) diperkecil via binary search
+    // sampai seluruh tabel muat di sisa halaman 1, seberapa panjang pun teks CP-nya.
+    const CK1_PAGE_HEIGHT = 297;
+    const CK1_BOTTOM_MARGIN = 10;
+    const CK1_HEAD_HEIGHT = 8;
+    const COL_WIDTHS = [10, 56, 16, 98];
+    const H_PAD = 2.5;
+    const availableHeight = CK1_PAGE_HEIGHT - CK1_BOTTOM_MARGIN - y;
+    const scaleFactorK = (doc as any).internal.scaleFactor as number;
+    const lineHeightFactor = typeof (doc as any).getLineHeightFactor === 'function' ? doc.getLineHeightFactor() : 1.15;
+    const lineH = (fs: number) => (fs * lineHeightFactor) / scaleFactorK;
+    const countLines = (text: string, fs: number, style: string, width: number) => {
+      doc.setFont(font, style);
+      doc.setFontSize(fs);
+      return Math.max(1, (doc.splitTextToSize(text || '', width) as string[]).length);
+    };
+
+    const headLabels = ['No', 'Mata Pelajaran', isLegacyEra ? 'Nilai Akhir' : 'Nilai', 'Capaian Kompetensi'];
+    const defaultPad = 5 / scaleFactorK; // default cellPadding autoTable (mm)
+    const headHeight = Math.max(
+      CK1_HEAD_HEIGHT,
+      ...headLabels.map(
+        (lbl, i) => countLines(lbl, 8.5, 'bold', COL_WIDTHS[i] - defaultPad * 2) * lineH(8.5) + defaultPad * 2
+      )
+    );
+
+    const estimateTableHeight = (s: number): number => {
+      let total = headHeight;
+      const groupFs = 8.5 * s;
+      const bodyFs = 7.8 * s;
+      const vPadGroup = 1.5 * s * 2;
+      const vPadBody = 2 * s * 2;
+      for (const r of rowSpecs) {
+        if (r.kind === 'group') {
+          total += Math.max(7.5 * s, lineH(groupFs) + vPadGroup);
+          continue;
+        }
+        const nameLines = countLines(r.name, bodyFs, 'normal', COL_WIDTHS[1] - H_PAD * 2);
+        const capLines = countLines(r.capText, bodyFs, r.isCapFallback ? 'italic' : 'normal', COL_WIDTHS[3] - H_PAD * 2);
+        const maxLines = Math.max(nameLines, capLines);
+        total += Math.max(12 * s, maxLines * lineH(bodyFs) + vPadBody);
+      }
+      return total;
+    };
+
+    let fitScale = 1;
+    const SAFETY = 0.985; // toleransi pembulatan & ketebalan garis grid
+    if (estimateTableHeight(1) > availableHeight * SAFETY) {
+      let lo = 0.25;
+      let hi = 1;
+      for (let i = 0; i < 18; i++) {
+        const mid = (lo + hi) / 2;
+        if (estimateTableHeight(mid) <= availableHeight * SAFETY) lo = mid;
+        else hi = mid;
+      }
+      fitScale = lo;
+    }
+
+    const s = fitScale;
+    const tableRows: any[] = rowSpecs.map((r) => {
+      if (r.kind === 'group') {
+        return [
           {
-            content: String(score),
+            content: r.title,
+            colSpan: 4,
             styles: {
-              halign: 'center',
-              valign: 'middle',
-              fontStyle: isMissing ? 'italic' : 'bold',
-              textColor: isMissing ? [220, 38, 38] : [0, 0, 0],
-            },
-          },
-          {
-            content: capText,
-            styles: {
+              fontStyle: 'bold',
+              fillColor: [255, 255, 255],
+              textColor: [0, 0, 0],
+              fontSize: 8.5 * s,
               halign: 'left',
               valign: 'middle',
-              textColor: isCapFallback ? [220, 38, 38] : [0, 0, 0],
-              fontStyle: isCapFallback ? 'italic' : 'normal',
+              minCellHeight: 7.5 * s,
+              cellPadding: { left: 3, right: H_PAD, top: 1.5 * s, bottom: 1.5 * s },
             },
           },
-        ]);
-      });
+        ];
+      }
+      return [
+        { content: r.no, styles: { halign: 'center', valign: 'middle' } },
+        { content: r.name, styles: { halign: 'left', valign: 'middle' } },
+        {
+          content: r.score,
+          styles: {
+            halign: 'center',
+            valign: 'middle',
+            fontStyle: r.isMissing ? 'italic' : 'bold',
+            textColor: r.isMissing ? [220, 38, 38] : [0, 0, 0],
+          },
+        },
+        {
+          content: r.capText,
+          styles: {
+            halign: 'left',
+            valign: 'middle',
+            textColor: r.isCapFallback ? [220, 38, 38] : [0, 0, 0],
+            fontStyle: r.isCapFallback ? 'italic' : 'normal',
+          },
+        },
+      ];
     });
 
     autoTable(doc, {
@@ -371,22 +456,22 @@ export const renderStudentRaporPages = (
         fontStyle: 'bold',
         halign: 'center',
         valign: 'middle',
-        minCellHeight: 8,
+        minCellHeight: CK1_HEAD_HEIGHT,
       },
       bodyStyles: {
-        fontSize: 7.8,
+        fontSize: 7.8 * s,
         valign: 'middle',
-        minCellHeight: 12,
-        cellPadding: { top: 2, bottom: 2, left: 2.5, right: 2.5 },
+        minCellHeight: 12 * s,
+        cellPadding: { top: 2 * s, bottom: 2 * s, left: H_PAD, right: H_PAD },
         textColor: 0,
       },
       columnStyles: {
-        0: { halign: 'center', valign: 'middle', cellWidth: 10 },
-        1: { halign: 'left', valign: 'middle', cellWidth: 56 },
-        2: { halign: 'center', valign: 'middle', cellWidth: 16 },
-        3: { halign: 'left', valign: 'middle', cellWidth: 98 },
+        0: { halign: 'center', valign: 'middle', cellWidth: COL_WIDTHS[0] },
+        1: { halign: 'left', valign: 'middle', cellWidth: COL_WIDTHS[1] },
+        2: { halign: 'center', valign: 'middle', cellWidth: COL_WIDTHS[2] },
+        3: { halign: 'left', valign: 'middle', cellWidth: COL_WIDTHS[3] },
       },
-      margin: { left: 15, right: 15 },
+      margin: { left: 15, right: 15, bottom: CK1_BOTTOM_MARGIN },
     });
   }
 

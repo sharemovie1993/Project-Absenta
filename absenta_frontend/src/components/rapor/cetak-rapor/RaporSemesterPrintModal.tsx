@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo, useCallback, useEffect } from 'react';
+﻿import React, { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   UniversalDocumentModal,
@@ -14,6 +14,60 @@ import { resolveRaporKelompok } from '@/utils/print/rapor/raporKelompok';
 import { Loader2, CalendarRange } from 'lucide-react';
 import type { LegerStudent, SemesterDocumentOption } from './LegerStudentTable';
 import { RaporHeaderMetadata } from './RaporHeaderMetadata';
+
+/** Padding vertikal sel mapel CK1 — ikut menyusut bersama skala auto-fit (--ck1s). */
+const CK1_CELL_PAD: React.CSSProperties = {
+  paddingTop: 'calc(1.8mm * var(--ck1s, 1))',
+  paddingBottom: 'calc(1.8mm * var(--ck1s, 1))',
+};
+
+/** Tinggi area konten CK1 = A4 (297mm) dikurangi padding atas+bawah (14mm + 14mm). */
+const CK1_AVAILABLE_HEIGHT_PX = ((297 - 28) * 96) / 25.4;
+
+/**
+ * CK1 WAJIB 1 HALAMAN — Auto-fit container.
+ * Mengukur tinggi natural konten lembar 1; bila melebihi area A4, variabel CSS --ck1s
+ * (skala font + padding tabel nilai) diperkecil via binary search sampai muat,
+ * seberapa panjang pun teks Capaian Kompetensi.
+ */
+const Ck1AutoFit: React.FC<{ fitKey: string; children: React.ReactNode }> = ({ fitKey, children }) => {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const fitsAt = (s: number) => {
+      el.style.setProperty('--ck1s', String(s));
+      return el.offsetHeight <= CK1_AVAILABLE_HEIGHT_PX;
+    };
+    const runFit = () => {
+      if (fitsAt(1)) return;
+      let lo = 0.25;
+      let hi = 1;
+      for (let i = 0; i < 14; i++) {
+        const mid = (lo + hi) / 2;
+        if (fitsAt(mid)) lo = mid;
+        else hi = mid;
+      }
+      fitsAt(lo);
+    };
+    runFit();
+    // Ulangi setelah web font selesai dimuat (metrik teks bisa berubah)
+    let cancelled = false;
+    (document as any).fonts?.ready?.then(() => {
+      if (!cancelled) runFit();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [fitKey]);
+
+  return (
+    <div ref={ref} style={{ ['--ck1s' as any]: 1 }}>
+      {children}
+    </div>
+  );
+};
 
 export interface RaporSemesterPrintModalProps {
   isOpen: boolean;
@@ -245,6 +299,12 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
     groupedMapel.get(groupCategory)!.push(m);
   });
 
+  // Kunci auto-fit CK1: berubah bila data/teks yang memengaruhi tinggi tabel berubah
+  const ck1FitKey =
+    JSON.stringify(
+      listNilai.map((m: any) => [m.mapel_name, m.nilai_akhir, m.kelompok_mapel, m.urutan, m.capaian_kompetensi, m.deskripsi])
+    ) + `|${isLegacyEra}|${namaSiswa}|${effectiveSemesterNama}|${effectiveTahunPelajaranNama}`;
+
   const standardOrder = isLegacyEra
     ? ['Kelompok Umum', 'Kelompok Kejuruan']
     : ['Mata Pelajaran Umum', 'Mata Pelajaran Kejuruan', 'Mata Pelajaran Pilihan', 'Muatan Lokal'];
@@ -363,11 +423,11 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
         {/* ═════════════════════════════════════════════════════════════ */}
         <PrintDocumentSheet
           orientation="portrait"
-          style={{ padding: '14mm 15mm 14mm 15mm' }}
+          style={{ padding: '14mm 15mm 14mm 15mm', height: '297mm', maxHeight: '297mm', overflow: 'hidden' }}
           className="bg-white text-black font-sans select-none border-none shadow-2xl print:shadow-none print:m-0"
         >
           <div className="w-full h-full flex flex-col justify-between text-black font-sans">
-            <div>
+            <Ck1AutoFit fitKey={ck1FitKey}>
               {/* Header Metadata Reusable Subkomponen (Page 1) */}
               <RaporHeaderMetadata
                 pageMode="page1"
@@ -389,7 +449,10 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
 
               {/* Table Nilai Akademik */}
               <div className="w-full">
-                <table className="w-full table-fixed border-collapse border border-black text-[7.8pt] leading-[1.3] text-black">
+                <table
+                  className="w-full table-fixed border-collapse border border-black leading-[1.3] text-black"
+                  style={{ fontSize: 'calc(7.8pt * var(--ck1s, 1))' }}
+                >
                   <colgroup>
                     <col className="w-[10mm]" />
                     <col className="w-[56mm]" />
@@ -425,7 +488,11 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
                         <React.Fragment key={`grp-${grpIdx}`}>
                           {/* Sub Header Kelompok Mapel */}
                           <tr className="bg-white border-t border-b border-black">
-                            <td colSpan={4} className="py-[1.5mm] px-[2.5mm] font-bold text-left text-black text-[8.5pt]">
+                            <td
+                              colSpan={4}
+                              className="px-[2.5mm] font-bold text-left text-black"
+                              style={{ fontSize: 'calc(8.5pt * var(--ck1s, 1))', paddingTop: 'calc(1.5mm * var(--ck1s, 1))', paddingBottom: 'calc(1.5mm * var(--ck1s, 1))' }}
+                            >
                               {letterPrefix}{grpName}
                             </td>
                           </tr>
@@ -438,16 +505,16 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
 
                             return (
                               <tr key={`mapel-${mIdx}`} className="border-b border-black">
-                                <td className="py-[1.8mm] text-center align-middle border-r border-black">
+                                <td className="text-center align-middle border-r border-black" style={CK1_CELL_PAD}>
                                   {mIdx + 1}
                                 </td>
-                                <td className="py-[1.8mm] px-[2.5mm] text-left align-middle border-r border-black font-normal">
+                                <td className="px-[2.5mm] text-left align-middle border-r border-black font-normal" style={CK1_CELL_PAD}>
                                   {m.mapel_name || '-'}
                                 </td>
-                                <td className={`py-[1.8mm] text-center align-middle border-r border-black font-bold ${!hasScore ? 'text-red-600 italic' : ''}`}>
+                                <td className={`text-center align-middle border-r border-black font-bold ${!hasScore ? 'text-red-600 italic' : ''}`} style={CK1_CELL_PAD}>
                                   {score}
                                 </td>
-                                <td className={`py-[1.8mm] px-[2.5mm] text-left align-middle font-normal text-justify ${isCapFallback ? 'text-red-600 font-semibold italic' : 'text-black'}`}>
+                                <td className={`px-[2.5mm] text-left align-middle font-normal text-justify ${isCapFallback ? 'text-red-600 font-semibold italic' : 'text-black'}`} style={CK1_CELL_PAD}>
                                   {capText}
                                 </td>
                               </tr>
@@ -459,7 +526,7 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
                   </tbody>
                 </table>
               </div>
-            </div>
+            </Ck1AutoFit>
           </div>
         </PrintDocumentSheet>
 
