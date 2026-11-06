@@ -98,6 +98,30 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
     return selectedStudent.riwayat_semester;
   }, [selectedStudent]);
 
+  const activeOption = useMemo(() => {
+    return semesterOptions.find(
+      (opt) => opt.tahunPelajaranId === activeTpId && opt.semesterId === activeSemId
+    );
+  }, [semesterOptions, activeTpId, activeSemId]);
+
+  // Semester & Tahun Pelajaran Info (SSOT dari Rapor Detail / Active Option / Props)
+  const effectiveSemesterNama =
+    (raporData?.semester?.nama_semester || '').trim() ||
+    activeOption?.semesterNama ||
+    semesterNama ||
+    (raporData?.is_genap ? 'Genap' : 'Ganjil');
+
+  const effectiveTahunPelajaranNama =
+    (raporData?.tahun_pelajaran?.tahun || '').trim() ||
+    activeOption?.tahunPelajaranTahun ||
+    tahunPelajaranNama ||
+    '2025 / 2026';
+
+  // Deteksi Era Kurikulum (Legacy: 2024/2025 ke belakang; Modern: 2025/2026 ke atas)
+  const matchYear = String(effectiveTahunPelajaranNama || '').match(/([12]\d{3})/);
+  const startYear = matchYear ? parseInt(matchYear[1], 10) : 2025;
+  const isLegacyEra = startYear < 2025;
+
   // Index siswa untuk navigasi batch
   const currentIndex = useMemo(() => {
     if (!selectedStudent || students.length === 0) return 0;
@@ -126,8 +150,8 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
         siswaId,
         tahunPelajaranId: activeTpId,
         semesterId: activeSemId,
-        tahunPelajaranNama,
-        semesterNama,
+        tahunPelajaranNama: effectiveTahunPelajaranNama,
+        semesterNama: effectiveSemesterNama,
       });
       const link = document.createElement('a');
       link.href = blobUrl;
@@ -141,7 +165,7 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
     } finally {
       setIsExportingPdf(false);
     }
-  }, [siswaId, activeTpId, activeSemId, tahunPelajaranNama, semesterNama, isExportingPdf]);
+  }, [siswaId, activeTpId, activeSemId, effectiveTahunPelajaranNama, effectiveSemesterNama, isExportingPdf]);
 
   // Metadata Siswa (Universal Academic Identity Engine) - Diposisikan sebelum early return mematuhi Rules of Hooks
   const normalizedStudent = useMemo(
@@ -194,28 +218,12 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
   const tingkatNum = Number(normalizedStudent.tingkat || 10);
   const fase = tingkatNum <= 10 ? 'E' : 'F';
 
-  // Semester & Tahun Pelajaran Info
-  const effectiveSemesterNama =
-    (raporData?.semester?.nama_semester || '').trim() ||
-    semesterNama ||
-    (raporData?.is_genap ? 'Genap' : 'Ganjil');
-
-  const effectiveTahunPelajaranNama =
-    (raporData?.tahun_pelajaran?.tahun || '').trim() ||
-    tahunPelajaranNama ||
-    '2025 / 2026';
-
   const isGenap = Boolean(
     raporData?.is_genap ||
     raporData?.semester?.is_genap ||
     effectiveSemesterNama.toLowerCase().includes('genap') ||
     effectiveSemesterNama.includes('2')
   );
-
-  // Kokurikuler & Kenaikan Kelas Rule
-  const matchYear = String(effectiveTahunPelajaranNama || '').match(/^(\d{4})/);
-  const startYear = matchYear ? parseInt(matchYear[1], 10) : 2025;
-  const isLegacyEra = startYear < 2025;
 
   const showKokurikuler = settingsData?.tampilkan_kokurikuler !== undefined
     ? Boolean(settingsData.tampilkan_kokurikuler)
@@ -415,90 +423,154 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
         >
           <div className="w-full h-full flex flex-col justify-between text-black font-sans">
             <div>
-              {/* Header Title */}
-              <div className="text-center mb-[4mm]">
-                <h1 className="font-bold text-[12pt] leading-tight text-black tracking-[0.2px] uppercase">
-                  LAPORAN HASIL BELAJAR
-                </h1>
-                <h2 className="font-bold text-[12pt] leading-tight text-black uppercase">
-                  (RAPOR)
-                </h2>
-              </div>
+              {isLegacyEra ? (
+                <>
+                  {/* Metadata Header Ringkas (Format Legacy 2024/2025 ke belakang) */}
+                  <div className="w-full mb-[2mm] text-[8.5pt] leading-tight text-black">
+                    <table className="w-full table-fixed border-collapse">
+                      <colgroup>
+                        <col className="w-[32mm]" />
+                        <col className="w-[4mm]" />
+                        <col className="w-[64mm]" />
+                        <col className="w-[34mm]" />
+                        <col className="w-[4mm]" />
+                        <col className="w-[44mm]" />
+                      </colgroup>
+                      <tbody>
+                        <tr>
+                          <td className="py-[0.7mm] text-left">Nama</td>
+                          <td className="py-[0.7mm] text-center">:</td>
+                          <td className="py-[0.7mm] text-left font-bold truncate">{namaSiswa}</td>
+                          <td className="py-[0.7mm] text-left">Kelas</td>
+                          <td className="py-[0.7mm] text-center">:</td>
+                          <td className="py-[0.7mm] text-left font-bold">{kelas}</td>
+                        </tr>
+                        <tr>
+                          <td className="py-[0.7mm] text-left">NIS/NISN</td>
+                          <td className="py-[0.7mm] text-center">:</td>
+                          <td className="py-[0.7mm] text-left">{nis} / {nisn}</td>
+                          <td className="py-[0.7mm] text-left">Fase</td>
+                          <td className="py-[0.7mm] text-center">:</td>
+                          <td className="py-[0.7mm] text-left">{fase}</td>
+                        </tr>
+                        <tr>
+                          <td className="py-[0.7mm] text-left">Nama Sekolah</td>
+                          <td className="py-[0.7mm] text-center">:</td>
+                          <td className="py-[0.7mm] text-left truncate">{namaSekolah}</td>
+                          <td className="py-[0.7mm] text-left">Semester</td>
+                          <td className="py-[0.7mm] text-center">:</td>
+                          <td className="py-[0.7mm] text-left">{effectiveSemesterNama}</td>
+                        </tr>
+                        <tr>
+                          <td className="py-[0.7mm] text-left align-top">Alamat</td>
+                          <td className="py-[0.7mm] text-center align-top">:</td>
+                          <td className="py-[0.7mm] text-left align-top">{alamatSekolah}</td>
+                          <td className="py-[0.7mm] text-left align-top">Tahun Pelajaran</td>
+                          <td className="py-[0.7mm] text-center align-top">:</td>
+                          <td className="py-[0.7mm] text-left align-top">{effectiveTahunPelajaranNama}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
 
-              {/* 2-Column Metadata Grid */}
-              <div className="w-full mb-[3.5mm] text-[8.5pt] leading-tight text-black">
-                <table className="w-full table-fixed border-collapse">
-                  <colgroup>
-                    <col className="w-[32mm]" />
-                    <col className="w-[4mm]" />
-                    <col className="w-[64mm]" />
-                    <col className="w-[34mm]" />
-                    <col className="w-[4mm]" />
-                    <col className="w-[44mm]" />
-                  </colgroup>
-                  <tbody>
-                    <tr>
-                      <td className="py-[0.7mm] text-left">Nama Peserta Didik</td>
-                      <td className="py-[0.7mm] text-center">:</td>
-                      <td className="py-[0.7mm] text-left font-bold truncate">{namaSiswa}</td>
-                      <td className="py-[0.7mm] text-left">Kelas</td>
-                      <td className="py-[0.7mm] text-center">:</td>
-                      <td className="py-[0.7mm] text-left font-bold">{kelas}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-[0.7mm] text-left">NIS/NISN</td>
-                      <td className="py-[0.7mm] text-center">:</td>
-                      <td className="py-[0.7mm] text-left">{nis} / {nisn}</td>
-                      <td className="py-[0.7mm] text-left">Fase</td>
-                      <td className="py-[0.7mm] text-center">:</td>
-                      <td className="py-[0.7mm] text-left">{fase}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-[0.7mm] text-left">Nama Sekolah</td>
-                      <td className="py-[0.7mm] text-center">:</td>
-                      <td className="py-[0.7mm] text-left truncate">{namaSekolah}</td>
-                      <td className="py-[0.7mm] text-left">Semester</td>
-                      <td className="py-[0.7mm] text-center">:</td>
-                      <td className="py-[0.7mm] text-left">{effectiveSemesterNama}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-[0.7mm] text-left align-top">Alamat</td>
-                      <td className="py-[0.7mm] text-center align-top">:</td>
-                      <td className="py-[0.7mm] text-left align-top">{alamatSekolah}</td>
-                      <td className="py-[0.7mm] text-left align-top">Tahun Pelajaran</td>
-                      <td className="py-[0.7mm] text-center align-top">:</td>
-                      <td className="py-[0.7mm] text-left align-top">{effectiveTahunPelajaranNama}</td>
-                    </tr>
-                    {isJenjangSmk && !isLegacyEra && (
-                      <>
-                        <tr>
-                          <td colSpan={6} className="py-[0.5mm]" />
-                        </tr>
-                        <tr>
-                          <td className="py-[0.7mm] text-left">Bidang Keahlian</td>
-                          <td className="py-[0.7mm] text-center">:</td>
-                          <td colSpan={4} className="py-[0.7mm] text-left truncate">{bidangKeahlian}</td>
-                        </tr>
-                        <tr>
-                          <td className="py-[0.7mm] text-left">Program Keahlian</td>
-                          <td className="py-[0.7mm] text-center">:</td>
-                          <td colSpan={4} className="py-[0.7mm] text-left truncate">{programKeahlian}</td>
-                        </tr>
-                        <tr>
-                          <td className="py-[0.7mm] text-left">Konsentrasi Keahlian</td>
-                          <td className="py-[0.7mm] text-center">:</td>
-                          <td colSpan={4} className="py-[0.7mm] text-left truncate">{konsentrasiKeahlian}</td>
-                        </tr>
-                      </>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                  {/* Garis Pemisah Header Legacy */}
+                  <div className="w-full border-t border-black my-2" />
 
-              {/* Section I: INTRA KURIKULER */}
-              <div className="font-bold text-[10pt] text-black mb-[2mm]">
-                I. INTRA KURIKULER
-              </div>
+                  {/* Judul Laporan Hasil Belajar Legacy (Tanpa RAPOR dan Tanpa I. INTRA KURIKULER) */}
+                  <div className="text-center mb-[3.5mm]">
+                    <h1 className="font-bold text-[11.5pt] leading-tight text-black tracking-[0.2px] uppercase">
+                      LAPORAN HASIL BELAJAR
+                    </h1>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Header Title Modern (2025/2026 ke atas) */}
+                  <div className="text-center mb-[4mm]">
+                    <h1 className="font-bold text-[12pt] leading-tight text-black tracking-[0.2px] uppercase">
+                      LAPORAN HASIL BELAJAR
+                    </h1>
+                    <h2 className="font-bold text-[12pt] leading-tight text-black uppercase">
+                      (RAPOR)
+                    </h2>
+                  </div>
+
+                  {/* 2-Column Metadata Grid Modern (dengan Bidang/Program/Konsentrasi) */}
+                  <div className="w-full mb-[3.5mm] text-[8.5pt] leading-tight text-black">
+                    <table className="w-full table-fixed border-collapse">
+                      <colgroup>
+                        <col className="w-[32mm]" />
+                        <col className="w-[4mm]" />
+                        <col className="w-[64mm]" />
+                        <col className="w-[34mm]" />
+                        <col className="w-[4mm]" />
+                        <col className="w-[44mm]" />
+                      </colgroup>
+                      <tbody>
+                        <tr>
+                          <td className="py-[0.7mm] text-left">Nama Peserta Didik</td>
+                          <td className="py-[0.7mm] text-center">:</td>
+                          <td className="py-[0.7mm] text-left font-bold truncate">{namaSiswa}</td>
+                          <td className="py-[0.7mm] text-left">Kelas</td>
+                          <td className="py-[0.7mm] text-center">:</td>
+                          <td className="py-[0.7mm] text-left font-bold">{kelas}</td>
+                        </tr>
+                        <tr>
+                          <td className="py-[0.7mm] text-left">NIS/NISN</td>
+                          <td className="py-[0.7mm] text-center">:</td>
+                          <td className="py-[0.7mm] text-left">{nis} / {nisn}</td>
+                          <td className="py-[0.7mm] text-left">Fase</td>
+                          <td className="py-[0.7mm] text-center">:</td>
+                          <td className="py-[0.7mm] text-left">{fase}</td>
+                        </tr>
+                        <tr>
+                          <td className="py-[0.7mm] text-left">Nama Sekolah</td>
+                          <td className="py-[0.7mm] text-center">:</td>
+                          <td className="py-[0.7mm] text-left truncate">{namaSekolah}</td>
+                          <td className="py-[0.7mm] text-left">Semester</td>
+                          <td className="py-[0.7mm] text-center">:</td>
+                          <td className="py-[0.7mm] text-left">{effectiveSemesterNama}</td>
+                        </tr>
+                        <tr>
+                          <td className="py-[0.7mm] text-left align-top">Alamat</td>
+                          <td className="py-[0.7mm] text-center align-top">:</td>
+                          <td className="py-[0.7mm] text-left align-top">{alamatSekolah}</td>
+                          <td className="py-[0.7mm] text-left align-top">Tahun Pelajaran</td>
+                          <td className="py-[0.7mm] text-center align-top">:</td>
+                          <td className="py-[0.7mm] text-left align-top">{effectiveTahunPelajaranNama}</td>
+                        </tr>
+                        {isJenjangSmk && (
+                          <>
+                            <tr>
+                              <td colSpan={6} className="py-[0.5mm]" />
+                            </tr>
+                            <tr>
+                              <td className="py-[0.7mm] text-left">Bidang Keahlian</td>
+                              <td className="py-[0.7mm] text-center">:</td>
+                              <td colSpan={4} className="py-[0.7mm] text-left truncate">{bidangKeahlian}</td>
+                            </tr>
+                            <tr>
+                              <td className="py-[0.7mm] text-left">Program Keahlian</td>
+                              <td className="py-[0.7mm] text-center">:</td>
+                              <td colSpan={4} className="py-[0.7mm] text-left truncate">{programKeahlian}</td>
+                            </tr>
+                            <tr>
+                              <td className="py-[0.7mm] text-left">Konsentrasi Keahlian</td>
+                              <td className="py-[0.7mm] text-center">:</td>
+                              <td colSpan={4} className="py-[0.7mm] text-left truncate">{konsentrasiKeahlian}</td>
+                            </tr>
+                          </>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Section I: INTRA KURIKULER */}
+                  <div className="font-bold text-[10pt] text-black mb-[2mm]">
+                    I. INTRA KURIKULER
+                  </div>
+                </>
+              )}
 
               {/* Table Nilai Akademik */}
               <div className="w-full">
@@ -510,10 +582,12 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
                     <col className="w-[98mm]" />
                   </colgroup>
                   <thead>
-                    <tr className="bg-[#cdcdcd] border-b border-black font-bold">
+                    <tr className={`${isLegacyEra ? 'bg-[#b3d7a4]' : 'bg-[#cdcdcd]'} border-b border-black font-bold`}>
                       <th className="py-[2mm] text-center border-r border-black align-middle text-black font-bold">No</th>
                       <th className="py-[2mm] px-[2.5mm] text-center border-r border-black align-middle text-black font-bold">Mata Pelajaran</th>
-                      <th className="py-[2mm] text-center border-r border-black align-middle text-black font-bold">Nilai</th>
+                      <th className="py-[2mm] text-center border-r border-black align-middle text-black font-bold">
+                        {isLegacyEra ? 'Nilai Akhir' : 'Nilai'}
+                      </th>
                       <th className="py-[2mm] px-[2.5mm] text-center align-middle text-black font-bold">Capaian Kompetensi</th>
                     </tr>
                   </thead>

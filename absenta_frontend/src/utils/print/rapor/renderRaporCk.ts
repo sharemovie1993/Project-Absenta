@@ -208,23 +208,39 @@ export const renderStudentRaporPages = (
   let y = 14;
 
   // ── PAGE 1 ──
+  if (isLegacyEra) {
+    // 1. Metadata Grid at Top (Format Legacy 2024/2025 ke belakang: 8 fields, no vocational fields)
+    y = drawStudentMetadataGrid(doc, y);
 
-  // Title Header (Centered)
-  doc.setFont(font, 'bold');
-  doc.setFontSize(12);
-  doc.text('LAPORAN HASIL BELAJAR', pageWidth / 2, y, { align: 'center' });
-  y += 5;
-  doc.text('(RAPOR)', pageWidth / 2, y, { align: 'center' });
-  y += 8;
+    // 2. Horizontal Divider Line
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.3);
+    doc.line(15, y - 2, 195, y - 2);
+    y += 2.5;
 
-  // Student Info Grid on Page 1
-  y = drawStudentMetadataGrid(doc, y);
+    // 3. Centered Title: LAPORAN HASIL BELAJAR (Tanpa (RAPOR))
+    doc.setFont(font, 'bold');
+    doc.setFontSize(11.5);
+    doc.text('LAPORAN HASIL BELAJAR', pageWidth / 2, y, { align: 'center' });
+    y += 5.5;
 
-  // Section I: INTRA KURIKULER (Categorized Grade Table)
-  doc.setFont(font, 'bold');
-  doc.setFontSize(10);
-  doc.text('I. INTRA KURIKULER', 15, y);
-  y += 4;
+    // Direct to Grade Table (Tanpa I. INTRA KURIKULER)
+  } else {
+    // ── PAGE 1 (MODERN ERA 2025+) ──
+    doc.setFont(font, 'bold');
+    doc.setFontSize(12);
+    doc.text('LAPORAN HASIL BELAJAR', pageWidth / 2, y, { align: 'center' });
+    y += 5;
+    doc.text('(RAPOR)', pageWidth / 2, y, { align: 'center' });
+    y += 8;
+
+    y = drawStudentMetadataGrid(doc, y);
+
+    doc.setFont(font, 'bold');
+    doc.setFontSize(10);
+    doc.text('I. INTRA KURIKULER', 15, y);
+    y += 4;
+  }
 
   // Categorized Grade Table
   const nilaiAkademik: any[] = data?.nilai_akademik || [];
@@ -441,14 +457,14 @@ export const renderStudentRaporPages = (
 
     autoTable(doc, {
       startY: y,
-      head: [['No', 'Mata Pelajaran', 'Nilai', 'Capaian Kompetensi']],
+      head: [['No', 'Mata Pelajaran', isLegacyEra ? 'Nilai Akhir' : 'Nilai', 'Capaian Kompetensi']],
       body: tableRows,
       theme: 'grid',
       styles: {
         font,
       },
       headStyles: {
-        fillColor: [205, 205, 205],
+        fillColor: isLegacyEra ? [179, 215, 164] : [205, 205, 205],
         textColor: 0,
         fontSize: 8.5,
         fontStyle: 'bold',
