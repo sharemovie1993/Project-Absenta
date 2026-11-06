@@ -689,6 +689,17 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
                                   </option>
                                 ))}
                               </select>
+                              {(() => {
+                                const existingWalasStep2 = previewData.existingWalasAssignments?.find(
+                                  (a) => a.kelasId === row.selectedKelasId && a.tahunPelajaranId === selectedTpId
+                                );
+                                if (!existingWalasStep2) return null;
+                                return (
+                                  <div className="text-[10px] text-amber-800 dark:text-amber-300 font-medium mt-1 flex items-center gap-1 bg-amber-50/90 dark:bg-amber-950/50 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800/60 leading-tight">
+                                    <span>Eksisting ({selectedTpObj?.tahun || 'TP'}): <strong>{existingWalasStep2.guruNama}</strong></span>
+                                  </div>
+                                );
+                              })()}
                             </td>
 
                             {/* Kolom Wali Kelas di Sheet */}
@@ -949,46 +960,127 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
                 </div>
               </div>
 
-              {/* Rincian Rombel & Guru yang Akan Ditulis ke Database */}
+              {/* Rincian Rombel & Perbandingan Walas Eksisting vs Hasil Backfill */}
               <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs">
-                <div className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Rincian Penugasan Wali Kelas ({readyAssignments.length} Rombel)
-                  </span>
+                <div className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Rincian Penugasan Wali Kelas ({readyAssignments.length} Rombel)
+                    </span>
+                    <span className="text-[10px] bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">
+                      Validasi Ulang Data Eksisting vs Target Baru
+                    </span>
+                  </div>
                   <span className="text-[11px] text-slate-500 font-mono">Konteks: {selectedTpObj?.tahun}</span>
                 </div>
-                <div className="max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 text-[11px]">
-                  {readyAssignments.map((item, i) => {
-                    const guruObj = previewData.availableGurus.find((g) => g.user_id === item.guru_user_id);
-                    const isAuto = item.guru_user_id === '__AUTO_CREATE__';
-                    const kObj = previewData.availableClasses.find((k) => k.id === item.kelas_id);
+                <div className="max-h-60 overflow-y-auto">
+                  <table className="w-full text-[11px] text-left">
+                    <thead className="bg-slate-50 dark:bg-slate-800/90 sticky top-0 text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700 z-10 backdrop-blur-xs">
+                      <tr>
+                        <th className="py-2 px-3 w-8 text-center">No</th>
+                        <th className="py-2 px-3 w-40">Rombel Target</th>
+                        <th className="py-2 px-3">Walas Eksisting Saat Ini ({selectedTpObj?.tahun || 'Database'})</th>
+                        <th className="py-2 px-3 w-28 text-center">Status Aksi</th>
+                        <th className="py-2 px-3 text-right">Walas Baru (Akan Ditugaskan)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {readyAssignments.map((item, i) => {
+                        const guruObj = previewData.availableGurus.find((g) => g.user_id === item.guru_user_id);
+                        const isAuto = item.guru_user_id === '__AUTO_CREATE__';
+                        const kObj = previewData.availableClasses.find((k) => k.id === item.kelas_id);
 
-                    return (
-                      <div key={i} className="px-4 py-2 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                        <div className="flex items-center gap-2">
-                          <span className="text-slate-400 font-mono w-5">{i + 1}.</span>
-                          <span className="font-bold text-slate-800 dark:text-slate-200">{item.kelasNama}</span>
-                          {kObj?.jurusanNama && (
-                            <span className="text-[10px] text-slate-400">({kObj.jurusanNama})</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-slate-600 dark:text-slate-300 font-medium">
-                            {isAuto ? item.walasNama : guruObj?.nama_guru}
-                          </span>
-                          {isAuto ? (
-                            <Badge variant="outline" className="text-[9px] bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-300 font-semibold">
-                              Guru Baru (Non-Aktif)
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-[9px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200">
-                              Guru Master
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                        const existingWalas = previewData.existingWalasAssignments?.find(
+                          (a) => a.kelasId === item.kelas_id && a.tahunPelajaranId === selectedTpId
+                        );
+                        const isSameGuru = existingWalas && existingWalas.userId === item.guru_user_id;
+                        const isChangeGuru = existingWalas && existingWalas.userId !== item.guru_user_id;
+
+                        return (
+                          <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                            <td className="py-2 px-3 text-center text-slate-400 font-mono">{i + 1}</td>
+                            <td className="py-2 px-3">
+                              <span className="font-bold text-slate-800 dark:text-slate-200">{item.kelasNama}</span>
+                              {kObj?.jurusanNama && (
+                                <span className="block text-[10px] text-slate-400 font-normal">
+                                  {kObj.jurusanNama}
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Walas Eksisting di Database Saat Ini */}
+                            <td className="py-2 px-3">
+                              {existingWalas ? (
+                                <div>
+                                  <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                                    <span className={cn(
+                                      'w-1.5 h-1.5 rounded-full inline-block',
+                                      isSameGuru ? 'bg-slate-400' : 'bg-amber-500'
+                                    )} />
+                                    <span>{existingWalas.guruNama}</span>
+                                  </div>
+                                  {existingWalas.guruNip && (
+                                    <div className="text-[10px] text-slate-400 font-mono ml-3">
+                                      NIP: {existingWalas.guruNip}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 italic text-[10px]">
+                                  (Belum ada Walas terdaftar)
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Status Aksi */}
+                            <td className="py-2 px-3 text-center">
+                              {!existingWalas ? (
+                                <Badge variant="outline" className="text-[9px] bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 font-semibold">
+                                  + Baru
+                                </Badge>
+                              ) : isSameGuru ? (
+                                <Badge variant="outline" className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200">
+                                  Tetap (Sama)
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-[9px] bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-300 font-bold">
+                                  ➔ Ganti Walas
+                                </Badge>
+                              )}
+                            </td>
+
+                            {/* Walas Baru Hasil Backfill */}
+                            <td className="py-2 px-3 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <div className="text-right">
+                                  <div className={cn(
+                                    'font-bold',
+                                    isChangeGuru ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'
+                                  )}>
+                                    {isAuto ? item.walasNama : guruObj?.nama_guru}
+                                  </div>
+                                  {item.walasNip && (
+                                    <div className="text-[10px] text-slate-400 font-mono">
+                                      NIP: {item.walasNip}
+                                    </div>
+                                  )}
+                                </div>
+                                {isAuto ? (
+                                  <Badge variant="outline" className="text-[9px] bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-300 font-semibold shrink-0">
+                                    Record Baru
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-[9px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 shrink-0">
+                                    Guru Master
+                                  </Badge>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 

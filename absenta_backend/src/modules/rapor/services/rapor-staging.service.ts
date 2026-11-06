@@ -35,6 +35,13 @@ export interface MasterBackfillPreviewResult {
     existingWalasCount?: number;
     hasExistingSettings?: boolean;
   }>;
+  existingWalasAssignments?: Array<{
+    kelasId: string;
+    tahunPelajaranId: string | null;
+    userId: string;
+    guruNama: string;
+    guruNip?: string | null;
+  }>;
   availableGurus: Array<{ id: string; nama_guru: string; nip: string | null; user_id: string }>;
   availableClasses: Array<{
     id: string;
@@ -1435,6 +1442,41 @@ export class RaporStagingService {
     const walasCountMap = new Map(walasCounts.map((w) => [w.tahun_pelajaran_id, w._count.id]));
     const configTpSet = new Set(existingConfigs.map((c) => c.key.replace('RAPOR_KEPSEK_NAMA_', '')));
 
+    // Ambil seluruh penugasan wali kelas eksisting di database untuk validasi & pembanding visual
+    const existingAssignments = walasPosIds.length > 0
+      ? await prisma.organizationalAssignment.findMany({
+          where: {
+            tenant_id: tenantId,
+            position_id: { in: walasPosIds },
+            is_active: true,
+            kelas_id: { not: null },
+          },
+          select: {
+            id: true,
+            kelas_id: true,
+            tahun_pelajaran_id: true,
+            user_id: true,
+            User: {
+              select: {
+                Guru: {
+                  select: { nama_guru: true, nip: true },
+                },
+              },
+            },
+          },
+        })
+      : [];
+
+    const existingWalasAssignments = existingAssignments
+      .filter((a) => a.kelas_id)
+      .map((a) => ({
+        kelasId: a.kelas_id as string,
+        tahunPelajaranId: a.tahun_pelajaran_id,
+        userId: a.user_id,
+        guruNama: a.User?.Guru?.nama_guru || 'Guru Terdaftar',
+        guruNip: a.User?.Guru?.nip || null,
+      }));
+
     // 2. Cocokkan Tahun Pelajaran
     const matchedTp = await this.resolveTahunPelajaran(tenantId, parsed.tahunPelajaran);
 
@@ -1594,6 +1636,7 @@ export class RaporStagingService {
         existingWalasCount: walasCountMap.get(tp.id) || 0,
         hasExistingSettings: configTpSet.has(tp.id),
       })),
+      existingWalasAssignments,
       availableGurus: allGurus.map((g) => ({
         id: g.id,
         nama_guru: g.nama_guru,

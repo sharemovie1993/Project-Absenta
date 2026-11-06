@@ -861,6 +861,13 @@ export interface MasterBackfillPreviewResult {
     existingWalasCount?: number;
     hasExistingSettings?: boolean;
   }>;
+  existingWalasAssignments?: Array<{
+    kelasId: string;
+    tahunPelajaranId: string | null;
+    userId: string;
+    guruNama: string;
+    guruNip?: string | null;
+  }>;
   availableGurus: Array<{ id: string; nama_guru: string; nip: string | null; user_id: string }>;
   availableClasses: Array<{
     id: string;
