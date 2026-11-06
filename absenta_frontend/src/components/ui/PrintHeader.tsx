@@ -830,6 +830,7 @@ export interface UniversalDocumentModalProps {
   downloadPdfText?: string;
   printButtonText?: string;
   extraActions?: React.ReactNode;
+  subHeader?: React.ReactNode;
 
   // Content
   children: React.ReactNode;
@@ -867,6 +868,7 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
   downloadPdfText = 'Unduh PDF',
   printButtonText = 'Cetak',
   extraActions,
+  subHeader,
   children,
   size = '5xl',
 }) => {
@@ -1383,6 +1385,15 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
         )}
 
         {/* ========================================================================= */}
+        {/* ROW 2.5: SUBHEADER / CUSTOM CONTROLS (FIXED IN MODAL AREA)               */}
+        {/* ========================================================================= */}
+        {subHeader && (
+          <div className="w-full shrink-0 print:hidden">
+            {subHeader}
+          </div>
+        )}
+
+        {/* ========================================================================= */}
         {/* ROW 3: DESK CANVAS AREA                                                  */}
         {/* ========================================================================= */}
         <PrintDeskCanvas
@@ -1390,6 +1401,7 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
           orientation={activeOrientation}
           zoomMode={zoomMode}
           onZoomModeChange={setZoomMode}
+          className={subHeader ? 'max-h-[70vh]' : undefined}
         >
           {children}
         </PrintDeskCanvas>
@@ -1436,6 +1448,7 @@ export interface UniversalDocumentTabProps {
   downloadPdfText?: string;
   printButtonText?: string;
   extraActions?: React.ReactNode;
+  subHeader?: React.ReactNode;
 
   children: React.ReactNode;
 }
@@ -1469,6 +1482,7 @@ export const UniversalDocumentTab: React.FC<UniversalDocumentTabProps> = ({
   downloadPdfText = 'Unduh PDF',
   printButtonText = 'Cetak Dokumen',
   extraActions,
+  subHeader,
   children,
 }) => {
   const [internalOrientation, setInternalOrientation] = useState<'portrait' | 'landscape'>(initialOrientation);
@@ -1732,12 +1746,20 @@ export const UniversalDocumentTab: React.FC<UniversalDocumentTabProps> = ({
         </div>
       )}
 
+      {/* Sub Header */}
+      {subHeader && (
+        <div className="w-full shrink-0 print:hidden">
+          {subHeader}
+        </div>
+      )}
+
       {/* Desk Canvas Area */}
       <PrintDeskCanvas
         deskRef={deskRef}
         orientation={activeOrientation}
         zoomMode={zoomMode}
         onZoomModeChange={setZoomMode}
+        className={subHeader ? 'max-h-[70vh]' : undefined}
       >
         {children}
       </PrintDeskCanvas>
