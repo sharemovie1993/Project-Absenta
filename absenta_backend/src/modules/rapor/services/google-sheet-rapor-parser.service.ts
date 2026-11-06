@@ -914,6 +914,7 @@ export class GoogleSheetRaporParserService {
 
   /**
    * ── Public Method: Ambil dan bedah sheet MASTER langsung dari URL Google Sheet ──
+   * Tahun Pelajaran definitif berkas diambil dari tab SETTING (karena tab MASTER berisi list enum/dropdown).
    */
   static async fetchMasterSheetData(url: string): Promise<MasterReferenceData> {
     const spreadsheetId = this.extractSpreadsheetId(url);
@@ -923,41 +924,65 @@ export class GoogleSheetRaporParserService {
       throw new Error('Tidak dapat menemukan lembar kerja pada Google Sheet ini.');
     }
 
-    // Urutan prioritas pencarian tab MASTER referensi
-    const candidateTab =
+    // 1. Cari tab MASTER untuk referensi daftar Rombel & Plotting Wali Kelas
+    const masterTab =
       tabs.find((t) => /^master$/i.test(t.name.trim())) ||
       tabs.find((t) => /master/i.test(t.name)) ||
-      tabs.find((t) => /^setting$/i.test(t.name.trim())) ||
-      tabs.find((t) => /setting/i.test(t.name)) ||
       tabs.find((t) => /database/i.test(t.name)) ||
       tabs.find((t) => /referensi/i.test(t.name)) ||
       tabs[0];
 
     appLogger.info(
-      { spreadsheetId, selectedTab: candidateTab.name, gid: candidateTab.gid },
+      { spreadsheetId, selectedTab: masterTab.name, gid: masterTab.gid },
       'Mengunduh tab MASTER database referensi Google Sheet...'
     );
 
-    const csvText = await this.fetchSheetCsv(spreadsheetId, candidateTab.gid);
+    const csvText = await this.fetchSheetCsv(spreadsheetId, masterTab.gid);
     const rows = this.parseCSV(csvText);
-    const parsed = this.parseMasterReferenceSheet(rows, candidateTab.name);
+    const parsed = this.parseMasterReferenceSheet(rows, masterTab.name);
     parsed.sourceUrl = url;
 
-    // Jika plotting masih kosong dan ada tab lain yang namanya mengandung setting/master, coba fallback
-    if (parsed.walasPloting.length === 0) {
-      const otherTab = tabs.find((t) => t.gid !== candidateTab.gid && (/setting/i.test(t.name) || /master/i.test(t.name)));
-      if (otherTab) {
-        try {
-          const fallbackCsv = await this.fetchSheetCsv(spreadsheetId, otherTab.gid);
-          const fallbackRows = this.parseCSV(fallbackCsv);
-          const fallbackParsed = this.parseMasterReferenceSheet(fallbackRows, otherTab.name);
-          if (fallbackParsed.walasPloting.length > 0) {
-            fallbackParsed.sourceUrl = url;
-            return fallbackParsed;
-          }
-        } catch (fbErr) {
-          appLogger.warn({ fbErr }, 'Gagal mencoba fallback tab kedua untuk MASTER sheet');
+    // 2. Ambil tab SETTING untuk mengekstrak Tahun Pelajaran definitif berkas, Kepala Sekolah, dan Titimangsa
+    // (PENTING: Di sheet MASTER, kolom TP hanyalah daftar list enum/dropdown opsi, sedangkan konteks berkas aktif ada di tab SETTING)
+    const settingTab =
+      tabs.find((t) => /^setting$/i.test(t.name.trim())) ||
+      tabs.find((t) => /setting/i.test(t.name));
+
+    if (settingTab) {
+      try {
+        appLogger.info(
+          { spreadsheetId, settingTab: settingTab.name, gid: settingTab.gid },
+          'Mengunduh tab SETTING untuk mengambil Tahun Pelajaran definitif berkas...'
+        );
+        const settingCsv = await this.fetchSheetCsv(spreadsheetId, settingTab.gid);
+        const settingRows = this.parseCSV(settingCsv);
+        const settingMeta = this.parseSettingSheet(settingRows);
+
+        if (settingMeta.tahunPelajaran) {
+          const cleanSettingTp = settingMeta.tahunPelajaran.replace(/\s+/g, ' ').trim();
+          parsed.tahunPelajaran = cleanSettingTp;
+          parsed.walasPloting.forEach((w) => {
+            w.tahunPelajaran = cleanSettingTp;
+          });
         }
+
+        // Sinkronkan data kepala sekolah dan titimangsa definitif dari tab SETTING
+        if (settingMeta.namaKepsek) parsed.schoolProfile.namaKepsek = settingMeta.namaKepsek;
+        if (settingMeta.nipKepsek) parsed.schoolProfile.nipKepsek = settingMeta.nipKepsek;
+        if (settingMeta.namaSekolah) parsed.schoolProfile.namaSekolah = settingMeta.namaSekolah;
+        if (settingMeta.titimangsaGanjil) {
+          parsed.schoolProfile.titimangsaGanjil = settingMeta.titimangsaGanjil;
+          const parsedG = this.parseIndonesianDate(settingMeta.titimangsaGanjil);
+          if (parsedG.dateIso) parsed.schoolProfile.titimangsaGanjilIso = parsedG.dateIso;
+          if (parsedG.tempat && !parsed.schoolProfile.tempatTerbit) parsed.schoolProfile.tempatTerbit = parsedG.tempat;
+        }
+        if (settingMeta.titimangsaGenap) {
+          parsed.schoolProfile.titimangsaGenap = settingMeta.titimangsaGenap;
+          const parsedGen = this.parseIndonesianDate(settingMeta.titimangsaGenap);
+          if (parsedGen.dateIso) parsed.schoolProfile.titimangsaGenapIso = parsedGen.dateIso;
+        }
+      } catch (settingErr: any) {
+        appLogger.warn({ settingErr }, 'Gagal mengunduh tab SETTING, menggunakan data profil fallback dari MASTER');
       }
     }
 
