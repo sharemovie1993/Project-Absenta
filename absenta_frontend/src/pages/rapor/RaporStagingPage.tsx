@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import {
@@ -322,7 +322,9 @@ export default React.memo(function RaporStagingPage() {
     [confirm, deleteMutation]
   );
 
-  // ── Ekstraksi Pilihan Hirarki Tab (Tahun Ajaran, Tingkat, Semester) ──
+  // ── Ekstraksi Pilihan Hirarki Tab Bertingkat (Cascading Filter: Tahun -> Tingkat -> Semester) ──
+
+  // Level 1: Opsi Tahun Pelajaran
   const tahunAjaranOptions: TabOption[] = useMemo(() => {
     const rawSet = new Set<string>();
     sheets?.forEach((s) => {
@@ -338,15 +340,22 @@ export default React.memo(function RaporStagingPage() {
     ];
   }, [sheets]);
 
+  // Dataset terfilter oleh Level 1 (Tahun Pelajaran yang sedang dipilih)
+  const sheetsForYear = useMemo(() => {
+    if (selectedTahunAjaranTab === 'ALL') return sheets || [];
+    return (sheets || []).filter((s) => s.tahun_pelajaran_nama?.trim() === selectedTahunAjaranTab);
+  }, [sheets, selectedTahunAjaranTab]);
+
+  // Level 2: Opsi Tingkat Kelas (Scoped secara bertingkat ke Tahun Pelajaran aktif)
   const tingkatOptions: TabOption[] = useMemo(() => {
     const counts: Record<string, number> = { 'Kelas X': 0, 'Kelas XI': 0, 'Kelas XII': 0, Lainnya: 0 };
-    sheets?.forEach((s) => {
+    sheetsForYear.forEach((s) => {
       const t = extractTingkatKelas(s.nama_kelas);
       counts[t] = (counts[t] || 0) + 1;
     });
 
     const items: TabOption[] = [
-      { id: 'ALL', label: 'Semua Tingkat' },
+      { id: 'ALL', label: `Semua Tingkat (${sheetsForYear.length})` },
       { id: 'Kelas X', label: `Kelas X (${counts['Kelas X'] || 0})` },
       { id: 'Kelas XI', label: `Kelas XI (${counts['Kelas XI'] || 0})` },
       { id: 'Kelas XII', label: `Kelas XII (${counts['Kelas XII'] || 0})` },
@@ -355,21 +364,52 @@ export default React.memo(function RaporStagingPage() {
       items.push({ id: 'Lainnya', label: `Lainnya (${counts['Lainnya']})` });
     }
     return items;
-  }, [sheets]);
+  }, [sheetsForYear]);
 
+  // Dataset terfilter oleh Level 1 & Level 2 (Tahun Pelajaran DAN Tingkat Kelas yang aktif)
+  const sheetsForTingkat = useMemo(() => {
+    if (selectedTingkatTab === 'ALL') return sheetsForYear;
+    return sheetsForYear.filter((s) => extractTingkatKelas(s.nama_kelas) === selectedTingkatTab);
+  }, [sheetsForYear, selectedTingkatTab]);
+
+  // Level 3: Opsi Semester (Scoped secara bertingkat ke Tahun Pelajaran DAN Tingkat Kelas aktif)
   const semesterFilterOptions: TabOption[] = useMemo(() => {
-    const ganjilCount = sheets.filter((s) => s.semester?.toLowerCase().includes('ganjil')).length;
-    const genapCount = sheets.filter((s) => s.semester?.toLowerCase().includes('genap')).length;
+    const ganjilCount = sheetsForTingkat.filter((s) => s.semester?.toLowerCase().includes('ganjil')).length;
+    const genapCount = sheetsForTingkat.filter((s) => s.semester?.toLowerCase().includes('genap')).length;
     return [
-      { id: 'ALL', label: 'Semua Semester' },
+      { id: 'ALL', label: `Semua Semester (${sheetsForTingkat.length})` },
       { id: 'Ganjil', label: `Semester Ganjil (${ganjilCount})` },
       { id: 'Genap', label: `Semester Genap (${genapCount})` },
     ];
-  }, [sheets]);
+  }, [sheetsForTingkat]);
 
-  // ── Memoized Filtered List & Metrics (Pilar 3) ──
+  // Auto-correct: Jika pengguna berpindah Tahun dan Tingkat yang sebelumnya dipilih tidak ada rombelnya di tahun baru, reset ke 'ALL'
+  useEffect(() => {
+    if (selectedTingkatTab !== 'ALL') {
+      const hasTingkat = sheetsForYear.some(
+        (s) => extractTingkatKelas(s.nama_kelas) === selectedTingkatTab
+      );
+      if (!hasTingkat) {
+        setSelectedTingkatTab('ALL');
+      }
+    }
+  }, [sheetsForYear, selectedTingkatTab]);
+
+  // Auto-correct: Jika pengguna berpindah Tingkat/Tahun dan Semester yang sebelumnya dipilih tidak ada rombelnya, reset ke 'ALL'
+  useEffect(() => {
+    if (selectedSemesterTab !== 'ALL') {
+      const hasSemester = sheetsForTingkat.some((s) =>
+        s.semester?.toLowerCase().includes(selectedSemesterTab.toLowerCase())
+      );
+      if (!hasSemester) {
+        setSelectedSemesterTab('ALL');
+      }
+    }
+  }, [sheetsForTingkat, selectedSemesterTab]);
+
+  // ── Memoized Filtered List & Metrics (Pilar 3: Pencarian & Semester) ──
   const filteredSheets = useMemo(() => {
-    return (sheets || []).filter((s) => {
+    return (sheetsForTingkat || []).filter((s) => {
       const q = searchQuery.toLowerCase();
       const matchSearch =
         !q ||
@@ -378,19 +418,13 @@ export default React.memo(function RaporStagingPage() {
         s.wali_kelas_nama?.toLowerCase()?.includes(q) ||
         s.jurusan_nama?.toLowerCase()?.includes(q);
 
-      const matchTahun =
-        selectedTahunAjaranTab === 'ALL' || s.tahun_pelajaran_nama?.trim() === selectedTahunAjaranTab;
-
-      const matchTingkat =
-        selectedTingkatTab === 'ALL' || extractTingkatKelas(s.nama_kelas) === selectedTingkatTab;
-
       const matchSemester =
         selectedSemesterTab === 'ALL' ||
         s.semester?.toLowerCase().includes(selectedSemesterTab.toLowerCase());
 
-      return matchSearch && matchTahun && matchTingkat && matchSemester;
+      return matchSearch && matchSemester;
     });
-  }, [sheets, searchQuery, selectedTahunAjaranTab, selectedTingkatTab, selectedSemesterTab]);
+  }, [sheetsForTingkat, searchQuery, selectedSemesterTab]);
 
   // Pengelompokan Hirarkis Otomatis (Tingkat Kelas -> Rombel)
   const groupedByTingkat = useMemo(() => {
