@@ -451,7 +451,7 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
         size={mode === 'folder' && folderStep === 2 ? 'full' : 'xl'}
         className={
           mode === 'folder' && folderStep === 2
-            ? 'w-[96vw] max-w-6xl h-[90vh] max-h-[90vh] flex flex-col p-0 overflow-hidden'
+            ? 'w-[96vw] max-w-6xl h-[92vh] max-h-[92vh] flex flex-col p-0 overflow-hidden'
             : undefined
         }
         contentClassName={
@@ -461,78 +461,13 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
         }
         title={modalTitle}
       >
-        <div
-          className={cn(
-            'w-full max-w-full min-w-0',
-            mode === 'folder' && folderStep === 2
-              ? 'flex flex-col h-full overflow-hidden p-4 sm:p-6 space-y-3'
-              : 'space-y-4 p-4 sm:p-6 pt-2'
-          )}
-        >
-          {/* ── Mode Switcher Tab (Hanya tampil di Step 1) ── */}
-          {(mode === 'single' || folderStep === 1) && (
-            <div className="flex items-center justify-center w-full">
-              <TabSwitcher
-                options={MODE_OPTIONS}
-                activeTab={mode}
-                onChange={handleModeChange}
-                className="w-full sm:w-auto justify-center"
-              />
-            </div>
-          )}
-
-          {/* ══════════════════════════════════════════════════ */}
-          {/* MODE 1: FOLDER GOOGLE DRIVE                       */}
-          {/* ══════════════════════════════════════════════════ */}
-          {mode === 'folder' && folderStep === 1 && (
-            <form onSubmit={handleScanFolder} className="space-y-4 w-full">
-              <div className="space-y-1.5 w-full">
-                <Input
-                  id="google-drive-folder-url"
-                  label="Tautan Folder Google Drive"
-                  placeholder="https://drive.google.com/drive/folders/..."
-                  value={folderUrl}
-                  onChange={(e) => setFolderUrl(e.target.value)}
-                  required
-                  className="text-xs font-mono rounded-xl w-full"
-                  aria-label="Tautan Folder Google Drive"
-                />
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Sistem akan memindai folder dan menyajikan daftar seluruh berkas Google Sheet kelas.
-                </p>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCloseModal}
-                  className="text-xs rounded-xl"
-                  aria-label="Batal"
-                >
-                  Batal
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={isScanning || !folderUrl.trim()}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-xs gap-1.5"
-                  aria-label="Pindai Berkas di dalam folder"
-                >
-                  <FolderSearch size={14} className={cn(isScanning && 'animate-spin')} aria-hidden="true" />
-                  <span>{isScanning ? 'Memindai Folder...' : 'Pindai Berkas & Pilih'}</span>
-                  {!isScanning && <ArrowRight size={13} aria-hidden="true" />}
-                </Button>
-              </div>
-            </form>
-          )}
-
-          {mode === 'folder' && folderStep === 2 && (
-            <div className="flex flex-col h-full min-h-0 space-y-3 w-full overflow-hidden">
+        {mode === 'folder' && folderStep === 2 ? (
+          <div className="flex flex-col h-full min-h-0 overflow-hidden">
+            {/* Top Area: Alert & Controls (shrink-0) */}
+            <div className="shrink-0 p-4 pb-2 space-y-2.5">
               {/* Idempotency Informational Alert */}
               {stats.alreadyStaged === stats.total && stats.total > 0 ? (
-                <div className="shrink-0 flex items-start gap-2.5 p-3 bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 rounded-xl text-xs text-sky-800 dark:text-sky-300">
+                <div className="flex items-start gap-2.5 p-3 bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 rounded-xl text-xs text-sky-800 dark:text-sky-300">
                   <ShieldCheck size={18} className="shrink-0 text-sky-600 dark:text-sky-400 mt-0.5" />
                   <div className="leading-relaxed">
                     <span className="font-bold">Idempotensi Terjamin:</span> Seluruh{' '}
@@ -542,7 +477,7 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                   </div>
                 </div>
               ) : stats.newFiles > 0 && stats.alreadyStaged > 0 ? (
-                <div className="shrink-0 flex items-start gap-2.5 p-3 bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs text-indigo-900 dark:text-indigo-300">
+                <div className="flex items-start gap-2.5 p-3 bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs text-indigo-900 dark:text-indigo-300">
                   <ShieldCheck size={18} className="shrink-0 text-indigo-600 dark:text-indigo-400 mt-0.5" />
                   <div className="leading-relaxed">
                     Ditemukan <strong>{stats.newFiles} berkas baru</strong> dan{' '}
@@ -553,7 +488,7 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
               ) : null}
 
               {/* Header Checklist & Action Controls (Bersih & Rapi) */}
-              <div className="shrink-0 flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-800 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-800 text-xs">
                 <div className="flex flex-wrap items-center gap-2.5">
                   <button
                     type="button"
@@ -601,254 +536,168 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                   </Badge>
                 </div>
               </div>
+            </div>
 
-              {/* Tabel Berkas Rapor High-Density (Bersih, Ramping & Bebas Noise) */}
-              <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden flex-1 min-h-[360px] flex flex-col bg-white dark:bg-slate-900 shadow-2xs">
-                <div className="overflow-x-auto overflow-y-auto flex-1">
-                  <table className="w-full text-xs text-left border-collapse">
-                    <thead className="bg-slate-100/90 dark:bg-slate-800/90 sticky top-0 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700 z-10 backdrop-blur-xs select-none">
-                      <tr>
-                        <th className="py-2.5 px-3 w-10 text-center">
-                          <span className="sr-only">Pilih</span>
-                        </th>
-                        <th className="py-2.5 px-3 min-w-[280px]">
-                          Berkas Rapor Google Sheet
-                        </th>
-                        <th className="py-2.5 px-3 w-72 sm:w-80">
-                          <div className="flex items-center gap-1.5">
-                            <Sparkles size={13} className="text-indigo-600 dark:text-indigo-400" />
-                            <span>Petakan ke Kelas Sistem</span>
-                          </div>
-                        </th>
-                        <th className="py-2.5 px-3 w-32 text-center">
-                          Status Aksi
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {scannedFiles?.map((file, idx) => {
-                        const isChecked = selectedUrls.has(file.url);
-                        const isLikelyRapor = isLikelyRaporClassFile(file.title);
-                        const isMapped = Boolean(classMappings[file.url]);
+            {/* Tabel Berkas Rapor High-Density (Scroll internal dalam flex-1 min-h-0) */}
+            <div className="flex-1 min-h-0 px-4 pb-2 overflow-hidden flex flex-col">
+              <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-y-auto h-full flex flex-col bg-white dark:bg-slate-900 shadow-2xs">
+                <table className="w-full text-xs text-left border-collapse">
+                  <thead className="bg-slate-100/90 dark:bg-slate-800/90 sticky top-0 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700 z-10 backdrop-blur-xs select-none">
+                    <tr>
+                      <th className="py-2.5 px-3 w-10 text-center">
+                        <span className="sr-only">Pilih</span>
+                      </th>
+                      <th className="py-2.5 px-3 min-w-[280px]">
+                        Berkas Rapor Google Sheet
+                      </th>
+                      <th className="py-2.5 px-3 w-72 sm:w-80">
+                        <div className="flex items-center gap-1.5">
+                          <Sparkles size={13} className="text-indigo-600 dark:text-indigo-400" />
+                          <span>Petakan ke Kelas Sistem</span>
+                        </div>
+                      </th>
+                      <th className="py-2.5 px-3 w-32 text-center">
+                        Status Aksi
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {scannedFiles?.map((file, idx) => {
+                      const isChecked = selectedUrls.has(file.url);
+                      const isLikelyRapor = isLikelyRaporClassFile(file.title);
+                      const isMapped = Boolean(classMappings[file.url]);
 
-                        return (
-                          <tr
-                            key={file.id || idx}
-                            onClick={() => handleToggleFile(file.url)}
-                            className={cn(
-                              'hover:bg-slate-50/80 dark:hover:bg-slate-800/50 cursor-pointer transition-colors',
-                              isChecked && 'bg-indigo-50/25 dark:bg-indigo-950/20',
-                              !isChecked && 'opacity-50 bg-slate-50/30 dark:bg-slate-900/30'
-                            )}
+                      return (
+                        <tr
+                          key={file.id || idx}
+                          onClick={() => handleToggleFile(file.url)}
+                          className={cn(
+                            'hover:bg-slate-50/80 dark:hover:bg-slate-800/50 cursor-pointer transition-colors',
+                            isChecked && 'bg-indigo-50/25 dark:bg-indigo-950/20',
+                            !isChecked && 'opacity-50 bg-slate-50/30 dark:bg-slate-900/30'
+                          )}
+                        >
+                          {/* Kolom 1: Checkbox */}
+                          <td
+                            className="py-2 px-3 text-center align-middle"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            {/* Kolom 1: Checkbox */}
-                            <td
-                              className="py-2 px-3 text-center align-middle"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => handleToggleFile(file.url)}
-                                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer align-middle"
-                                aria-label={`Pilih ${file.title}`}
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleFile(file.url)}
+                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer align-middle"
+                              aria-label={`Pilih ${file.title}`}
+                            />
+                          </td>
+
+                          {/* Kolom 2: Berkas Rapor Google Sheet (Bebas Noise ID) */}
+                          <td className="py-2 px-3 align-middle">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <FileSpreadsheet
+                                size={16}
+                                className={cn(
+                                  'shrink-0',
+                                  !isLikelyRapor
+                                    ? 'text-amber-500'
+                                    : file.is_already_staged
+                                    ? 'text-sky-600'
+                                    : 'text-emerald-600'
+                                )}
+                                aria-hidden="true"
                               />
-                            </td>
-
-                            {/* Kolom 2: Berkas Rapor Google Sheet (Bebas Noise ID) */}
-                            <td className="py-2 px-3 align-middle">
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <FileSpreadsheet
-                                  size={16}
-                                  className={cn(
-                                    'shrink-0',
-                                    !isLikelyRapor
-                                      ? 'text-amber-500'
-                                      : file.is_already_staged
-                                      ? 'text-sky-600'
-                                      : 'text-emerald-600'
-                                  )}
-                                  aria-hidden="true"
-                                />
-                                <div className="min-w-0 flex-1 flex items-center gap-2">
-                                  <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
-                                    {file.title}
-                                  </span>
-                                  {!isLikelyRapor && (
-                                    <span className="text-[10px] font-medium text-amber-700 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 px-1.5 py-0.2 rounded-md shrink-0">
-                                      Non-Rapor
-                                    </span>
-                                  )}
-                                  {file.is_already_staged && file.staged_info && (
-                                    <span className="text-[10px] text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/50 px-1.5 py-0.2 rounded-md shrink-0 font-medium border border-sky-200 dark:border-sky-800">
-                                      Sudah di Wadah ({file.staged_info.nama_kelas})
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </td>
-
-                            {/* Kolom 3: Kolom Petakan Khusus (Single-line Compact Dropdown) */}
-                            <td
-                              className="py-2 px-3 align-middle"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {isChecked ? (
-                                <select
-                                  value={classMappings[file.url] || ''}
-                                  onChange={(e) => handleClassMappingChange(file.url, e.target.value)}
-                                  className={cn(
-                                    'text-xs h-8 px-2.5 rounded-lg border bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 cursor-pointer w-full transition-all truncate',
-                                    isMapped
-                                      ? 'border-emerald-400 dark:border-emerald-600 bg-emerald-50/40 dark:bg-emerald-950/30 font-medium text-emerald-900 dark:text-emerald-200'
-                                      : 'border-slate-200 dark:border-slate-700'
-                                  )}
-                                  aria-label={`Petakan berkas ${file.title} ke kelas`}
-                                >
-                                  <option value="">(Otomatis sesuai nama di file)</option>
-                                  {kelasOptions.map((k) => (
-                                    <option key={k.value} value={k.value}>
-                                      {k.nama_kelas} {k.jurusan_nama ? `(${k.jurusan_nama})` : ''}
-                                    </option>
-                                  ))}
-                                </select>
-                              ) : (
-                                <span className="text-slate-300 dark:text-slate-600 pl-2">-</span>
-                              )}
-                            </td>
-
-                            {/* Kolom 4: Status Aksi (Ramping & Jelas) */}
-                            <td className="py-2 px-3 text-center align-middle whitespace-nowrap">
-                              {!isChecked ? (
-                                <span className="text-[11px] text-slate-400 dark:text-slate-500 italic">
-                                  Dilewati
+                              <div className="min-w-0 flex-1 flex items-center gap-2">
+                                <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                                  {file.title}
                                 </span>
-                              ) : file.is_already_staged ? (
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px] font-semibold border-sky-300 text-sky-700 bg-sky-50 dark:bg-sky-950/60 dark:text-sky-300"
-                                >
-                                  🔄 Update
-                                </Badge>
-                              ) : (
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px] font-semibold border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-300"
-                                >
-                                  ✨ Baru
-                                </Badge>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                                {!isLikelyRapor && (
+                                  <span className="text-[10px] font-medium text-amber-700 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 px-1.5 py-0.2 rounded-md shrink-0">
+                                    Non-Rapor
+                                  </span>
+                                )}
+                                {file.is_already_staged && file.staged_info && (
+                                  <span className="text-[10px] text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/50 px-1.5 py-0.2 rounded-md shrink-0 font-medium border border-sky-200 dark:border-sky-800">
+                                    Sudah di Wadah ({file.staged_info.nama_kelas})
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
 
-              {/* Tombol Aksi Step 2 (Sticky Footer yang Lega) */}
-              <div className="shrink-0 flex items-center justify-between gap-2 pt-3 border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 mt-auto">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setFolderStep(1)}
-                  className="text-xs rounded-xl gap-1.5"
-                  aria-label="Kembali ke langkah input tautan folder"
-                >
-                  <ArrowLeft size={13} aria-hidden="true" />
-                  <span>Ubah Tautan</span>
-                </Button>
+                          {/* Kolom 3: Kolom Petakan Khusus (Single-line Compact Dropdown) */}
+                          <td
+                            className="py-2 px-3 align-middle"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {isChecked ? (
+                              <select
+                                value={classMappings[file.url] || ''}
+                                onChange={(e) => handleClassMappingChange(file.url, e.target.value)}
+                                className={cn(
+                                  'text-xs h-8 px-2.5 rounded-lg border bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 cursor-pointer w-full transition-all truncate',
+                                  isMapped
+                                    ? 'border-emerald-400 dark:border-emerald-600 bg-emerald-50/40 dark:bg-emerald-950/30 font-medium text-emerald-900 dark:text-emerald-200'
+                                    : 'border-slate-200 dark:border-slate-700'
+                                )}
+                                aria-label={`Petakan berkas ${file.title} ke kelas`}
+                              >
+                                <option value="">(Otomatis sesuai nama di file)</option>
+                                {kelasOptions.map((k) => (
+                                  <option key={k.value} value={k.value}>
+                                    {k.nama_kelas} {k.jurusan_nama ? `(${k.jurusan_nama})` : ''}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className="text-slate-300 dark:text-slate-600 pl-2">-</span>
+                            )}
+                          </td>
 
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCloseModal}
-                    className="text-xs rounded-xl"
-                    aria-label="Batal"
-                  >
-                    Batal
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={isPending || selectedUrls.size === 0}
-                    onClick={handleConfirmFolderFiles}
-                    className={cn(
-                      'text-white font-semibold text-xs rounded-xl shadow-xs gap-1.5',
-                      stats.selectedNew > 0
-                        ? 'bg-indigo-600 hover:bg-indigo-700'
-                        : 'bg-sky-600 hover:bg-sky-700'
-                    )}
-                    aria-label="Simpan berkas terpilih ke wadah penampung"
-                  >
-                    <RefreshCw size={13} className={cn(isPending && 'animate-spin')} aria-hidden="true" />
-                    <span>
-                      {isPending
-                        ? 'Menyimpan...'
-                        : stats.selectedNew > 0 && stats.selectedAlreadyStaged === 0
-                        ? `Tarik & Simpan (${stats.selectedTotal} Berkas Baru)`
-                        : stats.selectedAlreadyStaged > 0 && stats.selectedNew === 0
-                        ? `Perbarui Data di Wadah (${stats.selectedTotal} Berkas)`
-                        : `Tarik & Perbarui (${stats.selectedTotal} Berkas)`}
-                    </span>
-                  </Button>
-                </div>
+                          {/* Kolom 4: Status Aksi (Ramping & Jelas) */}
+                          <td className="py-2 px-3 text-center align-middle whitespace-nowrap">
+                            {!isChecked ? (
+                              <span className="text-[11px] text-slate-400 dark:text-slate-500 italic">
+                                Dilewati
+                              </span>
+                            ) : file.is_already_staged ? (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] font-semibold border-sky-300 text-sky-700 bg-sky-50 dark:bg-sky-950/60 dark:text-sky-300"
+                              >
+                                🔄 Update
+                              </Badge>
+                            ) : (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] font-semibold border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-300"
+                              >
+                                ✨ Baru
+                              </Badge>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
-          )}
 
-          {/* ══════════════════════════════════════════════════ */}
-          {/* MODE 2: SINGLE FILE GOOGLE SHEET                  */}
-          {/* ══════════════════════════════════════════════════ */}
-          {mode === 'single' && (
-            <form onSubmit={handleSingleFileSubmit} className="space-y-4 w-full">
-              <div className="space-y-1.5 w-full">
-                <Input
-                  id="google-sheet-single-url"
-                  label="Tautan Berkas Google Sheet"
-                  placeholder="https://docs.google.com/spreadsheets/d/.../edit"
-                  value={singleUrl}
-                  onChange={(e) => setSingleUrl(e.target.value)}
-                  required
-                  className="text-xs font-mono rounded-xl w-full"
-                  aria-label="Tautan Berkas Google Sheet"
-                />
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Masukkan tautan spreadsheet rapor untuk satu kelas yang ingin langsung disimpan.
-                </p>
-              </div>
+            {/* Fixed Bottom Action Bar: shrink-0 (Selalu Tampil di Bawah Modal) */}
+            <div className="shrink-0 flex items-center justify-between px-5 py-3.5 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 z-10">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setFolderStep(1)}
+                className="text-xs rounded-xl gap-1.5"
+                aria-label="Kembali ke langkah input tautan folder"
+              >
+                <ArrowLeft size={13} aria-hidden="true" />
+                <span>Ubah Tautan</span>
+              </Button>
 
-              <div className="space-y-1.5 w-full">
-                <label
-                  htmlFor="single-file-kelas-mapping"
-                  className="text-xs font-semibold text-slate-700 dark:text-slate-300 block"
-                >
-                  Petakan ke Kelas Sistem (Opsional):
-                </label>
-                <select
-                  id="single-file-kelas-mapping"
-                  value={singleKelasId}
-                  onChange={(e) => setSingleKelasId(e.target.value)}
-                  className="text-xs py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 cursor-pointer w-full"
-                  aria-label="Petakan ke Kelas Sistem"
-                >
-                  <option value="">(Otomatis sesuai isi file Google Sheet)</option>
-                  {kelasOptions.map((k) => (
-                    <option key={k.value} value={k.value}>
-                      {k.nama_kelas} - Tingkat {k.tingkat} {k.jurusan_nama ? `(${k.jurusan_nama})` : ''}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Gunakan jika penulisan nama kelas di file Google Sheet berbeda dengan nama resmi di Absenta (misal: XII AKL 1 vs XII AK 1).
-                </p>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -860,19 +709,164 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                   Batal
                 </Button>
                 <Button
-                  type="submit"
+                  type="button"
                   size="sm"
-                  disabled={isPending || !singleUrl.trim()}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-xs gap-1.5"
-                  aria-label="Tarik dan simpan berkas Google Sheet ke wadah"
+                  disabled={isPending || selectedUrls.size === 0}
+                  onClick={handleConfirmFolderFiles}
+                  className={cn(
+                    'text-white font-semibold text-xs rounded-xl shadow-xs gap-1.5 px-4',
+                    stats.selectedNew > 0
+                      ? 'bg-indigo-600 hover:bg-indigo-700'
+                      : 'bg-sky-600 hover:bg-sky-700'
+                  )}
+                  aria-label="Simpan berkas terpilih ke wadah penampung"
                 >
                   <RefreshCw size={13} className={cn(isPending && 'animate-spin')} aria-hidden="true" />
-                  <span>{isPending ? 'Menyimpan...' : 'Tarik & Simpan ke Wadah'}</span>
+                  <span>
+                    {isPending
+                      ? 'Menyimpan...'
+                      : stats.selectedNew > 0 && stats.selectedAlreadyStaged === 0
+                      ? `Tarik & Simpan (${stats.selectedTotal} Berkas Baru)`
+                      : stats.selectedAlreadyStaged > 0 && stats.selectedNew === 0
+                      ? `Perbarui Data di Wadah (${stats.selectedTotal} Berkas)`
+                      : `Tarik & Perbarui (${stats.selectedTotal} Berkas)`}
+                  </span>
                 </Button>
               </div>
-            </form>
-          )}
-        </div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4 p-4 sm:p-6 pt-2">
+            {/* ── Mode Switcher Tab (Hanya tampil di Step 1) ── */}
+            <div className="flex items-center justify-center w-full">
+              <TabSwitcher
+                options={MODE_OPTIONS}
+                activeTab={mode}
+                onChange={handleModeChange}
+                className="w-full sm:w-auto justify-center"
+              />
+            </div>
+
+            {/* ══════════════════════════════════════════════════ */}
+            {/* MODE 1: FOLDER GOOGLE DRIVE                       */}
+            {/* ══════════════════════════════════════════════════ */}
+            {mode === 'folder' && folderStep === 1 && (
+              <form onSubmit={handleScanFolder} className="space-y-4 w-full">
+                <div className="space-y-1.5 w-full">
+                  <Input
+                    id="google-drive-folder-url"
+                    label="Tautan Folder Google Drive"
+                    placeholder="https://drive.google.com/drive/folders/..."
+                    value={folderUrl}
+                    onChange={(e) => setFolderUrl(e.target.value)}
+                    required
+                    className="text-xs font-mono rounded-xl w-full"
+                    aria-label="Tautan Folder Google Drive"
+                  />
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Sistem akan memindai folder dan menyajikan daftar seluruh berkas Google Sheet kelas.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCloseModal}
+                    className="text-xs rounded-xl"
+                    aria-label="Batal"
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={isScanning || !folderUrl.trim()}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-xs gap-1.5"
+                    aria-label="Pindai Berkas di dalam folder"
+                  >
+                    <FolderSearch size={14} className={cn(isScanning && 'animate-spin')} aria-hidden="true" />
+                    <span>{isScanning ? 'Memindai Folder...' : 'Pindai Berkas & Pilih'}</span>
+                    {!isScanning && <ArrowRight size={13} aria-hidden="true" />}
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {/* ══════════════════════════════════════════════════ */}
+            {/* MODE 2: SINGLE FILE GOOGLE SHEET                  */}
+            {/* ══════════════════════════════════════════════════ */}
+            {mode === 'single' && (
+              <form onSubmit={handleSingleFileSubmit} className="space-y-4 w-full">
+                <div className="space-y-1.5 w-full">
+                  <Input
+                    id="google-sheet-single-url"
+                    label="Tautan Berkas Google Sheet"
+                    placeholder="https://docs.google.com/spreadsheets/d/.../edit"
+                    value={singleUrl}
+                    onChange={(e) => setSingleUrl(e.target.value)}
+                    required
+                    className="text-xs font-mono rounded-xl w-full"
+                    aria-label="Tautan Berkas Google Sheet"
+                  />
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Masukkan tautan spreadsheet rapor untuk satu kelas yang ingin langsung disimpan.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5 w-full">
+                  <label
+                    htmlFor="single-file-kelas-mapping"
+                    className="text-xs font-semibold text-slate-700 dark:text-slate-300 block"
+                  >
+                    Petakan ke Kelas Sistem (Opsional):
+                  </label>
+                  <select
+                    id="single-file-kelas-mapping"
+                    value={singleKelasId}
+                    onChange={(e) => setSingleKelasId(e.target.value)}
+                    className="text-xs py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 cursor-pointer w-full"
+                    aria-label="Petakan ke Kelas Sistem"
+                  >
+                    <option value="">(Otomatis sesuai isi file Google Sheet)</option>
+                    {kelasOptions.map((k) => (
+                      <option key={k.value} value={k.value}>
+                        {k.nama_kelas} - Tingkat {k.tingkat} {k.jurusan_nama ? `(${k.jurusan_nama})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Gunakan jika penulisan nama kelas di file Google Sheet berbeda dengan nama resmi di Absenta (misal: XII AKL 1 vs XII AK 1).
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCloseModal}
+                    className="text-xs rounded-xl"
+                    aria-label="Batal"
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={isPending || !singleUrl.trim()}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-xs gap-1.5"
+                    aria-label="Tarik dan simpan berkas Google Sheet ke wadah"
+                  >
+                    <RefreshCw size={13} className={cn(isPending && 'animate-spin')} aria-hidden="true" />
+                    <span>{isPending ? 'Menyimpan...' : 'Tarik & Simpan ke Wadah'}</span>
+                  </Button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
       </Modal>
     );
   }
