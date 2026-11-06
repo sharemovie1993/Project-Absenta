@@ -19,6 +19,8 @@ import {
   GraduationCap,
   Calendar,
   Database,
+  Table as TableIcon,
+  LayoutGrid,
 } from 'lucide-react';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -93,6 +95,7 @@ export default React.memo(function RaporStagingPage() {
   const [selectedTahunAjaranTab, setSelectedTahunAjaranTab] = useState<string>('ALL');
   const [selectedTingkatTab, setSelectedTingkatTab] = useState<string>('ALL');
   const [selectedSemesterTab, setSelectedSemesterTab] = useState<string>('ALL');
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
 
   // Modals State
   const [isFetchModalOpen, setIsFetchModalOpen] = useState(false);
@@ -568,11 +571,45 @@ export default React.memo(function RaporStagingPage() {
                   aria-label="Cari kelas, tahun ajaran, atau wali kelas"
                 />
               </div>
-              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 self-end sm:self-auto shrink-0">
-                <span className="hidden sm:inline">Status Tampilan:</span>
-                <span>
-                  Menampilkan <strong>{filteredSheets?.length || 0}</strong> dari <strong>{sheets?.length || 0}</strong> rombel terdaftar
-                </span>
+              <div className="flex items-center gap-3 self-end sm:self-auto shrink-0 flex-wrap">
+                {/* View Switcher: Tabel (Default) vs Kartu */}
+                <div className="flex items-center p-0.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/80">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('table')}
+                    className={cn(
+                      'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer',
+                      viewMode === 'table'
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                    )}
+                    title="Tampilan Tabel (Default)"
+                  >
+                    <TableIcon size={14} />
+                    <span>Tabel</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('grid')}
+                    className={cn(
+                      'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer',
+                      viewMode === 'grid'
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                    )}
+                    title="Tampilan Kartu"
+                  >
+                    <LayoutGrid size={14} />
+                    <span>Kartu</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                  <span className="hidden sm:inline">Status Tampilan:</span>
+                  <span>
+                    Menampilkan <strong>{filteredSheets?.length || 0}</strong> dari <strong>{sheets?.length || 0}</strong> rombel terdaftar
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -622,29 +659,97 @@ export default React.memo(function RaporStagingPage() {
                       </div>
                     </div>
 
-                    {/* Grid Kartu Rombel */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 w-full">
-                      {classItems?.map((item) => {
-                        const isSyncing = syncMutation.isPending && syncMutation.variables === item.id;
-                        const isDeleting = deleteMutation.isPending && deleteMutation.variables === item.id;
+                    {/* Tampilan Tabel (Default / Requested) */}
+                    {viewMode === 'table' ? (
+                      <div className="overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+                        <table className="w-full text-xs text-left">
+                          <thead className="bg-slate-50/90 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
+                            <tr>
+                              <th className="py-3 px-3.5 w-12 text-center">No</th>
+                              <th className="py-3 px-3.5 min-w-44">Kelas Rombel</th>
+                              <th className="py-3 px-3.5 min-w-36">Konsentrasi / Jurusan</th>
+                              <th className="py-3 px-3.5 min-w-44">Wali Kelas</th>
+                              <th className="py-3 px-3.5 min-w-36">Kelengkapan Data</th>
+                              <th className="py-3 px-3.5 min-w-36">Status Sinkron</th>
+                              <th className="py-3 px-3.5 text-right min-w-56">Aksi</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {classItems.map((item, idx) => {
+                              const isSyncing = syncMutation.isPending && syncMutation.variables === item.id;
+                              const isDeleting = deleteMutation.isPending && deleteMutation.variables === item.id;
 
-                        return (
-                          <div
-                            key={item.id}
-                            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-md transition-all p-4 sm:p-5 flex flex-col justify-between space-y-4 min-w-0"
-                          >
-                            <div className="space-y-3 min-w-0">
-                              {/* Header Card */}
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <h4 className="font-bold text-slate-900 dark:text-slate-100 text-lg tracking-tight truncate">
-                                      {item.nama_kelas}
-                                    </h4>
+                              return (
+                                <tr
+                                  key={item.id}
+                                  className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                                >
+                                  <td className="py-3 px-3.5 text-center text-slate-400 font-mono">
+                                    {idx + 1}
+                                  </td>
+
+                                  {/* Kelas Rombel */}
+                                  <td className="py-3 px-3.5">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold text-slate-900 dark:text-slate-100 text-sm tracking-tight">
+                                        {item.nama_kelas}
+                                      </span>
+                                      <a
+                                        href={item.source_url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        title="Buka Google Sheet asli di tab baru"
+                                        className="p-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors inline-flex items-center"
+                                        aria-label={`Buka Google Sheet kelas ${item.nama_kelas}`}
+                                      >
+                                        <ExternalLink size={13} />
+                                      </a>
+                                    </div>
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                      {item.tahun_pelajaran_nama} • Semester {item.semester}
+                                    </div>
+                                  </td>
+
+                                  {/* Jurusan */}
+                                  <td className="py-3 px-3.5">
+                                    <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                      {item.jurusan_nama || 'Umum'}
+                                    </span>
+                                  </td>
+
+                                  {/* Wali Kelas */}
+                                  <td className="py-3 px-3.5">
+                                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                      {item.wali_kelas_nama || (
+                                        <span className="text-slate-400 italic">Belum terisi</span>
+                                      )}
+                                    </span>
+                                  </td>
+
+                                  {/* Kelengkapan Data */}
+                                  <td className="py-3 px-3.5">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <Badge
+                                        variant="outline"
+                                        className="text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200"
+                                      >
+                                        {item.total_siswa} Siswa
+                                      </Badge>
+                                      <Badge
+                                        variant="outline"
+                                        className="text-[10px] font-semibold bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200"
+                                      >
+                                        {item.total_mapel} Mapel
+                                      </Badge>
+                                    </div>
+                                  </td>
+
+                                  {/* Status Sinkron */}
+                                  <td className="py-3 px-3.5">
                                     <Badge
                                       variant="secondary"
                                       className={cn(
-                                        'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full',
+                                        'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full inline-block',
                                         item.status === 'SYNCED'
                                           ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60'
                                           : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/60'
@@ -652,113 +757,207 @@ export default React.memo(function RaporStagingPage() {
                                     >
                                       {item.status === 'SYNCED' ? 'Tersinkron' : 'Siap Sinkron'}
                                     </Badge>
+                                    {item.last_synced_at && (
+                                      <div className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
+                                        <Check size={11} />
+                                        <span className="truncate">
+                                          {formatDateTime(item.last_synced_at)}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </td>
+
+                                  {/* Aksi */}
+                                  <td className="py-3 px-3.5 text-right">
+                                    <div className="flex items-center justify-end gap-1.5">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        type="button"
+                                        onClick={() => handleOpenPreview(item.id)}
+                                        className="text-xs h-7.5 px-2.5 gap-1 rounded-lg text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                        aria-label={`Pratinjau data kelas ${item.nama_kelas}`}
+                                      >
+                                        <Eye size={12} />
+                                        <span>Pratinjau</span>
+                                      </Button>
+
+                                      <Button
+                                        size="sm"
+                                        type="button"
+                                        disabled={isSyncing}
+                                        onClick={() => handleTriggerSync(item.id)}
+                                        className={cn(
+                                          'text-xs h-7.5 px-2.5 gap-1 rounded-lg font-semibold shadow-2xs',
+                                          item.status === 'SYNCED'
+                                            ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                                            : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                                        )}
+                                        aria-label={`Sinkronkan data kelas ${item.nama_kelas} ke e-Rapor`}
+                                      >
+                                        <RefreshCw size={11} className={cn(isSyncing && 'animate-spin')} />
+                                        <span>{item.status === 'SYNCED' ? 'Sinkron Ulang' : '1-Click Sync'}</span>
+                                      </Button>
+
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        type="button"
+                                        disabled={isDeleting}
+                                        onClick={() => handleDeleteSheet(item)}
+                                        className="h-7.5 w-7.5 p-0 text-slate-400 hover:text-rose-600 rounded-lg"
+                                        aria-label={`Hapus lembar penampung kelas ${item.nama_kelas}`}
+                                        title="Hapus dari Hub"
+                                      >
+                                        <Trash2 size={13} />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      /* Grid Kartu Rombel (Mode Kartu Alternatif) */
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 w-full">
+                        {classItems?.map((item) => {
+                          const isSyncing = syncMutation.isPending && syncMutation.variables === item.id;
+                          const isDeleting = deleteMutation.isPending && deleteMutation.variables === item.id;
+
+                          return (
+                            <div
+                              key={item.id}
+                              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-md transition-all p-4 sm:p-5 flex flex-col justify-between space-y-4 min-w-0"
+                            >
+                              <div className="space-y-3 min-w-0">
+                                {/* Header Card */}
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <h4 className="font-bold text-slate-900 dark:text-slate-100 text-lg tracking-tight truncate">
+                                        {item.nama_kelas}
+                                      </h4>
+                                      <Badge
+                                        variant="secondary"
+                                        className={cn(
+                                          'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full',
+                                          item.status === 'SYNCED'
+                                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60'
+                                            : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/60'
+                                        )}
+                                      >
+                                        {item.status === 'SYNCED' ? 'Tersinkron' : 'Siap Sinkron'}
+                                      </Badge>
+                                    </div>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                                      {item.tahun_pelajaran_nama} • Semester {item.semester}
+                                    </p>
                                   </div>
-                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                                    {item.tahun_pelajaran_nama} • Semester {item.semester}
-                                  </p>
+
+                                  <a
+                                    href={item.source_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    title="Buka Google Sheet asli di tab baru"
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+                                    aria-label={`Buka Google Sheet kelas ${item.nama_kelas}`}
+                                  >
+                                    <ExternalLink size={16} aria-hidden="true" />
+                                  </a>
                                 </div>
 
-                                <a
-                                  href={item.source_url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  title="Buka Google Sheet asli di tab baru"
-                                  className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
-                                  aria-label={`Buka Google Sheet kelas ${item.nama_kelas}`}
-                                >
-                                  <ExternalLink size={16} aria-hidden="true" />
-                                </a>
+                                {/* Metadata Specs - Grid Responsive */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-xs">
+                                  <div className="min-w-0">
+                                    <span className="text-[10px] font-medium text-slate-400 block uppercase">Wali Kelas</span>
+                                    <span className="font-semibold text-slate-700 dark:text-slate-200 truncate block">
+                                      {item.wali_kelas_nama || 'Belum terisi'}
+                                    </span>
+                                  </div>
+                                  <div className="min-w-0">
+                                    <span className="text-[10px] font-medium text-slate-400 block uppercase">Konsentrasi</span>
+                                    <span className="font-semibold text-slate-700 dark:text-slate-200 truncate block">
+                                      {item.jurusan_nama || 'Umum'}
+                                    </span>
+                                  </div>
+                                  <div className="mt-1">
+                                    <span className="text-[10px] font-medium text-slate-400 block uppercase">Daftar Siswa</span>
+                                    <span className="font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                                      {item.total_siswa} Siswa
+                                    </span>
+                                  </div>
+                                  <div className="mt-1">
+                                    <span className="text-[10px] font-medium text-slate-400 block uppercase">Mata Pelajaran</span>
+                                    <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                      {item.total_mapel} Mapel
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Status Sync Timestamp Menggunakan Timezone & Date Standard */}
+                                {item.last_synced_at && (
+                                  <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400">
+                                    <Check size={12} aria-hidden="true" />
+                                    <span className="truncate">
+                                      Terakhir disinkronkan: {formatDateTime(item.last_synced_at)}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
 
-                              {/* Metadata Specs - Grid Responsive */}
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-xs">
-                                <div className="min-w-0">
-                                  <span className="text-[10px] font-medium text-slate-400 block uppercase">Wali Kelas</span>
-                                  <span className="font-semibold text-slate-700 dark:text-slate-200 truncate block">
-                                    {item.wali_kelas_nama || 'Belum terisi'}
-                                  </span>
-                                </div>
-                                <div className="min-w-0">
-                                  <span className="text-[10px] font-medium text-slate-400 block uppercase">Konsentrasi</span>
-                                  <span className="font-semibold text-slate-700 dark:text-slate-200 truncate block">
-                                    {item.jurusan_nama || 'Umum'}
-                                  </span>
-                                </div>
-                                <div className="mt-1">
-                                  <span className="text-[10px] font-medium text-slate-400 block uppercase">Daftar Siswa</span>
-                                  <span className="font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
-                                    {item.total_siswa} Siswa
-                                  </span>
-                                </div>
-                                <div className="mt-1">
-                                  <span className="text-[10px] font-medium text-slate-400 block uppercase">Mata Pelajaran</span>
-                                  <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                                    {item.total_mapel} Mapel
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Status Sync Timestamp Menggunakan Timezone & Date Standard */}
-                              {item.last_synced_at && (
-                                <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400">
-                                  <Check size={12} aria-hidden="true" />
-                                  <span className="truncate">
-                                    Terakhir disinkronkan: {formatDateTime(item.last_synced_at)}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Action Buttons */}
-                            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                type="button"
-                                onClick={() => handleOpenPreview(item.id)}
-                                className="text-xs h-8 gap-1.5 rounded-xl text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700"
-                                aria-label={`Pratinjau data kelas ${item.nama_kelas}`}
-                              >
-                                <Eye size={13} aria-hidden="true" />
-                                <span>Pratinjau Data</span>
-                              </Button>
-
-                              <div className="flex items-center gap-1.5 shrink-0">
+                              {/* Action Buttons */}
+                              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
                                 <Button
+                                  variant="outline"
                                   size="sm"
                                   type="button"
-                                  disabled={isSyncing}
-                                  onClick={() => handleTriggerSync(item.id)}
-                                  className={cn(
-                                    'text-xs h-8 gap-1.5 rounded-xl font-semibold shadow-2xs',
-                                    item.status === 'SYNCED'
-                                      ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
-                                      : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                                  )}
-                                  aria-label={`Sinkronkan data kelas ${item.nama_kelas} ke e-Rapor`}
+                                  onClick={() => handleOpenPreview(item.id)}
+                                  className="text-xs h-8 gap-1.5 rounded-xl text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700"
+                                  aria-label={`Pratinjau data kelas ${item.nama_kelas}`}
                                 >
-                                  <RefreshCw size={12} className={cn(isSyncing && 'animate-spin')} aria-hidden="true" />
-                                  <span>{item.status === 'SYNCED' ? 'Sinkron Ulang' : '1-Click Sync'}</span>
+                                  <Eye size={13} aria-hidden="true" />
+                                  <span>Pratinjau Data</span>
                                 </Button>
 
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  type="button"
-                                  disabled={isDeleting}
-                                  onClick={() => handleDeleteSheet(item)}
-                                  className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600 rounded-xl"
-                                  aria-label={`Hapus lembar penampung kelas ${item.nama_kelas}`}
-                                  title="Hapus dari Hub"
-                                >
-                                  <Trash2 size={14} aria-hidden="true" />
-                                </Button>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <Button
+                                    size="sm"
+                                    type="button"
+                                    disabled={isSyncing}
+                                    onClick={() => handleTriggerSync(item.id)}
+                                    className={cn(
+                                      'text-xs h-8 gap-1.5 rounded-xl font-semibold shadow-2xs',
+                                      item.status === 'SYNCED'
+                                        ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                                        : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                                    )}
+                                    aria-label={`Sinkronkan data kelas ${item.nama_kelas} ke e-Rapor`}
+                                  >
+                                    <RefreshCw size={12} className={cn(isSyncing && 'animate-spin')} aria-hidden="true" />
+                                    <span>{item.status === 'SYNCED' ? 'Sinkron Ulang' : '1-Click Sync'}</span>
+                                  </Button>
+
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    type="button"
+                                    disabled={isDeleting}
+                                    onClick={() => handleDeleteSheet(item)}
+                                    className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600 rounded-xl"
+                                    aria-label={`Hapus lembar penampung kelas ${item.nama_kelas}`}
+                                    title="Hapus dari Hub"
+                                  >
+                                    <Trash2 size={14} aria-hidden="true" />
+                                  </Button>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
