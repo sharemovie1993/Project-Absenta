@@ -397,13 +397,18 @@ export const RaporStagingPreSyncModal: React.FC<RaporStagingPreSyncModalProps> =
                     </div>
                   </div>
 
-                  {/* Slot Otoritas Sumber Nilai Rapor */}
+                  {/* Slot Metode Perhitungan / Penentuan Nilai Rapor */}
                   <div className="p-3 bg-slate-50/80 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                        <Sparkles size={14} className="text-indigo-600" aria-hidden="true" />
-                        Otoritas Penentu Nilai Rapor
-                      </span>
+                      <div>
+                        <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-xs">
+                          <Sparkles size={14} className="text-indigo-600" aria-hidden="true" />
+                          Penentuan Nilai Rapor Akhir
+                        </span>
+                        <span className="text-[10px] text-slate-400 block">
+                          Pilih cara menetapkan nilai rapor siswa untuk kelas ini
+                        </span>
+                      </div>
                       <Badge
                         variant="outline"
                         className={cn(
@@ -413,7 +418,7 @@ export const RaporStagingPreSyncModal: React.FC<RaporStagingPreSyncModalProps> =
                             : 'border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30'
                         )}
                       >
-                        {sumberNilaiRapor === 'MURNI_CP_MANUAL' ? 'MURNI SHEET CP' : 'FORMULA SUMATIF'}
+                        {sumberNilaiRapor === 'MURNI_CP_MANUAL' ? 'Salin Nilai Cetak (As-Is)' : 'Hitung dari Nilai Harian'}
                       </Badge>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
@@ -428,11 +433,11 @@ export const RaporStagingPreSyncModal: React.FC<RaporStagingPreSyncModalProps> =
                         )}
                       >
                         <div className="flex items-center justify-between mb-0.5">
-                          <span className="font-bold">⚡ Hitung Formula Sumatif</span>
-                          {sumberNilaiRapor === 'FORMULA_SUMATIF' && <Check size={13} className="text-indigo-600" />}
+                          <span className="font-bold">⚡ Hitung Otomatis dari Nilai Harian (Sumatif)</span>
+                          {sumberNilaiRapor === 'FORMULA_SUMATIF' && <Check size={13} className="text-indigo-600 shrink-0" />}
                         </div>
-                        <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">
-                          Rerata sumatif materi standar Kurikulum Merdeka
+                        <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400 leading-relaxed">
+                          Nilai rapor dihitung otomatis dari rata-rata asesmen materi (Sumatif 1, 2, 3 guru). Cocok untuk kelas aktif Kurikulum Merdeka.
                         </span>
                       </button>
                       <button
@@ -446,11 +451,11 @@ export const RaporStagingPreSyncModal: React.FC<RaporStagingPreSyncModalProps> =
                         )}
                       >
                         <div className="flex items-center justify-between mb-0.5">
-                          <span className="font-bold">📝 Murni Lembar CP (Manual Guru)</span>
-                          {sumberNilaiRapor === 'MURNI_CP_MANUAL' && <Check size={13} className="text-amber-600" />}
+                          <span className="font-bold">📄 Salin Nilai Jadi dari Lembar Rapor (Cetak Asli)</span>
+                          {sumberNilaiRapor === 'MURNI_CP_MANUAL' && <Check size={13} className="text-amber-600 shrink-0" />}
                         </div>
-                        <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">
-                          Ambil angka lembar CP apa adanya (Jamin nilai cetak fisik &amp; SKL)
+                        <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400 leading-relaxed">
+                          Menyalin angka lembar rapor/CP apa adanya tanpa dihitung ulang. Menjamin nilai 100% sama dengan rapor fisik yang sudah tercetak &amp; SKL.
                         </span>
                       </button>
                     </div>
@@ -763,23 +768,23 @@ export const RaporStagingPreSyncModal: React.FC<RaporStagingPreSyncModalProps> =
                       </div>
                     </div>
 
-                    {/* Ringkasan Otoritas Nilai */}
+                    {/* Ringkasan Penentuan Nilai Rapor */}
                     <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-2">
                       <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-[11px]">
                         <Sparkles size={14} className="text-indigo-600" aria-hidden="true" />
-                        Otoritas Nilai Rapor
+                        Metode Penentuan Nilai Rapor
                       </span>
                       <div className="space-y-1 text-[11px] text-slate-600 dark:text-slate-300">
                         <div className="flex justify-between items-center">
-                          <span className="text-slate-400">Mode Nilai:</span>
+                          <span className="text-slate-400">Mode Terpilih:</span>
                           <Badge variant="outline" className="font-bold text-[10px]">
-                            {sumberNilaiRapor === 'MURNI_CP_MANUAL' ? 'MURNI SHEET CP' : 'FORMULA SUMATIF'}
+                            {sumberNilaiRapor === 'MURNI_CP_MANUAL' ? 'Salin Nilai Cetak (As-Is)' : 'Hitung dari Nilai Harian'}
                           </Badge>
                         </div>
                         <span className="text-[10px] text-slate-400 block leading-tight pt-1">
                           {sumberNilaiRapor === 'MURNI_CP_MANUAL'
-                            ? '✓ Nilai diambil murni dari lembar CP guru tanpa rumus sumatif (menjaga kesesuaian rapor cetak asli & SKL).'
-                            : '✓ Nilai dihitung dari rata-rata sumatif standar Kurikulum Merdeka.'}
+                            ? '✓ Nilai rapor disalin apa adanya persis seperti lembar rapor cetak asli (tanpa dihitung ulang, menjamin keaslian nilai fisik & SKL).'
+                            : '✓ Nilai rapor dihitung otomatis dari rata-rata nilai harian/sumatif materi guru (standar Kurikulum Merdeka).'}
                         </span>
                       </div>
                     </div>
