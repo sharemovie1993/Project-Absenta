@@ -711,7 +711,6 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
               setCurrentPage={setCurrentPage}
               handleScoreChange={handleScoreChange}
               onNavigateCetakRapor={effectiveHideCetakRapor ? undefined : handleNavigateCetakRapor}
-              hideFilterCard={true}
               jurusanId={effectiveJurusanId}
             />
           )}

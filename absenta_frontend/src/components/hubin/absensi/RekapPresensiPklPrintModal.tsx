@@ -625,7 +625,6 @@ export const RekapPresensiPklPrintModal: React.FC<RekapPresensiPklPrintModalProp
 
             {/* Standar Penandatangan Dokumen (2-Tier Signatures - Simetris Sempurna) */}
             {pageIdx === pages.length - 1 && (
-              {/* Standar Penandatangan Dokumen Menggunakan Universal Signature Engine */}
               <div className="pt-2 w-full break-inside-avoid">
                 <UniversalDocumentSignatures
                   layout="triangle_rapor"
