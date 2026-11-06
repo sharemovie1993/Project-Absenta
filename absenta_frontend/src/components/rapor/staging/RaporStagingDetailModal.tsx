@@ -112,7 +112,7 @@ export const RaporStagingDetailModal: React.FC<RaporStagingDetailModalProps> = R
             )}
           </div>
         }
-        description={`Tahun Ajaran ${previewData?.tahun_pelajaran_nama || ''} • Semester ${previewData?.semester || ''} • Wali Kelas: ${previewData?.wali_kelas_nama || '-'}`}
+        description={`Tahun Ajaran ${previewData?.tahun_pelajaran_nama || ''} • Semester ${previewData?.semester || ''} • Wali Kelas: ${previewData?.wali_kelas_nama || '-'} • Total ${previewData?.total_siswa || 0} Siswa & ${previewData?.total_mapel || 0} Mapel Terdeteksi`}
       >
         <div className="p-4 sm:p-6 pt-2 max-h-[75vh] overflow-y-auto space-y-4 w-full min-w-0">
           {isLoading ? (
@@ -150,8 +150,7 @@ export const RaporStagingDetailModal: React.FC<RaporStagingDetailModalProps> = R
                             ([_, sc]) =>
                               sc &&
                               (sc.rata_rata !== null || sc.nilai_akhir !== null || sc.sumatif_1 !== null)
-                          )
-                          .slice(0, 4);
+                          );
 
                         return (
                           <tr key={s.nis || s.nama} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
@@ -160,13 +159,16 @@ export const RaporStagingDetailModal: React.FC<RaporStagingDetailModalProps> = R
                             <td className="p-2.5 font-semibold text-slate-800 dark:text-slate-200">{s.nama}</td>
                             <td className="p-2.5 text-slate-600 dark:text-slate-300">
                               {(scoredSubjects?.length || 0) > 0 ? (
-                                <div className="flex flex-wrap gap-1.5">
+                                <div className="flex flex-wrap gap-1.5 max-w-2xl">
                                   {scoredSubjects?.map(([mapel, sc]) => (
                                     <span
                                       key={mapel}
-                                      className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[11px]"
+                                      className="bg-slate-100 dark:bg-slate-800/80 hover:bg-indigo-50 border border-slate-200/60 dark:border-slate-700/60 px-2 py-0.5 rounded-md text-[11px] inline-flex items-center gap-1"
                                     >
-                                      <strong>{mapel}</strong>: {sc.rata_rata ?? sc.nilai_akhir ?? sc.sumatif_1}
+                                      <strong className="text-slate-700 dark:text-slate-300">{mapel}</strong>
+                                      <span className="text-indigo-600 dark:text-indigo-400 font-bold">
+                                        {sc.rata_rata ?? sc.nilai_akhir ?? sc.sumatif_1}
+                                      </span>
                                     </span>
                                   ))}
                                 </div>
