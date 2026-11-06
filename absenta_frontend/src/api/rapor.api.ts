@@ -489,8 +489,15 @@ export const raporApi = {
     const response = await api.post('/rapor/staging/scan-folder', { urls }, { timeout: 180000 }); // 3 menit
     return response.data;
   },
-  fetchAndStageGoogleSheets: async (urls: string[]) => {
-    const response = await api.post('/rapor/staging/fetch', { urls }, { timeout: 600000 }); // 10 menit untuk dataset banyak kelas
+  fetchAndStageGoogleSheets: async (
+    urls: string[],
+    classMappings?: Record<string, string>
+  ) => {
+    const response = await api.post(
+      '/rapor/staging/fetch',
+      { urls, class_mappings: classMappings },
+      { timeout: 600000 }
+    ); // 10 menit untuk dataset banyak kelas
     return response.data;
   },
   getStagedSheets: async (params?: { tahunPelajaran?: string; semester?: string; kelas?: string }) => {

@@ -101,10 +101,15 @@ export interface StagingFilter {
 export class RaporStagingService {
   /**
    * Mengambil dan memproses Google Sheet dari URL, lalu menyimpannya ke tabel staging.
+   * Mendukung opsi `classMappings` untuk memetakan file rapor ke kelas spesifik di database
+   * (misalnya jika ada perbedaan nama seperti XII AKL 1 di sumber sheet vs XII AK 1 di database).
    */
   static async fetchAndStageSheets(
     tenantId: string,
-    urls: string[]
+    urls: string[],
+    options?: {
+      classMappings?: Record<string, string>;
+    }
   ): Promise<{
     results: any[];
     errors: Array<{ url: string; error: string }>;
@@ -170,28 +175,7 @@ export class RaporStagingService {
 
             const tahunPelajaranNama = parsed.metadata.tahunPelajaran.replace(/\s+/g, ' ').trim() || '2024 / 2025';
             const semesterNama = parsed.metadata.semester.trim() || 'Ganjil';
-            const namaKelas = parsed.metadata.kelas.trim() || 'Kelas Belum Ditentukan';
-
-            // Auto-match master IDs jika sudah ada di DB
-            const matchedTp = await RaporStagingService.resolveTahunPelajaran(tenantId, tahunPelajaranNama);
-            const [matchedSem, candidateClasses] = await Promise.all([
-              RaporStagingService.resolveSemester(tenantId, matchedTp?.id, semesterNama),
-              prisma.kelas.findMany({
-                where: {
-                  tenant_id: tenantId,
-                  nama_kelas: { equals: namaKelas, mode: 'insensitive' },
-                },
-                include: {
-                  Jurusan: { select: { id: true, nama: true, kode: true, singkatan: true } },
-                },
-              }),
-            ]);
-
-            const matchedKelas = RaporStagingService.resolveKelasWithJurusan(
-              candidateClasses,
-              parsed.metadata.konsentrasiKeahlian,
-              parsed.metadata.programKeahlian
-            );
+            let namaKelas = parsed.metadata.kelas.trim() || 'Kelas Belum Ditentukan';
 
             // Ekstrak spreadsheet ID untuk pencocokan idempoten berbasis ID dokumen fisik
             let spreadsheetId = '';
@@ -199,6 +183,58 @@ export class RaporStagingService {
               spreadsheetId = GoogleSheetRaporParserService.extractSpreadsheetId(url);
             } catch {
               // Abaikan jika bukan format URL spreadsheet standar
+            }
+
+            // Cek apakah ada pemetaan kelas eksplisit dari frontend sebelum penarikan
+            const targetKelasId =
+              options?.classMappings?.[url] ||
+              (spreadsheetId ? options?.classMappings?.[spreadsheetId] : undefined) ||
+              Object.entries(options?.classMappings || {}).find(([k]) =>
+                k.includes(spreadsheetId) || url.includes(k)
+              )?.[1];
+
+            let matchedKelas: any = null;
+
+            if (targetKelasId) {
+              const explicitKelas = await prisma.kelas.findFirst({
+                where: {
+                  id: targetKelasId,
+                  tenant_id: tenantId,
+                },
+                include: {
+                  Jurusan: { select: { id: true, nama: true, kode: true, singkatan: true } },
+                },
+              });
+              if (explicitKelas) {
+                matchedKelas = explicitKelas;
+                namaKelas = explicitKelas.nama_kelas;
+                appLogger.info(
+                  { url, originalKelas: parsed.metadata.kelas, mappedKelas: explicitKelas.nama_kelas, targetKelasId },
+                  'Memetakan berkas rapor ke kelas target pilihan pengguna'
+                );
+              }
+            }
+
+            // Auto-match master IDs jika belum dipetakan secara eksplisit
+            const matchedTp = await RaporStagingService.resolveTahunPelajaran(tenantId, tahunPelajaranNama);
+            const matchedSem = await RaporStagingService.resolveSemester(tenantId, matchedTp?.id, semesterNama);
+
+            if (!matchedKelas) {
+              const candidateClasses = await prisma.kelas.findMany({
+                where: {
+                  tenant_id: tenantId,
+                  nama_kelas: { equals: namaKelas, mode: 'insensitive' },
+                },
+                include: {
+                  Jurusan: { select: { id: true, nama: true, kode: true, singkatan: true } },
+                },
+              });
+
+              matchedKelas = RaporStagingService.resolveKelasWithJurusan(
+                candidateClasses,
+                parsed.metadata.konsentrasiKeahlian,
+                parsed.metadata.programKeahlian
+              );
             }
 
             // Cek apakah sheet dengan Google Spreadsheet ID yang sama ATAU kombinasi kelas + TP + semester sudah ada di staging (Idempotensi Kuat)
@@ -226,7 +262,11 @@ export class RaporStagingService {
               kelas_id: matchedKelas?.id || null,
               nama_kelas: namaKelas,
               wali_kelas_nama: parsed.metadata.walas || null,
-              jurusan_nama: parsed.metadata.konsentrasiKeahlian || parsed.metadata.programKeahlian || null,
+              jurusan_nama:
+                matchedKelas?.Jurusan?.nama ||
+                parsed.metadata.konsentrasiKeahlian ||
+                parsed.metadata.programKeahlian ||
+                null,
               total_siswa: parsed.totalSiswa,
               total_mapel: parsed.detectedSubjects.length,
               metadata_json: parsed.metadata as any,
@@ -235,6 +275,8 @@ export class RaporStagingService {
               status: 'READY',
               sync_logs: {
                 detectedSubjects: parsed.detectedSubjects,
+                originalFileKelas: parsed.metadata.kelas,
+                isExplicitlyMapped: !!targetKelasId,
                 matchedMaster: {
                   tp: matchedTp ? matchedTp.tahun : null,
                   semester: matchedSem ? matchedSem.nama_semester : null,

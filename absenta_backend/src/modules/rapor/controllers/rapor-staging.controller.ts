@@ -7,6 +7,7 @@ import { z } from 'zod';
 
 const fetchSheetsSchema = z.object({
   urls: z.array(z.string().url('Format URL Google Sheet tidak valid')).min(1, 'Minimal sertakan 1 URL Google Sheet'),
+  class_mappings: z.record(z.string(), z.string()).optional(),
 });
 
 const masterUrlSchema = z.object({
@@ -193,7 +194,11 @@ export class RaporStagingController {
       const { tenant_id } = req.user!;
       const parsed = fetchSheetsSchema.parse(req.body);
 
-      const result = await RaporStagingService.fetchAndStageSheets(tenant_id, parsed.urls);
+      const result = await RaporStagingService.fetchAndStageSheets(
+        tenant_id,
+        parsed.urls,
+        { classMappings: parsed.class_mappings }
+      );
 
       return sendResponse(
         reply,

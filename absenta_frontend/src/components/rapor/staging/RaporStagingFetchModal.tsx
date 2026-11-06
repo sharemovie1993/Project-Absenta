@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { z } from 'zod';
+import { useQuery } from '@tanstack/react-query';
 import {
   Link as LinkIcon,
   RefreshCw,
@@ -21,6 +22,7 @@ import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import { cn } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
 import { raporApi } from '@/api/rapor.api';
+import { getKelasForDropdown } from '@/api/dropdown.api';
 
 // ── Zod Schema Validation Guard (Pilar 25 / Form Security) ──
 const folderInputSchema = z.object({
@@ -81,10 +83,78 @@ export function isLikelyRaporClassFile(title?: string): boolean {
   return true;
 }
 
+export interface DropdownKelasItem {
+  value: string;
+  label: string;
+  nama_kelas: string;
+  tingkat?: number | string;
+  jurusan_nama?: string;
+}
+
+/**
+ * Heuristik pencocokan judul file rapor ke kelas sistem Absenta.
+ * Menangani kasus perbedaan nama penulisan seperti:
+ * - "XII AKL 1" di file Google Sheet <-> "XII AK 1" di sistem Absenta
+ * - "X TKJ 1" <-> "X TJKT 1"
+ * - "XI PH 1" <-> "XI PHT 1"
+ */
+export function guessClassIdFromTitle(
+  title: string,
+  kelasList: DropdownKelasItem[]
+): string | undefined {
+  if (!title || (kelasList?.length || 0) === 0) return undefined;
+  const upperTitle = title.toUpperCase().replace(/[-_]/g, ' ');
+
+  // 1. Coba kecocokan nama persis (exact word boundary match)
+  for (const k of kelasList) {
+    const kName = k.nama_kelas.toUpperCase();
+    const regex = new RegExp(`\\b${kName.replace(/\s+/g, '\\s+')}\\b`, 'i');
+    if (regex.test(upperTitle)) {
+      return k.value;
+    }
+  }
+
+  // 2. Normalisasi perbedaan singkatan: (XII|XI|X) + KODE + NOMOR
+  const match = upperTitle.match(/\b(XII|XI|X)\s+([A-Z0-9]+)\s+(\d+)\b/);
+  if (match) {
+    const [, tingkat, kode, no] = match;
+    const normalizedKode =
+      kode === 'AKL' ? 'AK' :
+      kode === 'AK' ? 'AKL' :
+      kode === 'TKJ' ? 'TJKT' :
+      kode === 'TJKT' ? 'TKJ' :
+      kode === 'PH' ? 'PHT' :
+      kode === 'PHT' ? 'PH' : kode;
+
+    const candidate = kelasList.find((k) => {
+      const kUpper = k.nama_kelas.toUpperCase();
+      const kMatch = kUpper.match(/\b(XII|XI|X)\s+([A-Z0-9]+)\s+(\d+)\b/);
+      if (kMatch) {
+        const [, kLevel, kKode, kNo] = kMatch;
+        if (kLevel === tingkat && kNo === no) {
+          if (
+            kKode === kode ||
+            kKode === normalizedKode ||
+            kode.startsWith(kKode) ||
+            kKode.startsWith(kode)
+          ) {
+            return true;
+          }
+        }
+      }
+      return false;
+    });
+
+    if (candidate) return candidate.value;
+  }
+
+  return undefined;
+}
+
 export interface RaporStagingFetchModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (urls: string[]) => void;
+  onSubmit: (urls: string[], classMappings?: Record<string, string>) => void;
   isPending: boolean;
 }
 
@@ -116,12 +186,24 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
     // State Input
     const [folderUrl, setFolderUrl] = useState('');
     const [singleUrl, setSingleUrl] = useState('');
+    const [singleKelasId, setSingleKelasId] = useState('');
 
-    // State Step untuk mode folder (1: Input URL -> 2: Ceklis File)
+    // State Step untuk mode folder (1: Input URL -> 2: Ceklis File & Pemetaan Kelas)
     const [folderStep, setFolderStep] = useState<1 | 2>(1);
     const [isScanning, setIsScanning] = useState(false);
     const [scannedFiles, setScannedFiles] = useState<ScannedFileItem[]>([]);
     const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
+    const [classMappings, setClassMappings] = useState<Record<string, string>>({});
+
+    // Fetch daftar kelas dari sistem Absenta untuk pemetaan
+    const { data: kelasOptions = [] } = useQuery<DropdownKelasItem[]>({
+      queryKey: ['kelas-dropdown-options'],
+      queryFn: async () => {
+        const res = await getKelasForDropdown();
+        return (res || []) as DropdownKelasItem[];
+      },
+      staleTime: 5 * 60 * 1000,
+    });
 
     // Reset state saat modal ditutup
     const handleCloseModal = useCallback(() => {
@@ -176,23 +258,35 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
           // Cek berkas baru vs berkas yang sudah ada di wadah (idempoten)
           const newFilesList = files.filter((f) => !f.is_already_staged && isLikelyRaporClassFile(f.title));
 
+          // Heuristik Pemetaan Kelas Awal otomatis (Auto-Match Kelas)
+          const initialClassMappings: Record<string, string> = {};
+          let autoMatchedCount = 0;
+          files.forEach((f) => {
+            const guessed = guessClassIdFromTitle(f.title, kelasOptions);
+            if (guessed) {
+              initialClassMappings[f.url] = guessed;
+              autoMatchedCount++;
+            }
+          });
+          setClassMappings(initialClassMappings);
+
           if (newFilesList.length > 0 && newFilesList.length < raporOnlyFiles.length) {
             // Campuran berkas baru dan lama: default centang hanya berkas baru (yang bertipe rapor)
             setSelectedUrls(new Set(newFilesList.map((f) => f.url)));
             toast.success(
-              `Ditemukan ${files.length} berkas: ${newFilesList.length} baru dicentang${nonRaporCount > 0 ? `, ${nonRaporCount} berkas non-rapor otomatis dilewati` : ''}.`
+              `Ditemukan ${files.length} berkas: ${newFilesList.length} baru dicentang${nonRaporCount > 0 ? `, ${nonRaporCount} berkas non-rapor dilewati` : ''}${autoMatchedCount > 0 ? `, ${autoMatchedCount} terpetakan ke kelas` : ''}.`
             );
           } else {
             // Default centang semua berkas rapor yang valid
             setSelectedUrls(new Set(raporOnlyFiles.map((f) => f.url)));
             if (nonRaporCount > 0) {
               toast.success(
-                `Ditemukan ${files.length} berkas (${raporOnlyFiles.length} rapor dicentang, ${nonRaporCount} berkas non-rapor otomatis dilewati).`
+                `Ditemukan ${files.length} berkas (${raporOnlyFiles.length} rapor dicentang, ${nonRaporCount} berkas non-rapor dilewati${autoMatchedCount > 0 ? `, ${autoMatchedCount} terpetakan ke kelas` : ''}).`
               );
             } else if (files.length > 0 && newFilesList.length === 0) {
               toast.success(`Ditemukan ${files.length} berkas (seluruhnya sudah ada di wadah, siap diperbarui secara idempoten).`);
             } else {
-              toast.success(`Ditemukan ${files.length} berkas Google Sheet kelas baru.`);
+              toast.success(`Ditemukan ${files.length} berkas Google Sheet kelas baru (${autoMatchedCount} terpetakan ke kelas).`);
             }
           }
 
@@ -207,7 +301,7 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
           setIsScanning(false);
         }
       },
-      [folderUrl]
+      [folderUrl, kelasOptions]
     );
 
     // Toggle satu checkbox file
@@ -223,6 +317,34 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
       });
     }, []);
 
+    // Handler Perubahan Pemetaan Kelas Per File
+    const handleClassMappingChange = useCallback((url: string, kelasId: string) => {
+      setClassMappings((prev) => {
+        const next = { ...prev };
+        if (!kelasId) {
+          delete next[url];
+        } else {
+          next[url] = kelasId;
+        }
+        return next;
+      });
+    }, []);
+
+    // Tombol Cepat: Auto-Match Seluruh Kelas Berdasarkan Judul Berkas
+    const handleAutoMatchClasses = useCallback(() => {
+      const updated = { ...classMappings };
+      let count = 0;
+      scannedFiles.forEach((f) => {
+        const guessed = guessClassIdFromTitle(f.title, kelasOptions);
+        if (guessed) {
+          updated[f.url] = guessed;
+          count++;
+        }
+      });
+      setClassMappings(updated);
+      toast.success(`Berhasil mencocokkan ${count} dari ${scannedFiles.length} berkas ke kelas target.`);
+    }, [scannedFiles, kelasOptions, classMappings]);
+
     // Toggle Pilih Semua / Batal Pilih Semua
     const isAllSelected = useMemo(() => {
       return (scannedFiles?.length || 0) > 0 && selectedUrls.size === scannedFiles.length;
@@ -236,6 +358,7 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
       const selectedTotal = selectedUrls.size;
       const selectedAlreadyStaged = scannedFiles.filter((f) => f.is_already_staged && selectedUrls.has(f.url)).length;
       const selectedNew = selectedTotal - selectedAlreadyStaged;
+      const mappedCount = Object.keys(classMappings).filter((u) => selectedUrls.has(u)).length;
 
       return {
         total,
@@ -245,8 +368,9 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
         selectedTotal,
         selectedAlreadyStaged,
         selectedNew,
+        mappedCount,
       };
-    }, [scannedFiles, selectedUrls]);
+    }, [scannedFiles, selectedUrls, classMappings]);
 
     const handleToggleAll = useCallback(() => {
       if (isAllSelected) {
@@ -266,7 +390,7 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
       setSelectedUrls(new Set(raporUrls));
     }, [scannedFiles]);
 
-    // Simpan file hasil seleksi dari folder
+    // Simpan file hasil seleksi dari folder (membawa classMappings untuk override nama kelas)
     const handleConfirmFolderFiles = useCallback(() => {
       const urlsToProcess = Array.from(selectedUrls);
       if ((urlsToProcess?.length || 0) === 0) {
@@ -274,8 +398,15 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
         return;
       }
 
-      onSubmit(urlsToProcess);
-    }, [selectedUrls, onSubmit]);
+      const activeMappings: Record<string, string> = {};
+      urlsToProcess.forEach((u) => {
+        if (classMappings[u]) {
+          activeMappings[u] = classMappings[u];
+        }
+      });
+
+      onSubmit(urlsToProcess, activeMappings);
+    }, [selectedUrls, classMappings, onSubmit]);
 
     // ── SUBMIT MODE 2: SINGLE FILE (Langsung Simpan) ──
     const handleSingleFileSubmit = useCallback(
@@ -289,9 +420,10 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
           return;
         }
 
-        onSubmit([singleUrl.trim()]);
+        const activeMappings = singleKelasId ? { [singleUrl.trim()]: singleKelasId } : undefined;
+        onSubmit([singleUrl.trim()], activeMappings);
       },
-      [singleUrl, onSubmit]
+      [singleUrl, singleKelasId, onSubmit]
     );
 
     if (!isOpen) return null;
@@ -443,6 +575,18 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                       <span>Hanya Berkas Baru ({stats.newFiles})</span>
                     </button>
                   )}
+
+                  {stats.total > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleAutoMatchClasses}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg font-medium text-purple-700 bg-purple-50 dark:bg-purple-950/50 border border-purple-200 hover:bg-purple-100 transition-colors cursor-pointer"
+                      title="Cocokkan judul berkas rapor ke kelas resmi di sistem Absenta secara otomatis"
+                    >
+                      <Sparkles size={12} className="text-purple-600" />
+                      <span>Auto-Petakan Kelas ({stats.mappedCount}/{stats.selectedTotal})</span>
+                    </button>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
@@ -482,72 +626,112 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                         }
                       }}
                       className={cn(
-                        'flex items-center justify-between gap-3 p-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 cursor-pointer transition-colors text-xs select-none focus:outline-hidden focus:bg-indigo-50/30',
+                        'p-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 cursor-pointer transition-colors text-xs select-none focus:outline-hidden focus:bg-indigo-50/30',
                         isChecked && 'bg-indigo-50/40 dark:bg-indigo-950/20',
                         !isLikelyRapor && !isChecked && 'opacity-65 bg-slate-50/40 dark:bg-slate-900/30'
                       )}
                     >
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={() => handleToggleFile(file.url)}
-                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer shrink-0"
-                          aria-label={`Pilih ${file.title}`}
-                        />
-                        <FileSpreadsheet
-                          size={16}
-                          className={cn(
-                            'shrink-0',
-                            !isLikelyRapor ? 'text-amber-500' : file.is_already_staged ? 'text-sky-600' : 'text-emerald-600'
-                          )}
-                          aria-hidden="true"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
-                              {file.title}
-                            </span>
-                            {!isLikelyRapor && (
-                              <span className="text-[10px] font-medium text-amber-700 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 px-1.5 py-0.2 rounded-md shrink-0">
-                                Berkas Non-Rapor?
-                              </span>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={() => handleToggleFile(file.url)}
+                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer shrink-0"
+                            aria-label={`Pilih ${file.title}`}
+                          />
+                          <FileSpreadsheet
+                            size={16}
+                            className={cn(
+                              'shrink-0',
+                              !isLikelyRapor ? 'text-amber-500' : file.is_already_staged ? 'text-sky-600' : 'text-emerald-600'
                             )}
-                          </div>
-                          <div className="flex items-center gap-2 text-[10px] truncate text-slate-400 mt-0.5">
-                            {file.is_already_staged && file.staged_info ? (
-                              <span className="font-medium text-sky-700 dark:text-sky-300">
-                                Sudah di Wadah: {file.staged_info.nama_kelas} ({file.staged_info.tahun_pelajaran} • {file.staged_info.semester})
+                            aria-hidden="true"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                                {file.title}
                               </span>
-                            ) : (
-                              <span className="font-medium text-emerald-600">
-                                Berkas Belum Pernah Ditarik
-                              </span>
-                            )}
-                            <span>•</span>
-                            <span className="font-mono">ID: {file.id}</span>
+                              {!isLikelyRapor && (
+                                <span className="text-[10px] font-medium text-amber-700 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 px-1.5 py-0.2 rounded-md shrink-0">
+                                  Berkas Non-Rapor?
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-[10px] truncate text-slate-400 mt-0.5">
+                              {file.is_already_staged && file.staged_info ? (
+                                <span className="font-medium text-sky-700 dark:text-sky-300">
+                                  Sudah di Wadah: {file.staged_info.nama_kelas} ({file.staged_info.tahun_pelajaran} • {file.staged_info.semester})
+                                </span>
+                              ) : (
+                                <span className="font-medium text-emerald-600">
+                                  Berkas Belum Pernah Ditarik
+                                </span>
+                              )}
+                              <span>•</span>
+                              <span className="font-mono">ID: {file.id}</span>
+                            </div>
                           </div>
                         </div>
+
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'text-[10px] shrink-0 font-medium',
+                            !isChecked
+                              ? 'text-slate-400 border-slate-200'
+                              : file.is_already_staged
+                              ? 'border-sky-300 text-sky-800 bg-sky-50 dark:bg-sky-950/60 dark:text-sky-300'
+                              : 'border-emerald-300 text-emerald-800 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-300'
+                          )}
+                        >
+                          {!isChecked
+                            ? 'Dilewati'
+                            : file.is_already_staged
+                            ? '🔄 Perbarui (Idempoten)'
+                            : '✨ Tambah Baru'}
+                        </Badge>
                       </div>
 
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          'text-[10px] shrink-0 font-medium',
-                          !isChecked
-                            ? 'text-slate-400 border-slate-200'
-                            : file.is_already_staged
-                            ? 'border-sky-300 text-sky-800 bg-sky-50 dark:bg-sky-950/60 dark:text-sky-300'
-                            : 'border-emerald-300 text-emerald-800 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-300'
-                        )}
-                      >
-                        {!isChecked
-                          ? 'Dilewati'
-                          : file.is_already_staged
-                          ? '🔄 Perbarui (Idempoten)'
-                          : '✨ Tambah Baru'}
-                      </Badge>
+                      {/* Baris Pemetaan Kelas (Hanya tampil jika berkas dicentang) */}
+                      {isChecked && (
+                        <div
+                          className="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center gap-2 flex-1 min-w-[220px]">
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-1">
+                              <Sparkles size={11} className="text-indigo-500" />
+                              Petakan ke Kelas:
+                            </span>
+                            <select
+                              value={classMappings[file.url] || ''}
+                              onChange={(e) => handleClassMappingChange(file.url, e.target.value)}
+                              className="text-xs py-1 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 cursor-pointer max-w-[280px] truncate"
+                              aria-label={`Petakan berkas ${file.title} ke kelas`}
+                            >
+                              <option value="">(Otomatis sesuai isi file)</option>
+                              {kelasOptions.map((k) => (
+                                <option key={k.value} value={k.value}>
+                                  {k.nama_kelas} {k.jurusan_nama ? `(${k.jurusan_nama})` : ''}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {classMappings[file.url] ? (
+                            <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800 shrink-0">
+                              ✓ Terpetakan ke: {kelasOptions.find((k) => k.value === classMappings[file.url])?.nama_kelas || 'Kelas Terpilih'}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500 italic">
+                              Ikuti nama kelas di dalam sheet
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -625,6 +809,32 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                 />
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
                   Masukkan tautan spreadsheet rapor untuk satu kelas yang ingin langsung disimpan.
+                </p>
+              </div>
+
+              <div className="space-y-1.5 w-full">
+                <label
+                  htmlFor="single-file-kelas-mapping"
+                  className="text-xs font-semibold text-slate-700 dark:text-slate-300 block"
+                >
+                  Petakan ke Kelas Sistem (Opsional):
+                </label>
+                <select
+                  id="single-file-kelas-mapping"
+                  value={singleKelasId}
+                  onChange={(e) => setSingleKelasId(e.target.value)}
+                  className="text-xs py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 cursor-pointer w-full"
+                  aria-label="Petakan ke Kelas Sistem"
+                >
+                  <option value="">(Otomatis sesuai isi file Google Sheet)</option>
+                  {kelasOptions.map((k) => (
+                    <option key={k.value} value={k.value}>
+                      {k.nama_kelas} - Tingkat {k.tingkat} {k.jurusan_nama ? `(${k.jurusan_nama})` : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Gunakan jika penulisan nama kelas di file Google Sheet berbeda dengan nama resmi di Absenta (misal: XII AKL 1 vs XII AK 1).
                 </p>
               </div>
 

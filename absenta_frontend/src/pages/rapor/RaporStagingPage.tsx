@@ -138,12 +138,15 @@ export default React.memo(function RaporStagingPage() {
 
   // ── Mutation: Fetch & Stage Sheets ──
   const fetchMutation = useMutation({
-    mutationFn: async (urls: string[]) => {
+    mutationFn: async (payload: { urls: string[]; classMappings?: Record<string, string> } | string[]) => {
+      const urls = Array.isArray(payload) ? payload : payload.urls;
+      const classMappings = Array.isArray(payload) ? undefined : payload.classMappings;
+
       const validation = fetchUrlsSchema.safeParse({ urls });
       if (!validation.success) {
         throw new Error(validation.error.errors[0]?.message || 'Validasi tautan gagal');
       }
-      return await raporApi.fetchAndStageGoogleSheets(urls);
+      return await raporApi.fetchAndStageGoogleSheets(urls, classMappings);
     },
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['rapor-staging-sheets'] });
@@ -346,8 +349,8 @@ export default React.memo(function RaporStagingPage() {
   }, []);
 
   const handleFetchSubmit = useCallback(
-    (urls: string[]) => {
-      fetchMutation.mutate(urls);
+    (urls: string[], classMappings?: Record<string, string>) => {
+      fetchMutation.mutate({ urls, classMappings });
     },
     [fetchMutation]
   );
