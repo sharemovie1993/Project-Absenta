@@ -792,7 +792,8 @@ export class GoogleSheetRaporParserService {
       schoolProfile.tempatTerbit = ganjilParsed.tempat || genapParsed.tempat || '';
     }
 
-    // 2. Cari Header Tabel 'SETTING DATA WALI KELAS' & Tabel 'REFERENSI ROMBEL / JURUSAN'
+    // 2. Cari Header Tabel 'SETTING DATA WALI KELAS' & Tabel 'HASIL RUMUS / REFERENSI ROMBEL'
+    // Menggunakan pencocokan header EKSPLISIT sesuai rancangan template Google Sheet resmi
     let headerRowIdx = -1;
     let colKelas = -1;
     let colWalas = -1;
@@ -803,24 +804,24 @@ export class GoogleSheetRaporParserService {
 
     for (let r = 0; r < Math.min(rows.length, 30); r++) {
       const row = rows[r];
-      const kIdx = row.findIndex((c) => /^(kelas(\s*walas)?|nama\s*kelas|kelas\/rombel|rombel)$/i.test(c.trim()) || /(kelas\s*walas)/i.test(c.trim()));
-      const wIdx = row.findIndex((c) => /^(walas|wali\s*kelas|nama\s*walas|nama\s*wali\s*kelas|guru\s*walas)$/i.test(c.trim()) || /(wali\s*kelas|nama\s*walas)/i.test(c.trim()));
+      const kIdx = row.findIndex((c) => /^kelas\s*walas$/i.test(c.trim()));
+      const wIdx = row.findIndex((c) => /^walas$/i.test(c.trim()));
 
       if (kIdx !== -1 && wIdx !== -1) {
         headerRowIdx = r;
         colKelas = kIdx;
         colWalas = wIdx;
-        colNip = row.findIndex((c) => /^nip(\s*walas|\s*wali\s*kelas|\s*guru)?$/i.test(c.trim()) || /^nip/i.test(c.trim()));
+        colNip = row.findIndex((c) => /^nip\s*walas$/i.test(c.trim()));
       }
 
       if (colKonsentrasi === -1) {
-        colKonsentrasi = row.findIndex((c) => /konsentrasi(\s*keahlian)?/i.test(c.trim()));
+        colKonsentrasi = row.findIndex((c) => /^konsentrasi\s*keahlian$/i.test(c.trim()));
       }
       if (colProgram === -1) {
-        colProgram = row.findIndex((c) => /program(\s*keahlian)?/i.test(c.trim()));
+        colProgram = row.findIndex((c) => /^program\s*keahlian$/i.test(c.trim()));
       }
       if (colRombel === -1) {
-        colRombel = row.findIndex((c) => /(nama\s*rombel|rombel\s*kelas)/i.test(c.trim()));
+        colRombel = row.findIndex((c) => /^nama\s*rombel/i.test(c.trim()));
       }
     }
 
@@ -850,10 +851,12 @@ export class GoogleSheetRaporParserService {
         const walasNama = (row[colWalas] || '').trim();
         let walasNip = colNip !== -1 ? (row[colNip] || '').trim() : '';
 
-        // Bersihkan NIP dari tanda hubung '-' atau angka 0 tunggal
-        walasNip = walasNip.replace(/['"`]/g, '').trim();
-        if (walasNip === '-' || walasNip === '0') {
+        // Pruning awalan 'NIP.' atau 'NIP' dan karakter non-digit agar konsisten angka murni
+        walasNip = walasNip.replace(/^nip\.?\s*/i, '').replace(/['"`]/g, '').trim();
+        if (walasNip === '-' || walasNip === '0' || !/\d/.test(walasNip)) {
           walasNip = '';
+        } else {
+          walasNip = walasNip.replace(/\D/g, '');
         }
 
         // Hentikan jika baris kosong sepenuhnya atau merupakan sub-header instruksi pengisian

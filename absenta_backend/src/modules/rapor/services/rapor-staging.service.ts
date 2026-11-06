@@ -1832,7 +1832,13 @@ export class RaporStagingService {
           const cleanNip = tNip ? this.cleanTeacherNip(tNip) : '';
           if (cleanNip.length >= 8) {
             existingGuru = await prisma.guru.findFirst({
-              where: { tenant_id: tenantId, nip: tNip },
+              where: {
+                tenant_id: tenantId,
+                OR: [
+                  { nip: cleanNip },
+                  ...(tNip ? [{ nip: tNip }] : []),
+                ],
+              },
               include: { User: true },
             });
           }
