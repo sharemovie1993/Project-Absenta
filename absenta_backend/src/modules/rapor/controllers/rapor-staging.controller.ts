@@ -2,6 +2,7 @@ import { appLogger } from '@/utils/app-logger';
 import { sendResponse, sendError } from '../../../utils/response';
 import { RaporStagingService } from '../services/rapor-staging.service';
 import { GoogleSheetRaporParserService } from '../services/google-sheet-rapor-parser.service';
+import { prisma } from '@/utils/prisma';
 import { z } from 'zod';
 
 const fetchSheetsSchema = z.object({
@@ -46,8 +47,50 @@ export class RaporStagingController {
   static async scanFolder(req: any, reply: any) {
     try {
       const parsed = fetchSheetsSchema.parse(req.body);
-      const items: Array<{ id: string; url: string; title: string }> = [];
+      const tenantId = req.user?.tenant_id;
+      const items: Array<{
+        id: string;
+        url: string;
+        title: string;
+        is_already_staged: boolean;
+        staged_info: {
+          id: string;
+          nama_kelas: string;
+          tahun_pelajaran: string;
+          semester: string;
+          status: string;
+          updated_at: Date;
+        } | null;
+      }> = [];
       const errors: Array<{ url: string; error: string }> = [];
+
+      // Query seluruh lembar staging existing untuk tenant ini guna mendeteksi status idempoten
+      const existingStaged = tenantId
+        ? await prisma.raporStagingSheet.findMany({
+            where: { tenant_id: tenantId },
+            select: {
+              id: true,
+              source_url: true,
+              nama_kelas: true,
+              tahun_pelajaran_nama: true,
+              semester: true,
+              status: true,
+              updated_at: true,
+            },
+          })
+        : [];
+
+      const existingMap = new Map<string, (typeof existingStaged)[0]>();
+      existingStaged.forEach((sheet) => {
+        try {
+          const sId = GoogleSheetRaporParserService.extractSpreadsheetId(sheet.source_url);
+          if (sId) {
+            existingMap.set(sId, sheet);
+          }
+        } catch {
+          // ignore
+        }
+      });
 
       for (const rawUrl of parsed.urls) {
         const trimmed = rawUrl.trim();
@@ -57,10 +100,22 @@ export class RaporStagingController {
           try {
             const sheetsInFolder = await GoogleSheetRaporParserService.extractGoogleSheetUrlsFromFolder(trimmed);
             sheetsInFolder.forEach((s: { id: string; url: string; title?: string }) => {
+              const matchedExisting = existingMap.get(s.id);
               items.push({
                 id: s.id,
                 url: s.url,
                 title: s.title || `Google Sheet (${s.id.slice(0, 8)}...)`,
+                is_already_staged: !!matchedExisting,
+                staged_info: matchedExisting
+                  ? {
+                      id: matchedExisting.id,
+                      nama_kelas: matchedExisting.nama_kelas,
+                      tahun_pelajaran: matchedExisting.tahun_pelajaran_nama,
+                      semester: matchedExisting.semester,
+                      status: matchedExisting.status,
+                      updated_at: matchedExisting.updated_at,
+                    }
+                  : null,
               });
             });
           } catch (err: any) {
@@ -72,10 +127,22 @@ export class RaporStagingController {
         } else {
           try {
             const id = GoogleSheetRaporParserService.extractSpreadsheetId(trimmed);
+            const matchedExisting = existingMap.get(id);
             items.push({
               id,
               url: `https://docs.google.com/spreadsheets/d/${id}/edit`,
               title: `Google Sheet Berkas (${id.slice(0, 8)}...)`,
+              is_already_staged: !!matchedExisting,
+              staged_info: matchedExisting
+                ? {
+                    id: matchedExisting.id,
+                    nama_kelas: matchedExisting.nama_kelas,
+                    tahun_pelajaran: matchedExisting.tahun_pelajaran_nama,
+                    semester: matchedExisting.semester,
+                    status: matchedExisting.status,
+                    updated_at: matchedExisting.updated_at,
+                  }
+                : null,
             });
           } catch (err: any) {
             errors.push({
@@ -86,10 +153,24 @@ export class RaporStagingController {
         }
       }
 
-      return sendResponse(reply, 200, true, `Pemindaian selesai: ${items.length} sheet terdeteksi`, {
-        files: items,
-        errors,
-      });
+      const totalAlreadyStaged = items.filter((i) => i.is_already_staged).length;
+      const totalNew = items.length - totalAlreadyStaged;
+
+      return sendResponse(
+        reply,
+        200,
+        true,
+        `Pemindaian selesai: ${items.length} sheet terdeteksi (${totalNew} baru, ${totalAlreadyStaged} sudah di wadah)`,
+        {
+          files: items,
+          errors,
+          meta: {
+            total: items.length,
+            already_staged: totalAlreadyStaged,
+            new_files: totalNew,
+          },
+        }
+      );
     } catch (error: any) {
       appLogger.error({ err: error }, 'RaporStagingController.scanFolder error');
       if (error instanceof z.ZodError) {

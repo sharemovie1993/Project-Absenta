@@ -9,6 +9,9 @@ import {
   ArrowRight,
   ArrowLeft,
   FolderSearch,
+  Sparkles,
+  ShieldCheck,
+  CheckCircle2,
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -46,6 +49,15 @@ export interface ScannedFileItem {
   id: string;
   url: string;
   title: string;
+  is_already_staged?: boolean;
+  staged_info?: {
+    id: string;
+    nama_kelas: string;
+    tahun_pelajaran: string;
+    semester: string;
+    status: string;
+    updated_at?: string;
+  } | null;
 }
 
 export interface RaporStagingFetchModalProps {
@@ -135,9 +147,26 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
           }
 
           setScannedFiles(files);
-          setSelectedUrls(new Set(files?.map((f) => f.url)));
+
+          // Cek berkas baru vs berkas yang sudah ada di wadah (idempoten)
+          const newFilesList = files.filter((f) => !f.is_already_staged);
+          if (newFilesList.length > 0 && newFilesList.length < files.length) {
+            // Campuran berkas baru dan lama: default centang hanya berkas baru untuk proteksi overwrite tidak disengaja
+            setSelectedUrls(new Set(newFilesList.map((f) => f.url)));
+            toast.success(
+              `Ditemukan ${files.length} berkas: ${newFilesList.length} baru dicentang, ${files.length - newFilesList.length} sudah ada di wadah.`
+            );
+          } else {
+            // Semua baru ATAU semua sudah ada: centang semua
+            setSelectedUrls(new Set(files.map((f) => f.url)));
+            if (files.length > 0 && newFilesList.length === 0) {
+              toast.success(`Ditemukan ${files.length} berkas (seluruhnya sudah ada di wadah, siap diperbarui secara idempoten).`);
+            } else {
+              toast.success(`Ditemukan ${files.length} berkas Google Sheet kelas baru.`);
+            }
+          }
+
           setFolderStep(2);
-          toast.success(`Ditemukan ${files.length} berkas Google Sheet kelas.`);
         } catch (err: unknown) {
           const errorMsg =
             (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
@@ -169,6 +198,24 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
       return (scannedFiles?.length || 0) > 0 && selectedUrls.size === scannedFiles.length;
     }, [scannedFiles, selectedUrls]);
 
+    const stats = useMemo(() => {
+      const total = scannedFiles.length;
+      const alreadyStaged = scannedFiles.filter((f) => f.is_already_staged).length;
+      const newFiles = total - alreadyStaged;
+      const selectedTotal = selectedUrls.size;
+      const selectedAlreadyStaged = scannedFiles.filter((f) => f.is_already_staged && selectedUrls.has(f.url)).length;
+      const selectedNew = selectedTotal - selectedAlreadyStaged;
+
+      return {
+        total,
+        alreadyStaged,
+        newFiles,
+        selectedTotal,
+        selectedAlreadyStaged,
+        selectedNew,
+      };
+    }, [scannedFiles, selectedUrls]);
+
     const handleToggleAll = useCallback(() => {
       if (isAllSelected) {
         setSelectedUrls(new Set());
@@ -176,6 +223,11 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
         setSelectedUrls(new Set(scannedFiles?.map((f) => f.url)));
       }
     }, [isAllSelected, scannedFiles]);
+
+    const handleSelectOnlyNew = useCallback(() => {
+      const newUrls = scannedFiles.filter((f) => !f.is_already_staged).map((f) => f.url);
+      setSelectedUrls(new Set(newUrls));
+    }, [scannedFiles]);
 
     // Simpan file hasil seleksi dari folder
     const handleConfirmFolderFiles = useCallback(() => {
@@ -292,30 +344,77 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
 
           {mode === 'folder' && folderStep === 2 && (
             <div className="space-y-4 w-full">
-              {/* Header Checklist & Action */}
-              <div className="flex items-center justify-between gap-2 p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/80 dark:border-slate-800 text-xs">
-                <button
-                  type="button"
-                  onClick={handleToggleAll}
-                  className="flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-200 hover:text-indigo-600 transition-colors cursor-pointer"
-                  aria-label={isAllSelected ? 'Batal pilih semua berkas' : 'Pilih semua berkas'}
-                >
-                  {isAllSelected ? (
-                    <CheckSquare size={16} className="text-indigo-600" aria-hidden="true" />
-                  ) : (
-                    <Square size={16} className="text-slate-400" aria-hidden="true" />
+              {/* Idempotency Informational Alert */}
+              {stats.alreadyStaged === stats.total && stats.total > 0 ? (
+                <div className="flex items-start gap-2.5 p-3 bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 rounded-xl text-xs text-sky-800 dark:text-sky-300">
+                  <ShieldCheck size={18} className="shrink-0 text-sky-600 dark:text-sky-400 mt-0.5" />
+                  <div className="leading-relaxed">
+                    <span className="font-bold">Idempotensi Terjamin:</span> Seluruh{' '}
+                    <strong>{stats.total} berkas</strong> pada folder ini sudah terdaftar di wadah staging.
+                    Menarik ulang akan <strong>memperbarui (update) data rapor</strong> secara aman tanpa
+                    menduplikasi entri rombel kelas.
+                  </div>
+                </div>
+              ) : stats.newFiles > 0 && stats.alreadyStaged > 0 ? (
+                <div className="flex items-start gap-2.5 p-3 bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs text-indigo-900 dark:text-indigo-300">
+                  <ShieldCheck size={18} className="shrink-0 text-indigo-600 dark:text-indigo-400 mt-0.5" />
+                  <div className="leading-relaxed">
+                    Ditemukan <strong>{stats.newFiles} berkas baru</strong> dan{' '}
+                    <strong>{stats.alreadyStaged} berkas sudah ada</strong> di wadah. Berkas yang sudah ada
+                    akan diperbarui secara idempoten jika tetap dicentang.
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Header Checklist & Action Controls */}
+              <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/80 dark:border-slate-800 text-xs">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleToggleAll}
+                    className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-200 hover:text-indigo-600 transition-colors cursor-pointer"
+                    aria-label={isAllSelected ? 'Batal pilih semua berkas' : 'Pilih semua berkas'}
+                  >
+                    {isAllSelected ? (
+                      <CheckSquare size={16} className="text-indigo-600" aria-hidden="true" />
+                    ) : (
+                      <Square size={16} className="text-slate-400" aria-hidden="true" />
+                    )}
+                    <span>{isAllSelected ? 'Batal Pilih Semua' : 'Pilih Semua'}</span>
+                  </button>
+
+                  {stats.newFiles > 0 && stats.alreadyStaged > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleSelectOnlyNew}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg font-medium text-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer"
+                      title="Hanya centang berkas yang belum pernah ditarik ke wadah"
+                    >
+                      <Sparkles size={12} className="text-emerald-600" />
+                      <span>Hanya Berkas Baru ({stats.newFiles})</span>
+                    </button>
                   )}
-                  <span>{isAllSelected ? 'Batal Pilih Semua' : 'Pilih Semua Berkas'}</span>
-                </button>
-                <div className="flex items-center gap-1.5 text-slate-500">
+                </div>
+
+                <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
                   <span>Terpilih:</span>
+                  {stats.selectedNew > 0 && (
+                    <Badge variant="outline" className="font-bold border-emerald-200 text-emerald-700 bg-emerald-50">
+                      +{stats.selectedNew} Baru
+                    </Badge>
+                  )}
+                  {stats.selectedAlreadyStaged > 0 && (
+                    <Badge variant="outline" className="font-bold border-sky-200 text-sky-700 bg-sky-50">
+                      🔄 {stats.selectedAlreadyStaged} Update
+                    </Badge>
+                  )}
                   <Badge variant="secondary" className="font-bold text-indigo-600 dark:text-indigo-400">
-                    {selectedUrls.size} dari {scannedFiles?.length || 0} Berkas
+                    {stats.selectedTotal} dari {stats.total} Berkas
                   </Badge>
                 </div>
               </div>
 
-              {/* List Berkas dengan Checkbox */}
+              {/* List Berkas dengan Checkbox & Status Idempoten */}
               <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-y-auto max-h-[320px] divide-y divide-slate-100 dark:divide-slate-800">
                 {scannedFiles?.map((file, idx) => {
                   const isChecked = selectedUrls.has(file.url);
@@ -337,14 +436,31 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                           className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer shrink-0"
                           aria-label={`Pilih ${file.title}`}
                         />
-                        <FileSpreadsheet size={16} className="text-indigo-600 shrink-0" aria-hidden="true" />
+                        <FileSpreadsheet
+                          size={16}
+                          className={cn(
+                            'shrink-0',
+                            file.is_already_staged ? 'text-sky-600' : 'text-emerald-600'
+                          )}
+                          aria-hidden="true"
+                        />
                         <div className="min-w-0 flex-1">
                           <span className="font-semibold text-slate-800 dark:text-slate-200 block truncate">
                             {file.title}
                           </span>
-                          <span className="text-[10px] font-mono text-slate-400 block truncate">
-                            ID: {file.id}
-                          </span>
+                          <div className="flex items-center gap-2 text-[10px] truncate text-slate-400">
+                            {file.is_already_staged && file.staged_info ? (
+                              <span className="font-medium text-sky-700 dark:text-sky-300">
+                                Sudah di Wadah: {file.staged_info.nama_kelas} ({file.staged_info.tahun_pelajaran} • {file.staged_info.semester})
+                              </span>
+                            ) : (
+                              <span className="font-medium text-emerald-600">
+                                Berkas Belum Pernah Ditarik
+                              </span>
+                            )}
+                            <span>•</span>
+                            <span className="font-mono">ID: {file.id}</span>
+                          </div>
                         </div>
                       </div>
 
@@ -352,12 +468,18 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                         variant="outline"
                         className={cn(
                           'text-[10px] shrink-0 font-medium',
-                          isChecked
-                            ? 'border-indigo-200 text-indigo-700 bg-indigo-50 dark:bg-indigo-950/60 dark:text-indigo-300'
-                            : 'text-slate-400'
+                          !isChecked
+                            ? 'text-slate-400 border-slate-200'
+                            : file.is_already_staged
+                            ? 'border-sky-300 text-sky-800 bg-sky-50 dark:bg-sky-950/60 dark:text-sky-300'
+                            : 'border-emerald-300 text-emerald-800 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-300'
                         )}
                       >
-                        {isChecked ? 'Akan Disimpan' : 'Dilewati'}
+                        {!isChecked
+                          ? 'Dilewati'
+                          : file.is_already_staged
+                          ? '🔄 Perbarui (Idempoten)'
+                          : '✨ Tambah Baru'}
                       </Badge>
                     </label>
                   );
@@ -394,14 +516,23 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                     size="sm"
                     disabled={isPending || selectedUrls.size === 0}
                     onClick={handleConfirmFolderFiles}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-xs gap-1.5"
+                    className={cn(
+                      'text-white font-semibold text-xs rounded-xl shadow-xs gap-1.5',
+                      stats.selectedNew > 0
+                        ? 'bg-indigo-600 hover:bg-indigo-700'
+                        : 'bg-sky-600 hover:bg-sky-700'
+                    )}
                     aria-label="Simpan berkas terpilih ke wadah penampung"
                   >
                     <RefreshCw size={13} className={cn(isPending && 'animate-spin')} aria-hidden="true" />
                     <span>
                       {isPending
                         ? 'Menyimpan...'
-                        : `Tarik & Simpan (${selectedUrls.size} Berkas)`}
+                        : stats.selectedNew > 0 && stats.selectedAlreadyStaged === 0
+                        ? `Tarik & Simpan (${stats.selectedTotal} Berkas Baru)`
+                        : stats.selectedAlreadyStaged > 0 && stats.selectedNew === 0
+                        ? `Perbarui Data di Wadah (${stats.selectedTotal} Berkas)`
+                        : `Tarik & Perbarui (${stats.selectedTotal} Berkas)`}
                     </span>
                   </Button>
                 </div>

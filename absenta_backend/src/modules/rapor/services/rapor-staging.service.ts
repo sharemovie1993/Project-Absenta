@@ -105,7 +105,11 @@ export class RaporStagingService {
   static async fetchAndStageSheets(
     tenantId: string,
     urls: string[]
-  ): Promise<{ results: any[]; errors: Array<{ url: string; error: string }> }> {
+  ): Promise<{
+    results: any[];
+    errors: Array<{ url: string; error: string }>;
+    meta?: { total: number; created: number; updated: number };
+  }> {
     const results: any[] = [];
     const errors: Array<{ url: string; error: string }> = [];
 
@@ -135,11 +139,28 @@ export class RaporStagingService {
       }
     }
 
+    // 1b. Deduplikasi antrean berdasarkan Google Spreadsheet ID agar tidak ada pemrosesan ganda
+    const uniqueResolvedQueue: Array<{ url: string; originFolder?: string }> = [];
+    const seenSpreadsheetIds = new Set<string>();
+
+    for (const item of resolvedQueue) {
+      let sId = item.url;
+      try {
+        sId = GoogleSheetRaporParserService.extractSpreadsheetId(item.url) || item.url;
+      } catch {
+        sId = item.url;
+      }
+      if (!seenSpreadsheetIds.has(sId)) {
+        seenSpreadsheetIds.add(sId);
+        uniqueResolvedQueue.push(item);
+      }
+    }
+
     // 2. Proses ekstraksi setiap berkas Google Sheet kelas secara paralel ber-batch (concurrency = 3)
     // agar waktu tunggu terpangkas 3x lipat tanpa terkena rate-limit
     const CHUNK_SIZE = 3;
-    for (let i = 0; i < resolvedQueue.length; i += CHUNK_SIZE) {
-      const chunk = resolvedQueue.slice(i, i + CHUNK_SIZE);
+    for (let i = 0; i < uniqueResolvedQueue.length; i += CHUNK_SIZE) {
+      const chunk = uniqueResolvedQueue.slice(i, i + CHUNK_SIZE);
       await Promise.all(
         chunk.map(async (item) => {
           const url = item.url;
@@ -172,13 +193,26 @@ export class RaporStagingService {
               parsed.metadata.programKeahlian
             );
 
-            // Cek apakah sheet dengan URL atau kelas + TP + semester yang sama sudah ada di staging
+            // Ekstrak spreadsheet ID untuk pencocokan idempoten berbasis ID dokumen fisik
+            let spreadsheetId = '';
+            try {
+              spreadsheetId = GoogleSheetRaporParserService.extractSpreadsheetId(url);
+            } catch {
+              // Abaikan jika bukan format URL spreadsheet standar
+            }
+
+            // Cek apakah sheet dengan Google Spreadsheet ID yang sama ATAU kombinasi kelas + TP + semester sudah ada di staging (Idempotensi Kuat)
             const existing = await prisma.raporStagingSheet.findFirst({
               where: {
                 tenant_id: tenantId,
-                nama_kelas: namaKelas,
-                tahun_pelajaran_nama: tahunPelajaranNama,
-                semester: semesterNama,
+                OR: [
+                  ...(spreadsheetId ? [{ source_url: { contains: spreadsheetId } }] : [{ source_url: url }]),
+                  {
+                    nama_kelas: { equals: namaKelas, mode: 'insensitive' },
+                    tahun_pelajaran_nama: { equals: tahunPelajaranNama, mode: 'insensitive' },
+                    semester: { equals: semesterNama, mode: 'insensitive' },
+                  },
+                ],
               },
             });
 
@@ -210,7 +244,9 @@ export class RaporStagingService {
             };
 
             let savedRecord;
+            let isUpdated = false;
             if (existing) {
+              isUpdated = true;
               savedRecord = await prisma.raporStagingSheet.update({
                 where: { id: existing.id },
                 data: stagingData,
@@ -223,6 +259,7 @@ export class RaporStagingService {
 
             results.push({
               id: savedRecord.id,
+              is_updated: isUpdated,
               nama_kelas: savedRecord.nama_kelas,
               tahun_pelajaran: savedRecord.tahun_pelajaran_nama,
               semester: savedRecord.semester,
@@ -243,7 +280,18 @@ export class RaporStagingService {
       );
     }
 
-    return { results, errors };
+    const totalCreated = results.filter((r) => !r.is_updated).length;
+    const totalUpdated = results.filter((r) => r.is_updated).length;
+
+    return {
+      results,
+      errors,
+      meta: {
+        total: results.length,
+        created: totalCreated,
+        updated: totalUpdated,
+      },
+    };
   }
 
   /**

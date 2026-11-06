@@ -150,7 +150,21 @@ export default React.memo(function RaporStagingPage() {
 
       if (results.length > 0) {
         setIsFetchModalOpen(false);
-        toast.success(`Berhasil memproses ${results.length} Google Sheet kelas!`);
+        const meta = res?.data?.meta;
+        const createdCount = meta?.created ?? results.filter((r: any) => !r.is_updated).length;
+        const updatedCount = meta?.updated ?? results.filter((r: any) => r.is_updated).length;
+
+        if (updatedCount > 0 && createdCount > 0) {
+          toast.success(
+            `Selesai: ${createdCount} berkas baru ditambahkan, ${updatedCount} berkas diperbarui secara idempoten.`
+          );
+        } else if (updatedCount > 0) {
+          toast.success(
+            `Selesai: ${updatedCount} berkas di wadah diperbarui secara idempoten (tanpa duplikasi).`
+          );
+        } else {
+          toast.success(`Berhasil menambahkan ${createdCount} berkas Google Sheet baru ke wadah.`);
+        }
       }
 
       if (errors.length > 0) {
