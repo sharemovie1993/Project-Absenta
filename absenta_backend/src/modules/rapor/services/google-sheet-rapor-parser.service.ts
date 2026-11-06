@@ -385,6 +385,7 @@ export class GoogleSheetRaporParserService {
       { key: 'nipKepsek' as const, regex: /^nip\s*kepsek$/i },
       { key: 'titimangsaGanjil' as const, regex: /^tgl\.?\s*titimangsa\s*ganjil$/i },
       { key: 'titimangsaGenap' as const, regex: /^tgl\.?\s*titimangsa\s*genap$/i },
+      { key: 'titimangsaGanjil' as const, regex: /^tgl\.?\s*(cetak\s*rapor(t)?|titimangsa)$/i },
       { key: 'ownId' as const, regex: /^(own_id|file\s*id\s*file)$/i },
       { key: 'orchestratorId' as const, regex: /^file\s*id\s*orkestrator$/i },
     ];
@@ -417,6 +418,11 @@ export class GoogleSheetRaporParserService {
           }
         }
       }
+    }
+
+    // Sinkronkan titimangsa jika pada format lama hanya ada satu label 'Tgl. Cetak Raport'
+    if (meta.titimangsaGanjil && !meta.titimangsaGenap && /genap/i.test(meta.semester)) {
+      meta.titimangsaGenap = meta.titimangsaGanjil;
     }
 
     return meta;
@@ -646,7 +652,10 @@ export class GoogleSheetRaporParserService {
     }
 
     // Cari tab SETTING, INPUT SUMATIF, dan INPUT CP secara dinamis
-    const settingTab = tabs.find((t) => /^setting$/i.test(t.name) || /setting/i.test(t.name));
+    const settingTab = tabs.find((t) =>
+      /^(setting|seting|pengaturan|properti|config)(\s*rapor(t)?)?$/i.test(t.name.trim()) ||
+      /(setting|seting|pengaturan)/i.test(t.name)
+    );
     const sumatifTab = tabs.find((t) => /^input\s*sumatif$/i.test(t.name) || /sumatif/i.test(t.name));
     const cpTab = tabs.find((t) => /^input\s*cp$/i.test(t.name) || /input.*cp/i.test(t.name));
 
@@ -923,8 +932,8 @@ export class GoogleSheetRaporParserService {
     // 2. Ambil tab SETTING untuk mengekstrak Tahun Pelajaran definitif berkas, Kepala Sekolah, dan Titimangsa
     // (PENTING: Di sheet MASTER, kolom TP hanyalah daftar list enum/dropdown opsi, sedangkan konteks berkas aktif ada di tab SETTING)
     const settingTab =
-      tabs.find((t) => /^setting$/i.test(t.name.trim())) ||
-      tabs.find((t) => /setting/i.test(t.name));
+      tabs.find((t) => /^(setting|seting|pengaturan|properti|config)(\s*rapor(t)?)?$/i.test(t.name.trim())) ||
+      tabs.find((t) => /(setting|seting|pengaturan)/i.test(t.name));
 
     if (settingTab) {
       try {
