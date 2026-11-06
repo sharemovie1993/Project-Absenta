@@ -231,8 +231,9 @@ export const renderStudentRaporPages = (
     y += 12;
   } else {
     // 1. Deduplicate by normalized mapel name (merging score if present in duplicate record)
+    // Filter out inactive/hidden subjects per Pengaturan Rapor
     const dedupedMapelMap = new Map<string, any>();
-    (nilaiAkademik ?? []).forEach((n: any) => {
+    (nilaiAkademik ?? []).filter((n: any) => n.is_active !== false).forEach((n: any) => {
       const normName = (n.mapel_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       if (!normName) return;
 
@@ -258,7 +259,7 @@ export const renderStudentRaporPages = (
     const groupedMapel = new Map<string, any[]>();
     dedupedList.forEach((n: any) => {
       let groupCategory = 'Kelompok Umum';
-      const rawGrp = (n.kelompok_mapel || '').toLowerCase();
+      const rawGrp = (n.kelompok_mapel || '').toLowerCase().trim();
       const mapelNameLower = (n.mapel_name || '').toLowerCase();
 
       if (isLegacyEra) {
@@ -302,55 +303,61 @@ export const renderStudentRaporPages = (
           groupCategory = 'Kelompok Umum';
         }
       } else {
-        // --- ERA 2025+ (4 SEKAT: UMUM, KEJURUAN, PILIHAN, MUATAN LOKAL) ---
-        if (
-          rawGrp.includes('muatan lokal') ||
-          rawGrp.includes('mulok') ||
-          mapelNameLower.includes('sunda') ||
-          mapelNameLower.includes('jawa') ||
-          mapelNameLower.includes('daerah')
-        ) {
+        // --- ERA 2025+ (4 SEKAT: Prioritas 1 adalah Konfigurasi Pengaturan Rapor) ---
+        if (rawGrp.includes('muatan lokal') || rawGrp.includes('mulok')) {
           groupCategory = 'Muatan Lokal';
-        } else if (
-          rawGrp.includes('pilihan') ||
-          rawGrp.includes('peminatan') ||
-          mapelNameLower.includes('pilihan') ||
-          mapelNameLower.includes('koding') ||
-          mapelNameLower.includes('kecerdasan artifisial') ||
-          mapelNameLower.includes('kecerdasan buatan') ||
-          mapelNameLower.includes('ai') ||
-          mapelNameLower.includes('robotika')
-        ) {
+        } else if (rawGrp.includes('pilihan') || rawGrp.includes('peminatan')) {
           groupCategory = 'Mata Pelajaran Pilihan';
-        } else if (
-          rawGrp.includes('kejuruan') ||
-          (jenjang === 'SMK' && (
-            mapelNameLower.includes('matematika') ||
-            mapelNameLower.includes('inggris') ||
-            mapelNameLower.includes('informatika') ||
-            mapelNameLower.includes('ipas') ||
-            (mapelNameLower.includes('alam') && mapelNameLower.includes('sosial')) ||
-            mapelNameLower.includes('dasar') ||
-            mapelNameLower.includes('program keahlian') ||
-            mapelNameLower.includes('konsentrasi') ||
-            mapelNameLower.includes('kejuruan') ||
-            mapelNameLower.includes('pkk') ||
-            mapelNameLower.includes('kewirausahaan') ||
-            mapelNameLower.includes('pkl') ||
-            mapelNameLower.includes('praktik kerja') ||
-            mapelNameLower.includes('gtm') ||
-            mapelNameLower.includes('pdtm') ||
-            mapelNameLower.includes('dptm') ||
-            mapelNameLower.includes('gambar teknik') ||
-            mapelNameLower.includes('pemesinan') ||
-            mapelNameLower.includes('otomotif') ||
-            mapelNameLower.includes('pengelasan') ||
-            mapelNameLower.includes('elektronika')
-          ))
-        ) {
+        } else if (rawGrp.includes('kejuruan')) {
           groupCategory = 'Mata Pelajaran Kejuruan';
-        } else {
+        } else if (rawGrp.includes('umum') || rawGrp.includes('nasional')) {
           groupCategory = 'Mata Pelajaran Umum';
+        } else {
+          // Fallback jika belum diset eksplisit
+          if (
+            mapelNameLower.includes('sunda') ||
+            mapelNameLower.includes('jawa') ||
+            mapelNameLower.includes('daerah')
+          ) {
+            groupCategory = 'Muatan Lokal';
+          } else if (
+            mapelNameLower.includes('pilihan') ||
+            mapelNameLower.includes('koding') ||
+            mapelNameLower.includes('kecerdasan artifisial') ||
+            mapelNameLower.includes('kecerdasan buatan') ||
+            mapelNameLower.includes('ai') ||
+            mapelNameLower.includes('robotika')
+          ) {
+            groupCategory = 'Mata Pelajaran Pilihan';
+          } else if (
+            jenjang === 'SMK' && (
+              mapelNameLower.includes('matematika') ||
+              mapelNameLower.includes('inggris') ||
+              mapelNameLower.includes('informatika') ||
+              mapelNameLower.includes('ipas') ||
+              (mapelNameLower.includes('alam') && mapelNameLower.includes('sosial')) ||
+              mapelNameLower.includes('dasar') ||
+              mapelNameLower.includes('program keahlian') ||
+              mapelNameLower.includes('konsentrasi') ||
+              mapelNameLower.includes('kejuruan') ||
+              mapelNameLower.includes('pkk') ||
+              mapelNameLower.includes('kewirausahaan') ||
+              mapelNameLower.includes('pkl') ||
+              mapelNameLower.includes('praktik kerja') ||
+              mapelNameLower.includes('gtm') ||
+              mapelNameLower.includes('pdtm') ||
+              mapelNameLower.includes('dptm') ||
+              mapelNameLower.includes('gambar teknik') ||
+              mapelNameLower.includes('pemesinan') ||
+              mapelNameLower.includes('otomotif') ||
+              mapelNameLower.includes('pengelasan') ||
+              mapelNameLower.includes('elektronika')
+            )
+          ) {
+            groupCategory = 'Mata Pelajaran Kejuruan';
+          } else {
+            groupCategory = 'Mata Pelajaran Umum';
+          }
         }
       }
 
@@ -374,6 +381,9 @@ export const renderStudentRaporPages = (
       const displayTitle = `${letterPrefix}${groupCategory}`;
 
       items.sort((a, b) => {
+        const uA = typeof a.urutan === 'number' && a.urutan > 0 ? a.urutan : 999;
+        const uB = typeof b.urutan === 'number' && b.urutan > 0 ? b.urutan : 999;
+        if (uA !== uB) return uA - uB;
         const pA = getMapelCanonicalPriority(a.mapel_name || '', groupCategory, jenjang, a.urutan);
         const pB = getMapelCanonicalPriority(b.mapel_name || '', groupCategory, jenjang, b.urutan);
         if (pA !== pB) return pA - pB;

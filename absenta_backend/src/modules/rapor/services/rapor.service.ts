@@ -287,6 +287,7 @@ export class RaporService {
     // 6a. Muat SELURUH mapel MURNI dari Struktur Kurikulum resmi rombel ini
     if (strukturList.length > 0) {
       strukturList.forEach((sk) => {
+        if ((sk as any).is_active === false) return; // Hormati pengaturan rapor: sembunyikan jika dinonaktifkan
         if (sk.Mapel) {
           const grp = sk.kelompok || sk.Mapel.kelompok_mapel || 'Mata Pelajaran Umum';
           registerOrGetMapel(
@@ -505,9 +506,9 @@ export class RaporService {
       }));
     }
 
-    const finalAkademikList = Object.values(mapelGrades).sort(
-      (a, b) => (a.urutan ?? 999) - (b.urutan ?? 999)
-    );
+    const finalAkademikList = Object.values(mapelGrades)
+      .filter((m: any) => m.is_active !== false)
+      .sort((a, b) => (a.urutan ?? 999) - (b.urutan ?? 999));
 
     return {
       ekskul: studentEkskuls,

@@ -221,12 +221,12 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
     ? Boolean(settingsData.tampilkan_kokurikuler)
     : (raporData?.tampilkan_kokurikuler !== undefined ? Boolean(raporData.tampilkan_kokurikuler) : startYear >= 2025);
 
-  // Grouping Mata Pelajaran Sesuai Standar Kurikulum Merdeka
-  const listNilai: any[] = raporData?.nilai_akademik || [];
+  // Grouping Mata Pelajaran Sesuai Standar Kurikulum Merdeka & Pengaturan Rapor
+  const listNilai: any[] = (raporData?.nilai_akademik || []).filter((m: any) => m.is_active !== false);
   const groupedMapel = new Map<string, any[]>();
 
   listNilai.forEach((m: any) => {
-    const rawGrp = (m.kelompok_mapel || '').toLowerCase();
+    const rawGrp = (m.kelompok_mapel || '').toLowerCase().trim();
     const mapelNameLower = (m.mapel_name || '').toLowerCase();
     let groupCategory = 'Kelompok Umum';
 
@@ -252,25 +252,37 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
         ));
       groupCategory = isKejuruanLegacy ? 'Kelompok Kejuruan' : 'Kelompok Umum';
     } else {
-      if (rawGrp.includes('muatan lokal') || rawGrp.includes('mulok') || mapelNameLower.includes('sunda') || mapelNameLower.includes('daerah')) {
+      // Prioritas 1: Kelompok resmi dari Pengaturan Rapor / Struktur Kurikulum
+      if (rawGrp.includes('muatan lokal') || rawGrp.includes('mulok')) {
         groupCategory = 'Muatan Lokal';
-      } else if (rawGrp.includes('pilihan') || rawGrp.includes('peminatan') || mapelNameLower.includes('pilihan')) {
+      } else if (rawGrp.includes('pilihan') || rawGrp.includes('peminatan')) {
         groupCategory = 'Mata Pelajaran Pilihan';
-      } else if (rawGrp.includes('kejuruan') || (isJenjangSmk && (
-        mapelNameLower.includes('matematika') ||
-        mapelNameLower.includes('inggris') ||
-        mapelNameLower.includes('informatika') ||
-        mapelNameLower.includes('ipas') ||
-        mapelNameLower.includes('dasar') ||
-        mapelNameLower.includes('konsentrasi') ||
-        mapelNameLower.includes('kejuruan') ||
-        mapelNameLower.includes('pkk') ||
-        mapelNameLower.includes('kewirausahaan') ||
-        mapelNameLower.includes('pkl')
-      ))) {
+      } else if (rawGrp.includes('kejuruan')) {
         groupCategory = 'Mata Pelajaran Kejuruan';
-      } else {
+      } else if (rawGrp.includes('umum') || rawGrp.includes('nasional')) {
         groupCategory = 'Mata Pelajaran Umum';
+      } else {
+        // Fallback jika kelompok_mapel kosong
+        if (mapelNameLower.includes('sunda') || mapelNameLower.includes('daerah')) {
+          groupCategory = 'Muatan Lokal';
+        } else if (mapelNameLower.includes('pilihan')) {
+          groupCategory = 'Mata Pelajaran Pilihan';
+        } else if (isJenjangSmk && (
+          mapelNameLower.includes('matematika') ||
+          mapelNameLower.includes('inggris') ||
+          mapelNameLower.includes('informatika') ||
+          mapelNameLower.includes('ipas') ||
+          mapelNameLower.includes('dasar') ||
+          mapelNameLower.includes('konsentrasi') ||
+          mapelNameLower.includes('kejuruan') ||
+          mapelNameLower.includes('pkk') ||
+          mapelNameLower.includes('kewirausahaan') ||
+          mapelNameLower.includes('pkl')
+        )) {
+          groupCategory = 'Mata Pelajaran Kejuruan';
+        } else {
+          groupCategory = 'Mata Pelajaran Umum';
+        }
       }
     }
 
@@ -503,6 +515,9 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
                     {activeGroups.map((grpName, grpIdx) => {
                       const items = groupedMapel.get(grpName) || [];
                       items.sort((a, b) => {
+                        const uA = typeof a.urutan === 'number' && a.urutan > 0 ? a.urutan : 999;
+                        const uB = typeof b.urutan === 'number' && b.urutan > 0 ? b.urutan : 999;
+                        if (uA !== uB) return uA - uB;
                         const pA = getMapelCanonicalPriority(a.mapel_name || '', grpName, isJenjangSmk ? 'SMK' : 'SMA', a.urutan);
                         const pB = getMapelCanonicalPriority(b.mapel_name || '', grpName, isJenjangSmk ? 'SMK' : 'SMA', b.urutan);
                         if (pA !== pB) return pA - pB;
