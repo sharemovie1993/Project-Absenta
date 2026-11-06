@@ -469,7 +469,7 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
                       <td className="py-[0.7mm] text-center align-top">:</td>
                       <td className="py-[0.7mm] text-left align-top">{effectiveTahunPelajaranNama}</td>
                     </tr>
-                    {isJenjangSmk && (
+                    {isJenjangSmk && !isLegacyEra && (
                       <>
                         <tr>
                           <td colSpan={6} className="py-[0.5mm]" />

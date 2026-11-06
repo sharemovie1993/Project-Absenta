@@ -81,6 +81,10 @@ export const renderStudentRaporPages = (
   const displaySemester = effectiveSemesterNama || (isGenap ? 'Genap' : 'Ganjil');
   const displayTahunPelajaran = effectiveTahunPelajaranNama || '2025 / 2026';
 
+  const matchYear = String(displayTahunPelajaran || '').match(/^(\d{4})/);
+  const startYear = matchYear ? parseInt(matchYear[1], 10) : 2025;
+  const isLegacyEra = startYear < 2025;
+
   const tingkatNum = Number(siswa.tingkat || 10);
   const jenjangRaw = String(sekolah?.jenjang || tenantInfo?.jenjang || siswa?.jenjang || '').toUpperCase();
 
@@ -151,29 +155,29 @@ export const renderStudentRaporPages = (
     startDoc.text(alamatLines, leftColX + colValOffset, leftY);
     leftY += Math.max(alamatLines.length * 4.0, 4.2);
 
-    // Spacing/Enter before Bidang Keahlian (Per standard e-Rapor & user request)
-    leftY += 3.5;
+    // Left column: Vocational/Peminatan fields (Format legacy 2024/2025 ke belakang lebih sederhana tanpa bidang/program/konsentrasi)
+    if (!isLegacyEra) {
+      leftY += 3.5;
+      const vocationalInfo: Array<[string, string]> = [];
+      if (jenjang === 'SMK') {
+        vocationalInfo.push(
+          ['Bidang Keahlian', siswa.bidang_keahlian || 'Teknologi Manufaktur dan Rekayasa'],
+          ['Program Keahlian', siswa.program_keahlian || 'Teknik Elektronika'],
+          ['Konsentrasi Keahlian', siswa.konsentrasi_keahlian || 'Teknik Otomasi Industri']
+        );
+      } else if (jenjang === 'SMA' && siswa.peminatan) {
+        vocationalInfo.push(['Peminatan / Kelompok', siswa.peminatan]);
+      }
 
-    // Left column: Vocational/Peminatan fields
-    const vocationalInfo: Array<[string, string]> = [];
-    if (jenjang === 'SMK') {
-      vocationalInfo.push(
-        ['Bidang Keahlian', siswa.bidang_keahlian || 'Teknologi Manufaktur dan Rekayasa'],
-        ['Program Keahlian', siswa.program_keahlian || 'Teknik Elektronika'],
-        ['Konsentrasi Keahlian', siswa.konsentrasi_keahlian || 'Teknik Otomasi Industri']
-      );
-    } else if (jenjang === 'SMA' && siswa.peminatan) {
-      vocationalInfo.push(['Peminatan / Kelompok', siswa.peminatan]);
+      vocationalInfo.forEach(([label, value]) => {
+        startDoc.setFont(font, 'normal');
+        startDoc.text(label, leftColX, leftY);
+        startDoc.text(':', leftColX + colValOffset - 2, leftY);
+        const valLines = startDoc.splitTextToSize(String(value), maxLeftValWidth);
+        startDoc.text(valLines, leftColX + colValOffset, leftY);
+        leftY += Math.max(valLines.length * 4.0, 4.2);
+      });
     }
-
-    vocationalInfo.forEach(([label, value]) => {
-      startDoc.setFont(font, 'normal');
-      startDoc.text(label, leftColX, leftY);
-      startDoc.text(':', leftColX + colValOffset - 2, leftY);
-      const valLines = startDoc.splitTextToSize(String(value), maxLeftValWidth);
-      startDoc.text(valLines, leftColX + colValOffset, leftY);
-      leftY += Math.max(valLines.length * 4.0, 4.2);
-    });
 
     // Right column metadata
     const rightInfo = [
@@ -252,10 +256,6 @@ export const renderStudentRaporPages = (
     });
 
     const dedupedList = Array.from(dedupedMapelMap.values());
-
-    const matchYear = String(displayTahunPelajaran || '').match(/^(\d{4})/);
-    const startYear = matchYear ? parseInt(matchYear[1], 10) : 2025;
-    const isLegacyEra = startYear < 2025;
 
     const groupedMapel = new Map<string, any[]>();
     dedupedList.forEach((n: any) => {
