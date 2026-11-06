@@ -1,12 +1,14 @@
-import React, { memo, useState, useRef, useEffect } from 'react';
-import { Copy, Trash2, Save, Download, FileSpreadsheet, Upload, ShieldAlert, Lock, Eye, ChevronDown, Printer } from 'lucide-react';
+import React, { memo, useState, useRef, useEffect, useMemo } from 'react';
+import { Copy, Trash2, Save, Download, FileSpreadsheet, Upload, ShieldAlert, Lock, Eye, ChevronDown, Printer, FileText, Zap } from 'lucide-react';
 import { Card } from '../../ui/Card';
 import { Button } from '../../ui/Button';
 import { StudentScoreItem } from '../../../types/inputNilai.types';
+import { cn } from '@/lib/utils';
 
 interface ScoreGridTableProps {
   scores: StudentScoreItem[];
   entryMode: 'sumatif' | 'kategori';
+  sumberNilaiMode?: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL';
   subjectName?: string;
   className?: string;
   teacherName?: string;
@@ -32,6 +34,7 @@ interface ScoreGridTableProps {
 export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
   scores,
   entryMode,
+  sumberNilaiMode,
   subjectName,
   className: rombelName,
   teacherName,
@@ -55,6 +58,21 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
 }) => {
   const [isExcelMenuOpen, setIsExcelMenuOpen] = useState(false);
   const excelMenuRef = useRef<HTMLDivElement>(null);
+
+  // Deteksi mode perhitungan nilai rapor (Otomatis vs As-Is Nilai Jadi)
+  const isAsIsScoreMode = useMemo(() => {
+    if (sumberNilaiMode) return sumberNilaiMode === 'MURNI_CP_MANUAL';
+    if (!scores || scores.length === 0) return false;
+
+    // Deteksi cerdas: apakah baris nilai didominasi nilai rapor tersimpan langsung (As-Is tanpa sumatif)
+    const asIsCount = scores.filter((sc) => {
+      const hasSumatif = Boolean(sc.sumatif_1 || sc.sumatif_2 || sc.sumatif_3 || sc.sumatif_akhir);
+      const hasFinal = sc.nilai_rapor_final !== undefined && sc.nilai_rapor_final !== null && sc.nilai_rapor_final !== '';
+      return !hasSumatif && hasFinal;
+    }).length;
+
+    return asIsCount > scores.length * 0.3;
+  }, [sumberNilaiMode, scores]);
 
   // Close Excel dropdown on click outside
   useEffect(() => {
@@ -84,6 +102,23 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
             <span className="text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 px-2 py-0.5 rounded-md">
               {scores.length} Siswa
             </span>
+            {isAsIsScoreMode ? (
+              <span
+                title="Nilai rapor menggunakan nilai jadi dari dokumen cetak fisik asli (tanpa dihitung ulang rumus)"
+                className="inline-flex items-center gap-1 text-[10px] font-bold bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded-md cursor-help transition-all shadow-2xs"
+              >
+                <FileText size={11} className="text-amber-600 dark:text-amber-400" />
+                <span>Mode: Salin Nilai Jadi (As-Is)</span>
+              </span>
+            ) : (
+              <span
+                title="Nilai rapor dikalkulasi otomatis dari rangkaian asesmen materi (Sumatif 1, 2, 3 guru)"
+                className="inline-flex items-center gap-1 text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 rounded-md cursor-help transition-all shadow-2xs"
+              >
+                <Zap size={11} className="text-indigo-600 dark:text-indigo-400" />
+                <span>Mode: Hitung Otomatis (Rumus)</span>
+              </span>
+            )}
             {isReadOnly && (
               <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded-md">
                 <Lock size={11} className="text-amber-600 dark:text-amber-400" />
@@ -244,6 +279,18 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
         </div>
       )}
 
+      {isAsIsScoreMode && !isReadOnly && (
+        <div className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 flex items-center gap-2.5 text-xs text-amber-900 dark:text-amber-200 animate-in fade-in duration-200 shadow-2xs">
+          <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+          <div className="leading-relaxed">
+            <span className="font-bold mr-1">Mode Nilai Jadi (As-Is):</span>
+            <span>
+              Nilai rapor pada lembar ini menggunakan angka rapor fisik cetak asli (tanpa dihitung ulang oleh rumus sumatif). Menjamin keaslian data arsip/alumni.
+            </span>
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="text-center py-20 text-slate-400 text-xs italic">Menarik daftar siswa rombel...</div>
       ) : scores.length === 0 ? (
@@ -262,7 +309,19 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
                     <th className="py-3 px-2 text-center w-16">Sum 3</th>
                     <th className="py-3 px-2 text-center w-20 bg-slate-100 dark:bg-slate-800/80">Rata2 Sum</th>
                     <th className="py-3 px-2 text-center w-20">Sum Akhir</th>
-                    <th className="py-3 px-2 text-center w-20 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300">Nilai Rapor</th>
+                    <th className={cn(
+                      "py-3 px-2 text-center w-24 tracking-normal transition-colors",
+                      isAsIsScoreMode
+                        ? "bg-amber-50/90 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border-x border-amber-200/60 dark:border-amber-800/60"
+                        : "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300"
+                    )}>
+                      <div className="flex flex-col items-center">
+                        <span>Nilai Rapor</span>
+                        <span className="text-[9px] font-bold lowercase tracking-normal text-slate-400">
+                          {isAsIsScoreMode ? '(As-Is Cetak)' : '(Hasil Rumus)'}
+                        </span>
+                      </div>
+                    </th>
                     <th className="py-3 px-3">
                       <div className="flex items-center justify-between gap-2">
                         <span>Capaian Kompetensi (CP)</span>
@@ -316,6 +375,7 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
                 // Utamakan nilai yang tersimpan di DB jika baris sumatif kosong (misal hasil import/staging murni CP)
                 const persistedFinal = sc.nilai_rapor_final ?? sc.nilai;
                 const hasPersistedFinal = persistedFinal !== undefined && persistedFinal !== null && persistedFinal !== '';
+                const isRowAsIs = (cnt === 0 && !hasSAkhir && hasPersistedFinal) || isAsIsScoreMode;
                 const finalGrade = (cnt === 0 && !hasSAkhir && hasPersistedFinal)
                   ? Math.round(Number(persistedFinal))
                   : calculatedFinal;
@@ -409,8 +469,30 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
                             placeholder={isReadOnly ? '-' : '0-100'}
                           />
                         </td>
-                        <td className="py-2 px-2 text-center font-mono font-black text-sm bg-indigo-50/50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300">
-                          {finalGrade}
+                        <td className={cn(
+                          "py-2 px-2 text-center font-mono font-black text-sm transition-colors",
+                          isRowAsIs
+                            ? "bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200"
+                            : "bg-indigo-50/50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300"
+                        )}>
+                          <div className="flex items-center justify-center gap-1">
+                            <span>{finalGrade}</span>
+                            {isRowAsIs ? (
+                              <span
+                                title="Nilai rapor disalin murni dari dokumen cetak fisik asli (tanpa dihitung ulang rumus)"
+                                className="text-[8px] font-extrabold px-1 py-0.5 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 cursor-help"
+                              >
+                                As-Is
+                              </span>
+                            ) : (
+                              <span
+                                title="Nilai rapor dihitung otomatis dari nilai sumatif materi"
+                                className="text-[8px] font-bold px-1 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 cursor-help"
+                              >
+                                fx
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-1.5 px-3">
                           <div className="flex items-center gap-1">
