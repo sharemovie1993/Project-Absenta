@@ -463,7 +463,7 @@ export class StrukturKurikulumService {
       throw new Error('tahun_pelajaran_id wajib diisi');
     }
 
-    const records = await prisma.strukturKurikulum.findMany({
+    let records = await prisma.strukturKurikulum.findMany({
       where: {
         tenant_id: tenantId,
         tahun_pelajaran_id,
@@ -472,8 +472,63 @@ export class StrukturKurikulumService {
       include: { Mapel: true },
     });
 
+    // Jika belum ada struktur di periode ini, otomatis generate dari data tahun lain atau master mapel
     if (records.length === 0) {
-      return { count: 0, message: 'Tidak ada struktur kurikulum yang ditemukan untuk periode ini' };
+      const sourceFromOtherYears = await prisma.strukturKurikulum.findMany({
+        where: {
+          tenant_id: tenantId,
+          ...(tingkat ? { tingkat: Number(tingkat) } : {}),
+        },
+        include: { Mapel: true },
+        distinct: ['mapel_id', 'tingkat'],
+      });
+
+      if (sourceFromOtherYears.length > 0) {
+        await prisma.strukturKurikulum.createMany({
+          data: sourceFromOtherYears.map(src => ({
+            tenant_id: tenantId,
+            mapel_id: src.mapel_id,
+            tahun_pelajaran_id,
+            tingkat: src.tingkat,
+            jurusan_id: src.jurusan_id,
+            jp_per_minggu: src.jp_per_minggu || 2,
+            kelompok: src.kelompok || 'Mata Pelajaran Umum',
+            urutan: (src as any).urutan ?? 100,
+            is_active: true,
+          })),
+        });
+      } else {
+        const allMapels = await prisma.mapel.findMany({
+          where: { tenant_id: tenantId },
+        });
+
+        if (allMapels.length === 0) {
+          return { count: 0, message: 'Belum ada mata pelajaran terdaftar di sekolah ini' };
+        }
+
+        const targetTingkat = tingkat ? Number(tingkat) : 10;
+        await prisma.strukturKurikulum.createMany({
+          data: allMapels.map(m => ({
+            tenant_id: tenantId,
+            mapel_id: m.id,
+            tahun_pelajaran_id,
+            tingkat: targetTingkat,
+            jp_per_minggu: 2,
+            kelompok: m.kelompok_mapel || 'Mata Pelajaran Umum',
+            urutan: 100,
+            is_active: true,
+          })),
+        });
+      }
+
+      records = await prisma.strukturKurikulum.findMany({
+        where: {
+          tenant_id: tenantId,
+          tahun_pelajaran_id,
+          ...(tingkat ? { tingkat: Number(tingkat) } : {}),
+        },
+        include: { Mapel: true },
+      });
     }
 
     const updates = records.map(rec => {
