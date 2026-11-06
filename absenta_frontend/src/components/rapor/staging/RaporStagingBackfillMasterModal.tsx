@@ -638,12 +638,6 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
                                 </Badge>
                               )}
                             </td>
-                              ) : (
-                                <Badge variant="outline" className="text-[10px] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200">
-                                  Perlu Cek
-                                </Badge>
-                              )}
-                            </td>
                           </tr>
                         );
                       })}
