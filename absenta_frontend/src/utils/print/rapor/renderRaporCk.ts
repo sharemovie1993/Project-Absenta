@@ -31,15 +31,23 @@ export const renderStudentRaporPages = (
   const font = fontFamily || 'Helvetica';
   const rawSiswa = data?.siswa || {};
   const normalizedStudent = normalizeStudentIdentity(rawSiswa);
+
+  const resolveNonDash = (...values: Array<string | undefined | null>): string => {
+    for (const v of values) {
+      if (v && v.trim() !== '' && v.trim() !== '-') return v.trim();
+    }
+    return '-';
+  };
+
   const siswa = {
     ...rawSiswa,
     nama_siswa: normalizedStudent.nama,
     nis: normalizedStudent.nis,
     nisn: normalizedStudent.nisn,
-    kelas: normalizedStudent.namaKelas || rawSiswa.kelas,
-    bidang_keahlian: normalizedStudent.bidangKeahlian || rawSiswa.bidang_keahlian,
-    program_keahlian: normalizedStudent.programKeahlian || rawSiswa.program_keahlian,
-    konsentrasi_keahlian: normalizedStudent.konsentrasiKeahlian || normalizedStudent.namaJurusan || rawSiswa.konsentrasi_keahlian,
+    kelas: resolveNonDash(normalizedStudent.namaKelas, rawSiswa.kelas),
+    bidang_keahlian: resolveNonDash(normalizedStudent.bidangKeahlian, rawSiswa.bidang_keahlian, tenantInfo?.bidang_keahlian, 'Teknologi Manufaktur dan Rekayasa'),
+    program_keahlian: resolveNonDash(normalizedStudent.programKeahlian, rawSiswa.program_keahlian, tenantInfo?.program_keahlian, 'Teknik Elektronika'),
+    konsentrasi_keahlian: resolveNonDash(normalizedStudent.konsentrasiKeahlian, normalizedStudent.namaJurusan, rawSiswa.konsentrasi_keahlian),
   };
   const effectiveSettings = raporSettings || data?.rapor_settings;
 

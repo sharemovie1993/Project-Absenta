@@ -300,12 +300,18 @@ export function normalizeStudentIdentity(raw: any): StudentIdentity {
 
   const rawProgNama = progObj?.nama || progObj?.nama_program_keahlian || progStr || '';
 
+  const progBidangStr = typeof progObj?.bidang_keahlian === 'string'
+    ? progObj.bidang_keahlian
+    : (typeof progObj?.bidangKeahlian === 'string' ? progObj.bidangKeahlian : '');
+
   const bidangViaProg = progObj?.BidangKeahlian || progObj?.bidangKeahlian;
   const bidangDirect = raw.BidangKeahlian || raw.bidang_keahlian;
   const bidangObj = (typeof bidangViaProg === 'object' && bidangViaProg !== null)
     ? bidangViaProg
     : (typeof bidangDirect === 'object' && bidangDirect !== null ? bidangDirect : null);
-  const bidangStr = typeof raw.bidang_keahlian === 'string' ? raw.bidang_keahlian : '';
+  const bidangStr = typeof raw.bidang_keahlian === 'string'
+    ? raw.bidang_keahlian
+    : (progBidangStr || '');
 
   const rawBidangNama = bidangObj?.nama || bidangObj?.bidang_keahlian || bidangStr || '-';
 

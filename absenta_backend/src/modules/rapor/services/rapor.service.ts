@@ -74,7 +74,7 @@ export class RaporService {
     const siswa = await prisma.siswa.findFirst({
       where: { id: filter.siswa_id, tenant_id: tenantId },
       include: {
-        Kelas: { include: { Jurusan: true } },
+        Kelas: { include: { Jurusan: { include: { ProgramKeahlian: true } } } },
       },
     });
 
@@ -91,7 +91,7 @@ export class RaporService {
           semester_id: filter.semester_id,
         },
         include: {
-          kelas: { include: { Jurusan: true } },
+          kelas: { include: { Jurusan: { include: { ProgramKeahlian: true } } } },
         },
       }),
       prisma.siswaAkademik.findFirst({
@@ -136,7 +136,7 @@ export class RaporService {
     if (!effectiveKelas && raporSummary?.kelas_id) {
       const histKelas = await prisma.kelas.findFirst({
         where: { id: raporSummary.kelas_id, tenant_id: tenantId },
-        include: { Jurusan: true },
+        include: { Jurusan: { include: { ProgramKeahlian: true } } },
       });
       if (histKelas) effectiveKelas = histKelas;
     }
@@ -540,9 +540,21 @@ export class RaporService {
         nama_wali: (siswa as any).nama_wali || null,
         pekerjaan_wali: (siswa as any).pekerjaan_wali || null,
         alamat_wali: (siswa as any).alamat_wali || null,
-        bidang_keahlian: (effectiveKelas as any)?.Jurusan?.bidang_keahlian || (siswa as any).bidang_keahlian || null,
-        program_keahlian: (effectiveKelas as any)?.Jurusan?.program_keahlian || (siswa as any).program_keahlian || null,
-        konsentrasi_keahlian: (effectiveKelas as any)?.Jurusan?.nama_jurusan || (siswa as any).konsentrasi_keahlian || null,
+        bidang_keahlian:
+          (effectiveKelas as any)?.Jurusan?.ProgramKeahlian?.bidang_keahlian ||
+          (effectiveKelas as any)?.Jurusan?.bidang_keahlian ||
+          (siswa as any).bidang_keahlian ||
+          null,
+        program_keahlian:
+          (effectiveKelas as any)?.Jurusan?.ProgramKeahlian?.nama ||
+          (effectiveKelas as any)?.Jurusan?.program_keahlian ||
+          (siswa as any).program_keahlian ||
+          null,
+        konsentrasi_keahlian:
+          (effectiveKelas as any)?.Jurusan?.nama ||
+          (effectiveKelas as any)?.Jurusan?.nama_jurusan ||
+          (siswa as any).konsentrasi_keahlian ||
+          null,
         kelas_awal: (saAwal as any)?.kelas?.nama_kelas || effectiveKelas.nama_kelas || null,
       },
       absensi: {

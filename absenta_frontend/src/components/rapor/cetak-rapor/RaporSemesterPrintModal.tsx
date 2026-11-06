@@ -157,11 +157,40 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
   const namaSekolah = (rawSekolah?.nama || tenantInfo?.name || 'SEKOLAH').toUpperCase();
   const alamatSekolah = rawSekolah?.alamat || tenantInfo?.address || '-';
 
-  const bidangKeahlian = normalizedStudent.bidangKeahlian || tenantInfo?.bidang_keahlian || 'Teknologi Manufaktur dan Rekayasa';
-  const programKeahlian = normalizedStudent.programKeahlian || tenantInfo?.program_keahlian || 'Teknik Elektronika';
-  const konsentrasiKeahlian = normalizedStudent.konsentrasiKeahlian || normalizedStudent.namaJurusan || programKeahlian;
+  const resolveNonDash = (...values: Array<string | undefined | null>): string => {
+    for (const v of values) {
+      if (v && v.trim() !== '' && v.trim() !== '-') return v.trim();
+    }
+    return '-';
+  };
 
-  const kelas = normalizedStudent.namaKelas || selectedStudent.nama_kelas || '-';
+  const rawSiswa = raporData?.siswa || selectedStudent || {};
+
+  const bidangKeahlian = resolveNonDash(
+    normalizedStudent.bidangKeahlian,
+    (rawSiswa as any)?.bidang_keahlian,
+    tenantInfo?.bidang_keahlian,
+    'Teknologi Manufaktur dan Rekayasa'
+  );
+  const programKeahlian = resolveNonDash(
+    normalizedStudent.programKeahlian,
+    (rawSiswa as any)?.program_keahlian,
+    tenantInfo?.program_keahlian,
+    'Teknik Elektronika'
+  );
+  const konsentrasiKeahlian = resolveNonDash(
+    normalizedStudent.konsentrasiKeahlian,
+    normalizedStudent.namaJurusan,
+    (rawSiswa as any)?.konsentrasi_keahlian,
+    programKeahlian
+  );
+
+  const kelas = resolveNonDash(
+    normalizedStudent.namaKelas,
+    (rawSiswa as any)?.kelas,
+    (rawSiswa as any)?.nama_kelas,
+    selectedStudent?.nama_kelas
+  );
   const tingkatNum = Number(normalizedStudent.tingkat || 10);
   const fase = tingkatNum <= 10 ? 'E' : 'F';
 
