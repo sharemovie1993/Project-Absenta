@@ -101,7 +101,7 @@ export const kurikulumApi = {
     const response = await api.put('/kurikulum/struktur/order', { items });
     return response.data;
   },
-  applyKemendikbudStandard: async (data: { tahun_pelajaran_id: string; tingkat?: number }) => {
+  applyKemendikbudStandard: async (data: { tahun_pelajaran_id: string; tingkat?: number; preset?: 'modern' | 'legacy' }) => {
     const response = await api.post('/kurikulum/struktur/apply-standard', data);
     return response.data;
   },

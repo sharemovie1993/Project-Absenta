@@ -456,12 +456,19 @@ export class StrukturKurikulumService {
 
   static async applyKemendikbudStandard(
     tenantId: string,
-    payload: { tahun_pelajaran_id: string; tingkat?: number }
+    payload: { tahun_pelajaran_id: string; tingkat?: number; preset?: 'modern' | 'legacy' }
   ) {
-    const { tahun_pelajaran_id, tingkat } = payload;
+    const { tahun_pelajaran_id, tingkat, preset } = payload;
     if (!tahun_pelajaran_id) {
       throw new Error('tahun_pelajaran_id wajib diisi');
     }
+
+    const tp = await prisma.tahunPelajaran.findFirst({
+      where: { id: tahun_pelajaran_id, tenant_id: tenantId },
+    });
+    const matchYear = String(tp?.tahun || '').match(/^(\d{4})/);
+    const startYear = matchYear ? parseInt(matchYear[1], 10) : 2025;
+    const isLegacy = preset === 'legacy' || (preset !== 'modern' && startYear < 2025);
 
     let records = await prisma.strukturKurikulum.findMany({
       where: {
@@ -492,7 +499,7 @@ export class StrukturKurikulumService {
             tingkat: src.tingkat,
             jurusan_id: src.jurusan_id,
             jp_per_minggu: src.jp_per_minggu || 2,
-            kelompok: src.kelompok || 'Mata Pelajaran Umum',
+            kelompok: src.kelompok || (isLegacy ? 'Kelompok Umum' : 'Mata Pelajaran Umum'),
             urutan: (src as any).urutan ?? 100,
             is_active: true,
           })),
@@ -514,7 +521,7 @@ export class StrukturKurikulumService {
             tahun_pelajaran_id,
             tingkat: targetTingkat,
             jp_per_minggu: 2,
-            kelompok: m.kelompok_mapel || 'Mata Pelajaran Umum',
+            kelompok: m.kelompok_mapel || (isLegacy ? 'Kelompok Umum' : 'Mata Pelajaran Umum'),
             urutan: 100,
             is_active: true,
           })),
@@ -536,40 +543,85 @@ export class StrukturKurikulumService {
       const n = mapelName.toLowerCase().trim();
       const g = (rec.kelompok || rec.Mapel?.kelompok_mapel || '').toLowerCase().trim();
 
-      let targetKelompok = 'Mata Pelajaran Umum';
+      let targetKelompok = isLegacy ? 'Kelompok Umum' : 'Mata Pelajaran Umum';
       let priority = 90;
 
-      if (g.includes('muatan') || g.includes('lokal') || n.includes('sunda') || n.includes('jawa') || n.includes('daerah')) {
-        targetKelompok = 'Muatan Lokal';
-        priority = 300;
-      } else if (n.includes('agama') || n.includes('budi pekerti') || n.includes('pai') || n.includes('pak')) {
-        priority = 10;
-      } else if (n.includes('pancasila') || n.includes('ppkn') || n.includes('kewarganegaraan')) {
-        priority = 20;
-      } else if (n.includes('bahasa indonesia') || n === 'indonesia') {
-        priority = 30;
-      } else if (n.includes('jasmani') || n.includes('olahraga') || n.includes('pjok') || n.includes('penjas')) {
-        priority = 40;
-      } else if (n.includes('sejarah')) {
-        priority = 50;
-      } else if (n.includes('seni') || n.includes('budaya') || n.includes('prakarya')) {
-        priority = 60;
-      } else if (n.includes('bimbingan konseling') || n.includes('bk')) {
-        priority = 70;
-      } else if (g.includes('pilihan') || n.includes('pilihan')) {
-        targetKelompok = 'Mata Pelajaran Pilihan';
-        priority = 200;
-      } else if (g.includes('kejuruan') || n.includes('matematika') || n.includes('inggris') || n.includes('informatika') || n.includes('ipas') || n.includes('dasar') || n.includes('konsentrasi') || n.includes('kk ') || n.includes('pkk') || n.includes('pkl')) {
-        targetKelompok = 'Mata Pelajaran Kejuruan';
-        if (n.includes('matematika')) priority = 110;
-        else if (n.includes('inggris')) priority = 120;
-        else if (n.includes('informatika')) priority = 130;
-        else if (n.includes('ipas') || (n.includes('alam') && n.includes('sosial'))) priority = 140;
-        else if (n.includes('dasar') || n.includes('ddpk')) priority = 150;
-        else if (n.includes('konsentrasi') || n.includes('kk')) priority = 160;
-        else if (n.includes('kreatif') || n.includes('pkk') || n.includes('kewirausahaan')) priority = 170;
-        else if (n.includes('pkl') || n.includes('praktik kerja')) priority = 180;
-        else priority = 190;
+      if (isLegacy) {
+        // --- ERA 2024/2025 KE BELAKANG: 2 KELOMPOK (KELOMPOK UMUM & KELOMPOK KEJURUAN) ---
+        const isKejuruanLegacy =
+          g.includes('kejuruan') ||
+          g.includes('pilihan') ||
+          n.includes('matematika') ||
+          n.includes('inggris') ||
+          n.includes('informatika') ||
+          n.includes('ipas') ||
+          (n.includes('alam') && n.includes('sosial')) ||
+          n.includes('dasar') ||
+          n.includes('konsentrasi') ||
+          n.includes('kk ') ||
+          n.includes('pkk') ||
+          n.includes('kewirausahaan') ||
+          n.includes('pkl') ||
+          n.includes('pilihan');
+
+        if (isKejuruanLegacy) {
+          targetKelompok = 'Kelompok Kejuruan';
+          if (n.includes('matematika')) priority = 110;
+          else if (n.includes('inggris')) priority = 120;
+          else if (n.includes('informatika')) priority = 130;
+          else if (n.includes('ipas') || (n.includes('alam') && n.includes('sosial'))) priority = 140;
+          else if (n.includes('dasar') || n.includes('ddpk')) priority = 150;
+          else if (n.includes('konsentrasi') || n.includes('kk')) priority = 160;
+          else if (n.includes('kreatif') || n.includes('pkk') || n.includes('kewirausahaan')) priority = 170;
+          else if (n.includes('pkl') || n.includes('praktik kerja')) priority = 180;
+          else if (n.includes('pilihan')) priority = 200;
+          else priority = 190;
+        } else {
+          targetKelompok = 'Kelompok Umum';
+          if (n.includes('agama') || n.includes('budi pekerti') || n.includes('pai') || n.includes('pak')) priority = 10;
+          else if (n.includes('pancasila') || n.includes('ppkn') || n.includes('kewarganegaraan')) priority = 20;
+          else if (n.includes('bahasa indonesia') || n === 'indonesia') priority = 30;
+          else if (n.includes('jasmani') || n.includes('olahraga') || n.includes('pjok') || n.includes('penjas')) priority = 40;
+          else if (n.includes('sejarah')) priority = 50;
+          else if (n.includes('seni') || n.includes('budaya') || n.includes('prakarya')) priority = 60;
+          else if (n.includes('bimbingan konseling') || n.includes('bk')) priority = 70;
+          else if (n.includes('sunda') || n.includes('jawa') || n.includes('daerah')) priority = 80;
+          else priority = 90;
+        }
+      } else {
+        // --- ERA 2025/2026 KE ATAS: 4 KELOMPOK (UMUM, KEJURUAN, PILIHAN, MUATAN LOKAL) ---
+        if (g.includes('muatan') || g.includes('lokal') || n.includes('sunda') || n.includes('jawa') || n.includes('daerah')) {
+          targetKelompok = 'Muatan Lokal';
+          priority = 300;
+        } else if (n.includes('agama') || n.includes('budi pekerti') || n.includes('pai') || n.includes('pak')) {
+          priority = 10;
+        } else if (n.includes('pancasila') || n.includes('ppkn') || n.includes('kewarganegaraan')) {
+          priority = 20;
+        } else if (n.includes('bahasa indonesia') || n === 'indonesia') {
+          priority = 30;
+        } else if (n.includes('jasmani') || n.includes('olahraga') || n.includes('pjok') || n.includes('penjas')) {
+          priority = 40;
+        } else if (n.includes('sejarah')) {
+          priority = 50;
+        } else if (n.includes('seni') || n.includes('budaya') || n.includes('prakarya')) {
+          priority = 60;
+        } else if (n.includes('bimbingan konseling') || n.includes('bk')) {
+          priority = 70;
+        } else if (g.includes('pilihan') || n.includes('pilihan')) {
+          targetKelompok = 'Mata Pelajaran Pilihan';
+          priority = 200;
+        } else if (g.includes('kejuruan') || n.includes('matematika') || n.includes('inggris') || n.includes('informatika') || n.includes('ipas') || n.includes('dasar') || n.includes('konsentrasi') || n.includes('kk ') || n.includes('pkk') || n.includes('pkl')) {
+          targetKelompok = 'Mata Pelajaran Kejuruan';
+          if (n.includes('matematika')) priority = 110;
+          else if (n.includes('inggris')) priority = 120;
+          else if (n.includes('informatika')) priority = 130;
+          else if (n.includes('ipas') || (n.includes('alam') && n.includes('sosial'))) priority = 140;
+          else if (n.includes('dasar') || n.includes('ddpk')) priority = 150;
+          else if (n.includes('konsentrasi') || n.includes('kk')) priority = 160;
+          else if (n.includes('kreatif') || n.includes('pkk') || n.includes('kewirausahaan')) priority = 170;
+          else if (n.includes('pkl') || n.includes('praktik kerja')) priority = 180;
+          else priority = 190;
+        }
       }
 
       return prisma.strukturKurikulum.update({
@@ -583,7 +635,8 @@ export class StrukturKurikulumService {
 
     await prisma.$transaction(updates);
     await cacheInvalidationService.invalidateStrukturTree(tenantId);
-    return { success: true, count: updates.length, message: `Berhasil menerapkan urutan standar Kemendikbud untuk ${updates.length} mapel` };
+    const eraLabel = isLegacy ? 'Preset 2 Kelompok (2024/2025 ke belakang)' : 'Preset 4 Kelompok (2025/2026 ke atas)';
+    return { success: true, count: updates.length, message: `Berhasil menerapkan urutan standar ${eraLabel} untuk ${updates.length} mapel` };
   }
 }
 

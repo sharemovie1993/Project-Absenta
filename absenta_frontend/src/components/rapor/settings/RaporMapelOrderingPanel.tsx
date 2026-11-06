@@ -7,12 +7,13 @@ import {
   ArrowDown,
   Layers,
   GripVertical,
-  CheckCircle2,
   AlertCircle,
   Search,
   RefreshCw,
   Eye,
   EyeOff,
+  History,
+  CheckCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { kurikulumApi, type StrukturKurikulum } from '@/api/kurikulum.api';
@@ -25,6 +26,8 @@ export interface RaporMapelOrderingPanelProps {
   onSaved?: () => void;
   className?: string;
 }
+
+export type PresetEra = 'modern' | 'legacy';
 
 interface KelompokMeta {
   key: string;
@@ -39,7 +42,8 @@ interface KelompokMeta {
   dropBg: string;
 }
 
-const KELOMPOK_SECTIONS: KelompokMeta[] = [
+// Preset 4 Kelompok (2025/2026 ke atas - Kurikulum Merdeka Terbaru)
+const PRESET_MODERN_SECTIONS: KelompokMeta[] = [
   {
     key: 'Mata Pelajaran Umum',
     label: 'KELOMPOK A : MATA PELAJARAN UMUM',
@@ -90,22 +94,33 @@ const KELOMPOK_SECTIONS: KelompokMeta[] = [
   },
 ];
 
-// Helper to normalize any raw kelompok string to one of the 4 canonical groups
-const normalizeToCanonicalGroup = (rawKelompok?: string, mapelName?: string): string => {
-  const g = (rawKelompok || '').toLowerCase().trim();
-  const n = (mapelName || '').toLowerCase().trim();
-
-  if (g.includes('muatan lokal') || g.includes('mulok') || n.includes('sunda') || n.includes('jawa') || n.includes('daerah')) {
-    return 'Muatan Lokal';
-  }
-  if (g.includes('pilihan') || g.includes('peminatan')) {
-    return 'Mata Pelajaran Pilihan';
-  }
-  if (g.includes('kejuruan')) {
-    return 'Mata Pelajaran Kejuruan';
-  }
-  return 'Mata Pelajaran Umum';
-};
+// Preset 2 Kelompok (2024/2025 ke belakang - Format Era Awal Kurikulum Merdeka)
+const PRESET_LEGACY_SECTIONS: KelompokMeta[] = [
+  {
+    key: 'Kelompok Umum',
+    label: 'KELOMPOK A : KELOMPOK UMUM',
+    letter: 'A',
+    subTitle: 'Pendidikan Agama, Pancasila, Bahasa Indonesia, PJOK, Sejarah, Seni Budaya, Muatan Lokal',
+    headerBg: 'bg-blue-50/80 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200',
+    headerBorder: 'border-blue-200 dark:border-blue-900',
+    badgeBg: 'bg-blue-600 text-white',
+    badgeText: 'text-blue-700 dark:text-blue-300',
+    dropBorder: 'border-blue-500 bg-blue-100/50 dark:bg-blue-900/30',
+    dropBg: 'bg-blue-50/30 dark:bg-blue-950/10',
+  },
+  {
+    key: 'Kelompok Kejuruan',
+    label: 'KELOMPOK B : KELOMPOK KEJURUAN',
+    letter: 'B',
+    subTitle: 'Matematika, Bahasa Inggris, Informatika, IPAS, Dasar Keahlian, Konsentrasi, PKK, PKL, Mapel Pilihan',
+    headerBg: 'bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200',
+    headerBorder: 'border-emerald-200 dark:border-emerald-900',
+    badgeBg: 'bg-emerald-600 text-white',
+    badgeText: 'text-emerald-700 dark:text-emerald-300',
+    dropBorder: 'border-emerald-500 bg-emerald-100/50 dark:bg-emerald-900/30',
+    dropBg: 'bg-emerald-50/30 dark:bg-emerald-950/10',
+  },
+];
 
 export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = React.memo(({
   tahunPelajaranId,
@@ -119,12 +134,31 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
   const [localRows, setLocalRows] = useState<StrukturKurikulum[]>([]);
   const [isDirty, setIsDirty] = useState(false);
 
+  // Deteksi Era Otomatis: 2024/2025 ke belakang = legacy (2 kelompok), 2025/2026 ke depan = modern (4 kelompok)
+  const autoEra: PresetEra = useMemo(() => {
+    const matchYear = String(tahunAjaran || '').match(/^(\d{4})/);
+    const startYear = matchYear ? parseInt(matchYear[1], 10) : 2025;
+    return startYear < 2025 ? 'legacy' : 'modern';
+  }, [tahunAjaran]);
+
+  const [currentPreset, setCurrentPreset] = useState<PresetEra>(autoEra);
+
+  // Sinkronkan preset jika tahun ajaran berubah
+  React.useEffect(() => {
+    setCurrentPreset(autoEra);
+  }, [autoEra]);
+
+  // Kelompok sections yang aktif berdasarkan preset
+  const activeSections = useMemo(() => {
+    return currentPreset === 'legacy' ? PRESET_LEGACY_SECTIONS : PRESET_MODERN_SECTIONS;
+  }, [currentPreset]);
+
   // Drag and drop states
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
 
-  // 1. Fetch Struktur Kurikulum untuk T.A. & Tingkat ini
+  // 1. Fetch Data
   const {
     data: strukturRes,
     isLoading,
@@ -158,22 +192,66 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
     }
   }, [rawData]);
 
-  // Recalculate sequence numbers (#1, #2, #3...) continuously through the 4 groups
-  const recalculateSequenceNumbers = useCallback((rows: StrukturKurikulum[]): StrukturKurikulum[] => {
-    const updated = [...rows];
-    let counter = 1;
-    KELOMPOK_SECTIONS.forEach((grp) => {
-      const inGroup = updated.filter(
-        (r) => normalizeToCanonicalGroup(r.kelompok, r.Mapel?.nama_mapel) === grp.key
-      );
-      inGroup.forEach((item) => {
-        item.urutan = counter;
-        item.kelompok = grp.key;
-        counter += 1;
+  // Helper untuk memetakan nama kelompok mapel ke key section yang aktif
+  const matchToActiveSection = useCallback(
+    (rawKelompok?: string, mapelName?: string): string => {
+      const g = (rawKelompok || '').toLowerCase().trim();
+      const n = (mapelName || '').toLowerCase().trim();
+
+      if (currentPreset === 'legacy') {
+        // Preset 2 Kelompok (Umum & Kejuruan)
+        const isKejuruan =
+          g.includes('kejuruan') ||
+          g.includes('pilihan') ||
+          n.includes('matematika') ||
+          n.includes('inggris') ||
+          n.includes('informatika') ||
+          n.includes('ipas') ||
+          (n.includes('alam') && n.includes('sosial')) ||
+          n.includes('dasar') ||
+          n.includes('konsentrasi') ||
+          n.includes('kk ') ||
+          n.includes('pkk') ||
+          n.includes('pkl') ||
+          n.includes('pilihan');
+
+        return isKejuruan ? 'Kelompok Kejuruan' : 'Kelompok Umum';
+      } else {
+        // Preset 4 Kelompok (Umum, Kejuruan, Pilihan, Muatan Lokal)
+        if (g.includes('muatan lokal') || g.includes('mulok') || n.includes('sunda') || n.includes('jawa') || n.includes('daerah')) {
+          return 'Muatan Lokal';
+        }
+        if (g.includes('pilihan') || g.includes('peminatan')) {
+          return 'Mata Pelajaran Pilihan';
+        }
+        if (g.includes('kejuruan')) {
+          return 'Mata Pelajaran Kejuruan';
+        }
+        return 'Mata Pelajaran Umum';
+      }
+    },
+    [currentPreset]
+  );
+
+  // Recalculate sequence numbers (#1, #2, #3...) continuously through the active sections
+  const recalculateSequenceNumbers = useCallback(
+    (rows: StrukturKurikulum[]): StrukturKurikulum[] => {
+      const updated = [...rows];
+      let counter = 1;
+      activeSections.forEach((sec) => {
+        const inSection = updated.filter(
+          (r) => matchToActiveSection(r.kelompok, r.Mapel?.nama_mapel) === sec.key
+        );
+        inSection.forEach((item) => {
+          item.urutan = counter;
+          item.kelompok = sec.key;
+          counter += 1;
+        });
       });
-    });
-    return updated;
-  }, []);
+      return updated;
+    },
+    [activeSections, matchToActiveSection]
+  );
 
   // 2. Mutations
   const saveMutation = useMutation({
@@ -197,6 +275,7 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
       kurikulumApi.applyKemendikbudStandard({
         tahun_pelajaran_id: tahunPelajaranId,
         tingkat: selectedTingkat,
+        preset: currentPreset,
       }),
     onSuccess: (res: any) => {
       toast.success(res?.message || 'Berhasil menerapkan urutan standar Kemendikbud!');
@@ -229,82 +308,98 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
     }
   }, [dragOverGroup]);
 
-  const handleDropOnZone = useCallback((e: React.DragEvent, targetGroupKey: string) => {
-    e.preventDefault();
-    const itemId = e.dataTransfer.getData('text/plain') || draggingId;
-    if (!itemId) return;
+  const handleDropOnZone = useCallback(
+    (e: React.DragEvent, targetGroupKey: string) => {
+      e.preventDefault();
+      const itemId = e.dataTransfer.getData('text/plain') || draggingId;
+      if (!itemId) return;
 
-    setLocalRows((prev) => {
-      const itemIndex = prev.findIndex((r) => r.id === itemId);
-      if (itemIndex === -1) return prev;
+      setLocalRows((prev) => {
+        const itemIndex = prev.findIndex((r) => r.id === itemId);
+        if (itemIndex === -1) return prev;
 
-      const item = { ...prev[itemIndex], kelompok: targetGroupKey };
-      const remaining = prev.filter((r) => r.id !== itemId);
-      const next = [...remaining, item];
-      setIsDirty(true);
-      return recalculateSequenceNumbers(next);
-    });
+        const item = { ...prev[itemIndex], kelompok: targetGroupKey };
+        const remaining = prev.filter((r) => r.id !== itemId);
+        const next = [...remaining, item];
+        setIsDirty(true);
+        return recalculateSequenceNumbers(next);
+      });
 
-    setDraggingId(null);
-    setDragOverGroup(null);
-    setDragOverItemId(null);
-  }, [draggingId, recalculateSequenceNumbers]);
+      setDraggingId(null);
+      setDragOverGroup(null);
+      setDragOverItemId(null);
+    },
+    [draggingId, recalculateSequenceNumbers]
+  );
 
-  const handleDropOnItem = useCallback((e: React.DragEvent, targetItemId: string, targetGroupKey: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const sourceId = e.dataTransfer.getData('text/plain') || draggingId;
-    if (!sourceId || sourceId === targetItemId) return;
+  const handleDropOnItem = useCallback(
+    (e: React.DragEvent, targetItemId: string, targetGroupKey: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const sourceId = e.dataTransfer.getData('text/plain') || draggingId;
+      if (!sourceId || sourceId === targetItemId) return;
 
-    setLocalRows((prev) => {
-      const sourceIndex = prev.findIndex((r) => r.id === sourceId);
-      if (sourceIndex === -1) return prev;
+      setLocalRows((prev) => {
+        const sourceIndex = prev.findIndex((r) => r.id === sourceId);
+        if (sourceIndex === -1) return prev;
 
-      const sourceItem = { ...prev[sourceIndex], kelompok: targetGroupKey };
-      const next = [...prev];
-      next.splice(sourceIndex, 1);
-      const newTargetIndex = next.findIndex((r) => r.id === targetItemId);
-      next.splice(newTargetIndex, 0, sourceItem);
+        const sourceItem = { ...prev[sourceIndex], kelompok: targetGroupKey };
+        const next = [...prev];
+        next.splice(sourceIndex, 1);
+        const newTargetIndex = next.findIndex((r) => r.id === targetItemId);
+        next.splice(newTargetIndex, 0, sourceItem);
 
-      setIsDirty(true);
-      return recalculateSequenceNumbers(next);
-    });
+        setIsDirty(true);
+        return recalculateSequenceNumbers(next);
+      });
 
-    setDraggingId(null);
-    setDragOverGroup(null);
-    setDragOverItemId(null);
-  }, [draggingId, recalculateSequenceNumbers]);
+      setDraggingId(null);
+      setDragOverGroup(null);
+      setDragOverItemId(null);
+    },
+    [draggingId, recalculateSequenceNumbers]
+  );
 
   // Button Reorder Within Group
-  const handleMoveInGroup = useCallback((id: string, groupKey: string, direction: 'up' | 'down') => {
-    setLocalRows((prev) => {
-      const groupItems = prev.filter((r) => normalizeToCanonicalGroup(r.kelompok, r.Mapel?.nama_mapel) === groupKey);
-      const otherItems = prev.filter((r) => normalizeToCanonicalGroup(r.kelompok, r.Mapel?.nama_mapel) !== groupKey);
+  const handleMoveInGroup = useCallback(
+    (id: string, groupKey: string, direction: 'up' | 'down') => {
+      setLocalRows((prev) => {
+        const groupItems = prev.filter(
+          (r) => matchToActiveSection(r.kelompok, r.Mapel?.nama_mapel) === groupKey
+        );
+        const otherItems = prev.filter(
+          (r) => matchToActiveSection(r.kelompok, r.Mapel?.nama_mapel) !== groupKey
+        );
 
-      const itemIdx = groupItems.findIndex((r) => r.id === id);
-      if (itemIdx === -1) return prev;
+        const itemIdx = groupItems.findIndex((r) => r.id === id);
+        if (itemIdx === -1) return prev;
 
-      const targetIdx = direction === 'up' ? itemIdx - 1 : itemIdx + 1;
-      if (targetIdx < 0 || targetIdx >= groupItems.length) return prev;
+        const targetIdx = direction === 'up' ? itemIdx - 1 : itemIdx + 1;
+        if (targetIdx < 0 || targetIdx >= groupItems.length) return prev;
 
-      const temp = groupItems[itemIdx];
-      groupItems[itemIdx] = groupItems[targetIdx];
-      groupItems[targetIdx] = temp;
+        const temp = groupItems[itemIdx];
+        groupItems[itemIdx] = groupItems[targetIdx];
+        groupItems[targetIdx] = temp;
 
-      const merged = [...otherItems, ...groupItems];
-      setIsDirty(true);
-      return recalculateSequenceNumbers(merged);
-    });
-  }, [recalculateSequenceNumbers]);
+        const merged = [...otherItems, ...groupItems];
+        setIsDirty(true);
+        return recalculateSequenceNumbers(merged);
+      });
+    },
+    [matchToActiveSection, recalculateSequenceNumbers]
+  );
 
   // Fast dropdown switch
-  const handleChangeGroup = useCallback((id: string, newGroup: string) => {
-    setLocalRows((prev) => {
-      const next = prev.map((item) => (item.id === id ? { ...item, kelompok: newGroup } : item));
-      setIsDirty(true);
-      return recalculateSequenceNumbers(next);
-    });
-  }, [recalculateSequenceNumbers]);
+  const handleChangeGroup = useCallback(
+    (id: string, newGroup: string) => {
+      setLocalRows((prev) => {
+        const next = prev.map((item) => (item.id === id ? { ...item, kelompok: newGroup } : item));
+        setIsDirty(true);
+        return recalculateSequenceNumbers(next);
+      });
+    },
+    [recalculateSequenceNumbers]
+  );
 
   const handleToggleActive = useCallback((id: string, current: boolean) => {
     setLocalRows((prev) =>
@@ -314,14 +409,15 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
   }, []);
 
   const handleSaveAll = useCallback(() => {
+    const defaultGroup = currentPreset === 'legacy' ? 'Kelompok Umum' : 'Mata Pelajaran Umum';
     const payload = localRows.map((r, idx) => ({
       id: r.id,
       urutan: r.urutan ?? (idx + 1),
-      kelompok: r.kelompok || 'Mata Pelajaran Umum',
+      kelompok: r.kelompok || defaultGroup,
       is_active: r.is_active !== false,
     }));
     saveMutation.mutate(payload);
-  }, [localRows, saveMutation]);
+  }, [localRows, currentPreset, saveMutation]);
 
   // Search filter
   const searchedRows = useMemo(() => {
@@ -336,7 +432,7 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
 
   return (
     <div className={cn('space-y-4', className)}>
-      {/* 1. Header Toolbar */}
+      {/* 1. Header & Tingkat Selector */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">
@@ -352,7 +448,7 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
               )}
             </h4>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Tarik (Drag) mata pelajaran ke Kelompok A, B, C, atau D sesuai susunan cetak rapor resmi.
+              Format penyajian vertikal persis dokumen rapor fisik. Tarik (drag) mapel untuk berpindah kelompok.
             </p>
           </div>
         </div>
@@ -383,29 +479,73 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
         </div>
       </div>
 
-      {/* 2. Action Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        {/* Search */}
-        <div className="relative flex-1 max-w-sm">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari mata pelajaran atau kode..."
-            className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+      {/* 2. Preset Selector Toolbar & Quick Actions */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+        {/* Preset Selector */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+            <History className="w-3.5 h-3.5 text-indigo-500" />
+            <span>Preset Rapor:</span>
+          </span>
+
+          <div className="inline-flex p-0.5 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+            <button
+              type="button"
+              onClick={() => {
+                setCurrentPreset('modern');
+                setIsDirty(true);
+              }}
+              className={cn(
+                'px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5',
+                currentPreset === 'modern'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              )}
+            >
+              <CheckCircle className={cn('w-3 h-3', currentPreset === 'modern' ? 'text-indigo-600' : 'opacity-0')} />
+              <span>4 Kelompok (2025/2026 ke atas)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setCurrentPreset('legacy');
+                setIsDirty(true);
+              }}
+              className={cn(
+                'px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5',
+                currentPreset === 'legacy'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              )}
+            >
+              <CheckCircle className={cn('w-3 h-3', currentPreset === 'legacy' ? 'text-indigo-600' : 'opacity-0')} />
+              <span>2 Kelompok (2024/2025 ke belakang)</span>
+            </button>
+          </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        {/* Search & Actions */}
+        <div className="flex items-center gap-2 flex-1 justify-end max-w-lg">
+          <div className="relative flex-1 max-w-xs">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari mapel atau kode..."
+              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={() => standardMutation.mutate()}
             isLoading={standardMutation.isPending}
-            className="text-xs text-indigo-700 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+            className="text-xs text-indigo-700 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50"
+            title="Otomatis susun sesuai standar regulasi Kemendikbud"
           >
             <Sparkles className="w-3.5 h-3.5 mr-1 text-indigo-600" />
             Standar Kemendikbud
@@ -418,19 +558,19 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
             isLoading={saveMutation.isPending}
             disabled={!isDirty && !saveMutation.isPending}
             className={cn(
-              'text-xs font-bold transition-all shadow-xs',
+              'text-xs font-bold transition-all shadow-xs shrink-0',
               isDirty
                 ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200 ring-2 ring-indigo-300'
                 : 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
             )}
           >
             <Save className="w-3.5 h-3.5 mr-1" />
-            {isDirty ? 'Simpan Perubahan' : 'Tersimpan'}
+            {isDirty ? 'Simpan' : 'Tersimpan'}
           </Button>
         </div>
       </div>
 
-      {/* 3. VERTICAL STACKED RAPOR LAYOUT (PERSIS SUSUNAN RAPOR FISIK) */}
+      {/* 3. VERTICAL STACKED RAPOR SECTIONS (PERSIS RAPOR ASLINYA) */}
       {isLoading ? (
         <div className="p-16 flex flex-col items-center justify-center text-slate-400 gap-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
           <RefreshCw className="w-7 h-7 animate-spin text-indigo-500" />
@@ -444,7 +584,7 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
               Belum Ada Struktur Kurikulum Kelas {selectedTingkat} di Periode Ini
             </h5>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mt-1">
-              Klik tombol di bawah untuk otomatis men-generate struktur dari tahun ajaran sekolah atau menggunakan standar resmi Kemendikbudristek.
+              Klik tombol di bawah untuk otomatis men-generate struktur dengan {currentPreset === 'legacy' ? 'Preset 2 Kelompok' : 'Preset 4 Kelompok'}.
             </p>
           </div>
           <Button
@@ -454,14 +594,14 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
             className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
           >
             <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-            Generate Struktur Kemendikbud Kelas {selectedTingkat}
+            Generate Struktur {currentPreset === 'legacy' ? '2 Kelompok' : '4 Kelompok'} Kelas {selectedTingkat}
           </Button>
         </div>
       ) : (
         <div className="space-y-4">
-          {KELOMPOK_SECTIONS.map((sec) => {
+          {activeSections.map((sec) => {
             const sectionRows = searchedRows.filter(
-              (r) => normalizeToCanonicalGroup(r.kelompok, r.Mapel?.nama_mapel) === sec.key
+              (r) => matchToActiveSection(r.kelompok, r.Mapel?.nama_mapel) === sec.key
             );
             const isTargetDropZone = dragOverGroup === sec.key;
 
@@ -478,7 +618,7 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
                     'ring-2 ring-indigo-500 ring-offset-2 border-indigo-400 shadow-md scale-[1.005]'
                 )}
               >
-                {/* Section Header (Persis Header Rapor) */}
+                {/* Section Header */}
                 <div
                   className={cn(
                     'px-4 py-3 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-2',
@@ -512,7 +652,7 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
                   </div>
                 </div>
 
-                {/* Subject Rows Container (Vertical List) */}
+                {/* Subject Rows Container */}
                 <div className={cn('p-2 space-y-1.5 transition-colors', isTargetDropZone ? sec.dropBorder : sec.dropBg)}>
                   {sectionRows.length === 0 ? (
                     <div
@@ -588,7 +728,7 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
                               onChange={(e) => handleChangeGroup(item.id, e.target.value)}
                               className="text-xs py-1 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 max-w-[140px] sm:max-w-none"
                             >
-                              {KELOMPOK_SECTIONS.map((s) => (
+                              {activeSections.map((s) => (
                                 <option key={s.key} value={s.key}>
                                   Pindah ke Kelompok {s.letter}
                                 </option>

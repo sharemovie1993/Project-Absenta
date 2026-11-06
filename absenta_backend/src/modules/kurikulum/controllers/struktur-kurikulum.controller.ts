@@ -222,7 +222,7 @@ export class StrukturKurikulumController {
   static async applyKemendikbudStandard(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
-      const { tahun_pelajaran_id, tingkat } = req.body || {};
+      const { tahun_pelajaran_id, tingkat, preset } = req.body || {};
 
       if (!tahun_pelajaran_id) {
         return reply.status(400).send({
@@ -233,7 +233,8 @@ export class StrukturKurikulumController {
 
       const result = await StrukturKurikulumService.applyKemendikbudStandard(tenant_id, {
         tahun_pelajaran_id,
-        tingkat: tingkat ? Number(tingkat) : undefined
+        tingkat: tingkat ? Number(tingkat) : undefined,
+        preset: preset || undefined,
       });
 
       return sendResponse(reply, 200, true, result.message, result);
