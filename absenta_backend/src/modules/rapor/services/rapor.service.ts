@@ -232,6 +232,7 @@ export class RaporService {
       nilai_akhir: number;
       predikat: string;
       catatan_kompetensi?: string;
+      capaian_kompetensi?: string;
       urutan?: number;
       sumatif_1?: number | null;
       sumatif_2?: number | null;
@@ -274,6 +275,7 @@ export class RaporService {
         nilai_akhir: 0,
         predikat: '-',
         catatan_kompetensi: '',
+        capaian_kompetensi: '',
         urutan,
         sumatif_1: null,
         sumatif_2: null,
@@ -316,6 +318,7 @@ export class RaporService {
         const note = n.capaian_kompetensi || n.catatan_deskripsi;
         if (note) {
           mapelGrades[primaryId].catatan_kompetensi = note;
+          (mapelGrades[primaryId] as any).capaian_kompetensi = note;
         }
         if (n.sumatif_1 !== null && n.sumatif_1 !== undefined) mapelGrades[primaryId].sumatif_1 = n.sumatif_1;
         if (n.sumatif_2 !== null && n.sumatif_2 !== undefined) mapelGrades[primaryId].sumatif_2 = n.sumatif_2;
@@ -343,6 +346,7 @@ export class RaporService {
           const note = n.capaian_kompetensi || n.catatan_deskripsi;
           if (note) {
             mapelGrades[targetId].catatan_kompetensi = note;
+            (mapelGrades[targetId] as any).capaian_kompetensi = note;
           }
           if (n.sumatif_1 !== null && n.sumatif_1 !== undefined) mapelGrades[targetId].sumatif_1 = n.sumatif_1;
           if (n.sumatif_2 !== null && n.sumatif_2 !== undefined) mapelGrades[targetId].sumatif_2 = n.sumatif_2;

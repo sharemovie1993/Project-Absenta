@@ -326,3 +326,60 @@ export const formatAnakKe = (val: any): string => {
   }
   return String(val);
 };
+
+/**
+ * Resolusi Teks Capaian Kompetensi (CP) Standar e-Rapor Kurikulum Merdeka
+ * Menjamin 100% konsistensi antara Pratinjau Modal Layar (HTML) dan Berkas PDF Cetak (jsPDF).
+ */
+export const resolveCapaianKompetensi = (
+  mapel: {
+    catatan_kompetensi?: string | null;
+    capaian_kompetensi?: string | null;
+    catatan_deskripsi?: string | null;
+    capaian_tercapai?: string | null;
+    nilai_akhir?: number | null;
+    kkm?: number | null;
+  },
+  scoreVal?: number | string | null
+): string => {
+  const hasScore =
+    (mapel.nilai_akhir !== undefined && mapel.nilai_akhir !== null && mapel.nilai_akhir > 0) ||
+    (scoreVal !== undefined && scoreVal !== null && Number(scoreVal) > 0);
+
+  if (!hasScore) {
+    return 'Belum ada penilaian terinput';
+  }
+
+  const numScore = Number(scoreVal ?? mapel.nilai_akhir ?? 0);
+  const kkm = mapel.kkm ?? 75;
+  const rawText = (
+    mapel.catatan_kompetensi ||
+    mapel.capaian_kompetensi ||
+    mapel.catatan_deskripsi ||
+    mapel.capaian_tercapai ||
+    ''
+  ).trim();
+
+  if (rawText) {
+    if (/^siswa\b/i.test(rawText)) {
+      return rawText;
+    }
+    const lowerFirst = rawText.charAt(0).toLowerCase() + rawText.slice(1);
+    if (numScore >= 85) {
+      return `Siswa menunjukkan penguasaan yang sangat baik dalam ${lowerFirst}`;
+    } else if (numScore >= kkm) {
+      return `Siswa menunjukkan penguasaan yang baik dalam ${lowerFirst}`;
+    } else {
+      return `Siswa cukup mampu ${lowerFirst}`;
+    }
+  }
+
+  if (numScore >= 85) {
+    return 'Siswa menunjukkan penguasaan yang sangat baik dalam seluruh capaian pembelajaran mata pelajaran ini.';
+  } else if (numScore >= kkm) {
+    return 'Siswa mampu memahami materi dan mencapai kompetensi mata pelajaran ini dengan baik.';
+  } else {
+    return 'Siswa cukup mampu menguasai materi dasar, perlu bimbingan lebih lanjut pada materi utama.';
+  }
+};
+

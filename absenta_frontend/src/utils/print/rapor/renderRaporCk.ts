@@ -7,6 +7,7 @@ import {
   getMapelCanonicalPriority,
   PrintRaporBatchOptions,
   PrintRaporOptions,
+  resolveCapaianKompetensi,
 } from './raporShared';
 import {
   normalizeStudentIdentity,
@@ -411,36 +412,7 @@ export const renderStudentRaporPages = (
         const hasScore = (n.nilai_akhir && n.nilai_akhir > 0) || (n.nilai_components && n.nilai_components.length > 0);
         const isMissing = !hasScore;
         const score = hasScore ? n.nilai_akhir : '-';
-        
-        let cap = 'Belum ada penilaian terinput';
-        if (hasScore) {
-          const numScore = Number(score);
-          const kkm = n.kkm ?? 75;
-          const rawText = (n.catatan_kompetensi || n.capaian_kompetensi || n.catatan_deskripsi || '').trim();
-
-          if (rawText) {
-            if (/^siswa\b/i.test(rawText)) {
-              cap = rawText;
-            } else {
-              const lowerFirst = rawText.charAt(0).toLowerCase() + rawText.slice(1);
-              if (numScore >= 85) {
-                cap = `Siswa sangat mampu ${lowerFirst}`;
-              } else if (numScore >= kkm) {
-                cap = `Siswa mampu ${lowerFirst}`;
-              } else {
-                cap = `Siswa cukup mampu ${lowerFirst}`;
-              }
-            }
-          } else {
-            if (numScore >= 85) {
-              cap = 'Siswa menunjukkan penguasaan yang sangat baik dalam seluruh capaian pembelajaran mata pelajaran ini.';
-            } else if (numScore >= kkm) {
-              cap = 'Siswa mampu memahami materi dan mencapai kompetensi mata pelajaran ini dengan baik.';
-            } else {
-              cap = 'Siswa cukup mampu menguasai materi dasar, perlu bimbingan lebih lanjut pada materi utama.';
-            }
-          }
-        }
+        const cap = resolveCapaianKompetensi(n, score);
 
         tableRows.push([
           { content: String(idx + 1), styles: { halign: 'center', valign: 'middle' } },

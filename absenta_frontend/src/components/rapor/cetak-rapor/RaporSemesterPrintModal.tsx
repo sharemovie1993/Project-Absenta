@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/PrintHeader';
 import { raporApi } from '@/api/rapor.api';
 import { generateRaporPdf } from '@/utils/print/rapor/renderRaporCk';
-import { getMapelCanonicalPriority } from '@/utils/print/rapor/raporShared';
+import { getMapelCanonicalPriority, resolveCapaianKompetensi } from '@/utils/print/rapor/raporShared';
 import { Loader2, CalendarRange } from 'lucide-react';
 import type { LegerStudent, SemesterDocumentOption } from './LegerStudentTable';
 
@@ -545,8 +545,7 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
                           {items.map((m: any, mIdx: number) => {
                             const hasScore = (m.nilai_akhir && m.nilai_akhir > 0) || (m.nilai_components && m.nilai_components.length > 0);
                             const score = hasScore ? m.nilai_akhir : '-';
-                            const cap = m.capaian_kompetensi ||
-                              (m.capaian_tercapai ? `Menunjukkan penguasaan yang baik dalam ${m.capaian_tercapai}` : 'Siswa mampu memahami materi dan mencapai kompetensi mata pelajaran ini dengan baik.');
+                            const cap = resolveCapaianKompetensi(m, score);
 
                             return (
                               <tr key={`mapel-${mIdx}`} className="border-b border-black">
