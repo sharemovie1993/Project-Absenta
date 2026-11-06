@@ -826,31 +826,43 @@ export class GoogleSheetRaporParserService {
           walasNip = '';
         }
 
-        // Hentikan jika baris kosong sepenuhnya atau bukan data rombel
+        // Hentikan jika baris kosong sepenuhnya atau merupakan sub-header instruksi pengisian
         if (!kelasNama && !walasNama) continue;
-        if (/^(kelas\s*walas|walas|nip\s*walas|setting\s*data)$/i.test(kelasNama)) continue;
+        if (/^(kelas\s*walas|walas|nip\s*walas|setting\s*data|otomatis|ketik\s*manual|manual|rumus)$/i.test(kelasNama)) continue;
+        if (/^(walas|ketik\s*manual|otomatis|manual)$/i.test(walasNama)) continue;
 
-        if (tpVal && !detectedTp) {
-          detectedTp = tpVal;
+        const cleanTpVal = tpVal.replace(/\s+/g, ' ').trim();
+        const isIgnoredTp = /^(ketik\s*manual|otomatis|manual|rumus|setting|pilih)$/i.test(cleanTpVal);
+        const hasYearDigits = /\d{4}/.test(cleanTpVal);
+
+        if (cleanTpVal && !isIgnoredTp && hasYearDigits && !detectedTp) {
+          detectedTp = cleanTpVal;
         }
 
         walasPloting.push({
           kelasNama,
           walasNama,
           walasNip,
-          tahunPelajaran: tpVal || detectedTp,
+          tahunPelajaran: (hasYearDigits && !isIgnoredTp) ? cleanTpVal : '',
         });
       }
     }
 
-    // Jika detectedTp belum terisi, coba deteksi dari tahun pada tanggal titimangsa
-    if (!detectedTp) {
+    // Jika detectedTp belum terisi atau tidak memuat 4 digit tahun, deteksi dari tanggal titimangsa
+    if (!detectedTp || !/\d{4}/.test(detectedTp)) {
       const yearFromDate = (schoolProfile.titimangsaGanjilIso || schoolProfile.titimangsaGenapIso).slice(0, 4);
       if (yearFromDate) {
         const yNum = parseInt(yearFromDate, 10);
         detectedTp = `${yNum}/${yNum + 1}`;
       }
     }
+
+    // Pastikan walasPloting yang belum memiliki tahunPelajaran mewarisi detectedTp
+    walasPloting.forEach((w) => {
+      if (!w.tahunPelajaran) {
+        w.tahunPelajaran = detectedTp;
+      }
+    });
 
     return {
       sourceUrl: '',

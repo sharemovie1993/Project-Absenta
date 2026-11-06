@@ -1338,7 +1338,11 @@ export class RaporStagingService {
     if (!name) return '';
     return name
       .toLowerCase()
-      .replace(/\b(s\.pd\.?|s\.kom\.?|s\.e\.?|s\.t\.?|s\.si\.?|s\.sos\.?|m\.pd\.?|m\.kom\.?|m\.m\.?|m\.t\.?|a\.md\.?|a\.md\.t\.?|dra\.?|drs\.?|ir\.?|dr\.?|h\.?|hj\.?)\b/gi, '')
+      .replace(
+        /\b(s\.pd\.?|s\.kom\.?|s\.e\.?|s\.t\.?|s\.si\.?|s\.sos\.?|s\.ip\.?|s\.h\.?|s\.ag\.?|m\.pd\.?|m\.kom\.?|m\.m\.?|m\.t\.?|m\.si\.?|m\.ag\.?|a\.md\.?|a\.md\.t\.?|dra\.?|drs\.?|ir\.?|dr\.?|h\.?|hj\.?)\b/gi,
+        ''
+      )
+      .replace(/\bdemo\b/gi, '')
       .replace(/[^a-z0-9\s]/gi, ' ')
       .replace(/\s+/g, ' ')
       .trim();
@@ -1378,31 +1382,75 @@ export class RaporStagingService {
     const previewWalas: BackfillWalasPreviewItem[] = parsed.walasPloting.map((row) => {
       // a. Match Kelas
       const cKelas = row.kelasNama.replace(/[\s\-_]+/g, '').toLowerCase();
-      const matchedKelas =
+      let matchedKelas =
         allClasses.find((k) => k.nama_kelas.replace(/[\s\-_]+/g, '').toLowerCase() === cKelas) || null;
+
+      // Token / Alias Match untuk jurusan SMK populer jika belum cocok exact
+      if (!matchedKelas) {
+        const aliasMap: Record<string, string[]> = {
+          tjkt: ['tkj', 'tjkt'],
+          tkj: ['tjkt', 'tkj'],
+          tm: ['tp', 'tm'],
+          tp: ['tm', 'tp'],
+          to: ['tkr', 'tsm', 'to'],
+        };
+        for (const [key, aliases] of Object.entries(aliasMap)) {
+          if (cKelas.includes(key)) {
+            for (const alias of aliases) {
+              const replaced = cKelas.replace(key, alias);
+              const found = allClasses.find(
+                (k) => k.nama_kelas.replace(/[\s\-_]+/g, '').toLowerCase() === replaced
+              );
+              if (found) {
+                matchedKelas = found;
+                break;
+              }
+            }
+          }
+          if (matchedKelas) break;
+        }
+      }
 
       // b. Match Guru
       let matchedGuru: { id: string; nama_guru: string; nip: string | null; user_id: string } | null = null;
       const rowNipClean = this.cleanTeacherNip(row.walasNip);
       const rowNameClean = this.cleanTeacherName(row.walasNama);
 
-      // Prioritas 1: NIP (jika >= 8 digit)
+      // Prioritas 1: NIP Lengkap (jika >= 8 digit)
       if (rowNipClean.length >= 8) {
         matchedGuru = allGurus.find((g) => this.cleanTeacherNip(g.nip) === rowNipClean) || null;
       }
 
-      // Prioritas 2: Nama Bersih (Exact)
+      // Prioritas 2: NIP 14 digit awal (YYYYMMDD YYYYMM G unik per individu PNS)
+      if (!matchedGuru && rowNipClean.length >= 14) {
+        matchedGuru =
+          allGurus.find((g) => this.cleanTeacherNip(g.nip).slice(0, 14) === rowNipClean.slice(0, 14)) || null;
+      }
+
+      // Prioritas 3: Nama Bersih (Exact)
       if (!matchedGuru && rowNameClean) {
         matchedGuru = allGurus.find((g) => this.cleanTeacherName(g.nama_guru) === rowNameClean) || null;
       }
 
-      // Prioritas 3: Nama Bersih (Token Inclusion)
-      if (!matchedGuru && rowNameClean.length > 5) {
-        matchedGuru =
-          allGurus.find((g) => {
-            const gClean = this.cleanTeacherName(g.nama_guru);
-            return gClean.length > 5 && (gClean.includes(rowNameClean) || rowNameClean.includes(gClean));
-          }) || null;
+      // Prioritas 4: Distinctive Token Matching (Cerdas & Toleran Gelar / Ejaan)
+      if (!matchedGuru && rowNameClean) {
+        const rTokens = rowNameClean.split(' ').filter((t) => t.length >= 4);
+        if (rTokens.length > 0) {
+          const candidates = allGurus
+            .map((g) => {
+              const gTokens = this.cleanTeacherName(g.nama_guru)
+                .split(' ')
+                .filter((t) => t.length >= 4);
+              const common = rTokens.filter((t) => gTokens.includes(t));
+              return { g, score: common.length };
+            })
+            .filter((x) => x.score > 0)
+            .sort((a, b) => b.score - a.score);
+
+          if (candidates.length > 0) {
+            matchedGuru = candidates[0].g;
+          }
+        }
       }
 
       // Status
