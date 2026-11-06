@@ -1,7 +1,59 @@
+import { randomUUID } from 'crypto';
 import { prisma } from '@/utils/prisma';
 import { appLogger } from '@/utils/app-logger';
-import { GoogleSheetRaporParserService, ParsedRaporClassData } from './google-sheet-rapor-parser.service';
+import { GoogleSheetRaporParserService, ParsedRaporClassData, MasterReferenceData } from './google-sheet-rapor-parser.service';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
+import { RaporService } from './rapor.service';
+
+export interface BackfillWalasPreviewItem {
+  kelasNama: string;
+  walasNama: string;
+  walasNip: string;
+  tahunPelajaran: string;
+  matchedKelas: { id: string; nama_kelas: string } | null;
+  matchedGuru: { id: string; nama_guru: string; nip: string | null; user_id: string } | null;
+  status: 'READY' | 'GURU_NOT_FOUND' | 'KELAS_NOT_FOUND' | 'BOTH_NOT_FOUND';
+}
+
+export interface MasterBackfillPreviewResult {
+  sourceUrl: string;
+  tabName: string;
+  detectedTahunPelajaran: string;
+  matchedTahunPelajaran: { id: string; tahun: string } | null;
+  availableTahunPelajaran: Array<{ id: string; tahun: string; is_active: boolean }>;
+  schoolProfile: {
+    namaSekolah: string;
+    alamat: string;
+    namaKepsek: string;
+    nipKepsek: string;
+    titimangsaGanjil: string;
+    titimangsaGenap: string;
+    titimangsaGanjilIso: string;
+    titimangsaGenapIso: string;
+    tempatTerbit: string;
+  };
+  walasPloting: BackfillWalasPreviewItem[];
+  summary: {
+    totalWalas: number;
+    readyCount: number;
+    guruNotFoundCount: number;
+    kelasNotFoundCount: number;
+  };
+}
+
+export interface ExecuteMasterBackfillPayload {
+  url: string;
+  tahun_pelajaran_id?: string;
+  update_rapor_settings?: boolean;
+  update_walas_assignments?: boolean;
+  custom_settings?: {
+    nama_kepsek?: string;
+    nip_kepsek?: string;
+    tempat_terbit?: string;
+    tanggal_rapor_ganjil?: string;
+    tanggal_rapor_genap?: string;
+  };
+}
 
 // Rapor Staging Hub Service - Maps to rapor_staging_sheets PostgreSQL table
 export interface StagingFilter {
@@ -1267,5 +1319,299 @@ export class RaporStagingService {
     return await prisma.raporStagingSheet.deleteMany({
       where: { id, tenant_id: tenantId },
     });
+  }
+
+  // ── Helper Pembersihan String Guru untuk Pencocokan Akurat ──
+  private static cleanTeacherNip(nip?: string | null): string {
+    if (!nip) return '';
+    return nip.replace(/\D/g, '');
+  }
+
+  private static cleanTeacherName(name?: string | null): string {
+    if (!name) return '';
+    return name
+      .toLowerCase()
+      .replace(/\b(s\.pd\.?|s\.kom\.?|s\.e\.?|s\.t\.?|s\.si\.?|s\.sos\.?|m\.pd\.?|m\.kom\.?|m\.m\.?|m\.t\.?|a\.md\.?|a\.md\.t\.?|dra\.?|drs\.?|ir\.?|dr\.?|h\.?|hj\.?)\b/gi, '')
+      .replace(/[^a-z0-9\s]/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  /**
+   * Pindai dan Pratinjau Backfill Data Master Rapor dari sheet MASTER Google Sheet
+   */
+  static async previewMasterBackfill(tenantId: string, sheetUrl: string): Promise<MasterBackfillPreviewResult> {
+    const parsed: MasterReferenceData = await GoogleSheetRaporParserService.fetchMasterSheetData(sheetUrl);
+
+    // 1. Ambil data master yang ada di database tenant
+    const [allTp, allGurus, allClasses] = await Promise.all([
+      prisma.tahunPelajaran.findMany({
+        where: { tenant_id: tenantId },
+        select: { id: true, tahun: true, is_active: true },
+        orderBy: { tahun: 'desc' },
+      }),
+      prisma.guru.findMany({
+        where: { tenant_id: tenantId },
+        select: { id: true, nama_guru: true, nip: true, user_id: true },
+      }),
+      prisma.kelas.findMany({
+        where: { tenant_id: tenantId },
+        select: { id: true, nama_kelas: true, tingkat: true },
+      }),
+    ]);
+
+    // 2. Cocokkan Tahun Pelajaran
+    const matchedTp = await this.resolveTahunPelajaran(tenantId, parsed.tahunPelajaran);
+
+    // 3. Cocokkan Wali Kelas & Kelas
+    let readyCount = 0;
+    let guruNotFoundCount = 0;
+    let kelasNotFoundCount = 0;
+
+    const previewWalas: BackfillWalasPreviewItem[] = parsed.walasPloting.map((row) => {
+      // a. Match Kelas
+      const cKelas = row.kelasNama.replace(/[\s\-_]+/g, '').toLowerCase();
+      const matchedKelas =
+        allClasses.find((k) => k.nama_kelas.replace(/[\s\-_]+/g, '').toLowerCase() === cKelas) || null;
+
+      // b. Match Guru
+      let matchedGuru: { id: string; nama_guru: string; nip: string | null; user_id: string } | null = null;
+      const rowNipClean = this.cleanTeacherNip(row.walasNip);
+      const rowNameClean = this.cleanTeacherName(row.walasNama);
+
+      // Prioritas 1: NIP (jika >= 8 digit)
+      if (rowNipClean.length >= 8) {
+        matchedGuru = allGurus.find((g) => this.cleanTeacherNip(g.nip) === rowNipClean) || null;
+      }
+
+      // Prioritas 2: Nama Bersih (Exact)
+      if (!matchedGuru && rowNameClean) {
+        matchedGuru = allGurus.find((g) => this.cleanTeacherName(g.nama_guru) === rowNameClean) || null;
+      }
+
+      // Prioritas 3: Nama Bersih (Token Inclusion)
+      if (!matchedGuru && rowNameClean.length > 5) {
+        matchedGuru =
+          allGurus.find((g) => {
+            const gClean = this.cleanTeacherName(g.nama_guru);
+            return gClean.length > 5 && (gClean.includes(rowNameClean) || rowNameClean.includes(gClean));
+          }) || null;
+      }
+
+      // Status
+      let status: 'READY' | 'GURU_NOT_FOUND' | 'KELAS_NOT_FOUND' | 'BOTH_NOT_FOUND' = 'READY';
+      if (!matchedGuru && !matchedKelas) {
+        status = 'BOTH_NOT_FOUND';
+        guruNotFoundCount++;
+        kelasNotFoundCount++;
+      } else if (!matchedGuru) {
+        status = 'GURU_NOT_FOUND';
+        guruNotFoundCount++;
+      } else if (!matchedKelas) {
+        status = 'KELAS_NOT_FOUND';
+        kelasNotFoundCount++;
+      } else {
+        readyCount++;
+      }
+
+      return {
+        kelasNama: row.kelasNama,
+        walasNama: row.walasNama,
+        walasNip: row.walasNip,
+        tahunPelajaran: row.tahunPelajaran || parsed.tahunPelajaran,
+        matchedKelas: matchedKelas ? { id: matchedKelas.id, nama_kelas: matchedKelas.nama_kelas } : null,
+        matchedGuru: matchedGuru
+          ? {
+              id: matchedGuru.id,
+              nama_guru: matchedGuru.nama_guru,
+              nip: matchedGuru.nip,
+              user_id: matchedGuru.user_id,
+            }
+          : null,
+        status,
+      };
+    });
+
+    return {
+      sourceUrl: sheetUrl,
+      tabName: parsed.tabName,
+      detectedTahunPelajaran: parsed.tahunPelajaran,
+      matchedTahunPelajaran: matchedTp ? { id: matchedTp.id, tahun: matchedTp.tahun } : null,
+      availableTahunPelajaran: allTp,
+      schoolProfile: parsed.schoolProfile,
+      walasPloting: previewWalas,
+      summary: {
+        totalWalas: previewWalas.length,
+        readyCount,
+        guruNotFoundCount,
+        kelasNotFoundCount,
+      },
+    };
+  }
+
+  /**
+   * Eksekusi Backfill Data Master Rapor:
+   * 1. Menulis penugasan Wali Kelas ke OrganizationalAssignment dengan konteks Tahun Pelajaran.
+   * 2. Menulis konfigurasi Setting Rapor (Titimangsa & Data Kepala Sekolah).
+   */
+  static async executeMasterBackfill(
+    tenantId: string,
+    payload: ExecuteMasterBackfillPayload
+  ): Promise<{
+    success: boolean;
+    message: string;
+    assignedWalasCount: number;
+    updatedSettings: boolean;
+    tahunPelajaranId: string;
+  }> {
+    const preview = await this.previewMasterBackfill(tenantId, payload.url);
+
+    // 1. Tentukan target Tahun Pelajaran
+    let targetTpId = payload.tahun_pelajaran_id || preview.matchedTahunPelajaran?.id;
+    if (!targetTpId) {
+      const resolved = await this.resolveTahunPelajaran(tenantId, preview.detectedTahunPelajaran);
+      targetTpId = resolved?.id;
+    }
+
+    if (!targetTpId) {
+      throw new Error(
+        `Tahun Pelajaran '${preview.detectedTahunPelajaran}' tidak ditemukan di database. Pastikan Tahun Pelajaran telah didaftarkan pada Master Tahun Pelajaran terlebih dahulu.`
+      );
+    }
+
+    // 2. Backfill Penugasan Wali Kelas ke OrganizationalAssignment
+    let assignedWalasCount = 0;
+    const affectedUserIds: string[] = [];
+    if (payload.update_walas_assignments !== false) {
+      // Ambil atau buat posisi WALIKELAS
+      let position = await prisma.organizationalPosition.findFirst({
+        where: { tenant_id: tenantId, code: 'WALIKELAS' },
+      });
+      if (!position) {
+        position = await prisma.organizationalPosition.findFirst({
+          where: { code: 'WALIKELAS' },
+        });
+      }
+      if (!position) {
+        position = await prisma.organizationalPosition.create({
+          data: {
+            id: randomUUID(),
+            tenant_id: tenantId,
+            code: 'WALIKELAS',
+            name: 'Wali Kelas',
+            scope_type: 'KELAS',
+            order: 5,
+            is_active: true,
+          },
+        });
+      }
+
+      for (const item of preview.walasPloting) {
+        if (!item.matchedGuru || !item.matchedKelas) continue;
+
+        const guruUserId = item.matchedGuru.user_id;
+        const kelasId = item.matchedKelas.id;
+        affectedUserIds.push(guruUserId);
+
+        // Cek penugasan untuk kelas ini di tahun pelajaran yang dipilih
+        const existingClassAssignment = await prisma.organizationalAssignment.findFirst({
+          where: {
+            tenant_id: tenantId,
+            position_id: position.id,
+            kelas_id: kelasId,
+            tahun_pelajaran_id: targetTpId,
+          },
+        });
+
+        if (existingClassAssignment) {
+          await prisma.organizationalAssignment.update({
+            where: { id: existingClassAssignment.id },
+            data: {
+              user_id: guruUserId,
+              is_active: true,
+              updated_at: new Date(),
+            },
+          });
+          assignedWalasCount++;
+        } else {
+          // Cek berdasarkan composite unique (user_id, position_id, kelas_id, tahun_pelajaran_id)
+          const existingUserAssignment = await prisma.organizationalAssignment.findUnique({
+            where: {
+              user_id_position_id_kelas_id_tahun_pelajaran_id: {
+                user_id: guruUserId,
+                position_id: position.id,
+                kelas_id: kelasId,
+                tahun_pelajaran_id: targetTpId,
+              },
+            },
+          });
+
+          if (existingUserAssignment) {
+            await prisma.organizationalAssignment.update({
+              where: { id: existingUserAssignment.id },
+              data: {
+                is_active: true,
+                updated_at: new Date(),
+              },
+            });
+          } else {
+            await prisma.organizationalAssignment.create({
+              data: {
+                id: randomUUID(),
+                tenant_id: tenantId,
+                position_id: position.id,
+                user_id: guruUserId,
+                kelas_id: kelasId,
+                tahun_pelajaran_id: targetTpId,
+                is_active: true,
+                is_leader: false,
+                custom_title: `Wali Kelas ${item.matchedKelas.nama_kelas}`,
+              },
+            });
+          }
+          assignedWalasCount++;
+        }
+      }
+    }
+
+    // 3. Backfill Pengaturan Rapor (Titimangsa & Data Kepala Sekolah)
+    let updatedSettings = false;
+    if (payload.update_rapor_settings !== false) {
+      const custom = payload.custom_settings || {};
+      const tempatTerbit = custom.tempat_terbit || preview.schoolProfile.tempatTerbit || 'Purwakarta';
+      const kepsekNama = custom.nama_kepsek || preview.schoolProfile.namaKepsek;
+      const kepsekNip = custom.nip_kepsek || preview.schoolProfile.nipKepsek;
+      const tglGanjil =
+        custom.tanggal_rapor_ganjil || preview.schoolProfile.titimangsaGanjilIso || preview.schoolProfile.titimangsaGanjil;
+      const tglGenap =
+        custom.tanggal_rapor_genap || preview.schoolProfile.titimangsaGenapIso || preview.schoolProfile.titimangsaGenap;
+
+      await RaporService.updateSettings(tenantId, {
+        tahun_pelajaran_id: targetTpId,
+        tempat_terbit: tempatTerbit,
+        kepsek_nama: kepsekNama,
+        kepsek_nip: kepsekNip,
+        kepsek_status: 'DEFINITIF',
+        tanggal_rapor_ganjil: tglGanjil || undefined,
+        tanggal_rapor_genap: tglGenap || undefined,
+      });
+      updatedSettings = true;
+    }
+
+    // 4. Invalidate Cache Struktur Organisasi & Cache Rapor
+    try {
+      await cacheInvalidationService.invalidateStrukturTree(tenantId, affectedUserIds);
+      await cacheInvalidationService.invalidateRaporCache(tenantId);
+    } catch (err: any) {
+      appLogger.warn({ err: err?.message }, 'Failed to clear organization context cache');
+    }
+
+    return {
+      success: true,
+      message: `Berhasil mem-backfill data master: ${assignedWalasCount} Wali Kelas berhasil ditugaskan ke struktur organisasi, pengaturan rapor berhasil disimpan.`,
+      assignedWalasCount,
+      updatedSettings,
+      tahunPelajaranId: targetTpId,
+    };
   }
 }

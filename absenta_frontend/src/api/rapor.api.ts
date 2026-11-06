@@ -521,6 +521,14 @@ export const raporApi = {
     const response = await api.delete(`/rapor/staging/${id}`);
     return response.data;
   },
+  previewMasterBackfill: async (url: string) => {
+    const response = await api.post('/rapor/staging/backfill-master/preview', { url }, { timeout: 60000 });
+    return response.data;
+  },
+  executeMasterBackfill: async (payload: ExecuteMasterBackfillPayload) => {
+    const response = await api.post('/rapor/staging/backfill-master/execute', payload, { timeout: 120000 });
+    return response.data;
+  },
 
   // === NILAI EKSTRAKURIKULER RAPOR ===
   getEskulOptions: async () => {
@@ -823,4 +831,63 @@ export interface EskulMatrixResponse {
   total_anggota: number;
   members: EskulMatrixMember[];
 }
+
+export interface BackfillWalasPreviewItem {
+  kelasNama: string;
+  walasNama: string;
+  walasNip: string;
+  tahunPelajaran: string;
+  matchedKelas: { id: string; nama_kelas: string } | null;
+  matchedGuru: { id: string; nama_guru: string; nip: string | null; user_id: string } | null;
+  status: 'READY' | 'GURU_NOT_FOUND' | 'KELAS_NOT_FOUND' | 'BOTH_NOT_FOUND';
+}
+
+export interface MasterBackfillPreviewResult {
+  sourceUrl: string;
+  tabName: string;
+  detectedTahunPelajaran: string;
+  matchedTahunPelajaran: { id: string; tahun: string } | null;
+  availableTahunPelajaran: Array<{ id: string; tahun: string; is_active: boolean }>;
+  schoolProfile: {
+    namaSekolah: string;
+    alamat: string;
+    namaKepsek: string;
+    nipKepsek: string;
+    titimangsaGanjil: string;
+    titimangsaGenap: string;
+    titimangsaGanjilIso: string;
+    titimangsaGenapIso: string;
+    tempatTerbit: string;
+  };
+  walasPloting: BackfillWalasPreviewItem[];
+  summary: {
+    totalWalas: number;
+    readyCount: number;
+    guruNotFoundCount: number;
+    kelasNotFoundCount: number;
+  };
+}
+
+export interface ExecuteMasterBackfillPayload {
+  url: string;
+  tahun_pelajaran_id?: string;
+  update_rapor_settings?: boolean;
+  update_walas_assignments?: boolean;
+  custom_settings?: {
+    nama_kepsek?: string;
+    nip_kepsek?: string;
+    tempat_terbit?: string;
+    tanggal_rapor_ganjil?: string;
+    tanggal_rapor_genap?: string;
+  };
+}
+
+export interface ExecuteMasterBackfillResponse {
+  success: boolean;
+  message: string;
+  assignedWalasCount: number;
+  updatedSettings: boolean;
+  tahunPelajaranId: string;
+}
+
 

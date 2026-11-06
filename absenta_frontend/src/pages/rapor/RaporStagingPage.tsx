@@ -18,6 +18,7 @@ import {
   Layers,
   GraduationCap,
   Calendar,
+  Database,
 } from 'lucide-react';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -50,6 +51,12 @@ const RaporStagingDetailModal = lazy(() =>
 const RaporStagingPreSyncModal = lazy(() =>
   import('@/components/rapor/staging/RaporStagingPreSyncModal').then((m) => ({
     default: m.RaporStagingPreSyncModal,
+  }))
+);
+
+const RaporStagingBackfillMasterModal = lazy(() =>
+  import('@/components/rapor/staging/RaporStagingBackfillMasterModal').then((m) => ({
+    default: m.RaporStagingBackfillMasterModal,
   }))
 );
 
@@ -89,6 +96,7 @@ export default React.memo(function RaporStagingPage() {
 
   // Modals State
   const [isFetchModalOpen, setIsFetchModalOpen] = useState(false);
+  const [isBackfillMasterModalOpen, setIsBackfillMasterModalOpen] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [preSyncTargetId, setPreSyncTargetId] = useState<string | null>(null);
 
@@ -242,6 +250,14 @@ export default React.memo(function RaporStagingPage() {
 
   const handleCloseFetchModal = useCallback(() => {
     setIsFetchModalOpen(false);
+  }, []);
+
+  const handleOpenBackfillMasterModal = useCallback(() => {
+    setIsBackfillMasterModalOpen(true);
+  }, []);
+
+  const handleCloseBackfillMasterModal = useCallback(() => {
+    setIsBackfillMasterModalOpen(false);
   }, []);
 
   const handleFetchSubmit = useCallback(
@@ -419,7 +435,17 @@ export default React.memo(function RaporStagingPage() {
                 variant="compact"
               />
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
+              <Button
+                type="button"
+                onClick={handleOpenBackfillMasterModal}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-xs gap-1.5 h-9 w-full sm:w-auto"
+                size="sm"
+                aria-label="Buka dialog backfill data master rapor"
+              >
+                <Database size={14} aria-hidden="true" />
+                <span>Backfill Data Master Rapor</span>
+              </Button>
               <Button
                 type="button"
                 onClick={handleOpenFetchModal}
@@ -776,6 +802,16 @@ export default React.memo(function RaporStagingPage() {
             isLoading={isLoadingPreSync}
             onConfirmSync={handleConfirmPreSync}
             isSyncing={syncMutation.isPending}
+          />
+        )}
+      </Suspense>
+
+      {/* ── MODAL 4: BACKFILL DATA MASTER RAPOR (WALI KELAS & SETTING RAPOR) ── */}
+      <Suspense fallback={<div className="p-4 text-center"><Loader /></div>}>
+        {isBackfillMasterModalOpen && (
+          <RaporStagingBackfillMasterModal
+            isOpen={isBackfillMasterModalOpen}
+            onClose={handleCloseBackfillMasterModal}
           />
         )}
       </Suspense>

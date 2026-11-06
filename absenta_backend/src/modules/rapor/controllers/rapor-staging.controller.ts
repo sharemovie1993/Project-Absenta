@@ -8,6 +8,26 @@ const fetchSheetsSchema = z.object({
   urls: z.array(z.string().url('Format URL Google Sheet tidak valid')).min(1, 'Minimal sertakan 1 URL Google Sheet'),
 });
 
+const masterUrlSchema = z.object({
+  url: z.string().url('Format URL Google Sheet tidak valid'),
+});
+
+const executeMasterBackfillSchema = z.object({
+  url: z.string().url('Format URL Google Sheet tidak valid'),
+  tahun_pelajaran_id: z.string().optional(),
+  update_rapor_settings: z.boolean().optional(),
+  update_walas_assignments: z.boolean().optional(),
+  custom_settings: z
+    .object({
+      nama_kepsek: z.string().optional(),
+      nip_kepsek: z.string().optional(),
+      tempat_terbit: z.string().optional(),
+      tanggal_rapor_ganjil: z.string().optional(),
+      tanggal_rapor_genap: z.string().optional(),
+    })
+    .optional(),
+});
+
 export class RaporStagingController {
   /**
    * POST /api/rapor/staging/scan-folder
@@ -215,6 +235,40 @@ export class RaporStagingController {
     } catch (error: any) {
       appLogger.error({ err: error }, 'RaporStagingController.delete error');
       return sendError(reply, 500, error.message || 'Gagal menghapus staging sheet', error);
+    }
+  }
+
+  /**
+   * POST /api/rapor/staging/backfill-master/preview
+   * Menganalisis berkas Google Sheet untuk pratinjau data master (Wali Kelas & Setting Rapor)
+   */
+  static async previewMasterBackfill(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const parsed = masterUrlSchema.parse(req.body);
+
+      const result = await RaporStagingService.previewMasterBackfill(tenant_id, parsed.url);
+      return sendResponse(reply, 200, true, 'Pratinjau backfill data master rapor berhasil dianalisis', result);
+    } catch (error: any) {
+      appLogger.error({ err: error }, 'RaporStagingController.previewMasterBackfill error');
+      return sendError(reply, 400, error.message || 'Gagal menganalisis sheet master', error);
+    }
+  }
+
+  /**
+   * POST /api/rapor/staging/backfill-master/execute
+   * Mengeksekusi penulisan Wali Kelas ke OrganizationalAssignment dan konfigurasi Setting Rapor
+   */
+  static async executeMasterBackfill(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const parsed = executeMasterBackfillSchema.parse(req.body);
+
+      const result = await RaporStagingService.executeMasterBackfill(tenant_id, parsed);
+      return sendResponse(reply, 200, true, result.message, result);
+    } catch (error: any) {
+      appLogger.error({ err: error }, 'RaporStagingController.executeMasterBackfill error');
+      return sendError(reply, 400, error.message || 'Gagal mengeksekusi backfill data master', error);
     }
   }
 }

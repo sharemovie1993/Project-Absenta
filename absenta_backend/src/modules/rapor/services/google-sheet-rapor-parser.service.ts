@@ -70,6 +70,33 @@ export interface StudentCpRecord {
   }>;
 }
 
+export interface MasterReferenceWalasItem {
+  kelasNama: string;
+  walasNama: string;
+  walasNip: string;
+  tahunPelajaran: string;
+}
+
+export interface MasterReferenceSchoolProfile {
+  namaSekolah: string;
+  alamat: string;
+  namaKepsek: string;
+  nipKepsek: string;
+  titimangsaGanjil: string;
+  titimangsaGenap: string;
+  titimangsaGanjilIso: string;
+  titimangsaGenapIso: string;
+  tempatTerbit: string;
+}
+
+export interface MasterReferenceData {
+  sourceUrl: string;
+  tabName: string;
+  tahunPelajaran: string;
+  schoolProfile: MasterReferenceSchoolProfile;
+  walasPloting: MasterReferenceWalasItem[];
+}
+
 export interface ParsedRaporClassData {
   sourceUrl: string;
   fileTitle?: string;
@@ -651,5 +678,238 @@ export class GoogleSheetRaporParserService {
       sumatifStudents: sumatifData.students,
       cpStudents: cpData.students,
     };
+  }
+
+  /**
+   * Helper Pengurai Tanggal Titimangsa Indonesia:
+   * Mengubah "Purwakarta, 20 Desember 2024" atau "20 Juni 2025" menjadi tempat dan ISO string "YYYY-MM-DD".
+   */
+  static parseIndonesianDate(str?: string | null): { tempat: string; dateIso: string; original: string } {
+    if (!str) return { tempat: '', dateIso: '', original: '' };
+    const trimmed = str.trim();
+    const months: Record<string, string> = {
+      januari: '01',
+      februari: '02',
+      maret: '03',
+      april: '04',
+      mei: '05',
+      juni: '06',
+      juli: '07',
+      agustus: '08',
+      september: '09',
+      oktober: '10',
+      november: '11',
+      desember: '12',
+    };
+
+    // Pattern 1: "Purwakarta, 20 Desember 2024" atau "20 Desember 2024"
+    const m = trimmed.match(/^(?:([^,0-9]+),\s*)?(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})/i);
+    if (m) {
+      const tempat = (m[1] || '').trim();
+      const day = m[2].padStart(2, '0');
+      const monthKey = m[3].toLowerCase();
+      const month = months[monthKey] || '01';
+      const year = m[4];
+      return { tempat, dateIso: `${year}-${month}-${day}`, original: trimmed };
+    }
+
+    // Pattern 2: ISO YYYY-MM-DD
+    const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      return { tempat: '', dateIso: `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`, original: trimmed };
+    }
+
+    return { tempat: '', dateIso: '', original: trimmed };
+  }
+
+  /**
+   * ── 3. Dynamic Parser untuk Sheet MASTER / SETTING (Database Referensi) ──
+   * Membedah tabel 'SETTING DATA WALI KELAS' dan blok 'Profil Sekolah'.
+   */
+  static parseMasterReferenceSheet(rows: string[][], tabName = 'MASTER'): MasterReferenceData {
+    const schoolProfile: MasterReferenceSchoolProfile = {
+      namaSekolah: '',
+      alamat: '',
+      namaKepsek: '',
+      nipKepsek: '',
+      titimangsaGanjil: '',
+      titimangsaGenap: '',
+      titimangsaGanjilIso: '',
+      titimangsaGenapIso: '',
+      tempatTerbit: '',
+    };
+
+    const labelMap: Array<{ key: keyof MasterReferenceSchoolProfile; regex: RegExp }> = [
+      { key: 'namaSekolah', regex: /^nama\s*sekolah$/i },
+      { key: 'alamat', regex: /^alamat(\s*sekolah)?$/i },
+      { key: 'namaKepsek', regex: /^(nama\s*)?(kepsek|kepala\s*sekolah)$/i },
+      { key: 'nipKepsek', regex: /^nip\s*(kepsek|kepala(\s*sekolah)?)$/i },
+      { key: 'titimangsaGanjil', regex: /^(tgl\.?\s*)?titimangsa\s*ganjil$/i },
+      { key: 'titimangsaGenap', regex: /^(tgl\.?\s*)?titimangsa\s*genap$/i },
+      { key: 'tempatTerbit', regex: /^tempat\s*(terbit)?$/i },
+    ];
+
+    // 1. Pindai Profil Sekolah melintasi seluruh kolom dan baris
+    for (let r = 0; r < rows.length; r++) {
+      const row = rows[r];
+      for (let c = 0; c < row.length; c++) {
+        const cellText = (row[c] || '').trim();
+        if (!cellText) continue;
+
+        for (const item of labelMap) {
+          if (!schoolProfile[item.key] && item.regex.test(cellText)) {
+            // Ambil sel non-kosong terdekat di sebelah kanan (mengabaikan titik dua ':')
+            for (let valCol = c + 1; valCol < Math.min(row.length, c + 8); valCol++) {
+              const val = (row[valCol] || '').trim();
+              if (val && val !== ':') {
+                schoolProfile[item.key] = val;
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Pecah titimangsa jika belum punya tempat terbit terpisah
+    const ganjilParsed = this.parseIndonesianDate(schoolProfile.titimangsaGanjil);
+    const genapParsed = this.parseIndonesianDate(schoolProfile.titimangsaGenap);
+    schoolProfile.titimangsaGanjilIso = ganjilParsed.dateIso;
+    schoolProfile.titimangsaGenapIso = genapParsed.dateIso;
+
+    if (!schoolProfile.tempatTerbit) {
+      schoolProfile.tempatTerbit = ganjilParsed.tempat || genapParsed.tempat || '';
+    }
+
+    // 2. Cari Header Tabel 'SETTING DATA WALI KELAS'
+    let headerRowIdx = -1;
+    let colKelas = -1;
+    let colWalas = -1;
+    let colNip = -1;
+    let colTp = -1;
+
+    for (let r = 0; r < Math.min(rows.length, 30); r++) {
+      const row = rows[r];
+      const kIdx = row.findIndex((c) => /kelas(\s*walas)?$/i.test(c.trim()));
+      const wIdx = row.findIndex((c) => /^(walas|wali\s*kelas|nama\s*walas)$/i.test(c.trim()));
+
+      if (kIdx !== -1 && wIdx !== -1) {
+        headerRowIdx = r;
+        colKelas = kIdx;
+        colWalas = wIdx;
+        colNip = row.findIndex((c) => /^nip(\s*walas)?$/i.test(c.trim()));
+        colTp = row.findIndex((c) => /^(tahun\s*pelajaran|tp)$/i.test(c.trim()));
+        break;
+      }
+    }
+
+    // Jika colTp tidak ada di baris yang sama, coba cari di baris atas atau kolom sekitar
+    if (headerRowIdx !== -1 && colTp === -1 && headerRowIdx > 0) {
+      const prevRow = rows[headerRowIdx - 1];
+      colTp = prevRow.findIndex((c) => /^(tahun\s*pelajaran|tp)$/i.test(c.trim()));
+    }
+
+    const walasPloting: MasterReferenceWalasItem[] = [];
+    let detectedTp = '';
+
+    if (headerRowIdx !== -1) {
+      for (let r = headerRowIdx + 1; r < rows.length; r++) {
+        const row = rows[r];
+        const kelasNama = (row[colKelas] || '').trim();
+        const walasNama = (row[colWalas] || '').trim();
+        let walasNip = colNip !== -1 ? (row[colNip] || '').trim() : '';
+        const tpVal = colTp !== -1 ? (row[colTp] || '').trim() : '';
+
+        // Bersihkan NIP dari tanda hubung '-' atau angka 0 tunggal
+        walasNip = walasNip.replace(/['"`]/g, '').trim();
+        if (walasNip === '-' || walasNip === '0') {
+          walasNip = '';
+        }
+
+        // Hentikan jika baris kosong sepenuhnya atau bukan data rombel
+        if (!kelasNama && !walasNama) continue;
+        if (/^(kelas\s*walas|walas|nip\s*walas|setting\s*data)$/i.test(kelasNama)) continue;
+
+        if (tpVal && !detectedTp) {
+          detectedTp = tpVal;
+        }
+
+        walasPloting.push({
+          kelasNama,
+          walasNama,
+          walasNip,
+          tahunPelajaran: tpVal || detectedTp,
+        });
+      }
+    }
+
+    // Jika detectedTp belum terisi, coba deteksi dari tahun pada tanggal titimangsa
+    if (!detectedTp) {
+      const yearFromDate = (schoolProfile.titimangsaGanjilIso || schoolProfile.titimangsaGenapIso).slice(0, 4);
+      if (yearFromDate) {
+        const yNum = parseInt(yearFromDate, 10);
+        detectedTp = `${yNum}/${yNum + 1}`;
+      }
+    }
+
+    return {
+      sourceUrl: '',
+      tabName,
+      tahunPelajaran: detectedTp.replace(/\s+/g, ' ').trim(),
+      schoolProfile,
+      walasPloting,
+    };
+  }
+
+  /**
+   * ── Public Method: Ambil dan bedah sheet MASTER langsung dari URL Google Sheet ──
+   */
+  static async fetchMasterSheetData(url: string): Promise<MasterReferenceData> {
+    const spreadsheetId = this.extractSpreadsheetId(url);
+    const tabs = await this.fetchSheetTabs(spreadsheetId);
+
+    if (tabs.length === 0) {
+      throw new Error('Tidak dapat menemukan lembar kerja pada Google Sheet ini.');
+    }
+
+    // Urutan prioritas pencarian tab MASTER referensi
+    const candidateTab =
+      tabs.find((t) => /^master$/i.test(t.name.trim())) ||
+      tabs.find((t) => /master/i.test(t.name)) ||
+      tabs.find((t) => /^setting$/i.test(t.name.trim())) ||
+      tabs.find((t) => /setting/i.test(t.name)) ||
+      tabs.find((t) => /database/i.test(t.name)) ||
+      tabs.find((t) => /referensi/i.test(t.name)) ||
+      tabs[0];
+
+    appLogger.info(
+      { spreadsheetId, selectedTab: candidateTab.name, gid: candidateTab.gid },
+      'Mengunduh tab MASTER database referensi Google Sheet...'
+    );
+
+    const csvText = await this.fetchSheetCsv(spreadsheetId, candidateTab.gid);
+    const rows = this.parseCSV(csvText);
+    const parsed = this.parseMasterReferenceSheet(rows, candidateTab.name);
+    parsed.sourceUrl = url;
+
+    // Jika plotting masih kosong dan ada tab lain yang namanya mengandung setting/master, coba fallback
+    if (parsed.walasPloting.length === 0) {
+      const otherTab = tabs.find((t) => t.gid !== candidateTab.gid && (/setting/i.test(t.name) || /master/i.test(t.name)));
+      if (otherTab) {
+        try {
+          const fallbackCsv = await this.fetchSheetCsv(spreadsheetId, otherTab.gid);
+          const fallbackRows = this.parseCSV(fallbackCsv);
+          const fallbackParsed = this.parseMasterReferenceSheet(fallbackRows, otherTab.name);
+          if (fallbackParsed.walasPloting.length > 0) {
+            fallbackParsed.sourceUrl = url;
+            return fallbackParsed;
+          }
+        } catch (fbErr) {
+          appLogger.warn({ fbErr }, 'Gagal mencoba fallback tab kedua untuk MASTER sheet');
+        }
+      }
+    }
+
+    return parsed;
   }
 }
