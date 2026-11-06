@@ -412,7 +412,7 @@ export const renderStudentRaporPages = (
         const hasScore = (n.nilai_akhir && n.nilai_akhir > 0) || (n.nilai_components && n.nilai_components.length > 0);
         const isMissing = !hasScore;
         const score = hasScore ? n.nilai_akhir : '-';
-        const cap = resolveCapaianKompetensi(n, score);
+        const { text: capText, isFallback: isCapFallback } = resolveCapaianKompetensi(n, score);
 
         tableRows.push([
           { content: String(idx + 1), styles: { halign: 'center', valign: 'middle' } },
@@ -422,16 +422,17 @@ export const renderStudentRaporPages = (
             styles: {
               halign: 'center',
               valign: 'middle',
+              fontStyle: isMissing ? 'italic' : 'bold',
               textColor: isMissing ? [220, 38, 38] : [0, 0, 0],
             },
           },
           {
-            content: cap,
+            content: capText,
             styles: {
               halign: 'left',
               valign: 'middle',
-              textColor: isMissing ? [220, 38, 38] : [0, 0, 0],
-              fontStyle: isMissing ? 'italic' : 'normal',
+              textColor: isCapFallback ? [220, 38, 38] : [0, 0, 0],
+              fontStyle: isCapFallback ? 'italic' : 'normal',
             },
           },
         ]);

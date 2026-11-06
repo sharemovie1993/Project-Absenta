@@ -545,7 +545,7 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
                           {items.map((m: any, mIdx: number) => {
                             const hasScore = (m.nilai_akhir && m.nilai_akhir > 0) || (m.nilai_components && m.nilai_components.length > 0);
                             const score = hasScore ? m.nilai_akhir : '-';
-                            const cap = resolveCapaianKompetensi(m, score);
+                            const { text: capText, isFallback: isCapFallback } = resolveCapaianKompetensi(m, score);
 
                             return (
                               <tr key={`mapel-${mIdx}`} className="border-b border-black">
@@ -555,11 +555,11 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
                                 <td className="py-[1.8mm] px-[2.5mm] text-left align-middle border-r border-black font-normal">
                                   {m.mapel_name || '-'}
                                 </td>
-                                <td className={`py-[1.8mm] text-center align-middle border-r border-black font-bold ${!hasScore ? 'text-red-600' : ''}`}>
+                                <td className={`py-[1.8mm] text-center align-middle border-r border-black font-bold ${!hasScore ? 'text-red-600 italic' : ''}`}>
                                   {score}
                                 </td>
-                                <td className="py-[1.8mm] px-[2.5mm] text-left align-middle font-normal text-justify">
-                                  {cap}
+                                <td className={`py-[1.8mm] px-[2.5mm] text-left align-middle font-normal text-justify ${isCapFallback ? 'text-red-600 font-semibold italic' : 'text-black'}`}>
+                                  {capText}
                                 </td>
                               </tr>
                             );

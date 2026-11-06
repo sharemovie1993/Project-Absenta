@@ -327,9 +327,19 @@ export const formatAnakKe = (val: any): string => {
   return String(val);
 };
 
+export interface CapaianKompetensiResolution {
+  text: string;
+  isFallback: boolean;
+  hasScore: boolean;
+}
+
 /**
- * Resolusi Teks Capaian Kompetensi (CP) Standar e-Rapor Kurikulum Merdeka
- * Menjamin 100% konsistensi antara Pratinjau Modal Layar (HTML) dan Berkas PDF Cetak (jsPDF).
+ * Resolusi Teks Capaian Kompetensi (CP) Standar Zero-Fallback e-Rapor
+ * 
+ * Aturan Zero Fallback:
+ * 1. Tidak mengarang narasi palsu jika guru belum mengisi capaian pembelajaran.
+ * 2. Jika nilai atau deskripsi CP belum ada, sistem mengembalikan pesan eksplisit dengan `isFallback: true`.
+ * 3. Teks fallback wajib dirender dengan gaya teks MERAH (#dc2626 / [220, 38, 38]) baik di layar maupun PDF cetak.
  */
 export const resolveCapaianKompetensi = (
   mapel: {
@@ -341,17 +351,11 @@ export const resolveCapaianKompetensi = (
     kkm?: number | null;
   },
   scoreVal?: number | string | null
-): string => {
+): CapaianKompetensiResolution => {
   const hasScore =
-    (mapel.nilai_akhir !== undefined && mapel.nilai_akhir !== null && mapel.nilai_akhir > 0) ||
-    (scoreVal !== undefined && scoreVal !== null && Number(scoreVal) > 0);
+    (mapel.nilai_akhir !== undefined && mapel.nilai_akhir !== null && Number(mapel.nilai_akhir) > 0) ||
+    (scoreVal !== undefined && scoreVal !== null && scoreVal !== '-' && Number(scoreVal) > 0);
 
-  if (!hasScore) {
-    return 'Belum ada penilaian terinput';
-  }
-
-  const numScore = Number(scoreVal ?? mapel.nilai_akhir ?? 0);
-  const kkm = mapel.kkm ?? 75;
   const rawText = (
     mapel.catatan_kompetensi ||
     mapel.capaian_kompetensi ||
@@ -360,26 +364,59 @@ export const resolveCapaianKompetensi = (
     ''
   ).trim();
 
-  if (rawText) {
-    if (/^siswa\b/i.test(rawText)) {
-      return rawText;
+  // 1. Kasus: Nilai belum terinput
+  if (!hasScore) {
+    if (rawText && rawText !== '-' && !/^(null|undefined|kosong|-)$/i.test(rawText)) {
+      return {
+        text: rawText,
+        isFallback: false,
+        hasScore: false,
+      };
     }
-    const lowerFirst = rawText.charAt(0).toLowerCase() + rawText.slice(1);
-    if (numScore >= 85) {
-      return `Siswa menunjukkan penguasaan yang sangat baik dalam ${lowerFirst}`;
-    } else if (numScore >= kkm) {
-      return `Siswa menunjukkan penguasaan yang baik dalam ${lowerFirst}`;
-    } else {
-      return `Siswa cukup mampu ${lowerFirst}`;
-    }
+    return {
+      text: '[Penilaian dan capaian kompetensi belum diinput]',
+      isFallback: true,
+      hasScore: false,
+    };
   }
 
-  if (numScore >= 85) {
-    return 'Siswa menunjukkan penguasaan yang sangat baik dalam seluruh capaian pembelajaran mata pelajaran ini.';
-  } else if (numScore >= kkm) {
-    return 'Siswa mampu memahami materi dan mencapai kompetensi mata pelajaran ini dengan baik.';
-  } else {
-    return 'Siswa cukup mampu menguasai materi dasar, perlu bimbingan lebih lanjut pada materi utama.';
+  // 2. Kasus: Nilai ada, periksa apakah ada teks capaian kompetensi nyata
+  if (rawText && rawText !== '-' && !/^(null|undefined|kosong|-|belum ada)$/i.test(rawText)) {
+    const numScore = Number(scoreVal ?? mapel.nilai_akhir ?? 0);
+    const kkm = mapel.kkm ?? 75;
+
+    // Jika sudah berupa kalimat lengkap (misal: "Siswa menunjukkan...", "Menunjukkan...", "Peserta didik...")
+    if (/^(siswa|peserta didik|menunjukkan|mampu|cukup mampu|perlu bimbingan)\b/i.test(rawText)) {
+      return {
+        text: rawText,
+        isFallback: false,
+        hasScore: true,
+      };
+    }
+
+    // Jika berupa frasa kompetensi (misal: "menganalisis teks anekdot"), bungkus naratif standar
+    const lowerFirst = rawText.charAt(0).toLowerCase() + rawText.slice(1);
+    let formattedText = '';
+    if (numScore >= 85) {
+      formattedText = `Siswa menunjukkan penguasaan yang sangat baik dalam ${lowerFirst}`;
+    } else if (numScore >= kkm) {
+      formattedText = `Siswa menunjukkan penguasaan yang baik dalam ${lowerFirst}`;
+    } else {
+      formattedText = `Siswa cukup mampu dalam ${lowerFirst}, perlu bimbingan lebih lanjut.`;
+    }
+
+    return {
+      text: formattedText,
+      isFallback: false,
+      hasScore: true,
+    };
   }
+
+  // 3. Kasus Zero Fallback: Nilai terinput namun teks CP belum diisi oleh guru
+  return {
+    text: '[Capaian kompetensi belum diisi oleh guru mata pelajaran]',
+    isFallback: true,
+    hasScore: true,
+  };
 };
 
