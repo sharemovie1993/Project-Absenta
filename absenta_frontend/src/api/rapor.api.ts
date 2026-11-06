@@ -837,7 +837,13 @@ export interface BackfillWalasPreviewItem {
   walasNama: string;
   walasNip: string;
   tahunPelajaran: string;
-  matchedKelas: { id: string; nama_kelas: string } | null;
+  konsentrasiKeahlian?: string;
+  programKeahlian?: string;
+  matchedKelas: {
+    id: string;
+    nama_kelas: string;
+    jurusan?: { id: string; nama: string; kode?: string | null; singkatan?: string | null } | null;
+  } | null;
   matchedGuru: { id: string; nama_guru: string; nip: string | null; user_id: string } | null;
   status: 'READY' | 'GURU_NOT_FOUND' | 'KELAS_NOT_FOUND' | 'BOTH_NOT_FOUND';
   ambiguityNote?: string;
@@ -850,7 +856,13 @@ export interface MasterBackfillPreviewResult {
   matchedTahunPelajaran: { id: string; tahun: string } | null;
   availableTahunPelajaran: Array<{ id: string; tahun: string; is_active: boolean }>;
   availableGurus: Array<{ id: string; nama_guru: string; nip: string | null; user_id: string }>;
-  availableClasses: Array<{ id: string; nama_kelas: string; tingkat: number }>;
+  availableClasses: Array<{
+    id: string;
+    nama_kelas: string;
+    tingkat: number;
+    jurusanNama?: string | null;
+    jurusanKode?: string | null;
+  }>;
   schoolProfile: {
     namaSekolah: string;
     alamat: string;

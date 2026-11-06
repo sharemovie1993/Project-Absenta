@@ -75,6 +75,8 @@ export interface MasterReferenceWalasItem {
   walasNama: string;
   walasNip: string;
   tahunPelajaran: string;
+  konsentrasiKeahlian?: string;
+  programKeahlian?: string;
 }
 
 export interface MasterReferenceSchoolProfile {
@@ -781,12 +783,15 @@ export class GoogleSheetRaporParserService {
       schoolProfile.tempatTerbit = ganjilParsed.tempat || genapParsed.tempat || '';
     }
 
-    // 2. Cari Header Tabel 'SETTING DATA WALI KELAS'
+    // 2. Cari Header Tabel 'SETTING DATA WALI KELAS' & Tabel 'REFERENSI ROMBEL / JURUSAN'
     let headerRowIdx = -1;
     let colKelas = -1;
     let colWalas = -1;
     let colNip = -1;
     let colTp = -1;
+    let colKonsentrasi = -1;
+    let colProgram = -1;
+    let colRombel = -1;
 
     for (let r = 0; r < Math.min(rows.length, 30); r++) {
       const row = rows[r];
@@ -799,7 +804,33 @@ export class GoogleSheetRaporParserService {
         colWalas = wIdx;
         colNip = row.findIndex((c) => /^nip(\s*walas)?$/i.test(c.trim()));
         colTp = row.findIndex((c) => /^(tahun\s*pelajaran|tp)$/i.test(c.trim()));
-        break;
+      }
+
+      if (colKonsentrasi === -1) {
+        colKonsentrasi = row.findIndex((c) => /konsentrasi(\s*keahlian)?/i.test(c.trim()));
+      }
+      if (colProgram === -1) {
+        colProgram = row.findIndex((c) => /program(\s*keahlian)?/i.test(c.trim()));
+      }
+      if (colRombel === -1) {
+        colRombel = row.findIndex((c) => /nama\s*rombel/i.test(c.trim()));
+      }
+    }
+
+    // Bangun peta jurusan & konsentrasi keahlian per rombel dari tabel database sheet MASTER
+    const rombelJurusanMap = new Map<string, { konsentrasi: string; program: string }>();
+    if (colRombel !== -1) {
+      for (let r = 0; r < rows.length; r++) {
+        const row = rows[r];
+        const rName = (row[colRombel] || '').trim();
+        const kName = colKonsentrasi !== -1 ? (row[colKonsentrasi] || '').trim() : '';
+        const pName = colProgram !== -1 ? (row[colProgram] || '').trim() : '';
+        if (rName && !/^(nama\s*rombel|rombel|otomatis|ketik\s*manual)$/i.test(rName)) {
+          rombelJurusanMap.set(rName.toLowerCase().replace(/[\s\-_]+/g, ''), {
+            konsentrasi: kName,
+            program: pName,
+          });
+        }
       }
     }
 
@@ -839,11 +870,19 @@ export class GoogleSheetRaporParserService {
           detectedTp = cleanTpVal;
         }
 
+        // Ambil konteks jurusan dari pemetaan rombel atau baris yang sama
+        const cleanK = kelasNama.toLowerCase().replace(/[\s\-_]+/g, '');
+        const hint = rombelJurusanMap.get(cleanK);
+        const rowKonsentrasi = hint?.konsentrasi || (colKonsentrasi !== -1 ? (row[colKonsentrasi] || '').trim() : '');
+        const rowProgram = hint?.program || (colProgram !== -1 ? (row[colProgram] || '').trim() : '');
+
         walasPloting.push({
           kelasNama,
           walasNama,
           walasNip,
           tahunPelajaran: (hasYearDigits && !isIgnoredTp) ? cleanTpVal : '',
+          konsentrasiKeahlian: rowKonsentrasi || undefined,
+          programKeahlian: rowProgram || undefined,
         });
       }
     }

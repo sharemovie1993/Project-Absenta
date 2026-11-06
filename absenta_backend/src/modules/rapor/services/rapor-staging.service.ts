@@ -11,7 +11,13 @@ export interface BackfillWalasPreviewItem {
   walasNama: string;
   walasNip: string;
   tahunPelajaran: string;
-  matchedKelas: { id: string; nama_kelas: string } | null;
+  konsentrasiKeahlian?: string;
+  programKeahlian?: string;
+  matchedKelas: {
+    id: string;
+    nama_kelas: string;
+    jurusan?: { id: string; nama: string; kode?: string | null; singkatan?: string | null } | null;
+  } | null;
   matchedGuru: { id: string; nama_guru: string; nip: string | null; user_id: string } | null;
   status: 'READY' | 'GURU_NOT_FOUND' | 'KELAS_NOT_FOUND' | 'BOTH_NOT_FOUND';
   ambiguityNote?: string;
@@ -24,7 +30,13 @@ export interface MasterBackfillPreviewResult {
   matchedTahunPelajaran: { id: string; tahun: string } | null;
   availableTahunPelajaran: Array<{ id: string; tahun: string; is_active: boolean }>;
   availableGurus: Array<{ id: string; nama_guru: string; nip: string | null; user_id: string }>;
-  availableClasses: Array<{ id: string; nama_kelas: string; tingkat: number }>;
+  availableClasses: Array<{
+    id: string;
+    nama_kelas: string;
+    tingkat: number;
+    jurusanNama?: string | null;
+    jurusanKode?: string | null;
+  }>;
   schoolProfile: {
     namaSekolah: string;
     alamat: string;
@@ -1371,7 +1383,15 @@ export class RaporStagingService {
       }),
       prisma.kelas.findMany({
         where: { tenant_id: tenantId },
-        select: { id: true, nama_kelas: true, tingkat: true },
+        select: {
+          id: true,
+          nama_kelas: true,
+          tingkat: true,
+          Jurusan: {
+            select: { id: true, nama: true, kode: true, singkatan: true },
+          },
+        },
+        orderBy: [{ tingkat: 'asc' }, { nama_kelas: 'asc' }],
       }),
     ]);
 
@@ -1384,13 +1404,22 @@ export class RaporStagingService {
     let kelasNotFoundCount = 0;
 
     const previewWalas: BackfillWalasPreviewItem[] = parsed.walasPloting.map((row) => {
-      // a. Match Kelas
+      // a. Match Kelas dengan Resolver Cerdas Berbasis Jurusan / Konsentrasi Keahlian
       const cKelas = row.kelasNama.replace(/[\s\-_]+/g, '').toLowerCase();
-      let matchedKelas =
-        allClasses.find((k) => k.nama_kelas.replace(/[\s\-_]+/g, '').toLowerCase() === cKelas) || null;
+      const candidateClasses = allClasses.filter(
+        (k) => k.nama_kelas.replace(/[\s\-_]+/g, '').toLowerCase() === cKelas
+      );
 
-      // Token / Alias Match untuk jurusan SMK populer jika belum cocok exact
-      if (!matchedKelas) {
+      let matchedKelas: (typeof allClasses)[0] | null = null;
+
+      if (candidateClasses.length > 0) {
+        matchedKelas = this.resolveKelasWithJurusan(
+          candidateClasses,
+          row.konsentrasiKeahlian,
+          row.programKeahlian
+        );
+      } else {
+        // Alias Match untuk jurusan SMK populer (tjkt <-> tkj, tm <-> tp, to <-> tkr/tsm)
         const aliasMap: Record<string, string[]> = {
           tjkt: ['tkj', 'tjkt'],
           tkj: ['tjkt', 'tkj'],
@@ -1402,11 +1431,15 @@ export class RaporStagingService {
           if (cKelas.includes(key)) {
             for (const alias of aliases) {
               const replaced = cKelas.replace(key, alias);
-              const found = allClasses.find(
+              const aliasCandidates = allClasses.filter(
                 (k) => k.nama_kelas.replace(/[\s\-_]+/g, '').toLowerCase() === replaced
               );
-              if (found) {
-                matchedKelas = found;
+              if (aliasCandidates.length > 0) {
+                matchedKelas = this.resolveKelasWithJurusan(
+                  aliasCandidates,
+                  row.konsentrasiKeahlian,
+                  row.programKeahlian
+                );
                 break;
               }
             }
@@ -1480,7 +1513,22 @@ export class RaporStagingService {
         walasNama: row.walasNama,
         walasNip: row.walasNip,
         tahunPelajaran: row.tahunPelajaran || parsed.tahunPelajaran,
-        matchedKelas: matchedKelas ? { id: matchedKelas.id, nama_kelas: matchedKelas.nama_kelas } : null,
+        konsentrasiKeahlian: row.konsentrasiKeahlian,
+        programKeahlian: row.programKeahlian,
+        matchedKelas: matchedKelas
+          ? {
+              id: matchedKelas.id,
+              nama_kelas: matchedKelas.nama_kelas,
+              jurusan: matchedKelas.Jurusan
+                ? {
+                    id: matchedKelas.Jurusan.id,
+                    nama: matchedKelas.Jurusan.nama,
+                    kode: matchedKelas.Jurusan.kode,
+                    singkatan: matchedKelas.Jurusan.singkatan,
+                  }
+                : null,
+            }
+          : null,
         matchedGuru: matchedGuru
           ? {
               id: matchedGuru.id,
@@ -1510,6 +1558,8 @@ export class RaporStagingService {
         id: k.id,
         nama_kelas: k.nama_kelas,
         tingkat: k.tingkat,
+        jurusanNama: k.Jurusan?.nama || null,
+        jurusanKode: k.Jurusan?.kode || k.Jurusan?.singkatan || null,
       })),
       schoolProfile: parsed.schoolProfile,
       walasPloting: previewWalas,

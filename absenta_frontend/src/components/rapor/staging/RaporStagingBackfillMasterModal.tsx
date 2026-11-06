@@ -39,6 +39,8 @@ interface EditableWalasRow {
   walasNama: string;
   walasNip: string;
   tahunPelajaran: string;
+  konsentrasiKeahlian?: string;
+  programKeahlian?: string;
   selectedKelasId: string;
   selectedGuruUserId: string;
   ambiguityNote?: string;
@@ -103,6 +105,8 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
           walasNama: p.walasNama,
           walasNip: p.walasNip,
           tahunPelajaran: p.tahunPelajaran,
+          konsentrasiKeahlian: p.konsentrasiKeahlian,
+          programKeahlian: p.programKeahlian,
           selectedKelasId: p.matchedKelas?.id || '',
           selectedGuruUserId: p.matchedGuru?.user_id || '',
           ambiguityNote: p.ambiguityNote,
@@ -543,7 +547,7 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
 
                             {/* Kolom Kelas Rombel */}
                             <td className="p-2">
-                              <div className="font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-1.5">
+                              <div className="font-bold text-slate-800 dark:text-slate-200 mb-0.5 flex items-center gap-1.5">
                                 <span>{row.kelasNama}</span>
                                 {row.selectedKelasId && (
                                   <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">
@@ -551,6 +555,11 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
                                   </span>
                                 )}
                               </div>
+                              {row.konsentrasiKeahlian && (
+                                <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium mb-1 truncate max-w-44" title={row.konsentrasiKeahlian}>
+                                  Jurusan: {row.konsentrasiKeahlian}
+                                </div>
+                              )}
                               <select
                                 value={row.selectedKelasId}
                                 onChange={(e) => handleKelasChange(origIdx, e.target.value)}
@@ -564,7 +573,7 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
                                 <option value="">-- Pilih Kelas Master --</option>
                                 {previewData.availableClasses.map((k) => (
                                   <option key={k.id} value={k.id}>
-                                    {k.nama_kelas}
+                                    {k.nama_kelas} {k.jurusanNama ? `(${k.jurusanNama})` : k.jurusanKode ? `(${k.jurusanKode})` : ''}
                                   </option>
                                 ))}
                               </select>
