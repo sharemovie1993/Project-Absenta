@@ -12,6 +12,8 @@ import {
   UserCheck,
   UserX,
   Sparkles,
+  Search,
+  Filter,
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -31,12 +33,22 @@ export interface RaporStagingBackfillMasterModalProps {
   onSuccess?: () => void;
 }
 
+interface EditableWalasRow {
+  originalIndex: number;
+  kelasNama: string;
+  walasNama: string;
+  walasNip: string;
+  tahunPelajaran: string;
+  selectedKelasId: string;
+  selectedGuruUserId: string;
+}
+
 export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMasterModalProps> = React.memo(
   function RaporStagingBackfillMasterModal({ isOpen, onClose, onSuccess }) {
     const queryClient = useQueryClient();
 
     // Steps: 1 = Input URL, 2 = Preview & Execute
-    const [step, setFolderStep] = useState<1 | 2>(1);
+    const [step, setStep] = useState<1 | 2>(1);
     const [sheetUrl, setSheetUrl] = useState('');
     const [previewData, setPreviewData] = useState<MasterBackfillPreviewResult | null>(null);
 
@@ -52,11 +64,19 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
     const [customTglGanjil, setCustomTglGanjil] = useState('');
     const [customTglGenap, setCustomTglGenap] = useState('');
 
+    // State for interactive manual mapping of Walas and Classes
+    const [walasRows, setWalasRows] = useState<EditableWalasRow[]>([]);
+    const [tableSearch, setTableSearch] = useState('');
+    const [filterUnmappedOnly, setFilterUnmappedOnly] = useState(false);
+
     // Reset when closed
     const handleClose = useCallback(() => {
-      setFolderStep(1);
+      setStep(1);
       setSheetUrl('');
       setPreviewData(null);
+      setWalasRows([]);
+      setTableSearch('');
+      setFilterUnmappedOnly(false);
       onClose();
     }, [onClose]);
 
@@ -74,7 +94,20 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
         setCustomTempatTerbit(data.schoolProfile?.tempatTerbit || 'Purwakarta');
         setCustomTglGanjil(data.schoolProfile?.titimangsaGanjilIso || '');
         setCustomTglGenap(data.schoolProfile?.titimangsaGenapIso || '');
-        setFolderStep(2);
+
+        // Inisialisasi baris pemetaan wali kelas yang dapat diedit secara manual
+        const initialRows: EditableWalasRow[] = data.walasPloting.map((p, idx) => ({
+          originalIndex: idx,
+          kelasNama: p.kelasNama,
+          walasNama: p.walasNama,
+          walasNip: p.walasNip,
+          tahunPelajaran: p.tahunPelajaran,
+          selectedKelasId: p.matchedKelas?.id || '',
+          selectedGuruUserId: p.matchedGuru?.user_id || '',
+        }));
+        setWalasRows(initialRows);
+
+        setStep(2);
         toast.success(`Sheet '${data.tabName}' berhasil dianalisis! Ditemukan ${data.summary.totalWalas} rombel.`);
       },
       onError: (err: any) => {
@@ -112,12 +145,61 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
       previewMutation.mutate(trimmed);
     };
 
+    // Handler pemetaan manual per baris
+    const handleGuruChange = useCallback((origIdx: number, guruUserId: string) => {
+      setWalasRows((prev) =>
+        prev.map((r) => (r.originalIndex === origIdx ? { ...r, selectedGuruUserId: guruUserId } : r))
+      );
+    }, []);
+
+    const handleKelasChange = useCallback((origIdx: number, kelasId: string) => {
+      setWalasRows((prev) =>
+        prev.map((r) => (r.originalIndex === origIdx ? { ...r, selectedKelasId: kelasId } : r))
+      );
+    }, []);
+
+    // Hitung status ready dinamis
+    const dynamicReadyCount = useMemo(() => {
+      return walasRows.filter((r) => r.selectedGuruUserId && r.selectedKelasId).length;
+    }, [walasRows]);
+
+    const dynamicUnmappedCount = useMemo(() => {
+      return walasRows.filter((r) => !r.selectedGuruUserId || !r.selectedKelasId).length;
+    }, [walasRows]);
+
+    // Filter daftar baris tabel berdasarkan pencarian teks dan toggle filter
+    const filteredRows = useMemo(() => {
+      return walasRows.filter((r) => {
+        const isReady = Boolean(r.selectedGuruUserId && r.selectedKelasId);
+        if (filterUnmappedOnly && isReady) return false;
+        if (!tableSearch.trim()) return true;
+
+        const s = tableSearch.toLowerCase();
+        const guruObj = previewData?.availableGurus?.find((g) => g.user_id === r.selectedGuruUserId);
+        return (
+          r.kelasNama.toLowerCase().includes(s) ||
+          r.walasNama.toLowerCase().includes(s) ||
+          r.walasNip.includes(s) ||
+          (guruObj?.nama_guru && guruObj.nama_guru.toLowerCase().includes(s))
+        );
+      });
+    }, [walasRows, tableSearch, filterUnmappedOnly, previewData]);
+
     const handleExecute = () => {
       if (!sheetUrl.trim()) return;
       if (!selectedTpId) {
         toast.error('Pilih Tahun Pelajaran target terlebih dahulu');
         return;
       }
+
+      // Kumpulkan hasil pemetaan wali kelas (otomatis maupun manual)
+      const manualAssignments = walasRows
+        .filter((r) => r.selectedKelasId && r.selectedGuruUserId)
+        .map((r) => ({
+          kelasNama: r.kelasNama,
+          kelas_id: r.selectedKelasId,
+          guru_user_id: r.selectedGuruUserId,
+        }));
 
       executeMutation.mutate({
         url: sheetUrl.trim(),
@@ -131,6 +213,7 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
           tanggal_rapor_ganjil: customTglGanjil,
           tanggal_rapor_genap: customTglGenap,
         },
+        manual_walas_assignments: manualAssignments,
       });
     };
 
@@ -151,13 +234,13 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
                   <span>Otomatisasi Penyiapan Data Master Sebelum Sync Nilai</span>
                 </div>
                 <p>
-                  Tempelkan tautan berkas <strong>Google Sheet Rapor</strong> apa saja dari batch yang ingin di-backfill (misal rapor tahun 2023/2024 atau 2024/2025).
+                  Tempelkan tautan berkas <strong>Google Sheet Rapor</strong> apa saja dari batch yang ingin di-backfill (misal rapor tahun 2022/2023, 2023/2024, atau 2024/2025).
                 </p>
                 <p>
                   Sistem akan otomatis membaca tab <strong>MASTER</strong> (database referensi) yang ada di dalam file tersebut untuk mengekstrak:
                 </p>
                 <ul className="list-disc list-inside space-y-1 font-medium pl-1 text-slate-700 dark:text-slate-300">
-                  <li><strong>Penugasan Wali Kelas</strong>: Dipetakan langsung ke tabel <code>OrganizationalAssignment</code> dengan konteks tahun akademik yang tepat.</li>
+                  <li><strong>Penugasan Wali Kelas</strong>: Dipetakan langsung ke tabel <code>OrganizationalAssignment</code> dengan opsi pemetaan manual fleksibel.</li>
                   <li><strong>Pengaturan Rapor</strong>: Titimangsa ganjil/genap, tempat terbit, nama & NIP Kepala Sekolah.</li>
                 </ul>
               </div>
@@ -209,9 +292,9 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
           {step === 2 && previewData && (
             <div className="space-y-5 max-h-[75vh] overflow-y-auto pr-1">
               {/* Header Info */}
-              <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
                     <Database size={20} />
                   </div>
                   <div>
@@ -224,10 +307,15 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant="outline" className="text-xs bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200">
-                    {previewData.summary.readyCount} / {previewData.summary.totalWalas} Siap Ditugaskan
+                    {dynamicReadyCount} / {walasRows.length} Siap Ditugaskan
                   </Badge>
+                  {dynamicUnmappedCount > 0 && (
+                    <Badge variant="outline" className="text-xs bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200">
+                      {dynamicUnmappedCount} Perlu Pemetaan Manual
+                    </Badge>
+                  )}
                 </div>
               </div>
 
@@ -338,12 +426,12 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
                 )}
               </div>
 
-              {/* 3. Daftar Pemetaan Wali Kelas */}
+              {/* 3. Daftar Pemetaan Wali Kelas (Dengan Dukungan Pemetaan Manual Lengkap) */}
               <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
                     <UserCheck size={15} className="text-emerald-500" />
-                    <span>Daftar Ploting Wali Kelas ({previewData.walasPloting.length} Rombel)</span>
+                    <span>Daftar Ploting Wali Kelas ({walasRows.length} Rombel)</span>
                   </div>
                   <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
                     <input
@@ -357,70 +445,143 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
                 </div>
 
                 {updateWalas && (
-                  <div className="overflow-x-auto max-h-72 border border-slate-200 dark:border-slate-800 rounded-lg">
-                    <table className="w-full text-[11px] text-left">
-                      <thead className="bg-slate-100 dark:bg-slate-800/80 sticky top-0 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
-                        <tr>
-                          <th className="p-2 w-10 text-center">No</th>
-                          <th className="p-2">Kelas Rombel</th>
-                          <th className="p-2">Wali Kelas di Sheet</th>
-                          <th className="p-2">Guru Terhubung di Master</th>
-                          <th className="p-2 text-center w-28">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {previewData.walasPloting.map((row, idx) => {
-                          const isReady = row.status === 'READY';
-                          return (
-                            <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                              <td className="p-2 text-center text-slate-400">{idx + 1}</td>
-                              <td className="p-2 font-bold text-slate-800 dark:text-slate-200">
-                                <div>{row.kelasNama}</div>
-                                {row.matchedKelas && (
-                                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">
-                                    ✓ Kelas ID Terdaftar
-                                  </span>
-                                )}
-                              </td>
-                              <td className="p-2">
-                                <div className="font-medium text-slate-700 dark:text-slate-300">{row.walasNama || '-'}</div>
-                                {row.walasNip && (
-                                  <div className="text-[10px] text-slate-400 font-mono">NIP: {row.walasNip}</div>
-                                )}
-                              </td>
-                              <td className="p-2">
-                                {row.matchedGuru ? (
-                                  <div>
-                                    <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1">
-                                      <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
-                                      <span>{row.matchedGuru.nama_guru}</span>
-                                    </div>
-                                    <div className="text-[10px] text-slate-400 font-mono">
-                                      User ID: {row.matchedGuru.user_id.slice(0, 8)}...
-                                    </div>
+                  <div className="space-y-3">
+                    {/* Toolbar Pencarian & Filter Cepat */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 text-xs pt-1">
+                      <div className="relative flex-1">
+                        <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <Input
+                          type="text"
+                          value={tableSearch}
+                          onChange={(e) => setTableSearch(e.target.value)}
+                          placeholder="Cari rombel atau nama wali kelas..."
+                          className="h-8 pl-8 text-xs font-medium w-full"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={filterUnmappedOnly}
+                            onChange={(e) => setFilterUnmappedOnly(e.target.checked)}
+                            className="rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                          />
+                          <span>Hanya yang Perlu Pemetaan ({dynamicUnmappedCount})</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto max-h-80 border border-slate-200 dark:border-slate-800 rounded-lg">
+                      <table className="w-full text-[11px] text-left">
+                        <thead className="bg-slate-100 dark:bg-slate-800/80 sticky top-0 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
+                          <tr>
+                            <th className="p-2 w-10 text-center">No</th>
+                            <th className="p-2 w-44">Kelas Rombel Target</th>
+                            <th className="p-2 w-48">Wali Kelas di Sheet</th>
+                            <th className="p-2">Guru Terhubung di Master (Dapat Dipilih Manual)</th>
+                            <th className="p-2 text-center w-24">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {filteredRows.map((row) => {
+                            const isRowReady = Boolean(row.selectedGuruUserId && row.selectedKelasId);
+                            const origIdx = row.originalIndex;
+
+                            return (
+                              <tr key={origIdx} className={cn(
+                                "hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors",
+                                !isRowReady && "bg-amber-50/20 dark:bg-amber-950/10"
+                              )}>
+                                <td className="p-2 text-center text-slate-400">{origIdx + 1}</td>
+
+                                {/* Kolom Kelas Rombel */}
+                                <td className="p-2">
+                                  <div className="font-bold text-slate-800 dark:text-slate-200 mb-1">
+                                    {row.kelasNama}
                                   </div>
-                                ) : (
-                                  <span className="text-amber-600 dark:text-amber-400 italic">
-                                    Guru belum cocok di data master
-                                  </span>
-                                )}
-                              </td>
-                              <td className="p-2 text-center">
-                                {isReady ? (
-                                  <Badge variant="outline" className="text-[10px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200">
-                                    Siap
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="outline" className="text-[10px] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200">
-                                    Perlu Cek
-                                  </Badge>
-                                )}
+                                  <select
+                                    value={row.selectedKelasId}
+                                    onChange={(e) => handleKelasChange(origIdx, e.target.value)}
+                                    className={cn(
+                                      "w-full text-[11px] font-medium rounded p-1 border transition-colors",
+                                      row.selectedKelasId
+                                        ? "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                                        : "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300"
+                                    )}
+                                  >
+                                    <option value="">-- Pilih Kelas Master --</option>
+                                    {previewData.availableClasses.map((k) => (
+                                      <option key={k.id} value={k.id}>
+                                        {k.nama_kelas}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </td>
+
+                                {/* Kolom Wali Kelas di Sheet */}
+                                <td className="p-2">
+                                  <div className="font-medium text-slate-700 dark:text-slate-300">{row.walasNama || '-'}</div>
+                                  {row.walasNip && (
+                                    <div className="text-[10px] text-slate-400 font-mono">NIP: {row.walasNip}</div>
+                                  )}
+                                </td>
+
+                                {/* Kolom Guru Terhubung di Master (Interactive Selector) */}
+                                <td className="p-2">
+                                  <div className="space-y-1">
+                                    <select
+                                      value={row.selectedGuruUserId}
+                                      onChange={(e) => handleGuruChange(origIdx, e.target.value)}
+                                      className={cn(
+                                        "w-full text-xs font-medium rounded-lg p-1.5 border transition-colors focus:ring-2 focus:ring-emerald-500",
+                                        row.selectedGuruUserId
+                                          ? "border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 text-slate-800 dark:text-slate-100"
+                                          : "border-amber-300 dark:border-amber-700 bg-amber-50/70 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200"
+                                      )}
+                                    >
+                                      <option value="">-- Pilih Guru Master Manual --</option>
+                                      {previewData.availableGurus.map((g) => (
+                                        <option key={g.id} value={g.user_id}>
+                                          {g.nama_guru} {g.nip ? `(NIP: ${g.nip})` : ''}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    {!row.selectedGuruUserId && (
+                                      <div className="text-[10px] text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                                        <AlertTriangle size={11} className="shrink-0" />
+                                        <span>Guru belum cocok di data master. Pilih guru di atas.</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+
+                                {/* Kolom Status */}
+                                <td className="p-2 text-center">
+                                  {isRowReady ? (
+                                    <Badge variant="outline" className="text-[10px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200">
+                                      Siap
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-[10px] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200">
+                                      Perlu Cek
+                                    </Badge>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+
+                          {filteredRows.length === 0 && (
+                            <tr>
+                              <td colSpan={5} className="p-6 text-center text-xs text-slate-400">
+                                Tidak ada data yang sesuai dengan pencarian atau filter.
                               </td>
                             </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>
@@ -431,7 +592,7 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setFolderStep(1)}
+                  onClick={() => setStep(1)}
                   disabled={executeMutation.isPending}
                   className="gap-1.5"
                 >

@@ -848,6 +848,8 @@ export interface MasterBackfillPreviewResult {
   detectedTahunPelajaran: string;
   matchedTahunPelajaran: { id: string; tahun: string } | null;
   availableTahunPelajaran: Array<{ id: string; tahun: string; is_active: boolean }>;
+  availableGurus: Array<{ id: string; nama_guru: string; nip: string | null; user_id: string }>;
+  availableClasses: Array<{ id: string; nama_kelas: string; tingkat: number }>;
   schoolProfile: {
     namaSekolah: string;
     alamat: string;
@@ -880,6 +882,11 @@ export interface ExecuteMasterBackfillPayload {
     tanggal_rapor_ganjil?: string;
     tanggal_rapor_genap?: string;
   };
+  manual_walas_assignments?: Array<{
+    kelasNama: string;
+    kelas_id: string;
+    guru_user_id: string;
+  }>;
 }
 
 export interface ExecuteMasterBackfillResponse {

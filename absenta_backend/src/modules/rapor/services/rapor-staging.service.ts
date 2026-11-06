@@ -21,6 +21,8 @@ export interface MasterBackfillPreviewResult {
   detectedTahunPelajaran: string;
   matchedTahunPelajaran: { id: string; tahun: string } | null;
   availableTahunPelajaran: Array<{ id: string; tahun: string; is_active: boolean }>;
+  availableGurus: Array<{ id: string; nama_guru: string; nip: string | null; user_id: string }>;
+  availableClasses: Array<{ id: string; nama_kelas: string; tingkat: number }>;
   schoolProfile: {
     namaSekolah: string;
     alamat: string;
@@ -53,6 +55,11 @@ export interface ExecuteMasterBackfillPayload {
     tanggal_rapor_ganjil?: string;
     tanggal_rapor_genap?: string;
   };
+  manual_walas_assignments?: Array<{
+    kelasNama: string;
+    kelas_id: string;
+    guru_user_id: string;
+  }>;
 }
 
 // Rapor Staging Hub Service - Maps to rapor_staging_sheets PostgreSQL table
@@ -1438,6 +1445,17 @@ export class RaporStagingService {
       detectedTahunPelajaran: parsed.tahunPelajaran,
       matchedTahunPelajaran: matchedTp ? { id: matchedTp.id, tahun: matchedTp.tahun } : null,
       availableTahunPelajaran: allTp,
+      availableGurus: allGurus.map((g) => ({
+        id: g.id,
+        nama_guru: g.nama_guru,
+        nip: g.nip,
+        user_id: g.user_id,
+      })),
+      availableClasses: allClasses.map((k) => ({
+        id: k.id,
+        nama_kelas: k.nama_kelas,
+        tingkat: k.tingkat,
+      })),
       schoolProfile: parsed.schoolProfile,
       walasPloting: previewWalas,
       summary: {
@@ -1506,11 +1524,34 @@ export class RaporStagingService {
         });
       }
 
-      for (const item of preview.walasPloting) {
-        if (!item.matchedGuru || !item.matchedKelas) continue;
+      // Prioritaskan penugasan manual dari UI jika dikirimkan oleh pengguna
+      const assignmentsToProcess: Array<{ kelasId: string; guruUserId: string; kelasNama?: string }> = [];
 
-        const guruUserId = item.matchedGuru.user_id;
-        const kelasId = item.matchedKelas.id;
+      if (payload.manual_walas_assignments && payload.manual_walas_assignments.length > 0) {
+        for (const item of payload.manual_walas_assignments) {
+          if (item.kelas_id && item.guru_user_id) {
+            assignmentsToProcess.push({
+              kelasId: item.kelas_id,
+              guruUserId: item.guru_user_id,
+              kelasNama: item.kelasNama,
+            });
+          }
+        }
+      } else {
+        for (const item of preview.walasPloting) {
+          if (item.matchedGuru && item.matchedKelas) {
+            assignmentsToProcess.push({
+              kelasId: item.matchedKelas.id,
+              guruUserId: item.matchedGuru.user_id,
+              kelasNama: item.matchedKelas.nama_kelas,
+            });
+          }
+        }
+      }
+
+      for (const item of assignmentsToProcess) {
+        const guruUserId = item.guruUserId;
+        const kelasId = item.kelasId;
         affectedUserIds.push(guruUserId);
 
         // Cek penugasan untuk kelas ini di tahun pelajaran yang dipilih
@@ -1565,7 +1606,7 @@ export class RaporStagingService {
                 tahun_pelajaran_id: targetTpId,
                 is_active: true,
                 is_leader: false,
-                custom_title: `Wali Kelas ${item.matchedKelas.nama_kelas}`,
+                custom_title: `Wali Kelas ${item.kelasNama || ''}`.trim(),
               },
             });
           }

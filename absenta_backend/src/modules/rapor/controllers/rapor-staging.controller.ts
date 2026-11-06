@@ -26,6 +26,15 @@ const executeMasterBackfillSchema = z.object({
       tanggal_rapor_genap: z.string().optional(),
     })
     .optional(),
+  manual_walas_assignments: z
+    .array(
+      z.object({
+        kelasNama: z.string(),
+        kelas_id: z.string(),
+        guru_user_id: z.string(),
+      })
+    )
+    .optional(),
 });
 
 export class RaporStagingController {
