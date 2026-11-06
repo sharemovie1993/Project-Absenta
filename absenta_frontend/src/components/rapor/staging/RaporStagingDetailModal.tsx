@@ -217,19 +217,34 @@ export const RaporStagingDetailModal: React.FC<RaporStagingDetailModalProps> = R
                                       <Badge
                                         key={mapel}
                                         variant="secondary"
-                                        className="text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60"
+                                        title={`Capaian Kompetensi (${mapel}):\n"${g.capaian_kompetensi || 'Tidak ada deskripsi narasi CP'}"`}
+                                        className="text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 cursor-help transition-colors hover:bg-indigo-100"
                                       >
                                         {mapel}: {g.nilai_rapor ?? '-'}
                                       </Badge>
                                     ))}
                                   </div>
-                                  {validGrades[0] && validGrades[0][1]?.capaian_kompetensi && (
-                                    <p className="text-[11px] text-slate-600 dark:text-slate-300 italic line-clamp-2">
-                                      <strong className="text-slate-800 dark:text-slate-200 not-italic">
-                                        {validGrades[0][0]}:
-                                      </strong>{' '}
-                                      "{validGrades[0][1].capaian_kompetensi}"
-                                    </p>
+                                  {validGrades.filter(([_, g]) => g.capaian_kompetensi).length > 0 ? (
+                                    <div className="space-y-1 pt-1">
+                                      {validGrades
+                                        .filter(([_, g]) => g.capaian_kompetensi)
+                                        .slice(0, 2)
+                                        .map(([mapel, g]) => (
+                                          <p key={mapel} className="text-[11px] text-slate-600 dark:text-slate-300 italic line-clamp-1">
+                                            <strong className="text-slate-800 dark:text-slate-200 not-italic">
+                                              CP {mapel}:
+                                            </strong>{' '}
+                                            &quot;{g.capaian_kompetensi}&quot;
+                                          </p>
+                                        ))}
+                                      {validGrades.filter(([_, g]) => g.capaian_kompetensi).length > 2 && (
+                                        <p className="text-[10px] text-slate-400 font-medium italic">
+                                          (Arahkan kursor ke badge tiap mapel di atas untuk membaca deskripsi CP masing-masing)
+                                        </p>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-slate-400 italic text-[11px]">Belum ada deskripsi narasi CP</span>
                                   )}
                                 </div>
                               ) : (
