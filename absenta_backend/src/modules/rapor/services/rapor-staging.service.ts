@@ -1405,6 +1405,15 @@ export class RaporStagingService {
     });
   }
 
+  static async deleteStagedSheetsBulk(tenantId: string, ids: string[]) {
+    return await prisma.raporStagingSheet.deleteMany({
+      where: {
+        id: { in: ids },
+        tenant_id: tenantId,
+      },
+    });
+  }
+
   // ── Helper Pembersihan String Guru untuk Pencocokan Akurat ──
   private static cleanTeacherNip(nip?: string | null): string {
     if (!nip) return '';

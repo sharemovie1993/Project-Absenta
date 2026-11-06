@@ -21,6 +21,7 @@ import {
   Database,
   Table as TableIcon,
   LayoutGrid,
+  CheckSquare,
 } from 'lucide-react';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -96,6 +97,7 @@ export default React.memo(function RaporStagingPage() {
   const [selectedTingkatTab, setSelectedTingkatTab] = useState<string>('ALL');
   const [selectedSemesterTab, setSelectedSemesterTab] = useState<string>('ALL');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Modals State
   const [isFetchModalOpen, setIsFetchModalOpen] = useState(false);
@@ -259,6 +261,72 @@ export default React.memo(function RaporStagingPage() {
       toast.error(errorMsg);
     },
   });
+
+  // ── Mutation: Bulk Delete Staged Sheets ──
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      return await raporApi.bulkDeleteStagedSheets(ids);
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['rapor-staging-sheets'] });
+      setSelectedIds(new Set());
+      const count = res?.data?.count || 0;
+      toast.success(`${count} lembar staging berhasil dihapus dari wadah`);
+    },
+    onError: (err: unknown) => {
+      const errorMsg =
+        (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
+        (err as Error)?.message ||
+        'Gagal menghapus beberapa data staging';
+      toast.error(errorMsg);
+    },
+  });
+
+  // ── Handlers Seleksi Checkbox Rombel (Bulk Actions) ──
+  const handleToggleSelectOne = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleToggleSelectGroup = useCallback((groupItems: RaporStagingItem[]) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      const isAllGroupSelected = groupItems.length > 0 && groupItems.every((item) => next.has(item.id));
+      if (isAllGroupSelected) {
+        groupItems.forEach((item) => next.delete(item.id));
+      } else {
+        groupItems.forEach((item) => next.add(item.id));
+      }
+      return next;
+    });
+  }, []);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    const count = selectedIds.size;
+    const confirmed = await confirm({
+      title: 'Hapus Massal Lembar Staging?',
+      message: `Apakah Anda yakin ingin menghapus ${count} rombel rapor terpilih dari wadah penampung? Tindakan ini hanya menghapus data penampung staging dan tidak mempengaruhi e-Rapor yang sudah tersinkronkan.`,
+      confirmText: `Ya, Hapus ${count} Rombel`,
+      cancelText: 'Batal',
+      variant: 'danger',
+    });
+
+    if (confirmed) {
+      bulkDeleteMutation.mutate(Array.from(selectedIds));
+    }
+  }, [selectedIds, confirm, bulkDeleteMutation]);
 
   // ── Event Handlers dengan useCallback (Pilar 3) ──
   const handleOpenFetchModal = useCallback(() => {
@@ -658,6 +726,33 @@ export default React.memo(function RaporStagingPage() {
                     Menampilkan <strong>{filteredSheets?.length || 0}</strong> dari <strong>{sheets?.length || 0}</strong> rombel terdaftar
                   </span>
                 </div>
+
+                {/* Tombol Aksi Cepat Bulk Delete di Toolbar */}
+                {selectedIds.size > 0 && (
+                  <div className="flex items-center gap-2 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 py-1 px-2.5 rounded-xl animate-in fade-in duration-200">
+                    <span className="font-bold text-xs text-rose-700 dark:text-rose-400">
+                      {selectedIds.size} Terpilih
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={bulkDeleteMutation.isPending}
+                      onClick={handleBulkDelete}
+                      className="bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs h-6.5 px-2.5 rounded-lg gap-1 shadow-2xs cursor-pointer"
+                      title="Hapus seluruh rombel terpilih dari penampung"
+                    >
+                      <Trash2 size={12} className={cn(bulkDeleteMutation.isPending && 'animate-spin')} />
+                      <span>Hapus ({selectedIds.size})</span>
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={handleClearSelection}
+                      className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 underline cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -713,6 +808,16 @@ export default React.memo(function RaporStagingPage() {
                         <table className="w-full text-xs text-left">
                           <thead className="bg-slate-50/90 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
                             <tr>
+                              <th className="py-3 px-3.5 w-10 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={classItems.length > 0 && classItems.every((item) => selectedIds.has(item.id))}
+                                  onChange={() => handleToggleSelectGroup(classItems)}
+                                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                  title={`Pilih semua rombel ${tingkatLabel}`}
+                                  aria-label={`Pilih semua rombel ${tingkatLabel}`}
+                                />
+                              </th>
                               <th className="py-3 px-3.5 w-12 text-center">No</th>
                               <th className="py-3 px-3.5 min-w-44">Kelas Rombel</th>
                               <th className="py-3 px-3.5 min-w-36">Konsentrasi / Jurusan</th>
@@ -724,14 +829,31 @@ export default React.memo(function RaporStagingPage() {
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {classItems.map((item, idx) => {
+                              const isChecked = selectedIds.has(item.id);
                               const isSyncing = syncMutation.isPending && syncMutation.variables === item.id;
                               const isDeleting = deleteMutation.isPending && deleteMutation.variables === item.id;
 
                               return (
                                 <tr
                                   key={item.id}
-                                  className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                                  className={cn(
+                                    'transition-colors',
+                                    isChecked
+                                      ? 'bg-indigo-50/70 dark:bg-indigo-950/40'
+                                      : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'
+                                  )}
                                 >
+                                  {/* Checkbox Rombel */}
+                                  <td className="py-3 px-3.5 text-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => handleToggleSelectOne(item.id)}
+                                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                      aria-label={`Pilih rombel ${item.nama_kelas}`}
+                                    />
+                                  </td>
+
                                   <td className="py-3 px-3.5 text-center text-slate-400 font-mono">
                                     {idx + 1}
                                   </td>
@@ -873,17 +995,30 @@ export default React.memo(function RaporStagingPage() {
                         {classItems?.map((item) => {
                           const isSyncing = syncMutation.isPending && syncMutation.variables === item.id;
                           const isDeleting = deleteMutation.isPending && deleteMutation.variables === item.id;
+                          const isChecked = selectedIds.has(item.id);
 
                           return (
                             <div
                               key={item.id}
-                              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-md transition-all p-4 sm:p-5 flex flex-col justify-between space-y-4 min-w-0"
+                              className={cn(
+                                'rounded-2xl border shadow-2xs hover:shadow-md transition-all p-4 sm:p-5 flex flex-col justify-between space-y-4 min-w-0',
+                                isChecked
+                                  ? 'bg-indigo-50/20 dark:bg-indigo-950/20 border-indigo-500 ring-2 ring-indigo-500/20'
+                                  : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800'
+                              )}
                             >
                               <div className="space-y-3 min-w-0">
                                 {/* Header Card */}
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2 flex-wrap">
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => handleToggleSelectOne(item.id)}
+                                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer shrink-0"
+                                        aria-label={`Pilih rombel ${item.nama_kelas}`}
+                                      />
                                       <h4 className="font-bold text-slate-900 dark:text-slate-100 text-lg tracking-tight truncate">
                                         {item.nama_kelas}
                                       </h4>
@@ -1013,6 +1148,38 @@ export default React.memo(function RaporStagingPage() {
           </div>
         </SectionCard>
       </div>
+
+      {/* ── BAR AKSI BULK DELETE MELAYANG (Floating Action Bar) ── */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-md text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700/80 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-200 max-w-[90vw]">
+          <div className="flex items-center gap-2">
+            <CheckSquare size={18} className="text-indigo-400 shrink-0" />
+            <span className="text-xs font-semibold whitespace-nowrap">
+              <strong>{selectedIds.size}</strong> Rombel Terpilih
+            </span>
+          </div>
+          <div className="h-4 w-px bg-slate-700 shrink-0" />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleClearSelection}
+              className="text-xs text-slate-400 hover:text-white transition-colors cursor-pointer px-2 py-1 whitespace-nowrap"
+            >
+              Batal
+            </button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={bulkDeleteMutation.isPending}
+              onClick={handleBulkDelete}
+              className="bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs h-8 px-3.5 rounded-xl gap-1.5 shadow-sm whitespace-nowrap cursor-pointer"
+            >
+              <Trash2 size={13} className={cn(bulkDeleteMutation.isPending && 'animate-spin')} />
+              <span>Hapus ({selectedIds.size})</span>
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* ── MODAL 1: HUBUNGKAN GOOGLE SHEET (Suspense & Lazy Loaded) ── */}
       <Suspense fallback={<div className="p-4 text-center"><Loader /></div>}>

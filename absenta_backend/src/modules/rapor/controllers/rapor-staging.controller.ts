@@ -329,6 +329,35 @@ export class RaporStagingController {
   }
 
   /**
+   * POST /api/rapor/staging/bulk-delete
+   * Menghapus banyak lembar staging sekaligus (Bulk Delete)
+   */
+  static async bulkDelete(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const bulkDeleteSchema = z.object({
+        ids: z.array(z.string().min(1)).min(1, 'Minimal sertakan 1 ID lembar staging untuk dihapus'),
+      });
+      const parsed = bulkDeleteSchema.parse(req.body);
+
+      const deleted = await RaporStagingService.deleteStagedSheetsBulk(tenant_id, parsed.ids);
+      return sendResponse(reply, 200, true, `${deleted.count} lembar staging berhasil dihapus`, {
+        count: deleted.count,
+      });
+    } catch (error: any) {
+      appLogger.error({ err: error }, 'RaporStagingController.bulkDelete error');
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map((e) => e.message).join(', '),
+          errors: error.errors,
+        });
+      }
+      return sendError(reply, 500, error.message || 'Gagal menghapus lembar staging terpilih', error);
+    }
+  }
+
+  /**
    * POST /api/rapor/staging/backfill-master/preview
    * Menganalisis berkas Google Sheet untuk pratinjau data master (Wali Kelas & Setting Rapor)
    */

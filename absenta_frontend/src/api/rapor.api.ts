@@ -521,6 +521,10 @@ export const raporApi = {
     const response = await api.delete(`/rapor/staging/${id}`);
     return response.data;
   },
+  bulkDeleteStagedSheets: async (ids: string[]) => {
+    const response = await api.post('/rapor/staging/bulk-delete', { ids });
+    return response.data;
+  },
   previewMasterBackfill: async (url: string) => {
     const response = await api.post('/rapor/staging/backfill-master/preview', { url }, { timeout: 60000 });
     return response.data;
