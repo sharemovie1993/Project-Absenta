@@ -28,7 +28,13 @@ export interface MasterBackfillPreviewResult {
   tabName: string;
   detectedTahunPelajaran: string;
   matchedTahunPelajaran: { id: string; tahun: string } | null;
-  availableTahunPelajaran: Array<{ id: string; tahun: string; is_active: boolean }>;
+  availableTahunPelajaran: Array<{
+    id: string;
+    tahun: string;
+    is_active: boolean;
+    existingWalasCount?: number;
+    hasExistingSettings?: boolean;
+  }>;
   availableGurus: Array<{ id: string; nama_guru: string; nip: string | null; user_id: string }>;
   availableClasses: Array<{
     id: string;
@@ -1371,7 +1377,7 @@ export class RaporStagingService {
     const parsed: MasterReferenceData = await GoogleSheetRaporParserService.fetchMasterSheetData(sheetUrl);
 
     // 1. Ambil data master yang ada di database tenant
-    const [allTp, allGurus, allClasses] = await Promise.all([
+    const [allTp, allGurus, allClasses, walasPosition, existingConfigs] = await Promise.all([
       prisma.tahunPelajaran.findMany({
         where: { tenant_id: tenantId },
         select: { id: true, tahun: true, is_active: true },
@@ -1393,7 +1399,39 @@ export class RaporStagingService {
         },
         orderBy: [{ tingkat: 'asc' }, { nama_kelas: 'asc' }],
       }),
+      prisma.organizationalPosition.findFirst({
+        where: {
+          OR: [
+            { tenant_id: tenantId, code: 'WALIKELAS' },
+            { code: 'WALIKELAS' },
+          ],
+        },
+        select: { id: true },
+      }),
+      prisma.config.findMany({
+        where: {
+          tenant_id: tenantId,
+          key: { startsWith: 'RAPOR_KEPSEK_NAMA_' },
+        },
+        select: { key: true },
+      }),
     ]);
+
+    let walasCounts: Array<{ tahun_pelajaran_id: string; _count: { id: number } }> = [];
+    if (walasPosition) {
+      walasCounts = (await prisma.organizationalAssignment.groupBy({
+        by: ['tahun_pelajaran_id'],
+        where: {
+          tenant_id: tenantId,
+          position_id: walasPosition.id,
+          is_active: true,
+        },
+        _count: { id: true },
+      })) as any;
+    }
+
+    const walasCountMap = new Map(walasCounts.map((w) => [w.tahun_pelajaran_id, w._count.id]));
+    const configTpSet = new Set(existingConfigs.map((c) => c.key.replace('RAPOR_KEPSEK_NAMA_', '')));
 
     // 2. Cocokkan Tahun Pelajaran
     const matchedTp = await this.resolveTahunPelajaran(tenantId, parsed.tahunPelajaran);
@@ -1547,7 +1585,13 @@ export class RaporStagingService {
       tabName: parsed.tabName,
       detectedTahunPelajaran: parsed.tahunPelajaran,
       matchedTahunPelajaran: matchedTp ? { id: matchedTp.id, tahun: matchedTp.tahun } : null,
-      availableTahunPelajaran: allTp,
+      availableTahunPelajaran: allTp.map((tp) => ({
+        id: tp.id,
+        tahun: tp.tahun,
+        is_active: tp.is_active,
+        existingWalasCount: walasCountMap.get(tp.id) || 0,
+        hasExistingSettings: configTpSet.has(tp.id),
+      })),
       availableGurus: allGurus.map((g) => ({
         id: g.id,
         nama_guru: g.nama_guru,

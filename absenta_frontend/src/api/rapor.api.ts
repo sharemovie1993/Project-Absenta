@@ -854,7 +854,13 @@ export interface MasterBackfillPreviewResult {
   tabName: string;
   detectedTahunPelajaran: string;
   matchedTahunPelajaran: { id: string; tahun: string } | null;
-  availableTahunPelajaran: Array<{ id: string; tahun: string; is_active: boolean }>;
+  availableTahunPelajaran: Array<{
+    id: string;
+    tahun: string;
+    is_active: boolean;
+    existingWalasCount?: number;
+    hasExistingSettings?: boolean;
+  }>;
   availableGurus: Array<{ id: string; nama_guru: string; nip: string | null; user_id: string }>;
   availableClasses: Array<{
     id: string;

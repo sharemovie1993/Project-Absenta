@@ -14,6 +14,8 @@ import {
   Sparkles,
   Search,
   Filter,
+  ShieldAlert,
+  AlertOctagon,
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -50,10 +52,11 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
   function RaporStagingBackfillMasterModal({ isOpen, onClose, onSuccess }) {
     const queryClient = useQueryClient();
 
-    // Steps: 1 = Input URL, 2 = Preview & Execute
-    const [step, setStep] = useState<1 | 2>(1);
+    // Steps: 1 = Input URL, 2 = Mapping & Adjustment, 3 = Review & Confirmation
+    const [step, setStep] = useState<1 | 2 | 3>(1);
     const [sheetUrl, setSheetUrl] = useState('');
     const [previewData, setPreviewData] = useState<MasterBackfillPreviewResult | null>(null);
+    const [confirmedReview, setConfirmedReview] = useState(false);
 
     // Form confirmation states
     const [selectedTpId, setSelectedTpId] = useState<string>('');
@@ -77,6 +80,13 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
       setStep(1);
       setSheetUrl('');
       setPreviewData(null);
+      setSelectedTpId('');
+      setConfirmedReview(false);
+      setCustomKepsekNama('');
+      setCustomKepsekNip('');
+      setCustomTempatTerbit('');
+      setCustomTglGanjil('');
+      setCustomTglGenap('');
       setWalasRows([]);
       setTableSearch('');
       setFilterUnmappedOnly(false);
@@ -91,7 +101,24 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
       },
       onSuccess: (data) => {
         setPreviewData(data);
-        setSelectedTpId(data.matchedTahunPelajaran?.id || data.availableTahunPelajaran[0]?.id || '');
+
+        // Prioritaskan matched Tahun Pelajaran dari backend
+        if (data.matchedTahunPelajaran?.id) {
+          setSelectedTpId(data.matchedTahunPelajaran.id);
+        } else {
+          // Cari string tahun yang presisi sama
+          const cleanDetect = (data.detectedTahunPelajaran || '').replace(/\s+/g, '').toLowerCase();
+          const autoMatched = data.availableTahunPelajaran.find(
+            (tp) => tp.tahun.replace(/\s+/g, '').toLowerCase() === cleanDetect
+          );
+          if (autoMatched) {
+            setSelectedTpId(autoMatched.id);
+          } else {
+            // JANGAN asal fallback ke index 0! Kosongkan agar pengguna wajib memilih secara sadar.
+            setSelectedTpId('');
+          }
+        }
+
         setCustomKepsekNama(data.schoolProfile?.namaKepsek || '');
         setCustomKepsekNip(data.schoolProfile?.nipKepsek || '');
         setCustomTempatTerbit(data.schoolProfile?.tempatTerbit || 'Purwakarta');
@@ -113,6 +140,7 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
         }));
         setWalasRows(initialRows);
 
+        setConfirmedReview(false);
         setStep(2);
         toast.success(`Sheet '${data.tabName}' berhasil dianalisis! Ditemukan ${data.summary.totalWalas} rombel.`);
       },
@@ -203,15 +231,22 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
       });
     }, [walasRows, tableSearch, filterUnmappedOnly, previewData]);
 
-    const handleExecute = () => {
-      if (!sheetUrl.trim()) return;
-      if (!selectedTpId) {
-        toast.error('Pilih Tahun Pelajaran target terlebih dahulu');
-        return;
-      }
+    // Data objek Tahun Pelajaran yang sedang dipilih
+    const selectedTpObj = useMemo(() => {
+      return previewData?.availableTahunPelajaran?.find((tp) => tp.id === selectedTpId);
+    }, [previewData, selectedTpId]);
 
-      // Kumpulkan hasil pemetaan wali kelas (otomatis maupun manual)
-      const manualAssignments = walasRows
+    // Validasi ketidakcocokan tahun lembar vs tahun target database
+    const isYearMismatch = useMemo(() => {
+      if (!selectedTpObj || !previewData?.detectedTahunPelajaran) return false;
+      const cleanTarget = selectedTpObj.tahun.replace(/\s+/g, '').toLowerCase();
+      const cleanDetect = previewData.detectedTahunPelajaran.replace(/\s+/g, '').toLowerCase();
+      return cleanTarget !== cleanDetect;
+    }, [selectedTpObj, previewData]);
+
+    // Kumpulan penugasan wali kelas yang siap ditulis
+    const readyAssignments = useMemo(() => {
+      return walasRows
         .filter((r) => r.selectedKelasId && r.selectedGuruUserId)
         .map((r) => ({
           kelasNama: r.kelasNama,
@@ -220,6 +255,27 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
           walasNama: r.walasNama,
           walasNip: r.walasNip,
         }));
+    }, [walasRows]);
+
+    const handleProceedToConfirm = useCallback(() => {
+      if (!selectedTpId) {
+        toast.error('Pilih Tahun Pelajaran target terlebih dahulu sebelum melanjutkan');
+        return;
+      }
+      setConfirmedReview(false);
+      setStep(3);
+    }, [selectedTpId]);
+
+    const handleExecute = () => {
+      if (!sheetUrl.trim()) return;
+      if (!selectedTpId) {
+        toast.error('Pilih Tahun Pelajaran target terlebih dahulu');
+        return;
+      }
+      if (!confirmedReview) {
+        toast.error('Harap centang persetujuan konfirmasi sebelum menerapkan');
+        return;
+      }
 
       executeMutation.mutate({
         url: sheetUrl.trim(),
@@ -233,7 +289,7 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
           tanggal_rapor_ganjil: customTglGanjil,
           tanggal_rapor_genap: customTglGenap,
         },
-        manual_walas_assignments: manualAssignments,
+        manual_walas_assignments: readyAssignments,
       });
     };
 
@@ -242,10 +298,16 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
         isOpen={isOpen}
         onClose={handleClose}
         title="Backfill Data Master Rapor"
-        subtitle="Ekstraksi data Wali Kelas & Pengaturan Rapor dari sheet MASTER referensi Google Sheet"
+        subtitle={
+          step === 1
+            ? 'Langkah 1: Ekstraksi data Wali Kelas & Pengaturan Rapor dari sheet MASTER referensi'
+            : step === 2
+            ? 'Langkah 2: Peninjauan Pemetaan Rombel & Konteks Tahun Pelajaran'
+            : 'Langkah 3: Validasi Akhir & Konfirmasi Pra-Eksekusi (Periksa Ulang Sebelum Ditulis)'
+        }
         size={step === 1 ? 'xl' : 'full'}
-        className={step === 2 ? 'w-[96vw] max-w-7xl h-[92vh] max-h-[92vh] flex flex-col p-0 overflow-hidden' : undefined}
-        contentClassName={step === 2 ? 'p-0 flex flex-col h-full overflow-hidden flex-1' : undefined}
+        className={step !== 1 ? 'w-[96vw] max-w-7xl h-[92vh] max-h-[92vh] flex flex-col p-0 overflow-hidden' : undefined}
+        contentClassName={step !== 1 ? 'p-0 flex flex-col h-full overflow-hidden flex-1' : undefined}
       >
         {step === 1 && (
           <div className="space-y-4 p-4 sm:p-6">
@@ -356,23 +418,60 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
               {/* Left Column: Pengaturan & Konteks TP (Lebar Tetap, Scroll Mandiri bila Layar Pendek) */}
               <div className="w-full lg:w-80 xl:w-96 shrink-0 p-4 space-y-4 bg-slate-50/40 dark:bg-slate-900/20 overflow-y-auto">
                 {/* 1. Konteks Tahun Pelajaran */}
-                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-2xs space-y-2">
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
-                    <Calendar size={15} className="text-indigo-500" />
-                    <span>Konteks Tahun Pelajaran Target</span>
+                <div
+                  className={cn(
+                    'p-3.5 rounded-xl border shadow-2xs space-y-2 transition-colors',
+                    isYearMismatch
+                      ? 'border-red-300 dark:border-red-800 bg-red-50/60 dark:bg-red-950/30'
+                      : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60'
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
+                      <Calendar size={15} className={isYearMismatch ? 'text-red-500' : 'text-indigo-500'} />
+                      <span>Konteks Tahun Pelajaran Target</span>
+                    </div>
+                    {isYearMismatch && (
+                      <Badge variant="outline" className="text-[10px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border-red-300 font-bold">
+                        Beda Lembar!
+                      </Badge>
+                    )}
                   </div>
                   <select
                     value={selectedTpId}
                     onChange={(e) => setSelectedTpId(e.target.value)}
-                    className="w-full text-xs font-semibold border border-slate-300 dark:border-slate-700 rounded-lg p-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    className={cn(
+                      'w-full text-xs font-semibold border rounded-lg p-2 transition-colors focus:outline-hidden focus:ring-2',
+                      isYearMismatch
+                        ? 'border-red-400 dark:border-red-700 bg-red-50/80 dark:bg-red-950/60 text-red-900 dark:text-red-200 focus:ring-red-500'
+                        : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-indigo-500'
+                    )}
                   >
-                    <option value="">-- Pilih Tahun Pelajaran --</option>
+                    <option value="">-- Pilih Tahun Pelajaran Target --</option>
                     {previewData.availableTahunPelajaran.map((tp) => (
                       <option key={tp.id} value={tp.id}>
-                        {tp.tahun} {tp.is_active ? '(Aktif Saat Ini)' : ''}
+                        {tp.tahun} {tp.is_active ? '(Aktif Saat Ini)' : ''} {tp.existingWalasCount ? `[Ada ${tp.existingWalasCount} Walas]` : ''}
                       </option>
                     ))}
                   </select>
+
+                  {/* Warning Box jika tahun tidak cocok */}
+                  {isYearMismatch && (
+                    <div className="p-2 rounded-lg bg-red-100/70 dark:bg-red-900/40 border border-red-300 dark:border-red-800 text-[11px] text-red-900 dark:text-red-200 flex items-start gap-1.5 leading-snug">
+                      <AlertOctagon size={14} className="text-red-600 shrink-0 mt-0.5" />
+                      <div>
+                        <strong>Peringatan Mismatch:</strong> Sheet terdeteksi <strong>{previewData.detectedTahunPelajaran}</strong>, tetapi target dipilih <strong>{selectedTpObj?.tahun}</strong>.
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Info jika tahun ini sudah ada Walas */}
+                  {!isYearMismatch && selectedTpObj?.existingWalasCount && selectedTpObj.existingWalasCount > 0 ? (
+                    <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-[10px] text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                      <AlertTriangle size={12} className="text-amber-600 shrink-0" />
+                      <span>Sudah ada {selectedTpObj.existingWalasCount} Wali Kelas terdaftar di tahun ini.</span>
+                    </div>
+                  ) : null}
                 </div>
 
                 {/* 2. Pengaturan Rapor */}
@@ -691,9 +790,235 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
                 <Button
                   type="button"
                   size="sm"
+                  onClick={handleProceedToConfirm}
+                  disabled={!selectedTpId || (!updateWalas && !updateRaporSettings)}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-xs gap-1.5"
+                >
+                  <span>Lanjut ke Validasi &amp; Konfirmasi</span>
+                  <ArrowRight size={14} />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step === 3 && previewData && (
+          <div className="flex flex-col h-full overflow-hidden">
+            {/* ── Subheader Status Bar (Top Fixed) ── */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                  <ShieldAlert size={17} />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    <span>Langkah 3 dari 3: Validasi Akhir Pra-Eksekusi</span>
+                    <span className="text-slate-400">•</span>
+                    <span className="text-slate-500 font-normal">Periksa ulang target sebelum disimpan</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'text-xs font-semibold px-2.5 py-1',
+                    isYearMismatch
+                      ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-300'
+                      : 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200'
+                  )}
+                >
+                  {isYearMismatch ? (
+                    <>
+                      <AlertOctagon size={13} className="mr-1 text-red-600" />
+                      Konteks Tahun Mismatch!
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={13} className="mr-1 text-emerald-600" />
+                      Konteks Tahun Sesuai
+                    </>
+                  )}
+                </Badge>
+              </div>
+            </div>
+
+            {/* ── Scrollable Review Body (No Window Scroll) ── */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4">
+              {/* Alert Warning Mismatch */}
+              {isYearMismatch && (
+                <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/40 border-2 border-red-400 dark:border-red-800 text-red-900 dark:text-red-200 text-xs flex items-start gap-3 shadow-md">
+                  <AlertOctagon size={22} className="text-red-600 shrink-0 mt-0.5" />
+                  <div className="space-y-1.5 flex-1">
+                    <div className="font-bold text-sm text-red-700 dark:text-red-300">
+                      PERHATIAN KRUSIAL: KETIDAKCOCOKAN TAHUN PELAJARAN!
+                    </div>
+                    <p className="leading-relaxed">
+                      Lembar Google Sheet terdeteksi untuk Tahun Pelajaran <strong>{previewData.detectedTahunPelajaran}</strong>,
+                      namun Anda memilih target penugasan ke database pada Tahun Pelajaran <strong>{selectedTpObj?.tahun}</strong>.
+                    </p>
+                    <p className="text-[11px] font-semibold text-red-800 dark:text-red-200 bg-red-100/70 dark:bg-red-900/40 p-2 rounded-lg border border-red-200 dark:border-red-800">
+                      ⚠️ Jika Anda mengonfirmasi ini, data wali kelas dan pengaturan rapor pada Tahun Pelajaran <strong>{selectedTpObj?.tahun}</strong> akan diperbarui/ditambahkan menggunakan data dari lembar <strong>{previewData.detectedTahunPelajaran}</strong>.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Grid 3 Kartu Ringkasan Dampak Eksekusi */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                {/* 1. Target TP */}
+                <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-2xs space-y-2">
+                  <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <Calendar size={13} className="text-indigo-500" />
+                    <span>Target Tahun Pelajaran</span>
+                  </div>
+                  <div className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                    {selectedTpObj?.tahun || '-'}
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    {selectedTpObj?.existingWalasCount ? (
+                      <span className="text-amber-600 dark:text-amber-400 font-medium">
+                        Saat ini ada {selectedTpObj.existingWalasCount} Walas terdaftar
+                      </span>
+                    ) : (
+                      <span className="text-emerald-600 dark:text-emerald-400">Belum ada Walas terdaftar</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Walas Plotting */}
+                <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-2xs space-y-2">
+                  <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <UserCheck size={13} className="text-emerald-500" />
+                    <span>Plotting Wali Kelas</span>
+                  </div>
+                  <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                    {readyAssignments.length} Rombel Siap Ditugaskan
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    {dynamicAutoCreatedCount > 0 && (
+                      <span className="text-indigo-600 dark:text-indigo-400 font-semibold mr-1">
+                        +{dynamicAutoCreatedCount} Guru Baru (Non-Aktif),
+                      </span>
+                    )}
+                    <span>{readyAssignments.length - dynamicAutoCreatedCount} Guru Master</span>
+                  </div>
+                </div>
+
+                {/* 3. Pengaturan Rapor */}
+                <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-2xs space-y-2">
+                  <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <School size={13} className="text-blue-500" />
+                    <span>Pengaturan Rapor</span>
+                  </div>
+                  <div className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">
+                    {updateRaporSettings ? (customKepsekNama || 'Kepala Sekolah Tertera') : 'Dilewati (Tidak Diubah)'}
+                  </div>
+                  <div className="text-[11px] text-slate-500 truncate">
+                    {updateRaporSettings ? (
+                      <span>Titimangsa: {customTglGanjil || '-'} / {customTglGenap || '-'}</span>
+                    ) : (
+                      <span>Pengaturan TP ini tidak disentuh</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Rincian Rombel & Guru yang Akan Ditulis ke Database */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs">
+                <div className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Rincian Penugasan Wali Kelas ({readyAssignments.length} Rombel)
+                  </span>
+                  <span className="text-[11px] text-slate-500 font-mono">Konteks: {selectedTpObj?.tahun}</span>
+                </div>
+                <div className="max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 text-[11px]">
+                  {readyAssignments.map((item, i) => {
+                    const guruObj = previewData.availableGurus.find((g) => g.user_id === item.guru_user_id);
+                    const isAuto = item.guru_user_id === '__AUTO_CREATE__';
+                    const kObj = previewData.availableClasses.find((k) => k.id === item.kelas_id);
+
+                    return (
+                      <div key={i} className="px-4 py-2 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-400 font-mono w-5">{i + 1}.</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200">{item.kelasNama}</span>
+                          {kObj?.jurusanNama && (
+                            <span className="text-[10px] text-slate-400">({kObj.jurusanNama})</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-600 dark:text-slate-300 font-medium">
+                            {isAuto ? item.walasNama : guruObj?.nama_guru}
+                          </span>
+                          {isAuto ? (
+                            <Badge variant="outline" className="text-[9px] bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-300 font-semibold">
+                              Guru Baru (Non-Aktif)
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[9px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200">
+                              Guru Master
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Checkbox Konfirmasi Wajib Pengguna */}
+              <div className="p-4 rounded-xl border-2 border-indigo-300 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-950/30">
+                <label className="flex items-start gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={confirmedReview}
+                    onChange={(e) => setConfirmedReview(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <div className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed">
+                    <span className="font-bold text-indigo-950 dark:text-indigo-200">
+                      Saya telah memeriksa seluruh rincian dan mengonfirmasi penulisan data ke Tahun Pelajaran {selectedTpObj?.tahun}.
+                    </span>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
+                      Saya memahami bahwa aksi ini akan mencatat penugasan Wali Kelas dan Pengaturan Rapor ke Tahun Pelajaran terpilih.
+                    </p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* ── Fixed Footer Action Bar ── */}
+            <div className="flex items-center justify-between px-5 py-3 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setStep(2)}
+                disabled={executeMutation.isPending}
+                className="gap-1.5"
+              >
+                <ArrowLeft size={14} />
+                <span>Kembali ke Penyesuaian</span>
+              </Button>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClose}
+                  disabled={executeMutation.isPending}
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
                   onClick={handleExecute}
-                  disabled={executeMutation.isPending || (!updateWalas && !updateRaporSettings)}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-xs gap-1.5"
+                  disabled={!confirmedReview || executeMutation.isPending}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-xs gap-1.5 disabled:opacity-50"
                 >
                   {executeMutation.isPending ? (
                     <>
@@ -703,7 +1028,7 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
                   ) : (
                     <>
                       <Database size={14} />
-                      <span>Terapkan Backfill Data Master</span>
+                      <span>Konfirmasi &amp; Terapkan Backfill</span>
                     </>
                   )}
                 </Button>
