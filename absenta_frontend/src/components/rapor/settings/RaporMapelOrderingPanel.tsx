@@ -11,11 +11,8 @@ import {
   AlertCircle,
   Search,
   RefreshCw,
-  Plus,
   Eye,
   EyeOff,
-  LayoutGrid,
-  List,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { kurikulumApi, type StrukturKurikulum } from '@/api/kurikulum.api';
@@ -32,64 +29,64 @@ export interface RaporMapelOrderingPanelProps {
 interface KelompokMeta {
   key: string;
   label: string;
-  shortName: string;
-  code: string;
-  colorBorder: string;
-  colorBg: string;
-  colorHeader: string;
-  colorText: string;
-  colorBadge: string;
-  description: string;
+  letter: string;
+  subTitle: string;
+  headerBg: string;
+  headerBorder: string;
+  badgeBg: string;
+  badgeText: string;
+  dropBorder: string;
+  dropBg: string;
 }
 
-const KELOMPOK_GROUPS: KelompokMeta[] = [
+const KELOMPOK_SECTIONS: KelompokMeta[] = [
   {
     key: 'Mata Pelajaran Umum',
-    label: 'A. Mata Pelajaran Umum',
-    shortName: 'Umum',
-    code: 'A',
-    colorBorder: 'border-blue-200 dark:border-blue-900',
-    colorBg: 'bg-blue-50/40 dark:bg-blue-950/20',
-    colorHeader: 'bg-blue-100/70 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
-    colorText: 'text-blue-700 dark:text-blue-400',
-    colorBadge: 'bg-blue-600 text-white',
-    description: 'Pendidikan Agama, Pancasila, Bahasa Indonesia, PJOK, Sejarah, Seni Budaya',
+    label: 'KELOMPOK A : MATA PELAJARAN UMUM',
+    letter: 'A',
+    subTitle: 'Pendidikan Agama, Pendidikan Pancasila, Bahasa Indonesia, PJOK, Sejarah, Seni Budaya',
+    headerBg: 'bg-blue-50/80 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200',
+    headerBorder: 'border-blue-200 dark:border-blue-900',
+    badgeBg: 'bg-blue-600 text-white',
+    badgeText: 'text-blue-700 dark:text-blue-300',
+    dropBorder: 'border-blue-500 bg-blue-100/50 dark:bg-blue-900/30',
+    dropBg: 'bg-blue-50/30 dark:bg-blue-950/10',
   },
   {
     key: 'Mata Pelajaran Kejuruan',
-    label: 'B. Mata Pelajaran Kejuruan',
-    shortName: 'Kejuruan',
-    code: 'B',
-    colorBorder: 'border-emerald-200 dark:border-emerald-900',
-    colorBg: 'bg-emerald-50/40 dark:bg-emerald-950/20',
-    colorHeader: 'bg-emerald-100/70 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
-    colorText: 'text-emerald-700 dark:text-emerald-400',
-    colorBadge: 'bg-emerald-600 text-white',
-    description: 'Matematika, Bahasa Inggris, Informatika, IPAS, Dasar Keahlian, Konsentrasi, PKK, PKL',
+    label: 'KELOMPOK B : MATA PELAJARAN KEJURUAN',
+    letter: 'B',
+    subTitle: 'Matematika, Bahasa Inggris, Informatika, IPAS, Dasar Keahlian, Konsentrasi Keahlian, PKK, PKL',
+    headerBg: 'bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200',
+    headerBorder: 'border-emerald-200 dark:border-emerald-900',
+    badgeBg: 'bg-emerald-600 text-white',
+    badgeText: 'text-emerald-700 dark:text-emerald-300',
+    dropBorder: 'border-emerald-500 bg-emerald-100/50 dark:bg-emerald-900/30',
+    dropBg: 'bg-emerald-50/30 dark:bg-emerald-950/10',
   },
   {
     key: 'Mata Pelajaran Pilihan',
-    label: 'C. Mata Pelajaran Pilihan',
-    shortName: 'Pilihan',
-    code: 'C',
-    colorBorder: 'border-amber-200 dark:border-amber-900',
-    colorBg: 'bg-amber-50/40 dark:bg-amber-950/20',
-    colorHeader: 'bg-amber-100/70 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
-    colorText: 'text-amber-700 dark:text-amber-400',
-    colorBadge: 'bg-amber-600 text-white',
-    description: 'Mapel lintas minat, vokasi pilihan, koding, kecerdasan buatan, atau bahasa asing pilihan',
+    label: 'KELOMPOK C : MATA PELAJARAN PILIHAN',
+    letter: 'C',
+    subTitle: 'Mata Pelajaran Lintas Minat, Vokasi Pilihan, Koding, AI, atau Bahasa Asing Pilihan',
+    headerBg: 'bg-amber-50/80 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200',
+    headerBorder: 'border-amber-200 dark:border-amber-900',
+    badgeBg: 'bg-amber-600 text-white',
+    badgeText: 'text-amber-700 dark:text-amber-300',
+    dropBorder: 'border-amber-500 bg-amber-100/50 dark:bg-amber-900/30',
+    dropBg: 'bg-amber-50/30 dark:bg-amber-950/10',
   },
   {
     key: 'Muatan Lokal',
-    label: 'D. Muatan Lokal',
-    shortName: 'Muatan Lokal',
-    code: 'D',
-    colorBorder: 'border-purple-200 dark:border-purple-900',
-    colorBg: 'bg-purple-50/40 dark:bg-purple-950/20',
-    colorHeader: 'bg-purple-100/70 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
-    colorText: 'text-purple-700 dark:text-purple-400',
-    colorBadge: 'bg-purple-600 text-white',
-    description: 'Bahasa Daerah (Sunda / Jawa) dan kearifan lokal sekolah',
+    label: 'KELOMPOK D : MUATAN LOKAL',
+    letter: 'D',
+    subTitle: 'Bahasa Daerah (Sunda / Jawa) dan Kearifan Lokal Sekolah',
+    headerBg: 'bg-purple-50/80 dark:bg-purple-950/40 text-purple-900 dark:text-purple-200',
+    headerBorder: 'border-purple-200 dark:border-purple-900',
+    badgeBg: 'bg-purple-600 text-white',
+    badgeText: 'text-purple-700 dark:text-purple-300',
+    dropBorder: 'border-purple-500 bg-purple-100/50 dark:bg-purple-900/30',
+    dropBg: 'bg-purple-50/30 dark:bg-purple-950/10',
   },
 ];
 
@@ -119,7 +116,6 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
   const queryClient = useQueryClient();
   const [selectedTingkat, setSelectedTingkat] = useState<number>(10);
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'board' | 'table'>('board');
   const [localRows, setLocalRows] = useState<StrukturKurikulum[]>([]);
   const [isDirty, setIsDirty] = useState(false);
 
@@ -132,7 +128,6 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
   const {
     data: strukturRes,
     isLoading,
-    isFetching,
     refetch,
   } = useQuery({
     queryKey: ['struktur-kurikulum-ordering', tahunPelajaranId, selectedTingkat],
@@ -163,12 +158,29 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
     }
   }, [rawData]);
 
+  // Recalculate sequence numbers (#1, #2, #3...) continuously through the 4 groups
+  const recalculateSequenceNumbers = useCallback((rows: StrukturKurikulum[]): StrukturKurikulum[] => {
+    const updated = [...rows];
+    let counter = 1;
+    KELOMPOK_SECTIONS.forEach((grp) => {
+      const inGroup = updated.filter(
+        (r) => normalizeToCanonicalGroup(r.kelompok, r.Mapel?.nama_mapel) === grp.key
+      );
+      inGroup.forEach((item) => {
+        item.urutan = counter;
+        item.kelompok = grp.key;
+        counter += 1;
+      });
+    });
+    return updated;
+  }, []);
+
   // 2. Mutations
   const saveMutation = useMutation({
     mutationFn: (items: Array<{ id: string; urutan: number; kelompok?: string; is_active?: boolean }>) =>
       kurikulumApi.updateStrukturOrdering(items),
     onSuccess: (res: any) => {
-      toast.success(res?.message || 'Urutan dan kelompok mapel berhasil disimpan!');
+      toast.success(res?.message || 'Urutan dan kelompok rapor berhasil disimpan!');
       setIsDirty(false);
       queryClient.invalidateQueries({ queryKey: ['struktur-kurikulum-ordering'] });
       queryClient.invalidateQueries({ queryKey: ['rapor-detail'] });
@@ -196,22 +208,7 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
     },
   });
 
-  // Re-number urutan sequentially based on current group order
-  const recalculateSequenceNumbers = useCallback((rows: StrukturKurikulum[]): StrukturKurikulum[] => {
-    const updated = [...rows];
-    let counter = 10;
-    KELOMPOK_GROUPS.forEach((grp) => {
-      const inGroup = updated.filter((r) => normalizeToCanonicalGroup(r.kelompok, r.Mapel?.nama_mapel) === grp.key);
-      inGroup.forEach((item) => {
-        item.urutan = counter;
-        item.kelompok = grp.key;
-        counter += 10;
-      });
-    });
-    return updated;
-  }, []);
-
-  // Drag Handlers
+  // Drag and Drop Event Handlers
   const handleDragStart = useCallback((e: React.DragEvent, id: string) => {
     e.dataTransfer.setData('text/plain', id);
     e.dataTransfer.effectAllowed = 'move';
@@ -231,10 +228,6 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
       setDragOverGroup(groupKey);
     }
   }, [dragOverGroup]);
-
-  const handleDragLeaveZone = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-  }, []);
 
   const handleDropOnZone = useCallback((e: React.DragEvent, targetGroupKey: string) => {
     e.preventDefault();
@@ -265,14 +258,11 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
 
     setLocalRows((prev) => {
       const sourceIndex = prev.findIndex((r) => r.id === sourceId);
-      const targetIndex = prev.findIndex((r) => r.id === targetItemId);
-      if (sourceIndex === -1 || targetIndex === -1) return prev;
+      if (sourceIndex === -1) return prev;
 
       const sourceItem = { ...prev[sourceIndex], kelompok: targetGroupKey };
       const next = [...prev];
-      // Remove source
       next.splice(sourceIndex, 1);
-      // Re-insert at new position
       const newTargetIndex = next.findIndex((r) => r.id === targetItemId);
       next.splice(newTargetIndex, 0, sourceItem);
 
@@ -307,7 +297,7 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
     });
   }, [recalculateSequenceNumbers]);
 
-  // Quick Change Group via dropdown / menu
+  // Fast dropdown switch
   const handleChangeGroup = useCallback((id: string, newGroup: string) => {
     setLocalRows((prev) => {
       const next = prev.map((item) => (item.id === id ? { ...item, kelompok: newGroup } : item));
@@ -326,14 +316,14 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
   const handleSaveAll = useCallback(() => {
     const payload = localRows.map((r, idx) => ({
       id: r.id,
-      urutan: r.urutan ?? (idx + 1) * 10,
+      urutan: r.urutan ?? (idx + 1),
       kelompok: r.kelompok || 'Mata Pelajaran Umum',
-      is_active: r.is_active ?? true,
+      is_active: r.is_active !== false,
     }));
     saveMutation.mutate(payload);
   }, [localRows, saveMutation]);
 
-  // Filtered rows for search query
+  // Search filter
   const searchedRows = useMemo(() => {
     if (!searchQuery.trim()) return localRows;
     const q = searchQuery.toLowerCase().trim();
@@ -346,7 +336,7 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
 
   return (
     <div className={cn('space-y-4', className)}>
-      {/* 1. Top Header & Tingkat Selector */}
+      {/* 1. Header Toolbar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">
@@ -354,15 +344,15 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
           </div>
           <div>
             <h4 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
-              <span>Pengaturan Kelompok & Urutan Rapor</span>
+              <span>Pengaturan Urutan Kelompok Rapor</span>
               {tahunAjaran && (
-                <span className="text-xs font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                <span className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
                   {tahunAjaran}
                 </span>
               )}
             </h4>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Tarik & lepaskan (Drag & Drop) mata pelajaran ke kolom kelompok rapor yang dituju.
+              Tarik (Drag) mata pelajaran ke Kelompok A, B, C, atau D sesuai susunan cetak rapor resmi.
             </p>
           </div>
         </div>
@@ -377,7 +367,7 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
                 type="button"
                 onClick={() => setSelectedTingkat(t)}
                 className={cn(
-                  'px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5',
+                  'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5',
                   selectedTingkat === t
                     ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
@@ -393,7 +383,7 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
         </div>
       </div>
 
-      {/* 2. Action Toolbar */}
+      {/* 2. Action Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {/* Search */}
         <div className="relative flex-1 max-w-sm">
@@ -407,38 +397,8 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
           />
         </div>
 
-        {/* Action Controls */}
+        {/* Action Buttons */}
         <div className="flex items-center gap-2">
-          {/* View Mode Toggle */}
-          <div className="flex items-center p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-            <button
-              type="button"
-              onClick={() => setViewMode('board')}
-              className={cn(
-                'p-1.5 rounded-md text-xs font-semibold transition',
-                viewMode === 'board'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-800'
-              )}
-              title="Tampilan Papan Kelompok (Drag & Drop)"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              className={cn(
-                'p-1.5 rounded-md text-xs font-semibold transition',
-                viewMode === 'table'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-800'
-              )}
-              title="Tampilan Tabel Berurutan"
-            >
-              <List className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
           <Button
             type="button"
             variant="outline"
@@ -470,7 +430,7 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
         </div>
       </div>
 
-      {/* 3. Drag and Drop Kelompok Zones (THE ORIGINAL E-RAPOR EXPERIENCE) */}
+      {/* 3. VERTICAL STACKED RAPOR LAYOUT (PERSIS SUSUNAN RAPOR FISIK) */}
       {isLoading ? (
         <div className="p-16 flex flex-col items-center justify-center text-slate-400 gap-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
           <RefreshCw className="w-7 h-7 animate-spin text-indigo-500" />
@@ -497,58 +457,77 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
             Generate Struktur Kemendikbud Kelas {selectedTingkat}
           </Button>
         </div>
-      ) : viewMode === 'board' ? (
-        /* KANBAN / MULTI-ZONE BOARD VIEW */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5 items-start">
-          {KELOMPOK_GROUPS.map((grp) => {
-            const groupRows = searchedRows.filter(
-              (r) => normalizeToCanonicalGroup(r.kelompok, r.Mapel?.nama_mapel) === grp.key
+      ) : (
+        <div className="space-y-4">
+          {KELOMPOK_SECTIONS.map((sec) => {
+            const sectionRows = searchedRows.filter(
+              (r) => normalizeToCanonicalGroup(r.kelompok, r.Mapel?.nama_mapel) === sec.key
             );
-            const isTargetDropZone = dragOverGroup === grp.key;
+            const isTargetDropZone = dragOverGroup === sec.key;
 
             return (
               <div
-                key={grp.key}
-                onDragOver={(e) => handleDragOverZone(e, grp.key)}
-                onDragLeave={handleDragLeaveZone}
-                onDrop={(e) => handleDropOnZone(e, grp.key)}
+                key={sec.key}
+                onDragOver={(e) => handleDragOverZone(e, sec.key)}
+                onDragLeave={() => setDragOverGroup(null)}
+                onDrop={(e) => handleDropOnZone(e, sec.key)}
                 className={cn(
-                  'rounded-2xl border transition-all duration-200 flex flex-col min-h-[380px]',
-                  grp.colorBorder,
-                  grp.colorBg,
+                  'rounded-2xl border transition-all duration-200 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs',
+                  sec.headerBorder,
                   isTargetDropZone &&
-                    'ring-2 ring-indigo-500 ring-offset-2 border-indigo-400 bg-indigo-50/70 dark:bg-indigo-950/40 shadow-lg scale-[1.01]'
+                    'ring-2 ring-indigo-500 ring-offset-2 border-indigo-400 shadow-md scale-[1.005]'
                 )}
               >
-                {/* Zone Header */}
-                <div className={cn('p-3 rounded-t-2xl border-b flex items-center justify-between', grp.colorHeader, grp.colorBorder)}>
-                  <div className="flex items-center gap-2">
-                    <span className={cn('w-5 h-5 rounded-md flex items-center justify-center text-[11px] font-black', grp.colorBadge)}>
-                      {grp.code}
-                    </span>
-                    <span className="font-bold text-xs">{grp.shortName}</span>
-                  </div>
-                  <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-white/80 dark:bg-slate-900/80 text-slate-800 dark:text-slate-200">
-                    {groupRows.length} Mapel
-                  </span>
-                </div>
-
-                {/* Drop Target List */}
-                <div className="p-2.5 space-y-2 flex-1 overflow-y-auto max-h-[560px]">
-                  {groupRows.length === 0 ? (
-                    <div
+                {/* Section Header (Persis Header Rapor) */}
+                <div
+                  className={cn(
+                    'px-4 py-3 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-2',
+                    sec.headerBg,
+                    sec.headerBorder
+                  )}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span
                       className={cn(
-                        'h-32 border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-3 text-center transition-all',
-                        isTargetDropZone
-                          ? 'border-indigo-400 bg-indigo-100/60 dark:bg-indigo-900/30 text-indigo-700 font-bold'
-                          : 'border-slate-300/80 dark:border-slate-700 text-slate-400'
+                        'w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black shadow-2xs',
+                        sec.badgeBg
                       )}
                     >
-                      <Layers className="w-5 h-5 mb-1 opacity-50" />
-                      <span className="text-[11px] font-medium">Tarik mapel ke sini</span>
+                      {sec.letter}
+                    </span>
+                    <div>
+                      <h5 className="font-extrabold text-xs tracking-wide uppercase">
+                        {sec.label}
+                      </h5>
+                      <p className="text-[10px] opacity-80 font-normal">
+                        {sec.subTitle}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end sm:self-auto">
+                    <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                      {sectionRows.length} Mata Pelajaran
+                    </span>
+                  </div>
+                </div>
+
+                {/* Subject Rows Container (Vertical List) */}
+                <div className={cn('p-2 space-y-1.5 transition-colors', isTargetDropZone ? sec.dropBorder : sec.dropBg)}>
+                  {sectionRows.length === 0 ? (
+                    <div
+                      className={cn(
+                        'py-6 border-2 border-dashed rounded-xl flex items-center justify-center gap-2 text-xs transition-all',
+                        isTargetDropZone
+                          ? 'border-indigo-400 bg-indigo-100/60 dark:bg-indigo-900/40 text-indigo-700 font-bold'
+                          : 'border-slate-300/70 dark:border-slate-700 text-slate-400'
+                      )}
+                    >
+                      <Layers className="w-4 h-4 opacity-50" />
+                      <span>Belum ada mapel di {sec.label}. Tarik (drag) mapel ke area ini.</span>
                     </div>
                   ) : (
-                    groupRows.map((item, idx) => {
+                    sectionRows.map((item, idx) => {
                       const isActive = item.is_active !== false;
                       const isItemDragging = draggingId === item.id;
                       const isItemOver = dragOverItemId === item.id;
@@ -563,164 +542,99 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
                             e.preventDefault();
                             if (dragOverItemId !== item.id) setDragOverItemId(item.id);
                           }}
-                          onDrop={(e) => handleDropOnItem(e, item.id, grp.key)}
+                          onDrop={(e) => handleDropOnItem(e, item.id, sec.key)}
                           className={cn(
-                            'p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs group hover:shadow-md transition-all cursor-grab active:cursor-grabbing select-none',
-                            !isActive && 'opacity-50 bg-slate-50 dark:bg-slate-800/40',
-                            isItemDragging && 'opacity-25 border-dashed border-indigo-400',
-                            isItemOver && 'border-t-2 border-t-indigo-600 scale-[1.02]'
+                            'p-2.5 sm:px-4 sm:py-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3 group hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-xs transition-all cursor-grab active:cursor-grabbing select-none',
+                            !isActive && 'opacity-40 bg-slate-50 dark:bg-slate-800/40',
+                            isItemDragging && 'opacity-20 border-dashed border-indigo-400',
+                            isItemOver && 'border-t-2 border-t-indigo-600 scale-[1.01]'
                           )}
                         >
-                          <div className="flex items-start justify-between gap-1.5">
-                            <div className="flex items-start gap-2 min-w-0">
-                              <GripVertical className="w-4 h-4 text-slate-400 dark:text-slate-600 shrink-0 mt-0.5 group-hover:text-indigo-600 transition-colors" />
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="text-[10px] font-black px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono">
-                                    #{item.urutan ?? (idx + 1) * 10}
-                                  </span>
-                                  <span className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate">
-                                    {item.Mapel?.nama_mapel}
-                                  </span>
-                                </div>
-                                <div className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1 mt-0.5">
-                                  <span className="font-mono">{item.Mapel?.kode_mapel || '-'}</span>
-                                  <span>•</span>
-                                  <span>{item.jp_per_minggu || 2} JP</span>
-                                  {item.Jurusan && (
-                                    <>
-                                      <span>•</span>
-                                      <span className="text-indigo-600 dark:text-indigo-400 font-medium truncate max-w-[90px]">
-                                        {item.Jurusan.nama || item.Jurusan.nama_jurusan}
-                                      </span>
-                                    </>
-                                  )}
-                                </div>
+                          {/* Left: Drag Handle, Number, & Mapel Title */}
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <GripVertical className="w-4 h-4 text-slate-300 dark:text-slate-600 shrink-0 group-hover:text-indigo-600 transition-colors" />
+                            
+                            <span className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono font-bold text-xs flex items-center justify-center shrink-0 border border-slate-200/70 dark:border-slate-700">
+                              {item.urutan ?? (idx + 1)}
+                            </span>
+
+                            <div className="min-w-0">
+                              <p className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate">
+                                {item.Mapel?.nama_mapel}
+                              </p>
+                              <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                                <span className="font-mono bg-slate-100 dark:bg-slate-800 px-1 py-0.2 rounded text-slate-600 dark:text-slate-400">
+                                  {item.Mapel?.kode_mapel || '-'}
+                                </span>
+                                <span>•</span>
+                                <span>{item.jp_per_minggu || 2} JP/minggu</span>
+                                {item.Jurusan && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="text-indigo-600 dark:text-indigo-400 font-medium truncate max-w-[150px]">
+                                      {item.Jurusan.nama || item.Jurusan.nama_jurusan}
+                                    </span>
+                                  </>
+                                )}
                               </div>
                             </div>
+                          </div>
+
+                          {/* Right: Quick Group Selector, Visibility, and Move Arrows */}
+                          <div className="flex items-center gap-2 shrink-0">
+                            {/* Pindah Kelompok Dropdown */}
+                            <select
+                              value={sec.key}
+                              onChange={(e) => handleChangeGroup(item.id, e.target.value)}
+                              className="text-xs py-1 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 max-w-[140px] sm:max-w-none"
+                            >
+                              {KELOMPOK_SECTIONS.map((s) => (
+                                <option key={s.key} value={s.key}>
+                                  Pindah ke Kelompok {s.letter}
+                                </option>
+                              ))}
+                            </select>
 
                             {/* Visibility Toggle */}
                             <button
                               type="button"
                               onClick={() => handleToggleActive(item.id, isActive)}
                               className={cn(
-                                'p-1 rounded-md transition text-slate-400 hover:text-slate-700 dark:hover:text-slate-200',
-                                !isActive && 'text-rose-500 hover:text-rose-700'
+                                'p-1.5 rounded-lg border transition',
+                                isActive
+                                  ? 'text-slate-400 hover:text-slate-700 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900'
+                                  : 'text-rose-500 hover:text-rose-700 border-rose-200 bg-rose-50 dark:bg-rose-950/40'
                               )}
                               title={isActive ? 'Tampil di Rapor (Klik untuk sembunyikan)' : 'Disembunyikan dari Rapor (Klik untuk aktifkan)'}
                             >
                               {isActive ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                             </button>
-                          </div>
 
-                          {/* Quick Bottom Control: Reorder and Target Group Selector */}
-                          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1 text-[10px]">
-                            {/* Fast Switch Kelompok */}
-                            <select
-                              value={grp.key}
-                              onChange={(e) => handleChangeGroup(item.id, e.target.value)}
-                              className="text-[10px] py-0.5 px-1 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold focus:outline-none"
-                            >
-                              {KELOMPOK_GROUPS.map((k) => (
-                                <option key={k.key} value={k.key}>
-                                  Pindah ke {k.shortName}
-                                </option>
-                              ))}
-                            </select>
-
-                            {/* Arrow Shift */}
+                            {/* Reorder Up/Down */}
                             <div className="flex items-center gap-0.5">
                               <button
                                 type="button"
-                                onClick={() => handleMoveInGroup(item.id, grp.key, 'up')}
+                                onClick={() => handleMoveInGroup(item.id, sec.key, 'up')}
                                 disabled={idx === 0}
-                                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 disabled:opacity-20"
+                                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 disabled:opacity-20"
                                 title="Geser ke atas"
                               >
-                                <ArrowUp className="w-3 h-3" />
+                                <ArrowUp className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleMoveInGroup(item.id, grp.key, 'down')}
-                                disabled={idx === groupRows.length - 1}
-                                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 disabled:opacity-20"
+                                onClick={() => handleMoveInGroup(item.id, sec.key, 'down')}
+                                disabled={idx === sectionRows.length - 1}
+                                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 disabled:opacity-20"
                                 title="Geser ke bawah"
                               >
-                                <ArrowDown className="w-3 h-3" />
+                                <ArrowDown className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           </div>
                         </div>
                       );
                     })
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        /* ACCORDION TABLE VIEW */
-        <div className="space-y-3">
-          {KELOMPOK_GROUPS.map((grp) => {
-            const groupRows = searchedRows.filter(
-              (r) => normalizeToCanonicalGroup(r.kelompok, r.Mapel?.nama_mapel) === grp.key
-            );
-
-            return (
-              <div
-                key={grp.key}
-                onDragOver={(e) => handleDragOverZone(e, grp.key)}
-                onDrop={(e) => handleDropOnZone(e, grp.key)}
-                className={cn('rounded-xl border overflow-hidden bg-white dark:bg-slate-900', grp.colorBorder)}
-              >
-                <div className={cn('px-4 py-2.5 border-b flex items-center justify-between', grp.colorHeader)}>
-                  <div className="flex items-center gap-2">
-                    <span className={cn('w-5 h-5 rounded-md flex items-center justify-center text-[11px] font-black', grp.colorBadge)}>
-                      {grp.code}
-                    </span>
-                    <span className="font-bold text-xs">{grp.label}</span>
-                  </div>
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                    {groupRows.length} Mapel
-                  </span>
-                </div>
-
-                <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {groupRows.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-slate-400">
-                      Tarik mapel ke kelompok ini untuk menambahkan
-                    </div>
-                  ) : (
-                    groupRows.map((item, idx) => (
-                      <div
-                        key={item.id}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, item.id)}
-                        className="px-4 py-2 flex items-center justify-between text-xs hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-grab"
-                      >
-                        <div className="flex items-center gap-3">
-                          <GripVertical className="w-4 h-4 text-slate-400" />
-                          <span className="font-mono font-bold text-slate-500 w-10">#{item.urutan}</span>
-                          <span className="font-bold text-slate-800 dark:text-slate-100">{item.Mapel?.nama_mapel}</span>
-                          <span className="text-[10px] text-slate-400">({item.Mapel?.kode_mapel})</span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <select
-                            value={grp.key}
-                            onChange={(e) => handleChangeGroup(item.id, e.target.value)}
-                            className="text-xs py-1 px-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200"
-                          >
-                            {KELOMPOK_GROUPS.map((k) => (
-                              <option key={k.key} value={k.key}>
-                                Pindah ke {k.shortName}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    ))
                   )}
                 </div>
               </div>
