@@ -213,10 +213,14 @@ export default React.memo(function RaporStagingPage() {
     onSuccess: (res) => {
       // Invalidate staging sheets
       queryClient.invalidateQueries({ queryKey: ['rapor-staging-sheets'] });
-      // Invalidate Leger & Cetak Rapor
+      // Invalidate Leger & Cetak Rapor & Pengaturan Rapor
       queryClient.invalidateQueries({ queryKey: ['leger'] });
       queryClient.invalidateQueries({ queryKey: ['rapor-leger-list'] });
       queryClient.invalidateQueries({ queryKey: ['class-subject-progress'] });
+      queryClient.invalidateQueries({ queryKey: ['rapor-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['rapor-settings-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['rapor-settings-signers'] });
+      queryClient.invalidateQueries({ queryKey: ['sekolah-profile-signers'] });
       // Invalidate Lembar Input Nilai & Monitoring
       queryClient.invalidateQueries({ queryKey: ['grades'] });
       queryClient.invalidateQueries({ queryKey: ['class-subject-progress-input'] });
@@ -226,6 +230,8 @@ export default React.memo(function RaporStagingPage() {
       queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
       queryClient.invalidateQueries({ queryKey: ['siswa-options-list'] });
       queryClient.invalidateQueries({ queryKey: ['kelas-options-list'] });
+      queryClient.invalidateQueries({ queryKey: ['waliKelasList'] });
+      queryClient.invalidateQueries({ queryKey: ['wali-kelas-options-list'] });
       setPreSyncTargetId(null);
       const { totalNilaiSynced, totalRaporSynced, autoProvisionedCount, unmappedStudents } = res?.data || {};
 

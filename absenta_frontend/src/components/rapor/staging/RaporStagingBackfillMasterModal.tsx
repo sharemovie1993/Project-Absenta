@@ -28,6 +28,7 @@ import {
   MasterBackfillPreviewResult,
   ExecuteMasterBackfillPayload,
 } from '@/api/rapor.api';
+import { syncStrukturCache } from '@/helpers/strukturQuerySync';
 
 export interface RaporStagingBackfillMasterModalProps {
   isOpen: boolean;
@@ -156,11 +157,26 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
         const res = await raporApi.executeMasterBackfill(payload);
         return res?.data;
       },
-      onSuccess: (data) => {
+      onSuccess: async (data) => {
         toast.success(data?.message || 'Backfill data master berhasil diterapkan secara idempotent!');
+        // 1. Invalidate Staging Sheets
         queryClient.invalidateQueries({ queryKey: ['rapor-staging-sheets'] });
+
+        // 2. Invalidate Pengaturan Rapor & Titimangsa & Penandatangan
         queryClient.invalidateQueries({ queryKey: ['rapor-settings'] });
+        queryClient.invalidateQueries({ queryKey: ['rapor-settings-summary'] });
+        queryClient.invalidateQueries({ queryKey: ['rapor-settings-signers'] });
+        queryClient.invalidateQueries({ queryKey: ['sekolah-profile-signers'] });
+
+        // 3. Invalidate Struktur Organisasi & Wali Kelas (Comprehensive Multi-Query Invalidation)
         queryClient.invalidateQueries({ queryKey: ['academic-structure'] });
+        queryClient.invalidateQueries({ queryKey: ['academic-struktur-list-active'] });
+        queryClient.invalidateQueries({ queryKey: ['waliKelasList'] });
+        queryClient.invalidateQueries({ queryKey: ['wali-kelas-options-list'] });
+        queryClient.invalidateQueries({ queryKey: ['kelas-options-list'] });
+        queryClient.invalidateQueries({ queryKey: ['guru-options-list'] });
+        await syncStrukturCache(queryClient);
+
         if (onSuccess) onSuccess();
         handleClose();
       },
