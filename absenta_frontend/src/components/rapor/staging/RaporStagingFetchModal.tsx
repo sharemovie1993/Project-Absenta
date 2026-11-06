@@ -60,6 +60,27 @@ export interface ScannedFileItem {
   } | null;
 }
 
+/**
+ * Heuristik deteksi berkas: memeriksa apakah nama berkas kemungkinan besar
+ * merupakan lembar rapor kelas atau berkas lain di dalam folder (seperti data master, rekap, panduan, jadwal).
+ */
+export function isLikelyRaporClassFile(title?: string): boolean {
+  if (!title) return true;
+  const lower = title.toLowerCase();
+  if (
+    lower.includes('master') ||
+    lower.includes('rekap') ||
+    lower.includes('daftar siswa') ||
+    lower.includes('panduan') ||
+    lower.includes('jadwal') ||
+    lower.includes('blanko') ||
+    lower.includes('template')
+  ) {
+    return false;
+  }
+  return true;
+}
+
 export interface RaporStagingFetchModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -148,18 +169,27 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
 
           setScannedFiles(files);
 
+          // Cek berkas yang terindikasi rapor vs non-rapor
+          const raporOnlyFiles = files.filter((f) => isLikelyRaporClassFile(f.title));
+          const nonRaporCount = files.length - raporOnlyFiles.length;
+
           // Cek berkas baru vs berkas yang sudah ada di wadah (idempoten)
-          const newFilesList = files.filter((f) => !f.is_already_staged);
-          if (newFilesList.length > 0 && newFilesList.length < files.length) {
-            // Campuran berkas baru dan lama: default centang hanya berkas baru untuk proteksi overwrite tidak disengaja
+          const newFilesList = files.filter((f) => !f.is_already_staged && isLikelyRaporClassFile(f.title));
+
+          if (newFilesList.length > 0 && newFilesList.length < raporOnlyFiles.length) {
+            // Campuran berkas baru dan lama: default centang hanya berkas baru (yang bertipe rapor)
             setSelectedUrls(new Set(newFilesList.map((f) => f.url)));
             toast.success(
-              `Ditemukan ${files.length} berkas: ${newFilesList.length} baru dicentang, ${files.length - newFilesList.length} sudah ada di wadah.`
+              `Ditemukan ${files.length} berkas: ${newFilesList.length} baru dicentang${nonRaporCount > 0 ? `, ${nonRaporCount} berkas non-rapor otomatis dilewati` : ''}.`
             );
           } else {
-            // Semua baru ATAU semua sudah ada: centang semua
-            setSelectedUrls(new Set(files.map((f) => f.url)));
-            if (files.length > 0 && newFilesList.length === 0) {
+            // Default centang semua berkas rapor yang valid
+            setSelectedUrls(new Set(raporOnlyFiles.map((f) => f.url)));
+            if (nonRaporCount > 0) {
+              toast.success(
+                `Ditemukan ${files.length} berkas (${raporOnlyFiles.length} rapor dicentang, ${nonRaporCount} berkas non-rapor otomatis dilewati).`
+              );
+            } else if (files.length > 0 && newFilesList.length === 0) {
               toast.success(`Ditemukan ${files.length} berkas (seluruhnya sudah ada di wadah, siap diperbarui secara idempoten).`);
             } else {
               toast.success(`Ditemukan ${files.length} berkas Google Sheet kelas baru.`);
@@ -202,6 +232,7 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
       const total = scannedFiles.length;
       const alreadyStaged = scannedFiles.filter((f) => f.is_already_staged).length;
       const newFiles = total - alreadyStaged;
+      const nonRaporFiles = scannedFiles.filter((f) => !isLikelyRaporClassFile(f.title)).length;
       const selectedTotal = selectedUrls.size;
       const selectedAlreadyStaged = scannedFiles.filter((f) => f.is_already_staged && selectedUrls.has(f.url)).length;
       const selectedNew = selectedTotal - selectedAlreadyStaged;
@@ -210,6 +241,7 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
         total,
         alreadyStaged,
         newFiles,
+        nonRaporFiles,
         selectedTotal,
         selectedAlreadyStaged,
         selectedNew,
@@ -225,8 +257,13 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
     }, [isAllSelected, scannedFiles]);
 
     const handleSelectOnlyNew = useCallback(() => {
-      const newUrls = scannedFiles.filter((f) => !f.is_already_staged).map((f) => f.url);
+      const newUrls = scannedFiles.filter((f) => !f.is_already_staged && isLikelyRaporClassFile(f.title)).map((f) => f.url);
       setSelectedUrls(new Set(newUrls));
+    }, [scannedFiles]);
+
+    const handleSelectOnlyRapor = useCallback(() => {
+      const raporUrls = scannedFiles.filter((f) => isLikelyRaporClassFile(f.title)).map((f) => f.url);
+      setSelectedUrls(new Set(raporUrls));
     }, [scannedFiles]);
 
     // Simpan file hasil seleksi dari folder
@@ -368,7 +405,7 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
 
               {/* Header Checklist & Action Controls */}
               <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/80 dark:border-slate-800 text-xs">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={handleToggleAll}
@@ -382,6 +419,18 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                     )}
                     <span>{isAllSelected ? 'Batal Pilih Semua' : 'Pilih Semua'}</span>
                   </button>
+
+                  {stats.nonRaporFiles > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleSelectOnlyRapor}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg font-medium text-indigo-700 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 hover:bg-indigo-100 transition-colors cursor-pointer"
+                      title="Hanya centang berkas rapor kelas, lewati berkas master/rekap"
+                    >
+                      <Sparkles size={12} className="text-indigo-600" />
+                      <span>Hanya Berkas Rapor ({stats.total - stats.nonRaporFiles})</span>
+                    </button>
+                  )}
 
                   {stats.newFiles > 0 && stats.alreadyStaged > 0 && (
                     <button
@@ -418,20 +467,31 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
               <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-y-auto max-h-[320px] divide-y divide-slate-100 dark:divide-slate-800">
                 {scannedFiles?.map((file, idx) => {
                   const isChecked = selectedUrls.has(file.url);
+                  const isLikelyRapor = isLikelyRaporClassFile(file.title);
                   return (
-                    <label
+                    <div
                       key={file.id || idx}
-                      htmlFor={`file-check-${file.id}`}
+                      onClick={() => handleToggleFile(file.url)}
+                      role="checkbox"
+                      aria-checked={isChecked}
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === ' ' || e.key === 'Enter') {
+                          e.preventDefault();
+                          handleToggleFile(file.url);
+                        }
+                      }}
                       className={cn(
-                        'flex items-center justify-between gap-3 p-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 cursor-pointer transition-colors text-xs select-none',
-                        isChecked && 'bg-indigo-50/40 dark:bg-indigo-950/20'
+                        'flex items-center justify-between gap-3 p-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 cursor-pointer transition-colors text-xs select-none focus:outline-hidden focus:bg-indigo-50/30',
+                        isChecked && 'bg-indigo-50/40 dark:bg-indigo-950/20',
+                        !isLikelyRapor && !isChecked && 'opacity-65 bg-slate-50/40 dark:bg-slate-900/30'
                       )}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         <input
                           type="checkbox"
-                          id={`file-check-${file.id}`}
                           checked={isChecked}
+                          onClick={(e) => e.stopPropagation()}
                           onChange={() => handleToggleFile(file.url)}
                           className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer shrink-0"
                           aria-label={`Pilih ${file.title}`}
@@ -440,15 +500,22 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                           size={16}
                           className={cn(
                             'shrink-0',
-                            file.is_already_staged ? 'text-sky-600' : 'text-emerald-600'
+                            !isLikelyRapor ? 'text-amber-500' : file.is_already_staged ? 'text-sky-600' : 'text-emerald-600'
                           )}
                           aria-hidden="true"
                         />
                         <div className="min-w-0 flex-1">
-                          <span className="font-semibold text-slate-800 dark:text-slate-200 block truncate">
-                            {file.title}
-                          </span>
-                          <div className="flex items-center gap-2 text-[10px] truncate text-slate-400">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                              {file.title}
+                            </span>
+                            {!isLikelyRapor && (
+                              <span className="text-[10px] font-medium text-amber-700 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 px-1.5 py-0.2 rounded-md shrink-0">
+                                Berkas Non-Rapor?
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 text-[10px] truncate text-slate-400 mt-0.5">
                             {file.is_already_staged && file.staged_info ? (
                               <span className="font-medium text-sky-700 dark:text-sky-300">
                                 Sudah di Wadah: {file.staged_info.nama_kelas} ({file.staged_info.tahun_pelajaran} • {file.staged_info.semester})
@@ -481,7 +548,7 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                           ? '🔄 Perbarui (Idempoten)'
                           : '✨ Tambah Baru'}
                       </Badge>
-                    </label>
+                    </div>
                   );
                 })}
               </div>

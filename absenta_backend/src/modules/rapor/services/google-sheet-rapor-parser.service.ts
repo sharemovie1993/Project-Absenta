@@ -349,6 +349,27 @@ export class GoogleSheetRaporParserService {
   }
 
   /**
+   * Mengunduh konten CSV dari tab/sheet tertentu berdasarkan NAMA TAB via Google Visualization (GViz) API.
+   * Sangat berguna sebagai fallback ketika tab disembunyikan (hidden sheet) atau saat GID tidak terdaftar di htmlview.
+   */
+  static async fetchSheetCsvByName(spreadsheetId: string, sheetName: string): Promise<string> {
+    const csvUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+    try {
+      const res = await axios.get<string>(csvUrl, {
+        responseType: 'text',
+        timeout: 15000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+      });
+      return res.data;
+    } catch (err: any) {
+      appLogger.warn({ err: err.message, sheetName, spreadsheetId }, `GViz CSV gagal untuk tab "${sheetName}"`);
+      throw new Error(`Gagal membaca sheet "${sheetName}": ${err.message}`);
+    }
+  }
+
+  /**
    * ── 1. Dynamic Variable/Label Scanner untuk Sheet SETTING ──
    * Memindai baris demi baris mencari label variabel kunci tanpa bergantung pada koordinat statis C2, C3, dll.
    */
@@ -659,22 +680,78 @@ export class GoogleSheetRaporParserService {
     const sumatifTab = tabs.find((t) => /^input\s*sumatif$/i.test(t.name) || /sumatif/i.test(t.name));
     const cpTab = tabs.find((t) => /^input\s*cp$/i.test(t.name) || /input.*cp/i.test(t.name));
 
-    if (!settingTab) {
-      throw new Error("Sheet 'SETTING' tidak ditemukan dalam dokumen Google Sheet.");
-    }
-    if (!sumatifTab) {
-      throw new Error("Sheet 'INPUT SUMATIF' tidak ditemukan dalam dokumen Google Sheet.");
-    }
-    if (!cpTab) {
-      throw new Error("Sheet 'INPUT CP' tidak ditemukan dalam dokumen Google Sheet.");
+    // Ambil isi CSV ketiga sheet (dengan GViz fallback jika tab disembunyikan/hidden di Google Sheet)
+    let settingCsv = '';
+    if (settingTab) {
+      settingCsv = await this.fetchSheetCsv(spreadsheetId, settingTab.gid);
+    } else {
+      // Fallback GViz jika sheet SETTING disembunyikan (hidden sheet) oleh guru/admin
+      const candidateSettingNames = ['SETTING', 'Setting Raport', 'Setting', 'Pengaturan', 'SETTING RAPORT', 'Seting'];
+      for (const candidate of candidateSettingNames) {
+        try {
+          const csv = await this.fetchSheetCsvByName(spreadsheetId, candidate);
+          if (csv && (csv.toLowerCase().includes('kelas') || csv.toLowerCase().includes('semester') || csv.toLowerCase().includes('tahun pelajaran'))) {
+            settingCsv = csv;
+            appLogger.info({ spreadsheetId, candidate }, `Tab SETTING dipulihkan melalui GViz fallback: "${candidate}"`);
+            break;
+          }
+        } catch {
+          // Lanjut kandidat berikutnya
+        }
+      }
     }
 
-    // Ambil isi CSV ketiga sheet secara paralel
-    const [settingCsv, sumatifCsv, cpCsv] = await Promise.all([
-      this.fetchSheetCsv(spreadsheetId, settingTab.gid),
-      this.fetchSheetCsv(spreadsheetId, sumatifTab.gid),
-      this.fetchSheetCsv(spreadsheetId, cpTab.gid),
-    ]);
+    if (!settingCsv) {
+      throw new Error("Sheet 'SETTING' atau 'Setting Raport' tidak ditemukan dalam dokumen Google Sheet.");
+    }
+
+    let sumatifCsv = '';
+    if (sumatifTab) {
+      sumatifCsv = await this.fetchSheetCsv(spreadsheetId, sumatifTab.gid);
+    } else {
+      // Fallback GViz jika INPUT SUMATIF disembunyikan
+      const candidateSumatifNames = ['INPUT SUMATIF', 'Input Sumatif', 'SUMATIF', 'Nilai Sumatif'];
+      for (const candidate of candidateSumatifNames) {
+        try {
+          const csv = await this.fetchSheetCsvByName(spreadsheetId, candidate);
+          if (csv && (csv.toLowerCase().includes('sumatif 1') || csv.toLowerCase().includes('nis') || csv.toLowerCase().includes('nama'))) {
+            sumatifCsv = csv;
+            appLogger.info({ spreadsheetId, candidate }, `Tab INPUT SUMATIF dipulihkan melalui GViz fallback: "${candidate}"`);
+            break;
+          }
+        } catch {
+          // Lanjut kandidat berikutnya
+        }
+      }
+    }
+
+    if (!sumatifCsv) {
+      throw new Error("Sheet 'INPUT SUMATIF' tidak ditemukan dalam dokumen Google Sheet.");
+    }
+
+    let cpCsv = '';
+    if (cpTab) {
+      cpCsv = await this.fetchSheetCsv(spreadsheetId, cpTab.gid);
+    } else {
+      // Fallback GViz jika INPUT CP disembunyikan
+      const candidateCpNames = ['INPUT CP', 'Input CP', 'CP', 'Capaian Pembelajaran'];
+      for (const candidate of candidateCpNames) {
+        try {
+          const csv = await this.fetchSheetCsvByName(spreadsheetId, candidate);
+          if (csv && (csv.toLowerCase().includes('cp 1') || csv.toLowerCase().includes('nis') || csv.toLowerCase().includes('nama'))) {
+            cpCsv = csv;
+            appLogger.info({ spreadsheetId, candidate }, `Tab INPUT CP dipulihkan melalui GViz fallback: "${candidate}"`);
+            break;
+          }
+        } catch {
+          // Lanjut kandidat berikutnya
+        }
+      }
+    }
+
+    if (!cpCsv) {
+      throw new Error("Sheet 'INPUT CP' tidak ditemukan dalam dokumen Google Sheet.");
+    }
 
     const settingRows = this.parseCSV(settingCsv);
     const sumatifRows = this.parseCSV(sumatifCsv);
