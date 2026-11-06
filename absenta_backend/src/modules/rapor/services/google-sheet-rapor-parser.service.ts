@@ -419,26 +419,6 @@ export class GoogleSheetRaporParserService {
       }
     }
 
-    // Jika tahunPelajaran belum berhasil diekstrak atau tidak memuat 4 digit angka,
-    // turunkan secara cerdas dari tanggal titimangsa ganjil / genap jika ada
-    if (!meta.tahunPelajaran || !/\d{4}/.test(meta.tahunPelajaran)) {
-      if (meta.titimangsaGanjil) {
-        const parsedG = this.parseIndonesianDate(meta.titimangsaGanjil);
-        if (parsedG.dateIso) {
-          const y = parseInt(parsedG.dateIso.slice(0, 4), 10);
-          meta.tahunPelajaran = `${y}/${y + 1}`;
-        }
-      } else if (meta.titimangsaGenap) {
-        const parsedGen = this.parseIndonesianDate(meta.titimangsaGenap);
-        if (parsedGen.dateIso) {
-          const parts = parsedGen.dateIso.split('-');
-          const y = parseInt(parts[0], 10);
-          const m = parseInt(parts[1], 10);
-          meta.tahunPelajaran = m <= 7 ? `${y - 1}/${y}` : `${y}/${y + 1}`;
-        }
-      }
-    }
-
     return meta;
   }
 
@@ -817,7 +797,6 @@ export class GoogleSheetRaporParserService {
     let colKelas = -1;
     let colWalas = -1;
     let colNip = -1;
-    let colTp = -1;
     let colKonsentrasi = -1;
     let colProgram = -1;
     let colRombel = -1;
@@ -832,7 +811,6 @@ export class GoogleSheetRaporParserService {
         colKelas = kIdx;
         colWalas = wIdx;
         colNip = row.findIndex((c) => /^nip(\s*walas)?$/i.test(c.trim()));
-        colTp = row.findIndex((c) => /^(tahun\s*pelajaran|tp)$/i.test(c.trim()));
       }
 
       if (colKonsentrasi === -1) {
@@ -863,14 +841,7 @@ export class GoogleSheetRaporParserService {
       }
     }
 
-    // Jika colTp tidak ada di baris yang sama, coba cari di baris atas atau kolom sekitar
-    if (headerRowIdx !== -1 && colTp === -1 && headerRowIdx > 0) {
-      const prevRow = rows[headerRowIdx - 1];
-      colTp = prevRow.findIndex((c) => /^(tahun\s*pelajaran|tp)$/i.test(c.trim()));
-    }
-
     const walasPloting: MasterReferenceWalasItem[] = [];
-    let detectedTp = '';
 
     if (headerRowIdx !== -1) {
       for (let r = headerRowIdx + 1; r < rows.length; r++) {
@@ -878,7 +849,6 @@ export class GoogleSheetRaporParserService {
         const kelasNama = (row[colKelas] || '').trim();
         const walasNama = (row[colWalas] || '').trim();
         let walasNip = colNip !== -1 ? (row[colNip] || '').trim() : '';
-        const tpVal = colTp !== -1 ? (row[colTp] || '').trim() : '';
 
         // Bersihkan NIP dari tanda hubung '-' atau angka 0 tunggal
         walasNip = walasNip.replace(/['"`]/g, '').trim();
@@ -891,14 +861,6 @@ export class GoogleSheetRaporParserService {
         if (/^(kelas\s*walas|walas|nip\s*walas|setting\s*data|otomatis|ketik\s*manual|manual|rumus)$/i.test(kelasNama)) continue;
         if (/^(walas|ketik\s*manual|otomatis|manual)$/i.test(walasNama)) continue;
 
-        const cleanTpVal = tpVal.replace(/\s+/g, ' ').trim();
-        const isIgnoredTp = /^(ketik\s*manual|otomatis|manual|rumus|setting|pilih)$/i.test(cleanTpVal);
-        const hasYearDigits = /\d{4}/.test(cleanTpVal);
-
-        if (cleanTpVal && !isIgnoredTp && hasYearDigits && !detectedTp) {
-          detectedTp = cleanTpVal;
-        }
-
         // Ambil konteks jurusan dari pemetaan rombel atau baris yang sama
         const cleanK = kelasNama.toLowerCase().replace(/[\s\-_]+/g, '');
         const hint = rombelJurusanMap.get(cleanK);
@@ -909,37 +871,17 @@ export class GoogleSheetRaporParserService {
           kelasNama,
           walasNama,
           walasNip,
-          tahunPelajaran: (hasYearDigits && !isIgnoredTp) ? cleanTpVal : '',
+          tahunPelajaran: '',
           konsentrasiKeahlian: rowKonsentrasi || undefined,
           programKeahlian: rowProgram || undefined,
         });
       }
     }
 
-    // Jika detectedTp belum terisi atau tidak memuat 4 digit tahun, deteksi dari tanggal titimangsa
-    if (!detectedTp || !/\d{4}/.test(detectedTp)) {
-      if (schoolProfile.titimangsaGanjilIso) {
-        const yNum = parseInt(schoolProfile.titimangsaGanjilIso.slice(0, 4), 10);
-        detectedTp = `${yNum}/${yNum + 1}`;
-      } else if (schoolProfile.titimangsaGenapIso) {
-        const parts = schoolProfile.titimangsaGenapIso.split('-');
-        const yNum = parseInt(parts[0], 10);
-        const mNum = parseInt(parts[1], 10);
-        detectedTp = mNum <= 7 ? `${yNum - 1}/${yNum}` : `${yNum}/${yNum + 1}`;
-      }
-    }
-
-    // Pastikan walasPloting yang belum memiliki tahunPelajaran mewarisi detectedTp
-    walasPloting.forEach((w) => {
-      if (!w.tahunPelajaran) {
-        w.tahunPelajaran = detectedTp;
-      }
-    });
-
     return {
       sourceUrl: '',
       tabName,
-      tahunPelajaran: detectedTp.replace(/\s+/g, ' ').trim(),
+      tahunPelajaran: '',
       schoolProfile,
       walasPloting,
     };
@@ -1013,27 +955,6 @@ export class GoogleSheetRaporParserService {
           parsed.schoolProfile.titimangsaGenap = settingMeta.titimangsaGenap;
           const parsedGen = this.parseIndonesianDate(settingMeta.titimangsaGenap);
           if (parsedGen.dateIso) parsed.schoolProfile.titimangsaGenapIso = parsedGen.dateIso;
-        }
-
-        // Jika parsed.tahunPelajaran masih kosong, tidak valid 4 digit, atau mengandung placeholder "manual":
-        // Turunkan secara cerdas dari tanggal titimangsa ganjil / genap tab SETTING yang sudah tervalidasi
-        if (!parsed.tahunPelajaran || !/\d{4}/.test(parsed.tahunPelajaran) || /manual/i.test(parsed.tahunPelajaran)) {
-          let derived = '';
-          if (parsed.schoolProfile.titimangsaGanjilIso) {
-            const y = parseInt(parsed.schoolProfile.titimangsaGanjilIso.slice(0, 4), 10);
-            derived = `${y}/${y + 1}`;
-          } else if (parsed.schoolProfile.titimangsaGenapIso) {
-            const parts = parsed.schoolProfile.titimangsaGenapIso.split('-');
-            const y = parseInt(parts[0], 10);
-            const m = parseInt(parts[1], 10);
-            derived = m <= 7 ? `${y - 1}/${y}` : `${y}/${y + 1}`;
-          }
-          if (derived) {
-            parsed.tahunPelajaran = derived;
-            parsed.walasPloting.forEach((w) => {
-              w.tahunPelajaran = derived;
-            });
-          }
         }
       } catch (settingErr: any) {
         appLogger.warn({ settingErr }, 'Gagal mengunduh tab SETTING, menggunakan data profil fallback dari MASTER');

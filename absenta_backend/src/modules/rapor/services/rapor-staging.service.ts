@@ -1377,7 +1377,7 @@ export class RaporStagingService {
     const parsed: MasterReferenceData = await GoogleSheetRaporParserService.fetchMasterSheetData(sheetUrl);
 
     // 1. Ambil data master yang ada di database tenant
-    const [allTp, allGurus, allClasses, walasPosition, existingConfigs] = await Promise.all([
+    const [allTp, allGurus, allClasses, walasPositions, existingConfigs] = await Promise.all([
       prisma.tahunPelajaran.findMany({
         where: { tenant_id: tenantId },
         select: { id: true, tahun: true, is_active: true },
@@ -1399,11 +1399,12 @@ export class RaporStagingService {
         },
         orderBy: [{ tingkat: 'asc' }, { nama_kelas: 'asc' }],
       }),
-      prisma.organizationalPosition.findFirst({
+      prisma.organizationalPosition.findMany({
         where: {
           OR: [
             { tenant_id: tenantId, code: 'WALIKELAS' },
-            { code: 'WALIKELAS' },
+            { tenant_id: 'system', code: 'WALIKELAS' },
+            { name: { contains: 'Wali', mode: 'insensitive' }, tenant_id: tenantId },
           ],
         },
         select: { id: true },
@@ -1417,13 +1418,14 @@ export class RaporStagingService {
       }),
     ]);
 
+    const walasPosIds = walasPositions.map((p) => p.id);
     let walasCounts: Array<{ tahun_pelajaran_id: string; _count: { id: number } }> = [];
-    if (walasPosition) {
+    if (walasPosIds.length > 0) {
       walasCounts = (await prisma.organizationalAssignment.groupBy({
         by: ['tahun_pelajaran_id'],
         where: {
           tenant_id: tenantId,
-          position_id: walasPosition.id,
+          position_id: { in: walasPosIds },
           is_active: true,
         },
         _count: { id: true },
