@@ -405,10 +405,23 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
                   </Badge>
                 )}
                 {dynamicUnmappedCount > 0 && (
-                  <Badge variant="outline" className="text-xs bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200">
-                    <AlertTriangle size={13} className="mr-1 text-amber-600" />
-                    {dynamicUnmappedCount} Perlu Pemetaan Manual
-                  </Badge>
+                  <>
+                    <Badge variant="outline" className="text-xs bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200">
+                      <AlertTriangle size={13} className="mr-1 text-amber-600" />
+                      {dynamicUnmappedCount} Perlu Pemetaan Manual
+                    </Badge>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAutoCreateAllUnmapped}
+                      className="h-7 text-xs font-semibold gap-1.5 border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 bg-indigo-50/80 dark:bg-indigo-950/40 hover:bg-indigo-100"
+                      title="Otomatis buatkan record guru baru untuk semua wali kelas yang belum cocok"
+                    >
+                      <Sparkles size={13} className="text-indigo-600" />
+                      <span>Auto Buat Guru Baru ({dynamicUnmappedCount})</span>
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
@@ -720,11 +733,22 @@ export const RaporStagingBackfillMasterModal: React.FC<RaporStagingBackfillMaste
                                     <span>Akan dibuatkan record Guru &amp; Akun baru (Status: Non-Aktif/Arsip)</span>
                                   </div>
                                 ) : !row.selectedGuruUserId ? (
-                                  <div className="text-[10px] text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
-                                    <AlertTriangle size={11} className="shrink-0" />
-                                    <span>
-                                      {row.ambiguityNote || 'Guru belum cocok di data master. Pilih guru atau buat record baru di atas.'}
-                                    </span>
+                                  <div className="space-y-1">
+                                    <div className="text-[10px] text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                                      <AlertTriangle size={11} className="shrink-0" />
+                                      <span>
+                                        {row.ambiguityNote || 'Guru belum cocok di data master. Pilih guru atau buat record baru di atas.'}
+                                      </span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleGuruChange(origIdx, '__AUTO_CREATE__')}
+                                      className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/80 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition-colors cursor-pointer"
+                                      title="Otomatis buat record guru baru untuk nama ini"
+                                    >
+                                      <Sparkles size={10} className="text-indigo-600 dark:text-indigo-400" />
+                                      <span>+ Buat Guru Baru: &quot;{row.walasNama}&quot;</span>
+                                    </button>
                                   </div>
                                 ) : null}
                               </div>

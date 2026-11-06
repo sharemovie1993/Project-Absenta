@@ -398,14 +398,43 @@ export class GoogleSheetRaporParserService {
         for (const pattern of labelPatterns) {
           if (!meta[pattern.key] && pattern.regex.test(cellText)) {
             // Label cocok! Cari nilai di kolom-kolom berikutnya pada baris yang sama
-            for (let valCol = c + 1; valCol < Math.min(row.length, c + 6); valCol++) {
+            for (let valCol = c + 1; valCol < Math.min(row.length, c + 10); valCol++) {
               const val = (row[valCol] || '').trim();
-              if (val && val !== ':') {
-                meta[pattern.key] = val;
-                break;
+              if (!val || val === ':') continue;
+
+              // Abaikan teks instruksi placeholder template umum
+              const isPlaceholder = /^(ketik\s*manual|\(?ketik\s*manual\)?|manual|otomatis|rumus|setting|pilih|dropdown|contoh)$/i.test(val);
+              if (isPlaceholder) continue;
+
+              // Khusus tahunPelajaran: WAJIB memuat 4 digit tahun (misal '2022/2023', '2023/2024')
+              if (pattern.key === 'tahunPelajaran' && !/\d{4}/.test(val)) {
+                continue;
               }
+
+              meta[pattern.key] = val;
+              break;
             }
           }
+        }
+      }
+    }
+
+    // Jika tahunPelajaran belum berhasil diekstrak atau tidak memuat 4 digit angka,
+    // turunkan secara cerdas dari tanggal titimangsa ganjil / genap jika ada
+    if (!meta.tahunPelajaran || !/\d{4}/.test(meta.tahunPelajaran)) {
+      if (meta.titimangsaGanjil) {
+        const parsedG = this.parseIndonesianDate(meta.titimangsaGanjil);
+        if (parsedG.dateIso) {
+          const y = parseInt(parsedG.dateIso.slice(0, 4), 10);
+          meta.tahunPelajaran = `${y}/${y + 1}`;
+        }
+      } else if (meta.titimangsaGenap) {
+        const parsedGen = this.parseIndonesianDate(meta.titimangsaGenap);
+        if (parsedGen.dateIso) {
+          const parts = parsedGen.dateIso.split('-');
+          const y = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10);
+          meta.tahunPelajaran = m <= 7 ? `${y - 1}/${y}` : `${y}/${y + 1}`;
         }
       }
     }
@@ -889,10 +918,14 @@ export class GoogleSheetRaporParserService {
 
     // Jika detectedTp belum terisi atau tidak memuat 4 digit tahun, deteksi dari tanggal titimangsa
     if (!detectedTp || !/\d{4}/.test(detectedTp)) {
-      const yearFromDate = (schoolProfile.titimangsaGanjilIso || schoolProfile.titimangsaGenapIso).slice(0, 4);
-      if (yearFromDate) {
-        const yNum = parseInt(yearFromDate, 10);
+      if (schoolProfile.titimangsaGanjilIso) {
+        const yNum = parseInt(schoolProfile.titimangsaGanjilIso.slice(0, 4), 10);
         detectedTp = `${yNum}/${yNum + 1}`;
+      } else if (schoolProfile.titimangsaGenapIso) {
+        const parts = schoolProfile.titimangsaGenapIso.split('-');
+        const yNum = parseInt(parts[0], 10);
+        const mNum = parseInt(parts[1], 10);
+        detectedTp = mNum <= 7 ? `${yNum - 1}/${yNum}` : `${yNum}/${yNum + 1}`;
       }
     }
 
@@ -958,7 +991,7 @@ export class GoogleSheetRaporParserService {
         const settingRows = this.parseCSV(settingCsv);
         const settingMeta = this.parseSettingSheet(settingRows);
 
-        if (settingMeta.tahunPelajaran) {
+        if (settingMeta.tahunPelajaran && /\d{4}/.test(settingMeta.tahunPelajaran) && !/manual/i.test(settingMeta.tahunPelajaran)) {
           const cleanSettingTp = settingMeta.tahunPelajaran.replace(/\s+/g, ' ').trim();
           parsed.tahunPelajaran = cleanSettingTp;
           parsed.walasPloting.forEach((w) => {
@@ -980,6 +1013,27 @@ export class GoogleSheetRaporParserService {
           parsed.schoolProfile.titimangsaGenap = settingMeta.titimangsaGenap;
           const parsedGen = this.parseIndonesianDate(settingMeta.titimangsaGenap);
           if (parsedGen.dateIso) parsed.schoolProfile.titimangsaGenapIso = parsedGen.dateIso;
+        }
+
+        // Jika parsed.tahunPelajaran masih kosong, tidak valid 4 digit, atau mengandung placeholder "manual":
+        // Turunkan secara cerdas dari tanggal titimangsa ganjil / genap tab SETTING yang sudah tervalidasi
+        if (!parsed.tahunPelajaran || !/\d{4}/.test(parsed.tahunPelajaran) || /manual/i.test(parsed.tahunPelajaran)) {
+          let derived = '';
+          if (parsed.schoolProfile.titimangsaGanjilIso) {
+            const y = parseInt(parsed.schoolProfile.titimangsaGanjilIso.slice(0, 4), 10);
+            derived = `${y}/${y + 1}`;
+          } else if (parsed.schoolProfile.titimangsaGenapIso) {
+            const parts = parsed.schoolProfile.titimangsaGenapIso.split('-');
+            const y = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10);
+            derived = m <= 7 ? `${y - 1}/${y}` : `${y}/${y + 1}`;
+          }
+          if (derived) {
+            parsed.tahunPelajaran = derived;
+            parsed.walasPloting.forEach((w) => {
+              w.tahunPelajaran = derived;
+            });
+          }
         }
       } catch (settingErr: any) {
         appLogger.warn({ settingErr }, 'Gagal mengunduh tab SETTING, menggunakan data profil fallback dari MASTER');
