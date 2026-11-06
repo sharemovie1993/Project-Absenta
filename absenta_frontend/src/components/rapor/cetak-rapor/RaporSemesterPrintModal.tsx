@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+﻿import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   UniversalDocumentModal,
@@ -10,6 +10,7 @@ import {
 import { raporApi } from '@/api/rapor.api';
 import { generateRaporPdf } from '@/utils/print/rapor/renderRaporCk';
 import { getMapelCanonicalPriority, resolveCapaianKompetensi } from '@/utils/print/rapor/raporShared';
+import { resolveRaporKelompok } from '@/utils/print/rapor/raporKelompok';
 import { Loader2, CalendarRange } from 'lucide-react';
 import type { LegerStudent, SemesterDocumentOption } from './LegerStudentTable';
 import { RaporHeaderMetadata } from './RaporHeaderMetadata';
@@ -235,65 +236,8 @@ export const RaporSemesterPrintModal: React.FC<RaporSemesterPrintModalProps> = R
   const groupedMapel = new Map<string, any[]>();
 
   listNilai.forEach((m: any) => {
-    const rawGrp = (m.kelompok_mapel || '').toLowerCase().trim();
-    const mapelNameLower = (m.mapel_name || '').toLowerCase();
-    let groupCategory = 'Kelompok Umum';
-
-    if (isLegacyEra) {
-      const isKejuruanLegacy =
-        rawGrp.includes('kejuruan') ||
-        rawGrp.includes('pilihan') ||
-        rawGrp.includes('lokal') ||
-        rawGrp.includes('mulok') ||
-        (isJenjangSmk && (
-          mapelNameLower.includes('matematika') ||
-          mapelNameLower.includes('inggris') ||
-          mapelNameLower.includes('informatika') ||
-          mapelNameLower.includes('ipas') ||
-          mapelNameLower.includes('dasar') ||
-          mapelNameLower.includes('konsentrasi') ||
-          mapelNameLower.includes('kejuruan') ||
-          mapelNameLower.includes('pkk') ||
-          mapelNameLower.includes('kewirausahaan') ||
-          mapelNameLower.includes('pkl') ||
-          mapelNameLower.includes('sunda') ||
-          mapelNameLower.includes('daerah')
-        ));
-      groupCategory = isKejuruanLegacy ? 'Kelompok Kejuruan' : 'Kelompok Umum';
-    } else {
-      // Prioritas 1: Kelompok resmi dari Pengaturan Rapor / Struktur Kurikulum
-      if (rawGrp.includes('muatan lokal') || rawGrp.includes('mulok')) {
-        groupCategory = 'Muatan Lokal';
-      } else if (rawGrp.includes('pilihan') || rawGrp.includes('peminatan')) {
-        groupCategory = 'Mata Pelajaran Pilihan';
-      } else if (rawGrp.includes('kejuruan')) {
-        groupCategory = 'Mata Pelajaran Kejuruan';
-      } else if (rawGrp.includes('umum') || rawGrp.includes('nasional')) {
-        groupCategory = 'Mata Pelajaran Umum';
-      } else {
-        // Fallback jika kelompok_mapel kosong
-        if (mapelNameLower.includes('sunda') || mapelNameLower.includes('daerah')) {
-          groupCategory = 'Muatan Lokal';
-        } else if (mapelNameLower.includes('pilihan')) {
-          groupCategory = 'Mata Pelajaran Pilihan';
-        } else if (isJenjangSmk && (
-          mapelNameLower.includes('matematika') ||
-          mapelNameLower.includes('inggris') ||
-          mapelNameLower.includes('informatika') ||
-          mapelNameLower.includes('ipas') ||
-          mapelNameLower.includes('dasar') ||
-          mapelNameLower.includes('konsentrasi') ||
-          mapelNameLower.includes('kejuruan') ||
-          mapelNameLower.includes('pkk') ||
-          mapelNameLower.includes('kewirausahaan') ||
-          mapelNameLower.includes('pkl')
-        )) {
-          groupCategory = 'Mata Pelajaran Kejuruan';
-        } else {
-          groupCategory = 'Mata Pelajaran Umum';
-        }
-      }
-    }
+    // SSOT: kelompok_mapel dari Pengaturan Rapor selalu diutamakan (lihat raporKelompok.ts)
+    const groupCategory = resolveRaporKelompok(isLegacyEra, m.kelompok_mapel, m.mapel_name, isJenjangSmk);
 
     if (!groupedMapel.has(groupCategory)) {
       groupedMapel.set(groupCategory, []);

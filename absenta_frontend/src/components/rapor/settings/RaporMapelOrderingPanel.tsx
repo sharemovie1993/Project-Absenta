@@ -19,6 +19,7 @@ import toast from 'react-hot-toast';
 import { kurikulumApi, type StrukturKurikulum } from '@/api/kurikulum.api';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
+import { resolveRaporKelompok } from '@/utils/print/rapor/raporKelompok';
 
 export interface RaporMapelOrderingPanelProps {
   tahunPelajaranId: string;
@@ -194,42 +195,9 @@ export const RaporMapelOrderingPanel: React.FC<RaporMapelOrderingPanelProps> = R
 
   // Helper untuk memetakan nama kelompok mapel ke key section yang aktif
   const matchToActiveSection = useCallback(
-    (rawKelompok?: string, mapelName?: string): string => {
-      const g = (rawKelompok || '').toLowerCase().trim();
-      const n = (mapelName || '').toLowerCase().trim();
-
-      if (currentPreset === 'legacy') {
-        // Preset 2 Kelompok (Umum & Kejuruan)
-        const isKejuruan =
-          g.includes('kejuruan') ||
-          g.includes('pilihan') ||
-          n.includes('matematika') ||
-          n.includes('inggris') ||
-          n.includes('informatika') ||
-          n.includes('ipas') ||
-          (n.includes('alam') && n.includes('sosial')) ||
-          n.includes('dasar') ||
-          n.includes('konsentrasi') ||
-          n.includes('kk ') ||
-          n.includes('pkk') ||
-          n.includes('pkl') ||
-          n.includes('pilihan');
-
-        return isKejuruan ? 'Kelompok Kejuruan' : 'Kelompok Umum';
-      } else {
-        // Preset 4 Kelompok (Umum, Kejuruan, Pilihan, Muatan Lokal)
-        if (g.includes('muatan lokal') || g.includes('mulok') || n.includes('sunda') || n.includes('jawa') || n.includes('daerah')) {
-          return 'Muatan Lokal';
-        }
-        if (g.includes('pilihan') || g.includes('peminatan')) {
-          return 'Mata Pelajaran Pilihan';
-        }
-        if (g.includes('kejuruan')) {
-          return 'Mata Pelajaran Kejuruan';
-        }
-        return 'Mata Pelajaran Umum';
-      }
-    },
+    (rawKelompok?: string, mapelName?: string): string =>
+      // SSOT bersama dengan modal pratinjau & generator PDF rapor (raporKelompok.ts)
+      resolveRaporKelompok(currentPreset === 'legacy', rawKelompok, mapelName),
     [currentPreset]
   );
 

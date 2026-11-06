@@ -1,4 +1,4 @@
-import { jsPDF } from 'jspdf';
+﻿import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { raporApi } from '../../../api/rapor.api';
 import { sekolahApi } from '../../../api/academic/sekolah.api';
@@ -9,6 +9,7 @@ import {
   PrintRaporOptions,
   resolveCapaianKompetensi,
 } from './raporShared';
+import { resolveRaporKelompok } from './raporKelompok';
 import {
   normalizeStudentIdentity,
   normalizeTeacherIdentity,
@@ -275,108 +276,8 @@ export const renderStudentRaporPages = (
 
     const groupedMapel = new Map<string, any[]>();
     dedupedList.forEach((n: any) => {
-      let groupCategory = 'Kelompok Umum';
-      const rawGrp = (n.kelompok_mapel || '').toLowerCase().trim();
-      const mapelNameLower = (n.mapel_name || '').toLowerCase();
-
-      if (isLegacyEra) {
-        // --- ERA 2022 - 2024 (2 SEKAT: KELOMPOK UMUM & KELOMPOK KEJURUAN) ---
-        const isKejuruanLegacy =
-          rawGrp.includes('kejuruan') ||
-          rawGrp.includes('pilihan') ||
-          rawGrp.includes('lokal') ||
-          (jenjang === 'SMK' && (
-            mapelNameLower.includes('matematika') ||
-            mapelNameLower.includes('inggris') ||
-            mapelNameLower.includes('informatika') ||
-            mapelNameLower.includes('ipas') ||
-            (mapelNameLower.includes('alam') && mapelNameLower.includes('sosial')) ||
-            mapelNameLower.includes('dasar') ||
-            mapelNameLower.includes('program keahlian') ||
-            mapelNameLower.includes('konsentrasi') ||
-            mapelNameLower.includes('kejuruan') ||
-            mapelNameLower.includes('pkk') ||
-            mapelNameLower.includes('kewirausahaan') ||
-            mapelNameLower.includes('pkl') ||
-            mapelNameLower.includes('praktik kerja') ||
-            mapelNameLower.includes('gtm') ||
-            mapelNameLower.includes('pdtm') ||
-            mapelNameLower.includes('dptm') ||
-            mapelNameLower.includes('gambar teknik') ||
-            mapelNameLower.includes('pemesinan') ||
-            mapelNameLower.includes('otomotif') ||
-            mapelNameLower.includes('pengelasan') ||
-            mapelNameLower.includes('elektronika') ||
-            mapelNameLower.includes('sunda') ||
-            mapelNameLower.includes('jawa') ||
-            mapelNameLower.includes('daerah') ||
-            mapelNameLower.includes('koding') ||
-            mapelNameLower.includes('ai')
-          ));
-
-        if (isKejuruanLegacy) {
-          groupCategory = 'Kelompok Kejuruan';
-        } else {
-          groupCategory = 'Kelompok Umum';
-        }
-      } else {
-        // --- ERA 2025+ (4 SEKAT: Prioritas 1 adalah Konfigurasi Pengaturan Rapor) ---
-        if (rawGrp.includes('muatan lokal') || rawGrp.includes('mulok')) {
-          groupCategory = 'Muatan Lokal';
-        } else if (rawGrp.includes('pilihan') || rawGrp.includes('peminatan')) {
-          groupCategory = 'Mata Pelajaran Pilihan';
-        } else if (rawGrp.includes('kejuruan')) {
-          groupCategory = 'Mata Pelajaran Kejuruan';
-        } else if (rawGrp.includes('umum') || rawGrp.includes('nasional')) {
-          groupCategory = 'Mata Pelajaran Umum';
-        } else {
-          // Fallback jika belum diset eksplisit
-          if (
-            mapelNameLower.includes('sunda') ||
-            mapelNameLower.includes('jawa') ||
-            mapelNameLower.includes('daerah')
-          ) {
-            groupCategory = 'Muatan Lokal';
-          } else if (
-            mapelNameLower.includes('pilihan') ||
-            mapelNameLower.includes('koding') ||
-            mapelNameLower.includes('kecerdasan artifisial') ||
-            mapelNameLower.includes('kecerdasan buatan') ||
-            mapelNameLower.includes('ai') ||
-            mapelNameLower.includes('robotika')
-          ) {
-            groupCategory = 'Mata Pelajaran Pilihan';
-          } else if (
-            jenjang === 'SMK' && (
-              mapelNameLower.includes('matematika') ||
-              mapelNameLower.includes('inggris') ||
-              mapelNameLower.includes('informatika') ||
-              mapelNameLower.includes('ipas') ||
-              (mapelNameLower.includes('alam') && mapelNameLower.includes('sosial')) ||
-              mapelNameLower.includes('dasar') ||
-              mapelNameLower.includes('program keahlian') ||
-              mapelNameLower.includes('konsentrasi') ||
-              mapelNameLower.includes('kejuruan') ||
-              mapelNameLower.includes('pkk') ||
-              mapelNameLower.includes('kewirausahaan') ||
-              mapelNameLower.includes('pkl') ||
-              mapelNameLower.includes('praktik kerja') ||
-              mapelNameLower.includes('gtm') ||
-              mapelNameLower.includes('pdtm') ||
-              mapelNameLower.includes('dptm') ||
-              mapelNameLower.includes('gambar teknik') ||
-              mapelNameLower.includes('pemesinan') ||
-              mapelNameLower.includes('otomotif') ||
-              mapelNameLower.includes('pengelasan') ||
-              mapelNameLower.includes('elektronika')
-            )
-          ) {
-            groupCategory = 'Mata Pelajaran Kejuruan';
-          } else {
-            groupCategory = 'Mata Pelajaran Umum';
-          }
-        }
-      }
+      // SSOT: kelompok_mapel dari Pengaturan Rapor selalu diutamakan (identik dengan modal pratinjau)
+      const groupCategory = resolveRaporKelompok(isLegacyEra, n.kelompok_mapel, n.mapel_name, jenjang === 'SMK');
 
       if (!groupedMapel.has(groupCategory)) {
         groupedMapel.set(groupCategory, []);
