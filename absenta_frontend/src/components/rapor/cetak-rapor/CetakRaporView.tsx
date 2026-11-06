@@ -440,14 +440,28 @@ export const CetakRaporView: React.FC<UniversalCetakRaporViewProps> = React.memo
   }, [isCurrentRoute, setSelectedTahunPelajaran, setSelectedSemester]);
 
   const activeYear = useMemo<AcademicYear | null>(() => {
+    if (selectedTahunPelajaran) {
+      const found = tpOptions?.find((t) => t.value === selectedTahunPelajaran)?.raw as { id: string; tahun?: string; nama?: string; is_active?: boolean } | undefined;
+      if (found) {
+        return { id: found.id, nama: found.tahun || found.nama || '', is_active: Boolean(found.is_active) };
+      }
+      return { id: selectedTahunPelajaran, nama: academicActiveYear?.tahun || '', is_active: selectedTahunPelajaran === academicActiveYear?.id };
+    }
     if (!academicActiveYear) return null;
     return { id: academicActiveYear.id, nama: academicActiveYear.tahun, is_active: true };
-  }, [academicActiveYear]);
+  }, [selectedTahunPelajaran, tpOptions, academicActiveYear]);
 
   const activeSemester = useMemo<Semester | null>(() => {
+    if (selectedSemester) {
+      const found = semesterOptions?.find((s) => s.value === selectedSemester)?.raw as Semester | undefined;
+      if (found) {
+        return { id: found.id, nama: found.nama_semester || (found as any).nama || '', is_active: Boolean(found.is_active) };
+      }
+      return { id: selectedSemester, nama: academicActiveSemester?.nama_semester || '', is_active: selectedSemester === academicActiveSemester?.id };
+    }
     if (!academicActiveSemester) return null;
     return { id: academicActiveSemester.id, nama: academicActiveSemester.nama_semester, is_active: true };
-  }, [academicActiveSemester]);
+  }, [selectedSemester, semesterOptions, academicActiveSemester]);
 
   // Query Settings Rapor (untuk saklar kokurikuler, arsip sumatif, dll)
   const effectiveTpId = selectedTahunPelajaran || academicActiveYear?.id;

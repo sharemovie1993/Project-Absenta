@@ -903,9 +903,9 @@ export class RaporService {
       sumatifCountMap.set(key, count);
     });
 
-    const currentTpIndex = allTenantTp.findIndex((t) => t.id === params.tahun_pelajaran_id);
-    const semGanjil = allTenantSem.find((s) => (s.nama_semester || '').toLowerCase().includes('ganjil') || (s.nama_semester || '').includes('1')) || allTenantSem[0];
-    const semGenap = allTenantSem.find((s) => (s.nama_semester || '').toLowerCase().includes('genap') || (s.nama_semester || '').includes('2')) || allTenantSem[1] || allTenantSem[0];
+    const currentTpIndex = Math.max(0, allTenantTp.findIndex((t) => t.id === params.tahun_pelajaran_id));
+    const fallbackSemGanjil = allTenantSem.find((s) => (s.nama_semester || '').toLowerCase().includes('ganjil') || (s.nama_semester || '').includes('1')) || allTenantSem[0];
+    const fallbackSemGenap = allTenantSem.find((s) => (s.nama_semester || '').toLowerCase().includes('genap') || (s.nama_semester || '').includes('2')) || allTenantSem[1] || allTenantSem[0];
 
     // Resolusi Nama & NIP Wali Kelas Murni dari OrganizationalAssignment (Konteks Akademik Sah - Zero Fallback)
     let walasNama = '';
@@ -1258,11 +1258,50 @@ export class RaporService {
         const semNumGanjil = semIndexBase + 1;
         const semNumGenap = semIndexBase + 2;
 
+        // Resolusi Semester Ganjil & Genap per Target TP secara kontekstual
+        const semGanjil = allTenantSem.find(
+          (s) => s.tahun_pelajaran_id === targetTp.id &&
+            ((s.nama_semester || '').toLowerCase().includes('ganjil') || (s.nama_semester || '').includes('1'))
+        ) || allTenantSem.find(
+          (s) => s.tahun_pelajaran_id === targetTp.id
+        ) || fallbackSemGanjil;
+
+        const semGenap = allTenantSem.find(
+          (s) => s.tahun_pelajaran_id === targetTp.id &&
+            ((s.nama_semester || '').toLowerCase().includes('genap') || (s.nama_semester || '').includes('2'))
+        ) || allTenantSem.find(
+          (s) => s.tahun_pelajaran_id === targetTp.id && s.id !== semGanjil?.id
+        ) || fallbackSemGenap;
+
         // 1. Semester Ganjil
         if (semGanjil) {
           const keyGanjil = `${siswa.id}_${targetTp.id}_${semGanjil.id}`;
-          const countNilai = nilaiCountMap.get(keyGanjil) || 0;
-          const countSumatif = sumatifCountMap.get(keyGanjil) || 0;
+          let countNilai = nilaiCountMap.get(keyGanjil) || 0;
+          let countSumatif = sumatifCountMap.get(keyGanjil) || 0;
+
+          // Fail-safe: jika ada semester ganjil lain di targetTp yang memuat nilai siswa ini
+          if (countNilai === 0) {
+            const altGanjilList = allTenantSem.filter(
+              (s) => s.tahun_pelajaran_id === targetTp.id &&
+                ((s.nama_semester || '').toLowerCase().includes('ganjil') || (s.nama_semester || '').includes('1'))
+            );
+            for (const altSem of altGanjilList) {
+              const altKey = `${siswa.id}_${targetTp.id}_${altSem.id}`;
+              const altC = nilaiCountMap.get(altKey) || 0;
+              if (altC > countNilai) {
+                countNilai = altC;
+                countSumatif = sumatifCountMap.get(altKey) || 0;
+              }
+            }
+          }
+
+          // Sinkronisasi dengan mapelCount aktif jika semester ini adalah semester yang sedang dibuka di Leger
+          if (targetTp.id === params.tahun_pelajaran_id && (semGanjil.id === params.semester_id || semGenap?.id !== params.semester_id)) {
+            if (mapelCount > countNilai) {
+              countNilai = mapelCount;
+            }
+          }
+
           const hasNilai = countNilai > 0;
           let label = hasNilai ? `Tersedia (${countNilai} Mapel)` : 'Belum ada nilai';
           if (!hasNilai && isSiswaPindahan && t < currentTingkatVal) {
@@ -1286,8 +1325,32 @@ export class RaporService {
         // 2. Semester Genap
         if (semGenap) {
           const keyGenap = `${siswa.id}_${targetTp.id}_${semGenap.id}`;
-          const countNilai = nilaiCountMap.get(keyGenap) || 0;
-          const countSumatif = sumatifCountMap.get(keyGenap) || 0;
+          let countNilai = nilaiCountMap.get(keyGenap) || 0;
+          let countSumatif = sumatifCountMap.get(keyGenap) || 0;
+
+          // Fail-safe: jika ada semester genap lain di targetTp yang memuat nilai siswa ini
+          if (countNilai === 0) {
+            const altGenapList = allTenantSem.filter(
+              (s) => s.tahun_pelajaran_id === targetTp.id &&
+                ((s.nama_semester || '').toLowerCase().includes('genap') || (s.nama_semester || '').includes('2'))
+            );
+            for (const altSem of altGenapList) {
+              const altKey = `${siswa.id}_${targetTp.id}_${altSem.id}`;
+              const altC = nilaiCountMap.get(altKey) || 0;
+              if (altC > countNilai) {
+                countNilai = altC;
+                countSumatif = sumatifCountMap.get(altKey) || 0;
+              }
+            }
+          }
+
+          // Sinkronisasi dengan mapelCount aktif jika semester Genap sedang dibuka di Leger
+          if (targetTp.id === params.tahun_pelajaran_id && semGenap.id === params.semester_id) {
+            if (mapelCount > countNilai) {
+              countNilai = mapelCount;
+            }
+          }
+
           const hasNilai = countNilai > 0;
           let label = hasNilai ? `Tersedia (${countNilai} Mapel)` : 'Belum ada nilai';
           if (!hasNilai && isSiswaPindahan && t < currentTingkatVal) {
