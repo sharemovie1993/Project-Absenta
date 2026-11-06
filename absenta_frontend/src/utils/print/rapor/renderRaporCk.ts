@@ -81,7 +81,7 @@ export const renderStudentRaporPages = (
   const displaySemester = effectiveSemesterNama || (isGenap ? 'Genap' : 'Ganjil');
   const displayTahunPelajaran = effectiveTahunPelajaranNama || '2025 / 2026';
 
-  const matchYear = String(displayTahunPelajaran || '').match(/^(\d{4})/);
+  const matchYear = String(displayTahunPelajaran || '').match(/([12]\d{3})/);
   const startYear = matchYear ? parseInt(matchYear[1], 10) : 2025;
   const isLegacyEra = startYear < 2025;
 
@@ -496,10 +496,6 @@ export const renderStudentRaporPages = (
   // Student Info Grid Header on Page 2
   y = drawStudentMetadataGrid(doc, y);
 
-  const tpYearStr = displayTahunPelajaran;
-  const matchYear = tpYearStr.match(/^(\d{4})/);
-  const startYear = matchYear ? parseInt(matchYear[1], 10) : 2025;
-
   const showKokurikuler = effectiveSettings?.tampilkan_kokurikuler !== undefined
     ? Boolean(effectiveSettings.tampilkan_kokurikuler)
     : (data?.tampilkan_kokurikuler !== undefined ? Boolean(data.tampilkan_kokurikuler) : startYear >= 2025);
@@ -692,7 +688,7 @@ export const renderStudentRaporPages = (
   }
 
   if (!effectiveDateVal) {
-    const matchYear = String(displayTahunPelajaran || '').match(/^(\d{4})/);
+    const matchYear = String(displayTahunPelajaran || '').match(/([12]\d{3})/);
     const parsedStartYear = matchYear ? parseInt(matchYear[1], 10) : 2025;
     if (isGenap) {
       effectiveDateVal = `${parsedStartYear + 1}-06-24`;
