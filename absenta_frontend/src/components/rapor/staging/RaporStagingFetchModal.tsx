@@ -448,10 +448,27 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
       <Modal
         isOpen={isOpen}
         onClose={handleCloseModal}
-        size={mode === 'folder' && folderStep === 2 ? '2xl' : 'lg'}
+        size={mode === 'folder' && folderStep === 2 ? 'full' : 'xl'}
+        className={
+          mode === 'folder' && folderStep === 2
+            ? 'w-[96vw] max-w-6xl h-[90vh] max-h-[90vh] flex flex-col p-0 overflow-hidden'
+            : undefined
+        }
+        contentClassName={
+          mode === 'folder' && folderStep === 2
+            ? 'p-0 flex flex-col h-full overflow-hidden flex-1'
+            : undefined
+        }
         title={modalTitle}
       >
-        <div className="space-y-4 p-4 sm:p-6 pt-2 w-full max-w-full min-w-0">
+        <div
+          className={cn(
+            'w-full max-w-full min-w-0',
+            mode === 'folder' && folderStep === 2
+              ? 'flex flex-col h-full overflow-hidden p-4 sm:p-6 space-y-3'
+              : 'space-y-4 p-4 sm:p-6 pt-2'
+          )}
+        >
           {/* ── Mode Switcher Tab (Hanya tampil di Step 1) ── */}
           {(mode === 'single' || folderStep === 1) && (
             <div className="flex items-center justify-center w-full">
@@ -512,10 +529,10 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
           )}
 
           {mode === 'folder' && folderStep === 2 && (
-            <div className="space-y-4 w-full">
+            <div className="flex flex-col h-full min-h-0 space-y-3 w-full overflow-hidden">
               {/* Idempotency Informational Alert */}
               {stats.alreadyStaged === stats.total && stats.total > 0 ? (
-                <div className="flex items-start gap-2.5 p-3 bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 rounded-xl text-xs text-sky-800 dark:text-sky-300">
+                <div className="shrink-0 flex items-start gap-2.5 p-3 bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 rounded-xl text-xs text-sky-800 dark:text-sky-300">
                   <ShieldCheck size={18} className="shrink-0 text-sky-600 dark:text-sky-400 mt-0.5" />
                   <div className="leading-relaxed">
                     <span className="font-bold">Idempotensi Terjamin:</span> Seluruh{' '}
@@ -525,7 +542,7 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                   </div>
                 </div>
               ) : stats.newFiles > 0 && stats.alreadyStaged > 0 ? (
-                <div className="flex items-start gap-2.5 p-3 bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs text-indigo-900 dark:text-indigo-300">
+                <div className="shrink-0 flex items-start gap-2.5 p-3 bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs text-indigo-900 dark:text-indigo-300">
                   <ShieldCheck size={18} className="shrink-0 text-indigo-600 dark:text-indigo-400 mt-0.5" />
                   <div className="leading-relaxed">
                     Ditemukan <strong>{stats.newFiles} berkas baru</strong> dan{' '}
@@ -536,7 +553,7 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
               ) : null}
 
               {/* Header Checklist & Action Controls */}
-              <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/80 dark:border-slate-800 text-xs">
+              <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/80 dark:border-slate-800 text-xs">
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
@@ -607,8 +624,8 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                 </div>
               </div>
 
-              {/* List Berkas dengan Checkbox & Status Idempoten */}
-              <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-y-auto max-h-[320px] divide-y divide-slate-100 dark:divide-slate-800">
+              {/* List Berkas dengan Checkbox & Status Idempoten (Flex-1 Mengisi Ruang Luas) */}
+              <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-y-auto flex-1 min-h-[360px] divide-y divide-slate-100 dark:divide-slate-800 shadow-2xs">
                 {scannedFiles?.map((file, idx) => {
                   const isChecked = selectedUrls.has(file.url);
                   const isLikelyRapor = isLikelyRaporClassFile(file.title);
@@ -737,8 +754,8 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                 })}
               </div>
 
-              {/* Tombol Aksi Step 2 */}
-              <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              {/* Tombol Aksi Step 2 (Sticky Footer yang Lega) */}
+              <div className="shrink-0 flex items-center justify-between gap-2 pt-3 border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 mt-auto">
                 <Button
                   type="button"
                   variant="outline"
