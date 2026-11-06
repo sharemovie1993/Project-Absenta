@@ -803,14 +803,14 @@ export class GoogleSheetRaporParserService {
 
     for (let r = 0; r < Math.min(rows.length, 30); r++) {
       const row = rows[r];
-      const kIdx = row.findIndex((c) => /kelas(\s*walas)?$/i.test(c.trim()));
-      const wIdx = row.findIndex((c) => /^(walas|wali\s*kelas|nama\s*walas)$/i.test(c.trim()));
+      const kIdx = row.findIndex((c) => /^(kelas(\s*walas)?|nama\s*kelas|kelas\/rombel|rombel)$/i.test(c.trim()) || /(kelas\s*walas)/i.test(c.trim()));
+      const wIdx = row.findIndex((c) => /^(walas|wali\s*kelas|nama\s*walas|nama\s*wali\s*kelas|guru\s*walas)$/i.test(c.trim()) || /(wali\s*kelas|nama\s*walas)/i.test(c.trim()));
 
       if (kIdx !== -1 && wIdx !== -1) {
         headerRowIdx = r;
         colKelas = kIdx;
         colWalas = wIdx;
-        colNip = row.findIndex((c) => /^nip(\s*walas)?$/i.test(c.trim()));
+        colNip = row.findIndex((c) => /^nip(\s*walas|\s*wali\s*kelas|\s*guru)?$/i.test(c.trim()) || /^nip/i.test(c.trim()));
       }
 
       if (colKonsentrasi === -1) {
@@ -820,7 +820,7 @@ export class GoogleSheetRaporParserService {
         colProgram = row.findIndex((c) => /program(\s*keahlian)?/i.test(c.trim()));
       }
       if (colRombel === -1) {
-        colRombel = row.findIndex((c) => /nama\s*rombel/i.test(c.trim()));
+        colRombel = row.findIndex((c) => /(nama\s*rombel|rombel\s*kelas)/i.test(c.trim()));
       }
     }
 
