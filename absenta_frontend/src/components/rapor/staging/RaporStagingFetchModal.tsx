@@ -552,9 +552,9 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                 </div>
               ) : null}
 
-              {/* Header Checklist & Action Controls */}
-              <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/80 dark:border-slate-800 text-xs">
-                <div className="flex flex-wrap items-center gap-2">
+              {/* Header Checklist & Action Controls (Bersih & Rapi) */}
+              <div className="shrink-0 flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-800 text-xs">
+                <div className="flex flex-wrap items-center gap-2.5">
                   <button
                     type="button"
                     onClick={handleToggleAll}
@@ -573,23 +573,11 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                     <button
                       type="button"
                       onClick={handleSelectOnlyRapor}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg font-medium text-indigo-700 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 hover:bg-indigo-100 transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-medium text-indigo-700 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 hover:bg-indigo-100 transition-colors cursor-pointer text-xs"
                       title="Hanya centang berkas rapor kelas, lewati berkas master/rekap"
                     >
                       <Sparkles size={12} className="text-indigo-600" />
-                      <span>Hanya Berkas Rapor ({stats.total - stats.nonRaporFiles})</span>
-                    </button>
-                  )}
-
-                  {stats.newFiles > 0 && stats.alreadyStaged > 0 && (
-                    <button
-                      type="button"
-                      onClick={handleSelectOnlyNew}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg font-medium text-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer"
-                      title="Hanya centang berkas yang belum pernah ditarik ke wadah"
-                    >
-                      <Sparkles size={12} className="text-emerald-600" />
-                      <span>Hanya Berkas Baru ({stats.newFiles})</span>
+                      <span>Hanya Rapor ({stats.total - stats.nonRaporFiles})</span>
                     </button>
                   )}
 
@@ -597,7 +585,7 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                     <button
                       type="button"
                       onClick={handleAutoMatchClasses}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg font-medium text-purple-700 bg-purple-50 dark:bg-purple-950/50 border border-purple-200 hover:bg-purple-100 transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-medium text-purple-700 bg-purple-50 dark:bg-purple-950/50 border border-purple-200 hover:bg-purple-100 transition-colors cursor-pointer text-xs"
                       title="Cocokkan judul berkas rapor ke kelas resmi di sistem Absenta secara otomatis"
                     >
                       <Sparkles size={12} className="text-purple-600" />
@@ -606,31 +594,21 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                   )}
                 </div>
 
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                  <span>Terpilih:</span>
-                  {stats.selectedNew > 0 && (
-                    <Badge variant="outline" className="font-bold border-emerald-200 text-emerald-700 bg-emerald-50">
-                      +{stats.selectedNew} Baru
-                    </Badge>
-                  )}
-                  {stats.selectedAlreadyStaged > 0 && (
-                    <Badge variant="outline" className="font-bold border-sky-200 text-sky-700 bg-sky-50">
-                      🔄 {stats.selectedAlreadyStaged} Update
-                    </Badge>
-                  )}
-                  <Badge variant="secondary" className="font-bold text-indigo-600 dark:text-indigo-400">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                  <span className="text-slate-400 font-normal">Terpilih:</span>
+                  <Badge variant="secondary" className="font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/40">
                     {stats.selectedTotal} dari {stats.total} Berkas
                   </Badge>
                 </div>
               </div>
 
-              {/* Tabel Berkas Rapor dengan Kolom Pemetaan Khusus (Tampilan Horisontal Bersih & Profesional) */}
+              {/* Tabel Berkas Rapor High-Density (Bersih, Ramping & Bebas Noise) */}
               <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden flex-1 min-h-[360px] flex flex-col bg-white dark:bg-slate-900 shadow-2xs">
                 <div className="overflow-x-auto overflow-y-auto flex-1">
                   <table className="w-full text-xs text-left border-collapse">
-                    <thead className="bg-slate-100 dark:bg-slate-800/90 sticky top-0 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700 z-10 backdrop-blur-xs select-none">
+                    <thead className="bg-slate-100/90 dark:bg-slate-800/90 sticky top-0 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700 z-10 backdrop-blur-xs select-none">
                       <tr>
-                        <th className="py-2.5 px-3 w-12 text-center">
+                        <th className="py-2.5 px-3 w-10 text-center">
                           <span className="sr-only">Pilih</span>
                         </th>
                         <th className="py-2.5 px-3 min-w-[280px]">
@@ -642,7 +620,7 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                             <span>Petakan ke Kelas Sistem</span>
                           </div>
                         </th>
-                        <th className="py-2.5 px-3 w-36 text-center">
+                        <th className="py-2.5 px-3 w-32 text-center">
                           Status Aksi
                         </th>
                       </tr>
@@ -651,7 +629,7 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                       {scannedFiles?.map((file, idx) => {
                         const isChecked = selectedUrls.has(file.url);
                         const isLikelyRapor = isLikelyRaporClassFile(file.title);
-                        const selectedKelas = kelasOptions.find((k) => k.value === classMappings[file.url]);
+                        const isMapped = Boolean(classMappings[file.url]);
 
                         return (
                           <tr
@@ -659,13 +637,13 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                             onClick={() => handleToggleFile(file.url)}
                             className={cn(
                               'hover:bg-slate-50/80 dark:hover:bg-slate-800/50 cursor-pointer transition-colors',
-                              isChecked && 'bg-indigo-50/30 dark:bg-indigo-950/20',
-                              !isLikelyRapor && !isChecked && 'opacity-60 bg-slate-50/40 dark:bg-slate-900/30'
+                              isChecked && 'bg-indigo-50/25 dark:bg-indigo-950/20',
+                              !isChecked && 'opacity-50 bg-slate-50/30 dark:bg-slate-900/30'
                             )}
                           >
                             {/* Kolom 1: Checkbox */}
                             <td
-                              className="py-3 px-3 text-center align-middle"
+                              className="py-2 px-3 text-center align-middle"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <input
@@ -677,13 +655,13 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                               />
                             </td>
 
-                            {/* Kolom 2: Berkas Rapor Google Sheet */}
-                            <td className="py-3 px-3 align-middle">
-                              <div className="flex items-start gap-2.5 min-w-0">
+                            {/* Kolom 2: Berkas Rapor Google Sheet (Bebas Noise ID) */}
+                            <td className="py-2 px-3 align-middle">
+                              <div className="flex items-center gap-2.5 min-w-0">
                                 <FileSpreadsheet
-                                  size={18}
+                                  size={16}
                                   className={cn(
-                                    'shrink-0 mt-0.5',
+                                    'shrink-0',
                                     !isLikelyRapor
                                       ? 'text-amber-500'
                                       : file.is_already_staged
@@ -692,96 +670,74 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
                                   )}
                                   aria-hidden="true"
                                 />
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="font-semibold text-slate-900 dark:text-slate-100 truncate block">
-                                      {file.title}
+                                <div className="min-w-0 flex-1 flex items-center gap-2">
+                                  <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                                    {file.title}
+                                  </span>
+                                  {!isLikelyRapor && (
+                                    <span className="text-[10px] font-medium text-amber-700 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 px-1.5 py-0.2 rounded-md shrink-0">
+                                      Non-Rapor
                                     </span>
-                                    {!isLikelyRapor && (
-                                      <span className="text-[10px] font-medium text-amber-700 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 px-1.5 py-0.2 rounded-md shrink-0">
-                                        Berkas Non-Rapor?
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2 text-[10px] truncate text-slate-400 mt-0.5">
-                                    {file.is_already_staged && file.staged_info ? (
-                                      <span className="font-medium text-sky-700 dark:text-sky-300">
-                                        Sudah di Wadah: {file.staged_info.nama_kelas} ({file.staged_info.tahun_pelajaran} • {file.staged_info.semester})
-                                      </span>
-                                    ) : (
-                                      <span className="font-medium text-emerald-600">
-                                        Berkas Belum Pernah Ditarik
-                                      </span>
-                                    )}
-                                    <span>•</span>
-                                    <span className="font-mono">ID: {file.id}</span>
-                                  </div>
+                                  )}
+                                  {file.is_already_staged && file.staged_info && (
+                                    <span className="text-[10px] text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/50 px-1.5 py-0.2 rounded-md shrink-0 font-medium border border-sky-200 dark:border-sky-800">
+                                      Sudah di Wadah ({file.staged_info.nama_kelas})
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </td>
 
-                            {/* Kolom 3: Kolom Petakan Khusus (Sejajar Horisontal) */}
+                            {/* Kolom 3: Kolom Petakan Khusus (Single-line Compact Dropdown) */}
                             <td
-                              className="py-3 px-3 align-middle"
+                              className="py-2 px-3 align-middle"
                               onClick={(e) => e.stopPropagation()}
                             >
                               {isChecked ? (
-                                <div className="space-y-1">
-                                  <select
-                                    value={classMappings[file.url] || ''}
-                                    onChange={(e) => handleClassMappingChange(file.url, e.target.value)}
-                                    className={cn(
-                                      'text-xs py-1.5 px-2.5 rounded-xl border bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 cursor-pointer w-full transition-all',
-                                      classMappings[file.url]
-                                        ? 'border-emerald-300 dark:border-emerald-700/80 bg-emerald-50/30 dark:bg-emerald-950/20 font-medium'
-                                        : 'border-slate-200 dark:border-slate-700'
-                                    )}
-                                    aria-label={`Petakan berkas ${file.title} ke kelas`}
-                                  >
-                                    <option value="">(Otomatis sesuai isi file)</option>
-                                    {kelasOptions.map((k) => (
-                                      <option key={k.value} value={k.value}>
-                                        {k.nama_kelas} {k.jurusan_nama ? `(${k.jurusan_nama})` : ''}
-                                      </option>
-                                    ))}
-                                  </select>
-                                  {selectedKelas ? (
-                                    <div className="flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 pl-0.5">
-                                      <span>✓ Terpetakan ke:</span>
-                                      <span className="font-bold underline underline-offset-2">{selectedKelas.nama_kelas}</span>
-                                    </div>
-                                  ) : (
-                                    <span className="text-[10px] text-slate-400 dark:text-slate-500 italic block pl-0.5">
-                                      Ikuti nama rombel di dalam sheet
-                                    </span>
+                                <select
+                                  value={classMappings[file.url] || ''}
+                                  onChange={(e) => handleClassMappingChange(file.url, e.target.value)}
+                                  className={cn(
+                                    'text-xs h-8 px-2.5 rounded-lg border bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 cursor-pointer w-full transition-all truncate',
+                                    isMapped
+                                      ? 'border-emerald-400 dark:border-emerald-600 bg-emerald-50/40 dark:bg-emerald-950/30 font-medium text-emerald-900 dark:text-emerald-200'
+                                      : 'border-slate-200 dark:border-slate-700'
                                   )}
-                                </div>
+                                  aria-label={`Petakan berkas ${file.title} ke kelas`}
+                                >
+                                  <option value="">(Otomatis sesuai nama di file)</option>
+                                  {kelasOptions.map((k) => (
+                                    <option key={k.value} value={k.value}>
+                                      {k.nama_kelas} {k.jurusan_nama ? `(${k.jurusan_nama})` : ''}
+                                    </option>
+                                  ))}
+                                </select>
                               ) : (
-                                <span className="text-[11px] text-slate-400 dark:text-slate-500 italic">
-                                  Dilewati
-                                </span>
+                                <span className="text-slate-300 dark:text-slate-600 pl-2">-</span>
                               )}
                             </td>
 
-                            {/* Kolom 4: Status Aksi */}
-                            <td className="py-3 px-3 text-center align-middle whitespace-nowrap">
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  'text-[10px] font-medium inline-block',
-                                  !isChecked
-                                    ? 'text-slate-400 border-slate-200'
-                                    : file.is_already_staged
-                                    ? 'border-sky-300 text-sky-800 bg-sky-50 dark:bg-sky-950/60 dark:text-sky-300'
-                                    : 'border-emerald-300 text-emerald-800 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-300'
-                                )}
-                              >
-                                {!isChecked
-                                  ? 'Dilewati'
-                                  : file.is_already_staged
-                                  ? '🔄 Perbarui'
-                                  : '✨ Tambah Baru'}
-                              </Badge>
+                            {/* Kolom 4: Status Aksi (Ramping & Jelas) */}
+                            <td className="py-2 px-3 text-center align-middle whitespace-nowrap">
+                              {!isChecked ? (
+                                <span className="text-[11px] text-slate-400 dark:text-slate-500 italic">
+                                  Dilewati
+                                </span>
+                              ) : file.is_already_staged ? (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] font-semibold border-sky-300 text-sky-700 bg-sky-50 dark:bg-sky-950/60 dark:text-sky-300"
+                                >
+                                  🔄 Update
+                                </Badge>
+                              ) : (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] font-semibold border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-300"
+                                >
+                                  ✨ Baru
+                                </Badge>
+                              )}
                             </td>
                           </tr>
                         );
