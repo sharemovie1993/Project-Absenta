@@ -147,7 +147,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
   }, [setSearchParams]);
 
   // Mobile Subtab Sidebar Drawer State (Terkoneksi ke FAB / Tombol Elevasi Tengah Menu)
-  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar('portal');
 
   // Presensi Kehadiran Guru Bulan Ini
   const { data: rekapGuruRes, isLoading: loadingRekap } = useQuery({

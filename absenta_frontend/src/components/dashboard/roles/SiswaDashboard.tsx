@@ -71,7 +71,7 @@ export const SiswaDashboard: React.FC = () => {
   const activeTab: SiswaTabId = rawTab && validTabs.includes(rawTab) ? rawTab : 'ringkasan';
 
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar('siswa');
 
   // Keep-Alive Tab Cache
   const [visitedTabs, setVisitedTabs] = useState<Set<SiswaTabId>>(() => new Set([activeTab]));

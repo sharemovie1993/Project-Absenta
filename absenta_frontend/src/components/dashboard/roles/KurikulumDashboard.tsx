@@ -112,7 +112,7 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
   // Mobile Filter Collapsible State
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar('kurikulum');
 
   // Active Tab State
   const [activeTab, setActiveTab] = useState<KurikulumTabId>(() => {

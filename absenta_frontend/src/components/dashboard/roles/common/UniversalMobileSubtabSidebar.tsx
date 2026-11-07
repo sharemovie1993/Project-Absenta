@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { create } from 'zustand';
@@ -38,12 +39,84 @@ export interface UniversalSubtabCategory {
   icon?: React.ComponentType<{ className?: string; size?: number }> | React.ComponentType<any>;
 }
 
+// ── PURE SCOPE NORMALIZATION & URL TAB RESOLVER ──
+export function normalizeRoleToScope(roleBadge?: string, scope?: string): string {
+  if (scope) return scope.toLowerCase().trim();
+  if (!roleBadge) return '';
+  const clean = roleBadge.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (clean.includes('guru') || clean.includes('pendidik') || clean.includes('pengajar')) return 'portal';
+  if (clean.includes('kaprog')) return 'kaprog';
+  if (clean.includes('wali') || clean.includes('walas')) return 'walas';
+  if (clean.includes('kurikulum')) return 'kurikulum';
+  if (clean.includes('kesiswaan')) return 'kesiswaan';
+  if (clean.includes('sarpras')) return 'sarpras';
+  if (clean.includes('hubin')) return 'hubin';
+  if (clean.includes('bkk')) return 'bkk';
+  if (clean.includes('bp') || clean.includes('bk')) return 'bpbk';
+  if (clean.includes('toolman')) return 'toolman';
+  if (clean.includes('ekskul') || clean.includes('ekstra')) return 'ekskul';
+  if (clean.includes('pkl') || clean.includes('pembimbing')) return 'pembimbing_pkl';
+  if (clean.includes('satpam') || clean.includes('gerbang')) return 'satpam';
+  if (clean.includes('koperasi')) return 'koperasi';
+  if (clean.includes('tatausaha') || clean.includes('tu') || clean.includes('kepegawaian')) return 'tu';
+  if (clean.includes('admin')) return 'admin';
+  if (clean.includes('kepala') || clean.includes('kepsek')) return 'kepsek';
+  if (clean.includes('siswa')) return 'siswa';
+  return clean;
+}
+
+export function checkScopeMatchesUrlTab(scope: string, currentTab: string): boolean {
+  switch (scope) {
+    case 'portal':
+    case 'guru':
+      return !currentTab || currentTab === 'ringkasan' || currentTab === 'action_hub' || currentTab === 'rekap_mapel';
+    case 'kaprog':
+      return currentTab === 'kaprog';
+    case 'walas':
+      return currentTab === 'binaan' || currentTab === 'walas';
+    case 'kurikulum':
+      return currentTab === 'kurikulum';
+    case 'kesiswaan':
+      return currentTab === 'kesiswaan';
+    case 'sarpras':
+      return currentTab === 'sarpras';
+    case 'hubin':
+      return currentTab === 'hubin';
+    case 'bkk':
+      return currentTab === 'bkk';
+    case 'bpbk':
+      return currentTab === 'bpbk' || currentTab === 'bk';
+    case 'toolman':
+      return currentTab === 'toolman';
+    case 'ekskul':
+      return currentTab === 'ekskul';
+    case 'pembimbing_pkl':
+      return currentTab === 'pembimbing_pkl';
+    case 'satpam':
+      return currentTab === 'satpam' || currentTab === 'gerbang';
+    case 'koperasi':
+      return currentTab === 'koperasi';
+    case 'tu':
+      return currentTab === 'tu' || currentTab === 'kepegawaian';
+    case 'admin':
+      return currentTab === 'admin';
+    case 'kepsek':
+      return currentTab === 'ringkasan' || currentTab === 'kepsek';
+    case 'siswa':
+      return currentTab === 'siswa';
+    default:
+      return true;
+  }
+}
+
 export interface UniversalMobileSubtabSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
   subtitle?: React.ReactNode;
   roleBadge?: string;
+  scope?: string;
+  isActive?: boolean;
   roleIcon?: React.ComponentType<{ className?: string; size?: number }> | React.ComponentType<any>;
   tabs: UniversalSubtabItem[];
   activeTab: string;
@@ -65,6 +138,8 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
   title,
   subtitle,
   roleBadge,
+  scope,
+  isActive,
   roleIcon: RoleIcon,
   tabs,
   activeTab,
@@ -76,6 +151,36 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
   className,
 }) => {
   const [mounted, setMounted] = useState(false);
+  const location = useLocation();
+
+  const currentTab = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('tab') || 'ringkasan';
+  }, [location.search]);
+
+  const myScope = useMemo(() => {
+    return normalizeRoleToScope(roleBadge, scope);
+  }, [roleBadge, scope]);
+
+  const activeStoreScope = useMobileSubtabSidebarStore((state) => state.activeScope);
+
+  const isScopeMatch = useMemo(() => {
+    if (!myScope) return true;
+    if (activeStoreScope && activeStoreScope !== myScope) return false;
+    if (location.pathname === '/dashboard' || location.pathname === '/dashboard/') {
+      return checkScopeMatchesUrlTab(myScope, currentTab);
+    }
+    return true;
+  }, [myScope, activeStoreScope, location.pathname, currentTab]);
+
+  const isEffectivelyOpen = Boolean(isOpen && isActive !== false && isScopeMatch);
+
+  // Auto-close jika URL berubah saat drawer sedang terbuka (mencegah drawer menggantung saat navigasi)
+  useEffect(() => {
+    if (isOpen) {
+      onClose();
+    }
+  }, [location.pathname, location.search]);
 
   // Mount detection for React Portal
   useEffect(() => {
@@ -84,7 +189,7 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
 
   // Keyboard navigation & body scroll lock
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isEffectivelyOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' || e.code === 'Escape') {
@@ -101,7 +206,7 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = originalOverflow;
     };
-  }, [isOpen, onClose]);
+  }, [isEffectivelyOpen, onClose]);
 
   // Group tabs by categories if categories prop is provided
   const groupedSections = useMemo(() => {
@@ -135,6 +240,7 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
       if (disabled) return;
       onSelectTab(tabId);
       onClose();
+      useMobileSubtabSidebarStore.getState().close();
     },
     [onSelectTab, onClose]
   );
@@ -145,7 +251,7 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
 
   return createPortal(
     <AnimatePresence>
-      {isOpen && (
+      {isEffectivelyOpen && (
         <div 
           className="fixed inset-0 z-[100] lg:hidden flex"
           role="dialog"
@@ -407,32 +513,83 @@ export const MobileSubtabBar: React.FC<MobileSubtabBarProps> = () => {
 
 export interface MobileSubtabSidebarStore {
   isOpen: boolean;
-  open: () => void;
+  activeScope: string | null;
+  open: (scope?: string) => void;
   close: () => void;
-  toggle: () => void;
+  toggle: (scope?: string) => void;
+  reset: () => void;
 }
 
 export const useMobileSubtabSidebarStore = create<MobileSubtabSidebarStore>((set) => ({
   isOpen: false,
-  open: () => set({ isOpen: true }),
-  close: () => set({ isOpen: false }),
-  toggle: () => set((state) => ({ isOpen: !state.isOpen })),
+  activeScope: null,
+  open: (scope?: string) => set({ 
+    isOpen: true, 
+    activeScope: scope ? normalizeRoleToScope(undefined, scope) : null 
+  }),
+  close: () => set({ isOpen: false, activeScope: null }),
+  toggle: (scope?: string) => set((state) => {
+    const nextOpen = !state.isOpen;
+    return {
+      isOpen: nextOpen,
+      activeScope: nextOpen && scope ? normalizeRoleToScope(undefined, scope) : null,
+    };
+  }),
+  reset: () => set({ isOpen: false, activeScope: null }),
 }));
 
-export function useMobileSubtabSidebar(initialState = false) {
-  const { isOpen, open, close, toggle } = useMobileSubtabSidebarStore();
+export function useMobileSubtabSidebar(scopeOrInitialState?: string | boolean) {
+  const scope = typeof scopeOrInitialState === 'string' ? scopeOrInitialState : undefined;
+  const initialOpen = typeof scopeOrInitialState === 'boolean' ? scopeOrInitialState : false;
+
+  const isOpen = useMobileSubtabSidebarStore((state) => state.isOpen);
+  const activeScope = useMobileSubtabSidebarStore((state) => state.activeScope);
+  const openStore = useMobileSubtabSidebarStore((state) => state.open);
+  const closeStore = useMobileSubtabSidebarStore((state) => state.close);
+  const toggleStore = useMobileSubtabSidebarStore((state) => state.toggle);
+
+  const location = useLocation();
+  const currentTab = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('tab') || 'ringkasan';
+  }, [location.search]);
+
+  const normalizedScope = useMemo(() => {
+    return scope ? normalizeRoleToScope(undefined, scope) : undefined;
+  }, [scope]);
+
+  // Validasi kecocokan scope terhadap URL aktif di /dashboard
+  const isScopeActive = useMemo(() => {
+    if (!normalizedScope) return true;
+    if (location.pathname !== '/dashboard' && location.pathname !== '/dashboard/') return true;
+    return checkScopeMatchesUrlTab(normalizedScope, currentTab);
+  }, [normalizedScope, location.pathname, currentTab]);
 
   useEffect(() => {
-    if (initialState) {
-      open();
+    if (initialOpen && isScopeActive) {
+      openStore(normalizedScope);
     }
-  }, [initialState, open]);
+  }, [initialOpen, isScopeActive, openStore, normalizedScope]);
+
+  // Tutup sidebar saat unmount untuk mencegah sidebar menggantung
+  useEffect(() => {
+    return () => {
+      closeStore();
+    };
+  }, [closeStore]);
+
+  const isMobileSidebarOpen = useMemo(() => {
+    if (!isOpen) return false;
+    if (!isScopeActive) return false;
+    if (activeScope && normalizedScope && activeScope !== normalizedScope) return false;
+    return true;
+  }, [isOpen, isScopeActive, activeScope, normalizedScope]);
 
   return {
-    isMobileSidebarOpen: isOpen,
-    setIsMobileSidebarOpen: (openState: boolean) => (openState ? open() : close()),
-    openMobileSidebar: open,
-    closeMobileSidebar: close,
-    toggleMobileSidebar: toggle,
+    isMobileSidebarOpen,
+    setIsMobileSidebarOpen: (openState: boolean) => (openState ? openStore(normalizedScope) : closeStore()),
+    openMobileSidebar: () => openStore(normalizedScope),
+    closeMobileSidebar: closeStore,
+    toggleMobileSidebar: () => toggleStore(normalizedScope),
   };
 }

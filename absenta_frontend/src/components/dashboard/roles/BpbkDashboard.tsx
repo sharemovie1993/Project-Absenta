@@ -73,7 +73,7 @@ export const BpbkDashboard: React.FC<BpbkDashboardProps> = () => {
   // Mobile Filter Collapsible State
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar('bpbk');
 
   // Student Detail Modal State
   const [selectedSiswaId, setSelectedSiswaId] = useState<string | null>(null);

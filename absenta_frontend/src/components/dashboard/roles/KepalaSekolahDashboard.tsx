@@ -75,7 +75,7 @@ export const KepalaSekolahDashboard: React.FC<KepalaSekolahDashboardProps> = Rea
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isTeacherLeaderboardOpen, setIsTeacherLeaderboardOpen] = useState(false);
-  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar('kepsek');
 
   // Active Tab State with Fallback Priority: searchParam -> currentPillar -> 'ringkasan'
   const [activeTab, setActiveTab] = useState<KepsekTabId>(() => {

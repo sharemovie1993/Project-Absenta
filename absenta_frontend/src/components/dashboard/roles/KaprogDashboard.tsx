@@ -101,7 +101,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
     return 'beranda';
   });
 
-  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar('kaprog');
 
   // Keep-Alive Cache: Catat tab yang pernah dibuka agar TIDAK DIHANCURKAN saat pindah tab (Instant 0ms Switch)
   const [visitedTabs, setVisitedTabs] = useState<Set<KaprogTabId>>(() => new Set([activeTab]));

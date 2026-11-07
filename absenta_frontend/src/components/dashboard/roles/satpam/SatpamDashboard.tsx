@@ -156,7 +156,7 @@ export const SatpamDashboard: React.FC = () => {
   const { user } = useAuthStore();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentTab = (searchParams.get('tab') as SatpamTabType) || 'scan';
-  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar('satpam');
 
   const handleTabChange = useCallback(
     (tabId: string) => {

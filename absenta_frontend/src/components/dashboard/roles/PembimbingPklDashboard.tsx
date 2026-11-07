@@ -72,7 +72,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
   const [activeTab, setActiveTab] = useState<PklTabId>(() => (subtabParam && validTabs.includes(subtabParam) ? subtabParam : 'ringkasan'));
   const [visitedTabs, setVisitedTabs] = useState<Set<PklTabId>>(() => new Set([activeTab]));
   const [monitoringKey, setMonitoringKey] = useState(0);
-  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar('pembimbing_pkl');
 
   // Synchronize Tab with URL & Keep-Alive Cache
   useEffect(() => {

@@ -69,7 +69,7 @@ export const KesiswaanDashboard: React.FC<KesiswaanDashboardProps> = ({ user }) 
   // Mobile Filter Collapsible State
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar('kesiswaan');
 
   // Active Tab State
   const [activeTab, setActiveTab] = useState<KesiswaanTabId>(() => {

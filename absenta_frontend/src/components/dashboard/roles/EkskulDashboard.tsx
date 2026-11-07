@@ -56,7 +56,7 @@ export const EkskulDashboard: React.FC<EkskulDashboardProps> = () => {
   // Mobile Filter Collapsible State
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar('ekskul');
 
   // Active Tab State
   const [activeTab, setActiveTab] = useState<EkskulTabId>(() => {

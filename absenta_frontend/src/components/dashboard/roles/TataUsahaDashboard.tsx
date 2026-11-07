@@ -120,7 +120,7 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
   }, []);
 
   // Floating Modals State (1-Click Action Center)
-  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar('tu');
   const [isSuratKetModalOpen, setIsSuratKetModalOpen] = useState(false);
   const [isMutasiModalOpen, setIsMutasiModalOpen] = useState(false);
   const [isBastModalOpen, setIsBastModalOpen] = useState(false);

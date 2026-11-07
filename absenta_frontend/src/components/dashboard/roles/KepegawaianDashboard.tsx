@@ -72,7 +72,7 @@ export const KepegawaianDashboard: React.FC<KepegawaianDashboardProps> = ({ user
 
   const [activeTab, setActiveTab] = useState<KepegawaianTabId>('beranda');
   const [visitedTabs, setVisitedTabs] = useState<Set<KepegawaianTabId>>(() => new Set<KepegawaianTabId>(['beranda']));
-  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar('tu');
 
   const handleTabSelect = (tabId: KepegawaianTabId) => {
     setActiveTab(tabId);

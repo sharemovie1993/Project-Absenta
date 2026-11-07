@@ -56,7 +56,7 @@ export const ToolmanDashboard: React.FC<ToolmanDashboardProps> = () => {
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isQuickScanOpen, setIsQuickScanOpen] = useState(false);
-  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar('toolman');
 
   // Active Tab State
   const [activeTab, setActiveTab] = useState<ToolmanTabId>(() => {

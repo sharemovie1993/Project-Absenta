@@ -67,6 +67,7 @@ import { usePiketIzinKeluarOptions } from '../../../hooks/usePiketIzinKeluarOpti
 import { tenantApi } from '../../../api/tenants.api';
 import { raporApi } from '../../../api/rapor.api';
 import { useNavStore } from '../../../store/navStore';
+import { useMobileSubtabSidebarStore } from './common/UniversalMobileSubtabSidebar';
 
 // Staff Dashboard Modular Tabs
 import { StaffBerandaTab } from '../staff/tabs/StaffBerandaTab';
@@ -385,12 +386,18 @@ export const UnifiedStaffDashboard: React.FC = () => {
   }, [rawRequestedTab, defaultTabId, setSearchParams]);
 
   const handleTabChange = React.useCallback((newTab: string) => {
+    useMobileSubtabSidebarStore.getState().close();
     if (newTab === 'p5_projek') {
       navigate('/rapor/p5');
       return;
     }
     setSearchParams({ tab: newTab }, { replace: true });
   }, [setSearchParams, navigate]);
+
+  // Tutup dan reset sidebar otomatis saat activeTab berubah
+  useEffect(() => {
+    useMobileSubtabSidebarStore.getState().close();
+  }, [activeTab]);
 
   // ⚡ Keep-Alive Lazy-Mount Tab Cache:
   // Tab hanya di-mount ke DOM saat pertama kali dikunjungi (Lazy),

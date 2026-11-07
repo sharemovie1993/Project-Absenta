@@ -72,7 +72,7 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
   // Mobile Filter Collapsible State
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar('hubin');
 
   // Active Tab State
   const [activeTab, setActiveTab] = useState<HubinTabId>(() => {

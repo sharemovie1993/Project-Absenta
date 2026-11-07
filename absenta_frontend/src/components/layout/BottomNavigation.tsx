@@ -24,6 +24,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
   const {
     activeTabsList,
     currentTheme,
+    activeEcosystem,
     currentTab,
     currentSubtab,
     isKepsek,
@@ -33,9 +34,10 @@ export const BottomNavigation: React.FC = React.memo(() => {
 
   const isSidebarOpen = useMobileSubtabSidebarStore((state) => state.isOpen);
 
-  // Tutup menu melayang saat rute atau parameter berubah
+  // 1. Tutup menu melayang & subtab sidebar saat rute atau parameter berubah (mencegah sidebar menggantung)
   useEffect(() => {
     setOpenFlyoutId(null);
+    useMobileSubtabSidebarStore.getState().close();
   }, [location.pathname, location.search]);
 
   // Hitung index tombol sentral (elevasi mengambang ala Notch / FAB di tengah)
@@ -52,17 +54,20 @@ export const BottomNavigation: React.FC = React.memo(() => {
     const isProfileTab = item.id === 'saya' || item.id === 'base_profil' || item.id === 'profil' || item.id === 'admin_profil';
     if (isProfileTab) {
       setOpenFlyoutId(null);
+      useMobileSubtabSidebarStore.getState().close();
       setIsAccountSheetOpen(true);
       return;
     }
 
     if (item.children && item.children.length > 0) {
       // 🚀 Buka Universal Mobile Subtab Sidebar Drawer (Posisi jangkauan jempol di tengah)
-      useMobileSubtabSidebarStore.getState().open();
+      const targetScope = isKepsek ? 'kepsek' : activeEcosystem;
+      useMobileSubtabSidebarStore.getState().open(targetScope);
       setOpenFlyoutId(null);
       return;
     }
     setOpenFlyoutId(null);
+    useMobileSubtabSidebarStore.getState().close();
 
     // Khusus Kepala Sekolah: Switching 6 pilar instan tanpa reload rute
     if (isKepsek && ['kbm', 'kesiswaan', 'bk', 'sarpras', 'hubin', 'tu'].includes(item.id)) {
@@ -73,10 +78,11 @@ export const BottomNavigation: React.FC = React.memo(() => {
       return;
     }
     navigate(item.targetPath);
-  }, [openFlyoutId, isKepsek, setPillar, location.pathname, currentTab, navigate]);
+  }, [openFlyoutId, isKepsek, activeEcosystem, setPillar, location.pathname, currentTab, navigate]);
 
   const handleSubItemClick = useCallback((subItem: MobileBottomSubItem) => {
     setOpenFlyoutId(null);
+    useMobileSubtabSidebarStore.getState().close();
     if (subItem.id === 'profil' || subItem.id === 'saya') {
       setIsAccountSheetOpen(true);
       return;

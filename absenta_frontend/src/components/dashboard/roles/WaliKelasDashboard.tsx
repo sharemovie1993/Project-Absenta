@@ -65,7 +65,7 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
 
   // Mobile Filter Collapsible State
   const [showMobileFilter, setShowMobileFilter] = useState(false);
-  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar('walas');
 
   // Active Tab State
   const [activeTab, setActiveTab] = useState<WaliKelasTabId>(() => {

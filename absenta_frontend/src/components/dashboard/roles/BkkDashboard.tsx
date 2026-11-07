@@ -62,7 +62,7 @@ export const BkkDashboard: React.FC<BkkDashboardProps> = () => {
   // Mobile Filter Collapsible State
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar('bkk');
 
   // Active Tab State
   const [activeTab, setActiveTab] = useState<BkkTabId>(() => {
