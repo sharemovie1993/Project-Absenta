@@ -1,4 +1,6 @@
 import React from 'react';
+import { useEcosystem } from '@/context/EcosystemContext';
+import { cn } from '@/lib/utils';
 import { Building2 } from 'lucide-react';
 import { PenempatanRowActionMenu } from '@/components/hubin/PenempatanRowActionMenu';
 import type { SiswaPkl, MitraData } from '@/pages/hubin/types/penempatan.types';
@@ -67,6 +69,7 @@ export const PenempatanMobileCard: React.FC<PenempatanMobileCardProps> = React.m
   isPembimbingMode = false,
   onOpenDetail,
 }) => {
+  const { tokens } = useEcosystem();
   const fullMitra = rawMitra?.find((m: MitraData) => m.id === row.mitra_id);
   const siswaPhone = row.Siswa?.no_hp || '';
   const mitraPhone = row.Mitra?.kontak || fullMitra?.kontak || '';
@@ -90,10 +93,10 @@ export const PenempatanMobileCard: React.FC<PenempatanMobileCardProps> = React.m
               type="checkbox"
               checked={isSelected || false}
               onChange={() => onToggleSelect?.(row.id)}
-              className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 accent-amber-600 border-slate-300 dark:border-slate-700 shrink-0 cursor-pointer"
+              className={cn("w-4 h-4 rounded border-slate-300 dark:border-slate-700 shrink-0 cursor-pointer", tokens.accentClass, tokens.focusRingClass)}
             />
           )}
-          <div className="w-6 h-6 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200/70 dark:border-amber-800/60 flex items-center justify-center text-[10px] font-black text-amber-700 dark:text-amber-300 shrink-0 select-none">
+          <div className={cn("w-6 h-6 rounded-full border flex items-center justify-center text-[10px] font-black shrink-0 select-none", tokens.subtleBg, tokens.borderClass, tokens.subtleText)}>
             {initial}
           </div>
           <div className="flex items-baseline gap-1.5 min-w-0 flex-1 flex-wrap">
@@ -135,7 +138,7 @@ export const PenempatanMobileCard: React.FC<PenempatanMobileCardProps> = React.m
       {/* 2. Baris Mitra Industri (Perusahaan) & Guru Pembimbing */}
       <div className="flex items-start justify-between gap-2 text-xs">
         <div className="flex items-start gap-1.5 min-w-0 flex-1">
-          <Building2 size={13} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <Building2 size={13} className={cn("shrink-0 mt-0.5", tokens.primaryText)} />
           {row.mitra_id ? (
             <button
               type="button"
@@ -162,15 +165,15 @@ export const PenempatanMobileCard: React.FC<PenempatanMobileCardProps> = React.m
               <button
                 type="button"
                 onClick={() => onEdit(row)}
-                className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 px-2 py-0.5 rounded-md border border-amber-200/80 dark:border-amber-900/50 inline-flex items-center gap-1 transition-colors cursor-pointer"
+                className={cn("text-[10px] font-bold px-2 py-0.5 rounded-md border inline-flex items-center gap-1 transition-colors cursor-pointer", tokens.subtleBg, tokens.subtleText, tokens.borderClass)}
                 title="Klik untuk menugaskan guru pembimbing"
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", tokens.badgeClass)} />
                 <span>Pmb: Belum Ada</span>
               </button>
             ) : (
-              <span className="text-[10px] font-medium text-amber-700/90 dark:text-amber-300/90 bg-amber-50/80 dark:bg-amber-950/30 px-1.5 py-0.5 rounded-md border border-amber-200/60 dark:border-amber-900/40 inline-flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+              <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded-md border inline-flex items-center gap-1", tokens.subtleBg, tokens.subtleText, tokens.borderClass)}>
+                <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", tokens.badgeClass)} />
                 <span>Pmb: Belum Ada</span>
               </span>
             )}

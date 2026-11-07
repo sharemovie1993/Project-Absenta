@@ -6,6 +6,8 @@ import { SimpleFormField } from '../ui/SimpleFormField';
 import { SmartStudentPicker, type Student } from '../common/SmartStudentPicker';
 import { AcademicFilterToolbar, useAcademicFilter } from '../common/academic-filter';
 import { addPklMonths } from '../../utils/hubinPklLifecycle';
+import { useEcosystem } from '@/context/EcosystemContext';
+import { cn } from '@/lib/utils';
 
 interface HubinPklPlottingModalProps {
   isOpen: boolean;
@@ -48,6 +50,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
   editingPkl,
   filterJurusan,
 }) => {
+  const { tokens } = useEcosystem();
   const academicFilter = useAcademicFilter({
     enableTp: true,
     enableSemester: true,
@@ -266,7 +269,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
                 <button
                   type="button"
                   onClick={() => handleApplyDuration(3)}
-                  className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800 cursor-pointer transition-colors"
+                  className={cn("px-1.5 py-0.5 rounded text-[10px] font-bold border cursor-pointer transition-colors", tokens.subtleBg, tokens.subtleText, tokens.borderClass)}
                   title="Set +3 Bulan dari tanggal mulai"
                 >
                   +3 Bln
@@ -274,7 +277,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
                 <button
                   type="button"
                   onClick={() => handleApplyDuration(4)}
-                  className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800 cursor-pointer transition-colors"
+                  className={cn("px-1.5 py-0.5 rounded text-[10px] font-bold border cursor-pointer transition-colors", tokens.subtleBg, tokens.subtleText, tokens.borderClass)}
                   title="Set +4 Bulan dari tanggal mulai"
                 >
                   +4 Bln
@@ -282,7 +285,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
                 <button
                   type="button"
                   onClick={() => handleApplyDuration(6)}
-                  className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800 cursor-pointer transition-colors"
+                  className={cn("px-1.5 py-0.5 rounded text-[10px] font-bold border cursor-pointer transition-colors", tokens.subtleBg, tokens.subtleText, tokens.borderClass)}
                   title="Set +6 Bulan dari tanggal mulai"
                 >
                   +6 Bln
@@ -379,7 +382,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
           <Button type="button" variant="outline" onClick={onClose}>
             Batal
           </Button>
-          <Button type="submit" className="bg-amber-600 hover:bg-amber-500 text-white font-bold shadow-xs px-5 rounded-xl border-none transition-all active:scale-95" isLoading={isPending}>
+          <Button type="submit" variant="ecosystem" className="px-5 rounded-xl border-none active:scale-95" isLoading={isPending}>
             Simpan
           </Button>
         </div>

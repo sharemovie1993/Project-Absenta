@@ -620,7 +620,7 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
           <Button type="button" variant="outline" onClick={onClose}>
             Batal
           </Button>
-          <Button type="submit" className="bg-amber-600 hover:bg-amber-500 text-white font-bold shadow-xs rounded-xl border-none transition-all active:scale-95" isLoading={isPending} disabled={selectedStudentList.length === 0}>
+          <Button type="submit" variant="ecosystem" className="rounded-xl border-none active:scale-95" isLoading={isPending} disabled={selectedStudentList.length === 0}>
             Simpan ({selectedStudentList.length} Siswa)
           </Button>
         </div>

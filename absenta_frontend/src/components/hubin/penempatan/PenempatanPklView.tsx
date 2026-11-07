@@ -451,7 +451,7 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
       <Button onClick={() => actions.setIsBulkPlottingOpen(true)} variant="toolbarOutline" size="toolbar" className="rounded-xl h-9 px-4 flex items-center gap-1.5">
         <Users size={16} /> Plotting Kolektif
       </Button>
-      <Button onClick={() => { actions.setSelectedPkl(null); actions.setSelectedSiswaId(''); actions.setSelectedMitraId(''); actions.setSelectedPembimbingId(''); actions.setIsPlottingOpen(true); }} size="toolbar" className="h-9 px-4 rounded-xl flex items-center gap-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold border-none shadow-sm transition-all active:scale-95">
+      <Button onClick={() => { actions.setSelectedPkl(null); actions.setSelectedSiswaId(''); actions.setSelectedMitraId(''); actions.setSelectedPembimbingId(''); actions.setIsPlottingOpen(true); }} variant="ecosystem" size="toolbar" className="h-9 px-4 rounded-xl flex items-center gap-1.5">
         <UserPlus size={16} /> Plotting Baru
       </Button>
     </div>
@@ -792,8 +792,9 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
                         actions.setSelectedPembimbingId('');
                         actions.setIsPlottingOpen(true);
                       }}
+                      variant="ecosystem"
                       size="sm"
-                      className="h-8 px-1.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1 shadow-2xs whitespace-nowrap bg-amber-600 hover:bg-amber-500 text-white border-none transition-all active:scale-95"
+                      className="h-8 px-1.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1 shadow-2xs whitespace-nowrap"
                     >
                       <UserPlus size={13} className="shrink-0" />
                       <span>Plot Baru</span>

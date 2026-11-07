@@ -142,13 +142,18 @@ export function getEcosystemLabel(ecosystem: EcosystemType): string {
  */
 export interface EcosystemColorTokens {
   primaryColor: string;
+  primaryButtonClass: string;
+  primaryToolbarClass: string;
   activeButton: string;
   activeIconBg: string;
   subtleBg: string;
   subtleText: string;
+  primaryText: string;
   badgeClass: string;
   borderClass: string;
   shadowClass: string;
+  focusRingClass: string;
+  accentClass: string;
 }
 
 export function getEcosystemTokens(ecosystem: EcosystemType): EcosystemColorTokens {
@@ -156,26 +161,36 @@ export function getEcosystemTokens(ecosystem: EcosystemType): EcosystemColorToke
     case 'kurikulum':
       return {
         primaryColor: 'emerald-600',
+        primaryButtonClass: 'bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-bold border-none shadow-xs transition-all active:scale-95',
+        primaryToolbarClass: 'bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-bold border-none shadow-xs transition-all active:scale-95',
         activeButton: 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white',
         activeIconBg: 'bg-white/20 text-white',
         subtleBg: 'bg-emerald-50 dark:bg-emerald-950/60',
         subtleText: 'text-emerald-700 dark:text-emerald-300',
+        primaryText: 'text-emerald-600 dark:text-emerald-400',
         badgeClass: 'bg-emerald-500 text-white',
         borderClass: 'border-emerald-200 dark:border-emerald-800/80',
         shadowClass: 'shadow-emerald-900/20',
+        focusRingClass: 'focus:ring-emerald-500/20',
+        accentClass: 'accent-emerald-600 text-emerald-600',
       };
     case 'hubin':
     case 'bkk':
     case 'pembimbing_pkl':
       return {
         primaryColor: 'orange-600',
+        primaryButtonClass: 'bg-orange-600 hover:bg-orange-500 dark:bg-orange-600 dark:hover:bg-orange-500 text-white font-bold border-none shadow-xs transition-all active:scale-95',
+        primaryToolbarClass: 'bg-orange-600 hover:bg-orange-500 dark:bg-orange-600 dark:hover:bg-orange-500 text-white font-bold border-none shadow-xs transition-all active:scale-95',
         activeButton: 'bg-gradient-to-r from-orange-600 to-amber-700 text-white',
         activeIconBg: 'bg-white/20 text-white',
         subtleBg: 'bg-orange-50 dark:bg-orange-950/60',
         subtleText: 'text-orange-700 dark:text-orange-300',
+        primaryText: 'text-orange-600 dark:text-orange-400',
         badgeClass: 'bg-orange-500 text-white',
         borderClass: 'border-orange-200 dark:border-orange-800/80',
         shadowClass: 'shadow-orange-900/20',
+        focusRingClass: 'focus:ring-orange-500/20',
+        accentClass: 'accent-orange-600 text-orange-600',
       };
     case 'kesiswaan':
     case 'ekskul':
@@ -183,115 +198,165 @@ export function getEcosystemTokens(ecosystem: EcosystemType): EcosystemColorToke
     case 'piket':
       return {
         primaryColor: 'rose-600',
+        primaryButtonClass: 'bg-rose-600 hover:bg-rose-500 dark:bg-rose-600 dark:hover:bg-rose-500 text-white font-bold border-none shadow-xs transition-all active:scale-95',
+        primaryToolbarClass: 'bg-rose-600 hover:bg-rose-500 dark:bg-rose-600 dark:hover:bg-rose-500 text-white font-bold border-none shadow-xs transition-all active:scale-95',
         activeButton: 'bg-gradient-to-r from-rose-600 to-red-700 text-white',
         activeIconBg: 'bg-white/20 text-white',
         subtleBg: 'bg-rose-50 dark:bg-rose-950/60',
         subtleText: 'text-rose-700 dark:text-rose-300',
+        primaryText: 'text-rose-600 dark:text-rose-400',
         badgeClass: 'bg-rose-500 text-white',
         borderClass: 'border-rose-200 dark:border-rose-800/80',
         shadowClass: 'shadow-rose-900/20',
+        focusRingClass: 'focus:ring-rose-500/20',
+        accentClass: 'accent-rose-600 text-rose-600',
       };
     case 'walas':
       return {
         primaryColor: 'sky-600',
+        primaryButtonClass: 'bg-sky-600 hover:bg-sky-500 dark:bg-sky-600 dark:hover:bg-sky-500 text-white font-bold border-none shadow-xs transition-all active:scale-95',
+        primaryToolbarClass: 'bg-sky-600 hover:bg-sky-500 dark:bg-sky-600 dark:hover:bg-sky-500 text-white font-bold border-none shadow-xs transition-all active:scale-95',
         activeButton: 'bg-gradient-to-r from-sky-600 to-blue-700 text-white',
         activeIconBg: 'bg-white/20 text-white',
         subtleBg: 'bg-sky-50 dark:bg-sky-950/60',
         subtleText: 'text-sky-700 dark:text-sky-300',
+        primaryText: 'text-sky-600 dark:text-sky-400',
         badgeClass: 'bg-sky-500 text-white',
         borderClass: 'border-sky-200 dark:border-sky-800/80',
         shadowClass: 'shadow-sky-900/20',
+        focusRingClass: 'focus:ring-sky-500/20',
+        accentClass: 'accent-sky-600 text-sky-600',
       };
     case 'kaprog':
       return {
         primaryColor: 'amber-600',
+        primaryButtonClass: 'bg-amber-600 hover:bg-amber-500 dark:bg-amber-600 dark:hover:bg-amber-500 text-white font-bold border-none shadow-xs transition-all active:scale-95',
+        primaryToolbarClass: 'bg-amber-600 hover:bg-amber-500 dark:bg-amber-600 dark:hover:bg-amber-500 text-white font-bold border-none shadow-xs transition-all active:scale-95',
         activeButton: 'bg-gradient-to-r from-amber-600 to-amber-700 text-white',
         activeIconBg: 'bg-white/20 text-white',
         subtleBg: 'bg-amber-50 dark:bg-amber-950/60',
         subtleText: 'text-amber-700 dark:text-amber-300',
+        primaryText: 'text-amber-600 dark:text-amber-400',
         badgeClass: 'bg-amber-500 text-white',
         borderClass: 'border-amber-200 dark:border-amber-800/80',
         shadowClass: 'shadow-amber-900/20',
+        focusRingClass: 'focus:ring-amber-500/20',
+        accentClass: 'accent-amber-600 text-amber-600',
       };
     case 'tu':
       return {
         primaryColor: 'indigo-700',
+        primaryButtonClass: 'bg-indigo-700 hover:bg-indigo-600 dark:bg-indigo-700 dark:hover:bg-indigo-600 text-white font-bold border-none shadow-xs transition-all active:scale-95',
+        primaryToolbarClass: 'bg-indigo-700 hover:bg-indigo-600 dark:bg-indigo-700 dark:hover:bg-indigo-600 text-white font-bold border-none shadow-xs transition-all active:scale-95',
         activeButton: 'bg-gradient-to-r from-indigo-700 to-slate-800 text-white',
         activeIconBg: 'bg-white/20 text-white',
         subtleBg: 'bg-indigo-50 dark:bg-indigo-950/60',
         subtleText: 'text-indigo-700 dark:text-indigo-300',
+        primaryText: 'text-indigo-600 dark:text-indigo-400',
         badgeClass: 'bg-indigo-600 text-white',
         borderClass: 'border-indigo-200 dark:border-indigo-800/80',
         shadowClass: 'shadow-indigo-950/20',
+        focusRingClass: 'focus:ring-indigo-500/20',
+        accentClass: 'accent-indigo-600 text-indigo-600',
       };
     case 'bpbk':
       return {
         primaryColor: 'purple-600',
+        primaryButtonClass: 'bg-purple-600 hover:bg-purple-500 dark:bg-purple-600 dark:hover:bg-purple-500 text-white font-bold border-none shadow-xs transition-all active:scale-95',
+        primaryToolbarClass: 'bg-purple-600 hover:bg-purple-500 dark:bg-purple-600 dark:hover:bg-purple-500 text-white font-bold border-none shadow-xs transition-all active:scale-95',
         activeButton: 'bg-gradient-to-r from-purple-600 to-violet-800 text-white',
         activeIconBg: 'bg-white/20 text-white',
         subtleBg: 'bg-purple-50 dark:bg-purple-950/60',
         subtleText: 'text-purple-700 dark:text-purple-300',
+        primaryText: 'text-purple-600 dark:text-purple-400',
         badgeClass: 'bg-purple-600 text-white',
         borderClass: 'border-purple-200 dark:border-purple-800/80',
         shadowClass: 'shadow-purple-900/20',
+        focusRingClass: 'focus:ring-purple-500/20',
+        accentClass: 'accent-purple-600 text-purple-600',
       };
     case 'sarpras':
     case 'toolman':
       return {
         primaryColor: 'teal-700',
+        primaryButtonClass: 'bg-teal-700 hover:bg-teal-600 dark:bg-teal-700 dark:hover:bg-teal-600 text-white font-bold border-none shadow-xs transition-all active:scale-95',
+        primaryToolbarClass: 'bg-teal-700 hover:bg-teal-600 dark:bg-teal-700 dark:hover:bg-teal-600 text-white font-bold border-none shadow-xs transition-all active:scale-95',
         activeButton: 'bg-gradient-to-r from-teal-700 to-emerald-800 text-white',
         activeIconBg: 'bg-white/20 text-white',
         subtleBg: 'bg-teal-50 dark:bg-teal-950/60',
         subtleText: 'text-teal-700 dark:text-teal-300',
+        primaryText: 'text-teal-600 dark:text-teal-400',
         badgeClass: 'bg-teal-600 text-white',
         borderClass: 'border-teal-200 dark:border-teal-800/80',
         shadowClass: 'shadow-teal-900/20',
+        focusRingClass: 'focus:ring-teal-500/20',
+        accentClass: 'accent-teal-600 text-teal-600',
       };
     case 'koperasi':
       return {
         primaryColor: 'emerald-700',
+        primaryButtonClass: 'bg-emerald-700 hover:bg-emerald-600 dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white font-bold border-none shadow-xs transition-all active:scale-95',
+        primaryToolbarClass: 'bg-emerald-700 hover:bg-emerald-600 dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white font-bold border-none shadow-xs transition-all active:scale-95',
         activeButton: 'bg-gradient-to-r from-emerald-700 to-green-800 text-white',
         activeIconBg: 'bg-white/20 text-white',
         subtleBg: 'bg-emerald-50 dark:bg-emerald-950/60',
         subtleText: 'text-emerald-700 dark:text-emerald-300',
+        primaryText: 'text-emerald-600 dark:text-emerald-400',
         badgeClass: 'bg-emerald-600 text-white',
         borderClass: 'border-emerald-200 dark:border-emerald-800/80',
         shadowClass: 'shadow-emerald-900/20',
+        focusRingClass: 'focus:ring-emerald-500/20',
+        accentClass: 'accent-emerald-600 text-emerald-600',
       };
     case 'admin':
       return {
         primaryColor: 'slate-800',
+        primaryButtonClass: 'bg-slate-800 hover:bg-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold border-none shadow-xs transition-all active:scale-95',
+        primaryToolbarClass: 'bg-slate-800 hover:bg-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold border-none shadow-xs transition-all active:scale-95',
         activeButton: 'bg-gradient-to-r from-slate-800 to-slate-950 text-white',
         activeIconBg: 'bg-white/20 text-white',
         subtleBg: 'bg-slate-100 dark:bg-slate-800',
         subtleText: 'text-slate-800 dark:text-slate-200',
+        primaryText: 'text-slate-800 dark:text-slate-200',
         badgeClass: 'bg-slate-800 text-white',
         borderClass: 'border-slate-300 dark:border-slate-700',
         shadowClass: 'shadow-slate-950/20',
+        focusRingClass: 'focus:ring-slate-500/20',
+        accentClass: 'accent-slate-800 text-slate-800',
       };
     case 'kepsek':
       return {
         primaryColor: 'indigo-800',
+        primaryButtonClass: 'bg-indigo-800 hover:bg-indigo-700 dark:bg-indigo-800 dark:hover:bg-indigo-700 text-white font-bold border-none shadow-xs transition-all active:scale-95',
+        primaryToolbarClass: 'bg-indigo-800 hover:bg-indigo-700 dark:bg-indigo-800 dark:hover:bg-indigo-700 text-white font-bold border-none shadow-xs transition-all active:scale-95',
         activeButton: 'bg-gradient-to-r from-indigo-800 to-slate-900 text-white',
         activeIconBg: 'bg-white/20 text-white',
         subtleBg: 'bg-indigo-50 dark:bg-indigo-950/60',
         subtleText: 'text-indigo-700 dark:text-indigo-300',
+        primaryText: 'text-indigo-600 dark:text-indigo-400',
         badgeClass: 'bg-indigo-600 text-white',
         borderClass: 'border-indigo-200 dark:border-indigo-800/80',
         shadowClass: 'shadow-indigo-950/20',
+        focusRingClass: 'focus:ring-indigo-500/20',
+        accentClass: 'accent-indigo-600 text-indigo-600',
       };
     case 'portal':
     case 'siswa':
     default:
       return {
         primaryColor: 'indigo-600',
+        primaryButtonClass: 'bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-xs focus:ring-blue-500 dark:bg-blue-600 dark:hover:bg-blue-700',
+        primaryToolbarClass: 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all hover:-translate-y-[1px]',
         activeButton: 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white',
         activeIconBg: 'bg-white/20 text-white',
         subtleBg: 'bg-indigo-50 dark:bg-indigo-950/60',
         subtleText: 'text-indigo-600 dark:text-indigo-400',
+        primaryText: 'text-indigo-600 dark:text-indigo-400',
         badgeClass: 'bg-indigo-600 text-white',
         borderClass: 'border-indigo-200 dark:border-indigo-800/80',
         shadowClass: 'shadow-indigo-600/25',
+        focusRingClass: 'focus:ring-indigo-500/20',
+        accentClass: 'accent-indigo-600 text-indigo-600',
       };
   }
 }

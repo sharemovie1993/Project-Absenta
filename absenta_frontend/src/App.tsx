@@ -25,6 +25,7 @@ import { useAuthStore } from './store/authStore';
 import { ThemeProvider } from './providers/ThemeProvider';
 import { ConfirmProvider } from '@/providers/ConfirmProvider';
 import { SocketProvider } from './contexts/SocketContext';
+import { EcosystemProvider } from './context/EcosystemContext';
 import { LogService } from './utils/LogService';
 import { loadActiveSystemConfig } from './services/systemConfig';
 import { isCapacitorApp } from './services/serverConfig';
@@ -416,6 +417,7 @@ function App() {
         <ConfirmProvider>
           <SocketProvider>
             <BrowserRouter>
+              <EcosystemProvider as={React.Fragment}>
               {isImpersonating && (
                 <div className="fixed top-0 left-0 right-0 z-[9999] bg-gradient-to-r from-sky-600 via-blue-700 to-sky-600 text-white text-center py-2.5 px-4 shadow-lg flex items-center justify-between transition-all duration-300">
                   <div className="flex items-center space-x-2 mx-auto md:mx-0">
@@ -1815,6 +1817,7 @@ function App() {
               </Routes>
             )}
             <FloatingDemoSwitcher />
+            </EcosystemProvider>
           </BrowserRouter>
           </SocketProvider>
         </ConfirmProvider>

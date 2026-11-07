@@ -1,5 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { useEcosystem } from '@/context/EcosystemContext';
+import type { EcosystemType } from '@/config/bottomNavEcosystems.config';
 
 export interface TabOption {
   id: string;
@@ -16,6 +18,7 @@ export interface TabSwitcherProps {
   value?: string;
   onChange: (id: string) => void;
   className?: string;
+  ecosystem?: EcosystemType;
 }
 
 export const TabSwitcher: React.FC<TabSwitcherProps> = ({
@@ -26,9 +29,15 @@ export const TabSwitcher: React.FC<TabSwitcherProps> = ({
   value,
   onChange,
   className,
+  ecosystem: propEcosystem,
 }) => {
+  const { tokens, isLayer2 } = useEcosystem(propEcosystem);
   const currentTab = activeTab || value || '';
   const tabOptions = options || tabs || items || [];
+
+  // Default active text color based on ecosystem if inside a dashboard
+  const defaultActiveColor = isLayer2 ? tokens.primaryText : 'text-indigo-600 dark:text-indigo-400';
+
   return (
     <div 
       className={cn("flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 p-1 rounded-2xl w-fit max-w-full overflow-x-auto no-scrollbar flex-nowrap shrink-0", className)} 
@@ -48,7 +57,7 @@ export const TabSwitcher: React.FC<TabSwitcherProps> = ({
             className={cn(
               "flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer select-none whitespace-nowrap shrink-0",
               isActive
-                ? cn("bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm", opt.colorClass)
+                ? cn("bg-white dark:bg-slate-700 shadow-sm", opt.colorClass || defaultActiveColor)
                 : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
             )}
           >

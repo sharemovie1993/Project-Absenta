@@ -1,6 +1,8 @@
 import React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
+import { useEcosystem } from '@/context/EcosystemContext';
+import type { EcosystemType } from '@/config/bottomNavEcosystems.config';
 
 const buttonVariants = cva(
   'inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:pointer-events-none',
@@ -8,6 +10,10 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary: 'bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-xs focus:ring-blue-500 dark:bg-blue-600 dark:hover:bg-blue-700',
+        ecosystem: 'text-white font-bold shadow-xs active:scale-[0.98] transition-all',
+        ecosystemToolbar: 'text-white font-bold shadow-sm transition-all hover:-translate-y-[1px] active:scale-[0.98]',
+        ecosystemSubtle: 'font-semibold transition-all border',
+        ecosystemOutline: 'border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 transition-all',
         secondary: 'bg-secondary text-secondary-foreground hover:opacity-90 focus:ring-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600 dark:focus:ring-slate-500',
         danger: 'bg-red-600 hover:bg-red-700 text-white focus:ring-red-500',
         success: 'bg-green-600 hover:bg-green-700 text-white focus:ring-green-500',
@@ -38,27 +44,45 @@ const buttonVariants = cva(
   }
 );
 
-interface ButtonProps 
+export interface ButtonProps 
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   children: React.ReactNode;
   isLoading?: boolean;
+  ecosystem?: EcosystemType;
 }
 
 export function Button({ 
-  variant, 
+  variant = 'primary', 
   size, 
   children, 
   className,
-  isLoading,
-  disabled,
+  isLoading, 
+  disabled, 
+  ecosystem: propEcosystem,
   ...props 
 }: ButtonProps) {
   const effectiveDisabled = isLoading || disabled;
+  const { tokens, isLayer2 } = useEcosystem(propEcosystem);
+
+  // Resolusi dinamis kelas tombol jika menggunakan varian ekosistem atau sedang berada di workspace dashboard (isLayer2)
+  let dynamicEcosystemClass = '';
+  if (variant === 'ecosystem') {
+    dynamicEcosystemClass = tokens.primaryButtonClass;
+  } else if (variant === 'ecosystemToolbar') {
+    dynamicEcosystemClass = tokens.primaryToolbarClass;
+  } else if (variant === 'ecosystemSubtle') {
+    dynamicEcosystemClass = cn(tokens.subtleBg, tokens.subtleText, tokens.borderClass);
+  } else if (variant === 'ecosystemOutline') {
+    dynamicEcosystemClass = cn(`hover:${tokens.subtleBg}`, `hover:${tokens.primaryText}`);
+  } else if (isLayer2 && (variant === 'primary' || variant === 'toolbarPrimary')) {
+    // Otomatis menyelaraskan tombol aksi utama dengan tema ekosistem dashboard yang sedang aktif
+    dynamicEcosystemClass = variant === 'toolbarPrimary' ? tokens.primaryToolbarClass : tokens.primaryButtonClass;
+  }
 
   return (
     <button
-      className={cn(buttonVariants({ variant, size }), className)}
+      className={cn(buttonVariants({ variant, size }), dynamicEcosystemClass, className)}
       disabled={effectiveDisabled}
       {...props}
     >

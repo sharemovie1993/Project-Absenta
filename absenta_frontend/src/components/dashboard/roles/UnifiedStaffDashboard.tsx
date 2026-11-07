@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect, Suspense } from 'react';
 import { cn } from '../../../lib/utils';
+import { EcosystemProvider } from '@/context/EcosystemContext';
 import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -1331,7 +1332,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
       <div className="w-full min-w-0">
         {/* 📌 TAB 1: OVERVIEW EKSEKUTIF (KEPSEK) ATAU BERANDA GURU / STAF */}
         {visitedTabs.has('ringkasan') && (
-          <div 
+          <EcosystemProvider ecosystem={isKepsek ? 'kepsek' : isPureGerbangStaff ? 'satpam' : 'portal'} as={React.Fragment}>
+            <div 
             key="tab-ringkasan"
             role="tabpanel"
             aria-hidden={activeTab !== 'ringkasan'}
@@ -1366,11 +1368,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
               />
             )}
           </div>
+          </EcosystemProvider>
         )}
 
         {/* 🗓️ TAB 2: KBM & ABSEN */}
         {visitedTabs.has('jadwal') && (
-          <div 
+          <EcosystemProvider ecosystem='kurikulum' as={React.Fragment}>
+            <div 
             key="tab-jadwal"
             role="tabpanel"
             aria-hidden={activeTab !== 'jadwal'}
@@ -1384,11 +1388,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
               onRefreshTimeline={refetchTimeline}
             />
           </div>
+          </EcosystemProvider>
         )}
 
         {/* 👥 TAB 3: WALI KELAS — Role Dashboard Architecture */}
         {visitedTabs.has('binaan') && (
-          <div 
+          <EcosystemProvider ecosystem='walas' as={React.Fragment}>
+            <div 
             key="tab-binaan"
             role="tabpanel"
             aria-hidden={activeTab !== 'binaan'}
@@ -1407,11 +1413,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
               />
             </Suspense>
           </div>
+          </EcosystemProvider>
         )}
 
         {/* 🏆 TAB KAPROG: DASHBOARD KETUA PROGRAM KEAHLIAN — New Design */}
         {visitedTabs.has('kaprog') && (
-          <div 
+          <EcosystemProvider ecosystem='kaprog' as={React.Fragment}>
+            <div 
             key="tab-kaprog"
             role="tabpanel"
             aria-hidden={activeTab !== 'kaprog'}
@@ -1432,11 +1440,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
               />
             </Suspense>
           </div>
+          </EcosystemProvider>
         )}
 
         {/* 📚 TAB KURIKULUM: DASHBOARD KURIKULUM */}
         {visitedTabs.has('kurikulum') && (
-          <div 
+          <EcosystemProvider ecosystem='kurikulum' as={React.Fragment}>
+            <div 
             key="tab-kurikulum"
             role="tabpanel"
             aria-hidden={activeTab !== 'kurikulum'}
@@ -1455,11 +1465,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
               <KurikulumDashboard user={user} />
             </Suspense>
           </div>
+          </EcosystemProvider>
         )}
 
         {/* 🛡️ TAB KESISWAAN: DASHBOARD KESISWAAN */}
         {visitedTabs.has('kesiswaan') && (
-          <div 
+          <EcosystemProvider ecosystem='kesiswaan' as={React.Fragment}>
+            <div 
             key="tab-kesiswaan"
             role="tabpanel"
             aria-hidden={activeTab !== 'kesiswaan'}
@@ -1478,11 +1490,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
               <KesiswaanDashboard user={user} />
             </Suspense>
           </div>
+          </EcosystemProvider>
         )}
 
         {/* 📦 TAB SARPRAS: DASHBOARD SARPRAS */}
         {visitedTabs.has('sarpras') && (
-          <div 
+          <EcosystemProvider ecosystem='sarpras' as={React.Fragment}>
+            <div 
             key="tab-sarpras"
             role="tabpanel"
             aria-hidden={activeTab !== 'sarpras'}
@@ -1501,11 +1515,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
               <SarprasDashboard user={user} />
             </Suspense>
           </div>
+          </EcosystemProvider>
         )}
 
         {/* 💼 TAB HUBIN: DASHBOARD HUBIN */}
         {visitedTabs.has('hubin') && (
-          <div 
+          <EcosystemProvider ecosystem='hubin' as={React.Fragment}>
+            <div 
             key="tab-hubin"
             role="tabpanel"
             aria-hidden={activeTab !== 'hubin'}
@@ -1524,11 +1540,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
               <HubinDashboard user={user} />
             </Suspense>
           </div>
+          </EcosystemProvider>
         )}
 
         {/* 🛒 TAB KOPERASI: DASHBOARD KOPERASI */}
         {visitedTabs.has('koperasi') && (
-          <div 
+          <EcosystemProvider ecosystem='koperasi' as={React.Fragment}>
+            <div 
             key="tab-koperasi"
             role="tabpanel"
             aria-hidden={activeTab !== 'koperasi'}
@@ -1547,11 +1565,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
               <KoperasiDashboard user={user} />
             </Suspense>
           </div>
+          </EcosystemProvider>
         )}
 
         {/* 🤝 TAB BPBK / KONSELING: DASHBOARD KONSELING */}
         {visitedTabs.has('bpbk') && (
-          <div 
+          <EcosystemProvider ecosystem='bpbk' as={React.Fragment}>
+            <div 
             key="tab-bpbk"
             role="tabpanel"
             aria-hidden={activeTab !== 'bpbk'}
@@ -1570,11 +1590,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
               <BpbkDashboard user={user} />
             </Suspense>
           </div>
+          </EcosystemProvider>
         )}
 
         {/* 🎓 TAB BKK: DASHBOARD BURSA KERJA KHUSUS */}
         {visitedTabs.has('bkk') && (
-          <div 
+          <EcosystemProvider ecosystem='bkk' as={React.Fragment}>
+            <div 
             key="tab-bkk"
             role="tabpanel"
             aria-hidden={activeTab !== 'bkk'}
@@ -1593,11 +1615,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
               <BkkDashboard user={user} />
             </Suspense>
           </div>
+          </EcosystemProvider>
         )}
 
         {/* 🔧 TAB TOOLMAN: DASHBOARD TEKNISI BENGKEL / LAB */}
         {visitedTabs.has('toolman') && (
-          <div 
+          <EcosystemProvider ecosystem='toolman' as={React.Fragment}>
+            <div 
             key="tab-toolman"
             role="tabpanel"
             aria-hidden={activeTab !== 'toolman'}
@@ -1616,11 +1640,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
               <ToolmanDashboard user={user} />
             </Suspense>
           </div>
+          </EcosystemProvider>
         )}
 
         {/* 🧭 TAB EKSKUL: DASHBOARD PEMBINA EKSTRAKURIKULER */}
         {visitedTabs.has('ekskul') && (
-          <div 
+          <EcosystemProvider ecosystem='ekskul' as={React.Fragment}>
+            <div 
             key="tab-ekskul"
             role="tabpanel"
             aria-hidden={activeTab !== 'ekskul'}
@@ -1639,11 +1665,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
               <EkskulDashboard user={user} />
             </Suspense>
           </div>
+          </EcosystemProvider>
         )}
 
         {/* 🏭 TAB PEMBIMBING PKL: DASHBOARD GURU PEMBIMBING SISWA MAGANG */}
         {visitedTabs.has('pembimbing_pkl') && (
-          <div 
+          <EcosystemProvider ecosystem='pembimbing_pkl' as={React.Fragment}>
+            <div 
             key="tab-pembimbing_pkl"
             role="tabpanel"
             aria-hidden={activeTab !== 'pembimbing_pkl'}
@@ -1662,11 +1690,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
               <PembimbingPklDashboard user={user} />
             </Suspense>
           </div>
+          </EcosystemProvider>
         )}
 
         {/* 🛡️ TAB: POS SATPAM & GERBANG KEAMANAN */}
         {visitedTabs.has('satpam') && (
-          <div
+          <EcosystemProvider ecosystem='satpam' as={React.Fragment}>
+            <div
             key="tab-satpam"
             role="tabpanel"
             aria-hidden={activeTab !== 'satpam'}
@@ -1676,11 +1706,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
               <SatpamDashboard />
             </Suspense>
           </div>
+          </EcosystemProvider>
         )}
 
         {/* 🛡️ TAB ADMIN: DASHBOARD OPERASIONAL ADMIN/SUPERADMIN */}
         {visitedTabs.has('admin') && (
-          <div 
+          <EcosystemProvider ecosystem='admin' as={React.Fragment}>
+            <div 
             key="tab-admin"
             role="tabpanel"
             aria-hidden={activeTab !== 'admin'}
@@ -1690,11 +1722,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
               <AdminDashboard user={user} />
             </Suspense>
           </div>
+          </EcosystemProvider>
         )}
 
         {/* 🧑‍💼 TAB 10: TATA USAHA TERPADU & KEPEGAWAIAN */}
         {visitedTabs.has('kepegawaian') && (
-          <div 
+          <EcosystemProvider ecosystem='tu' as={React.Fragment}>
+            <div 
             key="tab-kepegawaian"
             role="tabpanel"
             aria-hidden={activeTab !== 'kepegawaian'}
@@ -1708,11 +1742,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
               )}
             </Suspense>
           </div>
+          </EcosystemProvider>
         )}
 
         {/* 🔍 TAB INPUT MANUAL: FORM PENCARIAN SISWA/GURU LUPA KARTU */}
         {visitedTabs.has('manual_presensi') && (
-          <div 
+          <EcosystemProvider ecosystem='portal' as={React.Fragment}>
+            <div 
             key="tab-manual_presensi"
             role="tabpanel"
             aria-hidden={activeTab !== 'manual_presensi'}
@@ -1720,11 +1756,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
           >
             <StaffManualInputTab />
           </div>
+          </EcosystemProvider>
         )}
 
         {/* 📋 TAB 9: PIKET HARIAN & OPERASIONAL */}
         {visitedTabs.has('kelola') && (
-          <div 
+          <EcosystemProvider ecosystem='piket' as={React.Fragment}>
+            <div 
             key="tab-kelola"
             role="tabpanel"
             aria-hidden={activeTab !== 'kelola'}
@@ -1740,11 +1778,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
               tenantInfo={tenantInfo}
             />
           </div>
+          </EcosystemProvider>
         )}
 
         {/* 👤 TAB 10: PROFIL GURU */}
         {visitedTabs.has('profil') && (
-          <div 
+          <EcosystemProvider ecosystem='portal' as={React.Fragment}>
+            <div 
             key="tab-profil"
             role="tabpanel"
             aria-hidden={activeTab !== 'profil'}
@@ -1757,6 +1797,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
               waliKelasNama={waliKelasNama}
             />
           </div>
+          </EcosystemProvider>
         )}
       </div>
 
