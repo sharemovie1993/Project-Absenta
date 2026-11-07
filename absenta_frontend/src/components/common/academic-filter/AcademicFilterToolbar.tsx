@@ -11,7 +11,9 @@ import {
   Search, 
   X,
   RotateCcw,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Calendar,
+  ChevronDown
 } from 'lucide-react';
 import type { AcademicFilterToolbarProps } from './types';
 
@@ -106,6 +108,11 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar(r
     cohortStages = [],
     onJumpCohortStage,
 
+    activeTpYear,
+    activeSemester,
+    selectedTahunPelajaranNama,
+    selectedSemesterNama,
+
     onReset,
     onAdd,
     addLabel = 'Tambah Data',
@@ -130,12 +137,64 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar(r
   const isMobile = useIsMobile(768);
   const effectiveVariant = variant === 'card' && isMobile ? 'mini' : variant;
 
+  const hasCohortBadges =
+    enableKelas &&
+    enableCohort &&
+    cohortStages.length > 0 &&
+    cohortStages.some((s) => s.is_available);
+
+  const hasStandardActions = Boolean(onAdd || onImport || onExportExcel || onExportPdf || actionsRight);
+
+  // Deteksi filter periode murni (hanya Tahun Pelajaran & Semester aktif, tanpa filter kelas/mapel/aksi)
+  const isPurePeriodFilter = Boolean(
+    enableTp &&
+    enableSemester &&
+    !enableTingkat &&
+    !enableKelas &&
+    !enableMitra &&
+    !enableMapel &&
+    !enableGuru &&
+    !enableSiswa &&
+    !enableSearch &&
+    !enableGender &&
+    !enableStatusSiswa &&
+    !enableBulan &&
+    !enableTanggal &&
+    !hasStandardActions &&
+    !actionsLeft
+  );
+
+  const isMobilePeriodPill = isPurePeriodFilter && (effectiveVariant === 'compact' || isMobile);
+  const [isPeriodePillExpanded, setIsPeriodePillExpanded] = React.useState(false);
+
+  const currentTpLabel = React.useMemo(() => {
+    if (selectedTahunPelajaranNama) return selectedTahunPelajaranNama;
+    const found = tpOptions.find((t) => t.value === values.tahunPelajaranId);
+    if (found?.label) return found.label.replace(/\s*([⭐★])\s*/g, '').trim();
+    return activeTpYear?.tahun || '2026/2027';
+  }, [selectedTahunPelajaranNama, tpOptions, values.tahunPelajaranId, activeTpYear]);
+
+  const currentSemLabel = React.useMemo(() => {
+    if (selectedSemesterNama) return selectedSemesterNama;
+    const found = semesterOptions.find((s) => s.value === values.semesterId);
+    if (found?.label) return found.label.replace(/\s*([⭐★])\s*/g, '').trim();
+    return activeSemester?.nama_semester || 'Ganjil';
+  }, [selectedSemesterNama, semesterOptions, values.semesterId, activeSemester]);
+
+  const isCurrentActivePeriod = React.useMemo(() => {
+    const isTpMatch = activeTpYear?.id ? values.tahunPelajaranId === activeTpYear.id : true;
+    const isSemMatch = activeSemester?.id ? values.semesterId === activeSemester.id : true;
+    return isTpMatch && isSemMatch;
+  }, [activeTpYear, activeSemester, values.tahunPelajaranId, values.semesterId]);
+
   const containerClasses = cn(
     'relative transition-all',
     effectiveVariant === 'card' &&
       'p-3 sm:p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 shadow-2xs',
     effectiveVariant === 'compact' &&
-      'p-2 sm:p-2.5 rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/30',
+      (isMobilePeriodPill
+        ? 'w-full'
+        : 'p-2 sm:p-2.5 rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/30'),
     effectiveVariant === 'sidebar' &&
       'p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs w-full',
     effectiveVariant === 'mini' &&
@@ -145,14 +204,6 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar(r
       '!border-2 !border-rose-500 shadow-md shadow-rose-500/10 ring-2 ring-rose-500/20',
     className
   );
-
-  const hasCohortBadges =
-    enableKelas &&
-    enableCohort &&
-    cohortStages.length > 0 &&
-    cohortStages.some((s) => s.is_available);
-
-  const hasStandardActions = Boolean(onAdd || onImport || onExportExcel || onExportPdf || actionsRight);
 
   const resolvedGenderOptions = genderOptions.length > 0 ? genderOptions : [
     { value: '', label: 'Semua' },
@@ -197,7 +248,101 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar(r
           AcademicFilter Engine
         </span>
       )}
-      <div className="flex flex-col gap-3.5">
+
+      {isMobilePeriodPill ? (
+        <div className="w-full space-y-2.5">
+          {/* ── 1. RAMPING PERIODE PILL (HUMAN-FIRST UI) ── */}
+          <div className="flex items-center justify-between gap-2 min-h-[38px] px-1 sm:px-1.5">
+            <button
+              type="button"
+              onClick={() => setIsPeriodePillExpanded((prev) => !prev)}
+              className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer select-none text-left"
+              aria-label="Atur Periode Akademik"
+            >
+              <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <Calendar size={14} className="stroke-[2.2]" />
+              </div>
+              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 shrink-0">
+                  Periode:
+                </span>
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                  {currentTpLabel} • {currentSemLabel}
+                </span>
+                {isCurrentActivePeriod && (
+                  <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/60 shrink-0 leading-none">
+                    Aktif ⭐
+                  </span>
+                )}
+              </div>
+            </button>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              {!isCurrentActivePeriod && onReset && (
+                <button
+                  type="button"
+                  onClick={onReset}
+                  className="text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:underline px-2 py-1 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/40 cursor-pointer transition-colors"
+                  title="Kembali ke Periode Sekarang"
+                >
+                  Ke Periode Sekarang
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsPeriodePillExpanded((prev) => !prev)}
+                className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+              >
+                <span className="text-[11px] font-bold">{isPeriodePillExpanded ? 'Tutup' : 'Ubah'}</span>
+                <ChevronDown size={13} className={cn("transition-transform duration-200", isPeriodePillExpanded && "rotate-180")} />
+              </button>
+            </div>
+          </div>
+
+          {/* ── 2. ACCORDION DROPDOWN FORM SAAT DI-EXPAND ── */}
+          {isPeriodePillExpanded && (
+            <div className="pt-2 pb-1 border-t border-slate-100 dark:border-slate-800 animate-in fade-in duration-150 space-y-2.5">
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="space-y-1">
+                  <label htmlFor="filter-tp-pill" className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block ml-0.5">
+                    Tahun Ajaran
+                  </label>
+                  <Suspense fallback={<SuspenseFallback />}>
+                    <SearchableSelect
+                      id="filter-tp-pill"
+                      aria-label="Pilih Tahun Ajaran"
+                      value={values.tahunPelajaranId}
+                      onValueChange={(v) => setTahunPelajaranId?.(v)}
+                      options={tpOptions}
+                      isLoading={isLoadingTp}
+                      placeholder="Pilih Tahun..."
+                      triggerClassName="h-9 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
+                    />
+                  </Suspense>
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="filter-sem-pill" className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block ml-0.5">
+                    Semester
+                  </label>
+                  <Suspense fallback={<SuspenseFallback />}>
+                    <SearchableSelect
+                      id="filter-sem-pill"
+                      aria-label="Pilih Semester"
+                      value={values.semesterId}
+                      onValueChange={(v) => setSemesterId?.(v)}
+                      options={semesterOptions}
+                      isLoading={isLoadingSem}
+                      placeholder="Pilih Semester..."
+                      triggerClassName="h-9 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
+                    />
+                  </Suspense>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3.5">
         {/* Top/Left Action bar (jika ada actionsLeft) */}
         {actionsLeft && (
           <div className="flex items-center justify-between pb-1 border-b border-slate-200/60 dark:border-slate-800/60">
@@ -716,6 +861,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar(r
           </div>
         )}
       </div>
+      )}
     </div>
   );
 });

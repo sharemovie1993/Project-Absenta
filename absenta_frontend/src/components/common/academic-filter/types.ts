@@ -213,6 +213,12 @@ export interface AcademicFilterToolbarProps {
   suggestedStage?: CohortLineageStage | null;
   onJumpCohortStage?: (stage: CohortLineageStage) => void;
 
+  // Derived Context Labels
+  selectedTahunPelajaranNama?: string;
+  selectedSemesterNama?: string;
+  activeTpYear?: { id: string; tahun: string; nama?: string; is_active?: boolean } | null;
+  activeSemester?: { id: string; nama_semester: string; is_active: boolean } | null;
+
   // Standard CRUD / Action buttons
   onReset?: () => void;
   onAdd?: () => void;

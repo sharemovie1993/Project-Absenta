@@ -514,6 +514,29 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     return '';
   }, [semesterOptions, semesterId, semesterRawList, activeSemester]);
 
+  const resolvedActiveTpYear = useMemo(() => {
+    const selectedTpObj = tpRawList?.find((y) => y.id === tahunPelajaranId) || activeTp || null;
+    return selectedTpObj
+      ? {
+          id: selectedTpObj.id,
+          tahun: selectedTpObj.tahun,
+          nama: (selectedTpObj as any).nama || selectedTpObj.tahun,
+          is_active: Boolean(selectedTpObj.is_active),
+        }
+      : null;
+  }, [tpRawList, tahunPelajaranId, activeTp]);
+
+  const resolvedActiveSemester = useMemo(() => {
+    const semObj = semesterRawList?.find((s) => s.id === semesterId) || activeSemester;
+    return semObj
+      ? {
+          id: semObj.id,
+          nama_semester: (semObj.nama_semester || (semObj as any).nama || '').replace(/\s*([★⭐])\s*/g, '').trim(),
+          is_active: Boolean(semObj.is_active),
+        }
+      : null;
+  }, [semesterRawList, semesterId, activeSemester]);
+
   // ── 6. Assemble Toolbar Props ──────────────────────────────────────────────
   const toolbarProps: AcademicFilterToolbarProps = {
     enableTp,
@@ -535,6 +558,11 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
       ...values,
       searchQuery, // input gets immediate non-debounced string
     },
+
+    selectedTahunPelajaranNama,
+    selectedSemesterNama,
+    activeTpYear: resolvedActiveTpYear,
+    activeSemester: resolvedActiveSemester,
 
     setTahunPelajaranId: handleTpChange,
     setSemesterId,
@@ -635,27 +663,8 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
           is_active: Boolean(activeTp.is_active),
         }
       : null,
-    activeTpYear: (() => {
-      const selectedTpObj = tpRawList?.find((y) => y.id === tahunPelajaranId) || activeTp || null;
-      return selectedTpObj
-        ? {
-            id: selectedTpObj.id,
-            tahun: selectedTpObj.tahun,
-            nama: (selectedTpObj as any).nama || selectedTpObj.tahun,
-            is_active: Boolean(selectedTpObj.is_active),
-          }
-        : null;
-    })(),
-    activeSemester: (() => {
-      const semObj = semesterRawList?.find((s) => s.id === semesterId) || activeSemester;
-      return semObj
-        ? {
-            id: semObj.id,
-            nama_semester: (semObj.nama_semester || (semObj as any).nama || '').replace(/\s*([★⭐])\s*/g, '').trim(),
-            is_active: Boolean(semObj.is_active),
-          }
-        : null;
-    })(),
+    activeTpYear: resolvedActiveTpYear,
+    activeSemester: resolvedActiveSemester,
     selectedTahunPelajaranNama,
     selectedSemesterNama,
     selectedKelasLabel,
