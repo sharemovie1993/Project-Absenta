@@ -35,6 +35,11 @@ import { toLocalMonth } from '@/utils/attendance/time';
 import { TeacherAttendanceLeaderboardModal } from '@/components/attendance/my_attendance/TeacherAttendanceLeaderboardModal';
 import { KepsekDashboardSkeleton } from './kepsek/KepsekDashboardSkeleton';
 import type { KepsekTabId, KepsekNavTabItem } from './kepsek/types';
+import { 
+  UniversalMobileSubtabSidebar, 
+  MobileSubtabBar, 
+  useMobileSubtabSidebar 
+} from './common/UniversalMobileSubtabSidebar';
 import toast from 'react-hot-toast';
 
 // Subtabs
@@ -71,6 +76,7 @@ export const KepalaSekolahDashboard: React.FC<KepalaSekolahDashboardProps> = Rea
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isTeacherLeaderboardOpen, setIsTeacherLeaderboardOpen] = useState(false);
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
 
   // Active Tab State with Fallback Priority: searchParam -> currentPillar -> 'ringkasan'
   const [activeTab, setActiveTab] = useState<KepsekTabId>(() => {
@@ -365,6 +371,17 @@ export const KepalaSekolahDashboard: React.FC<KepalaSekolahDashboardProps> = Rea
               <span className="hidden sm:inline">Filter</span>
             </button>
 
+            {/* Quick Trigger Subtab Sidebar */}
+            <button
+              type="button"
+              onClick={openMobileSidebar}
+              className="lg:hidden p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs"
+              title="Buka Menu Sidebar Subtab"
+              aria-label="Buka Menu Sidebar Subtab"
+            >
+              <span className="text-[10.5px]">Subtab ({navTabs.length})</span>
+            </button>
+
             {/* Refresh Button */}
             <button
               type="button"
@@ -388,6 +405,30 @@ export const KepalaSekolahDashboard: React.FC<KepalaSekolahDashboardProps> = Rea
             />
           </div>
         )}
+
+        {/* Mobile Subtab Bar with Dedicated Sidebar Trigger */}
+        <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 lg:hidden">
+          <MobileSubtabBar
+            tabs={navTabs}
+            activeTab={activeTab}
+            onOpenSidebar={openMobileSidebar}
+            onSelectTab={(tabId) => handleTabSelect(tabId as KepsekTabId)}
+            roleBadge="KEPALA SEKOLAH"
+          />
+        </div>
+
+        {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
+        <UniversalMobileSubtabSidebar
+          isOpen={isMobileSidebarOpen}
+          onClose={() => setIsMobileSidebarOpen(false)}
+          title="Overview Kepala Sekolah"
+          subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • ${semNama}`}
+          roleBadge="KEPALA SEKOLAH"
+          roleIcon={Award}
+          tabs={navTabs}
+          activeTab={activeTab}
+          onSelectTab={(tabId) => handleTabSelect(tabId as KepsekTabId)}
+        />
       </div>
 
       {/* 2. Desktop 2-Column Sidebar Layout */}

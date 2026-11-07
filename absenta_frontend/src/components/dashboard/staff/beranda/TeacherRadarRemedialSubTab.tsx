@@ -39,6 +39,8 @@ export interface UniversalRadarRemedialProps {
   guruId?: string;
   kelasId?: string;
   kelasNama?: string;
+  tahunPelajaranId?: string;
+  semesterId?: string;
   roleMode?: 'guru' | 'walas';
   className?: string;
 }
@@ -47,6 +49,8 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
   guruId,
   kelasId,
   kelasNama,
+  tahunPelajaranId: propTpId,
+  semesterId: propSemId,
   roleMode = 'guru',
   className,
 }) => {
@@ -75,14 +79,17 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
     enableSemester: true,
   });
 
+  const effectiveTpId = propTpId || activeYear?.id;
+  const effectiveSemId = propSemId || activeSemester?.id;
+
   const { data: radarRes, isLoading, refetch } = useQuery({
-    queryKey: ['rapor-radar-remedial', guruId, kelasId, roleMode, activeYear?.id, activeSemester?.id],
+    queryKey: ['rapor-radar-remedial', guruId, kelasId, roleMode, effectiveTpId, effectiveSemId],
     queryFn: () => raporApi.getRadarRemedial({
       guru_id: roleMode === 'walas' ? undefined : guruId,
       kelas_id: kelasId || undefined,
       role_mode: roleMode,
-      tahun_pelajaran_id: activeYear?.id,
-      semester_id: activeSemester?.id,
+      tahun_pelajaran_id: effectiveTpId,
+      semester_id: effectiveSemId,
       kkm: 70,
     }).catch(() => ({ success: true, data: null })),
     staleTime: 30 * 1000,

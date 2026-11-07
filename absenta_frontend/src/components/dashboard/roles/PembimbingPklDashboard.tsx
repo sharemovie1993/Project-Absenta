@@ -24,6 +24,11 @@ import { PklMonitoringTab } from './pembimbing-pkl/tabs/PklMonitoringTab';
 import { PklPenilaianTab } from './pembimbing-pkl/tabs/PklPenilaianTab';
 import { PklRekapTab } from './pembimbing-pkl/tabs/PklRekapTab';
 import { extractLogbooksFromPenempatan, rejectLogbookAction, mapSiswaBimbingan } from './pembimbing-pkl/logbookUtils';
+import { 
+  UniversalMobileSubtabSidebar, 
+  MobileSubtabBar, 
+  useMobileSubtabSidebar 
+} from './common/UniversalMobileSubtabSidebar';
 
 const AbsensiPklView = lazy(() =>
   import('@/components/hubin/absensi/AbsensiPklView').then((m) => ({ default: m.AbsensiPklView }))
@@ -68,6 +73,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
   const [activeTab, setActiveTab] = useState<PklTabId>(() => (subtabParam && validTabs.includes(subtabParam) ? subtabParam : 'ringkasan'));
   const [visitedTabs, setVisitedTabs] = useState<Set<PklTabId>>(() => new Set([activeTab]));
   const [monitoringKey, setMonitoringKey] = useState(0);
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
 
   // Synchronize Tab with URL & Keep-Alive Cache
   useEffect(() => {
@@ -419,6 +425,17 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                 <SlidersHorizontal size={13} className="mr-1 text-teal-600" />
                 Filter
               </Button>
+              {/* Quick Trigger Subtab Sidebar */}
+              <button
+                type="button"
+                onClick={openMobileSidebar}
+                className="sm:hidden p-1.5 rounded-xl border border-teal-300 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 text-xs font-bold flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
+                title="Buka Menu Sidebar Subtab"
+                aria-label="Buka Menu Sidebar Subtab"
+              >
+                <span className="text-[10.5px]">Subtab ({navTabs.length})</span>
+              </button>
+
               <Button
                 variant="outline"
                 size="sm"
@@ -439,39 +456,27 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
           </div>
         </div>
 
-        {/* Mobile Horizontal Subtab Strip */}
-        <div className="lg:hidden flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-          {navTabs.map((tab) => {
-            const IconComp = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => handleTabSelect(tab.id)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer',
-                  isActive
-                    ? 'bg-teal-600 text-white shadow-2xs font-black'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-800'
-                )}
-              >
-                <IconComp size={13} className={isActive ? 'text-white' : 'text-slate-400'} />
-                <span>{tab.shortLabel}</span>
-                {tab.badge !== undefined && tab.badge !== null && (
-                  <span
-                    className={cn(
-                      'text-[9px] px-1.5 py-0.2 rounded-full font-bold',
-                      isActive ? 'bg-white/25 text-white' : tab.badgeColor || 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                    )}
-                  >
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+        {/* Mobile Subtab Bar with Dedicated Sidebar Trigger (< lg) */}
+        <MobileSubtabBar
+          tabs={navTabs}
+          activeTab={activeTab}
+          onOpenSidebar={openMobileSidebar}
+          onSelectTab={(tabId) => handleTabSelect(tabId as PklTabId)}
+          roleBadge="PEMBIMBING PKL"
+        />
+
+        {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
+        <UniversalMobileSubtabSidebar
+          isOpen={isMobileSidebarOpen}
+          onClose={() => setIsMobileSidebarOpen(false)}
+          title="Pembimbing PKL"
+          subtitle={`${academicFilter.selectedTpNama || '2026/2027'} • DU/DI Kemitraan`}
+          roleBadge="PEMBIMBING PKL"
+          roleIcon={Briefcase}
+          tabs={navTabs}
+          activeTab={activeTab}
+          onSelectTab={(tabId) => handleTabSelect(tabId as PklTabId)}
+        />
 
         {/* 2. Desktop 2-Column Sidebar Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-4 sm:gap-5 items-start">

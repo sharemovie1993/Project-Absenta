@@ -136,7 +136,7 @@ export const PrintLoanAgreement = React.memo<PrintLoanAgreementProps>(({ loan, c
       {/* Tanda Tangan Terstandarisasi */}
       <div className="pt-6 page-break-inside-avoid">
         <UniversalDocumentSignatures
-          layout="tri_party_row"
+          layout="tri_party_coop"
           showTitimangsa={false}
           overrideSignerLeft={{
             headerPrefix: 'PIHAK PERTAMA,',

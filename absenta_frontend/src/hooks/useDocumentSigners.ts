@@ -39,6 +39,18 @@ export interface UseDocumentSignersParams {
     koordinatorBk?: Partial<SignerPerson>;
     ketuaKoperasi?: Partial<SignerPerson>;
     bendaharaKoperasi?: Partial<SignerPerson>;
+    sekretarisKoperasi?: Partial<SignerPerson>;
+    pengawasKoperasi?: Partial<SignerPerson>;
+    manajerTokoKoperasi?: Partial<SignerPerson>;
+    bkk?: Partial<SignerPerson>;
+    pembinaEskul?: Partial<SignerPerson>;
+    pembinaTaruna?: Partial<SignerPerson>;
+    tuKeuangan?: Partial<SignerPerson>;
+    tuPersuratan?: Partial<SignerPerson>;
+    tuKepegawaian?: Partial<SignerPerson>;
+    tuSarpras?: Partial<SignerPerson>;
+    petugasGerbang?: Partial<SignerPerson>;
+    petugasKelas?: Partial<SignerPerson>;
   };
 }
 
@@ -59,6 +71,18 @@ export interface DocumentSignersResult {
   koordinatorBk: SignerPerson;
   ketuaKoperasi: SignerPerson;
   bendaharaKoperasi: SignerPerson;
+  sekretarisKoperasi: SignerPerson;
+  pengawasKoperasi: SignerPerson;
+  manajerTokoKoperasi: SignerPerson;
+  bkk: SignerPerson;
+  pembinaEskul: SignerPerson;
+  pembinaTaruna: SignerPerson;
+  tuKeuangan: SignerPerson;
+  tuPersuratan: SignerPerson;
+  tuKepegawaian: SignerPerson;
+  tuSarpras: SignerPerson;
+  petugasGerbang: SignerPerson;
+  petugasKelas: SignerPerson;
   parent: SignerPerson;
   dudi: SignerPerson;
   isLoading: boolean;
@@ -344,7 +368,66 @@ export const useDocumentSigners = (params: UseDocumentSignersParams = {}): Docum
     const bendaharaKopAssign = resolveLeaderAssignment(bendaharaKopAssigns);
     const bendaharaKoperasi = mapAssignToSigner(bendaharaKopAssign, 'Bendahara Koperasi', customSigners?.bendaharaKoperasi);
 
-    // ── N. Orang Tua / Wali Siswa ──
+    const sekretarisKopAssigns = getAssignmentsForCode(['SEKRETARIS_KOPERASI', 'KOPERASI_SEKRETARIS']);
+    const sekretarisKopAssign = resolveLeaderAssignment(sekretarisKopAssigns);
+    const sekretarisKoperasi = mapAssignToSigner(sekretarisKopAssign, 'Sekretaris Koperasi', customSigners?.sekretarisKoperasi);
+
+    const pengawasKopAssigns = getAssignmentsForCode(['PENGAWAS_KOPERASI', 'KOPERASI_PENGAWAS']);
+    const pengawasKopAssign = resolveLeaderAssignment(pengawasKopAssigns);
+    const pengawasKoperasi = mapAssignToSigner(pengawasKopAssign, 'Pengawas Koperasi', customSigners?.pengawasKoperasi);
+
+    const manajerTokoKopAssigns = getAssignmentsForCode(['MANAJER_TOKO_KOPERASI', 'PENGELOLA_TOKO_KOPERASI']);
+    const manajerTokoKopAssign = resolveLeaderAssignment(manajerTokoKopAssigns);
+    const manajerTokoKoperasi = mapAssignToSigner(manajerTokoKopAssign, 'Pengelola Usaha Koperasi', customSigners?.manajerTokoKoperasi);
+
+    // ── N. Resolve BKK (Bursa Kerja Khusus) ──
+    const bkkAssigns = getAssignmentsForCode(['BKK', 'BURSA_KERJA_KHUSUS', 'KETUA_BKK']);
+    const bkkAssign = resolveLeaderAssignment(bkkAssigns, 'KETUA_BKK');
+    const bkk = mapAssignToSigner(bkkAssign, 'Ketua BKK', customSigners?.bkk);
+
+    // ── O. Resolve Pembina Ekstrakurikuler ──
+    const eskulAssigns = getAssignmentsForCode(['PEMBINA_ESKUL', 'ESKUL']);
+    const eskulAssign = resolveLeaderAssignment(eskulAssigns);
+    const pembinaEskul = mapAssignToSigner(eskulAssign, 'Pembina Ekstrakurikuler', customSigners?.pembinaEskul);
+
+    // ── P. Resolve Pembina Taruna / Ketarunaan ──
+    const tarunaAssigns = getAssignmentsForCode(['KETUA_PEMBINA_TARUNA', 'PEMBINA_TARUNA', 'KETARUNAAN']);
+    const tarunaAssign = resolveLeaderAssignment(tarunaAssigns);
+    const pembinaTaruna = mapAssignToSigner(tarunaAssign, 'Ketua Pembina Taruna', customSigners?.pembinaTaruna);
+
+    // ── Q. Resolve Staf Spesifik Tata Usaha ──
+    const tuKeuanganAssigns = getAssignmentsForCode(['TU_KEUANGAN', 'BENDAHARA_SEKOLAH', 'BENDAHARA']);
+    const tuKeuanganAssign = resolveLeaderAssignment(tuKeuanganAssigns);
+    const tuKeuangan = mapAssignToSigner(tuKeuanganAssign, 'Staf Keuangan / Bendahara', customSigners?.tuKeuangan);
+
+    const tuPersuratanAssigns = getAssignmentsForCode(['TU_PERSURATAN', 'STAF_PERSURATAN']);
+    const tuPersuratanAssign = resolveLeaderAssignment(tuPersuratanAssigns);
+    const tuPersuratan = mapAssignToSigner(tuPersuratanAssign, 'Staf Persuratan', customSigners?.tuPersuratan);
+
+    const tuKepegawaianAssigns = getAssignmentsForCode(['TU_KEPEGAWAIAN', 'KEPEGAWAIAN', 'DAPODIK']);
+    const tuKepegawaianAssign = resolveLeaderAssignment(tuKepegawaianAssigns);
+    const tuKepegawaian = mapAssignToSigner(tuKepegawaianAssign, 'Staf Kepegawaian & Dapodik', customSigners?.tuKepegawaian);
+
+    const tuSarprasAssigns = getAssignmentsForCode(['TU_SARPRAS', 'STAF_SARPRAS', 'INVENTARIS']);
+    const tuSarprasAssign = resolveLeaderAssignment(tuSarprasAssigns);
+    const tuSarpras = mapAssignToSigner(tuSarprasAssign, 'Staf Inventaris & Logistik', customSigners?.tuSarpras);
+
+    // ── R. Resolve Petugas Operasional (Gerbang & Kelas) ──
+    const gerbangAssigns = getAssignmentsForCode(['GERBANG', 'PETUGAS_GERBANG', 'SATPAM']);
+    const gerbangAssign = resolveLeaderAssignment(gerbangAssigns);
+    const petugasGerbang = mapAssignToSigner(gerbangAssign, 'Petugas Absensi Gerbang', customSigners?.petugasGerbang);
+
+    const kelasAssigns = getAssignmentsForCode(['PETUGAS_KELAS']);
+    let matchedPetugasKelasAssign: any = null;
+    if (kelasId) {
+      matchedPetugasKelasAssign = kelasAssigns.find((a: any) => a.kelas_id === kelasId);
+    }
+    if (!matchedPetugasKelasAssign && kelasAssigns.length > 0) {
+      matchedPetugasKelasAssign = resolveLeaderAssignment(kelasAssigns);
+    }
+    const petugasKelas = mapAssignToSigner(matchedPetugasKelasAssign, 'Petugas Absensi Kelas', customSigners?.petugasKelas);
+
+    // ── S. Orang Tua / Wali Siswa ──
     const parent: SignerPerson = {
       roleTitle: customSigners?.parent?.roleTitle || 'Orang Tua / Wali,',
       personName: customSigners?.parent?.personName || '................................',
@@ -352,7 +435,7 @@ export const useDocumentSigners = (params: UseDocumentSignersParams = {}): Docum
       isAssigned: Boolean(customSigners?.parent?.personName),
     };
 
-    // ── O. Mitra DUDI / Industri ──
+    // ── T. Mitra DUDI / Industri ──
     const dudi: SignerPerson = {
       roleTitle: customSigners?.dudi?.roleTitle || 'Pembimbing DUDI / Industri,',
       personName: customSigners?.dudi?.personName || '................................',
@@ -405,6 +488,18 @@ export const useDocumentSigners = (params: UseDocumentSignersParams = {}): Docum
       koordinatorBk,
       ketuaKoperasi,
       bendaharaKoperasi,
+      sekretarisKoperasi,
+      pengawasKoperasi,
+      manajerTokoKoperasi,
+      bkk,
+      pembinaEskul,
+      pembinaTaruna,
+      tuKeuangan,
+      tuPersuratan,
+      tuKepegawaian,
+      tuSarpras,
+      petugasGerbang,
+      petugasKelas,
       parent,
       dudi,
       isLoading: isLoadingStruktur || isLoadingRaporSettings || isLoadingSekolah,

@@ -10,8 +10,12 @@ export type DocumentSignatureLayout =
   | 'single_kepsek'
   | 'dual_walas_kepsek'
   | 'dual_unit_kepsek'
+  | 'dual_tu_kepsek'
+  | 'dual_custom'
   | 'triangle_rapor'
-  | 'tri_party_row';
+  | 'triangle_2tier'
+  | 'tri_party_row'
+  | 'tri_party_coop';
 
 export interface UniversalDocumentSignaturesProps extends UseDocumentSignersParams {
   layout: DocumentSignatureLayout;
@@ -21,6 +25,13 @@ export interface UniversalDocumentSignaturesProps extends UseDocumentSignersPara
   fontFamilyClass?: string;
   unitRoleTitle?: string; // Optional custom role title for dual_unit_kepsek (e.g. "Ketua Program Keahlian")
   notesOrApprovalLabel?: string; // e.g. "Mengetahui," or "Menyetujui,"
+  verifierLabel?: string; // e.g. "Diverifikasi oleh," for triangle_2tier left
+  makerLabel?: string; // e.g. "Dibuat oleh," for triangle_2tier right
+  parentName?: string; // Convenience prop for triangle_rapor parent name
+  signerLeft?: SignerPerson;
+  signerRight?: SignerPerson;
+  signerCenter?: SignerPerson;
+  signerBottom?: SignerPerson;
   overrideSignerLeft?: Partial<SignerPerson> & { headerPrefix?: string; topDate?: string };
   overrideSignerRight?: Partial<SignerPerson> & { headerPrefix?: string; topDate?: string };
   overrideSignerCenter?: Partial<SignerPerson> & { headerPrefix?: string; topDate?: string };
@@ -40,6 +51,13 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
   fontFamilyClass = 'font-serif',
   unitRoleTitle,
   notesOrApprovalLabel = 'Mengetahui,',
+  verifierLabel = 'Diverifikasi oleh,',
+  makerLabel = 'Dibuat oleh,',
+  parentName,
+  signerLeft,
+  signerRight,
+  signerCenter,
+  signerBottom,
   overrideSignerLeft,
   overrideSignerRight,
   overrideSignerCenter,
@@ -90,7 +108,7 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
         {headerPrefix && <div className="font-normal">{headerPrefix}</div>}
 
         {/* Official Role Title */}
-        <div className="font-normal">{overrideRoleTitle || person.roleTitle}</div>
+        <div className="font-normal whitespace-pre-line">{overrideRoleTitle || person.roleTitle}</div>
 
         {/* Spacing for physical signature & stamp */}
         <div style={{ height: `${spacingHeightMm}mm` }} className="shrink-0" />
@@ -123,7 +141,8 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
 
   // ── PRESET 1: Single Signer (Kepala Sekolah Kanan Bawah) ──
   if (layout === 'single_kepsek') {
-    const person = { ...signers.kepsek, ...(overrideSignerRight || overrideSignerBottom) };
+    const basePerson = signerRight || signerBottom || signers.kepsek;
+    const person = { ...basePerson, ...(overrideSignerRight || overrideSignerBottom) };
     const date = (overrideSignerRight?.topDate !== undefined)
       ? overrideSignerRight.topDate
       : (showTitimangsa ? signers.titimangsa : undefined);
@@ -141,8 +160,10 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
 
   // ── PRESET 2: Dual Signer (Wali Kelas Kiri & Kepsek Kanan) ──
   if (layout === 'dual_walas_kepsek') {
-    const leftPerson = { ...signers.walas, ...overrideSignerLeft };
-    const rightPerson = { ...signers.kepsek, ...overrideSignerRight };
+    const baseLeft = signerLeft || signers.walas;
+    const baseRight = signerRight || signers.kepsek;
+    const leftPerson = { ...baseLeft, ...overrideSignerLeft };
+    const rightPerson = { ...baseRight, ...overrideSignerRight };
     const rightDate = (overrideSignerRight?.topDate !== undefined)
       ? overrideSignerRight.topDate
       : (showTitimangsa ? signers.titimangsa : undefined);
@@ -168,8 +189,10 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
 
   // ── PRESET 3: Dual Signer Unit / Kaprog (Kaprog/Waka Kiri & Kepsek Kanan) ──
   if (layout === 'dual_unit_kepsek') {
-    const unitPerson = { ...signers.kaprog, ...overrideSignerLeft };
-    const kepsekPerson = { ...signers.kepsek, ...overrideSignerRight };
+    const baseUnit = signerLeft || signers.kaprog;
+    const baseKepsek = signerRight || signers.kepsek;
+    const unitPerson = { ...baseUnit, ...overrideSignerLeft };
+    const kepsekPerson = { ...baseKepsek, ...overrideSignerRight };
     const rightDate = (overrideSignerRight?.topDate !== undefined)
       ? overrideSignerRight.topDate
       : (showTitimangsa ? signers.titimangsa : undefined);
@@ -194,11 +217,69 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
     );
   }
 
-  // ── PRESET 4: Triangle Rapor (Orang Tua Kiri, Walas Kanan, Mengetahui Kepsek Bawah Tengah) ──
+  // ── PRESET 4: Dual TU / Keuangan (Staf TU / Bendahara Kiri & Kepsek / Kepala TU Kanan) ──
+  if (layout === 'dual_tu_kepsek') {
+    const baseLeft = signerLeft || signers.tuKeuangan || signers.kepalaTu;
+    const baseRight = signerRight || signers.kepsek;
+    const leftPerson = { ...baseLeft, ...overrideSignerLeft };
+    const rightPerson = { ...baseRight, ...overrideSignerRight };
+    const rightDate = (overrideSignerRight?.topDate !== undefined)
+      ? overrideSignerRight.topDate
+      : (showTitimangsa ? signers.titimangsa : undefined);
+    return (
+      <div className={cn(containerStyle, 'flex items-start justify-between pt-2')}>
+        {renderSignerBox(leftPerson, {
+          headerPrefix: overrideSignerLeft?.headerPrefix,
+          align: 'left',
+          widthClass: 'w-[75mm]',
+        })}
+
+        {renderSignerBox(rightPerson, {
+          headerPrefix: overrideSignerRight?.headerPrefix || notesOrApprovalLabel,
+          topDate: rightDate,
+          align: 'left',
+          widthClass: 'w-[75mm]',
+        })}
+      </div>
+    );
+  }
+
+  // ── PRESET 5: Dual Custom (Dua Pihak Fleksibel Bebas Role) ──
+  if (layout === 'dual_custom') {
+    const baseLeft = signerLeft || { roleTitle: 'Pihak Pertama,', personName: '................................', isAssigned: false };
+    const baseRight = signerRight || { roleTitle: 'Pihak Kedua,', personName: '................................', isAssigned: false };
+    const leftPerson = { ...baseLeft, ...overrideSignerLeft };
+    const rightPerson = { ...baseRight, ...overrideSignerRight };
+    const rightDate = (overrideSignerRight?.topDate !== undefined)
+      ? overrideSignerRight.topDate
+      : (showTitimangsa ? signers.titimangsa : undefined);
+    return (
+      <div className={cn(containerStyle, 'flex items-start justify-between pt-2')}>
+        {renderSignerBox(leftPerson, {
+          headerPrefix: overrideSignerLeft?.headerPrefix,
+          align: 'left',
+          widthClass: 'w-[75mm]',
+        })}
+
+        {renderSignerBox(rightPerson, {
+          headerPrefix: overrideSignerRight?.headerPrefix,
+          topDate: rightDate,
+          align: 'left',
+          widthClass: 'w-[75mm]',
+        })}
+      </div>
+    );
+  }
+
+  // ── PRESET 6: Triangle Rapor (Orang Tua Kiri, Walas Kanan, Mengetahui Kepsek Bawah Tengah) ──
   if (layout === 'triangle_rapor') {
-    const leftPerson = { ...signers.parent, ...overrideSignerLeft };
-    const rightPerson = { ...signers.walas, ...overrideSignerRight };
-    const bottomPerson = { ...signers.kepsek, ...(overrideSignerCenter || overrideSignerBottom) };
+    const parentPerson = parentName ? { ...signers.parent, personName: parentName, isAssigned: true } : signers.parent;
+    const baseLeft = signerLeft || parentPerson;
+    const baseRight = signerRight || signers.walas;
+    const baseBottom = signerBottom || signerCenter || signers.kepsek;
+    const leftPerson = { ...baseLeft, ...overrideSignerLeft };
+    const rightPerson = { ...baseRight, ...overrideSignerRight };
+    const bottomPerson = { ...baseBottom, ...(overrideSignerCenter || overrideSignerBottom) };
     const rightDate = (overrideSignerRight?.topDate !== undefined)
       ? overrideSignerRight.topDate
       : (showTitimangsa ? signers.titimangsa : undefined);
@@ -235,11 +316,56 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
     );
   }
 
-  // ── PRESET 5: Tri-Party Row (DUDI, Kaprog, Kepsek Sejajar 3 Kolom) ──
+  // ── PRESET 7: Triangle 2-Tier Standar Dinas (Verifikator Kiri, Pembuat Kanan, Pengesah Tengah Bawah) ──
+  if (layout === 'triangle_2tier') {
+    const baseLeft = signerLeft || signers.wakaSarpras || signers.wakaKurikulum;
+    const baseRight = signerRight || signers.kaprog;
+    const baseBottom = signerBottom || signerCenter || signers.kepsek;
+    const leftPerson = { ...baseLeft, ...overrideSignerLeft };
+    const rightPerson = { ...baseRight, ...overrideSignerRight };
+    const bottomPerson = { ...baseBottom, ...(overrideSignerCenter || overrideSignerBottom) };
+    const rightDate = (overrideSignerRight?.topDate !== undefined)
+      ? overrideSignerRight.topDate
+      : (showTitimangsa ? signers.titimangsa : undefined);
+    return (
+      <div className={cn(containerStyle, 'space-y-4 pt-2')}>
+        {/* Baris 1: Verifikator (Waka) di Kiri & Pembuat (Kaprog/Staf) di Kanan */}
+        <div className="flex items-start justify-between w-full">
+          {renderSignerBox(leftPerson, {
+            headerPrefix: overrideSignerLeft?.headerPrefix || verifierLabel,
+            align: 'left',
+            widthClass: 'w-[75mm]',
+            overrideRoleTitle: unitRoleTitle,
+          })}
+
+          {renderSignerBox(rightPerson, {
+            headerPrefix: overrideSignerRight?.headerPrefix || makerLabel,
+            topDate: rightDate,
+            align: 'left',
+            widthClass: 'w-[75mm]',
+          })}
+        </div>
+
+        {/* Baris 2: Mengetahui / Menyetujui Kepala Sekolah di Tengah Bawah */}
+        <div className="flex flex-col items-center justify-center text-center w-full pt-1">
+          {renderSignerBox(bottomPerson, {
+            headerPrefix: overrideSignerCenter?.headerPrefix || overrideSignerBottom?.headerPrefix || notesOrApprovalLabel,
+            align: 'center',
+            widthClass: 'w-[85mm]',
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ── PRESET 8: Tri-Party Row (DUDI, Kaprog, Kepsek Sejajar 3 Kolom) ──
   if (layout === 'tri_party_row') {
-    const leftPerson = { ...signers.dudi, ...overrideSignerLeft };
-    const centerPerson = { ...signers.kaprog, ...overrideSignerCenter };
-    const rightPerson = { ...signers.kepsek, ...overrideSignerRight };
+    const baseLeft = signerLeft || signers.dudi;
+    const baseCenter = signerCenter || signers.kaprog;
+    const baseRight = signerRight || signers.kepsek;
+    const leftPerson = { ...baseLeft, ...overrideSignerLeft };
+    const centerPerson = { ...baseCenter, ...overrideSignerCenter };
+    const rightPerson = { ...baseRight, ...overrideSignerRight };
     const rightDate = (overrideSignerRight?.topDate !== undefined)
       ? overrideSignerRight.topDate
       : (showTitimangsa ? signers.titimangsa : undefined);
@@ -265,6 +391,46 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
         {/* Kolom 3: Titimangsa + Mengetahui Kepala Sekolah */}
         {renderSignerBox(rightPerson, {
           headerPrefix: overrideSignerRight?.headerPrefix || notesOrApprovalLabel,
+          topDate: rightDate,
+          align: 'center',
+          widthClass: 'w-full',
+        })}
+      </div>
+    );
+  }
+
+  // ── PRESET 9: Tri-Party Koperasi (Ketua Koperasi, Peminjam/Anggota, Pengawas/Kepsek) ──
+  if (layout === 'tri_party_coop') {
+    const baseLeft = signerLeft || signers.ketuaKoperasi;
+    const baseCenter = signerCenter || { roleTitle: 'Peminjam (Anggota)', personName: '................................', isAssigned: false };
+    const baseRight = signerRight || signers.kepsek;
+    const leftPerson = { ...baseLeft, ...overrideSignerLeft };
+    const centerPerson = { ...baseCenter, ...overrideSignerCenter };
+    const rightPerson = { ...baseRight, ...overrideSignerRight };
+    const rightDate = (overrideSignerRight?.topDate !== undefined)
+      ? overrideSignerRight.topDate
+      : (showTitimangsa ? signers.titimangsa : undefined);
+    return (
+      <div className={cn(containerStyle, 'grid grid-cols-3 gap-3 items-start pt-2')}>
+        {/* Kolom 1: Pihak Pertama (Ketua Koperasi / Pengurus) */}
+        {renderSignerBox(leftPerson, {
+          headerPrefix: overrideSignerLeft?.headerPrefix || 'PIHAK PERTAMA,',
+          topDate: overrideSignerLeft?.topDate,
+          align: 'center',
+          widthClass: 'w-full',
+        })}
+
+        {/* Kolom 2: Pihak Kedua (Peminjam / Anggota Koperasi) */}
+        {renderSignerBox(centerPerson, {
+          headerPrefix: overrideSignerCenter?.headerPrefix || 'PIHAK KEDUA,',
+          topDate: overrideSignerCenter?.topDate,
+          align: 'center',
+          widthClass: 'w-full',
+        })}
+
+        {/* Kolom 3: Mengetahui (Kepala Sekolah / Pembina Koperasi) */}
+        {renderSignerBox(rightPerson, {
+          headerPrefix: overrideSignerRight?.headerPrefix || notesOrApprovalLabel || 'MENGETAHUI,',
           topDate: rightDate,
           align: 'center',
           widthClass: 'w-full',

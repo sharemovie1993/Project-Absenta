@@ -27,6 +27,7 @@ import { getTuStats } from '@/api/dashboard.api';
 import { TuBerandaTab } from './tu/tabs/TuBerandaTab';
 import type { TuTabId, TuNavTabItem, TuStatsData } from './tu/types';
 import { DivisiStrukturOrganisasiView } from '@/components/academic/struktur/DivisiStrukturOrganisasiView';
+import { UniversalMobileSubtabSidebar, MobileSubtabBar, useMobileSubtabSidebar } from './common/UniversalMobileSubtabSidebar';
 
 // Code-splitting Universal Views (Pilar 21B & TBT Optimization)
 const SuratMasukView = lazy(() =>
@@ -119,6 +120,7 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
   }, []);
 
   // Floating Modals State (1-Click Action Center)
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
   const [isSuratKetModalOpen, setIsSuratKetModalOpen] = useState(false);
   const [isMutasiModalOpen, setIsMutasiModalOpen] = useState(false);
   const [isBastModalOpen, setIsBastModalOpen] = useState(false);
@@ -258,12 +260,34 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
         </div>
       </div>
 
-      {/* ─── MOBILE CONTROLS (< lg): COMPACT FILTER ─── */}
+      {/* ─── MOBILE CONTROLS (< lg): COMPACT FILTER & MOBILE SUBTAB SIDEBAR ─── */}
       <div className="lg:hidden space-y-3">
         <AcademicFilterToolbar
           {...academicFilter.toolbarProps}
           variant="compact"
           className="w-full"
+        />
+
+        {/* Mobile Subtab Bar with Dedicated Sidebar Trigger */}
+        <MobileSubtabBar
+          tabs={navTabs}
+          activeTab={activeTab}
+          onOpenSidebar={openMobileSidebar}
+          onSelectTab={(tabId) => handleTabSelect(tabId as TuTabId)}
+          roleBadge="TATA USAHA"
+        />
+
+        {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
+        <UniversalMobileSubtabSidebar
+          isOpen={isMobileSidebarOpen}
+          onClose={() => setIsMobileSidebarOpen(false)}
+          title="Unit Tata Usaha"
+          subtitle={`TP ${academicFilter.selectedTpNama || '2026/2027'} • ${academicFilter.selectedSemNama || 'Semester Ganjil'}`}
+          roleBadge="TATA USAHA"
+          roleIcon={Building2}
+          tabs={navTabs}
+          activeTab={activeTab}
+          onSelectTab={(tabId) => handleTabSelect(tabId as TuTabId)}
         />
       </div>
 

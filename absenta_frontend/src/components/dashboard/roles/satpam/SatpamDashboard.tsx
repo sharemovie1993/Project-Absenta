@@ -28,6 +28,11 @@ import { SatpamBukuTamuTab } from './tabs/SatpamBukuTamuTab';
 import { SatpamIzinKeluarTab } from './tabs/SatpamIzinKeluarTab';
 import { SatpamPelanggaranTab } from './tabs/SatpamPelanggaranTab';
 import { SatpamTrafficTab } from './tabs/SatpamTrafficTab';
+import { 
+  UniversalMobileSubtabSidebar, 
+  MobileSubtabBar, 
+  useMobileSubtabSidebar 
+} from '../common/UniversalMobileSubtabSidebar';
 import type { 
   SatpamTabType, 
   SatpamStats, 
@@ -152,6 +157,7 @@ export const SatpamDashboard: React.FC = () => {
   const { user } = useAuthStore();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentTab = (searchParams.get('tab') as SatpamTabType) || 'scan';
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
 
   const handleTabChange = useCallback(
     (tabId: string) => {
@@ -274,8 +280,30 @@ export const SatpamDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* ── 2. TAB NAVIGATION BAR ──────────────────────────── */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-1.5 shadow-2xs overflow-x-auto no-scrollbar">
+      {/* ── 2. TAB NAVIGATION (MOBILE SIDEBAR + DESKTOP TABS) ── */}
+      <div className="lg:hidden">
+        <MobileSubtabBar
+          tabs={tabsConfig}
+          activeTab={currentTab}
+          onOpenSidebar={openMobileSidebar}
+          onSelectTab={handleTabChange}
+          roleBadge="SATPAM"
+        />
+      </div>
+
+      <UniversalMobileSubtabSidebar
+        isOpen={isMobileSidebarOpen}
+        onClose={() => setIsMobileSidebarOpen(false)}
+        title="Pos Keamanan & Satpam"
+        subtitle="Gerbang Utama & Terminal RFID"
+        roleBadge="SATPAM"
+        roleIcon={ShieldCheck}
+        tabs={tabsConfig}
+        activeTab={currentTab}
+        onSelectTab={handleTabChange}
+      />
+
+      <div className="hidden lg:block bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-1.5 shadow-2xs overflow-x-auto no-scrollbar">
         <TabSwitcher
           tabs={tabsConfig}
           activeTab={currentTab}

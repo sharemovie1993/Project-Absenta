@@ -33,6 +33,11 @@ import { Card } from '@/components/ui/Card';
 import { Button, Badge, Loader } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { getKepegawaianStats } from '@/api/dashboard.api';
+import { 
+  UniversalMobileSubtabSidebar, 
+  MobileSubtabBar, 
+  useMobileSubtabSidebar 
+} from './common/UniversalMobileSubtabSidebar';
 import toast from 'react-hot-toast';
 
 const BukuIndukView = lazy(() =>
@@ -67,6 +72,7 @@ export const KepegawaianDashboard: React.FC<KepegawaianDashboardProps> = ({ user
 
   const [activeTab, setActiveTab] = useState<KepegawaianTabId>('beranda');
   const [visitedTabs, setVisitedTabs] = useState<Set<KepegawaianTabId>>(() => new Set<KepegawaianTabId>(['beranda']));
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
 
   const handleTabSelect = (tabId: KepegawaianTabId) => {
     setActiveTab(tabId);
@@ -265,7 +271,32 @@ export const KepegawaianDashboard: React.FC<KepegawaianDashboardProps> = ({ user
   const renderNavTabs = () => {
     return (
       <div className="w-full max-w-full min-w-0 border-b border-slate-200 dark:border-slate-800">
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2">
+        {/* Mobile Subtab Bar with Dedicated Sidebar Trigger */}
+        <div className="lg:hidden py-2">
+          <MobileSubtabBar
+            tabs={navTabs}
+            activeTab={activeTab}
+            onOpenSidebar={openMobileSidebar}
+            onSelectTab={(tabId) => handleTabSelect(tabId as KepegawaianTabId)}
+            roleBadge="KEPEGAWAIAN"
+          />
+        </div>
+
+        {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
+        <UniversalMobileSubtabSidebar
+          isOpen={isMobileSidebarOpen}
+          onClose={() => setIsMobileSidebarOpen(false)}
+          title="Kepegawaian & PTK"
+          subtitle={`${summary.totalPtk} PTK Terdata • Dapodik Aktif`}
+          roleBadge="KEPEGAWAIAN"
+          roleIcon={Users}
+          tabs={navTabs}
+          activeTab={activeTab}
+          onSelectTab={(tabId) => handleTabSelect(tabId as KepegawaianTabId)}
+        />
+
+        {/* Desktop Nav Tabs */}
+        <div className="hidden lg:flex items-center gap-2 overflow-x-auto no-scrollbar py-2">
           {navTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -274,7 +305,7 @@ export const KepegawaianDashboard: React.FC<KepegawaianDashboardProps> = ({ user
                 key={tab.id}
                 onClick={() => handleTabSelect(tab.id)}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-xs sm:text-sm whitespace-nowrap transition-all",
+                  "flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer",
                   isActive
                     ? "bg-violet-600 text-white shadow-sm"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"

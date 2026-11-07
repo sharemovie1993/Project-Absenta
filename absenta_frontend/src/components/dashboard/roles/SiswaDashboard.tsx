@@ -29,6 +29,11 @@ import { useGerbangAttendanceData } from '@/hooks/attendance/useGerbangAttendanc
 import type { SiswaTabId, SiswaNavTabItem } from './siswa/types';
 import { SiswaDashboardSkeleton } from './siswa/SiswaDashboardSkeleton';
 import { useSiswaDashboardData } from './siswa/useSiswaDashboardData';
+import { 
+  UniversalMobileSubtabSidebar, 
+  MobileSubtabBar, 
+  useMobileSubtabSidebar 
+} from './common/UniversalMobileSubtabSidebar';
 
 // Components
 import { SiswaHeaderBanner } from './siswa/components/SiswaHeaderBanner';
@@ -67,6 +72,7 @@ export const SiswaDashboard: React.FC = () => {
   const activeTab: SiswaTabId = rawTab && validTabs.includes(rawTab) ? rawTab : 'ringkasan';
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
 
   // Keep-Alive Tab Cache
   const [visitedTabs, setVisitedTabs] = useState<Set<SiswaTabId>>(() => new Set([activeTab]));
@@ -260,6 +266,17 @@ export const SiswaDashboard: React.FC = () => {
               <span className="hidden sm:inline">Kartu Digital</span>
             </button>
 
+            {/* Quick Trigger Subtab Sidebar */}
+            <button
+              type="button"
+              onClick={openMobileSidebar}
+              className="lg:hidden p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-blue-300 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs"
+              title="Buka Menu Sidebar Subtab"
+              aria-label="Buka Menu Sidebar Subtab"
+            >
+              <span className="text-[10.5px]">Subtab ({navTabs.length})</span>
+            </button>
+
             {/* Refresh Button */}
             <button
               type="button"
@@ -272,6 +289,30 @@ export const SiswaDashboard: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* Mobile Subtab Bar with Dedicated Sidebar Trigger */}
+        <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 lg:hidden">
+          <MobileSubtabBar
+            tabs={navTabs}
+            activeTab={activeTab}
+            onOpenSidebar={openMobileSidebar}
+            onSelectTab={(tabId) => handleTabChange(tabId as SiswaTabId)}
+            roleBadge="SISWA"
+          />
+        </div>
+
+        {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
+        <UniversalMobileSubtabSidebar
+          isOpen={isMobileSidebarOpen}
+          onClose={() => setIsMobileSidebarOpen(false)}
+          title={data.studentName || 'Portal Siswa'}
+          subtitle={`Kelas ${data.currentClassName} • NISN: ${data.nisn || '-'}`}
+          roleBadge="SISWA"
+          roleIcon={User}
+          tabs={navTabs}
+          activeTab={activeTab}
+          onSelectTab={(tabId) => handleTabChange(tabId as SiswaTabId)}
+        />
       </div>
 
       {/* 2. Desktop 2-Column Sidebar Layout */}

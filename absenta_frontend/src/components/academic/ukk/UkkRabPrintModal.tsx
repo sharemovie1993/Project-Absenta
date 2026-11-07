@@ -520,21 +520,24 @@ export const UkkRabPrintModal: React.FC<UkkRabPrintModalProps> = ({
         {/* Tanda Tangan Menggunakan Universal Signature Engine */}
         <div className="mt-8 pt-2 w-full">
           <UniversalDocumentSignatures
-            layout="triangle_rapor"
+            layout="triangle_2tier"
             titimangsaCity={sekolahData?.kota || 'Purwakarta'}
             titimangsaDate={new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+            verifierLabel="Diverifikasi oleh,"
+            makerLabel="Dibuat oleh,"
+            notesOrApprovalLabel="Mengetahui / Menyetujui,"
             overrideSignerLeft={{
-              roleTitle: 'Diverifikasi oleh,\nWakasek Bidang Sarpras',
+              roleTitle: 'Wakasek Bidang Sarpras',
               personName: wakasekSarprasNama,
               nip: wakasekSarprasNip,
             }}
             overrideSignerRight={{
-              roleTitle: 'Dibuat oleh,\nKetua Program Keahlian',
+              roleTitle: 'Ketua Program Keahlian',
               personName: kaprogNama,
               nip: kaprogNip,
             }}
             overrideSignerCenter={{
-              roleTitle: 'Mengetahui / Menyetujui,\nKepala Sekolah',
+              roleTitle: 'Kepala Sekolah',
               personName: kepalaSekolahNama || sekolahData?.kepala_sekolah,
               nip: kepalaSekolahNip || sekolahData?.nip_kepala,
             }}

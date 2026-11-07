@@ -18,6 +18,7 @@ import { Button, Badge, Loader } from '@/components/ui';
 import { 
   PrintDocumentSheet, 
   PrintHeader, 
+  UniversalDocumentSignatures,
   usePrintHeaderData 
 } from '@/components/ui/PrintHeader';
 import { getRekapKelasBulanan } from '@/api/attendance/rekap.api';
@@ -108,10 +109,10 @@ export const WalasRekapTab: React.FC<WalasRekapTabProps> = React.memo(({
     }
   };
 
-  const walasName = data?.wali_kelas?.nama || 'Wali Kelas';
-  const walasNip = data?.wali_kelas?.nip || '-';
-  const tahunPelajaranStr = data?.tahun_pelajaran?.nama || `${selectedYear}/${selectedYear + 1}`;
-  const semesterStr = data?.tahun_pelajaran?.semester || '1';
+  const walasName = data?.kelasInfo?.waliKelas?.nama || (data as any)?.wali_kelas?.nama || 'Wali Kelas';
+  const walasNip = data?.kelasInfo?.waliKelas?.nip || (data as any)?.wali_kelas?.nip || '';
+  const tahunPelajaranStr = data?.academicContext?.tahunPelajaranNama || (data as any)?.tahun_pelajaran?.nama || `${selectedYear}/${selectedYear + 1}`;
+  const semesterStr = data?.academicContext?.semesterNama || (data as any)?.tahun_pelajaran?.semester || '1';
 
   return (
     <div className="space-y-6 w-full max-w-full">
@@ -471,40 +472,25 @@ export const WalasRekapTab: React.FC<WalasRekapTabProps> = React.memo(({
                 </div>
               )}
 
-              {/* 2-Tier Bureaucracy Signatures */}
-              <div className="mt-10 font-serif text-[11px] text-black">
-                <div className="flex justify-between items-start">
-                  {/* Left: Wakasek Kesiswaan / Verifikator */}
-                  <div className="text-center w-64">
-                    <p className="text-transparent select-none">Titimangsa</p>
-                    <p className="font-bold">Mengetahui,</p>
-                    <p>Wakil Kepala Sekolah Bid. Kesiswaan</p>
-                    <div className="h-16" />
-                    <p className="font-bold underline">___________________________</p>
-                    <p className="text-[10px]">NIP. -</p>
-                  </div>
-
-                  {/* Right: Wali Kelas Pembuat Dokumen */}
-                  <div className="text-center w-64">
-                    <p>
-                      {tenantInfo?.address?.includes(',') ? tenantInfo.address.split(',')[1].trim() : 'Ditetapkan'},{' '}
-                      {format(new Date(), 'dd MMMM yyyy', { locale: localeID })}
-                    </p>
-                    <p className="font-bold">Wali Kelas {kelasNama || ''},</p>
-                    <div className="h-16" />
-                    <p className="font-bold underline">{walasName}</p>
-                    <p className="text-[10px]">NIP. {walasNip}</p>
-                  </div>
-                </div>
-
-                {/* Bottom Center: Kepala Sekolah */}
-                <div className="mt-6 text-center mx-auto w-72">
-                  <p className="font-bold">Menyetujui / Mengesahkan,</p>
-                  <p>Kepala {tenantInfo?.name || 'Sekolah Menengah Kejuruan'}</p>
-                  <div className="h-16" />
-                  <p className="font-bold underline">___________________________</p>
-                  <p className="text-[10px]">NIP. -</p>
-                </div>
+              {/* 2-Tier Bureaucracy Signatures Menggunakan Universal Signature Engine */}
+              <div className="mt-8 pt-2 w-full page-break-inside-avoid">
+                <UniversalDocumentSignatures
+                  layout="triangle_2tier"
+                  tahunPelajaranId={data?.academicContext?.selectedTahunPelajaranId}
+                  semesterId={data?.academicContext?.selectedSemesterId}
+                  kelasId={kelasId}
+                  verifierLabel="Mengetahui,\nWakil Kepala Sekolah Bid. Kesiswaan"
+                  makerLabel={`Wali Kelas ${kelasNama || ''},`}
+                  notesOrApprovalLabel="Menyetujui / Mengesahkan,\nKepala Sekolah"
+                  overrideSignerLeft={{
+                    personName: '( ........................................ )',
+                  }}
+                  overrideSignerRight={{
+                    personName: walasName,
+                    nip: walasNip,
+                  }}
+                  spacingHeightMm={16}
+                />
               </div>
             </PrintDocumentSheet>
           </div>

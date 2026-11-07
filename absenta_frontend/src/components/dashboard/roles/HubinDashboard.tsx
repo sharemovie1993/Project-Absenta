@@ -37,6 +37,11 @@ import { HubinTracerTab } from './hubin/tabs/HubinTracerTab';
 import { HubinRekapTab } from './hubin/tabs/HubinRekapTab';
 import { HubinSettingsTab } from './hubin/tabs/HubinSettingsTab';
 import { DivisiStrukturOrganisasiView } from '@/components/academic/struktur/DivisiStrukturOrganisasiView';
+import { 
+  UniversalMobileSubtabSidebar, 
+  MobileSubtabBar, 
+  useMobileSubtabSidebar 
+} from './common/UniversalMobileSubtabSidebar';
 
 export interface HubinDashboardProps {
   user?: {
@@ -68,6 +73,7 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
   // Mobile Filter Collapsible State
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
 
   // Active Tab State
   const [activeTab, setActiveTab] = useState<HubinTabId>(() => {
@@ -305,6 +311,17 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
                 <span className="hidden sm:inline">Filter</span>
               </button>
 
+              {/* Quick Trigger Subtab Sidebar */}
+              <button
+                type="button"
+                onClick={openMobileSidebar}
+                className="lg:hidden p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-indigo-300 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs"
+                title="Buka Menu Sidebar Subtab"
+                aria-label="Buka Menu Sidebar Subtab"
+              >
+                <span className="text-[10.5px]">Subtab ({navTabs.length})</span>
+              </button>
+
               {/* Refresh Button */}
               <button
                 type="button"
@@ -330,41 +347,27 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
           )}
         </div>
 
-        {/* 1.5. Mobile & Tablet Touch-Scrollable Subtab Strip (< lg) */}
-        <div className="lg:hidden w-full overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
-          <div className="flex items-center gap-1.5 min-w-max p-1 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs">
-            {navTabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => handleTabSelect(tab.id)}
-                  className={cn(
-                    'flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer',
-                    isActive
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
-                  )}
-                >
-                  <Icon className="w-3.5 h-3.5 shrink-0" />
-                  <span>{tab.shortLabel}</span>
-                  {tab.badge && (
-                    <span
-                      className={cn(
-                        'px-1.5 py-0.2 rounded-full text-[9px] font-bold',
-                        isActive ? 'bg-white/20 text-white' : tab.badgeColor || 'bg-slate-200 text-slate-700'
-                      )}
-                    >
-                      {tab.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {/* 1.5. Mobile Subtab Bar with Dedicated Sidebar Trigger (< lg) */}
+        <MobileSubtabBar
+          tabs={navTabs}
+          activeTab={activeTab}
+          onOpenSidebar={openMobileSidebar}
+          onSelectTab={(tabId) => handleTabSelect(tabId as HubinTabId)}
+          roleBadge="HUBIN"
+        />
+
+        {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
+        <UniversalMobileSubtabSidebar
+          isOpen={isMobileSidebarOpen}
+          onClose={() => setIsMobileSidebarOpen(false)}
+          title="Dashboard Hubin"
+          subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • ${semNama}`}
+          roleBadge="HUBIN"
+          roleIcon={Briefcase}
+          tabs={navTabs}
+          activeTab={activeTab}
+          onSelectTab={(tabId) => handleTabSelect(tabId as HubinTabId)}
+        />
 
         {/* 2. Desktop 2-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-6 items-start">

@@ -23,6 +23,11 @@ import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/ac
 import { kesiswaanApi, type Pelanggaran } from '@/api/kesiswaan.api';
 import { KesiswaanDashboardSkeleton } from './kesiswaan/KesiswaanDashboardSkeleton';
 import type { KesiswaanTabId, KesiswaanNavTabItem } from './kesiswaan/types';
+import { 
+  UniversalMobileSubtabSidebar, 
+  MobileSubtabBar, 
+  useMobileSubtabSidebar 
+} from './common/UniversalMobileSubtabSidebar';
 import toast from 'react-hot-toast';
 
 // Tab Subcomponents
@@ -65,6 +70,7 @@ export const KesiswaanDashboard: React.FC<KesiswaanDashboardProps> = ({ user }) 
   // Mobile Filter Collapsible State
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
 
   // Active Tab State
   const [activeTab, setActiveTab] = useState<KesiswaanTabId>(() => {
@@ -314,6 +320,17 @@ export const KesiswaanDashboard: React.FC<KesiswaanDashboardProps> = ({ user }) 
               <span className="hidden sm:inline">Filter</span>
             </button>
 
+            {/* Quick Trigger Subtab Sidebar */}
+            <button
+              type="button"
+              onClick={openMobileSidebar}
+              className="lg:hidden p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs"
+              title="Buka Menu Sidebar Subtab"
+              aria-label="Buka Menu Sidebar Subtab"
+            >
+              <span className="text-[10.5px]">Subtab ({navTabs.length})</span>
+            </button>
+
             {/* Refresh Button */}
             <button
               type="button"
@@ -337,6 +354,30 @@ export const KesiswaanDashboard: React.FC<KesiswaanDashboardProps> = ({ user }) 
             />
           </div>
         )}
+
+        {/* Mobile Subtab Bar with Dedicated Sidebar Trigger */}
+        <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 lg:hidden">
+          <MobileSubtabBar
+            tabs={navTabs}
+            activeTab={activeTab}
+            onOpenSidebar={openMobileSidebar}
+            onSelectTab={(tabId) => handleTabSelect(tabId as KesiswaanTabId)}
+            roleBadge="KESISWAAN"
+          />
+        </div>
+
+        {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
+        <UniversalMobileSubtabSidebar
+          isOpen={isMobileSidebarOpen}
+          onClose={() => setIsMobileSidebarOpen(false)}
+          title="Dashboard Kesiswaan"
+          subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • ${semNama}`}
+          roleBadge="KESISWAAN"
+          roleIcon={ShieldAlert}
+          tabs={navTabs}
+          activeTab={activeTab}
+          onSelectTab={(tabId) => handleTabSelect(tabId as KesiswaanTabId)}
+        />
       </div>
 
       {/* 2. Desktop 2-Column Layout (>= lg: Left Sidebar Controls + Wide Main Content Canvas) */}

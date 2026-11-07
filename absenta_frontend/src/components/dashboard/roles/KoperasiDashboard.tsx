@@ -34,6 +34,11 @@ import { KoperasiAnggotaTab } from './koperasi/tabs/KoperasiAnggotaTab';
 import { KoperasiProdukTab } from './koperasi/tabs/KoperasiProdukTab';
 import { KoperasiShuTab } from './koperasi/tabs/KoperasiShuTab';
 import { KoperasiAkuntansiTab } from './koperasi/tabs/KoperasiAkuntansiTab';
+import { 
+  UniversalMobileSubtabSidebar, 
+  MobileSubtabBar, 
+  useMobileSubtabSidebar 
+} from './common/UniversalMobileSubtabSidebar';
 
 export interface KoperasiDashboardProps {
   user?: {
@@ -63,6 +68,7 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
   // Mobile Filter Collapsible State
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
 
   // Active Tab State
   const [activeTab, setActiveTab] = useState<KoperasiTabId>(() => {
@@ -314,6 +320,17 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
                 <span className="hidden sm:inline">Filter</span>
               </button>
 
+              {/* Quick Trigger Subtab Sidebar */}
+              <button
+                type="button"
+                onClick={openMobileSidebar}
+                className="lg:hidden p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs"
+                title="Buka Menu Sidebar Subtab"
+                aria-label="Buka Menu Sidebar Subtab"
+              >
+                <span className="text-[10.5px]">Subtab ({navTabs.length})</span>
+              </button>
+
               {/* Refresh Button */}
               <button
                 type="button"
@@ -337,6 +354,30 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
               />
             </div>
           )}
+
+          {/* Mobile Subtab Bar with Dedicated Sidebar Trigger */}
+          <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 lg:hidden">
+            <MobileSubtabBar
+              tabs={navTabs}
+              activeTab={activeTab}
+              onOpenSidebar={openMobileSidebar}
+              onSelectTab={(tabId) => handleTabSelect(tabId as KoperasiTabId)}
+              roleBadge="KOPERASI"
+            />
+          </div>
+
+          {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
+          <UniversalMobileSubtabSidebar
+            isOpen={isMobileSidebarOpen}
+            onClose={() => setIsMobileSidebarOpen(false)}
+            title="Dashboard Koperasi"
+            subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • ${semNama}`}
+            roleBadge="KOPERASI"
+            roleIcon={Receipt}
+            tabs={navTabs}
+            activeTab={activeTab}
+            onSelectTab={(tabId) => handleTabSelect(tabId as KoperasiTabId)}
+          />
         </div>
 
         {/* 2. Desktop 2-Column Layout */}

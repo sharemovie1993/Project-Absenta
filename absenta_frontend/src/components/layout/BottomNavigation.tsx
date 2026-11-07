@@ -5,6 +5,7 @@ import { useBottomNavTabs } from './bottom-nav/useBottomNavTabs';
 import { BottomNavTabItem } from './bottom-nav/BottomNavTabItem';
 import { BottomNavCrescentSpeedDial } from './bottom-nav/BottomNavCrescentSpeedDial';
 import { MobileAccountSheet } from './bottom-nav/MobileAccountSheet';
+import { useMobileSubtabSidebarStore } from '@/components/dashboard/roles/common';
 import type { 
   MobileBottomSubItem, 
   MobileBottomTabItem, 
@@ -45,22 +46,9 @@ export const BottomNavigation: React.FC = React.memo(() => {
     }
 
     if (item.children && item.children.length > 0) {
-      if (openFlyoutId === item.id) {
-        setOpenFlyoutId(null);
-      } else {
-        setOpenFlyoutId(item.id);
-        if (!item.isActive(location.pathname, currentTab)) {
-          try {
-            const targetUrl = new URL(item.targetPath, window.location.origin);
-            const targetTab = targetUrl.searchParams.get('tab');
-            if (!targetTab || targetTab !== currentTab) {
-              navigate(item.targetPath);
-            }
-          } catch {
-            navigate(item.targetPath);
-          }
-        }
-      }
+      // 🚀 Buka Universal Mobile Subtab Sidebar Drawer (Posisi jangkauan jempol kanan bawah)
+      useMobileSubtabSidebarStore.getState().open();
+      setOpenFlyoutId(null);
       return;
     }
     setOpenFlyoutId(null);

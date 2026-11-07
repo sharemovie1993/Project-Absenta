@@ -197,6 +197,7 @@ export const WalasDeteksiDiniTab: React.FC<WalasDeteksiDiniTabProps> = React.mem
       setSelectedStudentForRujukan(null);
       setRujukanForm({ alasan: '', urgensi: 'TINGGI', catatanAwal: '' });
       queryClient.invalidateQueries({ queryKey: ['walas-ews-deteksi-dini'] });
+      queryClient.invalidateQueries({ queryKey: ['walas-dashboard-stats'] });
     },
     onError: (err: any) => {
       toast.error(err?.message || 'Gagal mengirim rujukan ke BP/BK');

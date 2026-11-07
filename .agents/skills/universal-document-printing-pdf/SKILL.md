@@ -11,9 +11,9 @@ Panduan standar arsitektur dan alur kerja pembuatan dokumen resmi institusi (Ber
 
 ---
 
-## 🏛️ Arsitektur Empat Pilar Komponen Inti
+## 🏛️ Arsitektur Lima Pilar Komponen Inti
 
-Seluruh antarmuka dokumen cetak di frontend wajib dibangun menggunakan 4 pilar komponen standar:
+Seluruh antarmuka dokumen cetak di frontend wajib dibangun menggunakan 5 pilar komponen standar:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -23,6 +23,10 @@ Seluruh antarmuka dokumen cetak di frontend wajib dibangun menggunakan 4 pilar k
 │  │  PrintDocumentSheet (A4 Portrait / Landscape)         │  │
 │  │  ┌─────────────────────────────────────────────────┐  │  │
 │  │  │  PrintHeader (Kop Resmi Dinas & Sekolah)        │  │  │
+│  │  └─────────────────────────────────────────────────┘  │  │
+│  │  ┌─────────────────────────────────────────────────┐  │  │
+│  │  │  Universal Academic Identity (Siswa & Guru)     │  │  │
+│  │  │  (UniversalStudentIdentity / TeacherIdentity)   │  │  │
 │  │  └─────────────────────────────────────────────────┘  │  │
 │  │  ┌─────────────────────────────────────────────────┐  │  │
 │  │  │  Naskah Konten, Tabel Data, Rekapitulasi        │  │  │
@@ -52,20 +56,52 @@ Komponen kop surat dinas dan sekolah terpadu:
 
 ### 4. `UniversalDocumentSignatures` & `useDocumentSigners()`
 Komponen dan hook tanda tangan resmi siap pakai (Plug-and-Play) yang terhubung langsung ke **`OrganizationalAssignment`** sebagai Single Source of Truth (SSOT):
-- **Otomatis Me-resolve Pejabat**: Kepala Sekolah, Wali Kelas (berdasarkan `kelasId`), Kaprog (berdasarkan `jurusanId`), Waka Kurikulum, Waka Sarpras, Waka Hubin.
-- **Dukungan 5 Pola Tata Letak Standar**:
+- **Cakupan 100% Role Jabatan Sistem (`STRUKTUR_CODES`)**:
+  - Pimpinan: Kepala Sekolah (`signers.kepsek`).
+  - 4 Waka: Kurikulum (`signers.wakaKurikulum`), Kesiswaan (`signers.wakaKesiswaan`), Sarpras (`signers.wakaSarpras`), Hubin (`signers.wakaHubin`).
+  - Tata Usaha: Koordinator TU (`signers.kepalaTu`), Staf Keuangan/SPP (`signers.tuKeuangan`), Staf Persuratan (`signers.tuPersuratan`), Staf Dapodik/Kepegawaian (`signers.tuKepegawaian`), Staf Inventaris/Sarpras (`signers.tuSarpras`).
+  - Kejuruan & Bengkel: Kaprog (`signers.kaprog`), Kepala Bengkel (`signers.kabeng`), Toolman/Teknisi (`signers.toolman`).
+  - Kesiswaan & Bimbingan: Wali Kelas (`signers.walas`), Koordinator BK (`signers.koordinatorBk`), Pembina Eskul (`signers.pembinaEskul`), Ketua Pembina Taruna (`signers.pembinaTaruna`), Ketua BKK (`signers.bkk`).
+  - Koperasi Sekolah: Ketua Koperasi (`signers.ketuaKoperasi`), Bendahara (`signers.bendaharaKoperasi`), Sekretaris (`signers.sekretarisKoperasi`), Pengawas (`signers.pengawasKoperasi`), Pengelola Toko (`signers.manajerTokoKoperasi`).
+  - Pihak Eksternal & Operasional: Orang Tua/Wali (`signers.parent`), Pembimbing DUDI (`signers.dudi`), Petugas Gerbang (`signers.petugasGerbang`), Petugas Kelas (`signers.petugasKelas`).
+  - Resolver Dinamis: `signers.getByPositionCode(kode, options)` untuk kode posisi kustom lainnya.
+
+- **Dukungan 9 Pola Tata Letak Standar (`layout`)**:
   1. `single_kepsek`: Kepala Sekolah saja di sisi kanan bawah (Biodata Siswa, SK, SKL).
   2. `dual_walas_kepsek`: Wali Kelas di kiri, Titimangsa + Kepsek di kanan sejajar (Rapor Semester, Rapor P5, Transkrip).
   3. `dual_unit_kepsek`: Kaprog / Waka di kiri, Titimangsa + Kepsek di kanan (Kalender Akademik, KBM, Berita Acara).
-  4. `triangle_rapor`: Orang Tua di kiri & Walas di kanan sejajar simetris, Mengetahui Kepala Sekolah di tengah bawah (Pengesahan Rapor Capaian & Rapor PKL).
-  5. `tri_party_row`: Mitra DUDI, Penguji/Kaprog, dan Kepsek dalam 3 kolom horizontal (Sertifikat UKK & PKL).
-- **Zero Fallback & Zero Leakage**: Mencegah teks cacat seperti `NIP. -`, otomatis menyelaraskan perataan garis dan tanggal titimangsa resmi slot tahun ajaran.
+  4. `dual_tu_kepsek`: Staf TU / Bendahara Keuangan di kiri, Titimangsa + Kepala TU / Kepsek di kanan (Kwitansi SPP, Surat Keterangan).
+  5. `dual_custom`: Fleksibel untuk dua penandatangan bebas role tanpa keterikatan nama wali kelas.
+  6. `triangle_rapor`: Orang Tua di kiri & Walas di kanan sejajar simetris, Mengetahui Kepala Sekolah di tengah bawah (Pengesahan Rapor Capaian & Rapor PKL).
+  7. `triangle_2tier`: Format Tata Naskah Dinas Resmi 2-Tier (Verifikator/Waka Sarpras di kiri, Pembuat/Kaprog di kanan, Mengetahui / Menyetujui Kepala Sekolah di tengah bawah).
+  8. `tri_party_row`: Mitra DUDI, Penguji/Kaprog, dan Kepsek dalam 3 kolom horizontal (Sertifikat UKK & PKL).
+  9. `tri_party_coop`: Pihak Pertama (Ketua Koperasi), Pihak Kedua (Peminjam/Anggota), dan Mengetahui Pembina/Kepsek (Surat Perjanjian Pinjaman & Dokumen Koperasi).
+
+- **Zero Fallback & Zero Leakage**: Mencegah teks cacat seperti `NIP. -` untuk non-PNS/swasta, otomatis menyelaraskan perataan garis dan tanggal titimangsa resmi slot tahun ajaran.
 
 Contoh Penggunaan Langsung:
 ```tsx
 import { UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
 
-// 1. Dokumen Rapor Semester (Wali Kelas + Kepsek)
+// 1. Dokumen RAB / Verifikasi 2-Tier (Waka Sarpras + Kaprog + Kepsek)
+<UniversalDocumentSignatures
+  layout="triangle_2tier"
+  tahunPelajaranId={tahunPelajaranId}
+  jurusanId={jurusanId}
+  verifierLabel="Diverifikasi oleh,\nWakasek Bidang Sarpras"
+  makerLabel="Dibuat oleh,\nKetua Program Keahlian"
+/>
+
+// 2. Dokumen Koperasi (Surat Perjanjian Pinjaman 3 Pihak)
+<UniversalDocumentSignatures
+  layout="tri_party_coop"
+  overrideSignerCenter={{
+    personName: memberName,
+    nip: `No. Anggota: ${memberNo}`,
+  }}
+/>
+
+// 3. Dokumen Rapor Semester (Wali Kelas + Kepsek)
 <UniversalDocumentSignatures
   layout="dual_walas_kepsek"
   tahunPelajaranId={tahunPelajaranId}
@@ -73,20 +109,75 @@ import { UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
   kelasId={selectedStudent.kelas_id}
 />
 
-// 2. Dokumen Biodata Siswa / SK (Kepsek Saja)
+// 4. Dokumen Biodata Siswa / SK (Kepsek Saja)
 <UniversalDocumentSignatures
   layout="single_kepsek"
   tahunPelajaranId={tahunPelajaranId}
 />
-
-// 3. Dokumen Pengesahan Rapor (Orang Tua + Walas + Kepsek Simetris)
-<UniversalDocumentSignatures
-  layout="triangle_rapor"
-  tahunPelajaranId={tahunPelajaranId}
-  kelasId={selectedStudent.kelas_id}
-  signers={{ parent: { personName: siswa.nama_ayah || '................................' } }}
-/>
 ```
+
+### 5. Mandat Integrasi Universal Academic Identity Engine (Penyajian Siswa & Guru)
+
+> [!IMPORTANT]
+> **Mandat Standar SSoT**: Dalam seluruh dokumen cetak, modal pratinjau, maupun generator PDF yang memuat identitas **Siswa** atau **Guru/Pendidik** (seperti Buku Induk, Klapper, DKN, Biodata Rapor, Sertifikat PKL, Transkrip Nilai, SK Beban Mengajar, Kartu Peserta Ujian):
+> **DILARANG KERAS** merangkai teks/tabel biodata secara ad-hoc atau manual! Wajib menggunakan **Universal Academic Identity Engine** (`UniversalStudentIdentity`, `UniversalTeacherIdentity`, `useAcademicIdentity`, atau `academicIdentityNormalizer`).
+
+#### A. Penyajian Dokumen di Layar Preview & Cetak Browser (`mode="print"`):
+1. **Identitas Siswa (Biodata Rapor, Sertifikat, Formulir)**:
+   Gunakan komponen `UniversalStudentIdentity` dengan varian `print_kv` (key-value formal) atau `print_table`:
+   ```tsx
+   import { UniversalStudentIdentity } from '@/components/common/UniversalStudentIdentity';
+   // Atau import langsung dari PrintHeader:
+   // import { UniversalStudentIdentity } from '@/components/ui/PrintHeader';
+
+   <UniversalStudentIdentity
+     data={studentIdentity}
+     variant="print_kv"
+     mode="print"
+     showPhoto={true}
+     photoSizeMm={{ width: 28, height: 36 }} // Pasfoto fisik 3x4 cm
+     fields={[
+       'nama',
+       'nis_nisn',
+       'ttl',
+       'kelas',
+       'program_keahlian',
+       'orang_tua',
+       'alamat',
+     ]}
+   />
+   ```
+2. **Identitas Pendidik / Pegawai (SK Mengajar, Pengesahan DKN, Tim Penguji)**:
+   Gunakan komponen `UniversalTeacherIdentity` dengan varian `print_table`:
+   ```tsx
+   import { UniversalTeacherIdentity } from '@/components/common/UniversalTeacherIdentity';
+   // Atau import langsung dari PrintHeader:
+   // import { UniversalTeacherIdentity } from '@/components/ui/PrintHeader';
+
+   <UniversalTeacherIdentity
+     data={teacherData}
+     variant="print_table"
+     mode="print"
+   />
+   ```
+3. **Penempatan Hook SSoT**:
+   Gunakan hook `useStudentIdentity` atau `useTeacherIdentity` dari `@/hooks/useAcademicIdentity`. **WAJIB** dipanggil di level teratas sebelum blok early return komponen.
+
+#### B. Generator Dokumen Terprogram PDF Vector (`jsPDF` / Engine 2):
+Jika dokumen dibuat menggunakan jsPDF murni (`src/utils/print/modules/pdf*.ts`):
+* Gunakan fungsi normalizer murni dari `@/utils/academic/academicIdentityNormalizer`:
+  ```typescript
+  import {
+    normalizeStudentIdentity,
+    normalizeTeacherIdentity,
+  } from '@/utils/academic/academicIdentityNormalizer';
+
+  const student = normalizeStudentIdentity(rawStudentData);
+  const teacher = normalizeTeacherIdentity(rawTeacherData);
+  ```
+* **Kepatuhan Protokol Zero-Fallback**:
+  - **NIP Zero-Leakage**: Selalu gunakan `teacher.nipFormatted`. Jika guru non-PNS/honorer, string otomatis kosong `""` (anti kebocoran `NIP. -` atau `NIP. null` pada dokumen negara).
+  - **Anti-Koma Gantung TTL**: Selalu gunakan `student.ttlFormatted` atau helper `formatTtl()`.
 
 ---
 
@@ -318,6 +409,8 @@ Nama dan NIP pejabat penandatangan tidak boleh di-*hardcode*. Gunakan hook penem
 Sebelum fitur cetak dirilis ke produksi:
 - [ ] Komponen menggunakan `UniversalDocumentModal` dan `PrintDocumentSheet`.
 - [ ] Kop surat menggunakan `PrintHeader` + `usePrintHeaderData()`.
+- [ ] **Universal Academic Identity Mandate**: Penyajian biodata siswa atau guru di lembar cetak **wajib** menggunakan `UniversalStudentIdentity` / `UniversalTeacherIdentity` (varian `print_kv` atau `print_table`) untuk tampilan browser, atau `normalizeStudentIdentity` / `normalizeTeacherIdentity` untuk generator PDF jsPDF.
+- [ ] **Kepatuhan Protokol Zero-Fallback**: NIP guru non-PNS/PPPK bersih tanpa bocoran `NIP. -` (`nipFormatted`), TTL bebas koma gantung (`formatTtl`), dan pasfoto cetak menggunakan rasio fisik 3x4 cm (28x36 mm).
 - [ ] Tombol cetak memanggil `window.print()` dan format lembar rapi di print preview browser.
 - [ ] Tombol unduh PDF menghasilkan dokumen presisi 1:1 (*True WYSIWYG*).
 - [ ] **Anti-Bloat & Anti-Distortion Guard**: Ekspor PDF menggunakan `scale: 2`, `image/jpeg` kualitas `0.88`, `compress: true`, serta **wajib** menghitung `canvasRatio` agar aspek rasio visual 1:1 identik dengan layar modal (ukuran file < 1 MB per lembar dan dilarang memaksakan `pdfHeight` yang menyebabkan gambar gepeng/terpadatkan).

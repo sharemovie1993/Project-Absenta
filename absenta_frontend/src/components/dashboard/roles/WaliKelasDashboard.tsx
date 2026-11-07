@@ -34,6 +34,11 @@ import { WalasDisiplinTab } from './walikelas/tabs/WalasDisiplinTab';
 import { WalasPrestasiTab } from './walikelas/tabs/WalasPrestasiTab';
 import { WalasRekapTab } from './walikelas/tabs/WalasRekapTab';
 import { WalasCetakRaporTab } from './walikelas/tabs/WalasCetakRaporTab';
+import { 
+  UniversalMobileSubtabSidebar, 
+  MobileSubtabBar, 
+  useMobileSubtabSidebar 
+} from './common/UniversalMobileSubtabSidebar';
 import { cn } from '@/lib/utils';
 
 export interface WaliKelasDashboardProps {
@@ -61,6 +66,7 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
 
   // Mobile Filter Collapsible State
   const [showMobileFilter, setShowMobileFilter] = useState(false);
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
 
   // Active Tab State
   const [activeTab, setActiveTab] = useState<WaliKelasTabId>(() => {
@@ -305,6 +311,17 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
               <SlidersHorizontal size={13} />
               <span className="text-[10px] hidden sm:inline">Filter</span>
             </button>
+
+            {/* Quick Trigger Subtab Sidebar */}
+            <button
+              type="button"
+              onClick={openMobileSidebar}
+              className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
+              title="Buka Menu Sidebar Subtab"
+              aria-label="Buka Menu Sidebar Subtab"
+            >
+              <span className="text-[10.5px]">Subtab ({navTabs.length})</span>
+            </button>
           </div>
         </div>
 
@@ -318,6 +335,28 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
             />
           </div>
         )}
+
+        {/* Mobile Subtab Bar with Dedicated Sidebar Trigger */}
+        <MobileSubtabBar
+          tabs={navTabs}
+          activeTab={activeTab}
+          onOpenSidebar={openMobileSidebar}
+          onSelectTab={(tabId) => handleTabSelect(tabId as WaliKelasTabId)}
+          roleBadge="WALI KELAS"
+        />
+
+        {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
+        <UniversalMobileSubtabSidebar
+          isOpen={isMobileSidebarOpen}
+          onClose={() => setIsMobileSidebarOpen(false)}
+          title={activeKelasNama}
+          subtitle={`${academicFilter.selectedTahunPelajaranNama || '2026/2027'} • ${academicFilter.selectedSemesterNama || 'Ganjil'}`}
+          roleBadge="WALI KELAS"
+          roleIcon={GraduationCap}
+          tabs={navTabs}
+          activeTab={activeTab}
+          onSelectTab={(tabId) => handleTabSelect(tabId as WaliKelasTabId)}
+        />
       </div>
 
       {/* 2. Desktop 2-Column Layout (>= lg: Left Sidebar Controls + Wide Main Content Canvas) */}
@@ -427,8 +466,8 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
                   <WalasSiswaTab
                     kelasId={activeKelasId}
                     kelasNama={activeKelasNama}
-                    tahunPelajaranId={walasData?.tahun_pelajaran?.id}
-                    semesterId={walasData?.tahun_pelajaran?.semester}
+                    tahunPelajaranId={academicFilter.values.tahunPelajaranId || walasData?.academicContext?.selectedTahunPelajaranId}
+                    semesterId={academicFilter.values.semesterId || walasData?.academicContext?.selectedSemesterId}
                     data={walasData}
                   />
                 </div>
@@ -485,6 +524,8 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
                     roleMode="walas"
                     kelasId={activeKelasId}
                     kelasNama={activeKelasNama}
+                    tahunPelajaranId={academicFilter.values.tahunPelajaranId || walasData?.academicContext?.selectedTahunPelajaranId}
+                    semesterId={academicFilter.values.semesterId || walasData?.academicContext?.selectedSemesterId}
                   />
                 </div>
               )}
@@ -562,8 +603,8 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
                   <WalasCetakRaporTab
                     kelasId={activeKelasId}
                     kelasNama={activeKelasNama}
-                    tahunPelajaranId={walasData?.tahun_pelajaran?.id}
-                    semesterId={walasData?.tahun_pelajaran?.semester}
+                    tahunPelajaranId={academicFilter.values.tahunPelajaranId || walasData?.academicContext?.selectedTahunPelajaranId}
+                    semesterId={academicFilter.values.semesterId || walasData?.academicContext?.selectedSemesterId}
                   />
                 </div>
               )}

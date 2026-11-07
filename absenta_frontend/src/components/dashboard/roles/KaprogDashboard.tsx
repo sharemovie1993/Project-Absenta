@@ -56,6 +56,11 @@ import { KaprogSaranaTab } from './kaprog/tabs/KaprogSaranaTab';
 import { KaprogUkkTab } from './kaprog/tabs/KaprogUkkTab';
 import { KaprogCetakRaporTab } from './kaprog/tabs/KaprogCetakRaporTab';
 import { 
+  UniversalMobileSubtabSidebar, 
+  MobileSubtabBar, 
+  useMobileSubtabSidebar 
+} from './common/UniversalMobileSubtabSidebar';
+import { 
   KaprogTabId, 
   KaprogCategory,
   NavTabItem, 
@@ -96,6 +101,8 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
     }
     return 'beranda';
   });
+
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
 
   // Keep-Alive Cache: Catat tab yang pernah dibuka agar TIDAK DIHANCURKAN saat pindah tab (Instant 0ms Switch)
   const [visitedTabs, setVisitedTabs] = useState<Set<KaprogTabId>>(() => new Set([activeTab]));
@@ -628,6 +635,16 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
               </span>
             )}
           </div>
+
+          <button
+            type="button"
+            onClick={openMobileSidebar}
+            className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs shrink-0"
+            title="Buka Menu Sidebar Subtab"
+            aria-label="Buka Menu Sidebar Subtab"
+          >
+            <span className="text-[10.5px]">Subtab ({navTabs.length})</span>
+          </button>
         </div>
 
         {/* Mobile Academic Filter Toolbar */}
@@ -637,39 +654,28 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
           className="w-full"
         />
 
-        {/* Mobile Horizontal Subtab Scroller (Shopee-Grade Horizontal Scroller) */}
-        <div className="overflow-x-auto no-scrollbar flex items-center gap-1.5 pb-0.5">
-          {navTabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => handleTabSelect(tab.id)}
-                className={cn(
-                  'px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all shrink-0 cursor-pointer',
-                  isActive
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-800'
-                )}
-              >
-                <Icon size={13} className="shrink-0" />
-                <span>{tab.shortLabel || tab.label}</span>
-                {tab.badge !== undefined && (
-                  <span
-                    className={cn(
-                      'px-1.5 py-0.2 rounded-full text-[9px] font-bold',
-                      isActive ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                    )}
-                  >
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+        {/* Mobile Subtab Bar with Dedicated Sidebar Trigger */}
+        <MobileSubtabBar
+          tabs={navTabs}
+          activeTab={activeTab}
+          onOpenSidebar={openMobileSidebar}
+          onSelectTab={(tabId) => handleTabSelect(tabId as KaprogTabId)}
+          roleBadge="KAPROG"
+        />
+
+        {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
+        <UniversalMobileSubtabSidebar
+          isOpen={isMobileSidebarOpen}
+          onClose={() => setIsMobileSidebarOpen(false)}
+          title={resolvedJurusan?.nama || 'Program Keahlian'}
+          subtitle={resolvedJurusan?.singkatan ? `${resolvedJurusan.singkatan} • Kejuruan` : 'Manajemen Jurusan'}
+          roleBadge="KAPROG"
+          roleIcon={Briefcase}
+          tabs={navTabs}
+          activeTab={activeTab}
+          onSelectTab={(tabId) => handleTabSelect(tabId as KaprogTabId)}
+          categories={categories}
+        />
       </div>
 
       {/* 2. Desktop 2-Column Layout (>= lg: Left Sidebar Controls + Wide Main Content Canvas) */}

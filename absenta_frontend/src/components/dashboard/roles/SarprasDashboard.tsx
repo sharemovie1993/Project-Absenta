@@ -35,6 +35,11 @@ import { SarprasKatalogTab } from './sarpras/tabs/SarprasKatalogTab';
 import { SarprasRekapTab } from './sarpras/tabs/SarprasRekapTab';
 import { SarprasDenahTab } from './sarpras/tabs/SarprasDenahTab';
 import { DivisiStrukturOrganisasiView } from '@/components/academic/struktur/DivisiStrukturOrganisasiView';
+import { 
+  UniversalMobileSubtabSidebar, 
+  MobileSubtabBar, 
+  useMobileSubtabSidebar 
+} from './common/UniversalMobileSubtabSidebar';
 
 export interface SarprasDashboardProps {
   user?: {
@@ -64,6 +69,7 @@ export const SarprasDashboard: React.FC<SarprasDashboardProps> = ({ user }) => {
   // Mobile Filter Collapsible State
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
 
   // Active Tab State
   const [activeTab, setActiveTab] = useState<SarprasTabId>(() => {
@@ -304,6 +310,17 @@ export const SarprasDashboard: React.FC<SarprasDashboardProps> = ({ user }) => {
                 <span className="hidden sm:inline">Filter</span>
               </button>
 
+              {/* Quick Trigger Subtab Sidebar */}
+              <button
+                type="button"
+                onClick={openMobileSidebar}
+                className="lg:hidden p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-teal-300 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs"
+                title="Buka Menu Sidebar Subtab"
+                aria-label="Buka Menu Sidebar Subtab"
+              >
+                <span className="text-[10.5px]">Subtab ({navTabs.length})</span>
+              </button>
+
               {/* Refresh Button */}
               <button
                 type="button"
@@ -327,6 +344,30 @@ export const SarprasDashboard: React.FC<SarprasDashboardProps> = ({ user }) => {
               />
             </div>
           )}
+
+          {/* Mobile Subtab Bar with Dedicated Sidebar Trigger */}
+          <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 lg:hidden">
+            <MobileSubtabBar
+              tabs={navTabs}
+              activeTab={activeTab}
+              onOpenSidebar={openMobileSidebar}
+              onSelectTab={(tabId) => handleTabSelect(tabId as SarprasTabId)}
+              roleBadge="SARPRAS"
+            />
+          </div>
+
+          {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
+          <UniversalMobileSubtabSidebar
+            isOpen={isMobileSidebarOpen}
+            onClose={() => setIsMobileSidebarOpen(false)}
+            title="Dashboard Sarpras"
+            subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • ${semNama}`}
+            roleBadge="SARPRAS"
+            roleIcon={Package}
+            tabs={navTabs}
+            activeTab={activeTab}
+            onSelectTab={(tabId) => handleTabSelect(tabId as SarprasTabId)}
+          />
         </div>
 
         {/* 2. Desktop 2-Column Layout */}
