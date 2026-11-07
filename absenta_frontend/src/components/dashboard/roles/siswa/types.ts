@@ -8,6 +8,7 @@ export interface SiswaNavTabItem {
   shortLabel?: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
   badge?: number | string | null;
+  category?: string;
 }
 
 export interface StudentBadge {

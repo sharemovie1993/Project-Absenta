@@ -14,6 +14,7 @@ import {
   FileText, 
   Trophy, 
   LayoutGrid,
+  Laptop,
   Award,
   FileCheck2,
   ShieldAlert,
@@ -68,6 +69,7 @@ export interface MobileBottomTabItem {
 }
 
 export type EcosystemType = 
+  | 'siswa'
   | 'kaprog' 
   | 'walas' 
   | 'tu' 
@@ -104,7 +106,7 @@ export function getEcosystemTheme(
   isSiswa: boolean = false, 
   isKepsek: boolean = false
 ): EcosystemTheme {
-  if (ecosystem === 'portal' || isSiswa || isKepsek) {
+  if (ecosystem === 'portal' || ecosystem === 'siswa' || isSiswa || isKepsek) {
     return {
       isLayer2: false,
       navBarClass: 'bg-white/95 dark:bg-slate-900/95 border-t border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-100 shadow-2xl',
@@ -1127,6 +1129,67 @@ export function getAdminTabs(teacherDashboards: MobileBottomSubItem[]): MobileBo
       icon: User,
       targetPath: '/dashboard?tab=profil',
       isActive: (p, t) => t === 'profil' || p.startsWith('/profile'),
+    },
+  ];
+}
+
+export function getSiswaTabs(
+  currentTab: string | null,
+  isPetugasKelas: boolean = false,
+  pendingBadgeCount: number = 0
+): MobileBottomTabItem[] {
+  return [
+    {
+      id: 'siswa_beranda',
+      label: 'Beranda Siswa',
+      shortLabel: 'Beranda',
+      icon: Home,
+      targetPath: '/dashboard?tab=ringkasan',
+      isActive: (p, t) => (p === '/dashboard' || p === '/dashboard/') && (!t || t === 'ringkasan'),
+    },
+    {
+      id: 'siswa_presensi',
+      label: 'Presensi Siswa',
+      shortLabel: 'Presensi',
+      icon: CheckCircle2,
+      targetPath: '/dashboard?tab=kehadiran',
+      isActive: (p, t) => (p === '/dashboard' && t === 'kehadiran') || p.startsWith('/attendance/my-attendance') || p.startsWith('/my-attendance'),
+    },
+    {
+      id: 'siswa_menu',
+      label: 'Menu Layanan Siswa',
+      shortLabel: 'Menu',
+      icon: LayoutGrid,
+      targetPath: '/dashboard?tab=ringkasan',
+      badge: pendingBadgeCount > 0 ? String(pendingBadgeCount) : undefined,
+      isActive: (p, t) => Boolean(t && ['cbt', 'pkl', 'catatan', 'berkas', 'portal'].includes(t)),
+      children: [
+        { id: 'ringkasan', label: 'Ringkasan Beranda', icon: Home, targetPath: '/dashboard?tab=ringkasan', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
+        { id: 'kehadiran', label: 'Presensi & Kehadiran', icon: CheckCircle2, targetPath: '/dashboard?tab=kehadiran', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
+        { id: 'cbt', label: 'Ujian CBT Online', icon: Laptop, targetPath: '/dashboard?tab=cbt', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
+        { id: 'catatan', label: 'Catatan BK & Disiplin', icon: FileText, targetPath: '/dashboard?tab=catatan', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
+        { id: 'berkas', label: 'Berkas Dokumen & Nilai', icon: BookOpen, targetPath: '/dashboard?tab=berkas', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
+        { id: 'portal', label: 'Portal Aplikasi', icon: LayoutGrid, targetPath: '/dashboard?tab=portal', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
+        ...(isPetugasKelas ? [
+          { id: 'petugas_ops', label: 'Petugas Presensi', icon: CheckCircle2, targetPath: '/attendance/ops', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' }
+        ] : []),
+      ],
+    },
+    {
+      id: 'siswa_disiplin',
+      label: 'Catatan Kedisiplinan',
+      shortLabel: 'Disiplin',
+      icon: FileText,
+      targetPath: '/dashboard?tab=catatan',
+      isActive: (p, t) => (p === '/dashboard' && t === 'catatan') || p.startsWith('/bpbk/konseling') || p.startsWith('/kesiswaan/pelanggaran'),
+    },
+    {
+      id: 'saya',
+      label: 'Profil Saya',
+      shortLabel: 'Saya',
+      icon: User,
+      targetPath: '/dashboard?tab=profil',
+      isActive: (p, t) => (p === '/dashboard' && t === 'profil') || p.startsWith('/profile'),
     },
   ];
 }

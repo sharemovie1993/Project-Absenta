@@ -48,6 +48,7 @@ import {
   getKoperasiTabs,
   getPiketTabs,
   getAdminTabs,
+  getSiswaTabs,
 } from '@/config/bottomNavEcosystems.config';
 
 export interface UseBottomNavTabsReturn {
@@ -57,6 +58,7 @@ export interface UseBottomNavTabsReturn {
   currentTab: string | null;
   currentSubtab: string | null;
   isKepsek: boolean;
+  isSiswa: boolean;
   setPillar: (pillar: ExecutivePillar) => void;
   shouldHideNav: boolean;
 }
@@ -143,58 +145,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
   );
 
   const siswaTabs = useMemo<MobileBottomTabItem[]>(() => {
-    return [
-      {
-        id: 'beranda',
-        label: 'Beranda Siswa',
-        shortLabel: 'Siswa',
-        icon: Home,
-        targetPath: '/dashboard?tab=ringkasan',
-        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan'),
-      },
-      {
-        id: 'kehadiran',
-        label: 'Presensi Siswa',
-        shortLabel: 'Kehadiran',
-        icon: Clock,
-        targetPath: '/dashboard?tab=kehadiran',
-        isActive: (pathname, tabParam) => (pathname === '/dashboard' && tabParam === 'kehadiran') || pathname.startsWith('/attendance/my-attendance') || pathname.startsWith('/my-attendance'),
-      },
-      {
-        id: 'siswa_menu',
-        label: 'Menu Layanan Siswa',
-        shortLabel: 'Menu',
-        icon: LayoutGrid,
-        targetPath: '/dashboard?tab=ringkasan',
-        isActive: (pathname, tabParam) => ['catatan', 'berkas', 'pkl', 'cbt'].includes(tabParam || ''),
-        children: [
-          { id: 'catatan', label: 'Catatan BK & Disiplin', icon: FileText, targetPath: '/dashboard?tab=catatan', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
-          { id: 'berkas', label: 'Berkas & Nilai Rapor', icon: BookOpen, targetPath: '/dashboard?tab=berkas', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
-          ...(isPetugasKelas ? [
-            { id: 'petugas_ops', label: 'Petugas Presensi', icon: CheckCircle2, targetPath: '/attendance/ops', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' }
-          ] : [
-            { id: 'coop_siswa', label: 'Koperasi Siswa', icon: PiggyBank, targetPath: '/cooperative/pos', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' }
-          ]),
-        ],
-      },
-      {
-        id: 'catatan',
-        label: 'Catatan Siswa',
-        shortLabel: 'Catatan',
-        icon: FileText,
-        targetPath: '/dashboard?tab=catatan',
-        isActive: (pathname, tabParam) => (pathname === '/dashboard' && tabParam === 'catatan') || pathname.startsWith('/bpbk/konseling') || pathname.startsWith('/kesiswaan/pelanggaran'),
-      },
-      {
-        id: 'profil',
-        label: 'Profil Siswa',
-        shortLabel: 'Profil',
-        icon: User,
-        targetPath: '/dashboard?tab=profil',
-        isActive: (pathname, tabParam) => (pathname === '/dashboard' && tabParam === 'profil') || pathname.startsWith('/profile'),
-      },
-    ];
-  }, [isPetugasKelas]);
+    return getSiswaTabs(currentTab, isPetugasKelas);
+  }, [currentTab, isPetugasKelas]);
 
   // ── 2. KEPALA SEKOLAH (SHOPEE-GRADE 5-TOMBOL DENGAN MENU PENGAWASAN ELEVATED DI TENGAH) ──
   const { currentPillar, setPillar } = useExecutivePillarStore();
@@ -449,6 +401,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
 
   // ── DETEKSI EKOSISTEM AKTIF (STEP 2 VS STEP 1 PORTAL) ──
   const activeEcosystem = useMemo<EcosystemType>(() => {
+    if (isSiswa) return 'siswa';
     const path = location.pathname;
     if (path.startsWith('/kurikulum')) return 'kurikulum';
     if (path.startsWith('/kesiswaan')) return 'kesiswaan';
@@ -482,7 +435,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       if (isTuStaff && !isPendidik && (!currentTab || currentTab === 'ringkasan')) return 'tu';
     }
     return 'portal';
-  }, [location.pathname, currentTab, isPureGerbangStaff, isTuStaff, isPendidik]);
+  }, [location.pathname, currentTab, isPureGerbangStaff, isTuStaff, isPendidik, isSiswa]);
 
   // ── 4. STAFF / GURU / WAKA / OPERATOR MOBILE BOTTOM TABS (SHOPEE STYLE - MAX 6 TOMBOL) ──
   const staffTabs = useMemo<MobileBottomTabItem[]>(() => {
@@ -621,6 +574,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     currentTab,
     currentSubtab,
     isKepsek,
+    isSiswa,
     setPillar,
     shouldHideNav,
   };

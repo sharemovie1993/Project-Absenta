@@ -31,7 +31,8 @@ import { SiswaDashboardSkeleton } from './siswa/SiswaDashboardSkeleton';
 import { useSiswaDashboardData } from './siswa/useSiswaDashboardData';
 import { 
   UniversalMobileSubtabSidebar, 
-  useMobileSubtabSidebar 
+  useMobileSubtabSidebar,
+  type UniversalSubtabCategory,
 } from './common/UniversalMobileSubtabSidebar';
 
 // Components
@@ -188,10 +189,16 @@ export const SiswaDashboard: React.FC = () => {
     }
   }, [data.siswaProfile, data.user]);
 
-  // Tab items config
+  // Tab items config & categories
+  const categories: UniversalSubtabCategory[] = useMemo(() => [
+    { id: 'operasional', label: 'OPERASIONAL SISWA', icon: LayoutList },
+    { id: 'akademik', label: 'AKADEMIK & PENILAIAN', icon: Laptop },
+    { id: 'layanan', label: 'LAYANAN & INFORMASI', icon: LayoutGrid },
+  ], []);
+
   const navTabs: SiswaNavTabItem[] = useMemo(() => {
     const tabs: SiswaNavTabItem[] = [
-      { id: 'ringkasan', label: 'Ringkasan', shortLabel: 'Ringkasan', icon: LayoutList },
+      { id: 'ringkasan', label: 'Ringkasan', shortLabel: 'Ringkasan', icon: LayoutList, category: 'OPERASIONAL SISWA' },
     ];
     if (data.isAktifPkl || data.myPenempatan) {
       tabs.push({
@@ -200,15 +207,16 @@ export const SiswaDashboard: React.FC = () => {
         shortLabel: 'PKL',
         icon: Briefcase,
         badge: data.pendingJurnalCount > 0 ? data.pendingJurnalCount : undefined,
+        category: 'OPERASIONAL SISWA',
       });
     }
     tabs.push(
-      { id: 'cbt', label: 'Ujian', shortLabel: 'Ujian', icon: Laptop },
-      { id: 'kehadiran', label: 'Presensi', shortLabel: 'Presensi', icon: CheckCircle2 },
-      { id: 'catatan', label: 'Disiplin', shortLabel: 'Disiplin', icon: FileText, badge: data.pelanggaranCount },
-      { id: 'berkas', label: 'Dokumen', shortLabel: 'Dokumen', icon: FolderOpen },
-      { id: 'portal', label: 'Portal', shortLabel: 'Portal', icon: LayoutGrid },
-      { id: 'profil', label: 'Profil', shortLabel: 'Profil', icon: User }
+      { id: 'cbt', label: 'Ujian CBT', shortLabel: 'Ujian', icon: Laptop, category: 'AKADEMIK & PENILAIAN' },
+      { id: 'kehadiran', label: 'Presensi', shortLabel: 'Presensi', icon: CheckCircle2, category: 'OPERASIONAL SISWA' },
+      { id: 'catatan', label: 'Disiplin', shortLabel: 'Disiplin', icon: FileText, badge: data.pelanggaranCount, category: 'OPERASIONAL SISWA' },
+      { id: 'berkas', label: 'Dokumen', shortLabel: 'Dokumen', icon: FolderOpen, category: 'AKADEMIK & PENILAIAN' },
+      { id: 'portal', label: 'Portal', shortLabel: 'Portal', icon: LayoutGrid, category: 'LAYANAN & INFORMASI' },
+      { id: 'profil', label: 'Profil', shortLabel: 'Profil', icon: User, category: 'LAYANAN & INFORMASI' }
     );
     return tabs;
   }, [data.isAktifPkl, data.myPenempatan, data.pendingJurnalCount, data.pelanggaranCount]);
@@ -290,6 +298,7 @@ export const SiswaDashboard: React.FC = () => {
           tabs={navTabs}
           activeTab={activeTab}
           onSelectTab={(tabId) => handleTabChange(tabId as SiswaTabId)}
+          categories={categories}
         />
       </div>
 

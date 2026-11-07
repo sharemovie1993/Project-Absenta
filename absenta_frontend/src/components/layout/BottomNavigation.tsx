@@ -29,6 +29,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
     currentTab,
     currentSubtab,
     isKepsek,
+    isSiswa,
     setPillar,
     shouldHideNav,
   } = useBottomNavTabs();
@@ -62,7 +63,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
 
     if (item.children && item.children.length > 0) {
       // 🚀 Buka Universal Mobile Subtab Sidebar Drawer (Posisi jangkauan jempol di tengah)
-      const targetScope = isKepsek ? 'kepsek' : activeEcosystem;
+      const targetScope = isKepsek ? 'kepsek' : isSiswa ? 'siswa' : activeEcosystem;
       useMobileSubtabSidebarStore.getState().open(targetScope);
       setOpenFlyoutId(null);
       return;
@@ -79,7 +80,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
       return;
     }
     navigate(item.targetPath);
-  }, [openFlyoutId, isKepsek, activeEcosystem, setPillar, location.pathname, currentTab, navigate]);
+  }, [openFlyoutId, isKepsek, isSiswa, activeEcosystem, setPillar, location.pathname, currentTab, navigate]);
 
   const handleSubItemClick = useCallback((subItem: MobileBottomSubItem) => {
     setOpenFlyoutId(null);

@@ -103,7 +103,7 @@ export function checkScopeMatchesUrlTab(scope: string, currentTab: string): bool
     case 'kepsek':
       return currentTab === 'ringkasan' || currentTab === 'kepsek';
     case 'siswa':
-      return currentTab === 'siswa';
+      return !currentTab || ['ringkasan', 'pkl', 'cbt', 'portal', 'kehadiran', 'catatan', 'berkas', 'profil', 'siswa'].includes(currentTab);
     default:
       return true;
   }
