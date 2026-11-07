@@ -104,7 +104,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
       size="3xl"
       title={
         <div className="flex items-center gap-2">
-          <UserPlus size={20} className="text-indigo-600" />
+          <UserPlus size={20} className="text-amber-600 dark:text-amber-400" />
           <span>{editingPkl ? 'Edit Penempatan' : 'Plotting Baru'}</span>
         </div>
       }
@@ -266,7 +266,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
                 <button
                   type="button"
                   onClick={() => handleApplyDuration(3)}
-                  className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800 cursor-pointer transition-colors"
+                  className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800 cursor-pointer transition-colors"
                   title="Set +3 Bulan dari tanggal mulai"
                 >
                   +3 Bln
@@ -274,7 +274,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
                 <button
                   type="button"
                   onClick={() => handleApplyDuration(4)}
-                  className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800 cursor-pointer transition-colors"
+                  className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800 cursor-pointer transition-colors"
                   title="Set +4 Bulan dari tanggal mulai"
                 >
                   +4 Bln
@@ -282,7 +282,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
                 <button
                   type="button"
                   onClick={() => handleApplyDuration(6)}
-                  className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800 cursor-pointer transition-colors"
+                  className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800 cursor-pointer transition-colors"
                   title="Set +6 Bulan dari tanggal mulai"
                 >
                   +6 Bln
@@ -331,7 +331,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
                 type="checkbox"
                 name="is_flexible_location"
                 defaultChecked={editingPkl?.is_flexible_location || false}
-                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20 h-4 w-4 cursor-pointer dark:bg-slate-900 dark:border-slate-700"
+                className="rounded border-slate-300 text-amber-600 focus:ring-amber-500/20 h-4 w-4 cursor-pointer dark:bg-slate-900 dark:border-slate-700"
               />
               <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Bebaskan Lokasi Presensi
@@ -379,7 +379,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
           <Button type="button" variant="outline" onClick={onClose}>
             Batal
           </Button>
-          <Button type="submit" variant="primary" isLoading={isPending}>
+          <Button type="submit" className="bg-amber-600 hover:bg-amber-500 text-white font-bold shadow-xs px-5 rounded-xl border-none transition-all active:scale-95" isLoading={isPending}>
             Simpan
           </Button>
         </div>

@@ -90,10 +90,10 @@ export const PenempatanMobileCard: React.FC<PenempatanMobileCardProps> = React.m
               type="checkbox"
               checked={isSelected || false}
               onChange={() => onToggleSelect?.(row.id)}
-              className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 shrink-0 cursor-pointer"
+              className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 accent-amber-600 border-slate-300 dark:border-slate-700 shrink-0 cursor-pointer"
             />
           )}
-          <div className="w-6 h-6 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 flex items-center justify-center text-[10px] font-black text-indigo-600 dark:text-indigo-400 shrink-0 select-none">
+          <div className="w-6 h-6 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200/70 dark:border-amber-800/60 flex items-center justify-center text-[10px] font-black text-amber-700 dark:text-amber-300 shrink-0 select-none">
             {initial}
           </div>
           <div className="flex items-baseline gap-1.5 min-w-0 flex-1 flex-wrap">
@@ -135,12 +135,12 @@ export const PenempatanMobileCard: React.FC<PenempatanMobileCardProps> = React.m
       {/* 2. Baris Mitra Industri (Perusahaan) & Guru Pembimbing */}
       <div className="flex items-start justify-between gap-2 text-xs">
         <div className="flex items-start gap-1.5 min-w-0 flex-1">
-          <Building2 size={13} className="text-indigo-500 shrink-0 mt-0.5" />
+          <Building2 size={13} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           {row.mitra_id ? (
             <button
               type="button"
               onClick={() => onEditMitraKontak(row.mitra_id)}
-              className="break-words text-left hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline cursor-pointer font-semibold text-xs text-slate-800 dark:text-slate-200 leading-snug"
+              className="break-words text-left hover:text-amber-600 dark:hover:text-amber-400 hover:underline cursor-pointer font-semibold text-xs text-slate-800 dark:text-slate-200 leading-snug"
               title="Klik untuk melihat / perbarui kontak & PIC DUDI"
             >
               {formatCompanyName(row.Mitra?.nama)}

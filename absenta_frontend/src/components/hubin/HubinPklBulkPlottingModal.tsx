@@ -283,7 +283,7 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
       size="5xl"
       title={
         <div className="flex items-center gap-2">
-          <Users size={20} className="text-indigo-600" />
+          <Users size={20} className="text-amber-600 dark:text-amber-400" />
           <span>Plotting Kolektif</span>
         </div>
       }
@@ -620,7 +620,7 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
           <Button type="button" variant="outline" onClick={onClose}>
             Batal
           </Button>
-          <Button type="submit" variant="primary" isLoading={isPending} disabled={selectedStudentList.length === 0}>
+          <Button type="submit" className="bg-amber-600 hover:bg-amber-500 text-white font-bold shadow-xs rounded-xl border-none transition-all active:scale-95" isLoading={isPending} disabled={selectedStudentList.length === 0}>
             Simpan ({selectedStudentList.length} Siswa)
           </Button>
         </div>

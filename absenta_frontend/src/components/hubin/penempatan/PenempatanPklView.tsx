@@ -451,7 +451,7 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
       <Button onClick={() => actions.setIsBulkPlottingOpen(true)} variant="toolbarOutline" size="toolbar" className="rounded-xl h-9 px-4 flex items-center gap-1.5">
         <Users size={16} /> Plotting Kolektif
       </Button>
-      <Button onClick={() => { actions.setSelectedPkl(null); actions.setSelectedSiswaId(''); actions.setSelectedMitraId(''); actions.setSelectedPembimbingId(''); actions.setIsPlottingOpen(true); }} variant="toolbarPrimary" size="toolbar" className="h-9 px-4 rounded-xl flex items-center gap-1.5">
+      <Button onClick={() => { actions.setSelectedPkl(null); actions.setSelectedSiswaId(''); actions.setSelectedMitraId(''); actions.setSelectedPembimbingId(''); actions.setIsPlottingOpen(true); }} size="toolbar" className="h-9 px-4 rounded-xl flex items-center gap-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold border-none shadow-sm transition-all active:scale-95">
         <UserPlus size={16} /> Plotting Baru
       </Button>
     </div>
@@ -581,12 +581,12 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
 
     return isGuru 
       ? [
-          { id: 'MY_GUIDANCE', label: guidanceLabel, icon: User },
-          { id: 'ALL', label: fullAllLabel, icon: ClipboardList }
+          { id: 'MY_GUIDANCE', label: guidanceLabel, icon: User, colorClass: 'text-amber-600 dark:text-amber-400' },
+          { id: 'ALL', label: fullAllLabel, icon: ClipboardList, colorClass: 'text-amber-600 dark:text-amber-400' }
         ]
       : [
-          { id: 'ALL', label: fullAllLabel, icon: ClipboardList },
-          { id: 'MY_GUIDANCE', label: guidanceLabel, icon: User }
+          { id: 'ALL', label: fullAllLabel, icon: ClipboardList, colorClass: 'text-amber-600 dark:text-amber-400' },
+          { id: 'MY_GUIDANCE', label: guidanceLabel, icon: User, colorClass: 'text-amber-600 dark:text-amber-400' }
         ];
   }, [isGuru, isJurusanScoped, effectiveJurusanNama, isWaliKelas, walikelasKelas, allCount, myGuidanceCount]);
 
@@ -679,8 +679,8 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
       >
         {/* Banner Khusus Kaprog: Unit Terkunci (Hanya pada halaman mandiri Hubin, bukan di modal/dashboard) */}
         {isJurusanScoped && !isModal && !hideScopeBanner && (
-          <div className="mx-4 mt-4 flex items-center gap-2.5 p-3 bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 rounded-2xl text-xs text-indigo-900 dark:text-indigo-200">
-            <ShieldCheck size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+          <div className="mx-4 mt-4 flex items-center gap-2.5 p-3 bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50 rounded-2xl text-xs text-amber-900 dark:text-amber-200">
+            <ShieldCheck size={18} className="text-amber-600 dark:text-amber-400 shrink-0" />
             <div>
               <span className="font-bold">Mode Ketua Program Keahlian (Kaprog):</span>{' '}
               <span>
@@ -792,9 +792,8 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
                         actions.setSelectedPembimbingId('');
                         actions.setIsPlottingOpen(true);
                       }}
-                      variant="primary"
                       size="sm"
-                      className="h-8 px-1.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1 shadow-2xs whitespace-nowrap"
+                      className="h-8 px-1.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1 shadow-2xs whitespace-nowrap bg-amber-600 hover:bg-amber-500 text-white border-none transition-all active:scale-95"
                     >
                       <UserPlus size={13} className="shrink-0" />
                       <span>Plot Baru</span>

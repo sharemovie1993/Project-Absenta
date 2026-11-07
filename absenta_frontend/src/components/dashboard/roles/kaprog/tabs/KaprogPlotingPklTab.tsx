@@ -23,7 +23,7 @@ export const KaprogPlotingPklTab: React.FC<KaprogPlotingPklTabProps> = React.mem
       <Suspense
         fallback={
           <div className="p-12 text-center text-xs text-slate-400">
-            <div className="animate-spin w-8 h-8 mx-auto text-indigo-600 mb-2 border-2 border-current border-t-transparent rounded-full" />
+            <div className="animate-spin w-8 h-8 mx-auto text-amber-600 mb-2 border-2 border-current border-t-transparent rounded-full" />
             Memuat modul penempatan siswa PKL...
           </div>
         }
