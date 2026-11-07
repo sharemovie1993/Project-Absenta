@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
 import { ConfirmModal } from '@/components/ui/Modal';
+import { getEcosystemTokens, EcosystemType } from '@/config/bottomNavEcosystems.config';
 
 // ==========================================
 // 1. Types & Interfaces
@@ -45,9 +46,9 @@ export interface UniversalSubtabCategory {
 
 // ── PURE SCOPE NORMALIZATION & URL TAB RESOLVER ──
 export function normalizeRoleToScope(roleBadge?: string, scope?: string): string {
-  if (scope) return scope.toLowerCase().trim();
-  if (!roleBadge) return '';
-  const clean = roleBadge.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const raw = scope || roleBadge || '';
+  if (!raw) return '';
+  const clean = raw.toLowerCase().replace(/[^a-z0-9]/g, '');
   if (clean.includes('guru') || clean.includes('pendidik') || clean.includes('pengajar')) return 'portal';
   if (clean.includes('kaprog')) return 'kaprog';
   if (clean.includes('wali') || clean.includes('walas')) return 'walas';
@@ -180,6 +181,10 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
     return normalizeRoleToScope(roleBadge, scope);
   }, [roleBadge, scope]);
 
+  const ecosystemTokens = useMemo(() => {
+    return getEcosystemTokens((myScope || 'portal') as EcosystemType);
+  }, [myScope]);
+
   const activeStoreScope = useMobileSubtabSidebarStore((state) => state.activeScope);
 
   const isScopeMatch = useMemo(() => {
@@ -310,13 +315,23 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
           >
             {/* ─── Drawer Header (Clean, Minimal & Noise-Free) ─── */}
             <div className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-slate-100 dark:border-slate-800">
-              <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate tracking-tight">
-                {title}
-              </h2>
+              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                <span className={cn('w-2.5 h-2.5 rounded-full shrink-0', ecosystemTokens.badgeClass.split(' ')[0])} />
+                <div className="min-w-0">
+                  <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate tracking-tight">
+                    {title}
+                  </h2>
+                  {subtitle && (
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate">
+                      {subtitle}
+                    </div>
+                  )}
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={onClose}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-all cursor-pointer"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-all cursor-pointer shrink-0"
                 title="Tutup Menu"
                 aria-label="Tutup Menu"
               >
@@ -359,7 +374,7 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
                               className={cn(
                                 'w-full flex items-center justify-between min-h-[38px] px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all text-left cursor-pointer group',
                                 isActive
-                                  ? 'bg-indigo-600 text-white shadow-xs'
+                                  ? cn(ecosystemTokens.activeButton, ecosystemTokens.shadowClass, 'shadow-xs font-bold')
                                   : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70 active:scale-[0.99]',
                                 tab.disabled && 'opacity-40 cursor-not-allowed'
                               )}
@@ -369,7 +384,7 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
                                   className={cn(
                                     'w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-colors',
                                     isActive
-                                      ? 'bg-white/20 text-white'
+                                      ? ecosystemTokens.activeIconBg
                                       : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover:bg-slate-200/80 dark:group-hover:bg-slate-700/80'
                                   )}
                                 >
@@ -459,6 +474,9 @@ export const MobileSubtabTriggerButton: React.FC<MobileSubtabTriggerButtonProps>
     return tabs.find((t) => t.id === activeTab) || tabs[0];
   }, [tabs, activeTab]);
 
+  const scope = useMemo(() => normalizeRoleToScope(roleBadge), [roleBadge]);
+  const ecosystemTokens = useMemo(() => getEcosystemTokens((scope || 'portal') as EcosystemType), [scope]);
+
   const Icon = currentTab?.icon || Layers;
 
   if (variant === 'compact') {
@@ -473,7 +491,7 @@ export const MobileSubtabTriggerButton: React.FC<MobileSubtabTriggerButtonProps>
         title="Buka Menu Subtab"
         aria-label="Buka Menu Subtab"
       >
-        <Menu size={14} className="text-indigo-600 dark:text-indigo-400 stroke-[2.2]" />
+        <Menu size={14} className={cn("stroke-[2.2]", ecosystemTokens.subtleText)} />
         <span className="text-[11px] font-bold truncate max-w-[100px] sm:max-w-none">
           {currentTab?.shortLabel || currentTab?.label}
         </span>
@@ -505,7 +523,7 @@ export const MobileSubtabTriggerButton: React.FC<MobileSubtabTriggerButtonProps>
         <div className="min-w-0 text-left">
           <div className="flex items-center gap-1.5">
             {roleBadge && (
-              <span className="text-[9px] font-black uppercase tracking-wider text-indigo-300">
+              <span className={cn("text-[9px] font-black uppercase tracking-wider", ecosystemTokens.subtleText)}>
                 {roleBadge} &bull;
               </span>
             )}

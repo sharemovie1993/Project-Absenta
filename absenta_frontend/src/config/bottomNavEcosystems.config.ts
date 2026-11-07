@@ -125,6 +125,166 @@ export function getEcosystemLabel(ecosystem: EcosystemType): string {
 }
 
 /**
+ * ── DESIGN TOKEN SYSTEM: ECOSYSTEM COLOR TOKENS (SSOT) ──
+ * Standar token warna tombol, gradien, badge, dan aksen terpadu per divisi ekosistem
+ */
+export interface EcosystemColorTokens {
+  primaryColor: string;
+  activeButton: string;
+  activeIconBg: string;
+  subtleBg: string;
+  subtleText: string;
+  badgeClass: string;
+  borderClass: string;
+  shadowClass: string;
+}
+
+export function getEcosystemTokens(ecosystem: EcosystemType): EcosystemColorTokens {
+  switch (ecosystem) {
+    case 'kurikulum':
+      return {
+        primaryColor: 'emerald-600',
+        activeButton: 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white',
+        activeIconBg: 'bg-white/20 text-white',
+        subtleBg: 'bg-emerald-50 dark:bg-emerald-950/60',
+        subtleText: 'text-emerald-700 dark:text-emerald-300',
+        badgeClass: 'bg-emerald-500 text-white',
+        borderClass: 'border-emerald-200 dark:border-emerald-800/80',
+        shadowClass: 'shadow-emerald-900/20',
+      };
+    case 'hubin':
+    case 'bkk':
+    case 'pembimbing_pkl':
+      return {
+        primaryColor: 'orange-600',
+        activeButton: 'bg-gradient-to-r from-orange-600 to-amber-700 text-white',
+        activeIconBg: 'bg-white/20 text-white',
+        subtleBg: 'bg-orange-50 dark:bg-orange-950/60',
+        subtleText: 'text-orange-700 dark:text-orange-300',
+        badgeClass: 'bg-orange-500 text-white',
+        borderClass: 'border-orange-200 dark:border-orange-800/80',
+        shadowClass: 'shadow-orange-900/20',
+      };
+    case 'kesiswaan':
+    case 'ekskul':
+    case 'satpam':
+    case 'piket':
+      return {
+        primaryColor: 'rose-600',
+        activeButton: 'bg-gradient-to-r from-rose-600 to-red-700 text-white',
+        activeIconBg: 'bg-white/20 text-white',
+        subtleBg: 'bg-rose-50 dark:bg-rose-950/60',
+        subtleText: 'text-rose-700 dark:text-rose-300',
+        badgeClass: 'bg-rose-500 text-white',
+        borderClass: 'border-rose-200 dark:border-rose-800/80',
+        shadowClass: 'shadow-rose-900/20',
+      };
+    case 'walas':
+      return {
+        primaryColor: 'sky-600',
+        activeButton: 'bg-gradient-to-r from-sky-600 to-blue-700 text-white',
+        activeIconBg: 'bg-white/20 text-white',
+        subtleBg: 'bg-sky-50 dark:bg-sky-950/60',
+        subtleText: 'text-sky-700 dark:text-sky-300',
+        badgeClass: 'bg-sky-500 text-white',
+        borderClass: 'border-sky-200 dark:border-sky-800/80',
+        shadowClass: 'shadow-sky-900/20',
+      };
+    case 'kaprog':
+      return {
+        primaryColor: 'amber-600',
+        activeButton: 'bg-gradient-to-r from-amber-600 to-amber-700 text-white',
+        activeIconBg: 'bg-white/20 text-white',
+        subtleBg: 'bg-amber-50 dark:bg-amber-950/60',
+        subtleText: 'text-amber-700 dark:text-amber-300',
+        badgeClass: 'bg-amber-500 text-white',
+        borderClass: 'border-amber-200 dark:border-amber-800/80',
+        shadowClass: 'shadow-amber-900/20',
+      };
+    case 'tu':
+      return {
+        primaryColor: 'indigo-700',
+        activeButton: 'bg-gradient-to-r from-indigo-700 to-slate-800 text-white',
+        activeIconBg: 'bg-white/20 text-white',
+        subtleBg: 'bg-indigo-50 dark:bg-indigo-950/60',
+        subtleText: 'text-indigo-700 dark:text-indigo-300',
+        badgeClass: 'bg-indigo-600 text-white',
+        borderClass: 'border-indigo-200 dark:border-indigo-800/80',
+        shadowClass: 'shadow-indigo-950/20',
+      };
+    case 'bpbk':
+      return {
+        primaryColor: 'purple-600',
+        activeButton: 'bg-gradient-to-r from-purple-600 to-violet-800 text-white',
+        activeIconBg: 'bg-white/20 text-white',
+        subtleBg: 'bg-purple-50 dark:bg-purple-950/60',
+        subtleText: 'text-purple-700 dark:text-purple-300',
+        badgeClass: 'bg-purple-600 text-white',
+        borderClass: 'border-purple-200 dark:border-purple-800/80',
+        shadowClass: 'shadow-purple-900/20',
+      };
+    case 'sarpras':
+    case 'toolman':
+      return {
+        primaryColor: 'teal-700',
+        activeButton: 'bg-gradient-to-r from-teal-700 to-emerald-800 text-white',
+        activeIconBg: 'bg-white/20 text-white',
+        subtleBg: 'bg-teal-50 dark:bg-teal-950/60',
+        subtleText: 'text-teal-700 dark:text-teal-300',
+        badgeClass: 'bg-teal-600 text-white',
+        borderClass: 'border-teal-200 dark:border-teal-800/80',
+        shadowClass: 'shadow-teal-900/20',
+      };
+    case 'koperasi':
+      return {
+        primaryColor: 'emerald-700',
+        activeButton: 'bg-gradient-to-r from-emerald-700 to-green-800 text-white',
+        activeIconBg: 'bg-white/20 text-white',
+        subtleBg: 'bg-emerald-50 dark:bg-emerald-950/60',
+        subtleText: 'text-emerald-700 dark:text-emerald-300',
+        badgeClass: 'bg-emerald-600 text-white',
+        borderClass: 'border-emerald-200 dark:border-emerald-800/80',
+        shadowClass: 'shadow-emerald-900/20',
+      };
+    case 'admin':
+      return {
+        primaryColor: 'slate-800',
+        activeButton: 'bg-gradient-to-r from-slate-800 to-slate-950 text-white',
+        activeIconBg: 'bg-white/20 text-white',
+        subtleBg: 'bg-slate-100 dark:bg-slate-800',
+        subtleText: 'text-slate-800 dark:text-slate-200',
+        badgeClass: 'bg-slate-800 text-white',
+        borderClass: 'border-slate-300 dark:border-slate-700',
+        shadowClass: 'shadow-slate-950/20',
+      };
+    case 'kepsek':
+      return {
+        primaryColor: 'indigo-800',
+        activeButton: 'bg-gradient-to-r from-indigo-800 to-slate-900 text-white',
+        activeIconBg: 'bg-white/20 text-white',
+        subtleBg: 'bg-indigo-50 dark:bg-indigo-950/60',
+        subtleText: 'text-indigo-700 dark:text-indigo-300',
+        badgeClass: 'bg-indigo-600 text-white',
+        borderClass: 'border-indigo-200 dark:border-indigo-800/80',
+        shadowClass: 'shadow-indigo-950/20',
+      };
+    case 'portal':
+    case 'siswa':
+    default:
+      return {
+        primaryColor: 'indigo-600',
+        activeButton: 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white',
+        activeIconBg: 'bg-white/20 text-white',
+        subtleBg: 'bg-indigo-50 dark:bg-indigo-950/60',
+        subtleText: 'text-indigo-600 dark:text-indigo-400',
+        badgeClass: 'bg-indigo-600 text-white',
+        borderClass: 'border-indigo-200 dark:border-indigo-800/80',
+        shadowClass: 'shadow-indigo-600/25',
+      };
+  }
+}
+
+/**
  * Mendapatkan tema visual Layer 1 (Portal) vs Layer 2 (Workspace Ekosistem)
  * Warna disesuaikan dengan identitas brand masing-masing divisi untuk kontras maksimal di mobile.
  */
