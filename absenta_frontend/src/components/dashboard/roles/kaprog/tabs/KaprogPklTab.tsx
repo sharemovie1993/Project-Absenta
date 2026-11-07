@@ -12,7 +12,6 @@ import {
   CalendarCheck,
   Edit3,
   Sparkles,
-  History,
   Printer
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
@@ -177,35 +176,7 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
             </h3>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
-            {availableRolloverCount > 0 && !isReadOnly && onRolloverAllTp && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onRolloverAllTp}
-                disabled={isRolloverLoading}
-                className="h-8.5 text-xs font-bold rounded-xl gap-1.5 border-emerald-300 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 cursor-pointer shadow-2xs shrink-0"
-              >
-                <History className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="hidden sm:inline-flex items-center gap-1">
-                  <span>{isRolloverLoading ? 'Sedang Menyalin...' : 'Salin Semua TP'}</span>
-                  {!isRolloverLoading && (
-                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 -translate-y-0.5 leading-none">
-                      {availableRolloverCount}
-                    </span>
-                  )}
-                </span>
-                <span className="sm:hidden inline-flex items-center gap-1">
-                  <span>{isRolloverLoading ? 'Salin...' : 'Salin'}</span>
-                  {!isRolloverLoading && (
-                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 -translate-y-0.5 leading-none">
-                      {availableRolloverCount}
-                    </span>
-                  )}
-                </span>
-              </Button>
-            )}
-
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             {/* Search Input Filter */}
             <div className="relative flex-1 sm:w-64">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -234,13 +205,13 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
           </div>
         </div>
 
-        {/* Quick Filter Tabs (Semua, Belum Diisi, Sudah Diisi) */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl text-xs font-semibold w-full sm:w-auto overflow-x-auto no-scrollbar">
+        {/* Quick Filter Tabs 3-Kolom Proporsional (Anti-Overflow & Zero Noise) */}
+        <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl text-xs font-semibold w-full">
           <button
             type="button"
             onClick={() => setStatusFilter('ALL')}
             className={cn(
-              'flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-xs',
+              'inline-flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg transition-all cursor-pointer whitespace-nowrap text-xs',
               statusFilter === 'ALL'
                 ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs font-bold'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
@@ -262,13 +233,13 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
             type="button"
             onClick={() => setStatusFilter('BELUM')}
             className={cn(
-              'flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-xs',
+              'inline-flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg transition-all cursor-pointer whitespace-nowrap text-xs',
               statusFilter === 'BELUM'
                 ? 'bg-amber-500 text-white shadow-2xs font-bold'
                 : 'text-amber-600 dark:text-amber-400 hover:bg-amber-50/50'
             )}
           >
-            <span>Belum Diisi</span>
+            <span>Belum</span>
             <span
               className={cn(
                 'px-1.5 py-0.2 rounded-full text-[10px] font-black leading-none transition-colors -translate-y-0.5',
@@ -284,13 +255,13 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
             type="button"
             onClick={() => setStatusFilter('SUDAH')}
             className={cn(
-              'flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-xs',
+              'inline-flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg transition-all cursor-pointer whitespace-nowrap text-xs',
               statusFilter === 'SUDAH'
                 ? 'bg-emerald-600 text-white shadow-2xs font-bold'
                 : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50/50'
             )}
           >
-            <span>Sudah Diisi</span>
+            <span>Sudah</span>
             <span
               className={cn(
                 'px-1.5 py-0.2 rounded-full text-[10px] font-black leading-none transition-colors -translate-y-0.5',
