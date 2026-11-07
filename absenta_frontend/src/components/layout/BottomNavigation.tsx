@@ -108,21 +108,21 @@ export const BottomNavigation: React.FC = React.memo(() => {
       />
 
       {/* ── SUBKOMPONEN 2: BILAH NAVIGASI BAWAH SELULER (GAYA 1: CURVED NOTCH DOCK WITH ELEVATED FAB) ── */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex flex-col pointer-events-auto overflow-visible px-2.5 pb-[calc(0.45rem+env(safe-area-inset-bottom))]">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex flex-col pointer-events-auto overflow-visible px-3 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
         <nav
           aria-label="Navigasi Bawah Seluler"
-          className="w-full relative flex items-center justify-around h-[62px] sm:h-[64px] overflow-visible"
+          className="w-full relative flex items-center justify-between h-[68px] overflow-visible"
         >
-          {/* Background Shape Lekukan Cekung S-Curve (Gaya 1) */}
+          {/* Background Shape Lekukan Cekung S-Curve Lebar & Bernapas (Gaya 1) */}
           <BottomNavNotchBackground
             theme={currentTheme}
             ecosystem={activeEcosystem}
-            notchWidth={84}
-            notchDepth={22}
-            height={64}
+            notchWidth={100}
+            notchDepth={24}
+            height={68}
           />
 
-          <div className="flex items-center justify-around w-full h-full relative z-10 px-0.5">
+          <div className="flex items-center w-full h-full relative z-10 px-1">
             {activeTabsList.map((item, index) => {
               const isCenterItem = index === centerIndex;
               const isSelected = item.isActive(location.pathname, currentTab) || (isCenterItem && isSidebarOpen);

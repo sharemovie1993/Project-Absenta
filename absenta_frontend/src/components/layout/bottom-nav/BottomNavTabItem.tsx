@@ -31,12 +31,12 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
       <button
         type="button"
         onClick={() => onClick(item)}
-        className="flex flex-col items-center justify-end -translate-y-3.5 flex-1 select-none cursor-pointer relative min-w-0 group focus:outline-none z-20"
+        className="w-[96px] sm:w-[104px] shrink-0 h-full flex flex-col items-center justify-end pb-2 select-none cursor-pointer relative group focus:outline-none z-20"
         aria-label={item.label}
       >
         <div
           className={cn(
-            "w-[50px] h-[50px] rounded-full flex items-center justify-center transition-all duration-200 relative active:scale-95 shadow-lg",
+            "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 relative active:scale-95 shadow-lg -translate-y-2.5",
             isHighlighted
               ? theme.isLayer2
                 ? "bg-white text-indigo-700 ring-4 ring-white/50 shadow-xl shadow-black/40 scale-105"
@@ -53,20 +53,11 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
               {item.badge}
             </span>
           )}
-
-          {hasChildren && (
-            <span
-              className={cn(
-                "absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full animate-pulse",
-                theme.isLayer2 ? "bg-indigo-600" : "bg-white"
-              )}
-            />
-          )}
         </div>
 
         <span
           className={cn(
-            "max-w-[66px] text-center tracking-tight text-[9px] sm:text-[10px] font-bold leading-tight line-clamp-1 mt-1",
+            "text-center tracking-tight text-[9.5px] sm:text-[10px] font-bold leading-none line-clamp-1",
             isHighlighted ? theme.activeTextClass : theme.inactiveTextClass
           )}
         >
@@ -88,7 +79,7 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
       type="button"
       onClick={() => onClick(item)}
       className={cn(
-        'flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 transition-all duration-150 select-none flex-1 cursor-pointer relative min-w-0 h-[56px]',
+        'flex flex-col items-center justify-center gap-1 py-1 px-0.5 transition-all duration-150 select-none flex-1 min-w-0 h-full cursor-pointer relative',
         isHighlighted
           ? theme.activeTextClass
           : theme.inactiveTextClass

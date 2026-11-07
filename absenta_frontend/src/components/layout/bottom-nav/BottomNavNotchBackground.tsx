@@ -41,9 +41,9 @@ export function getEcosystemGradient(ecosystem: EcosystemType): [string, string]
 export const BottomNavNotchBackground: React.FC<BottomNavNotchBackgroundProps> = React.memo(({
   theme,
   ecosystem,
-  notchWidth = 84,
-  notchDepth = 22,
-  height = 64,
+  notchWidth = 100,
+  notchDepth = 24,
+  height = 68,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState<number>(() => (typeof window !== 'undefined' ? window.innerWidth - 24 : 360));
@@ -73,24 +73,18 @@ export const BottomNavNotchBackground: React.FC<BottomNavNotchBackgroundProps> =
   const center = width / 2;
   const p1 = center - notchWidth / 2;
   const p2 = center + notchWidth / 2;
-  const rTop = 26;
-  const rBottom = 26;
+  const rTop = 24;
+  const rBottom = 24;
 
-  // Path formula untuk Gaya 1:
-  // 1. Sudut kiri atas membulat
-  // 2. Garis lurus ke bahu kiri notch
-  // 3. S-curve turun ke dasar palung cekung
-  // 4. S-curve naik ke bahu kanan notch
-  // 5. Garis lurus ke sudut kanan atas membulat
-  // 6. Sisi kanan turun ke sudut kanan bawah membulat
-  // 7. Sisi bawah lurus ke sudut kiri bawah membulat
-  // 8. Menutup path
+  // Path formula untuk Gaya 1 (Lekukan Cekung S-Curve Luas & Bernapas):
+  // Didesain dengan bahu halus (p1 + 20) dan dasar palung datar lembut (center - 26)
+  // sehingga elevated button melayang anggun tanpa terhimpit.
   const fillPathD = `
     M 0 ${rTop}
     Q 0 0 ${rTop} 0
     L ${p1} 0
-    C ${p1 + 14} 0 ${center - 22} ${notchDepth} ${center} ${notchDepth}
-    C ${center + 22} ${notchDepth} ${p2 - 14} 0 ${p2} 0
+    C ${p1 + 20} 0 ${center - 28} ${notchDepth} ${center} ${notchDepth}
+    C ${center + 28} ${notchDepth} ${p2 - 20} 0 ${p2} 0
     L ${width - rTop} 0
     Q ${width} 0 ${width} ${rTop}
     L ${width} ${height - rBottom}
@@ -105,8 +99,8 @@ export const BottomNavNotchBackground: React.FC<BottomNavNotchBackgroundProps> =
     M 0 ${rTop}
     Q 0 0 ${rTop} 0
     L ${p1} 0
-    C ${p1 + 14} 0 ${center - 22} ${notchDepth} ${center} ${notchDepth}
-    C ${center + 22} ${notchDepth} ${p2 - 14} 0 ${p2} 0
+    C ${p1 + 20} 0 ${center - 28} ${notchDepth} ${center} ${notchDepth}
+    C ${center + 28} ${notchDepth} ${p2 - 20} 0 ${p2} 0
     L ${width - rTop} 0
     Q ${width} 0 ${width} ${rTop}
   `.replace(/\s+/g, ' ').trim();
