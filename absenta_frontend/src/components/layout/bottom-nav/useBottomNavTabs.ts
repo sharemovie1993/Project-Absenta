@@ -258,7 +258,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         label: 'Dashboard Kesiswaan',
         shortLabel: 'Kesiswaan',
         icon: ShieldAlert,
-        targetPath: '/kesiswaan/pelanggaran',
+        targetPath: '/dashboard?tab=kesiswaan',
         color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400',
       });
     }
@@ -269,7 +269,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         label: 'Dashboard Hubin',
         shortLabel: 'Hubin',
         icon: Briefcase,
-        targetPath: '/hubin/absensi',
+        targetPath: '/dashboard?tab=hubin',
         color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
       });
     }
@@ -280,7 +280,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         label: 'Dashboard BK',
         shortLabel: 'BK',
         icon: HeartHandshake,
-        targetPath: '/bpbk/dashboard',
+        targetPath: '/dashboard?tab=bpbk',
         color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400',
       });
     }
@@ -291,7 +291,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         label: 'Dashboard BKK',
         shortLabel: 'BKK',
         icon: GraduationCap,
-        targetPath: '/hubin/bkk?tab=loker',
+        targetPath: '/dashboard?tab=bkk',
         color: 'bg-cyan-50 dark:bg-cyan-950/70 text-cyan-600 dark:text-cyan-400',
       });
     }
@@ -302,7 +302,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         label: 'Dashboard Sarpras',
         shortLabel: 'Sarpras',
         icon: Building2,
-        targetPath: '/sarpras/inventory',
+        targetPath: '/dashboard?tab=sarpras',
         color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400',
       });
     }

@@ -182,6 +182,15 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
     }
   }, [location.pathname, location.search]);
 
+  // Registrasi scope aktif ke global store saat komponen sidebar mount
+  useEffect(() => {
+    if (!myScope) return;
+    useMobileSubtabSidebarStore.getState().registerScope(myScope);
+    return () => {
+      useMobileSubtabSidebarStore.getState().unregisterScope(myScope);
+    };
+  }, [myScope]);
+
   // Mount detection for React Portal
   useEffect(() => {
     setMounted(true);
@@ -514,6 +523,9 @@ export const MobileSubtabBar: React.FC<MobileSubtabBarProps> = () => {
 export interface MobileSubtabSidebarStore {
   isOpen: boolean;
   activeScope: string | null;
+  registeredScopes: string[];
+  registerScope: (scope: string) => void;
+  unregisterScope: (scope: string) => void;
   open: (scope?: string) => void;
   close: () => void;
   toggle: (scope?: string) => void;
@@ -523,19 +535,33 @@ export interface MobileSubtabSidebarStore {
 export const useMobileSubtabSidebarStore = create<MobileSubtabSidebarStore>((set) => ({
   isOpen: false,
   activeScope: null,
+  registeredScopes: [],
+  registerScope: (scope: string) => set((state) => {
+    const normalized = normalizeRoleToScope(undefined, scope);
+    if (!normalized || state.registeredScopes.includes(normalized)) return state;
+    return { registeredScopes: [...state.registeredScopes, normalized] };
+  }),
+  unregisterScope: (scope: string) => set((state) => {
+    const normalized = normalizeRoleToScope(undefined, scope);
+    if (!normalized) return state;
+    return { registeredScopes: state.registeredScopes.filter((s) => s !== normalized) };
+  }),
   open: (scope?: string) => set({ 
     isOpen: true, 
     activeScope: scope ? normalizeRoleToScope(undefined, scope) : null 
   }),
   close: () => set({ isOpen: false, activeScope: null }),
   toggle: (scope?: string) => set((state) => {
-    const nextOpen = !state.isOpen;
+    const normalized = scope ? normalizeRoleToScope(undefined, scope) : null;
+    if (state.isOpen && (!normalized || state.activeScope === normalized)) {
+      return { isOpen: false, activeScope: null };
+    }
     return {
-      isOpen: nextOpen,
-      activeScope: nextOpen && scope ? normalizeRoleToScope(undefined, scope) : null,
+      isOpen: true,
+      activeScope: normalized,
     };
   }),
-  reset: () => set({ isOpen: false, activeScope: null }),
+  reset: () => set({ isOpen: false, activeScope: null, registeredScopes: [] }),
 }));
 
 export function useMobileSubtabSidebar(scopeOrInitialState?: string | boolean) {
@@ -557,6 +583,15 @@ export function useMobileSubtabSidebar(scopeOrInitialState?: string | boolean) {
   const normalizedScope = useMemo(() => {
     return scope ? normalizeRoleToScope(undefined, scope) : undefined;
   }, [scope]);
+
+  // Daftarkan scope ke global store saat hook aktif
+  useEffect(() => {
+    if (!normalizedScope) return;
+    useMobileSubtabSidebarStore.getState().registerScope(normalizedScope);
+    return () => {
+      useMobileSubtabSidebarStore.getState().unregisterScope(normalizedScope);
+    };
+  }, [normalizedScope]);
 
   // Validasi kecocokan scope terhadap URL aktif di /dashboard
   const isScopeActive = useMemo(() => {

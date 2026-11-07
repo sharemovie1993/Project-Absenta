@@ -486,7 +486,13 @@ export const AbsensiPklView: React.FC<UniversalAbsensiPklViewProps> = React.memo
           });
           setIsSpoofedLocation(false);
         },
-        (err) => console.error("Error watching location:", err),
+        (err) => {
+          if (err.code === 1) {
+            console.warn("Presensi PKL: Akses lokasi dibatasi oleh pengguna (Geolocation permission denied)");
+          } else {
+            console.warn("Presensi PKL: Status lokasi:", err.message);
+          }
+        },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     }

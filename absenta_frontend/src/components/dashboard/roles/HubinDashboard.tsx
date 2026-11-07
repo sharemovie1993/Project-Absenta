@@ -253,7 +253,8 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
     }
   }, [activeTab]);
 
-  if (loadingStats && !stats) {
+  const isInitialLoading = loadingStats && !stats && activeTab === 'ringkasan';
+  if (isInitialLoading) {
     return <HubinDashboardSkeleton />;
   }
 

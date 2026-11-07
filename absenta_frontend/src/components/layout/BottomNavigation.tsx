@@ -6,7 +6,7 @@ import { BottomNavTabItem } from './bottom-nav/BottomNavTabItem';
 import { BottomNavCrescentSpeedDial } from './bottom-nav/BottomNavCrescentSpeedDial';
 import { MobileAccountSheet } from './bottom-nav/MobileAccountSheet';
 import { BottomNavNotchBackground } from './bottom-nav/BottomNavNotchBackground';
-import { useMobileSubtabSidebarStore } from '@/components/dashboard/roles/common';
+import { useMobileSubtabSidebarStore, normalizeRoleToScope } from '@/components/dashboard/roles/common';
 import type { 
   MobileBottomSubItem, 
   MobileBottomTabItem, 
@@ -62,10 +62,20 @@ export const BottomNavigation: React.FC = React.memo(() => {
     }
 
     if (item.children && item.children.length > 0) {
-      // 🚀 Buka Universal Mobile Subtab Sidebar Drawer (Posisi jangkauan jempol di tengah)
       const targetScope = isKepsek ? 'kepsek' : isSiswa ? 'siswa' : activeEcosystem;
-      useMobileSubtabSidebarStore.getState().open(targetScope);
-      setOpenFlyoutId(null);
+      const normalizedTarget = normalizeRoleToScope(undefined, targetScope);
+      const store = useMobileSubtabSidebarStore.getState();
+      const hasMountedDrawer = store.registeredScopes.includes(normalizedTarget);
+
+      if (hasMountedDrawer) {
+        // 🚀 Drawer subtab terpasang di DOM -> Toggle Universal Subtab Sidebar Drawer!
+        store.toggle(targetScope);
+        setOpenFlyoutId(null);
+      } else {
+        // 🌙 Halaman mandiri tanpa drawer -> Toggle Crescent Speed Dial (Busur Cepat)!
+        store.close();
+        setOpenFlyoutId((prev) => (prev === item.id ? null : item.id));
+      }
       return;
     }
     setOpenFlyoutId(null);
@@ -126,7 +136,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
           <div className="flex items-center w-full h-[64px] sm:h-[68px] relative z-10 px-1">
             {activeTabsList.map((item, index) => {
               const isCenterItem = index === centerIndex;
-              const isSelected = item.isActive(location.pathname, currentTab) || (isCenterItem && isSidebarOpen);
+              const isSelected = item.isActive(location.pathname, currentTab) || (isCenterItem && (isSidebarOpen || openFlyoutId === item.id));
               return (
                 <BottomNavTabItem
                   key={item.id}
