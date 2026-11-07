@@ -642,6 +642,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
         title={resolvedJurusan?.nama || 'Program Keahlian'}
         subtitle={resolvedJurusan?.singkatan ? `${resolvedJurusan.singkatan} • Kejuruan` : 'Manajemen Jurusan'}
         roleBadge="KAPROG"
+        scope="kaprog"
         roleIcon={Briefcase}
         logoUrl={resolvedJurusan?.logo_url || undefined}
         tabs={navTabs}

@@ -44,6 +44,8 @@ import {
   Scan,
   LogOut,
   UserCheck,
+  ClipboardCheck,
+  Scale,
   LucideIcon
 } from 'lucide-react';
 
@@ -474,15 +476,26 @@ export function getKaprogTabs(kaprogJurusan: any, currentSubtab: string | null):
       targetPath: '/dashboard?tab=kaprog',
       isActive: (p, t) => t === 'kaprog' && Boolean(currentSubtab && !['siswa', 'pkl', 'kehadiran'].includes(currentSubtab)),
       children: [
+        // Kategori 1: MANAJEMEN JURUSAN
         { id: 'beranda', label: 'Ringkasan', icon: Home, targetPath: '/dashboard?tab=kaprog&subtab=beranda', color: 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400' },
         { id: 'siswa', label: 'Siswa', icon: GraduationCap, targetPath: '/dashboard?tab=kaprog&subtab=siswa', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
-        { id: 'pkl', label: 'PKL', icon: Briefcase, targetPath: '/dashboard?tab=kaprog&subtab=pkl', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
-        { id: 'sidang_pkl', label: 'Sidang', icon: Award, targetPath: '/dashboard?tab=kaprog&subtab=sidang_pkl', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
+        { id: 'guru', label: 'Guru', icon: Users, targetPath: '/dashboard?tab=kaprog&subtab=guru', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
+        { id: 'sarana', label: 'Sarana', icon: Wrench, targetPath: '/dashboard?tab=kaprog&subtab=sarana', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
+
+        // Kategori 2: PEMBINAAN ROMBEL
         { id: 'kehadiran', label: 'Presensi', icon: CalendarCheck, targetPath: '/dashboard?tab=kaprog&subtab=kehadiran', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
         { id: 'pelanggaran', label: 'Pelanggaran', icon: ShieldAlert, targetPath: '/dashboard?tab=kaprog&subtab=pelanggaran', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
         { id: 'prestasi', label: 'Prestasi', icon: Trophy, targetPath: '/dashboard?tab=kaprog&subtab=prestasi', color: 'bg-yellow-50 dark:bg-yellow-950/70 text-yellow-600 dark:text-yellow-400' },
-        { id: 'guru', label: 'Guru', icon: Users, targetPath: '/dashboard?tab=kaprog&subtab=guru', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
-        { id: 'sarana', label: 'Sarana', icon: Wrench, targetPath: '/dashboard?tab=kaprog&subtab=sarana', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
+
+        // Kategori 3: PRAKTIK KERJA LAPANGAN (PKL)
+        { id: 'pkl', label: 'Formulasi', icon: Briefcase, targetPath: '/dashboard?tab=kaprog&subtab=pkl', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
+        { id: 'ploting_pkl', label: 'Ploting', icon: UserCheck, targetPath: '/dashboard?tab=kaprog&subtab=ploting_pkl', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
+        { id: 'presensi_pkl', label: 'Absensi', icon: CalendarCheck, targetPath: '/dashboard?tab=kaprog&subtab=presensi_pkl', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
+        { id: 'nilai_pkl', label: 'Penilaian', icon: ClipboardCheck, targetPath: '/dashboard?tab=kaprog&subtab=nilai_pkl', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
+        { id: 'ploting_penguji', label: 'Penguji', icon: Users, targetPath: '/dashboard?tab=kaprog&subtab=ploting_penguji', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
+        { id: 'sidang_pkl', label: 'Sidang', icon: Scale, targetPath: '/dashboard?tab=kaprog&subtab=sidang_pkl', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
+
+        // Kategori 4: ASESMEN & SERTIFIKASI
         { id: 'ukk', label: 'UKK', icon: Award, targetPath: '/dashboard?tab=kaprog&subtab=ukk', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
         { id: 'rapor', label: 'Rapor', icon: Printer, targetPath: '/dashboard?tab=kaprog&subtab=rapor', color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400' },
       ],
