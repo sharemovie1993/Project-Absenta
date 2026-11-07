@@ -134,6 +134,7 @@ export const KepalaSekolahDashboard: React.FC<KepalaSekolahDashboardProps> = Rea
   });
 
   const tpTahun = academicFilter.selectedTahunPelajaranNama || '';
+  const semNama = academicFilter.selectedSemesterNama || 'Ganjil';
 
   // 1. Data Queries
   const { data: overviewData, isLoading: loadingOverview, refetch: refetchOverview } = useQuery({

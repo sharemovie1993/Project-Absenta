@@ -275,10 +275,10 @@ export class DashboardExecutiveService {
 
         return violations.map(v => ({
           id: v.id,
-          title: `${v.jenis_pelanggaran} - ${v.Siswa.nama_siswa} (${v.Siswa.Kelas?.nama_kelas || '-'})`,
+          title: `${v.jenis_pelanggaran} - ${v.Siswa?.nama_siswa || 'Siswa'} (${v.Siswa?.Kelas?.nama_kelas || '-'})`,
           source: 'Kesiswaan',
           status: mapViolationStatusToEscalationStatus(v.status),
-          created_at: v.created_at.toISOString(),
+          created_at: v.created_at ? v.created_at.toISOString() : new Date().toISOString(),
           priority: priorityFromPoints(v.poin),
           points: v.poin
         }));
@@ -380,3 +380,19 @@ export class DashboardExecutiveService {
    * 2️⃣ Statistik Harian per Kelas
    */
 }
+
+function mapViolationStatusToEscalationStatus(status: string): string {
+  const normalized = String(status || '').toUpperCase();
+  if (normalized === 'BARU' || normalized === 'PENDING') return 'Waiting';
+  if (normalized === 'PROSES' || normalized === 'IN_PROGRESS') return 'Review';
+  if (normalized === 'SELESAI' || normalized === 'DONE') return 'Done';
+  return status;
+}
+
+function priorityFromPoints(points: number): 'High' | 'Medium' | 'Low' {
+  const p = Number(points) || 0;
+  if (p >= 50) return 'High';
+  if (p >= 20) return 'Medium';
+  return 'Low';
+}
+
