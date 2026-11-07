@@ -119,15 +119,15 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
       id: 'total_mitra',
       title: 'Mitra DUDI',
       value: `${totalCount} Mitra`,
-      subtext: 'Penempatan Aktif',
+      subtext: isMobile ? undefined : 'Penempatan Aktif',
       icon: Building2,
       iconColorClass: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60',
     },
     {
       id: 'sudah_tp',
-      title: 'Sudah Diisi TP',
+      title: 'Sudah Diisi',
       value: `${filledCount} Mitra`,
-      subtext: `${tpStatus?.completionPercentage || 0}% Dirumuskan`,
+      subtext: isMobile ? undefined : `${tpStatus?.completionPercentage || 0}% Dirumuskan`,
       icon: CheckCircle2,
       iconColorClass: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60',
       badge: filledCount > 0 ? (
@@ -138,9 +138,9 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
     },
     {
       id: 'belum_tp',
-      title: 'Belum Diisi TP',
+      title: 'Belum Diisi',
       value: `${pendingCount} Mitra`,
-      subtext: 'Perlu Rumusan',
+      subtext: isMobile ? undefined : 'Perlu Rumusan',
       icon: AlertCircle,
       iconColorClass: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60',
       badge: pendingCount > 0 ? (
@@ -151,14 +151,14 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
     },
     {
       id: 'siswa_terploting',
-      title: 'Siswa Terploting',
+      title: 'Siswa PKL',
       value: `${totalSiswa} Siswa`,
-      subtext: 'Peserta Jurusan',
+      subtext: isMobile ? undefined : 'Peserta Jurusan',
       icon: Users,
       iconColorClass: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60',
       onClick: onOpenPlottingModal,
     },
-  ], [totalCount, filledCount, pendingCount, totalSiswa, tpStatus?.completionPercentage, onOpenPlottingModal]);
+  ], [totalCount, filledCount, pendingCount, totalSiswa, tpStatus?.completionPercentage, isMobile, onOpenPlottingModal]);
 
   return (
     <div className="space-y-4">
@@ -168,16 +168,13 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
       </HubCard>
 
       {/* Tabel & Kartu Mobile List Mitra Industri & Status TP */}
-      <Card noPadding className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <Card noPadding className="p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div>
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <Building2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <span>Pengisian Tujuan Pembelajaran</span>
+              <span>Tujuan Pembelajaran (TP)</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Rumuskan deskripsi capaian TP per mitra DUDI untuk pencetakan rapor PKL {jurusanNama}.
-            </p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
@@ -187,37 +184,39 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
                 size="sm"
                 onClick={onRolloverAllTp}
                 disabled={isRolloverLoading}
-                className="w-full sm:w-auto text-xs font-bold rounded-xl gap-1.5 border-emerald-300 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 cursor-pointer shadow-2xs shrink-0"
+                className="h-8.5 text-xs font-bold rounded-xl gap-1.5 border-emerald-300 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 cursor-pointer shadow-2xs shrink-0"
               >
                 <History className="w-3.5 h-3.5 text-emerald-600" />
-                <span>{isRolloverLoading ? 'Sedang Menyalin...' : `Salin Semua TP Tahun Lalu (${availableRolloverCount})`}</span>
+                <span className="hidden sm:inline">{isRolloverLoading ? 'Sedang Menyalin...' : `Salin Semua TP (${availableRolloverCount})`}</span>
+                <span className="sm:hidden">{isRolloverLoading ? 'Salin...' : `Salin (${availableRolloverCount})`}</span>
               </Button>
             )}
+
+            {/* Search Input Filter */}
+            <div className="relative flex-1 sm:w-64">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                aria-label="Cari mitra atau rombel..."
+                placeholder="Cari mitra / rombel..."
+                value={mitraFilter}
+                onChange={(e) => setMitraFilter(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
 
             {onOpenPrintMatriksModal && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={onOpenPrintMatriksModal}
-                className="w-full sm:w-auto text-xs font-semibold rounded-xl gap-1.5 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 cursor-pointer shadow-2xs shrink-0"
+                className="h-8.5 px-2.5 sm:px-3 text-xs font-semibold rounded-xl gap-1.5 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 cursor-pointer shadow-2xs shrink-0"
+                title="Cetak Matriks TP"
               >
                 <Printer className="w-3.5 h-3.5 text-slate-500" />
-                <span>Cetak Matriks TP</span>
+                <span className="hidden sm:inline">Cetak Matriks</span>
               </Button>
             )}
-
-            {/* Search Input Filter */}
-            <div className="relative w-full sm:w-64">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                aria-label="Cari mitra atau rombel..."
-                placeholder="Cari mitra atau rombel..."
-                value={mitraFilter}
-                onChange={(e) => setMitraFilter(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
-            </div>
           </div>
         </div>
 
@@ -272,7 +271,7 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
               displayedMitraList.map((mitra) => (
                 <div
                   key={mitra.mitra_id}
-                  className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-2.5 transition-all hover:border-slate-300 dark:hover:border-slate-700"
+                  className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-2 transition-all hover:border-slate-300 dark:hover:border-slate-700"
                 >
                   {/* Card Header: Nama Mitra & Status Badge */}
                   <div className="flex items-start justify-between gap-2">
@@ -280,9 +279,11 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
                       <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100 leading-snug">
                         {mitra.nama_mitra}
                       </h4>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                        {mitra.bidang_usaha || 'Mitra Industri'}
-                      </p>
+                      {mitra.bidang_usaha && mitra.bidang_usaha !== 'Mitra Industri' && (
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          {mitra.bidang_usaha}
+                        </p>
+                      )}
                     </div>
                     {mitra.has_tp ? (
                       <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200/60 dark:border-emerald-800/40 shrink-0">
@@ -292,7 +293,7 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
                     ) : mitra.previous_tp ? (
                       <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800 shrink-0">
                         <History className="w-3 h-3 text-emerald-600" />
-                        <span>Ada Arsip {mitra.previous_tahun || 'Tahun Lalu'}</span>
+                        <span>Arsip {mitra.previous_tahun || 'Lalu'}</span>
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-800/40 shrink-0">
@@ -302,71 +303,68 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
                     )}
                   </div>
 
-                  {/* Metadata: Siswa & Rombel */}
-                  <div className="flex items-center flex-wrap gap-2 text-[11px] text-slate-600 dark:text-slate-300">
-                    <div className="inline-flex items-center gap-1 font-medium bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
-                      <Users className="w-3 h-3 text-slate-400" />
-                      <span>{mitra.siswa_count} Siswa PKL</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1 items-center">
-                      {(mitra.rombel_list || []).map((r: string, rIdx: number) => (
-                        <span
-                          key={rIdx}
-                          className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/40"
-                        >
-                          {r}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Deskripsi TP Preview */}
-                  {mitra.has_tp && mitra.deskripsi_tp ? (
-                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed italic">
+                  {/* Deskripsi TP Preview (Hanya jika TP sudah dirumuskan) */}
+                  {mitra.has_tp && mitra.deskripsi_tp && (
+                    <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed italic">
                       "{mitra.deskripsi_tp}"
-                    </div>
-                  ) : (
-                    <div className="p-2.5 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-900/40 text-[11px] text-amber-700 dark:text-amber-400/90 italic">
-                      Belum ada rumusan deskripsi capaian pembelajaran (TP).
                     </div>
                   )}
 
-                  {/* CTA Button Touch Target */}
-                  <Button
-                    type="button"
-                    variant={mitra.has_tp ? 'outline' : 'primary'}
-                    size="sm"
-                    onClick={() =>
-                      onSelectEditingSlot({
-                        mitra_id: mitra.mitra_id,
-                        mitra_nama: mitra.nama_mitra,
-                        siswa_count: mitra.siswa_count,
-                        rombel_list: mitra.rombel_list || [],
-                        deskripsi_tp: mitra.deskripsi_tp || '',
-                        saved_id: mitra.saved_id,
-                        previous_tp: mitra.previous_tp,
-                        previous_tahun: mitra.previous_tahun,
-                      })
-                    }
-                    className={cn(
-                      'w-full text-xs font-bold rounded-xl h-10 flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs',
-                      !mitra.has_tp
-                        ? 'bg-amber-600 hover:bg-amber-500 text-white border-none'
-                        : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-indigo-600 dark:text-indigo-400'
-                    )}
-                  >
-                    {mitra.has_tp ? (
-                      <>
-                        <Edit3 className="w-3.5 h-3.5" />
-                        <span>Ubah Deskripsi TP</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Rumuskan Tujuan Pembelajaran</span>
-                      </>
-                    )}
-                  </Button>
+                  {/* Metadata: Siswa & Rombel + CTA Button Touch Target */}
+                  <div className="flex items-center justify-between gap-2 pt-0.5">
+                    <div className="flex items-center flex-wrap gap-1.5 text-[11px] text-slate-600 dark:text-slate-300 min-w-0">
+                      <div className="inline-flex items-center gap-1 font-semibold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md text-[10.5px]">
+                        <Users className="w-3 h-3 text-slate-400" />
+                        <span>{mitra.siswa_count} Siswa</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1 items-center">
+                        {(mitra.rombel_list || []).map((r: string, rIdx: number) => (
+                          <span
+                            key={rIdx}
+                            className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/40"
+                          >
+                            {r}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant={mitra.has_tp ? 'outline' : 'primary'}
+                      size="sm"
+                      onClick={() =>
+                        onSelectEditingSlot({
+                          mitra_id: mitra.mitra_id,
+                          mitra_nama: mitra.nama_mitra,
+                          siswa_count: mitra.siswa_count,
+                          rombel_list: mitra.rombel_list || [],
+                          deskripsi_tp: mitra.deskripsi_tp || '',
+                          saved_id: mitra.saved_id,
+                          previous_tp: mitra.previous_tp,
+                          previous_tahun: mitra.previous_tahun,
+                        })
+                      }
+                      className={cn(
+                        'h-8 px-2.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1 cursor-pointer shrink-0 shadow-2xs',
+                        !mitra.has_tp
+                          ? 'bg-amber-600 hover:bg-amber-500 text-white border-none'
+                          : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-indigo-600 dark:text-indigo-400'
+                      )}
+                    >
+                      {mitra.has_tp ? (
+                        <>
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Ubah TP</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Rumuskan TP</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               ))
             )}
