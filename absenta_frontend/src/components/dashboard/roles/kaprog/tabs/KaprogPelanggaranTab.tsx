@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button, Loader } from '@/components/ui';
+import { HubCard, HubBentoGrid, type HubBentoCell } from '@/components/ui/hub';
 import { cn } from '@/lib/utils';
 import { kesiswaanApi } from '@/api/kesiswaan.api';
 import { PelanggaranSiswaItem, KelasKehadiranItem } from '../types';
@@ -140,102 +141,65 @@ export const KaprogPelanggaranTab: React.FC<KaprogPelanggaranTabProps> = React.m
     return { total, baru, proses, selesai, totalPoin, highAlertCount };
   }, [displayList]);
 
+  const bentoCells: HubBentoCell[] = useMemo(() => [
+    {
+      id: 'total_catatan',
+      title: 'Total Catatan',
+      value: `${stats.total} Kasus`,
+      subtext: `Akumulasi siswa ${jurusanNama}`,
+      icon: ShieldAlert,
+      iconColorClass: 'text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800',
+      onClick: () => setSelectedStatus('ALL'),
+    },
+    {
+      id: 'baru',
+      title: 'Perlu Tindak Lanjut',
+      value: `${stats.baru} Kasus`,
+      subtext: 'Menunggu verifikasi Kaprog',
+      icon: AlertTriangle,
+      iconColorClass: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60',
+      badge: stats.baru > 0 ? (
+        <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-500 text-white">
+          {stats.baru}
+        </span>
+      ) : undefined,
+      onClick: () => setSelectedStatus('BARU'),
+    },
+    {
+      id: 'proses',
+      title: 'Dalam Penanganan',
+      value: `${stats.proses} Kasus`,
+      subtext: 'Bimbingan atau pemanggilan',
+      icon: Scale,
+      iconColorClass: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60',
+      badge: stats.proses > 0 ? (
+        <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-blue-500 text-white">
+          {stats.proses}
+        </span>
+      ) : undefined,
+      onClick: () => setSelectedStatus('PROSES'),
+    },
+    {
+      id: 'poin',
+      title: 'Akumulasi Poin',
+      value: `${stats.totalPoin} Poin`,
+      subtext: stats.highAlertCount > 0 ? `${stats.highAlertCount} siswa kritis (≥15)` : 'Nihil kasus kritis',
+      icon: FileText,
+      iconColorClass: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60',
+      badge: stats.highAlertCount > 0 ? (
+        <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-amber-500 text-white">
+          {stats.highAlertCount} Kritis
+        </span>
+      ) : undefined,
+    },
+  ], [stats, jurusanNama]);
+
   return (
     <div className="space-y-6">
-      {/* Header Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <Card
-          noPadding
-          className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-              Total Catatan
-            </span>
-            <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
-              <ShieldAlert className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-              {stats.total}
-            </span>
-            <span className="text-[11px] text-slate-400">kasus</span>
-          </div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            Akumulasi pelanggaran siswa {jurusanNama}
-          </p>
-        </Card>
-
-        <Card
-          noPadding
-          className="p-4 rounded-2xl border border-rose-200/70 dark:border-rose-900/40 shadow-xs bg-white dark:bg-slate-900"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-rose-600 dark:text-rose-400">
-              Perlu Tindak Lanjut
-            </span>
-            <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center">
-              <AlertTriangle className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-rose-700 dark:text-rose-300">
-              {stats.baru}
-            </span>
-            <span className="text-[11px] text-rose-500/80 font-medium">status baru</span>
-          </div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            Menunggu verifikasi Kaprog / Tatib
-          </p>
-        </Card>
-
-        <Card
-          noPadding
-          className="p-4 rounded-2xl border border-blue-200/70 dark:border-blue-900/40 shadow-xs bg-white dark:bg-slate-900"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
-              Dalam Penanganan
-            </span>
-            <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-              <Scale className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-blue-700 dark:text-blue-300">
-              {stats.proses}
-            </span>
-            <span className="text-[11px] text-blue-500/80 font-medium">proses / BK</span>
-          </div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            Bimbingan atau pemanggilan ortu
-          </p>
-        </Card>
-
-        <Card
-          noPadding
-          className="p-4 rounded-2xl border border-amber-200/70 dark:border-amber-900/40 shadow-xs bg-white dark:bg-slate-900"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
-              Akumulasi Poin
-            </span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-              <FileText className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-amber-700 dark:text-amber-300">
-              {stats.totalPoin}
-            </span>
-            <span className="text-[11px] text-amber-500/80 font-medium">poin sanksi</span>
-          </div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            {stats.highAlertCount > 0 ? `${stats.highAlertCount} siswa poin kritis (≥15)` : 'Tidak ada kasus kritis'}
-          </p>
-        </Card>
-      </div>
+      {/* Header Stat Bento (Shopee-Grade HubBentoGrid) */}
+      <HubCard noPadding>
+        <HubBentoGrid cells={bentoCells} columns={4} />
+      </HubCard>
 
       {/* Main Table Card with Toolbar */}
       <Card noPadding className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-4">

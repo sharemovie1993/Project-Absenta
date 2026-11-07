@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Building2, 
@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui';
-import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
+import { HubCard, HubBentoGrid, type HubBentoCell } from '@/components/ui/hub';
 import { ShopeeQuickActionSlider } from '@/components/common/ShopeeQuickActionSlider';
 import { cn } from '@/lib/utils';
 import type { KaprogTabId } from '../types';
@@ -64,54 +64,55 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
 }) => {
   const navigate = useNavigate();
 
+  const bentoCells: HubBentoCell[] = useMemo(() => [
+    {
+      id: 'siswa_pkl',
+      title: 'Siswa PKL Aktif',
+      value: penilaianStatus?.totalSiswaPkl || 0,
+      subtext: `Tersebar di ${tpStatus?.totalMitra || 0} industri mitra`,
+      icon: Building2,
+      iconColorClass: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60',
+      showChevron: Boolean(onSelectTab),
+      onClick: onSelectTab ? () => onSelectTab('pkl') : undefined,
+    },
+    {
+      id: 'presensi_pkl',
+      title: 'Presensi PKL Hari Ini',
+      value: `${Math.max(0, (penilaianStatus?.totalSiswaPkl || 48) - 2)} / ${penilaianStatus?.totalSiswaPkl || 48}`,
+      subtext: '95.8% siswa tertib hadir di DUDI',
+      icon: UserCheck,
+      iconColorClass: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60',
+      showChevron: Boolean(onOpenMonitoringPkl),
+      onClick: onOpenMonitoringPkl,
+    },
+    {
+      id: 'guru_mengajar',
+      title: 'Guru Produktif Mengajar',
+      value: `${kaprogStatsData?.activeClasses || 12} / ${kaprogStatsData?.totalTeachers || 14} Sesi`,
+      subtext: 'Semua jam KBM kejuruan aktif',
+      icon: Users,
+      iconColorClass: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60',
+      showChevron: Boolean(onSelectTab),
+      onClick: onSelectTab ? () => onSelectTab('guru') : undefined,
+    },
+    {
+      id: 'tp_dudi',
+      title: 'Kesiapan TP DUDI',
+      value: `${tpStatus?.completionPercentage || 0}%`,
+      subtext: `${tpStatus?.filledMitra || 0} dari ${tpStatus?.totalMitra || 0} mitra siap dinilai`,
+      icon: TrendingUp,
+      iconColorClass: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60',
+      showChevron: Boolean(onSelectTab),
+      onClick: onSelectTab ? () => onSelectTab('pkl') : undefined,
+    },
+  ], [penilaianStatus, tpStatus, kaprogStatsData, onSelectTab, onOpenMonitoringPkl]);
+
   return (
     <div className="space-y-6">
-      {/* KPI 4 Kolom Berstandar Pilar 30 & 23 (AnalyticsCard with mobileCompact & compact-premium) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Siswa PKL Aktif */}
-        <AnalyticsCard
-          variant="compact-premium"
-          mobileCompact={true}
-          title="Siswa PKL Aktif"
-          value={penilaianStatus?.totalSiswaPkl || 0}
-          icon={<Building2 className="w-5 h-5 text-indigo-500" />}
-          description={`Tersebar di ${tpStatus?.totalMitra || 0} industri mitra`}
-          gradient="from-indigo-500 to-indigo-600"
-        />
-
-        {/* Card 2: Absensi PKL Hari Ini */}
-        <AnalyticsCard
-          variant="compact-premium"
-          mobileCompact={true}
-          title="Presensi PKL Hari Ini"
-          value={`${Math.max(0, (penilaianStatus?.totalSiswaPkl || 48) - 2)} / ${penilaianStatus?.totalSiswaPkl || 48}`}
-          icon={<UserCheck className="w-5 h-5 text-emerald-500" />}
-          description="95.8% siswa tertib hadir di DUDI"
-          gradient="from-emerald-500 to-teal-600"
-        />
-
-        {/* Card 3: Guru Mengajar Hari Ini */}
-        <AnalyticsCard
-          variant="compact-premium"
-          mobileCompact={true}
-          title="Guru Produktif Mengajar"
-          value={`${kaprogStatsData?.activeClasses || 12} / ${kaprogStatsData?.totalTeachers || 14} Sesi`}
-          icon={<Users className="w-5 h-5 text-blue-500" />}
-          description="Semua jam KBM kejuruan aktif"
-          gradient="from-blue-500 to-cyan-600"
-        />
-
-        {/* Card 4: Kesiapan TP DUDI */}
-        <AnalyticsCard
-          variant="compact-premium"
-          mobileCompact={true}
-          title="Kesiapan TP DUDI"
-          value={`${tpStatus?.completionPercentage || 0}%`}
-          icon={<TrendingUp className="w-5 h-5 text-amber-500" />}
-          description={`${tpStatus?.filledMitra || 0} dari ${tpStatus?.totalMitra || 0} mitra siap dinilai`}
-          gradient="from-amber-500 to-orange-600"
-        />
-      </div>
+      {/* KPI 4 Kolom Berstandar Shopee-Grade (HubBentoGrid) */}
+      <HubCard noPadding>
+        <HubBentoGrid cells={bentoCells} columns={4} />
+      </HubCard>
 
       {/* Quick Links Grid (App Launcher Style) */}
       <Card noPadding className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-3.5">

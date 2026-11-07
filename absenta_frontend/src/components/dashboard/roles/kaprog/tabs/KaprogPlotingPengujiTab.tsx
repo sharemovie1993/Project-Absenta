@@ -15,6 +15,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui';
+import { HubCard, HubBentoGrid, type HubBentoCell } from '@/components/ui/hub';
 import { hubinApi } from '@/api/hubin.api';
 import { getKaprogStats } from '@/api/dashboard.api';
 import { useGuruOptions } from '@/hooks/useGuruOptions';
@@ -267,25 +268,59 @@ export const KaprogPlotingPengujiTab: React.FC<KaprogPlotingPengujiTabProps> = R
         </div>
       </div>
 
-      {/* ── 2. Strip Statistik Ringkasan ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3 shadow-2xs">
-          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Total Siswa PKL</span>
-          <span className="text-lg font-black text-slate-900 dark:text-white">{summaryStats.total}</span>
-        </div>
-        <div className="bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/40 rounded-xl p-3 shadow-2xs">
-          <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">Sudah Diploting</span>
-          <span className="text-lg font-black text-emerald-700 dark:text-emerald-300">{summaryStats.sudah}</span>
-        </div>
-        <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 rounded-xl p-3 shadow-2xs">
-          <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 block">Belum Diploting</span>
-          <span className="text-lg font-black text-amber-700 dark:text-amber-300">{summaryStats.belum}</span>
-        </div>
-        <div className="bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/60 dark:border-indigo-800/40 rounded-xl p-3 shadow-2xs">
-          <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block">Guru Produktif</span>
-          <span className="text-lg font-black text-indigo-700 dark:text-indigo-300">{examinerOptions.length}</span>
-        </div>
-      </div>
+      {/* ── 2. Strip Statistik Ringkasan (Shopee-Grade HubBentoGrid) ── */}
+      <HubCard noPadding>
+        <HubBentoGrid
+          columns={4}
+          cells={[
+            {
+              id: 'total_siswa',
+              title: 'Total Siswa PKL',
+              value: `${summaryStats.total} Siswa`,
+              subtext: 'Peserta sidang kejuruan',
+              icon: Users,
+              iconColorClass: 'text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800',
+              onClick: () => setPlotFilter('ALL'),
+            },
+            {
+              id: 'sudah_plot',
+              title: 'Sudah Diploting',
+              value: `${summaryStats.sudah} Siswa`,
+              subtext: 'Siap mengikuti sidang',
+              icon: CheckCircle2,
+              iconColorClass: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60',
+              badge: summaryStats.sudah > 0 ? (
+                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-500 text-white">
+                  {summaryStats.sudah}
+                </span>
+              ) : undefined,
+              onClick: () => setPlotFilter('ASSIGNED'),
+            },
+            {
+              id: 'belum_plot',
+              title: 'Belum Diploting',
+              value: `${summaryStats.belum} Siswa`,
+              subtext: 'Perlu penugasan penguji',
+              icon: AlertCircle,
+              iconColorClass: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60',
+              badge: summaryStats.belum > 0 ? (
+                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-amber-500 text-white">
+                  {summaryStats.belum}
+                </span>
+              ) : undefined,
+              onClick: () => setPlotFilter('UNASSIGNED'),
+            },
+            {
+              id: 'guru_penguji',
+              title: 'Guru Produktif',
+              value: `${examinerOptions.length} Penguji`,
+              subtext: 'Pendidik produktif siap',
+              icon: GraduationCap,
+              iconColorClass: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60',
+            },
+          ]}
+        />
+      </HubCard>
 
       {/* ── 3. Main Workspace Container ── */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden flex flex-col">

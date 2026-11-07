@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui';
-import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
+import { HubCard, HubBentoGrid, type HubBentoCell } from '@/components/ui/hub';
 import { EditingMitraSlot } from '@/components/hubin/nilai-pkl/PklDeskripsiTpModal';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { cn } from '@/lib/utils';
@@ -114,50 +114,59 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
     );
   }, [tpStatus, filteredMitraList]);
 
+  const bentoCells: HubBentoCell[] = useMemo(() => [
+    {
+      id: 'total_mitra',
+      title: 'Total Mitra DUDI',
+      value: `${totalCount} Mitra`,
+      subtext: 'Mitra aktif penempatan PKL',
+      icon: Building2,
+      iconColorClass: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60',
+    },
+    {
+      id: 'sudah_tp',
+      title: 'Sudah Diisi TP',
+      value: `${filledCount} Mitra`,
+      subtext: `${tpStatus?.completionPercentage || 0}% telah dirumuskan`,
+      icon: CheckCircle2,
+      iconColorClass: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60',
+      badge: filledCount > 0 ? (
+        <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-500 text-white">
+          {filledCount}
+        </span>
+      ) : undefined,
+    },
+    {
+      id: 'belum_tp',
+      title: 'Belum Diisi TP',
+      value: `${pendingCount} Mitra`,
+      subtext: `${pendingCount} perlu rumusan TP`,
+      icon: AlertCircle,
+      iconColorClass: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60',
+      badge: pendingCount > 0 ? (
+        <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-amber-500 text-white">
+          {pendingCount}
+        </span>
+      ) : undefined,
+    },
+    {
+      id: 'siswa_terploting',
+      title: 'Siswa Terploting',
+      value: `${totalSiswa} Siswa`,
+      subtext: 'Peserta PKL jurusan',
+      icon: Users,
+      iconColorClass: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60',
+      showChevron: Boolean(onOpenPlottingModal),
+      onClick: onOpenPlottingModal,
+    },
+  ], [totalCount, filledCount, pendingCount, totalSiswa, tpStatus?.completionPercentage, onOpenPlottingModal]);
+
   return (
     <div className="space-y-4">
-      {/* KPI Metrik: Khusus Fokus Formulasi TP PKL Mitra */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <AnalyticsCard
-          variant="compact-premium"
-          mobileCompact={true}
-          title="Total Mitra DUDI"
-          value={totalCount}
-          icon={<Building2 className="w-5 h-5 text-indigo-400" />}
-          description="Mitra aktif penempatan PKL"
-          gradient="from-indigo-600 to-blue-600"
-        />
-
-        <AnalyticsCard
-          variant="compact-premium"
-          mobileCompact={true}
-          title="Sudah Diisi TP"
-          value={filledCount}
-          icon={<CheckCircle2 className="w-5 h-5 text-emerald-400" />}
-          description={`${tpStatus?.completionPercentage || 0}% mitra telah dirumuskan`}
-          gradient="from-emerald-600 to-teal-700"
-        />
-
-        <AnalyticsCard
-          variant="compact-premium"
-          mobileCompact={true}
-          title="Belum Diisi TP"
-          value={pendingCount}
-          icon={<AlertCircle className="w-5 h-5 text-amber-400" />}
-          description={`${pendingCount} mitra perlu rumusan TP`}
-          gradient="from-amber-500 to-orange-600"
-        />
-
-        <AnalyticsCard
-          variant="compact-premium"
-          mobileCompact={true}
-          title="Siswa Terploting"
-          value={totalSiswa}
-          icon={<Users className="w-5 h-5 text-purple-400" />}
-          description="Total peserta PKL jurusan"
-          gradient="from-purple-600 to-indigo-700"
-        />
-      </div>
+      {/* ── KPI Metrik: Khusus Fokus Formulasi TP PKL Mitra (Shopee-Grade HubBentoGrid) ── */}
+      <HubCard noPadding>
+        <HubBentoGrid cells={bentoCells} columns={4} />
+      </HubCard>
 
       {/* Tabel & Kartu Mobile List Mitra Industri & Status TP */}
       <Card noPadding className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-4">

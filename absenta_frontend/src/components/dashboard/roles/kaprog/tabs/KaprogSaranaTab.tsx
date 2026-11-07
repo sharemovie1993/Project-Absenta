@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Wrench, Layers, AlertCircle } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui';
+import { HubCard, HubBentoGrid, type HubBentoCell } from '@/components/ui/hub';
 import { cn } from '@/lib/utils';
 import { SaranaItem } from '../types';
 
@@ -20,46 +22,53 @@ export const KaprogSaranaTab: React.FC<KaprogSaranaTabProps> = React.memo(({
 }) => {
   const navigate = useNavigate();
 
+  const bentoCells: HubBentoCell[] = useMemo(() => [
+    {
+      id: 'total_alat',
+      title: 'Total Alat & Mesin',
+      value: `${saranaCounts?.total || 0} Unit`,
+      subtext: 'Terdata di Ruang Praktik',
+      icon: Wrench,
+      iconColorClass: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60',
+      showChevron: true,
+      onClick: () => navigate('/sarpras/inventaris'),
+    },
+    {
+      id: 'dipinjam',
+      title: 'Sedang Dipinjam',
+      value: `${saranaCounts?.dipinjam || 0} Item`,
+      subtext: 'Aktif sesi praktikum KBM',
+      icon: Layers,
+      iconColorClass: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60',
+      badge: (saranaCounts?.dipinjam || 0) > 0 ? (
+        <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-indigo-500 text-white">
+          {saranaCounts?.dipinjam}
+        </span>
+      ) : undefined,
+    },
+    {
+      id: 'rusak',
+      title: 'Rusak / Butuh Servis',
+      value: `${saranaCounts?.rusak || 0} Unit`,
+      subtext: 'Perlu pengajuan ke Sarpras',
+      icon: AlertCircle,
+      iconColorClass: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60',
+      badge: (saranaCounts?.rusak || 0) > 0 ? (
+        <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-500 text-white">
+          {saranaCounts?.rusak}
+        </span>
+      ) : undefined,
+      showChevron: true,
+      onClick: () => navigate('/sarpras/perbaikan'),
+    },
+  ], [saranaCounts, navigate]);
+
   return (
     <div className="space-y-6">
-      {/* 3 Stat Cards Sarpras */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card noPadding className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-1">
-          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-            Total Alat & Mesin Praktik
-          </span>
-          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-            {saranaCounts?.total || 0} <span className="text-xs font-normal text-slate-400">Unit</span>
-          </div>
-          <p className="text-[10px] text-slate-500 dark:text-slate-400">
-            Terdata di Ruang Praktik Kejuruan
-          </p>
-        </Card>
-
-        <Card noPadding className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-1">
-          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-            Sedang Dipinjam Praktik
-          </span>
-          <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-            {saranaCounts?.dipinjam || 0} <span className="text-xs font-normal text-slate-400">Item</span>
-          </div>
-          <p className="text-[10px] text-slate-500 dark:text-slate-400">
-            Aktif dalam sesi praktikum KBM
-          </p>
-        </Card>
-
-        <Card noPadding className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-1">
-          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-            Rusak / Butuh Perbaikan
-          </span>
-          <div className="text-2xl font-bold text-rose-600 dark:text-rose-400">
-            {saranaCounts?.rusak || 0} <span className="text-xs font-normal text-slate-400">Unit</span>
-          </div>
-          <p className="text-[10px] text-slate-500 dark:text-slate-400">
-            Perlu pengajuan servis ke tim Sarpras
-          </p>
-        </Card>
-      </div>
+      {/* 3 Stat Bento Metrik Sarpras (Shopee-Grade HubBentoGrid) */}
+      <HubCard noPadding>
+        <HubBentoGrid cells={bentoCells} columns={3} />
+      </HubCard>
 
       {/* Tabel Aset & Inventaris Lab */}
       <Card noPadding className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-4">
