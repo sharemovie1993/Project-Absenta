@@ -3,15 +3,20 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useBottomNavTabs } from './bottom-nav/useBottomNavTabs';
 import { BottomNavTabItem } from './bottom-nav/BottomNavTabItem';
-import { BottomNavCrescentSpeedDial } from './bottom-nav/BottomNavCrescentSpeedDial';
 import { MobileAccountSheet } from './bottom-nav/MobileAccountSheet';
 import { BottomNavNotchBackground } from './bottom-nav/BottomNavNotchBackground';
-import { useMobileSubtabSidebarStore, normalizeRoleToScope } from '@/components/dashboard/roles/common';
-import type { 
-  MobileBottomSubItem, 
-  MobileBottomTabItem, 
-  EcosystemType, 
-  EcosystemTheme 
+import { 
+  useMobileSubtabSidebarStore, 
+  normalizeRoleToScope,
+  UniversalMobileSubtabSidebar,
+  type UniversalSubtabItem 
+} from '@/components/dashboard/roles/common';
+import { 
+  type MobileBottomSubItem, 
+  type MobileBottomTabItem, 
+  type EcosystemType, 
+  type EcosystemTheme,
+  getEcosystemLabel 
 } from '@/config/bottomNavEcosystems.config';
 
 export type { MobileBottomSubItem, MobileBottomTabItem, EcosystemType, EcosystemTheme };
@@ -19,7 +24,6 @@ export type { MobileBottomSubItem, MobileBottomTabItem, EcosystemType, Ecosystem
 export const BottomNavigation: React.FC = React.memo(() => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [openFlyoutId, setOpenFlyoutId] = useState<string | null>(null);
   const [isAccountSheetOpen, setIsAccountSheetOpen] = useState(false);
 
   const {
@@ -35,10 +39,10 @@ export const BottomNavigation: React.FC = React.memo(() => {
   } = useBottomNavTabs();
 
   const isSidebarOpen = useMobileSubtabSidebarStore((state) => state.isOpen);
+  const registeredScopes = useMobileSubtabSidebarStore((state) => state.registeredScopes);
 
-  // 1. Tutup menu melayang & subtab sidebar saat rute atau parameter berubah (mencegah sidebar menggantung)
+  // Tutup subtab sidebar saat rute atau parameter berubah (mencegah sidebar menggantung)
   useEffect(() => {
-    setOpenFlyoutId(null);
     useMobileSubtabSidebarStore.getState().close();
   }, [location.pathname, location.search]);
 
@@ -51,11 +55,18 @@ export const BottomNavigation: React.FC = React.memo(() => {
     return Math.floor(activeTabsList.length / 2);
   }, [activeTabsList]);
 
+  // Cek apakah halaman aktif saat ini sudah memiliki drawer dedicated di DOM
+  const normalizedTargetScope = useMemo(() => {
+    const target = isKepsek ? 'kepsek' : isSiswa ? 'siswa' : activeEcosystem;
+    return normalizeRoleToScope(undefined, target);
+  }, [isKepsek, isSiswa, activeEcosystem]);
+
+  const hasMountedDrawer = registeredScopes.includes(normalizedTargetScope);
+
   const handleTabClick = useCallback((item: MobileBottomTabItem) => {
     // 👤 Shopee-Style Tab "Saya" / Akun: Buka Mobile Account Sheet instan
     const isProfileTab = item.id === 'saya' || item.id === 'base_profil' || item.id === 'profil' || item.id === 'admin_profil';
     if (isProfileTab) {
-      setOpenFlyoutId(null);
       useMobileSubtabSidebarStore.getState().close();
       setIsAccountSheetOpen(true);
       return;
@@ -63,22 +74,11 @@ export const BottomNavigation: React.FC = React.memo(() => {
 
     if (item.children && item.children.length > 0) {
       const targetScope = isKepsek ? 'kepsek' : isSiswa ? 'siswa' : activeEcosystem;
-      const normalizedTarget = normalizeRoleToScope(undefined, targetScope);
-      const store = useMobileSubtabSidebarStore.getState();
-      const hasMountedDrawer = store.registeredScopes.includes(normalizedTarget);
-
-      if (hasMountedDrawer) {
-        // 🚀 Drawer subtab terpasang di DOM -> Toggle Universal Subtab Sidebar Drawer!
-        store.toggle(targetScope);
-        setOpenFlyoutId(null);
-      } else {
-        // 🌙 Halaman mandiri tanpa drawer -> Toggle Crescent Speed Dial (Busur Cepat)!
-        store.close();
-        setOpenFlyoutId((prev) => (prev === item.id ? null : item.id));
-      }
+      // 🚀 Buka / Tutup Drawer Sisi Kiri (Universal Mobile Subtab Sidebar Drawer)
+      useMobileSubtabSidebarStore.getState().toggle(targetScope);
       return;
     }
-    setOpenFlyoutId(null);
+
     useMobileSubtabSidebarStore.getState().close();
 
     // Khusus Kepala Sekolah: Switching 6 pilar instan tanpa reload rute
@@ -90,33 +90,75 @@ export const BottomNavigation: React.FC = React.memo(() => {
       return;
     }
     navigate(item.targetPath);
-  }, [openFlyoutId, isKepsek, isSiswa, activeEcosystem, setPillar, location.pathname, currentTab, navigate]);
+  }, [isKepsek, isSiswa, activeEcosystem, setPillar, location.pathname, currentTab, navigate]);
 
-  const handleSubItemClick = useCallback((subItem: MobileBottomSubItem) => {
-    setOpenFlyoutId(null);
+  // Tabs fallback untuk drawer sisi kiri pada halaman mandiri (misal /hubin/absensi, /hubin/penempatan)
+  const fallbackDrawerTabs = useMemo<UniversalSubtabItem[]>(() => {
+    const list: UniversalSubtabItem[] = [];
+    activeTabsList.forEach((tab) => {
+      if (tab.id.includes('back')) return;
+      if (tab.children && tab.children.length > 0) {
+        tab.children.forEach((child) => {
+          list.push({
+            id: child.id,
+            label: child.label,
+            shortLabel: child.shortLabel || child.label,
+            icon: child.icon,
+            badge: child.badge,
+          });
+        });
+      } else {
+        list.push({
+          id: tab.id,
+          label: tab.label,
+          shortLabel: tab.shortLabel || tab.label,
+          icon: tab.icon,
+          badge: tab.badge,
+        });
+      }
+    });
+    return list;
+  }, [activeTabsList]);
+
+  const handleSelectFallbackTab = useCallback((tabId: string) => {
     useMobileSubtabSidebarStore.getState().close();
-    if (subItem.id === 'profil' || subItem.id === 'saya') {
-      setIsAccountSheetOpen(true);
-      return;
+    for (const tab of activeTabsList) {
+      if (tab.children) {
+        const foundChild = tab.children.find((c) => c.id === tabId);
+        if (foundChild) {
+          navigate(foundChild.targetPath);
+          return;
+        }
+      }
+      if (tab.id === tabId) {
+        navigate(tab.targetPath);
+        return;
+      }
     }
-    navigate(subItem.targetPath);
-  }, [navigate]);
+  }, [activeTabsList, navigate]);
 
   if (shouldHideNav) {
     return null;
   }
 
-  const openFlyoutItem = activeTabsList.find(item => item.id === openFlyoutId);
-
   return (
     <>
-      {/* ── SUBKOMPONEN 1: MENU LANJUTAN MELAYANG BUSUR BULAN SABIT ── */}
-      <BottomNavCrescentSpeedDial
-        openFlyoutItem={openFlyoutItem}
-        currentSubtab={currentSubtab}
-        onClose={() => setOpenFlyoutId(null)}
-        onSelectSubItem={handleSubItemClick}
-      />
+      {/* ── SUBKOMPONEN 1: DRAWER SISI KIRI UNIVERSAL FALLBACK (JIKA HALAMAN TIDAK MEMILIKI DRAWER MANDIRI) ── */}
+      {!hasMountedDrawer && (
+        <UniversalMobileSubtabSidebar
+          isOpen={isSidebarOpen}
+          onClose={() => useMobileSubtabSidebarStore.getState().close()}
+          title={getEcosystemLabel(activeEcosystem)}
+          subtitle="Menu Ekosistem & Layanan"
+          roleBadge={getEcosystemLabel(activeEcosystem).toUpperCase()}
+          scope={activeEcosystem}
+          side="left"
+          isFallback={true}
+          tabs={fallbackDrawerTabs}
+          activeTab={currentSubtab || ''}
+          onSelectTab={handleSelectFallbackTab}
+        />
+      )}
 
       {/* ── SUBKOMPONEN 2: BILAH NAVIGASI BAWAH SELULER (EDGE-TO-EDGE DOCKED NOTCH WITH ELEVATED FAB) ── */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex flex-col pointer-events-auto overflow-visible">
@@ -136,13 +178,13 @@ export const BottomNavigation: React.FC = React.memo(() => {
           <div className="flex items-center w-full h-[64px] sm:h-[68px] relative z-10 px-1">
             {activeTabsList.map((item, index) => {
               const isCenterItem = index === centerIndex;
-              const isSelected = item.isActive(location.pathname, currentTab) || (isCenterItem && (isSidebarOpen || openFlyoutId === item.id));
+              const isSelected = item.isActive(location.pathname, currentTab) || (isCenterItem && isSidebarOpen);
               return (
                 <BottomNavTabItem
                   key={item.id}
                   item={item}
                   isSelected={isSelected}
-                  isFlyoutOpen={openFlyoutId === item.id}
+                  isFlyoutOpen={false}
                   theme={currentTheme}
                   onClick={handleTabClick}
                   isCenterElevated={isCenterItem}

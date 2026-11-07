@@ -6,7 +6,7 @@ import type { MobileBottomTabItem, EcosystemTheme } from '@/config/bottomNavEcos
 export interface BottomNavTabItemProps {
   item: MobileBottomTabItem;
   isSelected: boolean;
-  isFlyoutOpen: boolean;
+  isFlyoutOpen?: boolean;
   theme: EcosystemTheme;
   onClick: (item: MobileBottomTabItem) => void;
   isCenterElevated?: boolean;
@@ -15,7 +15,7 @@ export interface BottomNavTabItemProps {
 export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
   item,
   isSelected,
-  isFlyoutOpen,
+  isFlyoutOpen = false,
   theme,
   onClick,
   isCenterElevated = false,
@@ -23,7 +23,7 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
   const user = useAuthStore((state) => state.user);
   const ItemIcon = item.icon;
   const hasChildren = Boolean(item.children && item.children.length > 0);
-  const isHighlighted = isSelected || isFlyoutOpen;
+  const isHighlighted = isSelected || Boolean(isFlyoutOpen);
 
   // ── VARIAN 1: TOMBOL MENU SENTRAL ELEVASI (GAYA 1: NOTCH CRADLE FLOATING FAB) ──
   if (isCenterElevated) {

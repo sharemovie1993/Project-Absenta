@@ -126,6 +126,7 @@ export interface UniversalMobileSubtabSidebarProps {
   footerExtra?: React.ReactNode;
   side?: 'left' | 'right';
   className?: string;
+  isFallback?: boolean;
 }
 
 // ==========================================
@@ -149,6 +150,7 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
   footerExtra,
   side = 'left',
   className,
+  isFallback = false,
 }) => {
   const [mounted, setMounted] = useState(false);
   const location = useLocation();
@@ -182,14 +184,14 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
     }
   }, [location.pathname, location.search]);
 
-  // Registrasi scope aktif ke global store saat komponen sidebar mount
+  // Registrasi scope aktif ke global store saat komponen sidebar mount (kecuali fallback global)
   useEffect(() => {
-    if (!myScope) return;
+    if (!myScope || isFallback) return;
     useMobileSubtabSidebarStore.getState().registerScope(myScope);
     return () => {
       useMobileSubtabSidebarStore.getState().unregisterScope(myScope);
     };
-  }, [myScope]);
+  }, [myScope, isFallback]);
 
   // Mount detection for React Portal
   useEffect(() => {
