@@ -318,11 +318,25 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
               <div className="flex items-center gap-2.5 min-w-0 pr-2">
                 <span className={cn('w-2.5 h-2.5 rounded-full shrink-0', ecosystemTokens.badgeClass.split(' ')[0])} />
                 <div className="min-w-0">
-                  <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate tracking-tight">
-                    {title}
-                  </h2>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate tracking-tight">
+                      {title}
+                    </h2>
+                    {roleBadge && (
+                      <span
+                        className={cn(
+                          'px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider shrink-0 leading-none border',
+                          ecosystemTokens.subtleBg,
+                          ecosystemTokens.subtleText,
+                          ecosystemTokens.borderClass
+                        )}
+                      >
+                        {roleBadge}
+                      </span>
+                    )}
+                  </div>
                   {subtitle && (
-                    <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate">
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate mt-0.5">
                       {subtitle}
                     </div>
                   )}
