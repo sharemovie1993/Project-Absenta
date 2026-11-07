@@ -118,6 +118,7 @@ export function getEcosystemTheme(
   }
 
   switch (ecosystem) {
+    // 🟨 KAPROG (Jurusan / Kejuruan)
     case 'kaprog':
       return {
         isLayer2: true,
@@ -127,6 +128,8 @@ export function getEcosystemTheme(
         activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
         dotColorClass: 'bg-amber-200',
       };
+
+    // 🟦 WALI KELAS (Kelas Binaan & Pengasuhan Rombel)
     case 'walas':
       return {
         isLayer2: true,
@@ -136,6 +139,8 @@ export function getEcosystemTheme(
         activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
         dotColorClass: 'bg-sky-200',
       };
+
+    // 🪪 TATA USAHA (Administrasi, Persuratan & Kepegawaian)
     case 'tu':
       return {
         isLayer2: true,
@@ -145,6 +150,8 @@ export function getEcosystemTheme(
         activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
         dotColorClass: 'bg-indigo-200',
       };
+
+    // 🟩 WAKA KURIKULUM (Akademik, KBM, Penjadwalan & CBT)
     case 'kurikulum':
       return {
         isLayer2: true,
@@ -154,7 +161,12 @@ export function getEcosystemTheme(
         activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
         dotColorClass: 'bg-emerald-200',
       };
+
+    // 🟥 WAKA KESISWAAN (Induk: Kesiswaan, Ekskul, Piket, Satpam/Gerbang)
     case 'kesiswaan':
+    case 'ekskul':
+    case 'piket':
+    case 'satpam':
       return {
         isLayer2: true,
         navBarClass: 'bg-gradient-to-r from-rose-600 via-rose-600 to-red-700 text-white border-t-2 border-rose-300 shadow-2xl shadow-rose-950/40',
@@ -163,7 +175,11 @@ export function getEcosystemTheme(
         activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
         dotColorClass: 'bg-rose-200',
       };
+
+    // 🟧 WAKA HUBINMAS (Induk: Hubin, Pembimbing PKL, BKK/Tracer Study)
     case 'hubin':
+    case 'pembimbing_pkl':
+    case 'bkk':
       return {
         isLayer2: true,
         navBarClass: 'bg-gradient-to-r from-orange-600 via-orange-600 to-amber-700 text-white border-t-2 border-orange-300 shadow-2xl shadow-orange-950/40',
@@ -172,6 +188,20 @@ export function getEcosystemTheme(
         activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
         dotColorClass: 'bg-orange-200',
       };
+
+    // 🌲 WAKA SARPRAS (Induk: Sarpras & Toolman / Bengkel)
+    case 'sarpras':
+    case 'toolman':
+      return {
+        isLayer2: true,
+        navBarClass: 'bg-gradient-to-r from-teal-700 via-teal-700 to-emerald-800 text-white border-t-2 border-teal-300 shadow-2xl shadow-teal-950/40',
+        activeTextClass: 'text-white font-black',
+        inactiveTextClass: 'text-teal-100/75 hover:text-white font-medium',
+        activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
+        dotColorClass: 'bg-teal-200',
+      };
+
+    // 🟪 BIMBINGAN KONSELING (BP / BK)
     case 'bpbk':
       return {
         isLayer2: true,
@@ -181,51 +211,8 @@ export function getEcosystemTheme(
         activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
         dotColorClass: 'bg-purple-200',
       };
-    case 'bkk':
-      return {
-        isLayer2: true,
-        navBarClass: 'bg-gradient-to-r from-cyan-700 via-cyan-700 to-blue-800 text-white border-t-2 border-cyan-300 shadow-2xl shadow-cyan-950/40',
-        activeTextClass: 'text-white font-black',
-        inactiveTextClass: 'text-cyan-100/75 hover:text-white font-medium',
-        activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
-        dotColorClass: 'bg-cyan-200',
-      };
-    case 'sarpras':
-      return {
-        isLayer2: true,
-        navBarClass: 'bg-gradient-to-r from-teal-700 via-teal-700 to-emerald-800 text-white border-t-2 border-teal-300 shadow-2xl shadow-teal-950/40',
-        activeTextClass: 'text-white font-black',
-        inactiveTextClass: 'text-teal-100/75 hover:text-white font-medium',
-        activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
-        dotColorClass: 'bg-teal-200',
-      };
-    case 'toolman':
-      return {
-        isLayer2: true,
-        navBarClass: 'bg-gradient-to-r from-amber-700 via-amber-700 to-orange-800 text-white border-t-2 border-amber-300 shadow-2xl shadow-amber-950/40',
-        activeTextClass: 'text-white font-black',
-        inactiveTextClass: 'text-amber-100/75 hover:text-white font-medium',
-        activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
-        dotColorClass: 'bg-amber-200',
-      };
-    case 'ekskul':
-      return {
-        isLayer2: true,
-        navBarClass: 'bg-gradient-to-r from-indigo-700 via-indigo-700 to-purple-800 text-white border-t-2 border-indigo-300 shadow-2xl shadow-indigo-950/40',
-        activeTextClass: 'text-white font-black',
-        inactiveTextClass: 'text-indigo-100/75 hover:text-white font-medium',
-        activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
-        dotColorClass: 'bg-indigo-200',
-      };
-    case 'pembimbing_pkl':
-      return {
-        isLayer2: true,
-        navBarClass: 'bg-gradient-to-r from-teal-700 via-teal-700 to-indigo-800 text-white border-t-2 border-teal-300 shadow-2xl shadow-teal-950/40',
-        activeTextClass: 'text-white font-black',
-        inactiveTextClass: 'text-teal-100/75 hover:text-white font-medium',
-        activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
-        dotColorClass: 'bg-teal-200',
-      };
+
+    // 🟢 KOPERASI SEKOLAH (Ritel & Niaga)
     case 'koperasi':
       return {
         isLayer2: true,
@@ -235,24 +222,8 @@ export function getEcosystemTheme(
         activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
         dotColorClass: 'bg-emerald-200',
       };
-    case 'satpam':
-      return {
-        isLayer2: true,
-        navBarClass: 'bg-gradient-to-r from-slate-900 via-rose-950 to-slate-950 text-white border-t-2 border-rose-500 shadow-2xl shadow-rose-950/50',
-        activeTextClass: 'text-rose-400 font-black',
-        inactiveTextClass: 'text-slate-300 hover:text-white font-medium',
-        activePillClass: 'bg-white/20 text-white ring-1 ring-white/40 shadow-xs backdrop-blur-xs',
-        dotColorClass: 'bg-rose-400',
-      };
-    case 'piket':
-      return {
-        isLayer2: true,
-        navBarClass: 'bg-gradient-to-r from-blue-800 via-blue-800 to-slate-900 text-white border-t-2 border-blue-400 shadow-2xl shadow-blue-950/40',
-        activeTextClass: 'text-white font-black',
-        inactiveTextClass: 'text-blue-100/75 hover:text-white font-medium',
-        activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
-        dotColorClass: 'bg-blue-200',
-      };
+
+    // 👑 ADMINISTRATOR (IT Master Data & Platform)
     case 'admin':
       return {
         isLayer2: true,

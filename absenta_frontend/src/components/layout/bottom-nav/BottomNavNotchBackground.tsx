@@ -11,21 +11,34 @@ export interface BottomNavNotchBackgroundProps {
 
 export function getEcosystemGradient(ecosystem: EcosystemType): [string, string] {
   switch (ecosystem) {
+    // 🟨 KAPROG
     case 'kaprog': return ['#d97706', '#b45309']; // amber-600 to amber-700
+    // 🟦 WALAS
     case 'walas': return ['#0284c7', '#1d4ed8']; // sky-600 to blue-700
+    // 🪪 TU
     case 'tu': return ['#4338ca', '#1e293b']; // indigo-700 to slate-800
+    // 🟩 KURIKULUM
     case 'kurikulum': return ['#059669', '#0f766e']; // emerald-600 to teal-700
-    case 'kesiswaan': return ['#e11d48', '#b91c1c']; // rose-600 to red-700
-    case 'hubin': return ['#ea580c', '#b45309']; // orange-600 to amber-700
+    // 🟥 WAKA KESISWAAN (Induk: Kesiswaan, Ekskul, Piket, Satpam/Gerbang)
+    case 'kesiswaan':
+    case 'ekskul':
+    case 'satpam':
+    case 'piket':
+      return ['#e11d48', '#b91c1c']; // rose-600 to red-700
+    // 🟧 WAKA HUBINMAS (Induk: Hubin, Pembimbing PKL, BKK/Tracer Study)
+    case 'hubin':
+    case 'pembimbing_pkl':
+    case 'bkk':
+      return ['#ea580c', '#b45309']; // orange-600 to amber-700
+    // 🌲 WAKA SARPRAS (Induk: Sarpras & Toolman / Bengkel)
+    case 'sarpras':
+    case 'toolman':
+      return ['#0f766e', '#065f46']; // teal-700 to emerald-800
+    // 🟪 BP / BK
     case 'bpbk': return ['#9333ea', '#5b21b6']; // purple-600 to violet-800
-    case 'bkk': return ['#0e7490', '#1e40af']; // cyan-700 to blue-800
-    case 'sarpras': return ['#0f766e', '#065f46']; // teal-700 to emerald-800
-    case 'toolman': return ['#334155', '#18181b']; // slate-700 to zinc-900
-    case 'ekskul': return ['#c026d3', '#7e22ce']; // fuchsia-600 to purple-700
-    case 'pembimbing_pkl': return ['#2563eb', '#3730a3']; // blue-600 to indigo-800
-    case 'satpam': return ['#0f172a', '#020617']; // slate-900 to slate-950
+    // 🟢 KOPERASI
     case 'koperasi': return ['#16a34a', '#15803d']; // green-600 to green-700
-    case 'piket': return ['#4f46e5', '#6d28d9']; // indigo-600 to violet-700
+    // 👑 ADMIN
     case 'admin': return ['#7c3aed', '#1e1b4b']; // violet-600 to slate-900
     default: return ['#ffffff', '#ffffff'];
   }
