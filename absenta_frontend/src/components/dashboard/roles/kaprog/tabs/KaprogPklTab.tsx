@@ -197,8 +197,8 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                aria-label="Cari mitra atau rombel..."
-                placeholder="Cari mitra / rombel..."
+                aria-label="Cari nama perusahaan..."
+                placeholder="Cari nama perusahaan..."
                 value={mitraFilter}
                 onChange={(e) => setMitraFilter(e.target.value)}
                 className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -260,32 +260,44 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
           </button>
         </div>
 
-        {/* View Switcher: Mobile Cards Deck vs Desktop Table */}
+        {/* View Switcher: Mobile Clean Hairline List vs Desktop Table */}
         {isMobile ? (
-          <div className="space-y-3">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
             {displayedMitraList.length === 0 ? (
-              <div className="py-8 text-center text-slate-400 text-xs bg-slate-50/60 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+              <div className="py-8 text-center text-slate-400 text-xs">
                 Tidak ada data perusahaan yang cocok dengan pencarian atau filter ini.
               </div>
             ) : (
               displayedMitraList.map((mitra) => (
                 <div
                   key={mitra.mitra_id}
-                  className="p-3 sm:p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs flex items-center justify-between gap-3 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
+                  onClick={() =>
+                    onSelectEditingSlot({
+                      mitra_id: mitra.mitra_id,
+                      mitra_nama: mitra.nama_mitra,
+                      siswa_count: mitra.siswa_count,
+                      rombel_list: mitra.rombel_list || [],
+                      deskripsi_tp: mitra.deskripsi_tp || '',
+                      saved_id: mitra.saved_id,
+                      previous_tp: mitra.previous_tp,
+                      previous_tahun: mitra.previous_tahun,
+                    })
+                  }
+                  className="py-3 px-1 sm:px-2 flex items-center justify-between gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
                 >
-                  {/* 1. Nama Perusahaan & Status Diisi / Belum */}
-                  <div className="min-w-0 flex-1">
-                    <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">
+                  {/* 1. Nama Perusahaan (TIDAK BOLEH KE-TRIM) & Status */}
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100 break-words leading-snug">
                       {mitra.nama_mitra}
                     </h4>
-                    <div className="mt-1 flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5">
                       {mitra.has_tp ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/40">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/40 leading-none">
                           <CheckCircle2 className="w-3 h-3 stroke-[2.5]" />
                           <span>Sudah Diisi</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200/60 dark:border-amber-800/40">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200/60 dark:border-amber-800/40 leading-none">
                           <AlertCircle className="w-3 h-3 stroke-[2.5]" />
                           <span>Belum Diisi</span>
                         </span>
@@ -294,41 +306,44 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
                   </div>
 
                   {/* 2. Tombol Aksi Formulasi */}
-                  <Button
-                    type="button"
-                    variant={mitra.has_tp ? 'outline' : 'primary'}
-                    size="sm"
-                    onClick={() =>
-                      onSelectEditingSlot({
-                        mitra_id: mitra.mitra_id,
-                        mitra_nama: mitra.nama_mitra,
-                        siswa_count: mitra.siswa_count,
-                        rombel_list: mitra.rombel_list || [],
-                        deskripsi_tp: mitra.deskripsi_tp || '',
-                        saved_id: mitra.saved_id,
-                        previous_tp: mitra.previous_tp,
-                        previous_tahun: mitra.previous_tahun,
-                      })
-                    }
-                    className={cn(
-                      'h-8 px-3 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shrink-0 shadow-2xs',
-                      !mitra.has_tp
-                        ? 'bg-amber-600 hover:bg-amber-500 text-white border-none'
-                        : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-indigo-600 dark:text-indigo-400'
-                    )}
-                  >
-                    {mitra.has_tp ? (
-                      <>
-                        <Edit3 className="w-3.5 h-3.5" />
-                        <span>Edit TP</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Rumuskan</span>
-                      </>
-                    )}
-                  </Button>
+                  <div className="shrink-0">
+                    <Button
+                      type="button"
+                      variant={mitra.has_tp ? 'outline' : 'primary'}
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectEditingSlot({
+                          mitra_id: mitra.mitra_id,
+                          mitra_nama: mitra.nama_mitra,
+                          siswa_count: mitra.siswa_count,
+                          rombel_list: mitra.rombel_list || [],
+                          deskripsi_tp: mitra.deskripsi_tp || '',
+                          saved_id: mitra.saved_id,
+                          previous_tp: mitra.previous_tp,
+                          previous_tahun: mitra.previous_tahun,
+                        });
+                      }}
+                      className={cn(
+                        'h-7.5 sm:h-8 px-2.5 sm:px-3 text-xs font-bold rounded-xl flex items-center justify-center gap-1 cursor-pointer shadow-2xs',
+                        !mitra.has_tp
+                          ? 'bg-amber-600 hover:bg-amber-500 text-white border-none'
+                          : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-indigo-600 dark:text-indigo-400'
+                      )}
+                    >
+                      {mitra.has_tp ? (
+                        <>
+                          <Edit3 className="w-3 h-3" />
+                          <span>Edit TP</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3 h-3" />
+                          <span>Rumuskan</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               ))
             )}
