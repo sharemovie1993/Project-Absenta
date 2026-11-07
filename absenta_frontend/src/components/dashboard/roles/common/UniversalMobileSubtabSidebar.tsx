@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { create } from 'zustand';
@@ -10,9 +10,13 @@ import {
   Check, 
   Layers, 
   Sparkles,
-  ChevronDown
+  ChevronDown,
+  LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/store/authStore';
+import toast from 'react-hot-toast';
+import { ConfirmModal } from '@/components/ui/Modal';
 
 // ==========================================
 // 1. Types & Interfaces
@@ -154,6 +158,18 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
 }) => {
   const [mounted, setMounted] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const logout = useAuthStore((state) => state.logout);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  const handleLogout = useCallback(() => {
+    logout();
+    onClose();
+    useMobileSubtabSidebarStore.getState().close();
+    setShowLogoutConfirm(false);
+    navigate('/login');
+    toast.success('Berhasil keluar dari akun!');
+  }, [logout, onClose, navigate]);
 
   const currentTab = useMemo(() => {
     const params = new URLSearchParams(location.search);
@@ -386,15 +402,32 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
               )}
             </div>
 
-            {/* ─── Drawer Footer (Hanya jika ada extra footer) ─── */}
-            {footerExtra && (
-              <div className="p-2.5 bg-slate-50 dark:bg-slate-950/80 border-t border-slate-100 dark:border-slate-800 shrink-0">
-                {footerExtra}
-              </div>
-            )}
+            {/* ─── Drawer Footer (Logout & Extra Actions) ─── */}
+            <div className="p-3 bg-slate-50 dark:bg-slate-950/80 border-t border-slate-100 dark:border-slate-800 shrink-0 space-y-2">
+              {footerExtra}
+              <button
+                type="button"
+                onClick={() => setShowLogoutConfirm(true)}
+                className="w-full py-2.5 px-3.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 border border-rose-200/80 dark:border-rose-900/70 text-rose-600 dark:text-rose-400 flex items-center justify-center gap-2 text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-[0.98]"
+              >
+                <LogOut size={15} className="stroke-[2.2]" />
+                <span>Keluar dari Akun (Logout)</span>
+              </button>
+            </div>
           </motion.div>
         </div>
       )}
+      {/* Modal Dialog Konfirmasi Logout */}
+      <ConfirmModal
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={handleLogout}
+        title="Konfirmasi Keluar Sesi"
+        message="Apakah Anda yakin ingin keluar dari akun Absenta? Anda harus masuk kembali untuk mengakses fitur sistem."
+        confirmText="Ya, Keluar"
+        cancelText="Batal"
+        variant="danger"
+      />
     </AnimatePresence>,
     document.body
   );
