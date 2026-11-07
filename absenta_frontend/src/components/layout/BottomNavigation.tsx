@@ -5,6 +5,7 @@ import { useBottomNavTabs } from './bottom-nav/useBottomNavTabs';
 import { BottomNavTabItem } from './bottom-nav/BottomNavTabItem';
 import { BottomNavCrescentSpeedDial } from './bottom-nav/BottomNavCrescentSpeedDial';
 import { MobileAccountSheet } from './bottom-nav/MobileAccountSheet';
+import { BottomNavNotchBackground } from './bottom-nav/BottomNavNotchBackground';
 import { useMobileSubtabSidebarStore } from '@/components/dashboard/roles/common';
 import type { 
   MobileBottomSubItem, 
@@ -106,16 +107,22 @@ export const BottomNavigation: React.FC = React.memo(() => {
         onSelectSubItem={handleSubItemClick}
       />
 
-      {/* ── SUBKOMPONEN 2: BILAH NAVIGASI BAWAH SELULER (CENTER PROMOTED DOCKED ELEVATION) ── */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex flex-col pointer-events-auto overflow-visible">
+      {/* ── SUBKOMPONEN 2: BILAH NAVIGASI BAWAH SELULER (GAYA 1: CURVED NOTCH DOCK WITH ELEVATED FAB) ── */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex flex-col pointer-events-auto overflow-visible px-2.5 pb-[calc(0.45rem+env(safe-area-inset-bottom))]">
         <nav
           aria-label="Navigasi Bawah Seluler"
-          className={cn(
-            "w-full backdrop-blur-lg px-1 pt-1 pb-[calc(0.4rem+env(safe-area-inset-bottom))] flex items-center shadow-2xl transition-all duration-200 relative overflow-visible",
-            currentTheme.navBarClass
-          )}
+          className="w-full relative flex items-center justify-around h-[62px] sm:h-[64px] overflow-visible"
         >
-          <div className="flex items-end justify-around w-full relative">
+          {/* Background Shape Lekukan Cekung S-Curve (Gaya 1) */}
+          <BottomNavNotchBackground
+            theme={currentTheme}
+            ecosystem={activeEcosystem}
+            notchWidth={84}
+            notchDepth={22}
+            height={64}
+          />
+
+          <div className="flex items-center justify-around w-full h-full relative z-10 px-0.5">
             {activeTabsList.map((item, index) => {
               const isCenterItem = index === centerIndex;
               const isSelected = item.isActive(location.pathname, currentTab) || (isCenterItem && isSidebarOpen);
