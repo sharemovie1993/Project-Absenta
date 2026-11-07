@@ -62,27 +62,27 @@ export const TeacherSidebarNav: React.FC<TeacherSidebarNavProps> = React.memo(({
     },
     {
       id: 'tugas',
-      label: 'Tugas Saya',
+      label: 'Tugas',
       icon: CheckSquare,
       badgeCount: actionHubTotalCount > 0 ? actionHubTotalCount : undefined,
       badgeVariant: actionHubCriticalCount > 0 ? 'rose' : 'indigo',
     },
     {
       id: 'perangkat',
-      label: 'Perangkat Ajar',
+      label: 'Perangkat',
       icon: FileText,
       badgeCount: perangkatRejectedCount > 0 ? perangkatRejectedCount : undefined,
       badgeVariant: 'rose',
     },
     {
       id: 'cbt',
-      label: 'Bank Soal CBT',
+      label: 'CBT',
       icon: Laptop,
     },
     ...(isPengawasCbt ? [
       {
         id: 'pengawas_cbt' as const,
-        label: 'Pengawas Ujian CBT',
+        label: 'Pengawas',
         icon: Eye,
         badgeCount: pengawasCbtActiveCount > 0 ? pengawasCbtActiveCount : undefined,
         badgeVariant: 'emerald' as const,
@@ -91,30 +91,30 @@ export const TeacherSidebarNav: React.FC<TeacherSidebarNavProps> = React.memo(({
     ] : []),
     {
       id: 'nilai',
-      label: 'Buku Nilai',
+      label: 'Nilai',
       icon: GraduationCap,
     },
     {
       id: 'remedial',
-      label: 'Radar Remedial',
+      label: 'Remedial',
       icon: Radio,
       badgeCount: remedialAlertCount > 0 ? remedialAlertCount : undefined,
       badgeVariant: 'rose',
     },
     {
       id: 'rekap',
-      label: 'Rekap Mapel',
+      label: 'Rekap',
       icon: BarChart2,
     },
     {
       id: 'supervisi',
-      label: 'Supervisi Saya',
+      label: 'Supervisi',
       icon: ShieldCheck,
     },
     ...(isPengujiSidang ? [
       {
         id: 'sidang_guru' as const,
-        label: 'Sidang PKL',
+        label: 'Sidang',
         icon: GraduationCap,
         badgeCount: pengujiSidangUnexaminedCount > 0 ? pengujiSidangUnexaminedCount : undefined,
         badgeVariant: 'amber' as const,

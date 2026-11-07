@@ -20,7 +20,15 @@ import {
   Eye,
   MapPin,
   Lock,
+  LayoutDashboard,
+  Laptop,
 } from 'lucide-react';
+import { 
+  UniversalMobileSubtabSidebar, 
+  MobileSubtabBar, 
+  useMobileSubtabSidebar,
+  type UniversalSubtabItem 
+} from '@/components/dashboard/roles/common';
 import { useCbtOperationMode } from '@/components/cbt/cbtModeHelper';
 import { useQuery } from '@tanstack/react-query';
 import { piketApi } from '../../../../api/piket.api';
@@ -138,6 +146,9 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
       return next;
     }, { replace: true });
   }, [setSearchParams]);
+
+  // Mobile Subtab Sidebar Drawer State (Terkoneksi ke FAB / Tombol Elevasi Tengah Menu)
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar();
 
   // Presensi Kehadiran Guru Bulan Ini
   const { data: rekapGuruRes, isLoading: loadingRekap } = useQuery({
@@ -445,6 +456,111 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
     handleSubTabChange,
   ]);
 
+  // ── Navigasi Subtab Standar Universal Mobile Subtab Sidebar (Shopee-Grade Drawer) ──
+  const navTabs: UniversalSubtabItem[] = useMemo(() => [
+    {
+      id: 'agenda',
+      label: 'Ringkasan',
+      shortLabel: 'Ringkasan',
+      icon: LayoutDashboard,
+      badge: unfilledJournalsCount > 0 ? unfilledJournalsCount : undefined,
+      badgeColor: 'bg-amber-500 text-white',
+      category: 'pembelajaran',
+    },
+    {
+      id: 'tugas',
+      label: 'Tugas',
+      shortLabel: 'Tugas',
+      icon: CheckSquare,
+      badge: (actionHubData.summary?.total || 0) > 0 ? actionHubData.summary?.total : undefined,
+      badgeColor: (actionHubData.summary?.critical || 0) > 0 ? 'bg-rose-500 text-white' : 'bg-indigo-500 text-white',
+      category: 'pembelajaran',
+    },
+    {
+      id: 'perangkat',
+      label: 'Perangkat',
+      shortLabel: 'Perangkat',
+      icon: FileText,
+      badge: rejectedPerangkatCount > 0 ? rejectedPerangkatCount : undefined,
+      badgeColor: 'bg-rose-500 text-white',
+      category: 'pembelajaran',
+    },
+    {
+      id: 'cbt',
+      label: 'CBT',
+      shortLabel: 'CBT',
+      icon: Laptop,
+      category: 'pembelajaran',
+    },
+    ...(isPengawasCbt ? [
+      {
+        id: 'pengawas_cbt',
+        label: 'Pengawas',
+        shortLabel: 'Pengawas',
+        icon: Eye,
+        badge: pengawasCbtActiveCount > 0 ? pengawasCbtActiveCount : undefined,
+        badgeColor: 'bg-emerald-500 text-white',
+        category: 'pembelajaran',
+      }
+    ] : []),
+    {
+      id: 'nilai',
+      label: 'Nilai',
+      shortLabel: 'Nilai',
+      icon: GraduationCap,
+      category: 'evaluasi',
+    },
+    {
+      id: 'remedial',
+      label: 'Remedial',
+      shortLabel: 'Remedial',
+      icon: Radio,
+      badge: remedialCount > 0 ? remedialCount : undefined,
+      badgeColor: 'bg-rose-500 text-white',
+      category: 'evaluasi',
+    },
+    {
+      id: 'rekap',
+      label: 'Rekap',
+      shortLabel: 'Rekap',
+      icon: BarChart2,
+      category: 'evaluasi',
+    },
+    {
+      id: 'supervisi',
+      label: 'Supervisi',
+      shortLabel: 'Supervisi',
+      icon: ShieldCheck,
+      category: 'evaluasi',
+    },
+    ...(isPengujiSidang ? [
+      {
+        id: 'sidang_guru',
+        label: 'Sidang',
+        shortLabel: 'Sidang',
+        icon: Award,
+        badge: pengujiSidangUnexaminedCount > 0 ? pengujiSidangUnexaminedCount : undefined,
+        badgeColor: 'bg-amber-500 text-white',
+        category: 'evaluasi',
+      }
+    ] : []),
+  ], [
+    unfilledJournalsCount,
+    actionHubData.summary?.total,
+    actionHubData.summary?.critical,
+    rejectedPerangkatCount,
+    isPengawasCbt,
+    pengawasCbtActiveCount,
+    remedialCount,
+    isPengujiSidang,
+    pengujiSidangUnexaminedCount,
+  ]);
+
+  const navCategories = useMemo(() => [
+    { id: 'pembelajaran', label: 'Operasional KBM' },
+    { id: 'evaluasi', label: 'Penilaian & Supervisi' },
+  ], []);
+
   return (
     <motion.div
       key="tab-ringkasan-kbm-integrated"
@@ -458,27 +574,53 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
       {/* 2-COLUMN LAYOUT ALA KAPROG / KURIKULUM (Left Sidebar + Right Main)  */}
       {/* ────────────────────────────────────────────────────────────────── */}
       {isActualTeachingStaff ? (
-        <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-5 items-start">
-          {/* Kolom Kiri: Sidebar Sub-Menu Guru (Desktop sticky) */}
-          <aside className="space-y-3 lg:sticky lg:top-20">
-            <TeacherSidebarNav
-              activeSubTab={activeSubTab}
-              onChangeSubTab={handleSubTabChange}
-              guruNama={guruNama}
-              perangkatRejectedCount={rejectedPerangkatCount}
-              unfilledJournalsCount={unfilledJournalsCount}
-              actionHubTotalCount={actionHubData.summary?.total || 0}
-              actionHubCriticalCount={actionHubData.summary?.critical || 0}
-              remedialAlertCount={remedialCount}
-              totalJp={totalJp}
-              currentBebanJp={teacherBeban?.total_calculated_jp ?? teacherBeban?.current_jp ?? 0}
-              targetBebanJp={teacherBeban?.max_jp ?? 24}
-              isPengujiSidang={isPengujiSidang}
-              pengujiSidangUnexaminedCount={pengujiSidangUnexaminedCount}
-              isPengawasCbt={isPengawasCbt}
-              pengawasCbtActiveCount={pengawasCbtActiveCount}
+        <div className="w-full max-w-full min-w-0">
+          {/* 1. Mobile Subtab Bar & Dedicated Universal Mobile Subtab Sidebar Drawer */}
+          <div className="block lg:hidden space-y-2 mb-3">
+            <MobileSubtabBar
+              tabs={navTabs}
+              activeTab={activeSubTab}
+              onOpenSidebar={openMobileSidebar}
+              onSelectTab={(tabId) => handleSubTabChange(tabId as TeacherSubTabId)}
+              roleBadge="GURU PENGAJAR"
             />
-          </aside>
+
+            <UniversalMobileSubtabSidebar
+              isOpen={isMobileSidebarOpen}
+              onClose={() => setIsMobileSidebarOpen(false)}
+              title={guruNama || 'Ruang Pendidik'}
+              subtitle={`Beban Mengajar ${(teacherBeban?.total_calculated_jp ?? teacherBeban?.current_jp ?? 0)}/${(teacherBeban?.max_jp ?? 24)} JP`}
+              roleBadge="GURU PENGAJAR"
+              roleIcon={BookOpen}
+              tabs={navTabs}
+              activeTab={activeSubTab}
+              onSelectTab={(tabId) => handleSubTabChange(tabId as TeacherSubTabId)}
+              categories={navCategories}
+            />
+          </div>
+
+          {/* 2. Desktop 2-Column Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-5 items-start">
+            {/* Kolom Kiri: Sidebar Sub-Menu Guru (Desktop sticky, tersembunyi di mobile) */}
+            <aside className="hidden lg:block space-y-3 sticky top-20">
+              <TeacherSidebarNav
+                activeSubTab={activeSubTab}
+                onChangeSubTab={handleSubTabChange}
+                guruNama={guruNama}
+                perangkatRejectedCount={rejectedPerangkatCount}
+                unfilledJournalsCount={unfilledJournalsCount}
+                actionHubTotalCount={actionHubData.summary?.total || 0}
+                actionHubCriticalCount={actionHubData.summary?.critical || 0}
+                remedialAlertCount={remedialCount}
+                totalJp={totalJp}
+                currentBebanJp={teacherBeban?.total_calculated_jp ?? teacherBeban?.current_jp ?? 0}
+                targetBebanJp={teacherBeban?.max_jp ?? 24}
+                isPengujiSidang={isPengujiSidang}
+                pengujiSidangUnexaminedCount={pengujiSidangUnexaminedCount}
+                isPengawasCbt={isPengawasCbt}
+                pengawasCbtActiveCount={pengawasCbtActiveCount}
+              />
+            </aside>
 
           {/* Kolom Kanan: Main Content Canvas */}
           <main className="min-w-0 space-y-4">
@@ -853,7 +995,8 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
             )}
           </main>
         </div>
-      ) : (
+      </div>
+    ) : (
         /* TERMINAL SCANNER (Khusus Staf Satpam / Gerbang Non-Guru) */
         <div className="space-y-4">
           <Suspense
