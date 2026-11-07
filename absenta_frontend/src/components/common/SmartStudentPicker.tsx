@@ -289,17 +289,7 @@ export const SmartStudentPicker = React.forwardRef(function SmartStudentPicker(
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
-      {filterJurusan && (
-        <div className="mb-1.5 flex items-center justify-between">
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-            🎯 Scope Smart Search: Jurusan {filterJurusan}
-          </span>
-          <span className="text-[10px] text-slate-400 font-medium italic">
-            Prioritas {filterJurusan}
-          </span>
-        </div>
-      )}
-      <div className="relative group">
+            <div className="relative group">
         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
           {isLoading ? (
             <Loader2 className="h-4 w-4 text-indigo-500 animate-spin" />

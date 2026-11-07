@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { UserPlus, Users, AlertTriangle } from 'lucide-react';
+import { UserPlus, Users, AlertTriangle, ChevronDown } from 'lucide-react';
 import { Modal, Button, Input } from '../ui';
 import { SearchableSelect, type SearchableSelectOption } from '../ui/SearchableSelect';
 import { SimpleFormField } from '../ui/SimpleFormField';
@@ -144,7 +144,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
               }}
               scope="global"
               filterJurusan={filterJurusan}
-              placeholder={filterJurusan ? `Cari siswa jurusan ${filterJurusan}...` : "Scan RFID, QR, atau ketik nama/NIS..."}
+              placeholder="Cari nama atau NIS siswa..."
               autoFocus
             />
             {selectedSiswaId && (
@@ -165,9 +165,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
                           <span>Kelas: {selectedStudent.Kelas.nama_kelas}</span>
                         </>
                       )}
-                      {!selectedStudent?.nis && !selectedStudent?.Kelas?.nama_kelas && (
-                        <span>ID: {selectedSiswaId}</span>
-                      )}
+                      
                     </div>
                   </div>
                 </div>
@@ -326,59 +324,64 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
           </SimpleFormField>
         )}
 
-        {/* Seksi Geofencing Overrides */}
-        <div className="p-4 bg-slate-50 dark:bg-slate-900/30 rounded-xl space-y-3.5 border border-slate-150/50 dark:border-slate-800/40">
-          <p className="text-xs font-bold text-slate-400 dark:text-slate-550 uppercase tracking-wider">
-            Geofencing Khusus / Overrides (Opsional)
-          </p>
-          
-          <label className="flex items-center gap-2.5 px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-xl cursor-pointer select-none transition-all duration-150 hover:bg-slate-50 dark:hover:bg-slate-900/40">
-            <input
-              type="checkbox"
-              name="is_flexible_location"
-              defaultChecked={editingPkl?.is_flexible_location || false}
-              className="rounded border-slate-350 text-indigo-650 focus:ring-indigo-500/20 h-4.5 w-4.5 cursor-pointer dark:bg-slate-900 dark:border-slate-700"
-            />
-            <span className="text-xs font-bold tracking-wide text-slate-700 dark:text-slate-300">
-              Lokasi Presensi Fleksibel (Toleransi Geofence dengan Verifikasi)
+        {/* Seksi Geofencing Overrides (Collapsible Accordion Agar Tidak Noise) */}
+        <details className="group border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden text-xs">
+          <summary className="p-3 font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/30 select-none">
+            <span className="font-bold text-xs text-slate-700 dark:text-slate-300">
+              Pengaturan Lanjutan (Geofencing & Koordinat Lokasi)
             </span>
-          </label>
+            <ChevronDown size={14} className="group-open:rotate-180 transition-transform text-slate-400" />
+          </summary>
+          
+          <div className="p-3.5 space-y-3 bg-white dark:bg-slate-950 border-t border-slate-150/70 dark:border-slate-800/60">
+            <label className="flex items-center gap-2.5 px-3 py-2 border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 rounded-xl cursor-pointer select-none">
+              <input
+                type="checkbox"
+                name="is_flexible_location"
+                defaultChecked={editingPkl?.is_flexible_location || false}
+                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20 h-4 w-4 cursor-pointer dark:bg-slate-900 dark:border-slate-700"
+              />
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Lokasi Presensi Fleksibel (Toleransi Geofence dengan Verifikasi)
+              </span>
+            </label>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <SimpleFormField htmlFor="plotting-lat-override" label="Latitude Override">
-              <Input
-                id="plotting-lat-override"
-                name="lat_override"
-                type="number"
-                step="any"
-                defaultValue={editingPkl?.lat_override ?? ''}
-                placeholder="Contoh: -6.8914"
-                className="text-xs bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-              />
-            </SimpleFormField>
-            <SimpleFormField htmlFor="plotting-lon-override" label="Longitude Override">
-              <Input
-                id="plotting-lon-override"
-                name="lon_override"
-                type="number"
-                step="any"
-                defaultValue={editingPkl?.lon_override ?? ''}
-                placeholder="Contoh: 107.6104"
-                className="text-xs bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-              />
-            </SimpleFormField>
-            <SimpleFormField htmlFor="plotting-radius-override" label="Radius Override (Meter)">
-              <Input
-                id="plotting-radius-override"
-                name="radius_override"
-                type="number"
-                defaultValue={editingPkl?.radius_override ?? ''}
-                placeholder="Contoh: 50"
-                className="text-xs bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-              />
-            </SimpleFormField>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <SimpleFormField htmlFor="plotting-lat-override" label="Latitude Override">
+                <Input
+                  id="plotting-lat-override"
+                  name="lat_override"
+                  type="number"
+                  step="any"
+                  defaultValue={editingPkl?.lat_override ?? ''}
+                  placeholder="Contoh: -6.8914"
+                  className="text-xs bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                />
+              </SimpleFormField>
+              <SimpleFormField htmlFor="plotting-lon-override" label="Longitude Override">
+                <Input
+                  id="plotting-lon-override"
+                  name="lon_override"
+                  type="number"
+                  step="any"
+                  defaultValue={editingPkl?.lon_override ?? ''}
+                  placeholder="Contoh: 107.6104"
+                  className="text-xs bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                />
+              </SimpleFormField>
+              <SimpleFormField htmlFor="plotting-radius-override" label="Radius Override (Meter)">
+                <Input
+                  id="plotting-radius-override"
+                  name="radius_override"
+                  type="number"
+                  defaultValue={editingPkl?.radius_override ?? ''}
+                  placeholder="Contoh: 50"
+                  className="text-xs bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                />
+              </SimpleFormField>
+            </div>
           </div>
-        </div>
+        </details>
 
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-150 dark:border-slate-800">
           <Button type="button" variant="outline" onClick={onClose}>
