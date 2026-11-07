@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { create } from 'zustand';
 import { 
   Menu, 
   X, 
-  Search, 
   ChevronRight, 
   Check, 
   Layers, 
@@ -54,7 +53,6 @@ export interface UniversalMobileSubtabSidebarProps {
   footerExtra?: React.ReactNode;
   side?: 'left' | 'right';
   className?: string;
-  searchableThreshold?: number; // Show search box if tabs.length >= threshold, default 8
 }
 
 // ==========================================
@@ -76,11 +74,8 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
   footerExtra,
   side = 'left',
   className,
-  searchableThreshold = 8,
 }) => {
   const [mounted, setMounted] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Mount detection for React Portal
   useEffect(() => {
@@ -89,10 +84,7 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
 
   // Keyboard navigation & body scroll lock
   useEffect(() => {
-    if (!isOpen) {
-      setSearchQuery('');
-      return;
-    }
+    if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' || e.code === 'Escape') {
@@ -111,46 +103,24 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
     };
   }, [isOpen, onClose]);
 
-  // Focus search input on open if present
-  useEffect(() => {
-    if (isOpen && tabs.length >= searchableThreshold) {
-      const timer = setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 150);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, tabs.length, searchableThreshold]);
-
-  // Filter tabs by search query
-  const filteredTabs = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return tabs;
-    return tabs.filter((t) => {
-      const matchLabel = t.label.toLowerCase().includes(q);
-      const matchShort = t.shortLabel?.toLowerCase().includes(q);
-      const matchDesc = t.description?.toLowerCase().includes(q);
-      return matchLabel || matchShort || matchDesc;
-    });
-  }, [tabs, searchQuery]);
-
   // Group tabs by categories if categories prop is provided
   const groupedSections = useMemo(() => {
     if (!categories || categories.length === 0) {
-      return [{ category: null, items: filteredTabs }];
+      return [{ category: null, items: tabs }];
     }
 
     const groups: Array<{ category: UniversalSubtabCategory | null; items: UniversalSubtabItem[] }> = [];
 
     // Map defined categories
     categories.forEach((cat) => {
-      const items = filteredTabs.filter((t) => t.category === cat.id);
+      const items = tabs.filter((t) => t.category === cat.id);
       if (items.length > 0) {
         groups.push({ category: cat, items });
       }
     });
 
     // Collect uncategorized tabs
-    const uncategorized = filteredTabs.filter(
+    const uncategorized = tabs.filter(
       (t) => !t.category || !categories.some((c) => c.id === t.category)
     );
     if (uncategorized.length > 0) {
@@ -158,7 +128,7 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
     }
 
     return groups;
-  }, [categories, filteredTabs]);
+  }, [categories, tabs]);
 
   const handleSelect = useCallback(
     (tabId: string, disabled?: boolean) => {
@@ -224,40 +194,11 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
             {/* Header Extra jika ada */}
             {headerExtra && <div className="px-3 pt-2 shrink-0">{headerExtra}</div>}
 
-            {/* Instant Search Bar (Minimalis & Bersih) */}
-            {tabs.length >= searchableThreshold && (
-              <div className="px-3 pt-2.5 pb-1 shrink-0">
-                <div className="relative flex items-center">
-                  <Search
-                    size={13}
-                    className="absolute left-3 text-slate-400 dark:text-slate-500 pointer-events-none"
-                  />
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Cari..."
-                    className="w-full pl-8 pr-7 py-1.5 rounded-lg text-xs bg-slate-100 dark:bg-slate-800 border-0 focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-slate-200 placeholder-slate-400"
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-2 text-slate-400 hover:text-slate-600 p-0.5"
-                    >
-                      <X size={12} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
             {/* ─── Drawer Body (Scrollable Menu List) ─── */}
             <div className="flex-1 overflow-y-auto overscroll-contain px-2.5 py-2 space-y-3 no-scrollbar">
-              {filteredTabs.length === 0 ? (
+              {tabs.length === 0 ? (
                 <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-xs">
-                  <p>Tidak ditemukan</p>
+                  <p>Tidak ada menu</p>
                 </div>
               ) : (
                 groupedSections.map((group, gIdx) => {
