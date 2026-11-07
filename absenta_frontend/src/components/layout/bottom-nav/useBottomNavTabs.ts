@@ -143,7 +143,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
   );
 
   const siswaTabs = useMemo<MobileBottomTabItem[]>(() => {
-    const tabs: MobileBottomTabItem[] = [
+    return [
       {
         id: 'beranda',
         label: 'Beranda Siswa',
@@ -161,6 +161,23 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         isActive: (pathname, tabParam) => (pathname === '/dashboard' && tabParam === 'kehadiran') || pathname.startsWith('/attendance/my-attendance') || pathname.startsWith('/my-attendance'),
       },
       {
+        id: 'siswa_menu',
+        label: 'Menu Layanan Siswa',
+        shortLabel: 'Menu Siswa',
+        icon: LayoutGrid,
+        targetPath: '/dashboard?tab=ringkasan',
+        isActive: (pathname, tabParam) => ['catatan', 'berkas', 'pkl', 'cbt'].includes(tabParam || ''),
+        children: [
+          { id: 'catatan', label: 'Catatan BK & Disiplin', icon: FileText, targetPath: '/dashboard?tab=catatan', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
+          { id: 'berkas', label: 'Berkas & Nilai Rapor', icon: BookOpen, targetPath: '/dashboard?tab=berkas', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
+          ...(isPetugasKelas ? [
+            { id: 'petugas_ops', label: 'Petugas Presensi', icon: CheckCircle2, targetPath: '/attendance/ops', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' }
+          ] : [
+            { id: 'coop_siswa', label: 'Koperasi Siswa', icon: PiggyBank, targetPath: '/cooperative/pos', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' }
+          ]),
+        ],
+      },
+      {
         id: 'catatan',
         label: 'Catatan Siswa',
         shortLabel: 'Catatan',
@@ -169,48 +186,17 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         isActive: (pathname, tabParam) => (pathname === '/dashboard' && tabParam === 'catatan') || pathname.startsWith('/bpbk/konseling') || pathname.startsWith('/kesiswaan/pelanggaran'),
       },
       {
-        id: 'berkas',
-        label: 'Berkas Siswa',
-        shortLabel: 'Berkas',
-        icon: BookOpen,
-        targetPath: '/dashboard?tab=berkas',
-        isActive: (pathname, tabParam) => (pathname === '/dashboard' && tabParam === 'berkas') || pathname.startsWith('/rapor/nilai') || pathname.startsWith('/academic/student-records'),
+        id: 'profil',
+        label: 'Profil Siswa',
+        shortLabel: 'Profil',
+        icon: User,
+        targetPath: '/dashboard?tab=profil',
+        isActive: (pathname, tabParam) => (pathname === '/dashboard' && tabParam === 'profil') || pathname.startsWith('/profile'),
       },
     ];
-
-    if (isPetugasKelas) {
-      tabs.push({
-        id: 'petugas_ops',
-        label: 'Petugas Presensi',
-        shortLabel: 'Petugas',
-        icon: CheckCircle2,
-        targetPath: '/attendance/ops',
-        isActive: (pathname) => pathname.startsWith('/attendance/ops'),
-      });
-    } else {
-      tabs.push({
-        id: 'coop_siswa',
-        label: 'Koperasi Siswa',
-        shortLabel: 'Koperasi',
-        icon: PiggyBank,
-        targetPath: '/cooperative/pos',
-        isActive: (pathname) => pathname.startsWith('/cooperative'),
-      });
-    }
-
-    tabs.push({
-      id: 'profil',
-      label: 'Profil Siswa',
-      shortLabel: 'Profil',
-      icon: User,
-      targetPath: '/dashboard?tab=profil',
-      isActive: (pathname, tabParam) => (pathname === '/dashboard' && tabParam === 'profil') || pathname.startsWith('/profile'),
-    });
-
-    return tabs;
   }, [isPetugasKelas]);
 
-  // ── 2. KEPALA SEKOLAH (SHOPEE-GRADE 6-TOMBOL DENGAN LENSA PENGAWASAN + PROFIL) ──
+  // ── 2. KEPALA SEKOLAH (SHOPEE-GRADE 5-TOMBOL DENGAN MENU PENGAWASAN ELEVATED DI TENGAH) ──
   const { currentPillar, setPillar } = useExecutivePillarStore();
   const kepsekTabs = useMemo<MobileBottomTabItem[]>(() => {
     const isProfileTab = currentTab === 'profil';
@@ -232,34 +218,27 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'kbm' && !isProfileTab,
       },
       {
+        id: 'lensa_more',
+        label: 'Lensa Pengawasan',
+        shortLabel: 'Menu Lensa',
+        icon: LayoutGrid,
+        badge: '360°',
+        targetPath: '/dashboard?tab=ringkasan',
+        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && ['bk', 'sarpras', 'hubin', 'tu'].includes(currentPillar) && !isProfileTab,
+        children: [
+          { id: 'bk', label: 'Bimbingan Konseling (EWS)', icon: HeartHandshake, targetPath: '/dashboard?tab=ringkasan&subtab=bk', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
+          { id: 'sarpras', label: 'Sarpras & Fasilitas', icon: Building, targetPath: '/dashboard?tab=ringkasan&subtab=sarpras', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
+          { id: 'hubin', label: 'Hubin & Kemitraan', icon: Briefcase, targetPath: '/dashboard?tab=ringkasan&subtab=hubin', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
+          { id: 'tu', label: 'Tata Usaha & Surat', icon: FileText, targetPath: '/dashboard?tab=ringkasan&subtab=tu', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
+        ],
+      },
+      {
         id: 'kesiswaan',
         label: 'Kesiswaan & Disiplin',
         shortLabel: 'Kesiswaan',
         icon: Users,
         targetPath: '/dashboard?tab=ringkasan&subtab=kesiswaan',
         isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'kesiswaan' && !isProfileTab,
-      },
-      {
-        id: 'bk',
-        label: 'Bimbingan Konseling (EWS)',
-        shortLabel: 'BP/BK',
-        icon: HeartHandshake,
-        targetPath: '/dashboard?tab=ringkasan&subtab=bk',
-        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'bk' && !isProfileTab,
-      },
-      {
-        id: 'lensa_more',
-        label: 'Lensa Pengawasan',
-        shortLabel: 'Lensa Lain',
-        icon: LayoutGrid,
-        badge: '360°',
-        targetPath: '/dashboard?tab=ringkasan',
-        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && ['sarpras', 'hubin', 'tu'].includes(currentPillar) && !isProfileTab,
-        children: [
-          { id: 'sarpras', label: 'Sarpras & Fasilitas', icon: Building, targetPath: '/dashboard?tab=ringkasan&subtab=sarpras', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
-          { id: 'hubin', label: 'Hubin & Kemitraan', icon: Briefcase, targetPath: '/dashboard?tab=ringkasan&subtab=hubin', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
-          { id: 'tu', label: 'Tata Usaha & Surat', icon: FileText, targetPath: '/dashboard?tab=ringkasan&subtab=tu', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
-        ],
       },
       {
         id: 'profil',
@@ -541,7 +520,18 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       case 'admin':
         return getAdminTabs(teacherDashboards);
       default: {
-        // STEP 1 (PORTAL BASE GURU - KBM TERPADU DI BERANDA)
+        // STEP 1 (PORTAL BASE GURU - 5 TOMBOL SIMETRIS DENGAN MENU PERAN ELEVATED DI TENGAH)
+        const firstDashboard = teacherDashboards[0];
+        const isDashActive = (targetPath: string, p: string, t: string | null) => {
+          if (targetPath.startsWith('/dashboard')) {
+            const match = targetPath.match(/[?&]tab=([^&]+)/);
+            const targetTab = match ? match[1] : null;
+            return (p === '/dashboard' || p === '/dashboard/') && Boolean(t && targetTab && t === targetTab);
+          }
+          const basePath = targetPath.split('?')[0];
+          return p.startsWith(basePath);
+        };
+
         const baseTabs: MobileBottomTabItem[] = [
           {
             id: 'base_home',
@@ -549,7 +539,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
             shortLabel: 'Beranda',
             icon: Home,
             targetPath: '/dashboard?tab=ringkasan',
-            isActive: (p, t) => (p === '/dashboard' || p === '/dashboard/') && (!t || t === 'ringkasan' || t === 'jadwal'),
+            isActive: (p, t) => (p === '/dashboard' || p === '/dashboard/') && (!t || t === 'ringkasan'),
           },
           {
             id: 'base_action_hub',
@@ -559,68 +549,48 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
             targetPath: '/dashboard?tab=action_hub',
             isActive: (p, t) => (p === '/dashboard' || p === '/dashboard/') && t === 'action_hub',
           },
-        ];
-
-        if (teacherDashboards.length > 0) {
-          const isDashActive = (targetPath: string, p: string, t: string | null) => {
-            if (targetPath.startsWith('/dashboard')) {
-              const match = targetPath.match(/[?&]tab=([^&]+)/);
-              const targetTab = match ? match[1] : null;
-              return (p === '/dashboard' || p === '/dashboard/') && Boolean(t && targetTab && t === targetTab);
+          {
+            id: 'base_divisi_more',
+            label: 'Menu Peran & Layanan',
+            shortLabel: 'Menu Guru',
+            icon: LayoutGrid,
+            targetPath: '/dashboard',
+            badge: teacherDashboards.length > 0 ? `${teacherDashboards.length}` : undefined,
+            isActive: (p, t) => Boolean(t && !['ringkasan', 'action_hub', 'profil'].includes(t)),
+            children: teacherDashboards.length > 0 ? teacherDashboards : [
+              { id: 'jadwal', label: 'Jadwal Mengajar', icon: Clock, targetPath: '/dashboard?tab=jadwal', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
+              { id: 'presensi', label: 'Presensi KBM', icon: CheckCircle2, targetPath: '/dashboard?tab=presensi', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
+            ],
+          },
+          ...(firstDashboard ? [
+            {
+              id: firstDashboard.id,
+              label: firstDashboard.label,
+              shortLabel: firstDashboard.shortLabel || firstDashboard.label,
+              icon: firstDashboard.icon,
+              targetPath: firstDashboard.targetPath,
+              badge: firstDashboard.badge ? String(firstDashboard.badge) : undefined,
+              isActive: (p: string, t: string | null) => isDashActive(firstDashboard.targetPath, p, t),
             }
-            const basePath = targetPath.split('?')[0];
-            return p.startsWith(basePath);
-          };
-
-          if (teacherDashboards.length <= 3) {
-            teacherDashboards.forEach((dash) => {
-              baseTabs.push({
-                id: dash.id,
-                label: dash.label,
-                shortLabel: dash.shortLabel || dash.label,
-                icon: dash.icon,
-                targetPath: dash.targetPath,
-                badge: dash.badge ? String(dash.badge) : undefined,
-                isActive: (p, t) => isDashActive(dash.targetPath, p, t),
-              });
-            });
-          } else {
-            const exposed = teacherDashboards.slice(0, 2);
-            const overflow = teacherDashboards.slice(2);
-
-            exposed.forEach((dash) => {
-              baseTabs.push({
-                id: dash.id,
-                label: dash.label,
-                shortLabel: dash.shortLabel || dash.label,
-                icon: dash.icon,
-                targetPath: dash.targetPath,
-                badge: dash.badge ? String(dash.badge) : undefined,
-                isActive: (p, t) => isDashActive(dash.targetPath, p, t),
-              });
-            });
-
-            baseTabs.push({
-              id: 'base_divisi_more',
-              label: 'Peran Lainnya',
-              shortLabel: 'Lainnya',
-              icon: LayoutGrid,
-              targetPath: '/dashboard',
-              badge: `${overflow.length}`,
-              isActive: () => false,
-              children: overflow,
-            });
-          }
-        }
-
-        baseTabs.push({
-          id: 'base_profil',
-          label: 'Profil Saya',
-          shortLabel: 'Saya',
-          icon: User,
-          targetPath: '/dashboard?tab=profil',
-          isActive: (p, t) => t === 'profil' || p.startsWith('/profile'),
-        });
+          ] : [
+            {
+              id: 'base_jadwal',
+              label: 'Jadwal Mengajar Guru',
+              shortLabel: 'Jadwal KBM',
+              icon: Clock,
+              targetPath: '/dashboard?tab=jadwal',
+              isActive: (p, t) => (p === '/dashboard' || p === '/dashboard/') && t === 'jadwal',
+            }
+          ]),
+          {
+            id: 'base_profil',
+            label: 'Profil Saya',
+            shortLabel: 'Saya',
+            icon: User,
+            targetPath: '/dashboard?tab=profil',
+            isActive: (p, t) => t === 'profil' || p.startsWith('/profile'),
+          },
+        ];
 
         return baseTabs;
       }

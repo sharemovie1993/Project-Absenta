@@ -31,10 +31,21 @@ export const BottomNavigation: React.FC = React.memo(() => {
     shouldHideNav,
   } = useBottomNavTabs();
 
+  const isSidebarOpen = useMobileSubtabSidebarStore((state) => state.isOpen);
+
   // Tutup menu melayang saat rute atau parameter berubah
   useEffect(() => {
     setOpenFlyoutId(null);
   }, [location.pathname, location.search]);
+
+  // Hitung index tombol sentral (elevasi mengambang ala Notch / FAB di tengah)
+  const centerIndex = useMemo(() => {
+    const explicitMenuIdx = activeTabsList.findIndex(
+      (item) => item.id.includes('menu') || item.id === 'base_divisi_more' || item.id === 'lensa_more' || (item.children && item.children.length > 0)
+    );
+    if (explicitMenuIdx !== -1) return explicitMenuIdx;
+    return Math.floor(activeTabsList.length / 2);
+  }, [activeTabsList]);
 
   const handleTabClick = useCallback((item: MobileBottomTabItem) => {
     // 👤 Shopee-Style Tab "Saya" / Akun: Buka Mobile Account Sheet instan
@@ -46,7 +57,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
     }
 
     if (item.children && item.children.length > 0) {
-      // 🚀 Buka Universal Mobile Subtab Sidebar Drawer (Posisi jangkauan jempol kanan bawah)
+      // 🚀 Buka Universal Mobile Subtab Sidebar Drawer (Posisi jangkauan jempol di tengah)
       useMobileSubtabSidebarStore.getState().open();
       setOpenFlyoutId(null);
       return;
@@ -89,26 +100,31 @@ export const BottomNavigation: React.FC = React.memo(() => {
         onSelectSubItem={handleSubItemClick}
       />
 
-      {/* ── SUBKOMPONEN 2: BILAH NAVIGASI BAWAH SELULER (SHOPEE STYLE - MAX 6 TOMBOL) ── */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex flex-col pointer-events-auto">
+      {/* ── SUBKOMPONEN 2: BILAH NAVIGASI BAWAH SELULER (CENTER PROMOTED DOCKED ELEVATION) ── */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex flex-col pointer-events-auto overflow-visible">
         <nav
           aria-label="Navigasi Bawah Seluler"
           className={cn(
-            "w-full backdrop-blur-lg px-1 pt-1 pb-[calc(0.4rem+env(safe-area-inset-bottom))] flex items-center shadow-2xl transition-all duration-200",
+            "w-full backdrop-blur-lg px-1 pt-1 pb-[calc(0.4rem+env(safe-area-inset-bottom))] flex items-center shadow-2xl transition-all duration-200 relative overflow-visible",
             currentTheme.navBarClass
           )}
         >
-          <div className="flex items-center justify-around w-full">
-            {activeTabsList.map(item => (
-              <BottomNavTabItem
-                key={item.id}
-                item={item}
-                isSelected={item.isActive(location.pathname, currentTab)}
-                isFlyoutOpen={openFlyoutId === item.id}
-                theme={currentTheme}
-                onClick={handleTabClick}
-              />
-            ))}
+          <div className="flex items-end justify-around w-full relative">
+            {activeTabsList.map((item, index) => {
+              const isCenterItem = index === centerIndex;
+              const isSelected = item.isActive(location.pathname, currentTab) || (isCenterItem && isSidebarOpen);
+              return (
+                <BottomNavTabItem
+                  key={item.id}
+                  item={item}
+                  isSelected={isSelected}
+                  isFlyoutOpen={openFlyoutId === item.id}
+                  theme={currentTheme}
+                  onClick={handleTabClick}
+                  isCenterElevated={isCenterItem}
+                />
+              );
+            })}
           </div>
         </nav>
       </div>
