@@ -97,30 +97,66 @@ export const BottomNavigation: React.FC = React.memo(() => {
   // Tabs fallback untuk drawer sisi kiri pada halaman mandiri (misal /hubin/absensi, /hubin/penempatan)
   const fallbackDrawerTabs = useMemo<UniversalSubtabItem[]>(() => {
     const list: UniversalSubtabItem[] = [];
-    activeTabsList.forEach((tab) => {
-      if (tab.id.includes('back')) return;
-      if (tab.children && tab.children.length > 0) {
-        tab.children.forEach((child) => {
+    const seen = new Set<string>();
+
+    const getKaprogCategory = (id: string) => {
+      if (['beranda', 'siswa', 'guru', 'sarana'].includes(id)) return 'jurusan';
+      if (['kehadiran', 'pelanggaran', 'prestasi'].includes(id)) return 'pembinaan';
+      if (['pkl', 'sidang_pkl', 'ploting_pkl', 'presensi_pkl', 'nilai_pkl', 'ploting_penguji'].includes(id)) return 'pkl';
+      if (['ukk', 'rapor'].includes(id)) return 'asesmen';
+      return undefined;
+    };
+
+    // 1. Jika ada tab eksplisit dengan children (misal Menu Kaprog / Menu TU), prioritaskan seluruh children-nya
+    const menuTab = activeTabsList.find((t) => t.children && t.children.length > 0);
+    if (menuTab && menuTab.children) {
+      menuTab.children.forEach((child) => {
+        const key = child.id;
+        if (!seen.has(key)) {
+          seen.add(key);
           list.push({
             id: child.id,
             label: child.label,
             shortLabel: child.shortLabel || child.label,
             icon: child.icon,
             badge: child.badge,
+            category: (child as any).category || (activeEcosystem === 'kaprog' ? getKaprogCategory(child.id) : undefined),
           });
-        });
-      } else {
+        }
+      });
+      return list;
+    }
+
+    // 2. Fallback standar jika tidak ada tab ber-children
+    activeTabsList.forEach((tab) => {
+      if (tab.id.includes('back')) return;
+      const key = tab.id;
+      if (!seen.has(key) && tab.id !== 'base_divisi_more' && tab.id !== 'lensa_more') {
+        seen.add(key);
         list.push({
           id: tab.id,
           label: tab.label,
           shortLabel: tab.shortLabel || tab.label,
           icon: tab.icon,
           badge: tab.badge,
+          category: (tab as any).category,
         });
       }
     });
     return list;
-  }, [activeTabsList]);
+  }, [activeTabsList, activeEcosystem]);
+
+  const fallbackCategories = useMemo(() => {
+    if (activeEcosystem === 'kaprog') {
+      return [
+        { id: 'jurusan', label: 'Jurusan', shortLabel: 'Jurusan' },
+        { id: 'pembinaan', label: 'Pembinaan', shortLabel: 'Pembinaan' },
+        { id: 'pkl', label: 'PKL', shortLabel: 'PKL' },
+        { id: 'asesmen', label: 'Asesmen', shortLabel: 'Asesmen' },
+      ];
+    }
+    return undefined;
+  }, [activeEcosystem]);
 
   const handleSelectFallbackTab = useCallback((tabId: string) => {
     useMobileSubtabSidebarStore.getState().close();
@@ -193,6 +229,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
           side="left"
           isFallback={true}
           tabs={fallbackDrawerTabs}
+          categories={fallbackCategories}
           activeTab={currentSubtab || ''}
           onSelectTab={handleSelectFallbackTab}
         />
