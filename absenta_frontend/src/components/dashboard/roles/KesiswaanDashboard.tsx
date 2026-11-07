@@ -272,32 +272,28 @@ export const KesiswaanDashboard: React.FC<KesiswaanDashboardProps> = ({ user }) 
 
   return (
     <div className="space-y-4 w-full max-w-full min-w-0">
-      {/* 1. Universal Topbar Selaras dengan Warna Bottom Nav (Rose Red) */}
+      {/* 1. Universal Topbar Terkunci Ramping (Murni Judul + Kembali) */}
       <UniversalEcosystemTopbar
         ecosystem="kesiswaan"
         title={currentSubtabTitle}
-        ecosystemBadge="KESISWAAN"
-        subtitle={tpTahun ? `TP ${tpTahun} • ${semNama}` : undefined}
-        description="Penegakan Disiplin, Prestasi Siswa, Pembiasaan Karakter, & Rekapitulasi"
         icon={ShieldAlert}
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
         actions={
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => navigate('/kesiswaan/monitoring')}
-              className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25 backdrop-blur-xs"
+              className="w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25 backdrop-blur-xs shrink-0"
               title="Buka Mode TV Monitor Kesiswaan"
             >
-              <Tv size={13} />
-              <span className="hidden sm:inline">Layar TV</span>
+              <Tv size={14} />
             </button>
             <button
               type="button"
               onClick={() => setShowMobileFilter((prev) => !prev)}
               className={cn(
-                'lg:hidden p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95',
+                'lg:hidden w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0',
                 showMobileFilter
                   ? 'bg-white text-rose-800 shadow-xs'
                   : 'bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25 backdrop-blur-xs'
@@ -305,20 +301,22 @@ export const KesiswaanDashboard: React.FC<KesiswaanDashboardProps> = ({ user }) 
               title="Atur Periode Akademik"
               aria-label="Atur Periode Akademik"
             >
-              <SlidersHorizontal size={13} />
-              <span className="hidden sm:inline">Periode</span>
+              <SlidersHorizontal size={14} />
             </button>
           </div>
         }
-        filterSlot={
+      />
+
+      {/* Standalone Collapsible Mobile Filter Toolbar (Terpisah secara mandiri) */}
+      {showMobileFilter && (
+        <div className="lg:hidden p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs animate-in fade-in slide-in-from-top-2 duration-200">
           <AcademicFilterToolbar
             {...academicFilter.toolbarProps}
             variant="compact"
             className="w-full"
           />
-        }
-        isFilterOpen={showMobileFilter}
-      />
+        </div>
+      )}
 
       {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
       <UniversalMobileSubtabSidebar

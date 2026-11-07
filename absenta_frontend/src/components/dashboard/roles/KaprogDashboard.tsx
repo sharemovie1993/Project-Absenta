@@ -614,12 +614,10 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
 
   return (
     <div className="w-full max-w-full min-w-0 space-y-5">
-      {/* 1. Universal Topbar Selaras dengan Warna Bottom Nav (Amber Gold) */}
+      {/* 1. Universal Topbar Terkunci Ramping (Murni Judul + Kembali) */}
       <UniversalEcosystemTopbar
         ecosystem="kaprog"
         title={currentSubtabTitle}
-        ecosystemBadge={resolvedJurusan?.singkatan?.toUpperCase() || 'KAPROG'}
-        subtitle={resolvedJurusan?.nama || 'Program Keahlian'}
         icon={Briefcase}
         onRefresh={() => {
           refetchPkl();
@@ -627,15 +625,16 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
         }}
         isRefreshing={isLoadingTotal}
         className="lg:hidden"
-        filterSlot={
-          <AcademicFilterToolbar
-            {...academicFilter.toolbarProps}
-            variant="compact"
-            className="w-full"
-          />
-        }
-        isFilterOpen={true}
       />
+
+      {/* Standalone Compact Filter Toolbar Mobile (Terpisah) */}
+      <div className="lg:hidden p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+        <AcademicFilterToolbar
+          {...academicFilter.toolbarProps}
+          variant="compact"
+          className="w-full"
+        />
+      </div>
 
       {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
       <UniversalMobileSubtabSidebar

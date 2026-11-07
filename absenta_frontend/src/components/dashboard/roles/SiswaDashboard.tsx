@@ -245,12 +245,10 @@ export const SiswaDashboard: React.FC = () => {
 
   return (
     <div className="space-y-4 sm:space-y-5 pb-20 w-full max-w-full min-w-0">
-      {/* 1. Universal Topbar Selaras dengan Warna Bottom Nav Siswa (Clean White/Dark Slate) */}
+      {/* 1. Universal Topbar Terkunci Ramping (Murni Judul + Kembali) */}
       <UniversalEcosystemTopbar
         ecosystem="siswa"
         title={currentSubtabTitle}
-        ecosystemBadge="SISWA"
-        subtitle={`Kelas ${data.currentClassName} • NISN: ${data.nisn || '-'}`}
         icon={User}
         onRefresh={handleManualRefresh}
         isRefreshing={isRefreshing}
@@ -258,11 +256,11 @@ export const SiswaDashboard: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowDigitalCardModal(true)}
-            className="px-2.5 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs font-semibold flex items-center gap-1.5 hover:bg-blue-100 transition-all cursor-pointer"
+            className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-blue-600 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer shrink-0"
             title="Buka Kartu Pelajar Digital"
+            aria-label="Kartu Digital"
           >
-            <QrCode size={13} />
-            <span className="hidden sm:inline">Kartu Digital</span>
+            <QrCode size={15} />
           </button>
         }
       />

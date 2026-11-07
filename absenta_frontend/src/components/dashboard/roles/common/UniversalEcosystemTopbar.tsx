@@ -14,27 +14,12 @@ export interface UniversalEcosystemTopbarProps {
   ecosystem: EcosystemType;
 
   /**
-   * Judul Halaman / Subtab Aktif yang Sedang Dibuka (e.g. "Jadwal & Delegasi Inval", "Perangkat Ajar Guru")
+   * Judul Halaman / Subtab Aktif yang Sedang Dibuka (Murni judul saja)
    */
   title: string;
 
   /**
-   * Lencana Divisi / Breadcrumb Ekosistem (e.g. "KURIKULUM", "KAPROG", "WALI KELAS")
-   */
-  ecosystemBadge?: string;
-
-  /**
-   * Subtitle atau Periode Akademik (e.g. "TP 2026/2027 • Semester Ganjil" atau "Kelas X AKL 1")
-   */
-  subtitle?: React.ReactNode;
-
-  /**
-   * Deskripsi ringkas halaman (opsional, muncul di layar desktop md:block)
-   */
-  description?: string;
-
-  /**
-   * Icon divisi/subtab (opsional)
+   * Icon divisi/subtab (opsional, tampil ramping di samping judul)
    */
   icon?: React.ComponentType<{ className?: string; size?: number }>;
 
@@ -59,24 +44,14 @@ export interface UniversalEcosystemTopbarProps {
   onRefresh?: () => void;
 
   /**
-   * Status pemuatan refresh (menghidupkan animasi putar pada ikon)
+   * Status pemuatan refresh (animasi putar pada ikon)
    */
   isRefreshing?: boolean;
 
   /**
-   * Slot tombol aksi tambahan di sebelah kanan (misal: tombol Filter Periode, Ekspor, TV Mode)
+   * Slot tombol aksi minimal di sisi kanan (opsional, misal tombol icon filter/menu)
    */
   actions?: React.ReactNode;
-
-  /**
-   * Slot collapsible filter toolbar (misal: AcademicFilterToolbar)
-   */
-  filterSlot?: React.ReactNode;
-
-  /**
-   * Apakah slot filter sedang terbuka / dimunculkan
-   */
-  isFilterOpen?: boolean;
 
   /**
    * Kustomisasi kelas wrapper luar
@@ -86,15 +61,15 @@ export interface UniversalEcosystemTopbarProps {
 
 /**
  * ── UNIVERSAL ECOSYSTEM TOPBAR (STANDAR INDUSTRI ABSENTA) ──
- * Komponen topbar terpadu yang menyelaraskan warna gradien dengan bilah navigasi bawah (bottom dock)
- * dan secara dinamis menampilkan judul subtab/halaman yang sedang dibuka.
+ * Komponen topbar ramping terpadu yang:
+ * 1. Murni menampilkan tombol kembali, judul halaman aktif, dan aksi minimal.
+ * 2. Terkunci (sticky top-0) saat scrolling tanpa auto-hide.
+ * 3. 100% selaras warna gradien dengan bottom navigation dock.
+ * 4. Mandiri dan tidak terikat/menyatu dengan komponen filter atau konten lain.
  */
 export const UniversalEcosystemTopbar: React.FC<UniversalEcosystemTopbarProps> = React.memo(({
   ecosystem,
   title,
-  ecosystemBadge,
-  subtitle,
-  description,
   icon: IconComponent,
   onBack,
   backTo,
@@ -102,15 +77,13 @@ export const UniversalEcosystemTopbar: React.FC<UniversalEcosystemTopbarProps> =
   onRefresh,
   isRefreshing = false,
   actions,
-  filterSlot,
-  isFilterOpen = false,
   className,
 }) => {
   const navigate = useNavigate();
   const theme = getEcosystemTheme(ecosystem);
   const isLayer2 = theme.isLayer2;
 
-  // Resolusi aksi kembali
+  // Resolusi aksi tombol kembali
   const handleBack = () => {
     if (onBack) {
       onBack();
@@ -127,176 +100,117 @@ export const UniversalEcosystemTopbar: React.FC<UniversalEcosystemTopbarProps> =
     }
   };
 
-  // Resolusi styling container topbar selaras dengan bottom nav
+  // Resolusi styling warna gradien selaras dengan bottom nav
   const getContainerStyles = () => {
     if (!isLayer2) {
-      return 'bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-xs';
+      return 'bg-white/95 dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-xs';
     }
 
     switch (ecosystem) {
       case 'kurikulum':
-        return 'bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-700 text-white border border-emerald-400/40 shadow-lg shadow-emerald-950/20';
+        return 'bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-700 text-white border border-emerald-400/40 shadow-sm shadow-emerald-950/20';
       case 'hubin':
       case 'pembimbing_pkl':
       case 'bkk':
-        return 'bg-gradient-to-r from-orange-600 via-orange-600 to-amber-700 text-white border border-orange-400/40 shadow-lg shadow-orange-950/20';
+        return 'bg-gradient-to-r from-orange-600 via-orange-600 to-amber-700 text-white border border-orange-400/40 shadow-sm shadow-orange-950/20';
       case 'kesiswaan':
       case 'ekskul':
       case 'piket':
       case 'satpam':
-        return 'bg-gradient-to-r from-rose-600 via-rose-600 to-red-700 text-white border border-rose-400/40 shadow-lg shadow-rose-950/20';
+        return 'bg-gradient-to-r from-rose-600 via-rose-600 to-red-700 text-white border border-rose-400/40 shadow-sm shadow-rose-950/20';
       case 'kaprog':
-        return 'bg-gradient-to-r from-amber-600 via-amber-600 to-amber-700 text-white border border-amber-400/40 shadow-lg shadow-amber-950/20';
+        return 'bg-gradient-to-r from-amber-600 via-amber-600 to-amber-700 text-white border border-amber-400/40 shadow-sm shadow-amber-950/20';
       case 'walas':
-        return 'bg-gradient-to-r from-sky-600 via-sky-600 to-blue-700 text-white border border-sky-400/40 shadow-lg shadow-sky-950/20';
+        return 'bg-gradient-to-r from-sky-600 via-sky-600 to-blue-700 text-white border border-sky-400/40 shadow-sm shadow-sky-950/20';
       case 'sarpras':
       case 'toolman':
-        return 'bg-gradient-to-r from-teal-700 via-teal-700 to-emerald-800 text-white border border-teal-400/40 shadow-lg shadow-teal-950/20';
+        return 'bg-gradient-to-r from-teal-700 via-teal-700 to-emerald-800 text-white border border-teal-400/40 shadow-sm shadow-teal-950/20';
       case 'tu':
-        return 'bg-gradient-to-r from-indigo-700 via-indigo-700 to-slate-800 text-white border border-indigo-400/40 shadow-lg shadow-indigo-950/20';
+        return 'bg-gradient-to-r from-indigo-700 via-indigo-700 to-slate-800 text-white border border-indigo-400/40 shadow-sm shadow-indigo-950/20';
       case 'bpbk':
-        return 'bg-gradient-to-r from-purple-600 via-purple-600 to-violet-800 text-white border border-purple-400/40 shadow-lg shadow-purple-950/20';
+        return 'bg-gradient-to-r from-purple-600 via-purple-600 to-violet-800 text-white border border-purple-400/40 shadow-sm shadow-purple-950/20';
       case 'koperasi':
-        return 'bg-gradient-to-r from-emerald-700 via-emerald-700 to-green-800 text-white border border-emerald-400/40 shadow-lg shadow-emerald-950/20';
+        return 'bg-gradient-to-r from-emerald-700 via-emerald-700 to-green-800 text-white border border-emerald-400/40 shadow-sm shadow-emerald-950/20';
       case 'admin':
-        return 'bg-gradient-to-r from-slate-800 via-slate-800 to-slate-950 text-white border border-slate-600/40 shadow-lg shadow-slate-950/20';
+        return 'bg-gradient-to-r from-slate-800 via-slate-800 to-slate-950 text-white border border-slate-600/40 shadow-sm shadow-slate-950/20';
       default:
-        return 'bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-xs';
+        return 'bg-white/95 dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-xs';
     }
   };
 
   return (
     <header
       className={cn(
-        'rounded-2xl p-3 sm:p-4 transition-all relative overflow-hidden',
+        'sticky top-0 z-30 w-full h-12 px-3 sm:px-3.5 rounded-2xl flex items-center justify-between gap-2.5 backdrop-blur-md transition-all',
         getContainerStyles(),
         className
       )}
     >
-      <div className="flex items-center justify-between gap-3 relative z-10">
-        {/* SISI KIRI: TOMBOL KEMBALI & IDENTITAS HALAMAN / SUBTAB AKTIF */}
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-          {!hideBack && (
-            <button
-              type="button"
-              onClick={handleBack}
-              className={cn(
-                'w-8 h-8 rounded-xl flex items-center justify-center transition-all shrink-0 cursor-pointer active:scale-90',
-                isLayer2
-                  ? 'bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25 backdrop-blur-xs shadow-xs'
-                  : 'border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
-              )}
-              title="Kembali"
-              aria-label="Kembali"
-            >
-              <ArrowLeft size={17} className="stroke-[2.2]" />
-            </button>
-          )}
-
-          {IconComponent && (
-            <div
-              className={cn(
-                'w-8 h-8 rounded-xl flex items-center justify-center shrink-0 hidden sm:flex',
-                isLayer2
-                  ? 'bg-white/20 text-white ring-1 ring-white/30 backdrop-blur-xs'
-                  : 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400 border border-indigo-200/60'
-              )}
-            >
-              <IconComponent size={16} />
-            </div>
-          )}
-
-          <div className="min-w-0 flex-1">
-            {/* Context Line: Lencana Divisi & Periode */}
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap leading-tight">
-              {ecosystemBadge && (
-                <span
-                  className={cn(
-                    'text-[9px] sm:text-[9.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full inline-flex items-center',
-                    isLayer2
-                      ? 'bg-white/25 text-white ring-1 ring-white/35 backdrop-blur-xs shadow-2xs'
-                      : 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200/80 dark:ring-indigo-800/80'
-                  )}
-                >
-                  {ecosystemBadge}
-                </span>
-              )}
-
-              {subtitle && (
-                <>
-                  <span className={cn('text-[10px] hidden sm:inline', isLayer2 ? 'text-white/60' : 'text-slate-300 dark:text-slate-700')}>
-                    •
-                  </span>
-                  <span
-                    className={cn(
-                      'text-[10.5px] sm:text-[11px] font-semibold truncate',
-                      isLayer2 ? 'text-white/85' : 'text-slate-500 dark:text-slate-400'
-                    )}
-                  >
-                    {subtitle}
-                  </span>
-                </>
-              )}
-            </div>
-
-            {/* Judul Subtab / Halaman Aktif yang Sedang Dibuka */}
-            <h1
-              className={cn(
-                'text-sm sm:text-base font-extrabold tracking-tight truncate mt-0.5',
-                isLayer2 ? 'text-white drop-shadow-xs' : 'text-slate-900 dark:text-white'
-              )}
-            >
-              {title}
-            </h1>
-
-            {/* Deskripsi Tambahan (Tampil pada Desktop) */}
-            {description && (
-              <p
-                className={cn(
-                  'text-[11px] truncate hidden md:block mt-0.5',
-                  isLayer2 ? 'text-white/75' : 'text-slate-500 dark:text-slate-400'
-                )}
-              >
-                {description}
-              </p>
+      {/* SISI KIRI: TOMBOL KEMBALI & JUDUL HALAMAN MURNI */}
+      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+        {!hideBack && (
+          <button
+            type="button"
+            onClick={handleBack}
+            className={cn(
+              'w-8 h-8 rounded-xl flex items-center justify-center transition-all shrink-0 cursor-pointer active:scale-90',
+              isLayer2
+                ? 'bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25 backdrop-blur-xs shadow-2xs'
+                : 'border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
             )}
+            title="Kembali"
+            aria-label="Kembali"
+          >
+            <ArrowLeft size={16} className="stroke-[2.4]" />
+          </button>
+        )}
+
+        {IconComponent && (
+          <div
+            className={cn(
+              'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 hidden sm:flex',
+              isLayer2
+                ? 'bg-white/20 text-white ring-1 ring-white/30'
+                : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+            )}
+          >
+            <IconComponent size={14} />
           </div>
-        </div>
+        )}
 
-        {/* SISI KANAN: TOMBOL AKSI CEPAT (REFRESH & ACTIONS KUSTOM) */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {actions}
-
-          {onRefresh && (
-            <button
-              type="button"
-              onClick={onRefresh}
-              disabled={isRefreshing}
-              className={cn(
-                'p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 active:scale-95',
-                isLayer2
-                  ? 'bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25 backdrop-blur-xs shadow-xs'
-                  : 'border border-slate-200/80 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-              )}
-              title="Segarkan Data"
-              aria-label="Segarkan Data"
-            >
-              <RefreshCw size={13} className={cn(isRefreshing && 'animate-spin')} />
-              <span className="hidden sm:inline">Segarkan</span>
-            </button>
+        {/* JUDUL SUBTAB MURNI (RAMPING & JELAS) */}
+        <h1
+          className={cn(
+            'text-xs sm:text-sm font-bold tracking-tight truncate',
+            isLayer2 ? 'text-white drop-shadow-xs' : 'text-slate-900 dark:text-white'
           )}
-        </div>
+        >
+          {title}
+        </h1>
       </div>
 
-      {/* SLOT COLLAPSIBLE FILTER TOOLBAR (Bila Ada) */}
-      {isFilterOpen && filterSlot && (
-        <div className={cn(
-          'mt-3 pt-3 animate-in fade-in slide-in-from-top-2 duration-200',
-          isLayer2 ? 'border-t border-white/20' : 'border-t border-slate-100 dark:border-slate-800'
-        )}>
-          {filterSlot}
-        </div>
-      )}
+      {/* SISI KANAN: AKSI MINIMAL (TOMBOL KUSTOM & REFRESH) */}
+      <div className="flex items-center gap-1.5 shrink-0">
+        {actions}
+
+        {onRefresh && (
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            className={cn(
+              'w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 active:scale-95 shrink-0',
+              isLayer2
+                ? 'bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25 backdrop-blur-xs'
+                : 'border border-slate-200/80 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+            )}
+            title="Segarkan Data"
+            aria-label="Segarkan Data"
+          >
+            <RefreshCw size={14} className={cn(isRefreshing && 'animate-spin')} />
+          </button>
+        )}
+      </div>
     </header>
   );
 });

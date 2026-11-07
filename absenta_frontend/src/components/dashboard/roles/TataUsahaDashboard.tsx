@@ -252,23 +252,22 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
 
   return (
     <div className="space-y-6">
-      {/* ─── 1A. MOBILE TOPBAR SELARAS WARNA BOTTOM NAV (INDIGO-SLATE) ─── */}
+      {/* ─── 1A. MOBILE TOPBAR TERKUNCI RAMPING (MURNI JUDUL + KEMBALI) ─── */}
       <UniversalEcosystemTopbar
         ecosystem="tu"
         title={currentSubtabTitle}
-        ecosystemBadge="TATA USAHA"
-        subtitle={`TP ${academicFilter.selectedTpNama || '2026/2027'} • ${academicFilter.selectedSemNama || 'Semester Ganjil'}`}
         icon={Building2}
         className="lg:hidden"
-        filterSlot={
-          <AcademicFilterToolbar
-            {...academicFilter.toolbarProps}
-            variant="compact"
-            className="w-full"
-          />
-        }
-        isFilterOpen={true}
       />
+
+      {/* Standalone Compact Filter Mobile (Terpisah secara mandiri) */}
+      <div className="lg:hidden p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+        <AcademicFilterToolbar
+          {...academicFilter.toolbarProps}
+          variant="compact"
+          className="w-full"
+        />
+      </div>
 
       {/* ─── 1B. DESKTOP HEADER BANNER: IDENTITAS RESMI (EXACT MATCH KAPROGDASHBOARD) ─── */}
       <div className="hidden lg:block bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-5 sm:p-6 rounded-2xl shadow-lg relative overflow-hidden">

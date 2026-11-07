@@ -227,12 +227,10 @@ export const SatpamDashboard: React.FC = () => {
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      {/* ── 1A. MOBILE TOPBAR SELARAS DENGAN WARNA BOTTOM NAV (ROSE RED) ── */}
+      {/* ── 1A. MOBILE TOPBAR TERKUNCI RAMPING (MURNI JUDUL + KEMBALI) ── */}
       <UniversalEcosystemTopbar
         ecosystem="satpam"
         title={currentSubtabTitle}
-        ecosystemBadge="KESISWAAN • SATPAM"
-        subtitle="Pos Utama • Terminal RFID"
         icon={ShieldCheck}
         onRefresh={() => refetch()}
         isRefreshing={isLoading}

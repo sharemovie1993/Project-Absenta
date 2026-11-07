@@ -277,12 +277,10 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
 
   return (
     <div className="w-full max-w-full min-w-0 space-y-5 pb-28 sm:pb-8">
-      {/* 1. Universal Topbar Selaras dengan Warna Bottom Nav (Sky Blue) */}
+      {/* 1. Universal Topbar Terkunci Ramping (Murni Judul + Kembali) */}
       <UniversalEcosystemTopbar
         ecosystem="walas"
         title={currentSubtabTitle}
-        ecosystemBadge="WALI KELAS"
-        subtitle={`${activeKelasNama} • ${academicFilter.selectedTahunPelajaranNama || '2026/2027'} ${academicFilter.selectedSemesterNama || 'Ganjil'}`}
         icon={GraduationCap}
         className="lg:hidden"
         actions={
@@ -305,7 +303,7 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
               type="button"
               onClick={() => setShowMobileFilter((prev) => !prev)}
               className={cn(
-                "p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95",
+                "w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0",
                 showMobileFilter
                   ? "bg-white text-sky-800 shadow-xs"
                   : "bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25 backdrop-blur-xs"
@@ -313,20 +311,22 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
               title="Atur Periode Akademik"
               aria-label="Atur Periode Akademik"
             >
-              <SlidersHorizontal size={13} />
-              <span className="text-[10px] hidden sm:inline">Filter</span>
+              <SlidersHorizontal size={14} />
             </button>
           </div>
         }
-        filterSlot={
+      />
+
+      {/* Standalone Collapsible Mobile Filter Toolbar (Terpisah secara mandiri) */}
+      {showMobileFilter && (
+        <div className="lg:hidden p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs animate-in fade-in slide-in-from-top-2 duration-200">
           <AcademicFilterToolbar
             {...academicFilter.toolbarProps}
             variant="compact"
             className="w-full"
           />
-        }
-        isFilterOpen={showMobileFilter}
-      />
+        </div>
+      )}
 
       {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
       <UniversalMobileSubtabSidebar
