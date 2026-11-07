@@ -71,6 +71,10 @@ import {
   SaranaItem, 
   ResolvedJurusan 
 } from './kaprog/types';
+import {
+  KAPROG_CATEGORIES,
+  getKaprogNavTabs
+} from './kaprog/kaprogNavigation.config';
 
 export interface KaprogDashboardProps {
   user?: {
@@ -407,71 +411,28 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
     return Math.max(0, total - sudah);
   }, [penilaianStatus]);
 
-  // Tabs Navigation Definition (Dikategorisasi ala Kurikulum - Separation of Concerns)
+  // Tabs Navigation Definition (SSOT Kanonikal - 100% DRY)
   const navTabs: NavTabItem[] = useMemo(
-    () => [
-      // Kategori 1: MANAJEMEN JURUSAN
-      { id: 'beranda', label: 'Ringkasan', shortLabel: 'Ringkasan', category: 'jurusan', icon: LayoutDashboard },
-      { id: 'siswa', label: 'Siswa', shortLabel: 'Siswa', category: 'jurusan', icon: GraduationCap },
-      { id: 'guru', label: 'Guru', shortLabel: 'Guru', category: 'jurusan', icon: Users },
-      { id: 'sarana', label: 'Sarana', shortLabel: 'Sarana', category: 'jurusan', icon: Wrench, badge: saranaCounts.rusak > 0 ? saranaCounts.rusak : undefined },
-
-      // Kategori 2: PEMBINAAN ROMBEL (Operasional Harian)
-      { id: 'kehadiran', label: 'Presensi', shortLabel: 'Presensi', category: 'pembinaan', icon: CalendarCheck, badge: atRiskStudents.length > 0 ? atRiskStudents.length : undefined },
-      { id: 'pelanggaran', label: 'Pelanggaran', shortLabel: 'Pelanggaran', category: 'pembinaan', icon: ShieldAlert, badge: (pelanggaranList || []).length > 0 ? (pelanggaranList || []).length : undefined },
-      { id: 'prestasi', label: 'Prestasi', shortLabel: 'Prestasi', category: 'pembinaan', icon: Trophy },
-
-      // Kategori 3: PRAKTIK KERJA LAPANGAN (PKL)
-      { id: 'pkl', label: 'Formulasi', shortLabel: 'Formulasi', category: 'pkl', icon: Briefcase, badge: tpStatus.pendingMitra > 0 ? tpStatus.pendingMitra : undefined },
-      { id: 'ploting_pkl', label: 'Ploting', shortLabel: 'Ploting', category: 'pkl', icon: UserCheck },
-      { id: 'presensi_pkl', label: 'Absensi', shortLabel: 'Absensi', category: 'pkl', icon: CalendarCheck },
-      { id: 'nilai_pkl', label: 'Penilaian', shortLabel: 'Penilaian', category: 'pkl', icon: ClipboardCheck, badge: belumNilaiDudiCount > 0 ? belumNilaiDudiCount : undefined },
-      { id: 'ploting_penguji', label: 'Penguji', shortLabel: 'Penguji', category: 'pkl', icon: Users, badge: belumSidangCount > 0 ? belumSidangCount : undefined },
-      { id: 'sidang_pkl', label: 'Sidang', shortLabel: 'Sidang', category: 'pkl', icon: Scale },
-
-      // Kategori 4: ASESMEN & SERTIFIKASI (Berdekatan dengan Fase PKL)
-      { id: 'ukk', label: 'UKK', shortLabel: 'UKK', category: 'asesmen', icon: Award },
-      { id: 'rapor', label: 'Rapor', shortLabel: 'Rapor', category: 'asesmen', icon: Printer },
-    ],
+    () =>
+      getKaprogNavTabs({
+        saranaRusak: saranaCounts.rusak,
+        atRiskStudents: atRiskStudents.length,
+        pelanggaran: (pelanggaranList || []).length,
+        pendingMitra: tpStatus.pendingMitra,
+        belumNilaiDudi: belumNilaiDudiCount,
+        belumSidang: belumSidangCount,
+      }),
     [
+      saranaCounts.rusak,
+      atRiskStudents.length,
+      pelanggaranList,
       tpStatus.pendingMitra,
       belumNilaiDudiCount,
       belumSidangCount,
-      atRiskStudents.length,
-      (pelanggaranList || []).length,
-      saranaCounts.rusak,
     ]
   );
 
-  const categories = useMemo(
-    () => [
-      {
-        id: 'jurusan' as KaprogCategory,
-        label: 'Jurusan',
-        icon: LayoutDashboard,
-        iconColor: 'text-indigo-600 dark:text-indigo-400',
-      },
-      {
-        id: 'pembinaan' as KaprogCategory,
-        label: 'Pembinaan',
-        icon: ShieldAlert,
-        iconColor: 'text-amber-600 dark:text-amber-400',
-      },
-      {
-        id: 'pkl' as KaprogCategory,
-        label: 'PKL',
-        icon: Briefcase,
-        iconColor: 'text-blue-600 dark:text-blue-400',
-      },
-      {
-        id: 'asesmen' as KaprogCategory,
-        label: 'Asesmen',
-        icon: Award,
-        iconColor: 'text-emerald-600 dark:text-emerald-400',
-      },
-    ],
-    []
-  );
+  const categories = KAPROG_CATEGORIES;
 
   // Cache Invalidation Helper: Sinkronisasi Real-Time ke seluruh Modul Rapor & Hubin
   const invalidateAllPklAndRaporQueries = useCallback(() => {

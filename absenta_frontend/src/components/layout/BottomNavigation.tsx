@@ -20,6 +20,7 @@ import {
   type EcosystemTheme,
   getEcosystemLabel 
 } from '@/config/bottomNavEcosystems.config';
+import { KAPROG_CATEGORIES } from '@/components/dashboard/roles/kaprog/kaprogNavigation.config';
 
 export type { MobileBottomSubItem, MobileBottomTabItem, EcosystemType, EcosystemTheme };
 
@@ -148,12 +149,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
 
   const fallbackCategories = useMemo(() => {
     if (activeEcosystem === 'kaprog') {
-      return [
-        { id: 'jurusan', label: 'Jurusan', shortLabel: 'Jurusan' },
-        { id: 'pembinaan', label: 'Pembinaan', shortLabel: 'Pembinaan' },
-        { id: 'pkl', label: 'PKL', shortLabel: 'PKL' },
-        { id: 'asesmen', label: 'Asesmen', shortLabel: 'Asesmen' },
-      ];
+      return KAPROG_CATEGORIES;
     }
     return undefined;
   }, [activeEcosystem]);
