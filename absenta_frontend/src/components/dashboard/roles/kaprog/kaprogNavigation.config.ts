@@ -77,7 +77,7 @@ export const KAPROG_SUBTABS_BASE: KaprogTabDefinition[] = [
   { id: 'prestasi', label: 'Prestasi', shortLabel: 'Prestasi', category: 'pembinaan', icon: Trophy, targetPath: '/dashboard?tab=kaprog&subtab=prestasi', color: 'bg-yellow-50 dark:bg-yellow-950/70 text-yellow-600 dark:text-yellow-400' },
 
   // Kategori 3: PRAKTIK KERJA LAPANGAN (PKL)
-  { id: 'pkl', label: 'Formulasi', shortLabel: 'Formulasi', category: 'pkl', icon: Briefcase, targetPath: '/dashboard?tab=kaprog&subtab=pkl', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
+  { id: 'pkl', label: 'Formulasi TP DUDI', shortLabel: 'Formulasi TP', category: 'pkl', icon: Briefcase, targetPath: '/dashboard?tab=kaprog&subtab=pkl', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
   { id: 'ploting_pkl', label: 'Ploting', shortLabel: 'Ploting', category: 'pkl', icon: UserCheck, targetPath: '/dashboard?tab=kaprog&subtab=ploting_pkl', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
   { id: 'presensi_pkl', label: 'Absensi', shortLabel: 'Absensi', category: 'pkl', icon: CalendarCheck, targetPath: '/dashboard?tab=kaprog&subtab=presensi_pkl', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
   { id: 'nilai_pkl', label: 'Penilaian', shortLabel: 'Penilaian', category: 'pkl', icon: ClipboardCheck, targetPath: '/dashboard?tab=kaprog&subtab=nilai_pkl', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },

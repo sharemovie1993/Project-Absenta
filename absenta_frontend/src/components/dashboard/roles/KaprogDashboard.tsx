@@ -559,7 +559,11 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
     switch (activeTab) {
       case 'beranda': return 'Pusat Kendali';
       case 'siswa': return 'Data Siswa';
-      case 'pkl': return 'Praktik Kerja (PKL)';
+      case 'pkl': return 'Formulasi TP DUDI';
+      case 'ploting_pkl': return 'Ploting PKL';
+      case 'presensi_pkl': return 'Absensi PKL';
+      case 'nilai_pkl': return 'Penilaian PKL';
+      case 'ploting_penguji': return 'Ploting Penguji';
       case 'sidang_pkl': return 'Sidang PKL';
       case 'kehadiran': return 'Presensi Jurusan';
       case 'pelanggaran': return 'Pelanggaran Siswa';
@@ -568,7 +572,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
       case 'sarana': return 'Sarana Bengkel';
       case 'ukk': return 'Uji Kompetensi (UKK)';
       case 'rapor': return 'Rapor & Nilai';
-      default: return 'Beranda';
+      default: return 'Pusat Kendali';
     }
   }, [activeTab]);
 
