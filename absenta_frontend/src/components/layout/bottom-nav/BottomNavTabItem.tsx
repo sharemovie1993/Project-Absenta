@@ -67,7 +67,7 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
     );
   }
 
-  // ── VARIAN 2: TOMBOL NAVIGASI SAMPING REGULER (FLANKING KIRI & KANAN DENGAN TITIK AKTIF GAYA 1) ──
+  // ── VARIAN 2: TOMBOL NAVIGASI SAMPING REGULER (PILL CAPSULE HIGHLIGHT - ZERO CLUTTER) ──
   // Deteksi Tab Profil "Saya" ala Shopee (Menampilkan avatar profil bulat di pojok kanan bawah)
   const isProfileTab = item.id === 'saya' || item.id === 'base_profil';
   const rawPhoto = user?.profile_photo_url || (user as any)?.avatar || (user?.guru_profile as any)?.foto_url;
@@ -79,7 +79,7 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
       type="button"
       onClick={() => onClick(item)}
       className={cn(
-        'flex flex-col items-center justify-center gap-1 py-1 px-0.5 transition-all duration-150 select-none flex-1 min-w-0 h-full cursor-pointer relative',
+        'flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 transition-all duration-200 select-none flex-1 min-w-0 h-full cursor-pointer relative group',
         isHighlighted
           ? theme.activeTextClass
           : theme.inactiveTextClass
@@ -87,8 +87,12 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
     >
       <div
         className={cn(
-          'p-1 rounded-xl transition-all relative flex items-center justify-center',
-          theme.isLayer2 && isHighlighted ? 'bg-white/20' : 'bg-transparent'
+          'px-2.5 py-1 rounded-full transition-all duration-200 relative flex items-center justify-center',
+          isHighlighted
+            ? theme.isLayer2
+              ? 'bg-white/25 text-white ring-1 ring-white/50 shadow-2xs backdrop-blur-xs scale-105'
+              : 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 ring-1 ring-indigo-200/80 dark:ring-indigo-800/80 shadow-2xs scale-105'
+            : 'bg-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
         )}
       >
         {isProfileTab ? (
@@ -116,7 +120,13 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
             </div>
           )
         ) : (
-          <ItemIcon size={20} className="stroke-[2.2]" />
+          <ItemIcon 
+            size={19} 
+            className={cn(
+              "transition-all duration-150",
+              isHighlighted ? "stroke-[2.4]" : "stroke-[1.8]"
+            )} 
+          />
         )}
 
         {item.badge && (
@@ -124,12 +134,14 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
             {item.badge}
           </span>
         )}
-        {/* Titik indikator aktif di bawah ikon persis seperti Gaya 1 di gambar referensi */}
-        {isHighlighted && (
-          <span className={cn("absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full shadow-xs", theme.dotColorClass)} />
-        )}
       </div>
-      <span className="max-w-[62px] text-center tracking-tight text-[9px] sm:text-[10px] font-bold leading-tight line-clamp-1 mt-0.5">
+
+      <span 
+        className={cn(
+          "max-w-[64px] text-center tracking-tight text-[9.5px] sm:text-[10px] leading-tight line-clamp-1 transition-colors duration-150 mt-0.5",
+          isHighlighted ? "font-extrabold" : "font-semibold opacity-85"
+        )}
+      >
         {item.shortLabel}
       </span>
     </button>
