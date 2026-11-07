@@ -127,7 +127,7 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
       id: 'sudah_tp',
       title: 'Sudah Diisi',
       value: `${filledCount} Mitra`,
-      subtext: isMobile ? undefined : `${tpStatus?.completionPercentage || 0}% Dirumuskan`,
+      subtext: isMobile ? undefined : `${tpStatus?.completionPercentage || 0}% Terisi`,
       icon: CheckCircle2,
       iconColorClass: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60',
       badge: filledCount > 0 ? (
@@ -140,7 +140,7 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
       id: 'belum_tp',
       title: 'Belum Diisi',
       value: `${pendingCount} Mitra`,
-      subtext: isMobile ? undefined : 'Perlu Rumusan',
+      subtext: isMobile ? undefined : 'Perlu Diisi',
       icon: AlertCircle,
       iconColorClass: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60',
       badge: pendingCount > 0 ? (
@@ -334,12 +334,12 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
                       {mitra.has_tp ? (
                         <>
                           <Edit3 className="w-3 h-3" />
-                          <span>Edit TP</span>
+                          <span>Edit</span>
                         </>
                       ) : (
                         <>
                           <Sparkles className="w-3 h-3" />
-                          <span>Rumuskan</span>
+                          <span>Isi</span>
                         </>
                       )}
                     </Button>
@@ -414,12 +414,12 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
                           {mitra.has_tp ? (
                             <>
                               <Edit3 className="w-3 h-3" />
-                              <span>Edit TP</span>
+                              <span>Edit</span>
                             </>
                           ) : (
                             <>
                               <Sparkles className="w-3 h-3" />
-                              <span>Rumuskan</span>
+                              <span>Isi</span>
                             </>
                           )}
                         </Button>
