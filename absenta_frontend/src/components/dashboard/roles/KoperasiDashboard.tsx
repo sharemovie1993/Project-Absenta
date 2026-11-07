@@ -356,7 +356,6 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
             activeTab={activeTab}
             onSelectTab={(tabId) => handleTabSelect(tabId as KoperasiTabId)}
           />
-        </div>
 
         {/* 2. Desktop 2-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-6 items-start">
