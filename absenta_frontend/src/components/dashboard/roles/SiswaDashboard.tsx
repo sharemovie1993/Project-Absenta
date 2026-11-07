@@ -192,23 +192,24 @@ export const SiswaDashboard: React.FC = () => {
   // Tab items config
   const navTabs: SiswaNavTabItem[] = useMemo(() => {
     const tabs: SiswaNavTabItem[] = [
-      { id: 'ringkasan', label: 'Ringkasan Beranda', icon: LayoutList },
+      { id: 'ringkasan', label: 'Ringkasan', shortLabel: 'Ringkasan', icon: LayoutList },
     ];
     if (data.isAktifPkl || data.myPenempatan) {
       tabs.push({
         id: 'pkl',
-        label: 'Ruang PKL',
+        label: 'PKL',
+        shortLabel: 'PKL',
         icon: Briefcase,
         badge: data.pendingJurnalCount > 0 ? data.pendingJurnalCount : undefined,
       });
     }
     tabs.push(
-      { id: 'cbt', label: 'Ujian CBT', icon: Laptop },
-      { id: 'kehadiran', label: 'Presensi & KBM', icon: CheckCircle2 },
-      { id: 'catatan', label: 'Catatan Kedisiplinan', icon: FileText, badge: data.pelanggaranCount },
-      { id: 'berkas', label: 'Berkas Dokumen', icon: FolderOpen },
-      { id: 'portal', label: 'Portal Aplikasi', icon: LayoutGrid },
-      { id: 'profil', label: 'Profil & Kartu', icon: User }
+      { id: 'cbt', label: 'Ujian', shortLabel: 'Ujian', icon: Laptop },
+      { id: 'kehadiran', label: 'Presensi', shortLabel: 'Presensi', icon: CheckCircle2 },
+      { id: 'catatan', label: 'Disiplin', shortLabel: 'Disiplin', icon: FileText, badge: data.pelanggaranCount },
+      { id: 'berkas', label: 'Dokumen', shortLabel: 'Dokumen', icon: FolderOpen },
+      { id: 'portal', label: 'Portal', shortLabel: 'Portal', icon: LayoutGrid },
+      { id: 'profil', label: 'Profil', shortLabel: 'Profil', icon: User }
     );
     return tabs;
   }, [data.isAktifPkl, data.myPenempatan, data.pendingJurnalCount, data.pelanggaranCount]);

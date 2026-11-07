@@ -370,34 +370,34 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
 
   const overloadCount = teachersLoad.filter((t) => t.jp > 24).length;
 
-  // Nav Tabs Definition (Dikategorisasi berdasarkan 2 Siklus Kerja Kurikulum)
+  // Nav Tabs Definition (Subtab Ringkas 1 Kata & Noise-Free)
   const navTabs: KurikulumNavTabItem[] = useMemo(
     () => [
-      // ⚡ KATEGORI 1: OPERASIONAL KBM (Daily Live Monitoring & Supervisi)
+      // ⚡ KATEGORI 1: OPERASIONAL
       {
         id: 'ringkasan',
-        label: 'Monitoring Live KBM',
-        shortLabel: 'Live KBM',
+        label: 'Monitoring',
+        shortLabel: 'Monitoring',
         category: 'operasional',
         icon: LayoutDashboard,
       },
       {
         id: 'delegasi',
-        label: 'Delegasi & Guru Inval',
-        shortLabel: 'Guru Inval',
+        label: 'Delegasi',
+        shortLabel: 'Delegasi',
         category: 'operasional',
         icon: ArrowRightLeft,
       },
       {
         id: 'rekap_kbm',
-        label: 'Rekap Realisasi KBM',
-        shortLabel: 'Rekap KBM',
+        label: 'Realisasi',
+        shortLabel: 'Realisasi',
         category: 'operasional',
         icon: BarChart2,
       },
       {
         id: 'perangkat',
-        label: 'Perangkat Ajar',
+        label: 'Perangkat',
         shortLabel: 'Perangkat',
         category: 'operasional',
         icon: FileText,
@@ -406,61 +406,59 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
       },
       {
         id: 'supervisi',
-        label: 'Supervisi Akademik',
+        label: 'Supervisi',
         shortLabel: 'Supervisi',
         category: 'operasional',
         icon: CheckCircle2,
       },
       {
         id: 'cbt',
-        label: 'CBT & Asesmen Ujian',
-        shortLabel: 'CBT Ujian',
+        label: 'Asesmen',
+        shortLabel: 'Asesmen',
         category: 'operasional',
         icon: Laptop,
       },
       {
         id: 'rapor',
-        label: 'Pleno Rapor',
+        label: 'Rapor',
         shortLabel: 'Rapor',
         category: 'operasional',
         icon: Award,
       },
 
-      // ⚙️ KATEGORI 2: PERSIAPAN TAHUN AJARAN (Master Setup & Plotting)
+      // ⚙️ KATEGORI 2: PERSIAPAN
       {
         id: 'kalender',
-        label: 'Kalender Akademik',
+        label: 'Kalender',
         shortLabel: 'Kalender',
         category: 'persiapan',
         icon: CalendarDays,
       },
       {
         id: 'jam_kbm',
-        label: 'Distribusi Jam Pelajaran',
-        shortLabel: 'Distribusi JP',
+        label: 'Jam',
+        shortLabel: 'Jam',
         category: 'persiapan',
         icon: Clock,
       },
       {
         id: 'aturan_absensi',
-        label: 'Aturan Absensi',
-        shortLabel: 'Aturan Absensi',
+        label: 'Aturan',
+        shortLabel: 'Aturan',
         category: 'persiapan',
         icon: Settings2,
-        badge: 'PLENO',
-        badgeColor: 'bg-emerald-600 text-white',
       },
       {
         id: 'struktur',
-        label: 'Struktur Kurikulum',
+        label: 'Struktur',
         shortLabel: 'Struktur',
         category: 'persiapan',
         icon: Layers,
       },
       {
         id: 'guru_mapel',
-        label: 'Plotting Beban Guru',
-        shortLabel: 'Beban Guru',
+        label: 'Plotting',
+        shortLabel: 'Plotting',
         category: 'persiapan',
         icon: Users,
         badge: overloadCount > 0 ? `${overloadCount}` : undefined,
@@ -468,14 +466,14 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
       },
       {
         id: 'wali_kelas',
-        label: 'Penugasan Wali Kelas',
-        shortLabel: 'Wali Kelas',
+        label: 'Walas',
+        shortLabel: 'Walas',
         category: 'persiapan',
         icon: UserCheck,
       },
       {
         id: 'jadwal',
-        label: 'Jadwal Pelajaran',
+        label: 'Jadwal',
         shortLabel: 'Jadwal',
         category: 'persiapan',
         icon: Calendar,
@@ -484,29 +482,29 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
       },
       {
         id: 'piket',
-        label: 'Jadwal Piket Guru',
+        label: 'Piket',
         shortLabel: 'Piket',
         category: 'persiapan',
         icon: ShieldCheck,
       },
       {
         id: 'titimangsa_rapor',
-        label: 'Titimangsa Rapor',
-        shortLabel: 'Titimangsa Rapor',
+        label: 'Titimangsa',
+        shortLabel: 'Titimangsa',
         category: 'persiapan',
         icon: FileText,
       },
       {
         id: 'cetak',
-        label: 'Cetak Dokumen & SK',
-        shortLabel: 'Cetak Dokumen',
+        label: 'Cetak',
+        shortLabel: 'Cetak',
         category: 'persiapan',
         icon: Printer,
       },
       {
         id: 'struktur_organisasi',
-        label: 'Struktur Organisasi Kurikulum',
-        shortLabel: 'Struktur Divisi',
+        label: 'Organisasi',
+        shortLabel: 'Organisasi',
         category: 'persiapan',
         icon: Network,
       },
@@ -518,19 +516,13 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
     () => [
       {
         id: 'operasional',
-        label: 'Operasional KBM',
+        label: 'Operasional',
         shortLabel: 'Operasional',
-        badge: 'Harian',
-        badgeColor: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300',
-        icon: Zap,
       },
       {
         id: 'persiapan',
-        label: 'Persiapan & Regulasi',
+        label: 'Persiapan',
         shortLabel: 'Persiapan',
-        badge: 'Semester',
-        badgeColor: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300',
-        icon: Settings,
       },
     ],
     []

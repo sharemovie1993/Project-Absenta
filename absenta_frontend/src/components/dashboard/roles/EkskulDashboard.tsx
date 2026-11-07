@@ -211,11 +211,11 @@ export const EkskulDashboard: React.FC<EkskulDashboardProps> = () => {
   // Navigation Items
   const navTabs: EkskulNavTabItem[] = useMemo(
     () => [
-      { id: 'ringkasan', label: 'Ringkasan Beranda', shortLabel: 'Beranda', icon: Compass },
-      { id: 'anggota', label: 'Anggota Siswa', shortLabel: 'Anggota', icon: Users, badge: stats.total_anggota },
-      { id: 'nilai', label: 'Penilaian Rapor', shortLabel: 'Nilai Rapor', icon: Award },
-      { id: 'jadwal', label: 'Jadwal & Pembina', shortLabel: 'Jadwal', icon: Calendar, badge: stats.total_pembina },
-      { id: 'rekap', label: 'Cetak Dokumen', shortLabel: 'Cetak', icon: Printer },
+      { id: 'ringkasan', label: 'Ringkasan', shortLabel: 'Ringkasan', icon: Compass },
+      { id: 'anggota', label: 'Anggota', shortLabel: 'Anggota', icon: Users, badge: stats.total_anggota },
+      { id: 'nilai', label: 'Nilai', shortLabel: 'Nilai', icon: Award },
+      { id: 'jadwal', label: 'Jadwal', shortLabel: 'Jadwal', icon: Calendar, badge: stats.total_pembina },
+      { id: 'rekap', label: 'Cetak', shortLabel: 'Cetak', icon: Printer },
     ],
     [stats.total_anggota, stats.total_pembina]
   );

@@ -163,7 +163,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       {
         id: 'siswa_menu',
         label: 'Menu Layanan Siswa',
-        shortLabel: 'Menu Siswa',
+        shortLabel: 'Menu',
         icon: LayoutGrid,
         targetPath: '/dashboard?tab=ringkasan',
         isActive: (pathname, tabParam) => ['catatan', 'berkas', 'pkl', 'cbt'].includes(tabParam || ''),
@@ -220,7 +220,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       {
         id: 'lensa_more',
         label: 'Lensa Pengawasan',
-        shortLabel: 'Menu Lensa',
+        shortLabel: 'Menu',
         icon: LayoutGrid,
         badge: '360°',
         targetPath: '/dashboard?tab=ringkasan',
@@ -259,7 +259,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       list.push({
         id: 'dash-kaprog',
         label: 'Dashboard Jurusan',
-        shortLabel: 'Dashboard Jurusan',
+        shortLabel: 'Jurusan',
         icon: Award,
         targetPath: '/dashboard?tab=kaprog&subtab=beranda',
         color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
@@ -270,7 +270,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       list.push({
         id: 'dash-walas',
         label: 'Dashboard Walas',
-        shortLabel: 'Dashboard Walas',
+        shortLabel: 'Walas',
         icon: Users,
         targetPath: '/dashboard?tab=binaan&subtab=ringkasan',
         color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400',
@@ -281,7 +281,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       list.push({
         id: 'dash-tu',
         label: 'Dashboard TU',
-        shortLabel: 'Dashboard TU',
+        shortLabel: 'TU',
         icon: FileText,
         targetPath: '/dashboard?tab=kepegawaian&subtab=beranda',
         color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
@@ -293,7 +293,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       list.push({
         id: 'dash-kurikulum',
         label: 'Dashboard Kurikulum',
-        shortLabel: 'Dashboard Kurikulum',
+        shortLabel: 'Kurikulum',
         icon: BookOpen,
         targetPath: '/dashboard?tab=kurikulum',
         color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
@@ -304,7 +304,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       list.push({
         id: 'dash-kesiswaan',
         label: 'Dashboard Kesiswaan',
-        shortLabel: 'Dashboard Kesiswaan',
+        shortLabel: 'Kesiswaan',
         icon: ShieldAlert,
         targetPath: '/kesiswaan/pelanggaran',
         color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400',
@@ -315,7 +315,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       list.push({
         id: 'dash-hubin',
         label: 'Dashboard Hubin',
-        shortLabel: 'Dashboard Hubin',
+        shortLabel: 'Hubin',
         icon: Briefcase,
         targetPath: '/hubin/absensi',
         color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
@@ -326,7 +326,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       list.push({
         id: 'dash-bk',
         label: 'Dashboard BK',
-        shortLabel: 'Dashboard BK',
+        shortLabel: 'BK',
         icon: HeartHandshake,
         targetPath: '/bpbk/dashboard',
         color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400',
@@ -337,7 +337,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       list.push({
         id: 'dash-bkk',
         label: 'Dashboard BKK',
-        shortLabel: 'Dashboard BKK',
+        shortLabel: 'BKK',
         icon: GraduationCap,
         targetPath: '/hubin/bkk?tab=loker',
         color: 'bg-cyan-50 dark:bg-cyan-950/70 text-cyan-600 dark:text-cyan-400',
@@ -348,7 +348,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       list.push({
         id: 'dash-sarpras',
         label: 'Dashboard Sarpras',
-        shortLabel: 'Dashboard Sarpras',
+        shortLabel: 'Sarpras',
         icon: Building2,
         targetPath: '/sarpras/inventory',
         color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400',
@@ -359,7 +359,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       list.push({
         id: 'dash-toolman',
         label: 'Dashboard Toolman',
-        shortLabel: 'Dashboard Toolman',
+        shortLabel: 'Toolman',
         icon: Wrench,
         targetPath: '/dashboard?tab=toolman',
         color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
@@ -370,7 +370,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       list.push({
         id: 'dash-ekskul',
         label: 'Dashboard Ekstrakurikuler',
-        shortLabel: 'Dashboard Ekskul',
+        shortLabel: 'Ekskul',
         icon: Compass,
         targetPath: '/dashboard?tab=ekskul',
         color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
@@ -381,7 +381,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       list.push({
         id: 'dash-pembimbing-pkl',
         label: 'Dashboard Pembimbing PKL',
-        shortLabel: 'Pembimbing PKL',
+        shortLabel: 'PKL',
         icon: Briefcase,
         targetPath: '/dashboard?tab=pembimbing_pkl',
         color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400',
@@ -392,7 +392,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       list.push({
         id: 'dash-koperasi',
         label: 'Dashboard Koperasi',
-        shortLabel: 'Dashboard Koperasi',
+        shortLabel: 'Koperasi',
         icon: PiggyBank,
         targetPath: '/cooperative/pos',
         color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
@@ -403,7 +403,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       list.push({
         id: 'dash-satpam',
         label: 'Pos Satpam & Gerbang',
-        shortLabel: 'Pos Satpam',
+        shortLabel: 'Satpam',
         icon: ShieldCheck,
         targetPath: '/dashboard?tab=satpam',
         color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400',
@@ -414,7 +414,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       list.push({
         id: 'dash-piket',
         label: 'Dashboard Piket',
-        shortLabel: 'Dashboard Piket',
+        shortLabel: 'Piket',
         icon: ScanLine,
         targetPath: '/dashboard?tab=kelola',
         color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400',
@@ -544,7 +544,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
           {
             id: 'base_action_hub',
             label: 'Tugas & Tindakan Saya',
-            shortLabel: 'Tugas Saya',
+            shortLabel: 'Tugas',
             icon: CheckSquare,
             targetPath: '/dashboard?tab=action_hub',
             isActive: (p, t) => (p === '/dashboard' || p === '/dashboard/') && t === 'action_hub',
@@ -552,7 +552,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
           {
             id: 'base_divisi_more',
             label: 'Menu Peran & Layanan',
-            shortLabel: 'Menu Guru',
+            shortLabel: 'Menu',
             icon: LayoutGrid,
             targetPath: '/dashboard',
             badge: teacherDashboards.length > 0 ? `${teacherDashboards.length}` : undefined,
@@ -576,7 +576,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
             {
               id: 'base_jadwal',
               label: 'Jadwal Mengajar Guru',
-              shortLabel: 'Jadwal KBM',
+              shortLabel: 'Jadwal',
               icon: Clock,
               targetPath: '/dashboard?tab=jadwal',
               isActive: (p, t) => (p === '/dashboard' || p === '/dashboard/') && t === 'jadwal',

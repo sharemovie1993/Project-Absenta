@@ -174,25 +174,25 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
     () => [
       {
         id: 'ringkasan',
-        label: 'Beranda Koperasi',
-        shortLabel: 'Beranda',
+        label: 'Ringkasan',
+        shortLabel: 'Ringkasan',
         icon: LayoutDashboard,
       },
       {
         id: 'pos',
-        label: 'Kasir Toko (POS)',
-        shortLabel: 'Kasir POS',
+        label: 'Kasir',
+        shortLabel: 'Kasir',
         icon: Receipt,
       },
       {
         id: 'simpanan',
-        label: 'Simpanan Anggota',
+        label: 'Simpanan',
         shortLabel: 'Simpanan',
         icon: Wallet,
       },
       {
         id: 'pinjaman',
-        label: 'Pinjaman & Kredit',
+        label: 'Pinjaman',
         shortLabel: 'Pinjaman',
         icon: PiggyBank,
         badge: (stats?.dueInstallments ?? 0) > 0 ? `${stats?.dueInstallments}` : undefined,
@@ -200,7 +200,7 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
       },
       {
         id: 'anggota',
-        label: 'Buku Anggota',
+        label: 'Anggota',
         shortLabel: 'Anggota',
         icon: Users,
         badge: (stats?.pendingMembers?.count ?? 0) > 0 ? `${stats?.pendingMembers?.count}` : undefined,
@@ -208,7 +208,7 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
       },
       {
         id: 'produk',
-        label: 'Katalog & Stok',
+        label: 'Katalog',
         shortLabel: 'Katalog',
         icon: Package,
         badge: criticalStock.length > 0 ? `${criticalStock.length}` : undefined,
@@ -216,13 +216,13 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
       },
       {
         id: 'shu',
-        label: 'Sisa Hasil Usaha',
+        label: 'SHU',
         shortLabel: 'SHU',
         icon: TrendingUp,
       },
       {
         id: 'akuntansi',
-        label: 'Buku Akuntansi',
+        label: 'Akuntansi',
         shortLabel: 'Akuntansi',
         icon: BookOpen,
       },

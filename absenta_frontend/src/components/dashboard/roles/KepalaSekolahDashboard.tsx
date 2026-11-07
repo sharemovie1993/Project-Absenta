@@ -236,13 +236,13 @@ export const KepalaSekolahDashboard: React.FC<KepalaSekolahDashboardProps> = Rea
     () => [
       {
         id: 'ringkasan',
-        label: 'Ringkasan 360°',
+        label: 'Ringkasan',
         shortLabel: 'Ringkasan',
         icon: Award,
       },
       {
         id: 'kbm',
-        label: 'KBM & Kurikulum',
+        label: 'KBM',
         shortLabel: 'KBM',
         icon: BookOpen,
         badge: `${stats?.total_sesi_aktif || 0} Sesi`,
@@ -250,7 +250,7 @@ export const KepalaSekolahDashboard: React.FC<KepalaSekolahDashboardProps> = Rea
       },
       {
         id: 'kesiswaan',
-        label: 'Kesiswaan & Disiplin',
+        label: 'Kesiswaan',
         shortLabel: 'Kesiswaan',
         icon: Users,
         badge: `${violationData?.data?.total_today || 0} Poin`,
@@ -258,15 +258,15 @@ export const KepalaSekolahDashboard: React.FC<KepalaSekolahDashboardProps> = Rea
       },
       {
         id: 'bk',
-        label: 'Konseling & EWS',
-        shortLabel: 'BP/BK',
+        label: 'BK',
+        shortLabel: 'BK',
         icon: HeartHandshake,
         badge: 'EWS',
         badgeColor: 'bg-purple-500 text-white',
       },
       {
         id: 'sarpras',
-        label: 'Sarpras & Fasilitas',
+        label: 'Sarpras',
         shortLabel: 'Sarpras',
         icon: Building,
         badge: 'ASET',
@@ -274,7 +274,7 @@ export const KepalaSekolahDashboard: React.FC<KepalaSekolahDashboardProps> = Rea
       },
       {
         id: 'hubin',
-        label: 'Hubin & Mitra DUDI',
+        label: 'Hubin',
         shortLabel: 'Hubin',
         icon: Briefcase,
         badge: 'PKL',
@@ -282,16 +282,16 @@ export const KepalaSekolahDashboard: React.FC<KepalaSekolahDashboardProps> = Rea
       },
       {
         id: 'tu',
-        label: 'Tata Usaha & Surat',
-        shortLabel: 'TU & Surat',
+        label: 'TU',
+        shortLabel: 'TU',
         icon: FileText,
         badge: 'SURAT',
         badgeColor: 'bg-blue-500 text-white',
       },
       {
         id: 'aturan_absensi',
-        label: 'Aturan Absensi',
-        shortLabel: 'Aturan Absensi',
+        label: 'Aturan',
+        shortLabel: 'Aturan',
         icon: Settings2,
         badge: 'PLENO',
         badgeColor: 'bg-emerald-600 text-white',

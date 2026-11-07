@@ -16,6 +16,7 @@ export type TuTabId =
 export interface TuNavTabItem {
   id: TuTabId;
   label: string;
+  shortLabel?: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: number | string;
 }

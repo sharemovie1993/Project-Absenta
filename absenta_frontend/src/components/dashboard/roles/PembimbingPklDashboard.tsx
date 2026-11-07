@@ -272,14 +272,14 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
     () => [
       {
         id: 'ringkasan',
-        label: 'Ringkasan Beranda',
-        shortLabel: 'Beranda',
+        label: 'Ringkasan',
+        shortLabel: 'Ringkasan',
         icon: Briefcase,
         // Beranda bersih dari badge counter
       },
       {
         id: 'bimbingan',
-        label: 'Siswa Bimbingan',
+        label: 'Bimbingan',
         shortLabel: 'Bimbingan',
         icon: Users,
         // Tindakan: Siswa overdue (lewat tanggal PKL tapi belum ditandai selesai)
@@ -288,8 +288,8 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
       },
       {
         id: 'verifikasi_absensi',
-        label: 'Verifikasi Absensi',
-        shortLabel: 'Verif Absen',
+        label: 'Verifikasi',
+        shortLabel: 'Verifikasi',
         icon: ShieldCheck,
         // Tindakan: Presensi harian yang menunggu verifikasi pembimbing
         badge: (stats.absensi_pending_verification ?? 0) > 0 ? stats.absensi_pending_verification : undefined,
@@ -297,14 +297,14 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
       },
       {
         id: 'absensi',
-        label: 'Rekap Presensi',
+        label: 'Presensi',
         shortLabel: 'Presensi',
         icon: CalendarCheck,
         // Rekap analitik bersih dari badge counter
       },
       {
         id: 'jurnal',
-        label: 'Verifikasi Jurnal',
+        label: 'Jurnal',
         shortLabel: 'Jurnal',
         icon: Clock,
         // Tindakan: Jurnal siswa yang menunggu review pembimbing
@@ -313,7 +313,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
       },
       {
         id: 'monitoring',
-        label: 'Monitoring PKL',
+        label: 'Monitoring',
         shortLabel: 'Monitoring',
         icon: Calendar,
         // Tindakan: Siswa/DU/DI yang BELUM PERNAH dikunjungi monitoring
@@ -322,8 +322,8 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
       },
       {
         id: 'penilaian',
-        label: 'Penilaian PKL',
-        shortLabel: 'Nilai PKL',
+        label: 'Penilaian',
+        shortLabel: 'Penilaian',
         icon: Award,
         // Tindakan: Siswa bimbingan yang BELUM DINILAI (PR Utama Penilaian)
         badge: (stats.siswa_belum_dinilai ?? 0) > 0 ? stats.siswa_belum_dinilai : undefined,
@@ -331,7 +331,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
       },
       {
         id: 'rekap',
-        label: 'Cetak Dokumen',
+        label: 'Cetak',
         shortLabel: 'Cetak',
         icon: Printer,
         // Pusat cetak utilitas on-demand, bersih dari badge counter

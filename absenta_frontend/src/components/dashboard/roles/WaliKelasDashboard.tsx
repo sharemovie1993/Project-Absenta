@@ -185,62 +185,71 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
     const totalPrestasi = (walasData as any)?.totalPrestasiPeriodeIni ?? (walasData as any)?.prestasiCount ?? 0;
 
     return [
-      { id: 'ringkasan' as WaliKelasTabId, label: 'Ringkasan', icon: LayoutDashboard },
+      { id: 'ringkasan' as WaliKelasTabId, label: 'Ringkasan', shortLabel: 'Ringkasan', icon: LayoutDashboard },
       { 
         id: 'siswa' as WaliKelasTabId, 
-        label: 'Data Siswa', 
+        label: 'Siswa', 
+        shortLabel: 'Siswa', 
         icon: Users,
         badge: totalSiswa > 0 ? totalSiswa : undefined,
       },
       { 
         id: 'struktur' as WaliKelasTabId, 
-        label: 'Struktur Kelas', 
+        label: 'Struktur', 
+        shortLabel: 'Struktur', 
         icon: Shield,
       },
       { 
         id: 'presensi' as WaliKelasTabId, 
-        label: 'Presensi Rombel', 
+        label: 'Presensi', 
+        shortLabel: 'Presensi', 
         icon: CalendarCheck, 
         badge: tidakHadirToday > 0 ? tidakHadirToday : undefined,
       },
       { 
         id: 'deteksi' as WaliKelasTabId, 
-        label: 'Deteksi Dini', 
+        label: 'Deteksi', 
+        shortLabel: 'Deteksi', 
         icon: ShieldAlert, 
         badge: atRiskCount > 0 ? atRiskCount : undefined,
       },
       { 
         id: 'ketuntasan' as WaliKelasTabId, 
-        label: 'Radar Ketuntasan', 
+        label: 'Ketuntasan', 
+        shortLabel: 'Ketuntasan', 
         icon: Radio,
         badge: walasPerluRemedialCount > 0 ? walasPerluRemedialCount : undefined,
       },
       { 
         id: 'jurnal' as WaliKelasTabId, 
-        label: 'Jurnal Walas', 
+        label: 'Jurnal', 
+        shortLabel: 'Jurnal', 
         icon: BookOpen,
         badge: totalJurnal > 0 ? totalJurnal : undefined,
       },
       { 
         id: 'izin' as WaliKelasTabId, 
-        label: 'Persetujuan Izin', 
+        label: 'Izin', 
+        shortLabel: 'Izin', 
         icon: FileCheck2, 
         badge: pendingIzin > 0 ? pendingIzin : undefined,
       },
       { 
         id: 'disiplin' as WaliKelasTabId, 
-        label: 'Pelanggaran Siswa', 
+        label: 'Disiplin', 
+        shortLabel: 'Disiplin', 
         icon: ShieldAlert, 
         badge: totalPelanggaran > 0 ? totalPelanggaran : undefined,
       },
       { 
         id: 'prestasi' as WaliKelasTabId, 
-        label: 'Prestasi Siswa', 
+        label: 'Prestasi', 
+        shortLabel: 'Prestasi', 
         icon: Award,
         badge: totalPrestasi > 0 ? totalPrestasi : undefined,
       },
-      { id: 'rekap' as WaliKelasTabId, label: 'Cetak & Rekap', icon: FileSpreadsheet },
-      { id: 'rapor' as WaliKelasTabId, label: 'Cetak Rapor', icon: Printer },
+      { id: 'rekap' as WaliKelasTabId, label: 'Rekap', shortLabel: 'Rekap', icon: FileSpreadsheet },
+      { id: 'rapor' as WaliKelasTabId, label: 'Rapor', shortLabel: 'Rapor', icon: Printer },
     ];
   }, [walasData, walasPerluRemedialCount]);
 

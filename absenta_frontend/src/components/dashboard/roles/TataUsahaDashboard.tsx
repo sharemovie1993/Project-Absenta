@@ -150,10 +150,11 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
   // Definisi Navigasi Tabs TU (Sidebar Menu Vertikal)
   const navTabs: TuNavTabItem[] = useMemo(
     () => [
-      { id: 'beranda', label: 'Ringkasan', icon: LayoutDashboard },
+      { id: 'beranda', label: 'Ringkasan', shortLabel: 'Ringkasan', icon: LayoutDashboard },
       {
         id: 'surat-masuk',
-        label: 'Surat Masuk & Disposisi',
+        label: 'Masuk',
+        shortLabel: 'Masuk',
         icon: Inbox,
         badge: tuStats?.suratMasuk?.baru !== undefined && tuStats.suratMasuk.baru > 0
           ? `${tuStats.suratMasuk.baru}`
@@ -161,7 +162,8 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
       },
       {
         id: 'surat-keluar',
-        label: 'Surat Keluar & Dinas',
+        label: 'Keluar',
+        shortLabel: 'Keluar',
         icon: Send,
         badge: tuStats?.suratKeluar?.draft !== undefined && tuStats.suratKeluar.draft > 0
           ? `${tuStats.suratKeluar.draft}`
@@ -169,7 +171,8 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
       },
       {
         id: 'surat-keterangan',
-        label: 'Surat Keterangan',
+        label: 'Keterangan',
+        shortLabel: 'Keterangan',
         icon: FileText,
         badge: tuStats?.persuratan?.suratKeteranganBulanIni !== undefined && tuStats.persuratan.suratKeteranganBulanIni > 0
           ? `${tuStats.persuratan.suratKeteranganBulanIni}`
@@ -177,26 +180,30 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
       },
       {
         id: 'mutasi',
-        label: 'Mutasi Siswa',
+        label: 'Mutasi',
+        shortLabel: 'Mutasi',
         icon: ArrowLeftRight,
         badge: tuStats?.mutasi?.total !== undefined && tuStats.mutasi.total > 0 ? `${tuStats.mutasi.total}` : undefined,
       },
       {
         id: 'bast-ijazah',
-        label: 'Clearance & BAST',
+        label: 'Clearance',
+        shortLabel: 'Clearance',
         icon: Award,
         badge: tuStats?.ijazah?.sisaBrankas !== undefined && tuStats.ijazah.sisaBrankas > 0 ? `${tuStats.ijazah.sisaBrankas}` : undefined,
       },
-      { id: 'dkn', label: 'DKN & Kelulusan', icon: FileSpreadsheet },
+      { id: 'dkn', label: 'DKN', shortLabel: 'DKN', icon: FileSpreadsheet },
       {
         id: 'buku-induk',
-        label: 'Data Siswa & Klapper',
+        label: 'Klapper',
+        shortLabel: 'Klapper',
         icon: BookOpen,
         badge: tuStats?.bukuInduk?.totalSiswaAktif !== undefined ? `${tuStats.bukuInduk.totalSiswaAktif}` : undefined,
       },
       {
         id: 'kepegawaian',
-        label: 'Kepegawaian & PTK',
+        label: 'PTK',
+        shortLabel: 'PTK',
         icon: Users,
         badge: tuStats?.kepegawaian?.totalPtk !== undefined && tuStats.kepegawaian.totalPtk > 0
           ? `${tuStats.kepegawaian.totalPtk}`
@@ -204,12 +211,14 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
       },
       {
         id: 'dapodik',
-        label: 'Integrasi Dapodik',
+        label: 'Dapodik',
+        shortLabel: 'Dapodik',
         icon: Database,
       },
       {
         id: 'struktur_organisasi',
-        label: 'Struktur Organisasi Tata Usaha',
+        label: 'Organisasi',
+        shortLabel: 'Organisasi',
         icon: Network,
       },
     ],

@@ -164,13 +164,13 @@ export const SarprasDashboard: React.FC<SarprasDashboardProps> = ({ user }) => {
     () => [
       {
         id: 'ringkasan',
-        label: 'Beranda Sarpras',
-        shortLabel: 'Beranda',
+        label: 'Ringkasan',
+        shortLabel: 'Ringkasan',
         icon: LayoutDashboard,
       },
       {
         id: 'inventaris',
-        label: 'Inventaris & Aset',
+        label: 'Inventaris',
         shortLabel: 'Inventaris',
         icon: Layers,
         badge: (stats?.total ?? 0) > 0 ? `${stats?.total}` : undefined,
@@ -178,7 +178,7 @@ export const SarprasDashboard: React.FC<SarprasDashboardProps> = ({ user }) => {
       },
       {
         id: 'peminjaman',
-        label: 'Peminjaman Barang',
+        label: 'Peminjaman',
         shortLabel: 'Peminjaman',
         icon: ArrowLeftRight,
         badge: (stats?.borrowed ?? 0) > 0 ? `${stats?.borrowed}` : undefined,
@@ -186,7 +186,7 @@ export const SarprasDashboard: React.FC<SarprasDashboardProps> = ({ user }) => {
       },
       {
         id: 'perbaikan',
-        label: 'Servis & Kerusakan',
+        label: 'Perbaikan',
         shortLabel: 'Perbaikan',
         icon: Wrench,
         badge: (stats?.repair ?? 0) > 0 ? `${stats?.repair}` : undefined,
@@ -194,26 +194,26 @@ export const SarprasDashboard: React.FC<SarprasDashboardProps> = ({ user }) => {
       },
       {
         id: 'katalog',
-        label: 'Katalog Standar',
+        label: 'Katalog',
         shortLabel: 'Katalog',
         icon: Package,
       },
       {
         id: 'rekap',
-        label: 'Cetak Berkas / DIR',
-        shortLabel: 'Cetak DIR',
+        label: 'Cetak',
+        shortLabel: 'Cetak',
         icon: Printer,
       },
       {
         id: 'denah',
-        label: 'Denah Kampus',
+        label: 'Denah',
         shortLabel: 'Denah',
         icon: Map,
       },
       {
         id: 'struktur_organisasi',
-        label: 'Struktur Organisasi Sarpras',
-        shortLabel: 'Tim Sarpras',
+        label: 'Organisasi',
+        shortLabel: 'Organisasi',
         icon: Network,
       },
     ],

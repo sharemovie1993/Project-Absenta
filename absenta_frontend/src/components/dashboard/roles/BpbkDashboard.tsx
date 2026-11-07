@@ -153,13 +153,13 @@ export const BpbkDashboard: React.FC<BpbkDashboardProps> = () => {
     () => [
       {
         id: 'ringkasan',
-        label: 'Beranda Konseling',
-        shortLabel: 'Beranda',
+        label: 'Ringkasan',
+        shortLabel: 'Ringkasan',
         icon: LayoutDashboard,
       },
       {
         id: 'cases',
-        label: 'Kasus Siswa',
+        label: 'Kasus',
         shortLabel: 'Kasus',
         icon: FileText,
         badge: (stats?.criticalStudents?.length ?? 0) > 0 ? `${stats?.criticalStudents.length}` : undefined,
@@ -167,7 +167,7 @@ export const BpbkDashboard: React.FC<BpbkDashboardProps> = () => {
       },
       {
         id: 'konseling',
-        label: 'Layanan Konseling',
+        label: 'Konseling',
         shortLabel: 'Konseling',
         icon: HeartHandshake,
         badge: (stats?.activeCounselingCount ?? 0) > 0 ? `${stats?.activeCounselingCount}` : undefined,
@@ -175,7 +175,7 @@ export const BpbkDashboard: React.FC<BpbkDashboardProps> = () => {
       },
       {
         id: 'pemanggilan',
-        label: 'Panggilan Ortu',
+        label: 'Panggilan',
         shortLabel: 'Panggilan',
         icon: MailOpen,
         badge: (stats?.pendingCallsCount ?? 0) > 0 ? `${stats?.pendingCallsCount}` : undefined,
@@ -183,26 +183,26 @@ export const BpbkDashboard: React.FC<BpbkDashboardProps> = () => {
       },
       {
         id: 'homevisit',
-        label: 'Home Visit',
-        shortLabel: 'Home Visit',
+        label: 'Visit',
+        shortLabel: 'Visit',
         icon: Home,
       },
       {
         id: 'rujukan',
-        label: 'Rujukan Kasus',
+        label: 'Rujukan',
         shortLabel: 'Rujukan',
         icon: Share2,
       },
       {
         id: 'asesmen',
-        label: 'Asesmen & Angket',
+        label: 'Asesmen',
         shortLabel: 'Asesmen',
         icon: ClipboardList,
       },
       {
         id: 'rekap',
-        label: 'Cetak Dokumen BK',
-        shortLabel: 'Cetak Dokumen',
+        label: 'Cetak',
+        shortLabel: 'Cetak',
         icon: Printer,
       },
     ],

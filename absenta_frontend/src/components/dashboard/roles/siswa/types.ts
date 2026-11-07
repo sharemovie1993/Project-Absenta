@@ -5,6 +5,7 @@ export type SiswaTabId = 'ringkasan' | 'pkl' | 'cbt' | 'portal' | 'kehadiran' | 
 export interface SiswaNavTabItem {
   id: SiswaTabId;
   label: string;
+  shortLabel?: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
   badge?: number | string | null;
 }

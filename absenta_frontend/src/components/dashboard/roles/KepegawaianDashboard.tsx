@@ -58,6 +58,7 @@ export interface KepegawaianDashboardProps {
 interface NavTabItem {
   id: KepegawaianTabId;
   label: string;
+  shortLabel?: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: number | string;
 }
@@ -163,12 +164,12 @@ export const KepegawaianDashboard: React.FC<KepegawaianDashboardProps> = ({ user
 
   // Nav Tabs Config
   const navTabs: NavTabItem[] = [
-    { id: 'beranda', label: 'Ringkasan & Presensi', icon: Users },
-    { id: 'ptk', label: 'Buku Induk PTK', icon: FileText, badge: summary.totalPtk || undefined },
-    { id: 'dapodik', label: 'Beban 24 JP & Dapodik', icon: Clock, badge: urgentAlerts.kurangJamCount > 0 ? `${urgentAlerts.kurangJamCount} Kurang` : undefined },
-    { id: 'karir', label: 'KGB & Pensiun', icon: Award, badge: urgentAlerts.mendekatiPensiunCount > 0 ? `${urgentAlerts.mendekatiPensiunCount} BUP` : undefined },
-    { id: 'vokasi', label: 'Vokasi & Asesor LSP', icon: GraduationCap, badge: summary.asesorCount || undefined },
-    { id: 'buku-induk', label: 'Buku Induk', icon: BookOpen },
+    { id: 'beranda', label: 'Ringkasan', shortLabel: 'Ringkasan', icon: Users },
+    { id: 'ptk', label: 'PTK', shortLabel: 'PTK', icon: FileText, badge: summary.totalPtk || undefined },
+    { id: 'dapodik', label: 'Dapodik', shortLabel: 'Dapodik', icon: Clock, badge: urgentAlerts.kurangJamCount > 0 ? `${urgentAlerts.kurangJamCount} Kurang` : undefined },
+    { id: 'karir', label: 'Karir', shortLabel: 'Karir', icon: Award, badge: urgentAlerts.mendekatiPensiunCount > 0 ? `${urgentAlerts.mendekatiPensiunCount} BUP` : undefined },
+    { id: 'vokasi', label: 'Vokasi', shortLabel: 'Vokasi', icon: GraduationCap, badge: summary.asesorCount || undefined },
+    { id: 'buku-induk', label: 'Induk', shortLabel: 'Induk', icon: BookOpen },
   ];
 
   // ============================================================================
