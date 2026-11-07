@@ -2,6 +2,16 @@ import type React from 'react';
 import type { SearchableSelectOption } from '@/components/ui/SearchableSelect';
 import type { CohortLineageStage } from '@/api/attendanceGerbang.api';
 
+export interface UnifiedPeriodOption {
+  key: string;
+  tpId: string;
+  semesterId: string;
+  label: string;
+  tpTahun: string;
+  semesterNama: string;
+  isActive: boolean;
+}
+
 export interface AcademicFilterValues {
   tahunPelajaranId: string;
   semesterId: string;
@@ -218,6 +228,8 @@ export interface AcademicFilterToolbarProps {
   selectedSemesterNama?: string;
   activeTpYear?: { id: string; tahun: string; nama?: string; is_active?: boolean } | null;
   activeSemester?: { id: string; nama_semester: string; is_active: boolean } | null;
+  unifiedPeriodOptions?: UnifiedPeriodOption[];
+  onSelectUnifiedPeriod?: (tpId: string, semesterId: string) => void;
 
   // Standard CRUD / Action buttons
   onReset?: () => void;

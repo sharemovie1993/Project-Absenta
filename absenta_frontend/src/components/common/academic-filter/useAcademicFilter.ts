@@ -18,6 +18,7 @@ import type {
   UseAcademicFilterOptions,
   UseAcademicFilterReturn,
   AcademicFilterToolbarProps,
+  UnifiedPeriodOption,
 } from './types';
 
 const ROMAN_MAP: Record<number, string> = {
@@ -122,6 +123,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
   const {
     options: semesterOptions,
     rawList: semesterRawList,
+    allRawList: allSemestersRawList,
     activeSemester,
     isLoading: isLoadingSem,
   } = useSemesterOptions({
@@ -537,6 +539,69 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
       : null;
   }, [semesterRawList, semesterId, activeSemester]);
 
+  const handleSelectUnifiedPeriod = useCallback((newTpId: string, newSemesterId: string) => {
+    handleTpChange(newTpId);
+    setSemesterId(newSemesterId);
+  }, [handleTpChange]);
+
+  const unifiedPeriodOptions = useMemo<UnifiedPeriodOption[]>(() => {
+    const list: UnifiedPeriodOption[] = [];
+    const tpList = tpRawList && tpRawList.length > 0 ? tpRawList : [];
+    const semList = allSemestersRawList && allSemestersRawList.length > 0 ? allSemestersRawList : (semesterRawList || []);
+
+    // Urutkan TP: yang aktif di paling atas, kemudian urut tahun descending
+    const sortedTps = [...tpList].sort((a, b) => {
+      if (a.is_active && !b.is_active) return -1;
+      if (!a.is_active && b.is_active) return 1;
+      return (b.tahun || '').localeCompare(a.tahun || '');
+    });
+
+    sortedTps.forEach((tp) => {
+      const tpSemesters = semList.filter((s) => s.tahun_pelajaran_id === tp.id);
+      // Urutkan semester: Ganjil (1) lalu Genap (2)
+      const sortedSems = [...tpSemesters].sort((a, b) => {
+        const nameA = a.nama_semester?.toLowerCase() || '';
+        const nameB = b.nama_semester?.toLowerCase() || '';
+        if (nameA.includes('ganjil') || nameA.includes('1')) return -1;
+        if (nameB.includes('ganjil') || nameB.includes('1')) return 1;
+        return 0;
+      });
+
+      sortedSems.forEach((sem) => {
+        const cleanSem = (sem.nama_semester || '').replace(/^semester\s+/i, '').trim();
+        const isBothActive = Boolean(tp.is_active && sem.is_active);
+        list.push({
+          key: `${tp.id}___${sem.id}`,
+          tpId: tp.id,
+          semesterId: sem.id,
+          label: `${tp.tahun} • ${cleanSem}`,
+          tpTahun: tp.tahun,
+          semesterNama: cleanSem,
+          isActive: isBothActive,
+        });
+      });
+    });
+
+    // Fallback jika semList kosong tapi ada options
+    if (list.length === 0 && tpOptions.length > 0 && semesterOptions.length > 0) {
+      tpOptions.forEach((tp) => {
+        semesterOptions.forEach((sem) => {
+          list.push({
+            key: `${tp.value}___${sem.value}`,
+            tpId: tp.value,
+            semesterId: sem.value,
+            label: `${tp.label.replace(/\s*([⭐★])\s*/g, '').trim()} • ${sem.label.replace(/\s*([⭐★])\s*/g, '').trim()}`,
+            tpTahun: tp.label,
+            semesterNama: sem.label,
+            isActive: Boolean(tp.label.includes('⭐') && sem.label.includes('⭐')),
+          });
+        });
+      });
+    }
+
+    return list;
+  }, [tpRawList, allSemestersRawList, semesterRawList, tpOptions, semesterOptions]);
+
   // ── 6. Assemble Toolbar Props ──────────────────────────────────────────────
   const toolbarProps: AcademicFilterToolbarProps = {
     enableTp,
@@ -563,6 +628,8 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     selectedSemesterNama,
     activeTpYear: resolvedActiveTpYear,
     activeSemester: resolvedActiveSemester,
+    unifiedPeriodOptions,
+    onSelectUnifiedPeriod: handleSelectUnifiedPeriod,
 
     setTahunPelajaranId: handleTpChange,
     setSemesterId,
@@ -606,6 +673,9 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     allowAllMitra,
     isKelasDisabled,
     onReset: resetFilters,
+
+    unifiedPeriodOptions,
+    onSelectUnifiedPeriod: handleSelectUnifiedPeriod,
   };
 
   return {
@@ -625,6 +695,9 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     setSearchQuery,
     setGender: handleGenderChange,
     setStatusSiswa: handleStatusSiswaChange,
+
+    unifiedPeriodOptions,
+    onSelectUnifiedPeriod: handleSelectUnifiedPeriod,
     resetFilters,
 
     handleTpChange,

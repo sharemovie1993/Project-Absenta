@@ -47,6 +47,7 @@ export function useSemesterOptions(params: UseSemesterOptionsParams = {}) {
   return {
     options,
     rawList: filteredList,
+    allRawList: rawList,
     activeSemester,
     isLoading: query.isLoading,
     refetch: query.refetch

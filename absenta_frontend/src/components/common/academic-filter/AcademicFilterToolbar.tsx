@@ -13,9 +13,10 @@ import {
   RotateCcw,
   SlidersHorizontal,
   Calendar,
-  ChevronDown
+  ChevronDown,
+  Check
 } from 'lucide-react';
-import type { AcademicFilterToolbarProps } from './types';
+import type { AcademicFilterToolbarProps, UnifiedPeriodOption } from './types';
 
 const SearchableSelect = lazy(() =>
   import('@/components/ui/SearchableSelect').then((m) => ({ default: m.SearchableSelect }))
@@ -113,6 +114,9 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar(r
     selectedTahunPelajaranNama,
     selectedSemesterNama,
 
+    unifiedPeriodOptions = [],
+    onSelectUnifiedPeriod,
+
     onReset,
     onAdd,
     addLabel = 'Tambah Data',
@@ -186,6 +190,53 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar(r
     const isSemMatch = activeSemester?.id ? values.semesterId === activeSemester.id : true;
     return isTpMatch && isSemMatch;
   }, [activeTpYear, activeSemester, values.tahunPelajaranId, values.semesterId]);
+
+  const resolvedUnifiedPeriodOptions = React.useMemo<UnifiedPeriodOption[]>(() => {
+    if (unifiedPeriodOptions && unifiedPeriodOptions.length > 0) {
+      return unifiedPeriodOptions;
+    }
+    // Fallback otomatis jika props belum terisi dari hook
+    if (tpOptions.length > 0 && semesterOptions.length > 0) {
+      const list: UnifiedPeriodOption[] = [];
+      tpOptions.forEach((tp) => {
+        semesterOptions.forEach((sem) => {
+          const isBothActive = Boolean(tp.label.includes('⭐') && sem.label.includes('⭐'));
+          const cleanTp = tp.label.replace(/\s*([⭐★])\s*/g, '').trim();
+          const cleanSem = sem.label.replace(/\s*([⭐★])\s*/g, '').trim();
+          list.push({
+            key: `${tp.value}___${sem.value}`,
+            tpId: tp.value,
+            semesterId: sem.value,
+            label: `${cleanTp} • ${cleanSem}`,
+            tpTahun: cleanTp,
+            semesterNama: cleanSem,
+            isActive: isBothActive,
+          });
+        });
+      });
+      return list;
+    }
+    return [];
+  }, [unifiedPeriodOptions, tpOptions, semesterOptions]);
+
+  const unifiedSelectOptions = React.useMemo(() => {
+    return resolvedUnifiedPeriodOptions.map((opt) => ({
+      value: opt.key,
+      label: opt.isActive ? `${opt.label} ⭐` : opt.label,
+    }));
+  }, [resolvedUnifiedPeriodOptions]);
+
+  const handleUnifiedSelect = React.useCallback(
+    (tpId: string, semId: string) => {
+      if (onSelectUnifiedPeriod) {
+        onSelectUnifiedPeriod(tpId, semId);
+      } else {
+        setTahunPelajaranId?.(tpId);
+        setSemesterId?.(semId);
+      }
+    },
+    [onSelectUnifiedPeriod, setTahunPelajaranId, setSemesterId]
+  );
 
   const containerClasses = cn(
     'relative transition-all',
@@ -299,44 +350,56 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar(r
             </div>
           </div>
 
-          {/* ── 2. ACCORDION DROPDOWN FORM SAAT DI-EXPAND ── */}
+          {/* ── 2. SINGLE UNIFIED PERIOD PICKER (1-CHIP SELECTION FLOW) ── */}
           {isPeriodePillExpanded && (
-            <div className="pt-2 pb-1 border-t border-slate-100 dark:border-slate-800 animate-in fade-in duration-150 space-y-2.5">
-              <div className="grid grid-cols-2 gap-2.5">
-                <div className="space-y-1">
-                  <label htmlFor="filter-tp-pill" className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block ml-0.5">
-                    Tahun Ajaran
-                  </label>
-                  <Suspense fallback={<SuspenseFallback />}>
-                    <SearchableSelect
-                      id="filter-tp-pill"
-                      aria-label="Pilih Tahun Ajaran"
-                      value={values.tahunPelajaranId}
-                      onValueChange={(v) => setTahunPelajaranId?.(v)}
-                      options={tpOptions}
-                      isLoading={isLoadingTp}
-                      placeholder="Pilih Tahun..."
-                      triggerClassName="h-9 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
-                    />
-                  </Suspense>
-                </div>
-                <div className="space-y-1">
-                  <label htmlFor="filter-sem-pill" className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block ml-0.5">
-                    Semester
-                  </label>
-                  <Suspense fallback={<SuspenseFallback />}>
-                    <SearchableSelect
-                      id="filter-sem-pill"
-                      aria-label="Pilih Semester"
-                      value={values.semesterId}
-                      onValueChange={(v) => setSemesterId?.(v)}
-                      options={semesterOptions}
-                      isLoading={isLoadingSem}
-                      placeholder="Pilih Semester..."
-                      triggerClassName="h-9 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
-                    />
-                  </Suspense>
-                </div>
+            <div className="pt-2 pb-1 border-t border-slate-100 dark:border-slate-800 animate-in fade-in duration-150 space-y-1.5">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1 mb-1">
+                Pilih Periode Akademik
+              </div>
+              <div className="space-y-1 max-h-56 overflow-y-auto no-scrollbar">
+                {resolvedUnifiedPeriodOptions.length > 0 ? (
+                  resolvedUnifiedPeriodOptions.map((opt) => {
+                    const isSelected =
+                      opt.tpId === values.tahunPelajaranId &&
+                      opt.semesterId === values.semesterId;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => {
+                          handleUnifiedSelect(opt.tpId, opt.semesterId);
+                          setIsPeriodePillExpanded(false);
+                        }}
+                        className={cn(
+                          "w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all text-left cursor-pointer",
+                          isSelected
+                            ? "bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 font-bold border border-amber-200/60 dark:border-amber-800/60 shadow-2xs"
+                            : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        )}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Calendar
+                            size={13}
+                            className={isSelected ? "text-amber-600 dark:text-amber-400" : "text-slate-400"}
+                          />
+                          <span className="truncate">{opt.label}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                          {opt.isActive && (
+                            <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/60 leading-none">
+                              Aktif ⭐
+                            </span>
+                          )}
+                          {isSelected && (
+                            <Check size={14} className="text-amber-600 dark:text-amber-400 stroke-[2.5]" />
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="text-xs text-slate-400 py-2 text-center">Memuat opsi periode...</div>
+                )}
               </div>
             </div>
           )}
@@ -410,52 +473,85 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar(r
               : 'flex flex-wrap items-start gap-2.5 sm:gap-3.5',
             effectiveVariant === 'mini' && 'pt-2 border-t border-slate-100 dark:border-slate-800 animate-in fade-in duration-150'
           )}>
-          {/* 1. Tahun Pelajaran */}
-          {enableTp && (
-            <div className={cn('space-y-1.5', effectiveVariant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[140px] max-w-full sm:max-w-[240px]')}>
+          {/* 1 & 2. Periode Akademik (1 Chip Dropdown SSOT jika TP & Semester aktif bersamaan) */}
+          {enableTp && enableSemester ? (
+            <div className={cn('space-y-1.5', effectiveVariant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[200px] max-w-full sm:max-w-[280px]')}>
               <label
-                htmlFor="filter-tp-select"
+                htmlFor="filter-periode-select"
                 className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block"
               >
-                Tahun Pelajaran
+                Periode Akademik
               </label>
               <Suspense fallback={<SuspenseFallback />}>
                 <SearchableSelect
-                  id="filter-tp-select"
-                  aria-label="Pilih Tahun Pelajaran"
-                  value={values.tahunPelajaranId}
-                  onValueChange={(v) => setTahunPelajaranId?.(v)}
-                  options={tpOptions}
-                  isLoading={isLoadingTp}
-                  placeholder="Pilih Tahun..."
+                  id="filter-periode-select"
+                  aria-label="Pilih Periode Akademik"
+                  value={
+                    values.tahunPelajaranId && values.semesterId
+                      ? `${values.tahunPelajaranId}___${values.semesterId}`
+                      : ''
+                  }
+                  onValueChange={(val) => {
+                    const [tpId, semId] = val.split('___');
+                    handleUnifiedSelect(tpId, semId);
+                  }}
+                  options={unifiedSelectOptions}
+                  isLoading={isLoadingTp || isLoadingSem}
+                  placeholder="Pilih Periode..."
                   triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
                 />
               </Suspense>
             </div>
-          )}
+          ) : (
+            <>
+              {/* Standalone Tahun Pelajaran jika Semester tidak aktif */}
+              {enableTp && (
+                <div className={cn('space-y-1.5', effectiveVariant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[140px] max-w-full sm:max-w-[240px]')}>
+                  <label
+                    htmlFor="filter-tp-select"
+                    className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block"
+                  >
+                    Tahun Pelajaran
+                  </label>
+                  <Suspense fallback={<SuspenseFallback />}>
+                    <SearchableSelect
+                      id="filter-tp-select"
+                      aria-label="Pilih Tahun Pelajaran"
+                      value={values.tahunPelajaranId}
+                      onValueChange={(v) => setTahunPelajaranId?.(v)}
+                      options={tpOptions}
+                      isLoading={isLoadingTp}
+                      placeholder="Pilih Tahun..."
+                      triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
+                    />
+                  </Suspense>
+                </div>
+              )}
 
-          {/* 2. Semester */}
-          {enableSemester && (
-            <div className={cn('space-y-1.5', effectiveVariant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[130px] max-w-full sm:max-w-[180px]')}>
-              <label
-                htmlFor="filter-sem-select"
-                className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block"
-              >
-                Semester
-              </label>
-              <Suspense fallback={<SuspenseFallback />}>
-                <SearchableSelect
-                  id="filter-sem-select"
-                  aria-label="Pilih Semester"
-                  value={values.semesterId}
-                  onValueChange={(v) => setSemesterId?.(v)}
-                  options={semesterOptions}
-                  isLoading={isLoadingSem}
-                  placeholder="Pilih Semester..."
-                  triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
-                />
-              </Suspense>
-            </div>
+              {/* Standalone Semester jika TP tidak aktif */}
+              {enableSemester && (
+                <div className={cn('space-y-1.5', effectiveVariant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[130px] max-w-full sm:max-w-[180px]')}>
+                  <label
+                    htmlFor="filter-sem-select"
+                    className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block"
+                  >
+                    Semester
+                  </label>
+                  <Suspense fallback={<SuspenseFallback />}>
+                    <SearchableSelect
+                      id="filter-sem-select"
+                      aria-label="Pilih Semester"
+                      value={values.semesterId}
+                      onValueChange={(v) => setSemesterId?.(v)}
+                      options={semesterOptions}
+                      isLoading={isLoadingSem}
+                      placeholder="Pilih Semester..."
+                      triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
+                    />
+                  </Suspense>
+                </div>
+              )}
+            </>
           )}
 
           {/* 3. Tingkat */}
