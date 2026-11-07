@@ -114,10 +114,10 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
       <Card noPadding className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-3.5">
         <div className="flex items-center justify-between gap-2.5">
           <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 leading-snug">
               Pintasan Manajemen Kejuruan
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-0.5">
               Akses cepat ke modul instrumen PKL, kurikulum, presensi, dan bengkel.
             </p>
           </div>
@@ -131,7 +131,7 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
                 navigate('/hubin/nilai-pkl?tab=deskripsi');
               }
             }}
-            className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 font-semibold gap-1 cursor-pointer shrink-0 whitespace-nowrap"
+            className="hidden sm:inline-flex text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 font-semibold gap-1 cursor-pointer shrink-0 whitespace-nowrap"
           >
             <span>Formulasi TP</span>
             <ArrowRight className="w-3.5 h-3.5" />

@@ -250,7 +250,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
           isFallback={true}
           tabs={fallbackDrawerTabs}
           categories={fallbackCategories}
-          activeTab={currentSubtab || ''}
+          activeTab={currentSubtab || (activeEcosystem === 'kaprog' ? 'beranda' : 'ringkasan')}
           onSelectTab={handleSelectFallbackTab}
         />
       )}
