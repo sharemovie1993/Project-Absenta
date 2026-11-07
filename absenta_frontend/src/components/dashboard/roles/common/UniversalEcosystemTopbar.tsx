@@ -84,7 +84,7 @@ export const UniversalEcosystemTopbar: React.FC<UniversalEcosystemTopbarProps> =
 }) => {
   const navigate = useNavigate();
   const theme = getEcosystemTheme(ecosystem);
-  const isLayer2 = theme.isLayer2;
+  const isLayer2 = theme.isLayer2 || ecosystem === 'portal';
 
   const user = useAuthStore((state) => state.user);
   const rawPhoto = user?.profile_photo_url || (user as any)?.avatar || (user?.guru_profile as any)?.foto_url;
@@ -141,6 +141,8 @@ export const UniversalEcosystemTopbar: React.FC<UniversalEcosystemTopbarProps> =
         return 'bg-gradient-to-r from-emerald-700 via-emerald-700 to-green-800 text-white border-emerald-400/40 shadow-xs shadow-emerald-950/20';
       case 'admin':
         return 'bg-gradient-to-r from-slate-800 via-slate-800 to-slate-950 text-white border-slate-600/40 shadow-xs shadow-slate-950/20';
+      case 'portal':
+        return 'bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-700 text-white border-indigo-400/40 shadow-xs shadow-indigo-950/25';
       default:
         return 'bg-white/95 dark:bg-slate-900/95 border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-xs';
     }

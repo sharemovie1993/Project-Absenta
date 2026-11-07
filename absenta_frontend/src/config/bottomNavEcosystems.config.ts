@@ -132,6 +132,7 @@ export function getEcosystemLabel(ecosystem: EcosystemType): string {
     case 'koperasi': return 'Koperasi';
     case 'admin': return 'Administrator';
     case 'siswa': return 'Siswa';
+    case 'portal': return 'Ruang Pendidik';
     default: return 'Absenta';
   }
 }

@@ -1884,7 +1884,7 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
         name: 'Dynamic Variable Scanner & Resilient Parser',
         description: 'Pemindaian sel adaptif menggunakan regex label pada sheet SETTING, INPUT SUMATIF, dan INPUT CP tahan perubahan baris antar-tahun ajaran.',
         status: 'VERIFIED',
-        details: 'Regex label matcher aktif pada GoogleSheetRaporParserService.'
+        details: 'Regex label matcher aktif pada GoogleSheetRaporParserService dengan fallback GViz CSV.'
       },
       {
         id: 'one_click_sync',
@@ -1892,6 +1892,27 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
         description: 'Sinkronisasi atomik dari tabel staging ke tabel resmi NilaiSiswa dan RaporSiswa.',
         status: 'VERIFIED',
         details: 'Staging sync controller dan service terisolasi dengan validasi kurikulum.'
+      },
+      {
+        id: 'acid_transaction_sync',
+        name: 'ACID Atomic Transaction Guard',
+        description: 'Seluruh mutasi nilai siswa, rapor, dan status staging dilindungi prisma.$transaction dengan rollback otomatis jika terjadi kegagalan parsial.',
+        status: 'VERIFIED',
+        details: 'prisma.$transaction aktif pada RaporStagingService.syncStagingToRapor dengan timeout 60s.'
+      },
+      {
+        id: 'universal_role_ready_view',
+        name: 'Universal Role-Ready View (DRY Standard)',
+        description: 'Pemisahan modul ke arsitektur tiga tingkat: Standalone Page Wrapper (<50 baris) dan Core View RaporStagingView yang reusable di dashboard peran.',
+        status: 'VERIFIED',
+        details: 'RaporStagingPage.tsx dipecah menjadi RaporStagingView.tsx mematuhi God File Guard.'
+      },
+      {
+        id: 'unified_academic_filter',
+        name: 'Unified Academic Filter & Caching Optimization',
+        description: 'Integrasi AcademicFilterToolbar dan useAcademicFilter dengan dual-layer caching TanStack Query (staleTime 5 menit).',
+        status: 'VERIFIED',
+        details: 'AcademicFilterToolbar dan TabSwitcher cascading terpadu dengan auto-sync.'
       }
     ]
   },
@@ -1904,7 +1925,7 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
         name: 'Dynamic Variable Scanner & Resilient Parser',
         description: 'Pemindaian sel adaptif menggunakan regex label pada sheet SETTING, INPUT SUMATIF, dan INPUT CP tahan perubahan baris antar-tahun ajaran.',
         status: 'VERIFIED',
-        details: 'Regex label matcher aktif pada GoogleSheetRaporParserService.'
+        details: 'Regex label matcher aktif pada GoogleSheetRaporParserService dengan fallback GViz CSV.'
       },
       {
         id: 'one_click_sync',
@@ -1912,6 +1933,27 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
         description: 'Sinkronisasi atomik dari tabel staging ke tabel resmi NilaiSiswa dan RaporSiswa.',
         status: 'VERIFIED',
         details: 'Staging sync controller dan service terisolasi dengan validasi kurikulum.'
+      },
+      {
+        id: 'acid_transaction_sync',
+        name: 'ACID Atomic Transaction Guard',
+        description: 'Seluruh mutasi nilai siswa, rapor, dan status staging dilindungi prisma.$transaction dengan rollback otomatis jika terjadi kegagalan parsial.',
+        status: 'VERIFIED',
+        details: 'prisma.$transaction aktif pada RaporStagingService.syncStagingToRapor dengan timeout 60s.'
+      },
+      {
+        id: 'universal_role_ready_view',
+        name: 'Universal Role-Ready View (DRY Standard)',
+        description: 'Pemisahan modul ke arsitektur tiga tingkat: Standalone Page Wrapper (<50 baris) dan Core View RaporStagingView yang reusable di dashboard peran.',
+        status: 'VERIFIED',
+        details: 'RaporStagingPage.tsx dipecah menjadi RaporStagingView.tsx mematuhi God File Guard.'
+      },
+      {
+        id: 'unified_academic_filter',
+        name: 'Unified Academic Filter & Caching Optimization',
+        description: 'Integrasi AcademicFilterToolbar dan useAcademicFilter dengan dual-layer caching TanStack Query (staleTime 5 menit).',
+        status: 'VERIFIED',
+        details: 'AcademicFilterToolbar dan TabSwitcher cascading terpadu dengan auto-sync.'
       }
     ]
   },

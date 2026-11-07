@@ -27,6 +27,7 @@ import { RekapJurnalPanel } from '../kbm/RekapJurnalPanel';
 import { PerangkatAjarPanel } from '../kbm/PerangkatAjarPanel';
 import { JadwalInvalPanel } from '../kbm/JadwalInvalPanel';
 import { BahanAjarReaderModal } from '../../../kurikulum/bahan-ajar/BahanAjarReaderModal';
+import { UniversalEcosystemTopbar } from '@/components/dashboard/roles/common';
 import { useSessionWindowAlert, getSessionAlertDetails } from '../../../../hooks/attendance/useSessionWindowAlert';
 import { 
   playSessionAlarmSound, 
@@ -327,6 +328,16 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
       transition={{ duration: 0.2 }}
       className="space-y-5 sm:space-y-6"
     >
+      {/* ── UNIVERSAL ECOSYSTEM TOPBAR (Mobile Guru) ── */}
+      <UniversalEcosystemTopbar
+        ecosystem="portal"
+        title={activeKbmSubTab === 'agenda' ? 'Jadwal & KBM Mengajar' : activeKbmSubTab === 'perangkat-ajar' ? 'Perangkat Ajar KBM' : 'Jadwal Guru Inval'}
+        icon={activeKbmSubTab === 'perangkat-ajar' ? Layers : activeKbmSubTab === 'inval' ? Users : Clock}
+        onRefresh={onRefreshTimeline}
+        isRefreshing={isLoadingTimeline}
+        className="lg:hidden"
+      />
+
       {/* 1. SUB-TAB INTERNAL PILL BAR - RESPONSIF & SIMPLE */}
       <div className="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-slate-200/80 dark:bg-slate-800/90 w-full sm:w-fit shadow-xs">
         <button

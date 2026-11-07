@@ -27,6 +27,7 @@ import {
 import { 
   UniversalMobileSubtabSidebar, 
   useMobileSubtabSidebar,
+  UniversalEcosystemTopbar,
   type UniversalSubtabItem 
 } from '@/components/dashboard/roles/common';
 import { useCbtOperationMode } from '@/components/cbt/cbtModeHelper';
@@ -292,6 +293,67 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
   const [selectedPengawasJadwalId, setSelectedPengawasJadwalId] = useState<string | undefined>(undefined);
 
   const activeSubTab = validSubTabs.includes(subTabParam) ? subTabParam : 'agenda';
+
+  // Resolusi Judul & Icon Subtab untuk Universal Ecosystem Topbar
+  const { currentSubtabTitle, currentSubtabIcon } = useMemo(() => {
+    switch (activeSubTab) {
+      case 'agenda':
+        return {
+          currentSubtabTitle: guruNama ? `Halo, ${guruNama}` : 'Beranda Pendidik',
+          currentSubtabIcon: LayoutDashboard,
+        };
+      case 'tugas':
+        return {
+          currentSubtabTitle: 'Pusat Tugas & Peringatan',
+          currentSubtabIcon: CheckSquare,
+        };
+      case 'perangkat':
+        return {
+          currentSubtabTitle: 'Perangkat Ajar Saya',
+          currentSubtabIcon: FileText,
+        };
+      case 'cbt':
+        return {
+          currentSubtabTitle: 'Bank Soal & Asesmen CBT',
+          currentSubtabIcon: Laptop,
+        };
+      case 'pengawas_cbt':
+        return {
+          currentSubtabTitle: 'Pengawas Ujian CBT',
+          currentSubtabIcon: Eye,
+        };
+      case 'sidang_guru':
+        return {
+          currentSubtabTitle: 'Penguji Sidang PKL',
+          currentSubtabIcon: Award,
+        };
+      case 'nilai':
+        return {
+          currentSubtabTitle: 'Buku Nilai Guru',
+          currentSubtabIcon: GraduationCap,
+        };
+      case 'remedial':
+        return {
+          currentSubtabTitle: 'Radar Remedial Siswa',
+          currentSubtabIcon: Radio,
+        };
+      case 'rekap':
+        return {
+          currentSubtabTitle: 'Rekap Jurnal & Absensi',
+          currentSubtabIcon: BarChart2,
+        };
+      case 'supervisi':
+        return {
+          currentSubtabTitle: 'Supervisi Akademik',
+          currentSubtabIcon: Award,
+        };
+      default:
+        return {
+          currentSubtabTitle: 'Ruang Pendidik',
+          currentSubtabIcon: BookOpen,
+        };
+    }
+  }, [activeSubTab, guruNama]);
 
   const teacherBeban = useMemo(() => {
     const list = Array.isArray(bebanGuruRes?.data)
@@ -597,74 +659,36 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
             categories={navCategories}
           />
 
-          {/* ── MOBILE TOPBAR HEADER (Standar Industri Absenta Shopee-Grade): Greeting Guru + Tugas Saya + Profil Akun ── */}
-          <div className="flex lg:hidden items-center justify-between gap-3 px-3 py-2 mb-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
-            {/* Sisi Kiri: Greeting Ringkas atau Back Button jika di subtab */}
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              {activeSubTab !== 'agenda' && (
-                <button
-                  type="button"
-                  onClick={() => handleSubTabChange('agenda')}
-                  className="p-1.5 -ml-1 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-all cursor-pointer"
-                  title="Kembali ke Beranda"
-                  aria-label="Kembali ke Beranda"
-                >
-                  <ArrowLeft size={16} />
-                </button>
-              )}
-              <div className="min-w-0 flex-1 leading-tight">
-                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block leading-none truncate">
-                  {activeSubTab === 'agenda' ? 'Ruang Pendidik' : 'Pendidik'}
-                </span>
-                <h2 className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-white truncate leading-tight mt-0.5">
-                  {activeSubTab === 'agenda'
-                    ? `Halo, ${displayName}`
-                    : (navTabs.find((t) => t.id === activeSubTab)?.label || 'Menu Pendidik')}
-                </h2>
-              </div>
-            </div>
-
-            {/* Sisi Kanan: Quick Actions: Tombol Tugas Saya (Action Hub) + Profil Avatar (Logout) */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              {/* Tombol Tugas Saya dengan Badge Notifikasi */}
+          {/* ── 1. UNIVERSAL ECOSYSTEM TOPBAR (Standar Industri Absenta: Ruang Pendidik) ── */}
+          <UniversalEcosystemTopbar
+            ecosystem="portal"
+            title={currentSubtabTitle}
+            icon={currentSubtabIcon}
+            hideBack={activeSubTab === 'agenda'}
+            onBack={() => handleSubTabChange('agenda')}
+            className="lg:hidden"
+            actions={
               <button
                 type="button"
                 onClick={() => handleSubTabChange('tugas')}
                 className={cn(
-                  'relative p-2 rounded-xl border transition-all cursor-pointer active:scale-95 flex items-center justify-center',
+                  'relative p-1.5 rounded-xl transition-all cursor-pointer active:scale-95 flex items-center justify-center shrink-0',
                   activeSubTab === 'tugas'
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs shadow-indigo-600/30'
-                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/60'
+                    ? 'bg-white text-indigo-700 shadow-xs'
+                    : 'bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25'
                 )}
                 title="Pusat Tugas & Peringatan Saya"
                 aria-label="Pusat Tugas & Peringatan Saya"
               >
-                <ClipboardList size={16} />
+                <ClipboardList size={15} />
                 {(actionHubData.summary?.total || 0) > 0 && (
-                  <span className="absolute -top-1 -right-1 px-1 min-w-[15px] h-3.5 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center ring-2 ring-white dark:ring-slate-900 animate-pulse leading-none">
+                  <span className="absolute -top-1 -right-1 px-1 min-w-[15px] h-3.5 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center ring-1 ring-white animate-pulse leading-none">
                     {(actionHubData.summary?.total || 0) > 99 ? '99+' : actionHubData.summary?.total}
                   </span>
                 )}
               </button>
-
-              {/* Tombol Profil & Logout (Trigger Mobile Account Sheet) */}
-              <button
-                type="button"
-                onClick={() => useMobileAccountSheetStore.getState().open()}
-                className="p-0.5 rounded-full ring-1 ring-slate-200 dark:ring-slate-700 hover:ring-2 hover:ring-indigo-500/50 transition-all select-none cursor-pointer active:scale-95"
-                title="Profil & Pengaturan Akun"
-                aria-label="Profil & Pengaturan Akun"
-              >
-                {userPhoto ? (
-                  <img src={userPhoto} alt="Profil" className="w-7 h-7 rounded-full object-cover" />
-                ) : (
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center font-bold text-[11px] shadow-xs">
-                    {initialChar}
-                  </div>
-                )}
-              </button>
-            </div>
-          </div>
+            }
+          />
 
           {/* 2. Desktop 2-Column Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-5 items-start">
@@ -691,6 +715,32 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
 
           {/* Kolom Kanan: Main Content Canvas */}
           <main className="min-w-0 space-y-4">
+            {/* Desktop Subtab Header (Ketika guru membuka subtab non-agenda di Desktop) */}
+            {activeSubTab !== 'agenda' && (
+              <div className="hidden lg:flex items-center justify-between pb-3 border-b border-slate-200/80 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleSubTabChange('agenda')}
+                    className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+                    title="Kembali ke Beranda Pendidik"
+                  >
+                    <ArrowLeft size={16} />
+                    <span>Kembali</span>
+                  </button>
+                  <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
+                  <div>
+                    <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block">
+                      Ruang Pendidik • Sub-Modul
+                    </span>
+                    <h1 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                      {currentSubtabTitle}
+                    </h1>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* SUB-TAB 1: RINGKASAN & BERANDA PENDIDIK */}
             {activeSubTab === 'agenda' && (
               <div className="space-y-3 sm:space-y-4">

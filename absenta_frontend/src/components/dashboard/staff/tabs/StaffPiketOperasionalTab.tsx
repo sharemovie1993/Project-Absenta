@@ -31,6 +31,7 @@ import { PiketTeacherLeavePanel } from '../../../piket/PiketTeacherLeavePanel';
 import { PiketSecurity } from '../../../piket/PiketSecurity';
 import { guruIzinApi } from '../../../../api/guruIzin.api';
 import { piketApi, piketQueryKeys, type IzinKeluarSiswa } from '../../../../api/piket.api';
+import { UniversalEcosystemTopbar } from '@/components/dashboard/roles/common';
 import { PiketPrintSlip } from '../../../piket/PiketPrintSlip';
 import { useAuthStore } from '../../../../store/authStore';
 import { useGuruMe } from '../../../../hooks/useGuruMe';
@@ -361,6 +362,14 @@ export const StaffPiketOperasionalTab: React.FC<StaffPiketOperasionalTabProps> =
       transition={{ duration: 0.2 }}
       className="space-y-6"
     >
+      {/* ── UNIVERSAL ECOSYSTEM TOPBAR (Mobile Piket) ── */}
+      <UniversalEcosystemTopbar
+        ecosystem="piket"
+        title="Piket Harian & Operasional"
+        icon={ShieldCheck}
+        className="lg:hidden"
+      />
+
       {/* ── LOADING SKELETON STATE ────────────────────────────────────────── */}
       {isLoading && (
         <div className="p-8 sm:p-12 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm text-center space-y-4">

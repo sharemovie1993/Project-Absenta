@@ -1192,234 +1192,246 @@ export class RaporStagingService {
       }
     }
 
-    // 6. Jalankan Proses Sinkronisasi Siswa demi Siswa
-    for (const [, item] of mergedStudents) {
-      // Cari ID Siswa
-      let siswaId =
-        (item.nis && siswaByNis.get(item.nis)) ||
-        (item.nisn && siswaByNisn.get(item.nisn)) ||
-        siswaByNama.get(item.nama.trim().toLowerCase()) ||
-        null;
+    const startTime = Date.now();
 
-      // Auto-Provisioning jika opsi diaktifkan dan siswa belum terdaftar
-      if (!siswaId && options?.autoProvisionStudents) {
-        try {
-          const autoNis = item.nis || `AUTO-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-          const createdSiswa = await prisma.siswa.create({
-            data: {
-              tenant_id: tenantId,
-              nis: autoNis,
-              nisn: item.nisn || null,
-              nama_siswa: item.nama.trim(),
-              jenis_kelamin: 'L', // default L
-            },
-          });
-          siswaId = createdSiswa.id;
-          autoProvisionedCount++;
+    // 6. Jalankan Proses Sinkronisasi Siswa demi Siswa di dalam Transaksi Atomik ACID
+    // Memenuhi standar phase-4-hardening & phase-5-audit:
+    // Menjamin ROLLBACK otomatis jika terjadi kegagalan parsial sehingga tidak ada inkonsistensi data nilai.
+    await prisma.$transaction(
+      async (tx) => {
+        for (const [, item] of mergedStudents) {
+          // Cari ID Siswa
+          let siswaId =
+            (item.nis && siswaByNis.get(item.nis)) ||
+            (item.nisn && siswaByNisn.get(item.nisn)) ||
+            siswaByNama.get(item.nama.trim().toLowerCase()) ||
+            null;
 
-          // Daftarkan ke lookup map lokal
-          if (item.nis) siswaByNis.set(item.nis.trim(), siswaId);
-          if (item.nisn) siswaByNisn.set(item.nisn.trim(), siswaId);
-          siswaByNama.set(item.nama.trim().toLowerCase(), siswaId);
-        } catch (provErr) {
-          appLogger.error({ err: provErr, student: item }, 'Gagal auto-provision siswa baru');
+          // Auto-Provisioning jika opsi diaktifkan dan siswa belum terdaftar
+          if (!siswaId && options?.autoProvisionStudents) {
+            try {
+              const autoNis = item.nis || `AUTO-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+              const createdSiswa = await tx.siswa.create({
+                data: {
+                  tenant_id: tenantId,
+                  nis: autoNis,
+                  nisn: item.nisn || null,
+                  nama_siswa: item.nama.trim(),
+                  jenis_kelamin: 'L', // default L
+                },
+              });
+              siswaId = createdSiswa.id;
+              autoProvisionedCount++;
+
+              // Daftarkan ke lookup map lokal
+              if (item.nis) siswaByNis.set(item.nis.trim(), siswaId);
+              if (item.nisn) siswaByNisn.set(item.nisn.trim(), siswaId);
+              siswaByNama.set(item.nama.trim().toLowerCase(), siswaId);
+            } catch (provErr) {
+              appLogger.error({ err: provErr, student: item }, 'Gagal auto-provision siswa baru');
+            }
+          }
+
+          if (!siswaId) {
+            unmappedStudents.push(`${item.nama} (NIS: ${item.nis || '-'})`);
+            continue;
+          }
+
+          // ── Tautkan Riwayat Kelas & Semester ke SiswaAkademik (SSOT Historis) ──
+          let sa: any = null;
+          if (kelasId) {
+            sa = await tx.siswaAkademik.upsert({
+              where: {
+                siswa_id_tahun_pelajaran_id_semester_id: {
+                  siswa_id: siswaId,
+                  tahun_pelajaran_id: tpId,
+                  semester_id: semId,
+                },
+              },
+              create: {
+                siswa_id: siswaId,
+                kelas_id: kelasId,
+                tahun_pelajaran_id: tpId,
+                semester_id: semId,
+                status: 'AKTIF',
+              },
+              update: {
+                kelas_id: kelasId,
+                status: 'AKTIF',
+              },
+            });
+          }
+
+          // A. Sinkronisasi Data Rapor & Kehadiran (RaporSiswa)
+          if (item.cp) {
+            const kehadiran = item.cp.kehadiran || { sakit: 0, izin: 0, alpa: 0 };
+            const catatanWali = item.cp.catatanWali || '';
+            const keputusan = item.cp.keputusanTransisi || '';
+
+            await tx.raporSiswa.upsert({
+              where: {
+                siswa_id_tahun_pelajaran_id_semester_id: {
+                  siswa_id: siswaId,
+                  tahun_pelajaran_id: tpId,
+                  semester_id: semId,
+                },
+              },
+              create: {
+                tenant_id: tenantId,
+                siswa_id: siswaId,
+                siswa_akademik_id: sa?.id || null,
+                kelas_id: kelasId,
+                tahun_pelajaran_id: tpId,
+                semester_id: semId,
+                sakit: kehadiran.sakit || 0,
+                izin: kehadiran.izin || 0,
+                alpa: kehadiran.alpa || 0,
+                catatan_wali: catatanWali,
+                keputusan_transisi: keputusan,
+              },
+              update: {
+                kelas_id: kelasId,
+                ...(sa?.id ? { siswa_akademik_id: sa.id } : {}),
+                sakit: kehadiran.sakit || 0,
+                izin: kehadiran.izin || 0,
+                alpa: kehadiran.alpa || 0,
+                catatan_wali: catatanWali || undefined,
+                keputusan_transisi: keputusan || undefined,
+              },
+            });
+            totalRaporSynced++;
+          }
+
+          // B. Sinkronisasi Nilai Mata Pelajaran (NilaiSiswa)
+          const allSubjectNames = new Set<string>([
+            ...Object.keys(item.sumatif?.scores || {}),
+            ...Object.keys(item.cp?.mapelGrades || {}),
+          ]);
+
+          for (const subjectName of allSubjectNames) {
+            let mapelId: string | null = null;
+            if (options?.customMapelMapping && options.customMapelMapping[subjectName] !== undefined) {
+              const customVal = options.customMapelMapping[subjectName];
+              if (customVal === 'IGNORE') continue; // Sengaja dilewati pengguna
+              mapelId = customVal;
+            } else {
+              const autoMatch = RaporStagingService.resolveMapelForClass(subjectName, mapelList, sheet.nama_kelas);
+              mapelId = autoMatch?.id || resolveMapelId(subjectName);
+            }
+
+            if (!mapelId) {
+              unmappedSubjects.add(subjectName);
+              continue;
+            }
+
+            const sumatifScore = item.sumatif?.scores?.[subjectName];
+            const cpGrade = item.cp?.mapelGrades?.[subjectName];
+
+            const s1 = sumatifScore?.sumatif_1 ?? null;
+            const s2 = sumatifScore?.sumatif_2 ?? null;
+            const s3 = sumatifScore?.sumatif_3 ?? null;
+            const avg = sumatifScore?.rata_rata ?? null;
+            const sumAkhir = sumatifScore?.nilai_akhir ?? null;
+            const cpText = cpGrade?.capaian_kompetensi || '';
+
+            // Abaikan jika mapel ini tidak memiliki data nilai maupun teks CP pada siswa ini
+            const hasScore =
+              (cpGrade && cpGrade.nilai_rapor !== null) ||
+              avg !== null ||
+              sumAkhir !== null ||
+              s1 !== null ||
+              s2 !== null ||
+              s3 !== null ||
+              Boolean(cpText && cpText.trim() !== '');
+
+            if (!hasScore) {
+              continue;
+            }
+
+            let nilaiFinal: number;
+            if (activeSumberNilai === 'MURNI_CP_MANUAL') {
+              nilaiFinal = cpGrade?.nilai_rapor ?? avg ?? sumAkhir ?? s1 ?? 0;
+            } else {
+              const sumatifComputed =
+                sumAkhir ??
+                avg ??
+                ([s1, s2, s3].some((v) => v !== null)
+                  ? Math.round(
+                      ([s1, s2, s3].filter((v): v is number => v !== null)).reduce((a, b) => a + b, 0) /
+                        [s1, s2, s3].filter((v) => v !== null).length
+                    )
+                  : null);
+              nilaiFinal = sumatifComputed ?? cpGrade?.nilai_rapor ?? 0;
+            }
+
+            await tx.nilaiSiswa.upsert({
+              where: {
+                siswa_id_mapel_id_tahun_pelajaran_id_semester_id: {
+                  siswa_id: siswaId,
+                  mapel_id: mapelId,
+                  tahun_pelajaran_id: tpId,
+                  semester_id: semId,
+                },
+              },
+              create: {
+                tenant_id: tenantId,
+                siswa_id: siswaId,
+                siswa_akademik_id: sa?.id || null,
+                mapel_id: mapelId,
+                tahun_pelajaran_id: tpId,
+                semester_id: semId,
+                nilai: nilaiFinal,
+                sumatif_1: s1,
+                sumatif_2: s2,
+                sumatif_3: s3,
+                rata_rata_sumatif: avg,
+                nilai_akhir_sumatif: sumAkhir,
+                nilai_rapor_final: nilaiFinal,
+                capaian_kompetensi: cpText,
+              },
+              update: {
+                nilai: nilaiFinal,
+                ...(sa?.id ? { siswa_akademik_id: sa.id } : {}),
+                sumatif_1: s1,
+                sumatif_2: s2,
+                sumatif_3: s3,
+                rata_rata_sumatif: avg,
+                nilai_akhir_sumatif: sumAkhir,
+                nilai_rapor_final: nilaiFinal,
+                capaian_kompetensi: cpText || undefined,
+              },
+            });
+            totalNilaiSynced++;
+          }
         }
-      }
 
-      if (!siswaId) {
-        unmappedStudents.push(`${item.nama} (NIS: ${item.nis || '-'})`);
-        continue;
-      }
-
-      // ── Tautkan Riwayat Kelas & Semester ke SiswaAkademik (SSOT Historis) ──
-      // Berlaku untuk SELURUH siswa (baik siswa lama maupun siswa baru auto-provisioned)
-      let sa: any = null;
-      if (kelasId) {
-        sa = await prisma.siswaAkademik.upsert({
-          where: {
-            siswa_id_tahun_pelajaran_id_semester_id: {
-              siswa_id: siswaId,
-              tahun_pelajaran_id: tpId,
-              semester_id: semId,
-            },
-          },
-          create: {
-            siswa_id: siswaId,
-            kelas_id: kelasId,
-            tahun_pelajaran_id: tpId,
-            semester_id: semId,
-            status: 'AKTIF',
-          },
-          update: {
-            kelas_id: kelasId,
-            status: 'AKTIF',
+        // 7. Update status staging sheet secara atomik
+        await tx.raporStagingSheet.update({
+          where: { id: stagingId },
+          data: {
+            status: 'SYNCED',
+            last_synced_at: new Date(),
+            sync_logs: {
+              totalNilaiSynced,
+              totalRaporSynced,
+              autoProvisionedCount,
+              unmappedStudents,
+              unmappedSubjects: Array.from(unmappedSubjects),
+              sumberNilaiRapor: activeSumberNilai,
+              syncedAt: new Date().toISOString(),
+              durationMs: Date.now() - startTime,
+            } as any,
           },
         });
-      }
-
-      // A. Sinkronisasi Data Rapor & Kehadiran (RaporSiswa)
-      if (item.cp) {
-        const kehadiran = item.cp.kehadiran || { sakit: 0, izin: 0, alpa: 0 };
-        const catatanWali = item.cp.catatanWali || '';
-        const keputusan = item.cp.keputusanTransisi || '';
-
-        await prisma.raporSiswa.upsert({
-          where: {
-            siswa_id_tahun_pelajaran_id_semester_id: {
-              siswa_id: siswaId,
-              tahun_pelajaran_id: tpId,
-              semester_id: semId,
-            },
-          },
-          create: {
-            tenant_id: tenantId,
-            siswa_id: siswaId,
-            siswa_akademik_id: sa?.id || null,
-            kelas_id: kelasId,
-            tahun_pelajaran_id: tpId,
-            semester_id: semId,
-            sakit: kehadiran.sakit || 0,
-            izin: kehadiran.izin || 0,
-            alpa: kehadiran.alpa || 0,
-            catatan_wali: catatanWali,
-            keputusan_transisi: keputusan,
-          },
-          update: {
-            kelas_id: kelasId,
-            ...(sa?.id ? { siswa_akademik_id: sa.id } : {}),
-            sakit: kehadiran.sakit || 0,
-            izin: kehadiran.izin || 0,
-            alpa: kehadiran.alpa || 0,
-            catatan_wali: catatanWali || undefined,
-            keputusan_transisi: keputusan || undefined,
-          },
-        });
-        totalRaporSynced++;
-      }
-
-      // B. Sinkronisasi Nilai Mata Pelajaran (NilaiSiswa)
-      // Ambil daftar seluruh mapel dari sumatif & cp
-      const allSubjectNames = new Set<string>([
-        ...Object.keys(item.sumatif?.scores || {}),
-        ...Object.keys(item.cp?.mapelGrades || {}),
-      ]);
-
-      for (const subjectName of allSubjectNames) {
-        let mapelId: string | null = null;
-        if (options?.customMapelMapping && options.customMapelMapping[subjectName] !== undefined) {
-          const customVal = options.customMapelMapping[subjectName];
-          if (customVal === 'IGNORE') continue; // Sengaja dilewati pengguna
-          mapelId = customVal;
-        } else {
-          const autoMatch = RaporStagingService.resolveMapelForClass(subjectName, mapelList, sheet.nama_kelas);
-          mapelId = autoMatch?.id || resolveMapelId(subjectName);
-        }
-
-        if (!mapelId) {
-          unmappedSubjects.add(subjectName);
-          continue;
-        }
-
-        const sumatifScore = item.sumatif?.scores?.[subjectName];
-        const cpGrade = item.cp?.mapelGrades?.[subjectName];
-
-        const s1 = sumatifScore?.sumatif_1 ?? null;
-        const s2 = sumatifScore?.sumatif_2 ?? null;
-        const s3 = sumatifScore?.sumatif_3 ?? null;
-        const avg = sumatifScore?.rata_rata ?? null;
-        const sumAkhir = sumatifScore?.nilai_akhir ?? null;
-        const cpText = cpGrade?.capaian_kompetensi || '';
-
-        // Abaikan jika mapel ini tidak memiliki data nilai maupun teks CP pada siswa ini
-        const hasScore =
-          (cpGrade && cpGrade.nilai_rapor !== null) ||
-          avg !== null ||
-          sumAkhir !== null ||
-          s1 !== null ||
-          s2 !== null ||
-          s3 !== null ||
-          Boolean(cpText && cpText.trim() !== '');
-
-        if (!hasScore) {
-          continue;
-        }
-
-        let nilaiFinal: number;
-        if (activeSumberNilai === 'MURNI_CP_MANUAL') {
-          // MURNI LEMBAR CP: Nilai rapor diambil 100% dari kolom nilai lembar CP (versi cetak fisik asli / manual guru tanpa rumus)
-          nilaiFinal = cpGrade?.nilai_rapor ?? avg ?? sumAkhir ?? s1 ?? 0;
-        } else {
-          // FORMULA SUMATIF: Nilai rapor dihitung dari rangkaian asesmen sumatif (nilai akhir / rata-rata sumatif)
-          const sumatifComputed =
-            sumAkhir ??
-            avg ??
-            ([s1, s2, s3].some((v) => v !== null)
-              ? Math.round(
-                  ([s1, s2, s3].filter((v): v is number => v !== null)).reduce((a, b) => a + b, 0) /
-                    [s1, s2, s3].filter((v) => v !== null).length
-                )
-              : null);
-          nilaiFinal = sumatifComputed ?? cpGrade?.nilai_rapor ?? 0;
-        }
-
-        await prisma.nilaiSiswa.upsert({
-          where: {
-            siswa_id_mapel_id_tahun_pelajaran_id_semester_id: {
-              siswa_id: siswaId,
-              mapel_id: mapelId,
-              tahun_pelajaran_id: tpId,
-              semester_id: semId,
-            },
-          },
-          create: {
-            tenant_id: tenantId,
-            siswa_id: siswaId,
-            siswa_akademik_id: sa?.id || null,
-            mapel_id: mapelId,
-            tahun_pelajaran_id: tpId,
-            semester_id: semId,
-            nilai: nilaiFinal,
-            sumatif_1: s1,
-            sumatif_2: s2,
-            sumatif_3: s3,
-            rata_rata_sumatif: avg,
-            nilai_akhir_sumatif: sumAkhir,
-            nilai_rapor_final: nilaiFinal,
-            capaian_kompetensi: cpText,
-          },
-          update: {
-            nilai: nilaiFinal,
-            ...(sa?.id ? { siswa_akademik_id: sa.id } : {}),
-            sumatif_1: s1,
-            sumatif_2: s2,
-            sumatif_3: s3,
-            rata_rata_sumatif: avg,
-            nilai_akhir_sumatif: sumAkhir,
-            nilai_rapor_final: nilaiFinal,
-            capaian_kompetensi: cpText || undefined,
-          },
-        });
-        totalNilaiSynced++;
-      }
-    }
-
-    // 7. Update status staging
-    await prisma.raporStagingSheet.update({
-      where: { id: stagingId },
-      data: {
-        status: 'SYNCED',
-        last_synced_at: new Date(),
-        sync_logs: {
-          totalNilaiSynced,
-          totalRaporSynced,
-          autoProvisionedCount,
-          unmappedStudents,
-          unmappedSubjects: Array.from(unmappedSubjects),
-          sumberNilaiRapor: activeSumberNilai,
-          syncedAt: new Date().toISOString(),
-        } as any,
       },
-    });
+      { timeout: 60000, maxWait: 15000 }
+    );
+
+    const elapsedMs = Date.now() - startTime;
+    appLogger.info(
+      { stagingId, tenantId, totalNilaiSynced, totalRaporSynced, elapsedMs },
+      'Sinkronisasi Staging ke e-Rapor selesai secara atomik (ACID)'
+    );
 
     // 8. Invalidate seluruh cache modul rapor, leger, transkrip, & nilai kelas
     try {

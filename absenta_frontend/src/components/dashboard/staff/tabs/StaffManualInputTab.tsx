@@ -11,6 +11,7 @@ import { useAudioFeedback } from '../../../../hooks/useAudioFeedback';
 import { useGateLogic } from '../../../../hooks/useGateLogic';
 import { Label, Switch, Loader } from '../../../ui';
 import { type Student } from '../../../common/SmartStudentPicker';
+import { UniversalEcosystemTopbar } from '@/components/dashboard/roles/common';
 
 export const StaffManualInputTab: React.FC = React.memo(() => {
   const { tenantId } = useTenant();
@@ -167,6 +168,14 @@ export const StaffManualInputTab: React.FC = React.memo(() => {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
+      {/* ── UNIVERSAL ECOSYSTEM TOPBAR (Mobile) ── */}
+      <UniversalEcosystemTopbar
+        ecosystem="portal"
+        title="Input Presensi Manual"
+        icon={UserCheck}
+        className="lg:hidden"
+      />
+
       {/* Header & Mode Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <div className="flex items-center bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">

@@ -22,6 +22,7 @@ import { PengajuanIzinGuruModal } from '../profil/PengajuanIzinGuruModal';
 import { StaffWeeklyScheduleWidget } from '../../widgets/StaffWeeklyScheduleWidget';
 import { getRekapBulananGuruMe } from '../../../../api/attendance/rekap.api';
 import { kurikulumApi } from '../../../../api/kurikulum.api';
+import { UniversalEcosystemTopbar } from '@/components/dashboard/roles/common';
 
 // ─── Webcam Modal ─────────────────────────────────────────────────────────────
 
@@ -486,6 +487,14 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
       transition={{ duration: 0.2 }}
       className="space-y-5 sm:space-y-6"
     >
+      {/* ── UNIVERSAL ECOSYSTEM TOPBAR (Mobile Guru) ── */}
+      <UniversalEcosystemTopbar
+        ecosystem="portal"
+        title="Profil Guru & Akun"
+        icon={User}
+        className="lg:hidden"
+      />
+
       {/* Webcam Modal */}
       <WebcamModal isOpen={isWebcamOpen} onClose={() => setIsWebcamOpen(false)} onCapture={handleUploadPhoto} />
 
