@@ -1,7 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
+import { useAuthStore } from '@/store/authStore';
+import { useMobileAccountSheetStore } from '@/store/mobileAccountSheetStore';
 import { 
   type EcosystemType, 
   getEcosystemTheme,
@@ -83,6 +85,11 @@ export const UniversalEcosystemTopbar: React.FC<UniversalEcosystemTopbarProps> =
   const navigate = useNavigate();
   const theme = getEcosystemTheme(ecosystem);
   const isLayer2 = theme.isLayer2;
+
+  const user = useAuthStore((state) => state.user);
+  const rawPhoto = user?.profile_photo_url || (user as any)?.avatar || (user?.guru_profile as any)?.foto_url;
+  const userPhoto = rawPhoto ? resolveProfilePhotoUrl(rawPhoto) : null;
+  const initialChar = (user?.full_name || (user as any)?.name || 'G').slice(0, 1).toUpperCase();
 
   // Resolusi aksi tombol kembali
   const handleBack = () => {
@@ -199,7 +206,7 @@ export const UniversalEcosystemTopbar: React.FC<UniversalEcosystemTopbarProps> =
         </div>
       </div>
 
-      {/* SISI KANAN: AKSI MINIMAL (TOMBOL KUSTOM & REFRESH) */}
+      {/* SISI KANAN: AKSI MINIMAL (TOMBOL KUSTOM, REFRESH, & PROFIL AKUN) */}
       <div className="flex items-center gap-1.5 shrink-0">
         {actions}
 
@@ -220,6 +227,33 @@ export const UniversalEcosystemTopbar: React.FC<UniversalEcosystemTopbarProps> =
             <RefreshCw size={14} className={cn(isRefreshing && 'animate-spin')} />
           </button>
         )}
+
+        {/* AVATAR PROFIL & PENGATURAN AKUN */}
+        <button
+          type="button"
+          onClick={() => useMobileAccountSheetStore.getState().open()}
+          className={cn(
+            'p-0.5 rounded-full transition-all select-none cursor-pointer active:scale-95 shrink-0',
+            isLayer2
+              ? 'hover:ring-2 hover:ring-white/40 ring-1 ring-white/30'
+              : 'hover:ring-2 hover:ring-indigo-500/40 ring-1 ring-slate-200 dark:ring-slate-700'
+          )}
+          title="Profil & Pengaturan Akun"
+          aria-label="Profil & Pengaturan Akun"
+        >
+          {userPhoto ? (
+            <img src={userPhoto} alt="Profil" className="w-7 h-7 rounded-full object-cover" />
+          ) : (
+            <div
+              className={cn(
+                'w-7 h-7 rounded-full flex items-center justify-center font-bold text-[11px]',
+                isLayer2 ? 'bg-white/20 text-white' : 'bg-indigo-600 text-white'
+              )}
+            >
+              {initialChar}
+            </div>
+          )}
+        </button>
       </div>
     </header>
   );

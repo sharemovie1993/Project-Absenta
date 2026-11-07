@@ -473,8 +473,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       case 'admin':
         return getAdminTabs(teacherDashboards);
       default: {
-        // STEP 1 (PORTAL BASE GURU - 5 TOMBOL SIMETRIS DENGAN MENU PERAN ELEVATED DI TENGAH)
-        const firstDashboard = teacherDashboards[0];
+        // ── 🌟 FORMASI 7 PATEN: UNIVERSAL GURU MULTI-ROLE HUB (3 KIRI - 1 CENTER FAB - 3 KANAN) ──
         const isDashActive = (targetPath: string, p: string, t: string | null) => {
           if (targetPath.startsWith('/dashboard')) {
             const match = targetPath.match(/[?&]tab=([^&]+)/);
@@ -485,67 +484,100 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
           return p.startsWith(basePath);
         };
 
-        const baseTabs: MobileBottomTabItem[] = [
-          {
-            id: 'base_home',
-            label: 'Beranda Guru',
-            shortLabel: 'Beranda',
-            icon: Home,
-            targetPath: '/dashboard?tab=ringkasan',
-            isActive: (p, t) => (p === '/dashboard' || p === '/dashboard/') && (!t || t === 'ringkasan'),
-          },
-          {
-            id: 'base_action_hub',
-            label: 'Tugas & Tindakan Saya',
-            shortLabel: 'Tugas',
-            icon: CheckSquare,
-            targetPath: '/dashboard?tab=action_hub',
-            isActive: (p, t) => (p === '/dashboard' || p === '/dashboard/') && t === 'action_hub',
-          },
-          {
-            id: 'base_divisi_more',
-            label: 'Menu Peran & Layanan',
-            shortLabel: 'Menu',
-            icon: LayoutGrid,
-            targetPath: '/dashboard',
-            badge: teacherDashboards.length > 0 ? `${teacherDashboards.length}` : undefined,
-            isActive: (p, t) => Boolean(t && !['ringkasan', 'action_hub', 'profil'].includes(t)),
-            children: teacherDashboards.length > 0 ? teacherDashboards : [
-              { id: 'jadwal', label: 'Jadwal Mengajar', icon: Clock, targetPath: '/dashboard?tab=jadwal', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
-              { id: 'presensi', label: 'Presensi KBM', icon: CheckCircle2, targetPath: '/dashboard?tab=presensi', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
-            ],
-          },
-          ...(firstDashboard ? [
-            {
-              id: firstDashboard.id,
-              label: firstDashboard.label,
-              shortLabel: firstDashboard.shortLabel || firstDashboard.label,
-              icon: firstDashboard.icon,
-              targetPath: firstDashboard.targetPath,
-              badge: firstDashboard.badge ? String(firstDashboard.badge) : undefined,
-              isActive: (p: string, t: string | null) => isDashActive(firstDashboard.targetPath, p, t),
-            }
-          ] : [
-            {
-              id: 'base_jadwal',
-              label: 'Jadwal Mengajar Guru',
-              shortLabel: 'Jadwal',
-              icon: Clock,
-              targetPath: '/dashboard?tab=jadwal',
-              isActive: (p, t) => (p === '/dashboard' || p === '/dashboard/') && t === 'jadwal',
-            }
-          ]),
-          {
-            id: 'base_profil',
-            label: 'Profil Saya',
-            shortLabel: 'Saya',
-            icon: User,
-            targetPath: '/dashboard?tab=profil',
-            isActive: (p, t) => t === 'profil' || p.startsWith('/profile'),
-          },
-        ];
+        const mapDashboardToTab = (dash: MobileBottomSubItem): MobileBottomTabItem => ({
+          id: dash.id,
+          label: dash.label,
+          shortLabel: dash.shortLabel || dash.label,
+          icon: dash.icon,
+          targetPath: dash.targetPath,
+          badge: dash.badge ? String(dash.badge) : undefined,
+          isActive: (p: string, t: string | null) => isDashActive(dash.targetPath, p, t),
+        });
 
-        return baseTabs;
+        // 1. Kiri 1: Beranda Guru
+        const tab1_Home: MobileBottomTabItem = {
+          id: 'base_home',
+          label: 'Beranda Guru',
+          shortLabel: 'Beranda',
+          icon: Home,
+          targetPath: '/dashboard?tab=ringkasan',
+          isActive: (p, t) => (p === '/dashboard' || p === '/dashboard/') && (!t || t === 'ringkasan'),
+        };
+
+        // 2. Kiri 2: KBM / Mengajar
+        const tab2_Kbm: MobileBottomTabItem = {
+          id: 'base_jadwal',
+          label: 'Jadwal Mengajar',
+          shortLabel: 'KBM',
+          icon: Clock,
+          targetPath: '/dashboard?tab=jadwal',
+          isActive: (p, t) => (p === '/dashboard' || p === '/dashboard/') && t === 'jadwal',
+        };
+
+        // 3. Kiri 3: Jabatan 1 (jika ada) atau Presensi KBM
+        const tab3_Slot3: MobileBottomTabItem = teacherDashboards[0] 
+          ? mapDashboardToTab(teacherDashboards[0])
+          : {
+              id: 'base_presensi',
+              label: 'Presensi KBM',
+              shortLabel: 'Presensi',
+              icon: CheckCircle2,
+              targetPath: '/dashboard?tab=manual_presensi',
+              isActive: (p, t) => t === 'manual_presensi',
+            };
+
+        // 4. Center FAB (Elevated Notch): Menu Aksi Cepat & Seluruh Jabatan
+        const tab4_CenterFab: MobileBottomTabItem = {
+          id: 'base_divisi_more',
+          label: 'Pusat Layanan & Menu',
+          shortLabel: 'Menu',
+          icon: LayoutGrid,
+          targetPath: '/dashboard',
+          badge: teacherDashboards.length > 4 ? `${teacherDashboards.length}` : undefined,
+          isActive: (p, t) => Boolean(t && !['ringkasan', 'action_hub', 'jadwal', 'manual_presensi'].includes(t)),
+          children: teacherDashboards.length > 0 ? teacherDashboards : [
+            { id: 'jadwal', label: 'Jadwal Mengajar', icon: Clock, targetPath: '/dashboard?tab=jadwal', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
+            { id: 'presensi', label: 'Presensi KBM', icon: CheckCircle2, targetPath: '/dashboard?tab=manual_presensi', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
+          ],
+        };
+
+        // 5. Kanan 1: Jabatan 2 (jika ada) atau Jurnal Mengajar
+        const tab5_Slot5: MobileBottomTabItem = teacherDashboards[1]
+          ? mapDashboardToTab(teacherDashboards[1])
+          : {
+              id: 'base_jurnal',
+              label: 'Jurnal Mengajar',
+              shortLabel: 'Jurnal',
+              icon: FileText,
+              targetPath: '/kurikulum/jurnal',
+              isActive: (p) => p.startsWith('/kurikulum/jurnal'),
+            };
+
+        // 6. Kanan 2: Jabatan 3 (jika ada) atau Buku Nilai
+        const tab6_Slot6: MobileBottomTabItem = teacherDashboards[2]
+          ? mapDashboardToTab(teacherDashboards[2])
+          : {
+              id: 'base_nilai',
+              label: 'Buku Nilai Guru',
+              shortLabel: 'Nilai',
+              icon: GraduationCap,
+              targetPath: '/rapor/input-nilai',
+              isActive: (p) => p.startsWith('/rapor'),
+            };
+
+        // 7. Kanan 3: Jabatan 4 (jika ada) atau Tugas & Tindakan
+        const tab7_Slot7: MobileBottomTabItem = teacherDashboards[3]
+          ? mapDashboardToTab(teacherDashboards[3])
+          : {
+              id: 'base_action_hub',
+              label: 'Tugas & Tindakan',
+              shortLabel: 'Tugas',
+              icon: CheckSquare,
+              targetPath: '/dashboard?tab=action_hub',
+              isActive: (p, t) => (p === '/dashboard' || p === '/dashboard/') && t === 'action_hub',
+            };
+
+        return [tab1_Home, tab2_Kbm, tab3_Slot3, tab4_CenterFab, tab5_Slot5, tab6_Slot6, tab7_Slot7];
       }
     }
   }, [

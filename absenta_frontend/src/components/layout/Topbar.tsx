@@ -22,6 +22,7 @@ import { internalCommunicationApi, communicationKeys } from '@/api/internal-comm
 import { AppLauncherDropdown } from './AppLauncherDropdown';
 import { getActiveApp } from '@/config/absentaAppsRegistry';
 import { RouteAccessBadge } from './RouteAccessBadge';
+import { useMobileAccountSheetStore } from '@/store/mobileAccountSheetStore';
 
 interface TopbarProps {
   onMenuClick: () => void;
@@ -54,6 +55,9 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
   const rawLogoUrl = (systemConfig as any)?.logo_url;
   const resolvedLogoUrl = rawLogoUrl ? resolveProfilePhotoUrl(rawLogoUrl) : null;
   const { user, subscription, tenantMode, logout } = useAuthStore();
+  const rawUserPhoto = user?.profile_photo_url || (user as any)?.avatar || (user?.guru_profile as any)?.foto_url;
+  const userPhoto = rawUserPhoto ? resolveProfilePhotoUrl(rawUserPhoto) : null;
+  const userInitial = (user?.full_name || (user as any)?.name || 'U').slice(0, 1).toUpperCase();
   
   // 💬 Pusat Komunikasi Unread Count
   const { data: commUnreadCount = 0 } = useQuery({
@@ -364,7 +368,23 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
             {pageTitle}
           </span>
 
-          <div className="w-8 shrink-0" />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => useMobileAccountSheetStore.getState().open()}
+              className="p-0.5 rounded-full ring-1 ring-slate-200 dark:ring-slate-700 hover:ring-2 hover:ring-indigo-500/40 transition-all cursor-pointer"
+              title="Profil & Pengaturan Akun"
+              aria-label="Profil & Pengaturan Akun"
+            >
+              {userPhoto ? (
+                <img src={userPhoto} alt="Profil" className="w-7 h-7 rounded-full object-cover" />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-[11px]">
+                  {userInitial}
+                </div>
+              )}
+            </button>
+          </div>
         </header>
       )}
     </>

@@ -7,6 +7,7 @@ import { useBottomNavTabs } from './bottom-nav/useBottomNavTabs';
 import { BottomNavTabItem } from './bottom-nav/BottomNavTabItem';
 import { MobileAccountSheet } from './bottom-nav/MobileAccountSheet';
 import { BottomNavNotchBackground } from './bottom-nav/BottomNavNotchBackground';
+import { useMobileAccountSheetStore } from '@/store/mobileAccountSheetStore';
 import { 
   useMobileSubtabSidebarStore, 
   normalizeRoleToScope,
@@ -35,7 +36,7 @@ export type { MobileBottomSubItem, MobileBottomTabItem, EcosystemType, Ecosystem
 export const BottomNavigation: React.FC = React.memo(() => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [isAccountSheetOpen, setIsAccountSheetOpen] = useState(false);
+  const isAccountSheetOpen = useMobileAccountSheetStore((state) => state.isOpen);
 
   const {
     activeTabsList,
@@ -79,7 +80,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
     const isProfileTab = item.id === 'saya' || item.id === 'base_profil' || item.id === 'profil' || item.id === 'admin_profil';
     if (isProfileTab) {
       useMobileSubtabSidebarStore.getState().close();
-      setIsAccountSheetOpen(true);
+      useMobileAccountSheetStore.getState().open();
       return;
     }
 
@@ -265,8 +266,8 @@ export const BottomNavigation: React.FC = React.memo(() => {
           <BottomNavNotchBackground
             theme={currentTheme}
             ecosystem={activeEcosystem}
-            notchWidth={100}
-            notchDepth={24}
+            notchWidth={activeTabsList.length >= 7 ? 82 : 100}
+            notchDepth={activeTabsList.length >= 7 ? 22 : 24}
             height={68}
           />
 
@@ -283,6 +284,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
                   theme={currentTheme}
                   onClick={handleTabClick}
                   isCenterElevated={isCenterItem}
+                  is7Tabs={activeTabsList.length >= 7}
                 />
               );
             })}
@@ -293,7 +295,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
       {/* ── SUBKOMPONEN 3: SHOPEE-GRADE MOBILE USER ACCOUNT SHEET (SAYA) ── */}
       <MobileAccountSheet
         isOpen={isAccountSheetOpen}
-        onClose={() => setIsAccountSheetOpen(false)}
+        onClose={() => useMobileAccountSheetStore.getState().close()}
       />
     </>
   );

@@ -10,6 +10,7 @@ export interface BottomNavTabItemProps {
   theme: EcosystemTheme;
   onClick: (item: MobileBottomTabItem) => void;
   isCenterElevated?: boolean;
+  is7Tabs?: boolean;
 }
 
 export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
@@ -19,6 +20,7 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
   theme,
   onClick,
   isCenterElevated = false,
+  is7Tabs = false,
 }) => {
   const user = useAuthStore((state) => state.user);
   const ItemIcon = item.icon;
@@ -31,19 +33,24 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
       <button
         type="button"
         onClick={() => onClick(item)}
-        className="w-[96px] sm:w-[104px] shrink-0 h-full flex flex-col items-center justify-end pb-2 select-none cursor-pointer relative group focus:outline-none z-20"
+        className={cn(
+          "shrink-0 h-full flex flex-col items-center justify-end pb-2 select-none cursor-pointer relative group focus:outline-none z-20",
+          is7Tabs ? "w-[76px] sm:w-[84px]" : "w-[96px] sm:w-[104px]"
+        )}
         aria-label={item.label}
       >
         <div
           className={cn(
-            "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 relative active:scale-95 -translate-y-2.5",
+            is7Tabs
+              ? "w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 relative active:scale-95 -translate-y-2"
+              : "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 relative active:scale-95 -translate-y-2.5",
             theme.fabClass || (theme.isLayer2 
               ? "bg-gradient-to-tr from-emerald-600 to-teal-700 text-white ring-4 ring-white dark:ring-slate-900 shadow-xl" 
               : "bg-indigo-600 dark:bg-indigo-500 text-white ring-4 ring-white dark:ring-slate-900 shadow-xl"),
             isHighlighted ? "scale-105 brightness-110 shadow-2xl" : "hover:scale-105"
           )}
         >
-          <ItemIcon size={21} className="stroke-[2.4] text-white transition-transform duration-200 group-hover:rotate-6" />
+          <ItemIcon size={is7Tabs ? 19 : 21} className="stroke-[2.4] text-white transition-transform duration-200 group-hover:rotate-6" />
 
           {item.badge && (
             <span className="absolute -top-1 -right-1 text-[8px] font-black px-1.5 py-0.5 rounded-full bg-rose-500 text-white shadow-md leading-none ring-2 ring-white dark:ring-slate-900">
@@ -54,7 +61,8 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
 
         <span
           className={cn(
-            "text-center tracking-tight text-[9.5px] sm:text-[10px] font-bold leading-none line-clamp-1",
+            "text-center tracking-tight font-bold leading-none line-clamp-1",
+            is7Tabs ? "text-[8.5px] sm:text-[9.5px]" : "text-[9.5px] sm:text-[10px]",
             isHighlighted ? theme.activeTextClass : theme.inactiveTextClass
           )}
         >
@@ -76,7 +84,8 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
       type="button"
       onClick={() => onClick(item)}
       className={cn(
-        'flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 transition-all duration-200 select-none flex-1 min-w-0 h-full cursor-pointer relative group',
+        'flex flex-col items-center justify-center gap-0.5 py-1 transition-all duration-200 select-none flex-1 min-w-0 h-full cursor-pointer relative group',
+        is7Tabs ? 'px-0' : 'px-0.5',
         isHighlighted
           ? theme.activeTextClass
           : theme.inactiveTextClass
@@ -84,7 +93,8 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
     >
       <div
         className={cn(
-          'px-2.5 py-1 rounded-full transition-all duration-200 relative flex items-center justify-center',
+          is7Tabs ? 'px-1.5 py-0.5' : 'px-2.5 py-1',
+          'rounded-full transition-all duration-200 relative flex items-center justify-center',
           isHighlighted
             ? theme.isLayer2
               ? 'bg-white/25 text-white ring-1 ring-white/50 shadow-2xs backdrop-blur-xs scale-105'
@@ -118,7 +128,7 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
           )
         ) : (
           <ItemIcon 
-            size={19} 
+            size={is7Tabs ? 18 : 19} 
             className={cn(
               "transition-all duration-150",
               isHighlighted ? "stroke-[2.4]" : "stroke-[1.8]"
@@ -135,7 +145,8 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
 
       <span 
         className={cn(
-          "max-w-[64px] text-center tracking-tight text-[9.5px] sm:text-[10px] leading-tight line-clamp-1 transition-colors duration-150 mt-0.5",
+          "text-center tracking-tight leading-tight line-clamp-1 transition-colors duration-150 mt-0.5 truncate",
+          is7Tabs ? "max-w-[50px] text-[8.5px] sm:text-[9px]" : "max-w-[64px] text-[9.5px] sm:text-[10px]",
           isHighlighted ? "font-extrabold" : "font-semibold opacity-85"
         )}
       >
