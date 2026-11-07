@@ -57,8 +57,9 @@ import { KaprogUkkTab } from './kaprog/tabs/KaprogUkkTab';
 import { KaprogCetakRaporTab } from './kaprog/tabs/KaprogCetakRaporTab';
 import { 
   UniversalMobileSubtabSidebar, 
-  useMobileSubtabSidebar 
-} from './common/UniversalMobileSubtabSidebar';
+  useMobileSubtabSidebar,
+  UniversalEcosystemTopbar,
+} from './common';
 import { 
   KaprogTabId, 
   KaprogCategory,
@@ -594,62 +595,61 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
 
   const isLoadingTotal = pklLoading && statsLoading;
 
+  const currentSubtabTitle = useMemo(() => {
+    switch (activeTab) {
+      case 'beranda': return 'Pusat Kendali Jurusan';
+      case 'siswa': return 'Data Siswa Jurusan';
+      case 'pkl': return 'Praktik Kerja Lapangan (PKL)';
+      case 'sidang_pkl': return 'Sidang & Pengujian PKL';
+      case 'kehadiran': return 'Presensi Rombel Jurusan';
+      case 'pelanggaran': return 'Catatan Kedisiplinan & Pelanggaran';
+      case 'prestasi': return 'Prestasi Siswa Jurusan';
+      case 'guru': return 'Guru Produktif Kejuruan';
+      case 'sarana': return 'Sarana Bengkel & Lab';
+      case 'ukk': return 'Uji Kompetensi Keahlian (UKK)';
+      case 'rapor': return 'Rapor & Rekap Nilai';
+      default: return 'Manajemen Jurusan';
+    }
+  }, [activeTab]);
+
   return (
     <div className="w-full max-w-full min-w-0 space-y-5">
-      {/* 1. Mobile Top Controls (< lg only: Identity + Action Buttons + Filter + Tab Pills) */}
-      <div className="flex lg:hidden flex-col gap-3">
-        {/* Mobile Identity Bar */}
-        <div className="flex items-center justify-between gap-3 p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-xs tracking-wider shrink-0 overflow-hidden">
-              {(resolvedJurusan as any)?.logo_url ? (
-                <img 
-                  src={(resolvedJurusan as any).logo_url} 
-                  alt={resolvedJurusan?.nama || 'Logo Jurusan'} 
-                  className="w-full h-full object-contain p-0.5"
-                />
-              ) : (
-                resolvedJurusan?.singkatan?.toUpperCase() || 'KUL'
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block leading-tight">
-                Program Keahlian
-              </span>
-              <h2 className="text-xs font-black text-slate-900 dark:text-slate-100 tracking-wider truncate uppercase">
-                {resolvedJurusan?.nama || 'KULINER'}
-              </h2>
-            </div>
-            {resolvedJurusan?.singkatan && (
-              <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40 shrink-0">
-                {resolvedJurusan.singkatan}
-              </span>
-            )}
-          </div>
+      {/* 1. Universal Topbar Selaras dengan Warna Bottom Nav (Amber Gold) */}
+      <UniversalEcosystemTopbar
+        ecosystem="kaprog"
+        title={currentSubtabTitle}
+        ecosystemBadge={resolvedJurusan?.singkatan?.toUpperCase() || 'KAPROG'}
+        subtitle={resolvedJurusan?.nama || 'Program Keahlian'}
+        icon={Briefcase}
+        onRefresh={() => {
+          refetchPkl();
+          refetchStats();
+        }}
+        isRefreshing={isLoadingTotal}
+        className="lg:hidden"
+        filterSlot={
+          <AcademicFilterToolbar
+            {...academicFilter.toolbarProps}
+            variant="compact"
+            className="w-full"
+          />
+        }
+        isFilterOpen={true}
+      />
 
-        </div>
-
-        {/* Mobile Academic Filter Toolbar */}
-        <AcademicFilterToolbar
-          {...academicFilter.toolbarProps}
-          variant="compact"
-          className="w-full"
-        />
-
-        {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
-        <UniversalMobileSubtabSidebar
-          isOpen={isMobileSidebarOpen}
-          onClose={() => setIsMobileSidebarOpen(false)}
-          title={resolvedJurusan?.nama || 'Program Keahlian'}
-          subtitle={resolvedJurusan?.singkatan ? `${resolvedJurusan.singkatan} • Kejuruan` : 'Manajemen Jurusan'}
-          roleBadge="KAPROG"
-          roleIcon={Briefcase}
-          tabs={navTabs}
-          activeTab={activeTab}
-          onSelectTab={(tabId) => handleTabSelect(tabId as KaprogTabId)}
-          categories={categories}
-        />
-      </div>
+      {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
+      <UniversalMobileSubtabSidebar
+        isOpen={isMobileSidebarOpen}
+        onClose={() => setIsMobileSidebarOpen(false)}
+        title={resolvedJurusan?.nama || 'Program Keahlian'}
+        subtitle={resolvedJurusan?.singkatan ? `${resolvedJurusan.singkatan} • Kejuruan` : 'Manajemen Jurusan'}
+        roleBadge="KAPROG"
+        roleIcon={Briefcase}
+        tabs={navTabs}
+        activeTab={activeTab}
+        onSelectTab={(tabId) => handleTabSelect(tabId as KaprogTabId)}
+        categories={categories}
+      />
 
       {/* 2. Desktop 2-Column Layout (>= lg: Left Sidebar Controls + Wide Main Content Canvas) */}
       <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-6 items-start">

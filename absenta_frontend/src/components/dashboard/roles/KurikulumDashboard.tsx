@@ -50,8 +50,9 @@ import { KurikulumDashboardSkeleton } from './kurikulum/KurikulumDashboardSkelet
 import type { KurikulumTabId, KurikulumNavTabItem } from './kurikulum/types';
 import { 
   UniversalMobileSubtabSidebar, 
-  useMobileSubtabSidebar 
-} from './common/UniversalMobileSubtabSidebar';
+  useMobileSubtabSidebar,
+  UniversalEcosystemTopbar,
+} from './common';
 import toast from 'react-hot-toast';
 
 // Tab Subcomponents
@@ -547,102 +548,86 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
 
   const isInitialLoading = lGuru && lKelas && lMapel;
 
+  const currentSubtabTitle = useMemo(() => {
+    switch (activeTab) {
+      case 'ringkasan': return 'Pusat Kendali Kurikulum';
+      case 'delegasi': return 'Jadwal & Delegasi Inval';
+      case 'rekap_kbm': return 'Realisasi KBM Harian';
+      case 'perangkat': return 'Verifikasi Perangkat Ajar';
+      case 'jadwal': return 'Jadwal Pelajaran KBM';
+      case 'plotting': return 'Plotting Beban Mengajar';
+      case 'atp': return 'Alur Tujuan Pembelajaran (ATP)';
+      case 'kosp': return 'KOSP & Kurikulum Operasional';
+      case 'struktur': return 'Struktur Kurikulum';
+      case 'supervisi': return 'Supervisi Kinerja Guru';
+      case 'rekap': return 'Rekapitulasi KBM & Absensi';
+      case 'penilaian': return 'Buku Nilai & Rapor';
+      case 'kalender': return 'Kalender Pendidikan';
+      case 'kokurikuler': return 'Kokurikuler & P5';
+      case 'pengumuman': return 'Pengumuman Akademik';
+      case 'jam_kbm': return 'Konfigurasi Jam Pelajaran';
+      case 'rekap_mapel': return 'Rekapitulasi Mata Pelajaran';
+      case 'settings': return 'Pengaturan Kurikulum';
+      default: return 'Dashboard Kurikulum';
+    }
+  }, [activeTab]);
+
   if (isInitialLoading) {
     return <KurikulumDashboardSkeleton />;
   }
 
   return (
     <div className="space-y-4 w-full max-w-full min-w-0">
-      {/* 1. Header Toolbar Mobile & Desktop */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xs">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <button
-              type="button"
-              onClick={() => {
-                if (window.history.state && window.history.state.idx > 0) {
-                  navigate(-1);
-                } else {
-                  navigate('/dashboard?tab=ringkasan');
-                }
-              }}
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition-all shrink-0 cursor-pointer"
-              title="Kembali ke Portal"
-              aria-label="Kembali"
-            >
-              <ArrowLeft size={18} className="stroke-[2.2]" />
-            </button>
+      {/* 1. Universal Topbar Selaras dengan Warna Bottom Nav (Emerald Green) */}
+      <UniversalEcosystemTopbar
+        ecosystem="kurikulum"
+        title={currentSubtabTitle}
+        ecosystemBadge="KURIKULUM"
+        subtitle={tpTahun ? `TP ${tpTahun} • ${semNama}` : undefined}
+        description="Manajemen KBM, Beban Mengajar, Supervisi, & Pelaporan Akademik"
+        icon={BookOpen}
+        onRefresh={handleRefresh}
+        isRefreshing={isRefreshing}
+        actions={
+          <button
+            type="button"
+            onClick={() => setShowMobileFilter((prev) => !prev)}
+            className={cn(
+              'lg:hidden p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95',
+              showMobileFilter
+                ? 'bg-white text-emerald-800 shadow-xs'
+                : 'bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25 backdrop-blur-xs'
+            )}
+            title="Atur Periode Akademik"
+            aria-label="Atur Periode Akademik"
+          >
+            <SlidersHorizontal size={13} />
+            <span className="hidden sm:inline">Periode</span>
+          </button>
+        }
+        filterSlot={
+          <AcademicFilterToolbar
+            {...academicFilter.toolbarProps}
+            variant="compact"
+            className="w-full"
+          />
+        }
+        isFilterOpen={showMobileFilter}
+      />
 
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100 truncate">
-                  Dashboard Kurikulum
-                </h1>
-                <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium truncate hidden sm:inline">
-                  &bull; {tpTahun ? `TP ${tpTahun}` : ''} {semNama}
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate hidden md:block">
-                Manajemen KBM, Beban Mengajar, Supervisi, & Pelaporan Akademik
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
-              title="Segarkan Data"
-            >
-              <RefreshCw size={13} className={cn(isRefreshing && 'animate-spin')} />
-              <span className="hidden sm:inline">Segarkan</span>
-            </button>
-
-            {/* Tombol Toggle Filter Periode (Khusus Mobile) */}
-            <button
-              type="button"
-              onClick={() => setShowMobileFilter((prev) => !prev)}
-              className={cn(
-                'lg:hidden p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer',
-                showMobileFilter
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/60 dark:border-emerald-800 dark:text-emerald-300'
-                  : 'bg-white dark:bg-slate-800 border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-200'
-              )}
-              title="Atur Periode Akademik"
-            >
-              <SlidersHorizontal size={13} />
-              <span className="hidden sm:inline">Periode</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Collapsible Academic Filter Toolbar Mobile */}
-        {showMobileFilter && (
-          <div className="lg:hidden mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2 duration-200">
-            <AcademicFilterToolbar
-              {...academicFilter.toolbarProps}
-              variant="compact"
-              className="w-full"
-            />
-          </div>
-        )}
-
-        {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
-        <UniversalMobileSubtabSidebar
-          isOpen={isMobileSidebarOpen}
-          onClose={() => setIsMobileSidebarOpen(false)}
-          title="Dashboard Kurikulum"
-          subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • ${semNama}`}
-          roleBadge="KURIKULUM"
-          roleIcon={BookOpen}
-          tabs={navTabs}
-          activeTab={activeTab}
-          onSelectTab={(tabId) => handleTabSelect(tabId as KurikulumTabId)}
-          categories={kurikulumCategories}
-        />
-      </div>
+      {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
+      <UniversalMobileSubtabSidebar
+        isOpen={isMobileSidebarOpen}
+        onClose={() => setIsMobileSidebarOpen(false)}
+        title="Dashboard Kurikulum"
+        subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • ${semNama}`}
+        roleBadge="KURIKULUM"
+        roleIcon={BookOpen}
+        tabs={navTabs}
+        activeTab={activeTab}
+        onSelectTab={(tabId) => handleTabSelect(tabId as KurikulumTabId)}
+        categories={kurikulumCategories}
+      />
 
       {/* 2. Desktop 2-Column Layout (>= lg: Left Sidebar Controls + Wide Main Content Canvas) */}
       <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-6 items-start">

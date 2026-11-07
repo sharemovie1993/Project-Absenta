@@ -30,8 +30,9 @@ import { SatpamPelanggaranTab } from './tabs/SatpamPelanggaranTab';
 import { SatpamTrafficTab } from './tabs/SatpamTrafficTab';
 import { 
   UniversalMobileSubtabSidebar, 
-  useMobileSubtabSidebar 
-} from '../common/UniversalMobileSubtabSidebar';
+  useMobileSubtabSidebar,
+  UniversalEcosystemTopbar,
+} from '../common';
 import type { 
   SatpamTabType, 
   SatpamStats, 
@@ -213,10 +214,33 @@ export const SatpamDashboard: React.FC = () => {
     return <SatpamDashboardSkeleton />;
   }
 
+  const currentSubtabTitle = useMemo(() => {
+    switch (currentTab) {
+      case 'scan': return 'Presensi Scan Gerbang';
+      case 'buku_tamu': return 'Buku Tamu & Pengunjung';
+      case 'izin_keluar': return 'Izin Keluar Kampus Siswa';
+      case 'pelanggaran': return 'Catatan Pelanggaran Gerbang';
+      case 'traffic': return 'Trafik & Monitoring Gerbang';
+      default: return 'Pos Keamanan Satpam';
+    }
+  }, [currentTab]);
+
   return (
     <div className="space-y-4 sm:space-y-5">
-      {/* ── 1. HERO POS SATPAM BANNER ──────────────────────── */}
-      <div className="p-4 sm:p-6 rounded-3xl bg-slate-900 text-white border border-slate-800 shadow-xl space-y-4">
+      {/* ── 1A. MOBILE TOPBAR SELARAS DENGAN WARNA BOTTOM NAV (ROSE RED) ── */}
+      <UniversalEcosystemTopbar
+        ecosystem="satpam"
+        title={currentSubtabTitle}
+        ecosystemBadge="KESISWAAN • SATPAM"
+        subtitle="Pos Utama • Terminal RFID"
+        icon={ShieldCheck}
+        onRefresh={() => refetch()}
+        isRefreshing={isLoading}
+        className="lg:hidden"
+      />
+
+      {/* ── 1B. HERO POS SATPAM BANNER (DESKTOP) ──────────────────────── */}
+      <div className="hidden lg:block p-4 sm:p-6 rounded-3xl bg-slate-900 text-white border border-slate-800 shadow-xl space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-rose-600/20 text-rose-500 border border-rose-500/30 flex items-center justify-center shrink-0 shadow-lg shadow-rose-950/50">

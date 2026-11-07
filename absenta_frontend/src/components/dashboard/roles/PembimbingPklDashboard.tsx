@@ -26,8 +26,9 @@ import { PklRekapTab } from './pembimbing-pkl/tabs/PklRekapTab';
 import { extractLogbooksFromPenempatan, rejectLogbookAction, mapSiswaBimbingan } from './pembimbing-pkl/logbookUtils';
 import { 
   UniversalMobileSubtabSidebar, 
-  useMobileSubtabSidebar 
-} from './common/UniversalMobileSubtabSidebar';
+  useMobileSubtabSidebar,
+  UniversalEcosystemTopbar,
+} from './common';
 
 const AbsensiPklView = lazy(() =>
   import('@/components/hubin/absensi/AbsensiPklView').then((m) => ({ default: m.AbsensiPklView }))
@@ -368,81 +369,60 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
     }
   }, [activeTab, handleTabSelect, navigate]);
 
+  const currentSubtabTitle = useMemo(() => {
+    switch (activeTab) {
+      case 'ringkasan': return 'Pusat Kendali Pembimbing PKL';
+      case 'bimbingan': return 'Data Siswa Bimbingan';
+      case 'verifikasi_absensi': return 'Verifikasi Presensi DU/DI';
+      case 'absensi': return 'Rekap Presensi Siswa';
+      case 'jurnal': return 'Review Jurnal & Logbook';
+      case 'monitoring': return 'Monitoring & Supervisi Industri';
+      case 'penilaian': return 'Penilaian Pembimbing DU/DI';
+      case 'rekap': return 'Rekapitulasi & Cetak Nilai';
+      default: return 'Dashboard Pembimbing PKL';
+    }
+  }, [activeTab]);
+
   return (
     <PremiumFeatureGate feature="hubin">
       <div className="space-y-4 w-full max-w-full min-w-0">
-        {/* 1. Shopee-Grade Clean Header */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xs">
-          <div className="flex items-center justify-between gap-2.5">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleBackNavigation}
-                title={activeTab !== 'ringkasan' ? 'Kembali ke Ringkasan PKL' : 'Kembali ke Portal Guru'}
-                className="lg:hidden p-1.5 h-8 w-8 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 shrink-0 cursor-pointer"
-              >
-                <ArrowLeft size={16} />
-              </Button>
-              {/* Ikon disembunyikan di mobile agar teks judul tampil penuh tanpa terpotong */}
-              <div className="hidden sm:flex w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 items-center justify-center shrink-0">
-                {activeTab === 'ringkasan' ? (
-                  <Briefcase size={18} className="sm:w-5 sm:h-5" />
-                ) : (
-                  <activeTabMeta.icon size={18} className="sm:w-5 sm:h-5" />
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <h1 className="text-sm sm:text-lg font-black tracking-tight text-slate-900 dark:text-white truncate">
-                    {activeTab === 'ringkasan' ? (
-                      <>
-                        <span className="hidden sm:inline">Dashboard </span>Pembimbing PKL
-                      </>
-                    ) : (
-                      activeTabMeta.label
-                    )}
-                  </h1>
-                  <Badge variant="outline" className="hidden sm:inline-flex text-[9px] sm:text-[10px] font-bold text-teal-600 dark:text-teal-400 px-1.5 py-0 shrink-0">
-                    DU/DI
-                  </Badge>
-                </div>
-                <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
-                  {activeTab === 'ringkasan' ? 'Monitoring & Pembimbingan PKL' : 'Pembimbing PKL'}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5 shrink-0">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowMobileFilter(!showMobileFilter)}
-                className="sm:hidden text-xs font-bold rounded-xl h-8 px-2"
-                title="Filter Tahun Pelajaran / Semester"
-              >
-                <SlidersHorizontal size={13} className="mr-1 text-teal-600" />
-                Filter
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="text-xs font-bold rounded-xl h-8 px-2 sm:px-3 gap-1"
-                title="Perbarui Data"
-              >
-                <RefreshCw size={13} className={cn(isRefreshing && 'animate-spin text-teal-600')} />
-                <span className="hidden sm:inline">Perbarui</span>
-              </Button>
-            </div>
-          </div>
-
-          {/* Academic Filter Toolbar */}
-          <div className={cn('mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800', !showMobileFilter && 'hidden sm:block')}>
-            <AcademicFilterToolbar {...academicFilter.toolbarProps} variant="compact" />
-          </div>
-        </div>
+        {/* 1. Universal Topbar Selaras dengan Divisi WAKA Hubin (Orange Hubin) */}
+        <UniversalEcosystemTopbar
+          ecosystem="pembimbing_pkl"
+          title={currentSubtabTitle}
+          ecosystemBadge="HUBINMAS • PEMBIMBING"
+          subtitle={`${academicFilter.selectedTpNama || '2026/2027'} • DU/DI Kemitraan`}
+          description="Monitoring Siswa di DU/DI, Verifikasi Jurnal PKL, Supervisi, & Penilaian"
+          icon={Briefcase}
+          onRefresh={handleRefresh}
+          isRefreshing={isRefreshing}
+          onBack={handleBackNavigation}
+          actions={
+            <button
+              type="button"
+              onClick={() => setShowMobileFilter(!showMobileFilter)}
+              className={cn(
+                'sm:hidden p-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95',
+                showMobileFilter
+                  ? 'bg-white text-orange-800 shadow-xs'
+                  : 'bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25 backdrop-blur-xs'
+              )}
+              title="Atur Periode Akademik"
+              aria-label="Atur Periode Akademik"
+            >
+              <SlidersHorizontal size={13} />
+              <span className="hidden sm:inline">Periode</span>
+            </button>
+          }
+          filterSlot={
+            <AcademicFilterToolbar
+              {...academicFilter.toolbarProps}
+              variant="compact"
+              className="w-full"
+            />
+          }
+          isFilterOpen={showMobileFilter}
+        />
 
         {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
         <UniversalMobileSubtabSidebar
@@ -463,20 +443,20 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
           <aside className="hidden lg:block sticky top-20 space-y-3.5">
             <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-3">
               <div className="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-600 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
                   <UserCheck size={18} />
                 </div>
                 <div className="min-w-0">
                   <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">{user?.full_name || 'Guru Pembimbing'}</h4>
-                  <p className="text-[10px] text-teal-600 dark:text-teal-400 font-bold truncate">Pembimbing PKL</p>
+                  <p className="text-[10px] text-orange-600 dark:text-orange-400 font-bold truncate">Pembimbing PKL</p>
                 </div>
               </div>
 
               {/* Status Banner */}
-              <div className="p-2.5 rounded-xl bg-teal-50/70 dark:bg-teal-950/40 border border-teal-100 dark:border-teal-900/40 text-[11px] text-teal-900 dark:text-teal-300">
-                <span className="font-bold block text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Tahun Pelajaran</span>
+              <div className="p-2.5 rounded-xl bg-orange-50/70 dark:bg-orange-950/40 border border-orange-100 dark:border-orange-900/40 text-[11px] text-orange-900 dark:text-orange-300">
+                <span className="font-bold block text-[10px] uppercase tracking-wider text-orange-600 dark:text-orange-400">Tahun Pelajaran</span>
                 <span className="font-extrabold">{tpTahun || '2026/2027'}</span>
-                <span className="text-[10px] text-teal-700/80 dark:text-teal-400/80 block mt-0.5">{semesterNama || 'Semester Ganjil'}</span>
+                <span className="text-[10px] text-orange-700/80 dark:text-orange-400/80 block mt-0.5">{semesterNama || 'Semester Ganjil'}</span>
               </div>
 
               {/* Vertical Tab Navigation */}

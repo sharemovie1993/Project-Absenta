@@ -27,7 +27,11 @@ import { getTuStats } from '@/api/dashboard.api';
 import { TuBerandaTab } from './tu/tabs/TuBerandaTab';
 import type { TuTabId, TuNavTabItem, TuStatsData } from './tu/types';
 import { DivisiStrukturOrganisasiView } from '@/components/academic/struktur/DivisiStrukturOrganisasiView';
-import { UniversalMobileSubtabSidebar, useMobileSubtabSidebar } from './common/UniversalMobileSubtabSidebar';
+import { 
+  UniversalMobileSubtabSidebar, 
+  useMobileSubtabSidebar,
+  UniversalEcosystemTopbar,
+} from './common';
 
 // Code-splitting Universal Views (Pilar 21B & TBT Optimization)
 const SuratMasukView = lazy(() =>
@@ -229,10 +233,45 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
   const userNip = currentUser?.nip || '199401352010011134';
   const userRole = currentUser?.role?.name || currentUser?.jabatan || 'Kepala Tata Usaha';
 
+  const currentSubtabTitle = useMemo(() => {
+    switch (activeTab) {
+      case 'ringkasan': return 'Pusat Administrasi & Arsip Tata Usaha';
+      case 'surat_masuk': return 'Agenda Surat Masuk';
+      case 'surat_keluar': return 'Agenda Surat Keluar';
+      case 'buku_induk': return 'Buku Induk & Klapper Siswa';
+      case 'surat_keterangan': return 'Penerbitan Surat Keterangan';
+      case 'mutasi': return 'Mutasi & Perpindahan Siswa';
+      case 'ijazah': return 'Berita Acara & Ijazah Siswa';
+      case 'dkn': return 'Daftar Kumpulan Nilai (DKN)';
+      case 'kepegawaian': return 'Data Kepegawaian & PTK';
+      case 'dapodik': return 'Sinkronisasi Data Dapodik';
+      case 'struktur_organisasi': return 'Struktur Organisasi Tata Usaha';
+      default: return 'Dashboard Tata Usaha';
+    }
+  }, [activeTab]);
+
   return (
     <div className="space-y-6">
-      {/* ─── 1. TOP HEADER BANNER: IDENTITAS RESMI (EXACT MATCH KAPROGDASHBOARD) ─── */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-5 sm:p-6 rounded-2xl shadow-lg relative overflow-hidden">
+      {/* ─── 1A. MOBILE TOPBAR SELARAS WARNA BOTTOM NAV (INDIGO-SLATE) ─── */}
+      <UniversalEcosystemTopbar
+        ecosystem="tu"
+        title={currentSubtabTitle}
+        ecosystemBadge="TATA USAHA"
+        subtitle={`TP ${academicFilter.selectedTpNama || '2026/2027'} • ${academicFilter.selectedSemNama || 'Semester Ganjil'}`}
+        icon={Building2}
+        className="lg:hidden"
+        filterSlot={
+          <AcademicFilterToolbar
+            {...academicFilter.toolbarProps}
+            variant="compact"
+            className="w-full"
+          />
+        }
+        isFilterOpen={true}
+      />
+
+      {/* ─── 1B. DESKTOP HEADER BANNER: IDENTITAS RESMI (EXACT MATCH KAPROGDASHBOARD) ─── */}
+      <div className="hidden lg:block bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-5 sm:p-6 rounded-2xl shadow-lg relative overflow-hidden">
         <div className="absolute right-0 top-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
@@ -269,14 +308,8 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
         </div>
       </div>
 
-      {/* ─── MOBILE CONTROLS (< lg): COMPACT FILTER & MOBILE SUBTAB SIDEBAR ─── */}
+      {/* ─── MOBILE CONTROLS (< lg): MOBILE SUBTAB SIDEBAR ─── */}
       <div className="lg:hidden space-y-3">
-        <AcademicFilterToolbar
-          {...academicFilter.toolbarProps}
-          variant="compact"
-          className="w-full"
-        />
-
         {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
         <UniversalMobileSubtabSidebar
           isOpen={isMobileSidebarOpen}

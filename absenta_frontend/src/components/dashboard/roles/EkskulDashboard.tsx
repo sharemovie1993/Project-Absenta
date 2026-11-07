@@ -34,8 +34,9 @@ import { EkskulJadwalTab } from './ekskul/tabs/EkskulJadwalTab';
 import { EkskulRekapTab } from './ekskul/tabs/EkskulRekapTab';
 import { 
   UniversalMobileSubtabSidebar, 
-  useMobileSubtabSidebar 
-} from './common/UniversalMobileSubtabSidebar';
+  useMobileSubtabSidebar,
+  UniversalEcosystemTopbar,
+} from './common';
 
 export interface EkskulDashboardProps {
   user?: {
@@ -223,82 +224,56 @@ export const EkskulDashboard: React.FC<EkskulDashboardProps> = () => {
     return navTabs.find((t) => t.id === activeTab) || navTabs[0];
   }, [navTabs, activeTab]);
 
+  const currentSubtabTitle = useMemo(() => {
+    switch (activeTab) {
+      case 'ringkasan': return 'Pusat Kendali Ekstrakurikuler';
+      case 'anggota': return 'Data Anggota & Registrasi Eskul';
+      case 'nilai': return 'Penilaian Pembina Eskul';
+      case 'jadwal': return 'Jadwal & Agenda Latihan Mingguan';
+      case 'rekap': return 'Rekapitulasi & Cetak Nilai Eskul';
+      default: return 'Dashboard Ekstrakurikuler';
+    }
+  }, [activeTab]);
+
   return (
     <PremiumFeatureGate feature="kesiswaan">
       <div className="space-y-4 w-full max-w-full min-w-0">
-        {/* 1. Shopee-Grade Clean Header */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-xs">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-              {activeTab !== 'ringkasan' && (
-                <button
-                  type="button"
-                  onClick={() => handleTabSelect('ringkasan')}
-                  className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shrink-0 cursor-pointer"
-                  title="Kembali ke Beranda Ekstrakurikuler"
-                  aria-label="Kembali ke Beranda"
-                >
-                  <ArrowLeft size={16} />
-                </button>
+        {/* 1. Universal Topbar Selaras dengan Divisi WAKA Kesiswaan (Rose Red) */}
+        <UniversalEcosystemTopbar
+          ecosystem="ekskul"
+          title={currentSubtabTitle}
+          ecosystemBadge="KESISWAAN • EKSKUL"
+          subtitle={tpTahun ? `TP ${tpTahun} • ${semesterNama}` : undefined}
+          description="Manajemen Anggota Ekskul, Jadwal Latihan, Penilaian, & Rekapitulasi Nilai"
+          icon={Compass}
+          onRefresh={handleRefresh}
+          isRefreshing={isRefreshing}
+          actions={
+            <button
+              type="button"
+              onClick={() => setShowMobileFilter((prev) => !prev)}
+              className={cn(
+                'lg:hidden p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95',
+                showMobileFilter
+                  ? 'bg-white text-rose-800 shadow-xs'
+                  : 'bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25 backdrop-blur-xs'
               )}
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md">
-                    Pembina Ekstrakurikuler
-                  </span>
-                  <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
-                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 hidden sm:inline">
-                    {tpTahun ? `TP ${tpTahun}` : 'Aktif'}
-                  </span>
-                </div>
-                <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight truncate mt-0.5">
-                  {activeTab === 'ringkasan' ? 'Pusat Kendali Ekstrakurikuler & Organisasi' : activeTabMeta.label}
-                </h1>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Mobile Filter Toggle */}
-              <button
-                type="button"
-                onClick={() => setShowMobileFilter((prev) => !prev)}
-                className={cn(
-                  'lg:hidden px-2.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer',
-                  showMobileFilter
-                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300'
-                    : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
-                )}
-                aria-label="Filter Akademik"
-              >
-                <SlidersHorizontal size={14} />
-                <span className="hidden sm:inline">Filter</span>
-              </button>
-
-              {/* Quick Trigger Subtab Sidebar */}
-              {/* Refresh Button */}
-              <button
-                type="button"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer disabled:opacity-50"
-                title="Segarkan Data"
-              >
-                <RefreshCw size={14} className={cn(isRefreshing && 'animate-spin')} />
-              </button>
-            </div>
-          </div>
-
-          {/* Collapsible Mobile Filter Toolbar */}
-          {showMobileFilter && (
-            <div className="lg:hidden mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2 duration-200">
-              <AcademicFilterToolbar
-                {...academicFilter.toolbarProps}
-                variant="compact"
-                className="w-full"
-              />
-            </div>
-          )}
-        </div>
+              title="Atur Periode Akademik"
+              aria-label="Atur Periode Akademik"
+            >
+              <SlidersHorizontal size={13} />
+              <span className="hidden sm:inline">Periode</span>
+            </button>
+          }
+          filterSlot={
+            <AcademicFilterToolbar
+              {...academicFilter.toolbarProps}
+              variant="compact"
+              className="w-full"
+            />
+          }
+          isFilterOpen={showMobileFilter}
+        />
 
         {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
         <UniversalMobileSubtabSidebar

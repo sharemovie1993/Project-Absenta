@@ -39,8 +39,9 @@ import { HubinSettingsTab } from './hubin/tabs/HubinSettingsTab';
 import { DivisiStrukturOrganisasiView } from '@/components/academic/struktur/DivisiStrukturOrganisasiView';
 import { 
   UniversalMobileSubtabSidebar, 
-  useMobileSubtabSidebar 
-} from './common/UniversalMobileSubtabSidebar';
+  useMobileSubtabSidebar,
+  UniversalEcosystemTopbar,
+} from './common';
 
 export interface HubinDashboardProps {
   user?: {
@@ -236,6 +237,22 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
     }
   };
 
+  const currentSubtabTitle = useMemo(() => {
+    switch (activeTab) {
+      case 'ringkasan': return 'Pusat Kendali Hubin & Kemitraan';
+      case 'mitra': return 'Dunia Usaha & Industri (DUDI)';
+      case 'penempatan': return 'Penempatan & Monitoring PKL';
+      case 'absensi': return 'Presensi Harian Siswa PKL';
+      case 'nilai': return 'Penilaian Pembimbing & Penguji';
+      case 'bkk': return 'Bursa Kerja Khusus & Lowongan';
+      case 'tracer': return 'Tracer Study & Alumni Sekolah';
+      case 'rekap': return 'Rekapitulasi & Cetak Dokumen';
+      case 'pengaturan': return 'Pengaturan & Kuota Industri';
+      case 'struktur_organisasi': return 'Struktur Organisasi Hubinmas';
+      default: return 'Dashboard Hubin';
+    }
+  }, [activeTab]);
+
   if (loadingStats && !stats) {
     return <HubinDashboardSkeleton />;
   }
@@ -247,94 +264,53 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
       description="Pusat kolaborasi terpadu antara sekolah dengan dunia industri, mencakup pengelolaan mitra, MoU, program PKL, BKK lowongan kerja, Tracer Study alumni, dan Teaching Factory."
     >
       <div className="space-y-4 w-full max-w-full min-w-0">
-        {/* 1. Header Toolbar Mobile & Desktop */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xs">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <button
-                type="button"
-                onClick={() => {
-                  if (window.history.state && window.history.state.idx > 0) {
-                    navigate(-1);
-                  } else {
-                    navigate('/dashboard?tab=ringkasan');
-                  }
-                }}
-                className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition-all shrink-0 cursor-pointer"
-                title="Kembali ke Portal"
-                aria-label="Kembali"
-              >
-                <ArrowLeft size={18} className="stroke-[2.2]" />
-              </button>
-
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100 truncate">
-                    Dashboard Hubin
-                  </h1>
-                  <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium truncate hidden sm:inline">
-                    &bull; {tpTahun ? `TP ${tpTahun}` : ''} {semNama}
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate hidden md:block">
-                  Kemitraan Industri, Praktik Kerja Lapangan, Bursa Kerja & Tracer Study Alumni
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5 shrink-0">
-              {/* TV Mode Shortcut */}
+        {/* 1. Universal Topbar Selaras dengan Warna Bottom Nav (Orange Hubin) */}
+        <UniversalEcosystemTopbar
+          ecosystem="hubin"
+          title={currentSubtabTitle}
+          ecosystemBadge="HUBINMAS"
+          subtitle={tpTahun ? `TP ${tpTahun} • ${semNama}` : undefined}
+          description="Kemitraan Industri, Praktik Kerja Lapangan, Bursa Kerja & Tracer Study Alumni"
+          icon={Briefcase}
+          onRefresh={handleRefresh}
+          isRefreshing={isRefreshing}
+          actions={
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <button
                 type="button"
                 onClick={() => navigate('/hubin/dashboard')}
-                className="px-2.5 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25 backdrop-blur-xs"
                 title="Buka Mode TV Monitor Hubin"
               >
-                <Tv size={14} />
+                <Tv size={13} />
                 <span className="hidden sm:inline">Layar TV</span>
               </button>
-
-              {/* Mobile Filter Toggle */}
               <button
                 type="button"
                 onClick={() => setShowMobileFilter((prev) => !prev)}
                 className={cn(
-                  'lg:hidden px-2.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer',
+                  'lg:hidden p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95',
                   showMobileFilter
-                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300'
-                    : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+                    ? 'bg-white text-orange-800 shadow-xs'
+                    : 'bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25 backdrop-blur-xs'
                 )}
-                aria-label="Filter Akademik"
+                title="Atur Periode Akademik"
+                aria-label="Atur Periode Akademik"
               >
-                <SlidersHorizontal size={14} />
-                <span className="hidden sm:inline">Filter</span>
-              </button>
-
-              {/* Quick Trigger Subtab Sidebar */}
-              {/* Refresh Button */}
-              <button
-                type="button"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer disabled:opacity-50"
-                title="Segarkan Data"
-              >
-                <RefreshCw size={14} className={cn(isRefreshing && 'animate-spin')} />
+                <SlidersHorizontal size={13} />
+                <span className="hidden sm:inline">Periode</span>
               </button>
             </div>
-          </div>
-
-          {/* Collapsible Academic Filter Toolbar Mobile */}
-          {showMobileFilter && (
-            <div className="lg:hidden mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2 duration-200">
-              <AcademicFilterToolbar
-                {...academicFilter.toolbarProps}
-                variant="compact"
-                className="w-full"
-              />
-            </div>
-          )}
-        </div>
+          }
+          filterSlot={
+            <AcademicFilterToolbar
+              {...academicFilter.toolbarProps}
+              variant="compact"
+              className="w-full"
+            />
+          }
+          isFilterOpen={showMobileFilter}
+        />
 
         {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
         <UniversalMobileSubtabSidebar
@@ -356,11 +332,11 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
             {/* Identitas Hubin Ringkas */}
             <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-xs tracking-wider shrink-0 overflow-hidden shadow-xs">
+                <div className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-950/60 border border-orange-200/60 dark:border-orange-800/60 text-orange-600 dark:text-orange-400 flex items-center justify-center font-black text-xs tracking-wider shrink-0 overflow-hidden shadow-xs">
                   <Briefcase className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block leading-tight">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400 block leading-tight">
                     Hubungan Industri
                   </span>
                   <h2 className="text-sm font-black text-slate-900 dark:text-slate-100 tracking-wider truncate uppercase">

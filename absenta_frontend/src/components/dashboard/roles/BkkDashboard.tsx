@@ -32,8 +32,9 @@ import { BkkRekapTab } from './bkk/tabs/BkkRekapTab';
 import { DivisiStrukturOrganisasiView } from '@/components/academic/struktur/DivisiStrukturOrganisasiView';
 import { 
   UniversalMobileSubtabSidebar, 
-  useMobileSubtabSidebar 
-} from './common/UniversalMobileSubtabSidebar';
+  useMobileSubtabSidebar,
+  UniversalEcosystemTopbar,
+} from './common';
 
 export interface BkkDashboardProps {
   user?: {
@@ -238,6 +239,19 @@ export const BkkDashboard: React.FC<BkkDashboardProps> = () => {
     return navTabs.find((t) => t.id === activeTab) || navTabs[0];
   }, [navTabs, activeTab]);
 
+  const currentSubtabTitle = useMemo(() => {
+    switch (activeTab) {
+      case 'ringkasan': return 'Pusat Karir & Bursa Kerja Khusus';
+      case 'loker': return 'Informasi Lowongan Kerja (Loker)';
+      case 'pelamar': return 'Data Pelamar Kerja Siswa/Alumni';
+      case 'tracer': return 'Tracer Study & Alumni Sekolah';
+      case 'mitra': return 'Mitra Rekrutmen Perusahaan';
+      case 'rekap': return 'Rekapitulasi & Cetak Dokumen BKK';
+      case 'struktur_organisasi': return 'Struktur Organisasi BKK';
+      default: return 'Dashboard BKK';
+    }
+  }, [activeTab]);
+
   return (
     <PremiumFeatureGate
       moduleName="HUBIN"
@@ -245,92 +259,55 @@ export const BkkDashboard: React.FC<BkkDashboardProps> = () => {
       description="Pusat informasi lowongan pekerjaan industri, verifikasi lamaran kerja siswa/alumni, dan pemantauan tracer study keterserapan lulusan."
     >
       <div className="space-y-4 w-full max-w-full min-w-0">
-        {/* 1. Shopee-Grade Clean Header */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-xs">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-              {activeTab !== 'ringkasan' && (
-                <button
-                  type="button"
-                  onClick={() => handleTabSelect('ringkasan')}
-                  className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shrink-0 cursor-pointer"
-                  title="Kembali ke Beranda BKK"
-                  aria-label="Kembali ke Beranda"
-                >
-                  <ArrowLeft size={16} />
-                </button>
+        {/* 1. Universal Topbar Selaras dengan Divisi WAKA Hubin (Orange Hubin) */}
+        <UniversalEcosystemTopbar
+          ecosystem="bkk"
+          title={currentSubtabTitle}
+          ecosystemBadge="HUBINMAS • BKK"
+          subtitle={tpTahun ? `TP ${tpTahun} • Karir & Penyaluran` : undefined}
+          description="Pusat Karir Industri, Lowongan Pekerjaan, Pelamar Kerja, & Tracer Study"
+          icon={Briefcase}
+          onRefresh={handleRefresh}
+          isRefreshing={isRefreshing}
+          actions={
+            <button
+              type="button"
+              onClick={() => setShowMobileFilter((prev) => !prev)}
+              className={cn(
+                'lg:hidden p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95',
+                showMobileFilter
+                  ? 'bg-white text-orange-800 shadow-xs'
+                  : 'bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25 backdrop-blur-xs'
               )}
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md">
-                    Bursa Kerja Khusus
-                  </span>
-                  <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
-                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 hidden sm:inline">
-                    {tpTahun ? `TP ${tpTahun}` : 'Aktif'}
-                  </span>
-                </div>
-                <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight truncate mt-0.5">
-                  {activeTab === 'ringkasan' ? 'Pusat Karir & Penyaluran Alumni (BKK)' : activeTabMeta.label}
-                </h1>
-              </div>
-            </div>
+              title="Atur Periode Akademik"
+              aria-label="Atur Periode Akademik"
+            >
+              <SlidersHorizontal size={13} />
+              <span className="hidden sm:inline">Periode</span>
+            </button>
+          }
+          filterSlot={
+            <AcademicFilterToolbar
+              {...academicFilter.toolbarProps}
+              variant="compact"
+              className="w-full"
+            />
+          }
+          isFilterOpen={showMobileFilter}
+        />
 
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Mobile Filter Toggle */}
-              <button
-                type="button"
-                onClick={() => setShowMobileFilter((prev) => !prev)}
-                className={cn(
-                  'lg:hidden px-2.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer',
-                  showMobileFilter
-                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
-                    : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
-                )}
-                aria-label="Filter Akademik"
-              >
-                <SlidersHorizontal size={14} />
-                <span className="hidden sm:inline">Filter</span>
-              </button>
-
-              {/* Quick Trigger Subtab Sidebar */}
-              {/* Refresh Button */}
-              <button
-                type="button"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer disabled:opacity-50"
-                title="Segarkan Data"
-              >
-                <RefreshCw size={14} className={cn(isRefreshing && 'animate-spin')} />
-              </button>
-            </div>
-          </div>
-
-          {/* Collapsible Mobile Filter Toolbar */}
-          {showMobileFilter && (
-            <div className="lg:hidden mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2 duration-200">
-              <AcademicFilterToolbar
-                {...academicFilter.toolbarProps}
-                variant="compact"
-                className="w-full"
-              />
-            </div>
-          )}
-
-          {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
-          <UniversalMobileSubtabSidebar
-            isOpen={isMobileSidebarOpen}
-            onClose={() => setIsMobileSidebarOpen(false)}
-            title="Bursa Kerja Khusus"
-            subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • Karir & Penyaluran`}
-            roleBadge="BKK"
-            roleIcon={Briefcase}
-            tabs={navTabs}
-            activeTab={activeTab}
-            onSelectTab={(tabId) => handleTabSelect(tabId as BkkTabId)}
-          />
-        </div>
+        {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
+        <UniversalMobileSubtabSidebar
+          isOpen={isMobileSidebarOpen}
+          onClose={() => setIsMobileSidebarOpen(false)}
+          title="Bursa Kerja Khusus"
+          subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • Karir & Penyaluran`}
+          roleBadge="BKK"
+          roleIcon={Briefcase}
+          tabs={navTabs}
+          activeTab={activeTab}
+          onSelectTab={(tabId) => handleTabSelect(tabId as BkkTabId)}
+        />
 
         {/* 2. Desktop 2-Column Sidebar Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-6 items-start">

@@ -33,7 +33,8 @@ import {
   UniversalMobileSubtabSidebar, 
   useMobileSubtabSidebar,
   type UniversalSubtabCategory,
-} from './common/UniversalMobileSubtabSidebar';
+  UniversalEcosystemTopbar,
+} from './common';
 
 // Components
 import { SiswaHeaderBanner } from './siswa/components/SiswaHeaderBanner';
@@ -229,78 +230,56 @@ export const SiswaDashboard: React.FC = () => {
     return renderApiValue(val, customConnectedText, data.isApiConnected);
   };
 
+  const currentSubtabTitle = useMemo(() => {
+    switch (activeTab) {
+      case 'ringkasan': return 'Pusat Kendali Siswa';
+      case 'kehadiran': return 'Riwayat Presensi & Kehadiran';
+      case 'pkl': return 'Praktik Kerja Lapangan (PKL)';
+      case 'cbt': return 'Asesmen & Ujian Online (CBT)';
+      case 'catatan': return 'Catatan Pembinaan & Poin Tatib';
+      case 'berkas': return 'Arsip & Berkas Akademik';
+      case 'profil': return 'Profil & Data Pribadi Siswa';
+      default: return 'Portal Siswa';
+    }
+  }, [activeTab]);
+
   return (
     <div className="space-y-4 sm:space-y-5 pb-20 w-full max-w-full min-w-0">
-      {/* 1. Shopee-Grade Clean Header */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-xs">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            {activeTab !== 'ringkasan' && (
-              <button
-                type="button"
-                onClick={() => handleTabChange('ringkasan')}
-                className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shrink-0 cursor-pointer"
-                title="Kembali ke Ringkasan"
-                aria-label="Kembali ke Ringkasan"
-              >
-                <ArrowLeft size={16} />
-              </button>
-            )}
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md">
-                  Portal Siswa
-                </span>
-                <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
-                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 hidden sm:inline">
-                  Kelas {data.currentClassName}
-                </span>
-              </div>
-              <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight truncate mt-0.5">
-                {activeTab === 'ringkasan' ? 'Pusat Kendali Siswa' : activeTabMeta.label}
-              </h1>
-            </div>
-          </div>
+      {/* 1. Universal Topbar Selaras dengan Warna Bottom Nav Siswa (Clean White/Dark Slate) */}
+      <UniversalEcosystemTopbar
+        ecosystem="siswa"
+        title={currentSubtabTitle}
+        ecosystemBadge="SISWA"
+        subtitle={`Kelas ${data.currentClassName} • NISN: ${data.nisn || '-'}`}
+        icon={User}
+        onRefresh={handleManualRefresh}
+        isRefreshing={isRefreshing}
+        actions={
+          <button
+            type="button"
+            onClick={() => setShowDigitalCardModal(true)}
+            className="px-2.5 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs font-semibold flex items-center gap-1.5 hover:bg-blue-100 transition-all cursor-pointer"
+            title="Buka Kartu Pelajar Digital"
+          >
+            <QrCode size={13} />
+            <span className="hidden sm:inline">Kartu Digital</span>
+          </button>
+        }
+      />
 
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Quick Digital Card Button */}
-            <button
-              type="button"
-              onClick={() => setShowDigitalCardModal(true)}
-              className="px-2.5 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs font-semibold flex items-center gap-1.5 hover:bg-blue-100 transition-all cursor-pointer"
-              title="Buka Kartu Pelajar Digital"
-            >
-              <QrCode size={14} />
-              <span className="hidden sm:inline">Kartu Digital</span>
-            </button>
-
-            {/* Refresh Button */}
-            <button
-              type="button"
-              onClick={handleManualRefresh}
-              disabled={isRefreshing}
-              className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-all disabled:opacity-50 cursor-pointer"
-              title="Perbarui Data"
-            >
-              <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
-            </button>
-          </div>
-        </div>
-
-        {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
-        <UniversalMobileSubtabSidebar
-          isOpen={isMobileSidebarOpen}
-          onClose={() => setIsMobileSidebarOpen(false)}
-          title={data.studentName || 'Portal Siswa'}
-          subtitle={`Kelas ${data.currentClassName} • NISN: ${data.nisn || '-'}`}
-          roleBadge="SISWA"
-          roleIcon={User}
-          tabs={navTabs}
-          activeTab={activeTab}
-          onSelectTab={(tabId) => handleTabChange(tabId as SiswaTabId)}
-          categories={categories}
-        />
-      </div>
+      {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
+      <UniversalMobileSubtabSidebar
+        isOpen={isMobileSidebarOpen}
+        onClose={() => setIsMobileSidebarOpen(false)}
+        title={data.studentName || 'Portal Siswa'}
+        subtitle={`Kelas ${data.currentClassName} • NISN: ${data.nisn || '-'}`}
+        roleBadge="SISWA"
+        roleIcon={User}
+        tabs={navTabs}
+        activeTab={activeTab}
+        onSelectTab={(tabId) => handleTabChange(tabId as SiswaTabId)}
+        categories={categories}
+      />
 
       {/* 2. Desktop 2-Column Sidebar Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-6 items-start">

@@ -36,8 +36,9 @@ import { WalasRekapTab } from './walikelas/tabs/WalasRekapTab';
 import { WalasCetakRaporTab } from './walikelas/tabs/WalasCetakRaporTab';
 import { 
   UniversalMobileSubtabSidebar, 
-  useMobileSubtabSidebar 
-} from './common/UniversalMobileSubtabSidebar';
+  useMobileSubtabSidebar,
+  UniversalEcosystemTopbar,
+} from './common';
 import { cn } from '@/lib/utils';
 
 export interface WaliKelasDashboardProps {
@@ -256,49 +257,44 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
     setSelectedKelasId(newKelasId);
   };
 
+  const currentSubtabTitle = useMemo(() => {
+    switch (activeTab) {
+      case 'ringkasan': return 'Ringkasan Rombel';
+      case 'siswa': return 'Data Siswa Binaan';
+      case 'struktur': return 'Struktur Organisasi Kelas';
+      case 'presensi': return 'Presensi Rombel Binaan';
+      case 'deteksi': return 'Deteksi Dini & Kerawanan';
+      case 'ketuntasan': return 'Ketuntasan Belajar Siswa';
+      case 'jurnal': return 'Jurnal Pembelajaran Kelas';
+      case 'izin': return 'Verifikasi Izin & Dispensasi';
+      case 'disiplin': return 'Kedisiplinan & Pelanggaran';
+      case 'prestasi': return 'Prestasi Siswa Rombel';
+      case 'rekap': return 'Rekapitulasi Absensi & KBM';
+      case 'rapor': return 'Cetak Rapor & Leger';
+      default: return 'Kelas Binaan';
+    }
+  }, [activeTab]);
+
   return (
     <div className="w-full max-w-full min-w-0 space-y-5 pb-28 sm:pb-8">
-      {/* 1. Mobile Top Controls (< lg only: Compact Identity Strip + Collapsible Filter) */}
-      <div className="flex lg:hidden flex-col gap-2">
-        {/* Mobile Shopee-style Top Bar with Back Arrow */}
-        <div className="flex items-center justify-between gap-2 py-2 px-3 sm:py-2.5 sm:px-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-          <div className="flex items-center gap-1.5 min-w-0">
-            {/* Tombol Panah Kiri ala Shopee untuk Navigasi Balik */}
-            <button
-              type="button"
-              onClick={() => {
-                if (window.history.state && window.history.state.idx > 0) {
-                  navigate(-1);
-                } else {
-                  navigate('/dashboard?tab=ringkasan');
-                }
-              }}
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition-all shrink-0 cursor-pointer"
-              title="Kembali ke Portal Guru"
-              aria-label="Kembali"
-            >
-              <ArrowLeft size={18} className="stroke-[2.2]" />
-            </button>
-
-            <div className="min-w-0 flex items-center gap-1.5 flex-wrap">
-              <h2 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
-                {activeKelasNama}
-              </h2>
-              <span className="text-[10.5px] text-slate-400 dark:text-slate-500 font-medium truncate">
-                • {academicFilter.selectedTahunPelajaranNama || '2026/2027'} {academicFilter.selectedSemesterNama || 'Ganjil'}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
+      {/* 1. Universal Topbar Selaras dengan Warna Bottom Nav (Sky Blue) */}
+      <UniversalEcosystemTopbar
+        ecosystem="walas"
+        title={currentSubtabTitle}
+        ecosystemBadge="WALI KELAS"
+        subtitle={`${activeKelasNama} • ${academicFilter.selectedTahunPelajaranNama || '2026/2027'} ${academicFilter.selectedSemesterNama || 'Ganjil'}`}
+        icon={GraduationCap}
+        className="lg:hidden"
+        actions={
+          <div className="flex items-center gap-1.5">
             {kelasList.length > 1 && (
               <select
                 value={activeKelasId || ''}
                 onChange={(e) => handleClassChange(e.target.value)}
-                className="text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 px-2 py-0.5"
+                className="text-[11px] font-bold rounded-xl bg-white/20 text-white border border-white/30 px-2 py-1 backdrop-blur-xs cursor-pointer focus:outline-none"
               >
                 {kelasList.map((k) => (
-                  <option key={k.id} value={k.id}>
+                  <option key={k.id} value={k.id} className="text-slate-900 bg-white">
                     {k.nama}
                   </option>
                 ))}
@@ -309,43 +305,41 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
               type="button"
               onClick={() => setShowMobileFilter((prev) => !prev)}
               className={cn(
-                "p-1.5 rounded-xl border text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer",
+                "p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95",
                 showMobileFilter
-                  ? "bg-indigo-50 text-indigo-600 border-indigo-200 dark:bg-indigo-950/50 dark:border-indigo-800"
-                  : "bg-slate-50 text-slate-500 border-slate-200/80 dark:bg-slate-800 dark:border-slate-700"
+                  ? "bg-white text-sky-800 shadow-xs"
+                  : "bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25 backdrop-blur-xs"
               )}
               title="Atur Periode Akademik"
+              aria-label="Atur Periode Akademik"
             >
               <SlidersHorizontal size={13} />
               <span className="text-[10px] hidden sm:inline">Filter</span>
             </button>
           </div>
-        </div>
+        }
+        filterSlot={
+          <AcademicFilterToolbar
+            {...academicFilter.toolbarProps}
+            variant="compact"
+            className="w-full"
+          />
+        }
+        isFilterOpen={showMobileFilter}
+      />
 
-        {/* Collapsible Mobile Academic Filter Toolbar */}
-        {showMobileFilter && (
-          <div className="animate-in fade-in slide-in-from-top-2 duration-200">
-            <AcademicFilterToolbar
-              {...academicFilter.toolbarProps}
-              variant="compact"
-              className="w-full"
-            />
-          </div>
-        )}
-
-        {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
-        <UniversalMobileSubtabSidebar
-          isOpen={isMobileSidebarOpen}
-          onClose={() => setIsMobileSidebarOpen(false)}
-          title={activeKelasNama}
-          subtitle={`${academicFilter.selectedTahunPelajaranNama || '2026/2027'} • ${academicFilter.selectedSemesterNama || 'Ganjil'}`}
-          roleBadge="WALI KELAS"
-          roleIcon={GraduationCap}
-          tabs={navTabs}
-          activeTab={activeTab}
-          onSelectTab={(tabId) => handleTabSelect(tabId as WaliKelasTabId)}
-        />
-      </div>
+      {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
+      <UniversalMobileSubtabSidebar
+        isOpen={isMobileSidebarOpen}
+        onClose={() => setIsMobileSidebarOpen(false)}
+        title={activeKelasNama}
+        subtitle={`${academicFilter.selectedTahunPelajaranNama || '2026/2027'} • ${academicFilter.selectedSemesterNama || 'Ganjil'}`}
+        roleBadge="WALI KELAS"
+        roleIcon={GraduationCap}
+        tabs={navTabs}
+        activeTab={activeTab}
+        onSelectTab={(tabId) => handleTabSelect(tabId as WaliKelasTabId)}
+      />
 
       {/* 2. Desktop 2-Column Layout (>= lg: Left Sidebar Controls + Wide Main Content Canvas) */}
       <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-6 items-start">

@@ -29,8 +29,9 @@ import { ToolmanAlatTab } from './toolman/tabs/ToolmanAlatTab';
 import { ToolmanRekapTab } from './toolman/tabs/ToolmanRekapTab';
 import { 
   UniversalMobileSubtabSidebar, 
-  useMobileSubtabSidebar 
-} from './common/UniversalMobileSubtabSidebar';
+  useMobileSubtabSidebar,
+  UniversalEcosystemTopbar,
+} from './common';
 
 const QuickScanLoanModal = lazy(() =>
   import('@/components/sarpras/QuickScanLoanModal').then((m) => ({ default: m.QuickScanLoanModal }))
@@ -226,6 +227,17 @@ export const ToolmanDashboard: React.FC<ToolmanDashboardProps> = () => {
     return navTabs.find((t) => t.id === activeTab) || navTabs[0];
   }, [navTabs, activeTab]);
 
+  const currentSubtabTitle = useMemo(() => {
+    switch (activeTab) {
+      case 'ringkasan': return 'Pusat Kendali Toolman & Alat Praktik';
+      case 'pinjam': return 'Sirkulasi & Peminjaman Alat';
+      case 'servis': return 'Perawatan & Servis Perkakas';
+      case 'alat': return 'Inventaris Alat & Mesin Bengkel';
+      case 'rekap': return 'Rekapitulasi & Kartu Kontrol Alat';
+      default: return 'Dashboard Toolman';
+    }
+  }, [activeTab]);
+
   return (
     <PremiumFeatureGate
       moduleName="SARPRAS"
@@ -233,102 +245,66 @@ export const ToolmanDashboard: React.FC<ToolmanDashboardProps> = () => {
       description="Pusat sirkulasi peminjaman perkakas, pemeliharaan peralatan bengkel/lab, dan kartu kontrol kesiapan alat praktik kejuruan."
     >
       <div className="space-y-4 w-full max-w-full min-w-0">
-        {/* 1. Shopee-Grade Clean Header */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-xs">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-              {activeTab !== 'ringkasan' && (
-                <button
-                  type="button"
-                  onClick={() => handleTabSelect('ringkasan')}
-                  className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shrink-0 cursor-pointer"
-                  title="Kembali ke Beranda Toolman"
-                  aria-label="Kembali ke Beranda"
-                >
-                  <ArrowLeft size={16} />
-                </button>
-              )}
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-md">
-                    Teknisi Bengkel / Lab
-                  </span>
-                  <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
-                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 hidden sm:inline">
-                    {tpTahun ? `TP ${tpTahun}` : 'Aktif'}
-                  </span>
-                </div>
-                <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight truncate mt-0.5">
-                  {activeTab === 'ringkasan' ? 'Pusat Kendali Toolman & Alat Praktik' : activeTabMeta.label}
-                </h1>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Scan Barcode Button */}
+        {/* 1. Universal Topbar Selaras dengan Divisi WAKA Sarpras (Teal Sarpras) */}
+        <UniversalEcosystemTopbar
+          ecosystem="toolman"
+          title={currentSubtabTitle}
+          ecosystemBadge="SARPRAS • TOOLMAN"
+          subtitle={tpTahun ? `TP ${tpTahun} • Bengkel & Lab` : undefined}
+          description="Sirkulasi Peminjaman Alat, Pemeliharaan Servis, & Kartu Kontrol Perkakas"
+          icon={Wrench}
+          onRefresh={handleRefresh}
+          isRefreshing={isRefreshing}
+          actions={
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <button
                 type="button"
                 onClick={() => setIsQuickScanOpen(true)}
-                className="px-2.5 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 text-xs font-semibold flex items-center gap-1.5 hover:bg-indigo-100 transition-all cursor-pointer"
+                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25 backdrop-blur-xs"
                 title="Scan Barcode Peminjaman Cepat"
               >
-                <ScanLine size={14} />
+                <ScanLine size={13} />
                 <span className="hidden sm:inline">Scan Cepat</span>
               </button>
-
-              {/* Mobile Filter Toggle */}
               <button
                 type="button"
                 onClick={() => setShowMobileFilter((prev) => !prev)}
                 className={cn(
-                  'lg:hidden px-2.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer',
+                  'lg:hidden p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95',
                   showMobileFilter
-                    ? 'border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
-                    : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+                    ? 'bg-white text-teal-800 shadow-xs'
+                    : 'bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25 backdrop-blur-xs'
                 )}
-                aria-label="Filter Akademik"
+                title="Atur Periode Akademik"
+                aria-label="Atur Periode Akademik"
               >
-                <SlidersHorizontal size={14} />
-                <span className="hidden sm:inline">Filter</span>
-              </button>
-
-              {/* Refresh Button */}
-              <button
-                type="button"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer disabled:opacity-50"
-                title="Segarkan Data"
-              >
-                <RefreshCw size={14} className={cn(isRefreshing && 'animate-spin')} />
+                <SlidersHorizontal size={13} />
+                <span className="hidden sm:inline">Periode</span>
               </button>
             </div>
-          </div>
+          }
+          filterSlot={
+            <AcademicFilterToolbar
+              {...academicFilter.toolbarProps}
+              variant="compact"
+              className="w-full"
+            />
+          }
+          isFilterOpen={showMobileFilter}
+        />
 
-          {/* Collapsible Mobile Filter Toolbar */}
-          {showMobileFilter && (
-            <div className="lg:hidden mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2 duration-200">
-              <AcademicFilterToolbar
-                {...academicFilter.toolbarProps}
-                variant="compact"
-                className="w-full"
-              />
-            </div>
-          )}
-
-          {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
-          <UniversalMobileSubtabSidebar
-            isOpen={isMobileSidebarOpen}
-            onClose={() => setIsMobileSidebarOpen(false)}
-            title="Toolman & Bengkel"
-            subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • Sirkulasi Alat`}
-            roleBadge="TOOLMAN"
-            roleIcon={Wrench}
-            tabs={navTabs}
-            activeTab={activeTab}
-            onSelectTab={(tabId) => handleTabSelect(tabId as ToolmanTabId)}
-          />
-        </div>
+        {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
+        <UniversalMobileSubtabSidebar
+          isOpen={isMobileSidebarOpen}
+          onClose={() => setIsMobileSidebarOpen(false)}
+          title="Toolman & Bengkel"
+          subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • Sirkulasi Alat`}
+          roleBadge="TOOLMAN"
+          roleIcon={Wrench}
+          tabs={navTabs}
+          activeTab={activeTab}
+          onSelectTab={(tabId) => handleTabSelect(tabId as ToolmanTabId)}
+        />
 
         {/* 2. Desktop 2-Column Sidebar Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-6 items-start">
