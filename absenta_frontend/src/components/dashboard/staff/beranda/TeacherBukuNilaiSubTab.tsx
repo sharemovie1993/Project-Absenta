@@ -9,12 +9,15 @@ import {
   X,
   Sparkles,
   Check,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
   ChevronLeft,
   ChevronRight,
   BookOpen
 } from 'lucide-react';
 import { raporApi } from '@/api/rapor.api';
-import { HubCard } from '@/components/ui/hub';
+import { HubCard, HubBentoGrid, type HubBentoCell } from '@/components/ui/hub';
 import { Modal } from '@/components/ui/Modal';
 import { InputNilaiView } from '@/components/rapor/input-nilai/InputNilaiView';
 import { useAcademicFilter } from '@/components/common/academic-filter';
@@ -122,98 +125,80 @@ export const TeacherBukuNilaiSubTab: React.FC<TeacherBukuNilaiSubTabProps> = Rea
     queryClient.invalidateQueries({ queryKey: ['rapor-teacher-progress-subtab'] });
   };
 
+  // ─── Bento Grid 4 Sel Garis Rambut (Standar Shopee-Grade UI) ───
+  const bentoCells: HubBentoCell[] = useMemo(() => [
+    {
+      id: 'all',
+      title: 'Total Rombel',
+      value: `${totalTasks} Rombel`,
+      icon: BookOpen,
+      iconColorClass: statusFilter === 'all'
+        ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60 ring-1 ring-indigo-500/40'
+        : 'text-indigo-600 bg-indigo-50/70 dark:bg-indigo-950/40',
+      badge: statusFilter === 'all' ? (
+        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300">
+          <Check size={9} /> Aktif
+        </span>
+      ) : undefined,
+      isActive: statusFilter === 'all',
+      onClick: () => setStatusFilter('all'),
+    },
+    {
+      id: 'completed',
+      title: 'Nilai Tuntas',
+      value: `${completedTasks} Tuntas`,
+      icon: CheckCircle2,
+      iconColorClass: statusFilter === 'completed'
+        ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 ring-1 ring-emerald-500/40'
+        : 'text-emerald-600 bg-emerald-50/70 dark:bg-emerald-950/40',
+      badge: statusFilter === 'completed' ? (
+        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">
+          <Check size={9} /> Aktif
+        </span>
+      ) : undefined,
+      isActive: statusFilter === 'completed',
+      onClick: () => setStatusFilter((prev) => (prev === 'completed' ? 'all' : 'completed')),
+    },
+    {
+      id: 'partial',
+      title: 'Sebagian Terisi',
+      value: `${partialTasks} Berjalan`,
+      icon: Clock,
+      iconColorClass: statusFilter === 'partial'
+        ? 'text-amber-600 bg-amber-50 dark:bg-amber-950/60 ring-1 ring-amber-500/40'
+        : 'text-amber-600 bg-amber-50/70 dark:bg-amber-950/40',
+      badge: statusFilter === 'partial' ? (
+        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300">
+          <Check size={9} /> Aktif
+        </span>
+      ) : undefined,
+      isActive: statusFilter === 'partial',
+      onClick: () => setStatusFilter((prev) => (prev === 'partial' ? 'all' : 'partial')),
+    },
+    {
+      id: 'empty',
+      title: 'Belum Diisi',
+      value: `${emptyTasks} Kosong`,
+      icon: AlertCircle,
+      iconColorClass: statusFilter === 'empty'
+        ? 'text-rose-600 bg-rose-50 dark:bg-rose-950/60 ring-1 ring-rose-500/40'
+        : 'text-rose-600 bg-rose-50/70 dark:bg-rose-950/40',
+      badge: statusFilter === 'empty' ? (
+        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300">
+          <Check size={9} /> Aktif
+        </span>
+      ) : undefined,
+      isActive: statusFilter === 'empty',
+      onClick: () => setStatusFilter((prev) => (prev === 'empty' ? 'all' : 'empty')),
+    },
+  ], [totalTasks, completedTasks, partialTasks, emptyTasks, statusFilter]);
+
   return (
     <div className={`space-y-4 ${className || ''}`}>
-      {/* ─── Header Stat Ringkasan Penilaian (Interaktif 1-Click Filter) ─── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        {/* Total Rombel Diampu */}
-        <button
-          type="button"
-          onClick={() => setStatusFilter('all')}
-          className={`p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer select-none relative overflow-hidden group ${
-            statusFilter === 'all'
-              ? 'bg-purple-50/70 dark:bg-purple-950/40 border-purple-300 dark:border-purple-700 ring-2 ring-purple-500/30 shadow-xs'
-              : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-xs'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Total Rombel</p>
-            {statusFilter === 'all' && (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-purple-200/80 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
-                <Check size={10} /> Aktif
-              </span>
-            )}
-          </div>
-          <p className="text-xl font-black text-slate-900 dark:text-white mt-0.5">{totalTasks}</p>
-          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Semua Rombel</p>
-        </button>
-
-        {/* Nilai Tuntas */}
-        <button
-          type="button"
-          onClick={() => setStatusFilter((prev) => (prev === 'completed' ? 'all' : 'completed'))}
-          className={`p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer select-none relative overflow-hidden group ${
-            statusFilter === 'completed'
-              ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-700 ring-2 ring-emerald-500/40 shadow-xs'
-              : 'bg-white dark:bg-slate-900 border-emerald-100 dark:border-emerald-950/60 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-xs'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">Nilai Tuntas</p>
-            {statusFilter === 'completed' && (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200">
-                <Check size={10} /> Aktif
-              </span>
-            )}
-          </div>
-          <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{completedTasks}</p>
-          <p className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 mt-0.5">100% Siswa Terisi</p>
-        </button>
-
-        {/* Sebagian Terisi */}
-        <button
-          type="button"
-          onClick={() => setStatusFilter((prev) => (prev === 'partial' ? 'all' : 'partial'))}
-          className={`p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer select-none relative overflow-hidden group ${
-            statusFilter === 'partial'
-              ? 'bg-amber-50 dark:bg-amber-950/50 border-amber-300 dark:border-amber-700 ring-2 ring-amber-500/40 shadow-xs'
-              : 'bg-white dark:bg-slate-900 border-amber-100 dark:border-amber-950/60 hover:border-amber-300 dark:hover:border-amber-700 hover:shadow-xs'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400">Sebagian Terisi</p>
-            {statusFilter === 'partial' && (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
-                <Check size={10} /> Aktif
-              </span>
-            )}
-          </div>
-          <p className="text-xl font-black text-amber-600 dark:text-amber-400 mt-0.5">{partialTasks}</p>
-          <p className="text-[10px] text-amber-600/70 dark:text-amber-400/70 mt-0.5">Sedang Berjalan</p>
-        </button>
-
-        {/* Belum Diisi */}
-        <button
-          type="button"
-          onClick={() => setStatusFilter((prev) => (prev === 'empty' ? 'all' : 'empty'))}
-          className={`p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer select-none relative overflow-hidden group ${
-            statusFilter === 'empty'
-              ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-700 ring-2 ring-rose-500/40 shadow-xs'
-              : 'bg-white dark:bg-slate-900 border-rose-100 dark:border-rose-950/60 hover:border-rose-300 dark:hover:border-rose-700 hover:shadow-xs'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] font-bold text-rose-600 dark:text-rose-400">Belum Diisi</p>
-            {statusFilter === 'empty' && (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-rose-200 dark:bg-rose-900 text-rose-800 dark:text-rose-200">
-                <Check size={10} /> Aktif
-              </span>
-            )}
-          </div>
-          <p className="text-xl font-black text-rose-600 dark:text-rose-400 mt-0.5">{emptyTasks}</p>
-          <p className="text-[10px] text-rose-600/70 dark:text-rose-400/70 mt-0.5">Perlu Pengisian Segera</p>
-        </button>
-      </div>
+      {/* ─── Bento Grid 4 Sel Garis Rambut (Standar Shopee UI) ─── */}
+      <HubCard noPadding>
+        <HubBentoGrid cells={bentoCells} columns={4} />
+      </HubCard>
 
       {/* ─── Kontainer Daftar Kelas & Input Nilai ─── */}
       <HubCard

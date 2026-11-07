@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { raporApi } from '@/api/rapor.api';
-import { HubCard } from '@/components/ui/hub';
+import { HubCard, HubBentoGrid, type HubBentoCell } from '@/components/ui/hub';
 import { RemedialQuickModal, RadarRemedialItem } from './RemedialQuickModal';
 import { useAcademicFilter } from '@/components/common/academic-filter';
 
@@ -215,96 +215,80 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
         </div>
       </div>
 
-      {/* ─── Stat KPI Cards (Interaktif 1-Click Quick Filter) ─── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        {/* Total Terdeteksi */}
-        <button
-          type="button"
-          onClick={() => setStatusFilter('all')}
-          className={`p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer select-none ${
-            statusFilter === 'all'
-              ? 'bg-purple-50/70 dark:bg-purple-950/40 border-purple-300 dark:border-purple-700 ring-2 ring-purple-500/30 shadow-xs'
-              : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Total Terdeteksi</p>
-            {statusFilter === 'all' && (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-purple-200 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                <Check size={9} /> Aktif
-              </span>
-            )}
-          </div>
-          <p className="text-xl font-black text-slate-900 dark:text-white mt-0.5">{rawItems.length}</p>
-          <p className="text-[10px] text-slate-400 mt-0.5">Siswa Masuk Radar</p>
-        </button>
+  // ─── Bento Grid 4 Sel Garis Rambut (Standar Shopee-Grade UI) ───
+  const bentoCells: HubBentoCell[] = useMemo(() => [
+    {
+      id: 'all',
+      title: 'Total Terdeteksi',
+      value: `${rawItems.length} Siswa`,
+      icon: Users,
+      iconColorClass: statusFilter === 'all'
+        ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60 ring-1 ring-indigo-500/40'
+        : 'text-indigo-600 bg-indigo-50/70 dark:bg-indigo-950/40',
+      badge: statusFilter === 'all' ? (
+        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300">
+          <Check size={9} /> Aktif
+        </span>
+      ) : undefined,
+      isActive: statusFilter === 'all',
+      onClick: () => setStatusFilter('all'),
+    },
+    {
+      id: 'needs_remedial',
+      title: 'Perlu Remedial',
+      value: `${stats.total_perlu_remedial} Siswa`,
+      icon: AlertCircle,
+      iconColorClass: statusFilter === 'needs_remedial'
+        ? 'text-rose-600 bg-rose-50 dark:bg-rose-950/60 ring-1 ring-rose-500/40'
+        : 'text-rose-600 bg-rose-50/70 dark:bg-rose-950/40',
+      badge: statusFilter === 'needs_remedial' ? (
+        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300">
+          <Check size={9} /> Aktif
+        </span>
+      ) : undefined,
+      isActive: statusFilter === 'needs_remedial',
+      onClick: () => setStatusFilter((prev) => (prev === 'needs_remedial' ? 'all' : 'needs_remedial')),
+    },
+    {
+      id: 'unassessed',
+      title: 'Asesmen Kosong',
+      value: `${stats.total_belum_dinilai} Belum Nilai`,
+      icon: Clock,
+      iconColorClass: statusFilter === 'unassessed'
+        ? 'text-amber-600 bg-amber-50 dark:bg-amber-950/60 ring-1 ring-amber-500/40'
+        : 'text-amber-600 bg-amber-50/70 dark:bg-amber-950/40',
+      badge: statusFilter === 'unassessed' ? (
+        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300">
+          <Check size={9} /> Aktif
+        </span>
+      ) : undefined,
+      isActive: statusFilter === 'unassessed',
+      onClick: () => setStatusFilter((prev) => (prev === 'unassessed' ? 'all' : 'unassessed')),
+    },
+    {
+      id: 'completed',
+      title: 'Tuntas Remedial',
+      value: `${stats.total_tuntas} Tuntas`,
+      icon: CheckCircle2,
+      iconColorClass: statusFilter === 'completed'
+        ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 ring-1 ring-emerald-500/40'
+        : 'text-emerald-600 bg-emerald-50/70 dark:bg-emerald-950/40',
+      badge: statusFilter === 'completed' ? (
+        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">
+          <Check size={9} /> Aktif
+        </span>
+      ) : undefined,
+      isActive: statusFilter === 'completed',
+      onClick: () => setStatusFilter((prev) => (prev === 'completed' ? 'all' : 'completed')),
+    },
+  ], [rawItems.length, stats.total_perlu_remedial, stats.total_belum_dinilai, stats.total_tuntas, statusFilter]);
 
-        {/* Butuh Remedial (< KKM) */}
-        <button
-          type="button"
-          onClick={() => setStatusFilter((prev) => (prev === 'needs_remedial' ? 'all' : 'needs_remedial'))}
-          className={`p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer select-none ${
-            statusFilter === 'needs_remedial'
-              ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-700 ring-2 ring-rose-500/40 shadow-xs'
-              : 'bg-white dark:bg-slate-900 border-rose-100 dark:border-rose-950/60 hover:border-rose-300 dark:hover:border-rose-700'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] font-bold text-rose-600 dark:text-rose-400">Perlu Remedial</p>
-            {statusFilter === 'needs_remedial' && (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-rose-200 text-rose-800 dark:bg-rose-900 dark:text-rose-200">
-                <Check size={9} /> Aktif
-              </span>
-            )}
-          </div>
-          <p className="text-xl font-black text-rose-600 dark:text-rose-400 mt-0.5">{stats.total_perlu_remedial}</p>
-          <p className="text-[10px] text-rose-600/70 dark:text-rose-400/70 mt-0.5">Nilai &lt; KKM ({kkm})</p>
-        </button>
-
-        {/* Belum Ada Nilai */}
-        <button
-          type="button"
-          onClick={() => setStatusFilter((prev) => (prev === 'unassessed' ? 'all' : 'unassessed'))}
-          className={`p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer select-none ${
-            statusFilter === 'unassessed'
-              ? 'bg-amber-50 dark:bg-amber-950/50 border-amber-300 dark:border-amber-700 ring-2 ring-amber-500/40 shadow-xs'
-              : 'bg-white dark:bg-slate-900 border-amber-100 dark:border-amber-950/60 hover:border-amber-300 dark:hover:border-amber-700'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400">Asesmen Kosong</p>
-            {statusFilter === 'unassessed' && (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-amber-200 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-                <Check size={9} /> Aktif
-              </span>
-            )}
-          </div>
-          <p className="text-xl font-black text-amber-600 dark:text-amber-400 mt-0.5">{stats.total_belum_dinilai}</p>
-          <p className="text-[10px] text-amber-600/70 dark:text-amber-400/70 mt-0.5">Belum Terisi Nilai</p>
-        </button>
-
-        {/* Tuntas Remedial */}
-        <button
-          type="button"
-          onClick={() => setStatusFilter((prev) => (prev === 'completed' ? 'all' : 'completed'))}
-          className={`p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer select-none ${
-            statusFilter === 'completed'
-              ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-700 ring-2 ring-emerald-500/40 shadow-xs'
-              : 'bg-white dark:bg-slate-900 border-emerald-100 dark:border-emerald-950/60 hover:border-emerald-300 dark:hover:border-emerald-700'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">Tuntas Remedial</p>
-            {statusFilter === 'completed' && (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-emerald-200 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
-                <Check size={9} /> Aktif
-              </span>
-            )}
-          </div>
-          <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{stats.total_tuntas}</p>
-          <p className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 mt-0.5">Telah Dituntaskan</p>
-        </button>
-      </div>
+  return (
+    <div className={`space-y-4 ${className || ''}`}>
+      {/* ─── Bento Grid 4 Sel Garis Rambut (Standar Shopee UI) ─── */}
+      <HubCard noPadding>
+        <HubBentoGrid cells={bentoCells} columns={4} />
+      </HubCard>
 
       {/* ─── Kontainer Utama: Daftar Siswa Radar Remedial ─── */}
       <HubCard

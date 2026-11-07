@@ -12,6 +12,7 @@ export interface HubBentoCell {
   badge?: React.ReactNode;
   showChevron?: boolean;
   onClick?: () => void;
+  isActive?: boolean;
 }
 
 export interface HubBentoGridProps {
@@ -42,7 +43,7 @@ export const HubBentoGrid: React.FC<HubBentoGridProps> = React.memo(({
   return (
     <div
       className={cn(
-        'grid w-full divide-x divide-y divide-slate-100 dark:divide-slate-800/80',
+        'grid w-full gap-px bg-slate-100/90 dark:bg-slate-800/80 overflow-hidden',
         colClass,
         className
       )}
@@ -56,9 +57,10 @@ export const HubBentoGrid: React.FC<HubBentoGridProps> = React.memo(({
             key={cell.id}
             onClick={cell.onClick}
             className={cn(
-              'py-2 px-2.5 sm:py-3 sm:px-3.5 flex items-center justify-between gap-1.5 sm:gap-2.5 transition-colors relative select-none min-w-0',
+              'py-2 px-2.5 sm:py-3 sm:px-3.5 flex items-center justify-between gap-1.5 sm:gap-2.5 transition-colors relative select-none min-w-0 bg-white dark:bg-slate-900',
               cellClassName,
-              isClickable && 'cursor-pointer hover:bg-slate-50/70 dark:hover:bg-slate-800/40 active:bg-slate-100 dark:active:bg-slate-800/80'
+              cell.isActive && 'bg-indigo-50/60 dark:bg-indigo-950/40 ring-1 ring-inset ring-indigo-500/30',
+              isClickable && 'cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-800/40 active:bg-slate-100 dark:active:bg-slate-800/80'
             )}
           >
             <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
