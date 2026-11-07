@@ -13,6 +13,7 @@ interface ConfirmModalProps {
   confirmText?: string;
   cancelText?: string;
   variant?: 'danger' | 'warning' | 'primary';
+  zIndex?: number;
 }
 
 export function ConfirmModal({
@@ -23,10 +24,11 @@ export function ConfirmModal({
   message,
   confirmText = 'Konfirmasi',
   cancelText = 'Batal',
-  variant = 'primary'
+  variant = 'primary',
+  zIndex = 150
 }: ConfirmModalProps) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="sm" title={title}>
+    <Modal isOpen={isOpen} onClose={onClose} size="sm" title={title} zIndex={zIndex}>
       <div className="p-6 pt-2">
         <p className="text-gray-600 dark:text-gray-300 mb-6">
           {message}

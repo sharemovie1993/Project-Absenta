@@ -427,6 +427,7 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
         confirmText="Ya, Keluar"
         cancelText="Batal"
         variant="danger"
+        zIndex={200}
       />
     </AnimatePresence>,
     document.body
