@@ -123,6 +123,7 @@ export interface UniversalMobileSubtabSidebarProps {
   scope?: string;
   isActive?: boolean;
   roleIcon?: React.ComponentType<{ className?: string; size?: number }> | React.ComponentType<any>;
+  logoUrl?: string | null;
   tabs: UniversalSubtabItem[];
   activeTab: string;
   onSelectTab: (tabId: string) => void;
@@ -147,6 +148,7 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
   scope,
   isActive,
   roleIcon: RoleIcon,
+  logoUrl,
   tabs,
   activeTab,
   onSelectTab,
@@ -162,6 +164,11 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [logoUrl]);
 
   const handleLogout = useCallback(() => {
     logout();
@@ -277,6 +284,15 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
     [onSelectTab, onClose]
   );
 
+  const showRoleBadge = useMemo(() => {
+    if (!roleBadge) return false;
+    const cleanBadge = roleBadge.trim().toLowerCase();
+    const cleanTitle = title.trim().toLowerCase();
+    if (cleanBadge === cleanTitle) return false;
+    if (cleanTitle.includes(cleanBadge) && cleanBadge.length > 5) return false;
+    return true;
+  }, [roleBadge, title]);
+
   if (!mounted) return null;
 
   const isLeft = side === 'left';
@@ -313,16 +329,42 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
               className
             )}
           >
-            {/* ─── Drawer Header (Clean, Minimal & Noise-Free) ─── */}
-            <div className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                <span className={cn('w-2.5 h-2.5 rounded-full shrink-0', ecosystemTokens.badgeClass.split(' ')[0])} />
-                <div className="min-w-0">
+            {/* ─── Drawer Header (Clean, Shopee-Grade with Logo & Zero Truncation) ─── */}
+            <div className="flex items-center justify-between px-3.5 py-3 shrink-0 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5 min-w-0 pr-1.5 flex-1">
+                {/* 1. Identity Visual: Logo Jurusan / Sekolah atau Role Icon Squircle */}
+                {logoUrl && !imgError ? (
+                  <div className="w-8 h-8 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 p-0.5 shadow-2xs flex items-center justify-center shrink-0 overflow-hidden">
+                    <img
+                      src={logoUrl}
+                      alt={title}
+                      className="w-full h-full object-contain rounded-lg"
+                      onError={() => setImgError(true)}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    className={cn(
+                      'w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border shadow-2xs',
+                      ecosystemTokens.subtleBg,
+                      ecosystemTokens.borderClass
+                    )}
+                  >
+                    {RoleIcon ? (
+                      <RoleIcon className={cn('w-4 h-4', ecosystemTokens.textClass)} />
+                    ) : (
+                      <span className={cn('w-2.5 h-2.5 rounded-full', ecosystemTokens.badgeClass.split(' ')[0])} />
+                    )}
+                  </div>
+                )}
+
+                {/* 2. Title & Role Badge */}
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate tracking-tight">
                       {title}
                     </h2>
-                    {roleBadge && (
+                    {showRoleBadge && (
                       <span
                         className={cn(
                           'px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider shrink-0 leading-none border',
@@ -336,20 +378,22 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
                     )}
                   </div>
                   {subtitle && (
-                    <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate mt-0.5">
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate mt-0.5 leading-tight">
                       {subtitle}
                     </div>
                   )}
                 </div>
               </div>
+
+              {/* 3. Close Button */}
               <button
                 type="button"
                 onClick={onClose}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-all cursor-pointer shrink-0"
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-all cursor-pointer shrink-0 ml-1"
                 title="Tutup Menu"
                 aria-label="Tutup Menu"
               >
-                <X size={18} />
+                <X size={17} />
               </button>
             </div>
 

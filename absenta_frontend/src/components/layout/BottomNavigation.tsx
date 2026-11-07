@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { Briefcase, GraduationCap } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils';
 import { useBottomNavTabs } from './bottom-nav/useBottomNavTabs';
 import { BottomNavTabItem } from './bottom-nav/BottomNavTabItem';
@@ -137,6 +139,40 @@ export const BottomNavigation: React.FC = React.memo(() => {
     }
   }, [activeTabsList, navigate]);
 
+  const user = useAuthStore((s) => s.user);
+
+  // Resolusi Header Cerdas untuk Fallback Drawer (Bebas Truncation & Kaya Logo/Avatar)
+  const fallbackHeader = useMemo(() => {
+    if (activeEcosystem === 'kaprog') {
+      const jur = user?.kaprog_jurusan;
+      return {
+        title: jur?.nama || 'Program Keahlian',
+        subtitle: jur?.singkatan ? `${jur.singkatan} • Kejuruan` : 'Manajemen Jurusan',
+        roleBadge: 'KAPROG',
+        logoUrl: jur?.logo_url || (user as any)?.tenant?.logo_url || null,
+        roleIcon: Briefcase,
+      };
+    }
+    if (activeEcosystem === 'walas') {
+      const kelasNama = user?.guru_profile?.wali_kelas_di?.nama_kelas || (user as any)?.walikelas_kelas?.nama_kelas;
+      return {
+        title: kelasNama || 'Wali Kelas',
+        subtitle: 'Manajemen Kelas Binaan',
+        roleBadge: 'WALAS',
+        logoUrl: (user as any)?.tenant?.logo_url || null,
+        roleIcon: GraduationCap,
+      };
+    }
+    const label = getEcosystemLabel(activeEcosystem);
+    return {
+      title: label,
+      subtitle: 'Menu Ekosistem & Layanan',
+      roleBadge: label.toUpperCase(),
+      logoUrl: (user as any)?.tenant?.logo_url || null,
+      roleIcon: undefined,
+    };
+  }, [activeEcosystem, user]);
+
   if (shouldHideNav) {
     return null;
   }
@@ -148,9 +184,11 @@ export const BottomNavigation: React.FC = React.memo(() => {
         <UniversalMobileSubtabSidebar
           isOpen={isSidebarOpen}
           onClose={() => useMobileSubtabSidebarStore.getState().close()}
-          title={getEcosystemLabel(activeEcosystem)}
-          subtitle="Menu Ekosistem & Layanan"
-          roleBadge={getEcosystemLabel(activeEcosystem).toUpperCase()}
+          title={fallbackHeader.title}
+          subtitle={fallbackHeader.subtitle}
+          roleBadge={fallbackHeader.roleBadge}
+          roleIcon={fallbackHeader.roleIcon}
+          logoUrl={fallbackHeader.logoUrl}
           scope={activeEcosystem}
           side="left"
           isFallback={true}

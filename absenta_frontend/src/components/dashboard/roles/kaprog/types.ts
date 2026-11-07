@@ -122,4 +122,5 @@ export interface ResolvedJurusan {
   nama: string;
   singkatan?: string | null;
   kode?: string | null;
+  logo_url?: string | null;
 }

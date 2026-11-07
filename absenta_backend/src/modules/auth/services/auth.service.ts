@@ -911,14 +911,16 @@ export class AuthService {
             unit_id: { not: null }
           },
           include: {
-            Unit: { select: { id: true, nama: true, singkatan: true } }
+            Unit: { select: { id: true, nama: true, singkatan: true, kode: true, logo_url: true } }
           }
         });
         if (kaprogAssignment?.Unit) {
           response.kaprog_jurusan = {
             id: kaprogAssignment.Unit.id,
             nama: kaprogAssignment.Unit.nama,
-            singkatan: kaprogAssignment.Unit.singkatan
+            singkatan: kaprogAssignment.Unit.singkatan,
+            kode: kaprogAssignment.Unit.kode,
+            logo_url: kaprogAssignment.Unit.logo_url
           };
         }
       } catch (e) {

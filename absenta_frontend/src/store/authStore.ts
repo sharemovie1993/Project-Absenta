@@ -49,6 +49,8 @@ export interface User {
     id: string;
     nama: string;
     singkatan?: string | null;
+    kode?: string | null;
+    logo_url?: string | null;
   } | null;
   walikelas_kelas?: {
     id: string;

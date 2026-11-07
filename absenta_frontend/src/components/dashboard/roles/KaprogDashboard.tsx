@@ -75,10 +75,10 @@ import {
 export interface KaprogDashboardProps {
   user?: {
     id?: string;
-    kaprog_jurusan?: { id?: string; nama?: string; singkatan?: string };
+    kaprog_jurusan?: { id?: string; nama?: string; singkatan?: string; kode?: string; logo_url?: string | null };
     [key: string]: unknown;
   };
-  kaprogJurusan?: { id?: string; nama?: string; singkatan?: string } | null;
+  kaprogJurusan?: { id?: string; nama?: string; singkatan?: string; kode?: string; logo_url?: string | null } | null;
 }
 
 export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
@@ -201,7 +201,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
   // Identitas Jurusan Kaprog Terkunci (RBAC & SK Assignment - Zero Cross-Jurusan)
   // --------------------------------------------------------------------------
   const assignedJurusan = useMemo(() => {
-    return propJurusan || (currentUser as { kaprog_jurusan?: { id?: string; nama?: string; singkatan?: string; kode?: string; logo_url?: string } })?.kaprog_jurusan || null;
+    return propJurusan || (currentUser as { kaprog_jurusan?: { id?: string; nama?: string; singkatan?: string; kode?: string; logo_url?: string | null } })?.kaprog_jurusan || null;
   }, [propJurusan, currentUser]);
 
   const jurusanId = assignedJurusan?.id;
@@ -251,18 +251,17 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
     return kaprogStatsData?.konteksAkademik || null;
   }, [kaprogStatsData]);
 
-  // Resolved Jurusan Info (Terkunci Sesuai SK Kaprog)
+  // Resolved Jurusan Info (Terkunci Sesuai SK Kaprog dengan Auto Merger Logo & Kode)
   const resolvedJurusan: ResolvedJurusan = useMemo(() => {
-    return (
-      assignedJurusan ||
-      kaprogStatsData?.jurusan ||
-      pklSummaryData?.jurusan || {
-        id: 'jurusan-default',
-        nama: 'Program Keahlian',
-        singkatan: 'KAPROG',
-        kode: 'KPR',
-      }
-    );
+    const base = kaprogStatsData?.jurusan || pklSummaryData?.jurusan || {};
+    const assign = assignedJurusan || {};
+    return {
+      id: assign.id || base.id || 'jurusan-default',
+      nama: assign.nama || base.nama || 'Program Keahlian',
+      singkatan: assign.singkatan || base.singkatan || 'KAPROG',
+      kode: assign.kode || base.kode || assign.singkatan || base.singkatan || 'KPR',
+      logo_url: assign.logo_url || base.logo_url || (assign as any)?.logoUrl || (base as any)?.logoUrl || null,
+    };
   }, [assignedJurusan, kaprogStatsData, pklSummaryData]);
 
   // Status Perumusan TP Mitra (Dari API Riil Hubin)
@@ -644,6 +643,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
         subtitle={resolvedJurusan?.singkatan ? `${resolvedJurusan.singkatan} • Kejuruan` : 'Manajemen Jurusan'}
         roleBadge="KAPROG"
         roleIcon={Briefcase}
+        logoUrl={resolvedJurusan?.logo_url || undefined}
         tabs={navTabs}
         activeTab={activeTab}
         onSelectTab={(tabId) => handleTabSelect(tabId as KaprogTabId)}
