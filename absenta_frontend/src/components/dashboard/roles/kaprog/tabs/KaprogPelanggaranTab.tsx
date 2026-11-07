@@ -146,16 +146,16 @@ export const KaprogPelanggaranTab: React.FC<KaprogPelanggaranTabProps> = React.m
       id: 'total_catatan',
       title: 'Total Catatan',
       value: `${stats.total} Kasus`,
-      subtext: `Akumulasi siswa ${jurusanNama}`,
+      subtext: 'Pelanggaran Siswa',
       icon: ShieldAlert,
       iconColorClass: 'text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800',
       onClick: () => setSelectedStatus('ALL'),
     },
     {
       id: 'baru',
-      title: 'Perlu Tindak Lanjut',
-      value: `${stats.baru} Kasus`,
-      subtext: 'Menunggu verifikasi Kaprog',
+      title: 'Tindak Lanjut',
+      value: `${stats.baru} Baru`,
+      subtext: 'Verifikasi Kaprog',
       icon: AlertTriangle,
       iconColorClass: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60',
       badge: stats.baru > 0 ? (
@@ -167,9 +167,9 @@ export const KaprogPelanggaranTab: React.FC<KaprogPelanggaranTabProps> = React.m
     },
     {
       id: 'proses',
-      title: 'Dalam Penanganan',
+      title: 'Penanganan',
       value: `${stats.proses} Kasus`,
-      subtext: 'Bimbingan atau pemanggilan',
+      subtext: 'Bimbingan & BK',
       icon: Scale,
       iconColorClass: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60',
       badge: stats.proses > 0 ? (
@@ -183,7 +183,7 @@ export const KaprogPelanggaranTab: React.FC<KaprogPelanggaranTabProps> = React.m
       id: 'poin',
       title: 'Akumulasi Poin',
       value: `${stats.totalPoin} Poin`,
-      subtext: stats.highAlertCount > 0 ? `${stats.highAlertCount} siswa kritis (≥15)` : 'Nihil kasus kritis',
+      subtext: stats.highAlertCount > 0 ? `${stats.highAlertCount} Kritis (≥15)` : 'Nihil Kritis',
       icon: FileText,
       iconColorClass: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60',
       badge: stats.highAlertCount > 0 ? (
@@ -192,7 +192,7 @@ export const KaprogPelanggaranTab: React.FC<KaprogPelanggaranTabProps> = React.m
         </span>
       ) : undefined,
     },
-  ], [stats, jurusanNama]);
+  ], [stats]);
 
   return (
     <div className="space-y-6">

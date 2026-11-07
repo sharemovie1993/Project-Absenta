@@ -117,9 +117,9 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
   const bentoCells: HubBentoCell[] = useMemo(() => [
     {
       id: 'total_mitra',
-      title: 'Total Mitra DUDI',
+      title: 'Mitra DUDI',
       value: `${totalCount} Mitra`,
-      subtext: 'Mitra aktif penempatan PKL',
+      subtext: 'Penempatan Aktif',
       icon: Building2,
       iconColorClass: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60',
     },
@@ -127,7 +127,7 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
       id: 'sudah_tp',
       title: 'Sudah Diisi TP',
       value: `${filledCount} Mitra`,
-      subtext: `${tpStatus?.completionPercentage || 0}% telah dirumuskan`,
+      subtext: `${tpStatus?.completionPercentage || 0}% Dirumuskan`,
       icon: CheckCircle2,
       iconColorClass: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60',
       badge: filledCount > 0 ? (
@@ -140,7 +140,7 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
       id: 'belum_tp',
       title: 'Belum Diisi TP',
       value: `${pendingCount} Mitra`,
-      subtext: `${pendingCount} perlu rumusan TP`,
+      subtext: 'Perlu Rumusan',
       icon: AlertCircle,
       iconColorClass: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60',
       badge: pendingCount > 0 ? (
@@ -153,10 +153,9 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
       id: 'siswa_terploting',
       title: 'Siswa Terploting',
       value: `${totalSiswa} Siswa`,
-      subtext: 'Peserta PKL jurusan',
+      subtext: 'Peserta Jurusan',
       icon: Users,
       iconColorClass: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60',
-      showChevron: Boolean(onOpenPlottingModal),
       onClick: onOpenPlottingModal,
     },
   ], [totalCount, filledCount, pendingCount, totalSiswa, tpStatus?.completionPercentage, onOpenPlottingModal]);

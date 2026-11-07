@@ -25,19 +25,18 @@ export const KaprogSaranaTab: React.FC<KaprogSaranaTabProps> = React.memo(({
   const bentoCells: HubBentoCell[] = useMemo(() => [
     {
       id: 'total_alat',
-      title: 'Total Alat & Mesin',
+      title: 'Alat & Mesin',
       value: `${saranaCounts?.total || 0} Unit`,
-      subtext: 'Terdata di Ruang Praktik',
+      subtext: 'Ruang Praktik',
       icon: Wrench,
       iconColorClass: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60',
-      showChevron: true,
       onClick: () => navigate('/sarpras/inventaris'),
     },
     {
       id: 'dipinjam',
-      title: 'Sedang Dipinjam',
+      title: 'Dipinjam',
       value: `${saranaCounts?.dipinjam || 0} Item`,
-      subtext: 'Aktif sesi praktikum KBM',
+      subtext: 'Sesi Praktikum',
       icon: Layers,
       iconColorClass: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60',
       badge: (saranaCounts?.dipinjam || 0) > 0 ? (
@@ -48,9 +47,9 @@ export const KaprogSaranaTab: React.FC<KaprogSaranaTabProps> = React.memo(({
     },
     {
       id: 'rusak',
-      title: 'Rusak / Butuh Servis',
+      title: 'Perlu Servis',
       value: `${saranaCounts?.rusak || 0} Unit`,
-      subtext: 'Perlu pengajuan ke Sarpras',
+      subtext: 'Lapor Sarpras',
       icon: AlertCircle,
       iconColorClass: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60',
       badge: (saranaCounts?.rusak || 0) > 0 ? (
@@ -58,7 +57,6 @@ export const KaprogSaranaTab: React.FC<KaprogSaranaTabProps> = React.memo(({
           {saranaCounts?.rusak}
         </span>
       ) : undefined,
-      showChevron: true,
       onClick: () => navigate('/sarpras/perbaikan'),
     },
   ], [saranaCounts, navigate]);

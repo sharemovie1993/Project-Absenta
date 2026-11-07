@@ -67,42 +67,38 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
   const bentoCells: HubBentoCell[] = useMemo(() => [
     {
       id: 'siswa_pkl',
-      title: 'Siswa PKL Aktif',
-      value: penilaianStatus?.totalSiswaPkl || 0,
-      subtext: `Tersebar di ${tpStatus?.totalMitra || 0} industri mitra`,
+      title: 'Siswa PKL',
+      value: `${penilaianStatus?.totalSiswaPkl || 0} Siswa`,
+      subtext: `${tpStatus?.totalMitra || 0} Mitra Industri`,
       icon: Building2,
       iconColorClass: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60',
-      showChevron: Boolean(onSelectTab),
       onClick: onSelectTab ? () => onSelectTab('pkl') : undefined,
     },
     {
       id: 'presensi_pkl',
-      title: 'Presensi PKL Hari Ini',
-      value: `${Math.max(0, (penilaianStatus?.totalSiswaPkl || 48) - 2)} / ${penilaianStatus?.totalSiswaPkl || 48}`,
-      subtext: '95.8% siswa tertib hadir di DUDI',
+      title: 'Presensi PKL',
+      value: `${Math.max(0, (penilaianStatus?.totalSiswaPkl || 48) - 2)} / ${penilaianStatus?.totalSiswaPkl || 48} Hadir`,
+      subtext: '95.8% Tertib di DUDI',
       icon: UserCheck,
       iconColorClass: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60',
-      showChevron: Boolean(onOpenMonitoringPkl),
       onClick: onOpenMonitoringPkl,
     },
     {
       id: 'guru_mengajar',
-      title: 'Guru Produktif Mengajar',
+      title: 'Guru Produktif',
       value: `${kaprogStatsData?.activeClasses || 12} / ${kaprogStatsData?.totalTeachers || 14} Sesi`,
-      subtext: 'Semua jam KBM kejuruan aktif',
+      subtext: 'Semua KBM Aktif',
       icon: Users,
       iconColorClass: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60',
-      showChevron: Boolean(onSelectTab),
       onClick: onSelectTab ? () => onSelectTab('guru') : undefined,
     },
     {
       id: 'tp_dudi',
-      title: 'Kesiapan TP DUDI',
-      value: `${tpStatus?.completionPercentage || 0}%`,
-      subtext: `${tpStatus?.filledMitra || 0} dari ${tpStatus?.totalMitra || 0} mitra siap dinilai`,
+      title: 'Kesiapan TP',
+      value: `${tpStatus?.completionPercentage || 0}% Tuntas`,
+      subtext: `${tpStatus?.filledMitra || 0}/${tpStatus?.totalMitra || 0} Mitra Siap`,
       icon: TrendingUp,
       iconColorClass: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60',
-      showChevron: Boolean(onSelectTab),
       onClick: onSelectTab ? () => onSelectTab('pkl') : undefined,
     },
   ], [penilaianStatus, tpStatus, kaprogStatsData, onSelectTab, onOpenMonitoringPkl]);
@@ -116,12 +112,12 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
 
       {/* Quick Links Grid (App Launcher Style) */}
       <Card noPadding className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-3.5">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+        <div className="flex items-center justify-between gap-2.5">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
               Pintasan Manajemen Kejuruan
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
               Akses cepat ke modul instrumen PKL, kurikulum, presensi, dan bengkel.
             </p>
           </div>
@@ -135,7 +131,7 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
                 navigate('/hubin/nilai-pkl?tab=deskripsi');
               }
             }}
-            className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 font-semibold gap-1 cursor-pointer"
+            className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 font-semibold gap-1 cursor-pointer shrink-0 whitespace-nowrap"
           >
             <span>Formulasi TP</span>
             <ArrowRight className="w-3.5 h-3.5" />

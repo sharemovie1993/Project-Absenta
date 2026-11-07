@@ -275,18 +275,18 @@ export const KaprogPlotingPengujiTab: React.FC<KaprogPlotingPengujiTabProps> = R
           cells={[
             {
               id: 'total_siswa',
-              title: 'Total Siswa PKL',
+              title: 'Total Siswa',
               value: `${summaryStats.total} Siswa`,
-              subtext: 'Peserta sidang kejuruan',
+              subtext: 'Peserta Sidang',
               icon: Users,
               iconColorClass: 'text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800',
               onClick: () => setPlotFilter('ALL'),
             },
             {
               id: 'sudah_plot',
-              title: 'Sudah Diploting',
+              title: 'Sudah Diplot',
               value: `${summaryStats.sudah} Siswa`,
-              subtext: 'Siap mengikuti sidang',
+              subtext: 'Siap Sidang',
               icon: CheckCircle2,
               iconColorClass: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60',
               badge: summaryStats.sudah > 0 ? (
@@ -298,9 +298,9 @@ export const KaprogPlotingPengujiTab: React.FC<KaprogPlotingPengujiTabProps> = R
             },
             {
               id: 'belum_plot',
-              title: 'Belum Diploting',
+              title: 'Belum Diplot',
               value: `${summaryStats.belum} Siswa`,
-              subtext: 'Perlu penugasan penguji',
+              subtext: 'Perlu Penguji',
               icon: AlertCircle,
               iconColorClass: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60',
               badge: summaryStats.belum > 0 ? (
@@ -312,9 +312,9 @@ export const KaprogPlotingPengujiTab: React.FC<KaprogPlotingPengujiTabProps> = R
             },
             {
               id: 'guru_penguji',
-              title: 'Guru Produktif',
-              value: `${examinerOptions.length} Penguji`,
-              subtext: 'Pendidik produktif siap',
+              title: 'Penguji Siap',
+              value: `${examinerOptions.length} Guru`,
+              subtext: 'Pendidik Produktif',
               icon: GraduationCap,
               iconColorClass: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60',
             },
