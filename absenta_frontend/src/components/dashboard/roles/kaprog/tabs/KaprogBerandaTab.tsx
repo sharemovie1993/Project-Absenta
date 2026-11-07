@@ -111,16 +111,11 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
       </HubCard>
 
       {/* Quick Links Grid (App Launcher Style) */}
-      <Card noPadding className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-3.5">
+      <Card noPadding className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-3">
         <div className="flex items-center justify-between gap-2.5">
-          <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 leading-snug">
-              Pintasan Manajemen Kejuruan
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-0.5">
-              Akses cepat ke modul instrumen PKL, kurikulum, presensi, dan bengkel.
-            </p>
-          </div>
+          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+            Pintasan Cepat
+          </h3>
           <Button
             variant="ghost"
             size="sm"
