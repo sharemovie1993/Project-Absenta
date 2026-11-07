@@ -35,7 +35,6 @@ import { cn } from '@/lib/utils';
 import { getKepegawaianStats } from '@/api/dashboard.api';
 import { 
   UniversalMobileSubtabSidebar, 
-  MobileSubtabBar, 
   useMobileSubtabSidebar 
 } from './common/UniversalMobileSubtabSidebar';
 import toast from 'react-hot-toast';
@@ -272,17 +271,6 @@ export const KepegawaianDashboard: React.FC<KepegawaianDashboardProps> = ({ user
   const renderNavTabs = () => {
     return (
       <div className="w-full max-w-full min-w-0 border-b border-slate-200 dark:border-slate-800">
-        {/* Mobile Subtab Bar with Dedicated Sidebar Trigger */}
-        <div className="lg:hidden py-2">
-          <MobileSubtabBar
-            tabs={navTabs}
-            activeTab={activeTab}
-            onOpenSidebar={openMobileSidebar}
-            onSelectTab={(tabId) => handleTabSelect(tabId as KepegawaianTabId)}
-            roleBadge="KEPEGAWAIAN"
-          />
-        </div>
-
         {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
         <UniversalMobileSubtabSidebar
           isOpen={isMobileSidebarOpen}

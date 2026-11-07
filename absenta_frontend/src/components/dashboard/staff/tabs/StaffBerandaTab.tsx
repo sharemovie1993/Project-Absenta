@@ -25,7 +25,6 @@ import {
 } from 'lucide-react';
 import { 
   UniversalMobileSubtabSidebar, 
-  MobileSubtabBar, 
   useMobileSubtabSidebar,
   type UniversalSubtabItem 
 } from '@/components/dashboard/roles/common';
@@ -575,29 +574,19 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
       {/* ────────────────────────────────────────────────────────────────── */}
       {isActualTeachingStaff ? (
         <div className="w-full max-w-full min-w-0">
-          {/* 1. Mobile Subtab Bar & Dedicated Universal Mobile Subtab Sidebar Drawer */}
-          <div className="block lg:hidden space-y-2 mb-3">
-            <MobileSubtabBar
-              tabs={navTabs}
-              activeTab={activeSubTab}
-              onOpenSidebar={openMobileSidebar}
-              onSelectTab={(tabId) => handleSubTabChange(tabId as TeacherSubTabId)}
-              roleBadge="GURU PENGAJAR"
-            />
-
-            <UniversalMobileSubtabSidebar
-              isOpen={isMobileSidebarOpen}
-              onClose={() => setIsMobileSidebarOpen(false)}
-              title={guruNama || 'Ruang Pendidik'}
-              subtitle={`Beban Mengajar ${(teacherBeban?.total_calculated_jp ?? teacherBeban?.current_jp ?? 0)}/${(teacherBeban?.max_jp ?? 24)} JP`}
-              roleBadge="GURU PENGAJAR"
-              roleIcon={BookOpen}
-              tabs={navTabs}
-              activeTab={activeSubTab}
-              onSelectTab={(tabId) => handleSubTabChange(tabId as TeacherSubTabId)}
-              categories={navCategories}
-            />
-          </div>
+          {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
+          <UniversalMobileSubtabSidebar
+            isOpen={isMobileSidebarOpen}
+            onClose={() => setIsMobileSidebarOpen(false)}
+            title={guruNama || 'Ruang Pendidik'}
+            subtitle={`Beban Mengajar ${(teacherBeban?.total_calculated_jp ?? teacherBeban?.current_jp ?? 0)}/${(teacherBeban?.max_jp ?? 24)} JP`}
+            roleBadge="GURU PENGAJAR"
+            roleIcon={BookOpen}
+            tabs={navTabs}
+            activeTab={activeSubTab}
+            onSelectTab={(tabId) => handleSubTabChange(tabId as TeacherSubTabId)}
+            categories={navCategories}
+          />
 
           {/* 2. Desktop 2-Column Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-5 items-start">

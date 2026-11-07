@@ -396,69 +396,9 @@ export interface MobileSubtabBarProps {
   showMiniScroller?: boolean;
 }
 
-export const MobileSubtabBar: React.FC<MobileSubtabBarProps> = ({
-  tabs,
-  activeTab,
-  onOpenSidebar,
-  onSelectTab,
-  roleBadge,
-  className,
-  showMiniScroller = true,
-}) => {
-  const currentTab = useMemo(() => {
-    return tabs.find((t) => t.id === activeTab) || tabs[0];
-  }, [tabs, activeTab]);
-
-  return (
-    <div className={cn('lg:hidden flex flex-col gap-1.5', className)}>
-      {/* Primary Trigger Strip */}
-      <MobileSubtabTriggerButton
-        tabs={tabs}
-        activeTab={activeTab}
-        onClick={onOpenSidebar}
-        roleBadge={roleBadge}
-        variant="pill"
-      />
-
-      {/* Optional Mini Quick Scroller for High Frequency Tapping */}
-      {showMiniScroller && tabs.length > 1 && (
-        <div className="overflow-x-auto no-scrollbar flex items-center gap-1.5 pt-0.5 pb-0.5">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => onSelectTab(tab.id)}
-                className={cn(
-                  'px-2.5 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap flex items-center gap-1.5 transition-all shrink-0 cursor-pointer',
-                  isActive
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-800'
-                )}
-              >
-                <Icon size={12} className="shrink-0" />
-                <span>{tab.shortLabel || tab.label}</span>
-                {tab.badge !== undefined && (
-                  <span
-                    className={cn(
-                      'px-1.5 py-0.2 rounded-full text-[9px] font-black',
-                      isActive
-                        ? 'bg-white/20 text-white'
-                        : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                    )}
-                  >
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
+export const MobileSubtabBar: React.FC<MobileSubtabBarProps> = () => {
+  // Subtab switcher horizontal dinonaktifkan karena telah dipusatkan ke Elevated Button di Bottom Navigation
+  return null;
 };
 
 // ==========================================

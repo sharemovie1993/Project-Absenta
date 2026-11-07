@@ -27,7 +27,7 @@ import { getTuStats } from '@/api/dashboard.api';
 import { TuBerandaTab } from './tu/tabs/TuBerandaTab';
 import type { TuTabId, TuNavTabItem, TuStatsData } from './tu/types';
 import { DivisiStrukturOrganisasiView } from '@/components/academic/struktur/DivisiStrukturOrganisasiView';
-import { UniversalMobileSubtabSidebar, MobileSubtabBar, useMobileSubtabSidebar } from './common/UniversalMobileSubtabSidebar';
+import { UniversalMobileSubtabSidebar, useMobileSubtabSidebar } from './common/UniversalMobileSubtabSidebar';
 
 // Code-splitting Universal Views (Pilar 21B & TBT Optimization)
 const SuratMasukView = lazy(() =>
@@ -275,15 +275,6 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
           {...academicFilter.toolbarProps}
           variant="compact"
           className="w-full"
-        />
-
-        {/* Mobile Subtab Bar with Dedicated Sidebar Trigger */}
-        <MobileSubtabBar
-          tabs={navTabs}
-          activeTab={activeTab}
-          onOpenSidebar={openMobileSidebar}
-          onSelectTab={(tabId) => handleTabSelect(tabId as TuTabId)}
-          roleBadge="TATA USAHA"
         />
 
         {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}

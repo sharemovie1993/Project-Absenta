@@ -34,7 +34,6 @@ import { EkskulJadwalTab } from './ekskul/tabs/EkskulJadwalTab';
 import { EkskulRekapTab } from './ekskul/tabs/EkskulRekapTab';
 import { 
   UniversalMobileSubtabSidebar, 
-  MobileSubtabBar, 
   useMobileSubtabSidebar 
 } from './common/UniversalMobileSubtabSidebar';
 
@@ -276,16 +275,6 @@ export const EkskulDashboard: React.FC<EkskulDashboardProps> = () => {
               </button>
 
               {/* Quick Trigger Subtab Sidebar */}
-              <button
-                type="button"
-                onClick={openMobileSidebar}
-                className="lg:hidden p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-indigo-300 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs"
-                title="Buka Menu Sidebar Subtab"
-                aria-label="Buka Menu Sidebar Subtab"
-              >
-                <span className="text-[10.5px]">Subtab ({navTabs.length})</span>
-              </button>
-
               {/* Refresh Button */}
               <button
                 type="button"
@@ -309,20 +298,10 @@ export const EkskulDashboard: React.FC<EkskulDashboardProps> = () => {
               />
             </div>
           )}
+        </div>
 
-          {/* Mobile Subtab Bar with Dedicated Sidebar Trigger */}
-          <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 lg:hidden">
-            <MobileSubtabBar
-              tabs={navTabs}
-              activeTab={activeTab}
-              onOpenSidebar={openMobileSidebar}
-              onSelectTab={(tabId) => handleTabSelect(tabId as EkskulTabId)}
-              roleBadge="EKSTRAKURIKULER"
-            />
-          </div>
-
-          {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
-          <UniversalMobileSubtabSidebar
+        {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
+        <UniversalMobileSubtabSidebar
             isOpen={isMobileSidebarOpen}
             onClose={() => setIsMobileSidebarOpen(false)}
             title="Ekstrakurikuler & Organisasi"

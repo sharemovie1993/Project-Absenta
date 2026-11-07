@@ -57,7 +57,6 @@ import { KaprogUkkTab } from './kaprog/tabs/KaprogUkkTab';
 import { KaprogCetakRaporTab } from './kaprog/tabs/KaprogCetakRaporTab';
 import { 
   UniversalMobileSubtabSidebar, 
-  MobileSubtabBar, 
   useMobileSubtabSidebar 
 } from './common/UniversalMobileSubtabSidebar';
 import { 
@@ -628,15 +627,6 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={openMobileSidebar}
-            className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs shrink-0"
-            title="Buka Menu Sidebar Subtab"
-            aria-label="Buka Menu Sidebar Subtab"
-          >
-            <span className="text-[10.5px]">Subtab ({navTabs.length})</span>
-          </button>
         </div>
 
         {/* Mobile Academic Filter Toolbar */}
@@ -644,15 +634,6 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
           {...academicFilter.toolbarProps}
           variant="compact"
           className="w-full"
-        />
-
-        {/* Mobile Subtab Bar with Dedicated Sidebar Trigger */}
-        <MobileSubtabBar
-          tabs={navTabs}
-          activeTab={activeTab}
-          onOpenSidebar={openMobileSidebar}
-          onSelectTab={(tabId) => handleTabSelect(tabId as KaprogTabId)}
-          roleBadge="KAPROG"
         />
 
         {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}

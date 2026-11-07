@@ -31,7 +31,6 @@ import { SiswaDashboardSkeleton } from './siswa/SiswaDashboardSkeleton';
 import { useSiswaDashboardData } from './siswa/useSiswaDashboardData';
 import { 
   UniversalMobileSubtabSidebar, 
-  MobileSubtabBar, 
   useMobileSubtabSidebar 
 } from './common/UniversalMobileSubtabSidebar';
 
@@ -267,40 +266,7 @@ export const SiswaDashboard: React.FC = () => {
               <span className="hidden sm:inline">Kartu Digital</span>
             </button>
 
-            {/* Quick Trigger Subtab Sidebar */}
-            <button
-              type="button"
-              onClick={openMobileSidebar}
-              className="lg:hidden p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-blue-300 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs"
-              title="Buka Menu Sidebar Subtab"
-              aria-label="Buka Menu Sidebar Subtab"
-            >
-              <span className="text-[10.5px]">Subtab ({navTabs.length})</span>
-            </button>
-
             {/* Refresh Button */}
-            <button
-              type="button"
-              onClick={handleManualRefresh}
-              disabled={isRefreshing}
-              className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer disabled:opacity-50"
-              title="Segarkan Data"
-            >
-              <RefreshCw size={14} className={cn(isRefreshing && 'animate-spin')} />
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Subtab Bar with Dedicated Sidebar Trigger */}
-        <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 lg:hidden">
-          <MobileSubtabBar
-            tabs={navTabs}
-            activeTab={activeTab}
-            onOpenSidebar={openMobileSidebar}
-            onSelectTab={(tabId) => handleTabChange(tabId as SiswaTabId)}
-            roleBadge="SISWA"
-          />
-        </div>
 
         {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
         <UniversalMobileSubtabSidebar

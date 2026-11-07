@@ -39,7 +39,6 @@ import { HubinSettingsTab } from './hubin/tabs/HubinSettingsTab';
 import { DivisiStrukturOrganisasiView } from '@/components/academic/struktur/DivisiStrukturOrganisasiView';
 import { 
   UniversalMobileSubtabSidebar, 
-  MobileSubtabBar, 
   useMobileSubtabSidebar 
 } from './common/UniversalMobileSubtabSidebar';
 
@@ -312,16 +311,6 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
               </button>
 
               {/* Quick Trigger Subtab Sidebar */}
-              <button
-                type="button"
-                onClick={openMobileSidebar}
-                className="lg:hidden p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-indigo-300 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs"
-                title="Buka Menu Sidebar Subtab"
-                aria-label="Buka Menu Sidebar Subtab"
-              >
-                <span className="text-[10.5px]">Subtab ({navTabs.length})</span>
-              </button>
-
               {/* Refresh Button */}
               <button
                 type="button"
@@ -346,15 +335,6 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
             </div>
           )}
         </div>
-
-        {/* 1.5. Mobile Subtab Bar with Dedicated Sidebar Trigger (< lg) */}
-        <MobileSubtabBar
-          tabs={navTabs}
-          activeTab={activeTab}
-          onOpenSidebar={openMobileSidebar}
-          onSelectTab={(tabId) => handleTabSelect(tabId as HubinTabId)}
-          roleBadge="HUBIN"
-        />
 
         {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
         <UniversalMobileSubtabSidebar

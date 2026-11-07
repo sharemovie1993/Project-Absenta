@@ -36,7 +36,6 @@ import { BpbkRekapTab } from './bpbk/tabs/BpbkRekapTab';
 import { DivisiStrukturOrganisasiView } from '@/components/academic/struktur/DivisiStrukturOrganisasiView';
 import { 
   UniversalMobileSubtabSidebar, 
-  MobileSubtabBar, 
   useMobileSubtabSidebar 
 } from './common/UniversalMobileSubtabSidebar';
 
@@ -298,17 +297,6 @@ export const BpbkDashboard: React.FC<BpbkDashboardProps> = () => {
                 <span className="hidden sm:inline">Filter</span>
               </button>
 
-              {/* Quick Trigger Subtab Sidebar */}
-              <button
-                type="button"
-                onClick={openMobileSidebar}
-                className="lg:hidden p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs"
-                title="Buka Menu Sidebar Subtab"
-                aria-label="Buka Menu Sidebar Subtab"
-              >
-                <span className="text-[10.5px]">Subtab ({navTabs.length})</span>
-              </button>
-
               {/* Refresh Button */}
               <button
                 type="button"
@@ -332,17 +320,6 @@ export const BpbkDashboard: React.FC<BpbkDashboardProps> = () => {
               />
             </div>
           )}
-
-          {/* Mobile Subtab Bar with Dedicated Sidebar Trigger */}
-          <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 lg:hidden">
-            <MobileSubtabBar
-              tabs={navTabs}
-              activeTab={activeTab}
-              onOpenSidebar={openMobileSidebar}
-              onSelectTab={(tabId) => handleTabSelect(tabId as BpbkTabId)}
-              roleBadge="BP / BK"
-            />
-          </div>
 
           {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
           <UniversalMobileSubtabSidebar

@@ -26,7 +26,6 @@ import { PklRekapTab } from './pembimbing-pkl/tabs/PklRekapTab';
 import { extractLogbooksFromPenempatan, rejectLogbookAction, mapSiswaBimbingan } from './pembimbing-pkl/logbookUtils';
 import { 
   UniversalMobileSubtabSidebar, 
-  MobileSubtabBar, 
   useMobileSubtabSidebar 
 } from './common/UniversalMobileSubtabSidebar';
 
@@ -425,17 +424,6 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                 <SlidersHorizontal size={13} className="mr-1 text-teal-600" />
                 Filter
               </Button>
-              {/* Quick Trigger Subtab Sidebar */}
-              <button
-                type="button"
-                onClick={openMobileSidebar}
-                className="sm:hidden p-1.5 rounded-xl border border-teal-300 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 text-xs font-bold flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
-                title="Buka Menu Sidebar Subtab"
-                aria-label="Buka Menu Sidebar Subtab"
-              >
-                <span className="text-[10.5px]">Subtab ({navTabs.length})</span>
-              </button>
-
               <Button
                 variant="outline"
                 size="sm"
@@ -455,15 +443,6 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
             <AcademicFilterToolbar {...academicFilter.toolbarProps} variant="compact" />
           </div>
         </div>
-
-        {/* Mobile Subtab Bar with Dedicated Sidebar Trigger (< lg) */}
-        <MobileSubtabBar
-          tabs={navTabs}
-          activeTab={activeTab}
-          onOpenSidebar={openMobileSidebar}
-          onSelectTab={(tabId) => handleTabSelect(tabId as PklTabId)}
-          roleBadge="PEMBIMBING PKL"
-        />
 
         {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
         <UniversalMobileSubtabSidebar

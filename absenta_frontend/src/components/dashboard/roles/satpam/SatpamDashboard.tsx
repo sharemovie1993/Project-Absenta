@@ -30,7 +30,6 @@ import { SatpamPelanggaranTab } from './tabs/SatpamPelanggaranTab';
 import { SatpamTrafficTab } from './tabs/SatpamTrafficTab';
 import { 
   UniversalMobileSubtabSidebar, 
-  MobileSubtabBar, 
   useMobileSubtabSidebar 
 } from '../common/UniversalMobileSubtabSidebar';
 import type { 
@@ -278,17 +277,6 @@ export const SatpamDashboard: React.FC = () => {
             <p className="text-lg font-black text-indigo-400 mt-0.5">{satpamStats.izinKeluarAktif} Izin</p>
           </div>
         </div>
-      </div>
-
-      {/* ── 2. TAB NAVIGATION (MOBILE SIDEBAR + DESKTOP TABS) ── */}
-      <div className="lg:hidden">
-        <MobileSubtabBar
-          tabs={tabsConfig}
-          activeTab={currentTab}
-          onOpenSidebar={openMobileSidebar}
-          onSelectTab={handleTabChange}
-          roleBadge="SATPAM"
-        />
       </div>
 
       <UniversalMobileSubtabSidebar
