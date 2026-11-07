@@ -45,9 +45,10 @@ export function getEcosystemGradient(ecosystem: EcosystemType): [string, string]
 }
 
 /**
- * ── GAYA 1: BOTTOM BAR DOCK DENGAN NOTCH CEKUNG MELAYANG (CURVED NOTCH CUTOUT) ──
- * Menghasilkan kurva lengkung S-Curve mulus (C1 Continuous) persis seperti desain referensi:
- * - Sudut luar dan sudut palung memiliki tangen horizontal mulus tanpa patahan siku.
+ * ── GAYA 1: EDGE-TO-EDGE DOCKED BOTTOM BAR DENGAN NOTCH CEKUNG (CURVED NOTCH CUTOUT) ──
+ * Menghasilkan docking menempel penuh ke lantai layar (edge-to-edge flush):
+ * - Sisi kiri, kanan, dan bawah menempel ke batas layar tanpa rounded radius hanging.
+ * - Top line meliuk dengan kurva S-Curve mulus (C1 Continuous) sebagai cradle elevated FAB.
  * - Ruang di atas lekukan berlubang transparan (zero-overlap) sehingga konten halaman terlihat alami.
  * - Mendukung tema terang (putih), tema gelap (slate-900/950), dan tema gradient Layer 2 per-divisi.
  */
@@ -59,63 +60,58 @@ export const BottomNavNotchBackground: React.FC<BottomNavNotchBackgroundProps> =
   height = 68,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState<number>(() => (typeof window !== 'undefined' ? window.innerWidth - 24 : 360));
+  const [width, setWidth] = useState<number>(() => (typeof window !== 'undefined' ? window.innerWidth : 360));
+  const [currentHeight, setCurrentHeight] = useState<number>(() => height);
 
   useLayoutEffect(() => {
     if (!containerRef.current) return;
-    const updateWidth = () => {
+    const updateDimensions = () => {
       if (containerRef.current) {
-        const measured = containerRef.current.clientWidth;
-        if (measured > 0) setWidth(measured);
+        const measuredW = containerRef.current.clientWidth;
+        const measuredH = containerRef.current.clientHeight;
+        if (measuredW > 0) setWidth(measuredW);
+        if (measuredH > 0) setCurrentHeight(measuredH);
       }
     };
-    updateWidth();
+    updateDimensions();
 
     const resizeObserver = new ResizeObserver(() => {
-      updateWidth();
+      updateDimensions();
     });
     resizeObserver.observe(containerRef.current);
 
-    window.addEventListener('resize', updateWidth);
+    window.addEventListener('resize', updateDimensions);
     return () => {
       resizeObserver.disconnect();
-      window.removeEventListener('resize', updateWidth);
+      window.removeEventListener('resize', updateDimensions);
     };
   }, []);
 
   const center = width / 2;
   const p1 = center - notchWidth / 2;
   const p2 = center + notchWidth / 2;
-  const rTop = 24;
-  const rBottom = 24;
 
-  // Path formula untuk Gaya 1 (Lekukan Cekung S-Curve Luas & Bernapas):
-  // Didesain dengan bahu halus (p1 + 20) dan dasar palung datar lembut (center - 26)
-  // sehingga elevated button melayang anggun tanpa terhimpit.
+  // Path formula untuk Edge-to-Edge Docked Navigation Bar dengan Notch FAB Sentral:
+  // - Sisi kiri, kanan, dan bawah menempel penuh ke batas layar tanpa rounded radius hanging.
+  // - Top line memiliki lekukan S-Curve halus (p1 -> center -> p2) dengan notchDepth untuk elevated FAB.
   const fillPathD = `
-    M 0 ${rTop}
-    Q 0 0 ${rTop} 0
+    M 0 0
     L ${p1} 0
     C ${p1 + 20} 0 ${center - 28} ${notchDepth} ${center} ${notchDepth}
     C ${center + 28} ${notchDepth} ${p2 - 20} 0 ${p2} 0
-    L ${width - rTop} 0
-    Q ${width} 0 ${width} ${rTop}
-    L ${width} ${height - rBottom}
-    Q ${width} ${height} ${width - rBottom} ${height}
-    L ${rBottom} ${height}
-    Q 0 ${height} 0 ${height - rBottom}
+    L ${width} 0
+    L ${width} ${currentHeight}
+    L 0 ${currentHeight}
     Z
   `.replace(/\s+/g, ' ').trim();
 
-  // Path garis pembatas atas halus (top border stroke)
+  // Path garis pembatas atas (top border stroke) yang meliuk mengikuti kurva notch:
   const topStrokeD = `
-    M 0 ${rTop}
-    Q 0 0 ${rTop} 0
+    M 0 0
     L ${p1} 0
     C ${p1 + 20} 0 ${center - 28} ${notchDepth} ${center} ${notchDepth}
     C ${center + 28} ${notchDepth} ${p2 - 20} 0 ${p2} 0
-    L ${width - rTop} 0
-    Q ${width} 0 ${width} ${rTop}
+    L ${width} 0
   `.replace(/\s+/g, ' ').trim();
 
   const isLayer2 = theme.isLayer2;
@@ -130,9 +126,9 @@ export const BottomNavNotchBackground: React.FC<BottomNavNotchBackgroundProps> =
     >
       <svg
         width={width}
-        height={height}
-        viewBox={`0 0 ${width} ${height}`}
-        className="w-full h-full filter drop-shadow-[0_8px_25px_rgba(0,0,0,0.12)] dark:drop-shadow-[0_12px_32px_rgba(0,0,0,0.55)]"
+        height={currentHeight}
+        viewBox={`0 0 ${width} ${currentHeight}`}
+        className="w-full h-full filter drop-shadow-[0_-3px_12px_rgba(0,0,0,0.08)] dark:drop-shadow-[0_-3px_16px_rgba(0,0,0,0.35)]"
         style={{ overflow: 'visible' }}
       >
         <defs>

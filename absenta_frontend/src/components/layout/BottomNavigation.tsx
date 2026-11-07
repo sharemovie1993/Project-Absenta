@@ -108,13 +108,13 @@ export const BottomNavigation: React.FC = React.memo(() => {
         onSelectSubItem={handleSubItemClick}
       />
 
-      {/* ── SUBKOMPONEN 2: BILAH NAVIGASI BAWAH SELULER (GAYA 1: CURVED NOTCH DOCK WITH ELEVATED FAB) ── */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex flex-col pointer-events-auto overflow-visible px-3 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+      {/* ── SUBKOMPONEN 2: BILAH NAVIGASI BAWAH SELULER (EDGE-TO-EDGE DOCKED NOTCH WITH ELEVATED FAB) ── */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex flex-col pointer-events-auto overflow-visible">
         <nav
           aria-label="Navigasi Bawah Seluler"
-          className="w-full relative flex items-center justify-between h-[68px] overflow-visible"
+          className="w-full relative flex flex-col justify-start h-[calc(64px+env(safe-area-inset-bottom))] sm:h-[calc(68px+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] overflow-visible"
         >
-          {/* Background Shape Lekukan Cekung S-Curve Lebar & Bernapas (Gaya 1) */}
+          {/* Background Shape Lekukan Cekung S-Curve Lebar & Bernapas Menempel Penuh ke Tepi Layar */}
           <BottomNavNotchBackground
             theme={currentTheme}
             ecosystem={activeEcosystem}
@@ -123,7 +123,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
             height={68}
           />
 
-          <div className="flex items-center w-full h-full relative z-10 px-1">
+          <div className="flex items-center w-full h-[64px] sm:h-[68px] relative z-10 px-1">
             {activeTabsList.map((item, index) => {
               const isCenterItem = index === centerIndex;
               const isSelected = item.isActive(location.pathname, currentTab) || (isCenterItem && isSidebarOpen);
