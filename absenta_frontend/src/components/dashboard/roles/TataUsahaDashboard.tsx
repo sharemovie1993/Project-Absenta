@@ -235,18 +235,18 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
 
   const currentSubtabTitle = useMemo(() => {
     switch (activeTab) {
-      case 'ringkasan': return 'Pusat Administrasi & Arsip Tata Usaha';
-      case 'surat_masuk': return 'Agenda Surat Masuk';
-      case 'surat_keluar': return 'Agenda Surat Keluar';
-      case 'buku_induk': return 'Buku Induk & Klapper Siswa';
-      case 'surat_keterangan': return 'Penerbitan Surat Keterangan';
-      case 'mutasi': return 'Mutasi & Perpindahan Siswa';
-      case 'ijazah': return 'Berita Acara & Ijazah Siswa';
-      case 'dkn': return 'Daftar Kumpulan Nilai (DKN)';
-      case 'kepegawaian': return 'Data Kepegawaian & PTK';
-      case 'dapodik': return 'Sinkronisasi Data Dapodik';
-      case 'struktur_organisasi': return 'Struktur Organisasi Tata Usaha';
-      default: return 'Dashboard Tata Usaha';
+      case 'ringkasan': return 'Pusat Administrasi';
+      case 'surat_masuk': return 'Surat Masuk';
+      case 'surat_keluar': return 'Surat Keluar';
+      case 'buku_induk': return 'Buku Induk & Klapper';
+      case 'surat_keterangan': return 'Surat Keterangan';
+      case 'mutasi': return 'Mutasi Siswa';
+      case 'ijazah': return 'Ijazah Siswa';
+      case 'dkn': return 'Kumpulan Nilai (DKN)';
+      case 'kepegawaian': return 'Data PTK';
+      case 'dapodik': return 'Sinkronisasi Dapodik';
+      case 'struktur_organisasi': return 'Struktur Organisasi';
+      default: return 'Beranda';
     }
   }, [activeTab]);
 

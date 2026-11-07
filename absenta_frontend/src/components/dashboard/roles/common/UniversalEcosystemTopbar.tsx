@@ -4,7 +4,8 @@ import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
   type EcosystemType, 
-  getEcosystemTheme 
+  getEcosystemTheme,
+  getEcosystemLabel
 } from '@/config/bottomNavEcosystems.config';
 
 export interface UniversalEcosystemTopbarProps {
@@ -180,15 +181,22 @@ export const UniversalEcosystemTopbar: React.FC<UniversalEcosystemTopbarProps> =
           </div>
         )}
 
-        {/* JUDUL SUBTAB MURNI (RAMPING & JELAS - TIDAK TERPOTONG ELLIPSIS) */}
-        <h1
-          className={cn(
-            'text-sm font-bold tracking-tight truncate flex-1 min-w-0',
-            isLayer2 ? 'text-white drop-shadow-xs' : 'text-slate-900 dark:text-white'
+        {/* KONTEKS EKOSISTEM (EYEBROW) + JUDUL SUBTAB RAMPING */}
+        <div className="flex flex-col min-w-0 flex-1 justify-center leading-tight">
+          {isLayer2 && (
+            <span className="text-[9px] sm:text-[9.5px] font-extrabold uppercase tracking-wider text-white/80 leading-none truncate">
+              {getEcosystemLabel(ecosystem)}
+            </span>
           )}
-        >
-          {title}
-        </h1>
+          <h1
+            className={cn(
+              'text-xs sm:text-sm font-bold tracking-tight truncate leading-tight',
+              isLayer2 ? 'text-white drop-shadow-xs mt-0.5' : 'text-slate-900 dark:text-white'
+            )}
+          >
+            {title}
+          </h1>
+        </div>
       </div>
 
       {/* SISI KANAN: AKSI MINIMAL (TOMBOL KUSTOM & REFRESH) */}

@@ -216,12 +216,12 @@ export const SatpamDashboard: React.FC = () => {
 
   const currentSubtabTitle = useMemo(() => {
     switch (currentTab) {
-      case 'scan': return 'Presensi Scan Gerbang';
-      case 'buku_tamu': return 'Buku Tamu & Pengunjung';
-      case 'izin_keluar': return 'Izin Keluar Kampus Siswa';
-      case 'pelanggaran': return 'Catatan Pelanggaran Gerbang';
-      case 'traffic': return 'Trafik & Monitoring Gerbang';
-      default: return 'Pos Keamanan Satpam';
+      case 'scan': return 'Presensi Gerbang';
+      case 'buku_tamu': return 'Buku Tamu';
+      case 'izin_keluar': return 'Izin Keluar';
+      case 'pelanggaran': return 'Pelanggaran Gerbang';
+      case 'traffic': return 'Trafik Gerbang';
+      default: return 'Pos Keamanan';
     }
   }, [currentTab]);
 

@@ -324,15 +324,15 @@ export const KepalaSekolahDashboard: React.FC<KepalaSekolahDashboardProps> = Rea
 
   const currentSubtabTitle = useMemo(() => {
     switch (activeTab) {
-      case 'ringkasan': return 'Pusat Pengawasan Eksekutif Kepala Sekolah';
-      case 'kbm': return 'Pengawasan KBM & Kurikulum';
-      case 'kesiswaan': return 'Pengawasan Disiplin & Kesiswaan';
-      case 'bk': return 'Pengawasan Bimbingan Konseling';
-      case 'sarpras': return 'Pengawasan Sarana & Prasarana';
-      case 'hubin': return 'Pengawasan Kemitraan Industri & PKL';
-      case 'tu': return 'Pengawasan Administrasi Tata Usaha';
-      case 'aturan_absensi': return 'Aturan & Konfigurasi Presensi';
-      default: return 'Dashboard Kepala Sekolah';
+      case 'ringkasan': return 'Pengawasan Eksekutif';
+      case 'kbm': return 'Pengawasan KBM';
+      case 'kesiswaan': return 'Pengawasan Kesiswaan';
+      case 'bk': return 'Pengawasan Konseling';
+      case 'sarpras': return 'Pengawasan Sarpras';
+      case 'hubin': return 'Pengawasan Kemitraan';
+      case 'tu': return 'Pengawasan Tata Usaha';
+      case 'aturan_absensi': return 'Aturan Presensi';
+      default: return 'Kepala Sekolah';
     }
   }, [activeTab]);
 

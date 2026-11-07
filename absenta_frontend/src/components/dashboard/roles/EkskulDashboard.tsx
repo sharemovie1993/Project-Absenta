@@ -226,12 +226,12 @@ export const EkskulDashboard: React.FC<EkskulDashboardProps> = () => {
 
   const currentSubtabTitle = useMemo(() => {
     switch (activeTab) {
-      case 'ringkasan': return 'Pusat Kendali Ekstrakurikuler';
-      case 'anggota': return 'Data Anggota & Registrasi Eskul';
-      case 'nilai': return 'Penilaian Pembina Eskul';
-      case 'jadwal': return 'Jadwal & Agenda Latihan Mingguan';
-      case 'rekap': return 'Rekapitulasi & Cetak Nilai Eskul';
-      default: return 'Dashboard Ekstrakurikuler';
+      case 'ringkasan': return 'Pusat Kendali';
+      case 'anggota': return 'Anggota Eskul';
+      case 'nilai': return 'Penilaian Eskul';
+      case 'jadwal': return 'Jadwal Latihan';
+      case 'rekap': return 'Cetak Nilai';
+      default: return 'Beranda';
     }
   }, [activeTab]);
 

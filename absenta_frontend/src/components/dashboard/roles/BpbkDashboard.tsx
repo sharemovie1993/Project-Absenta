@@ -245,15 +245,15 @@ export const BpbkDashboard: React.FC<BpbkDashboardProps> = () => {
 
   const currentSubtabTitle = useMemo(() => {
     switch (activeTab) {
-      case 'ringkasan': return 'Pusat Kendali Bimbingan Konseling';
-      case 'konseling': return 'Layanan Konseling Siswa';
-      case 'pemanggilan': return 'Pemanggilan Orang Tua / Wali';
-      case 'home_visit': return 'Kunjungan Rumah (Home Visit)';
-      case 'rujukan': return 'Alih Tangan Kasus / Rujukan';
-      case 'asesmen': return 'Asesmen & Sosiometri Siswa';
-      case 'rekap': return 'Rekapitulasi & Cetak Dokumen BP/BK';
-      case 'struktur_organisasi': return 'Struktur Organisasi BP/BK';
-      default: return 'Dashboard BP/BK';
+      case 'ringkasan': return 'Pusat Kendali';
+      case 'konseling': return 'Layanan Konseling';
+      case 'pemanggilan': return 'Pemanggilan Ortu';
+      case 'home_visit': return 'Kunjungan Rumah';
+      case 'rujukan': return 'Alih Tangan (Rujukan)';
+      case 'asesmen': return 'Asesmen & Sosiometri';
+      case 'rekap': return 'Cetak Dokumen';
+      case 'struktur_organisasi': return 'Struktur Organisasi';
+      default: return 'Beranda';
     }
   }, [activeTab]);
 

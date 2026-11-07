@@ -241,14 +241,14 @@ export const BkkDashboard: React.FC<BkkDashboardProps> = () => {
 
   const currentSubtabTitle = useMemo(() => {
     switch (activeTab) {
-      case 'ringkasan': return 'Pusat Karir & Bursa Kerja Khusus';
-      case 'loker': return 'Informasi Lowongan Kerja (Loker)';
-      case 'pelamar': return 'Data Pelamar Kerja Siswa/Alumni';
-      case 'tracer': return 'Tracer Study & Alumni Sekolah';
-      case 'mitra': return 'Mitra Rekrutmen Perusahaan';
-      case 'rekap': return 'Rekapitulasi & Cetak Dokumen BKK';
-      case 'struktur_organisasi': return 'Struktur Organisasi BKK';
-      default: return 'Dashboard BKK';
+      case 'ringkasan': return 'Pusat Karir';
+      case 'loker': return 'Lowongan Kerja';
+      case 'pelamar': return 'Data Pelamar';
+      case 'tracer': return 'Tracer Study';
+      case 'mitra': return 'Mitra Perusahaan';
+      case 'rekap': return 'Cetak Dokumen';
+      case 'struktur_organisasi': return 'Struktur BKK';
+      default: return 'Beranda';
     }
   }, [activeTab]);
 

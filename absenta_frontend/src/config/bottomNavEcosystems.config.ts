@@ -99,6 +99,32 @@ export interface EcosystemTheme {
 }
 
 /**
+ * Mendapatkan label formal ekosistem divisi untuk context eyebrow di topbar
+ */
+export function getEcosystemLabel(ecosystem: EcosystemType): string {
+  switch (ecosystem) {
+    case 'kurikulum': return 'Kurikulum';
+    case 'hubin': return 'Hubinmas';
+    case 'pembimbing_pkl': return 'Hubin • PKL';
+    case 'bkk': return 'Hubin • BKK';
+    case 'kesiswaan': return 'Kesiswaan';
+    case 'ekskul': return 'Kesiswaan • Ekskul';
+    case 'satpam': return 'Kesiswaan • Keamanan';
+    case 'piket': return 'Kesiswaan • Piket';
+    case 'kaprog': return 'Program Keahlian';
+    case 'walas': return 'Wali Kelas';
+    case 'tu': return 'Tata Usaha';
+    case 'bpbk': return 'BK / Konseling';
+    case 'sarpras': return 'Sarpras';
+    case 'toolman': return 'Sarpras • Toolman';
+    case 'koperasi': return 'Koperasi';
+    case 'admin': return 'Administrator';
+    case 'siswa': return 'Siswa';
+    default: return 'Absenta';
+  }
+}
+
+/**
  * Mendapatkan tema visual Layer 1 (Portal) vs Layer 2 (Workspace Ekosistem)
  * Warna disesuaikan dengan identitas brand masing-masing divisi untuk kontras maksimal di mobile.
  */
@@ -402,7 +428,7 @@ export function getTuTabs(tuTabMeta: any, currentSubtab: string | null, isPendid
       label: tuTabMeta.label || 'Menu Tata Usaha',
       shortLabel: 'Menu',
       icon: LayoutGrid,
-      badge: tuTabMeta.badge || 'TU',
+      badge: tuTabMeta.badge,
       targetPath: '/dashboard?tab=kepegawaian',
       isActive: (p, t) => t === 'kepegawaian' && Boolean(currentSubtab && !['beranda', 'surat-masuk', 'surat-keluar', 'buku-induk'].includes(currentSubtab)),
       children: [
@@ -459,7 +485,6 @@ export function getKurikulumTabs(currentSubtab?: string | null): MobileBottomTab
       label: 'Menu Kurikulum',
       shortLabel: 'Menu',
       icon: LayoutGrid,
-      badge: 'KURI',
       targetPath: '/dashboard?tab=kurikulum',
       isActive: (p, t) => t === 'kurikulum' && Boolean(currentSubtab && !['ringkasan', 'jadwal', 'guru_mapel'].includes(currentSubtab)),
       children: [
@@ -514,7 +539,6 @@ export function getKesiswaanTabs(currentSubtab?: string): MobileBottomTabItem[] 
       label: 'Menu Kesiswaan',
       shortLabel: 'Menu',
       icon: LayoutGrid,
-      badge: 'KESIS',
       targetPath: '/dashboard?tab=kesiswaan',
       isActive: (p, t) => t === 'kesiswaan' && Boolean(currentSubtab && !['ringkasan', 'pelanggaran', 'prestasi'].includes(currentSubtab)),
       children: [
@@ -568,7 +592,6 @@ export function getHubinTabs(currentSubtab?: string): MobileBottomTabItem[] {
       label: 'Menu Hubin',
       shortLabel: 'Menu',
       icon: LayoutGrid,
-      badge: 'HUBIN',
       targetPath: '/dashboard?tab=hubin',
       isActive: (p, t) => t === 'hubin' && Boolean(currentSubtab && !['ringkasan', 'mitra', 'penempatan'].includes(currentSubtab)),
       children: [
@@ -622,7 +645,6 @@ export function getBpbkTabs(currentSubtab?: string): MobileBottomTabItem[] {
       label: 'Menu Konseling',
       shortLabel: 'Menu',
       icon: LayoutGrid,
-      badge: 'BK',
       targetPath: '/dashboard?tab=bpbk',
       isActive: (p, t) => t === 'bpbk' && Boolean(currentSubtab && !['ringkasan', 'cases', 'konseling'].includes(currentSubtab)),
       children: [
@@ -676,7 +698,6 @@ export function getBkkTabs(currentSubtab?: string): MobileBottomTabItem[] {
       label: 'Menu Bursa Kerja Khusus',
       shortLabel: 'Menu',
       icon: LayoutGrid,
-      badge: 'BKK',
       targetPath: '/dashboard?tab=bkk',
       isActive: (p, t) => t === 'bkk' && Boolean(currentSubtab && !['ringkasan', 'loker', 'pelamar'].includes(currentSubtab)),
       children: [
@@ -727,7 +748,6 @@ export function getSarprasTabs(currentSubtab?: string): MobileBottomTabItem[] {
       label: 'Menu Sarpras',
       shortLabel: 'Menu',
       icon: LayoutGrid,
-      badge: 'SARPRAS',
       targetPath: '/dashboard?tab=sarpras',
       isActive: (p, t) => t === 'sarpras' && Boolean(currentSubtab && !['ringkasan', 'inventaris', 'peminjaman'].includes(currentSubtab)),
       children: [
@@ -782,7 +802,6 @@ export function getEkskulTabs(currentSubtab?: string): MobileBottomTabItem[] {
       label: 'Menu Ekstrakurikuler',
       shortLabel: 'Menu',
       icon: LayoutGrid,
-      badge: 'EKSKUL',
       targetPath: '/dashboard?tab=ekskul',
       isActive: (p, t) => t === 'ekskul' && Boolean(currentSubtab && !['ringkasan', 'anggota', 'nilai'].includes(currentSubtab)),
       children: [
@@ -833,7 +852,6 @@ export function getPklPembimbingTabs(currentSubtab?: string): MobileBottomTabIte
       label: 'Menu Bimbingan',
       shortLabel: 'Menu',
       icon: LayoutGrid,
-      badge: 'PKL',
       targetPath: '/dashboard?tab=pembimbing_pkl',
       isActive: (p, t) => t === 'pembimbing_pkl' && Boolean(currentSubtab && !['ringkasan', 'bimbingan', 'jurnal'].includes(currentSubtab)),
       children: [
@@ -885,7 +903,6 @@ export function getSatpamTabs(currentSubtab?: string): MobileBottomTabItem[] {
       label: 'Operasional Pos Keamanan',
       shortLabel: 'Menu',
       icon: LayoutGrid,
-      badge: 'SATPAM',
       targetPath: '/dashboard?tab=satpam',
       isActive: (p, t) => (t === 'satpam' || t === 'gerbang') && Boolean(currentSubtab && !['scan', 'buku_tamu', 'izin_keluar'].includes(currentSubtab)),
       children: [
@@ -935,7 +952,6 @@ export function getToolmanTabs(currentSubtab?: string): MobileBottomTabItem[] {
       label: 'Menu Teknisi Bengkel',
       shortLabel: 'Menu',
       icon: LayoutGrid,
-      badge: 'TOOL',
       targetPath: '/dashboard?tab=toolman',
       isActive: (p, t) => t === 'toolman' && Boolean(currentSubtab && !['ringkasan', 'pinjam', 'servis'].includes(currentSubtab)),
       children: [
@@ -987,7 +1003,6 @@ export function getKoperasiTabs(currentSubtab?: string): MobileBottomTabItem[] {
       label: 'Menu Koperasi',
       shortLabel: 'Menu',
       icon: LayoutGrid,
-      badge: 'KOP',
       targetPath: '/dashboard?tab=koperasi',
       isActive: (p, t) => t === 'koperasi' && Boolean(currentSubtab && !['ringkasan', 'pos', 'simpanan'].includes(currentSubtab)),
       children: [
@@ -1041,7 +1056,6 @@ export function getPiketTabs(): MobileBottomTabItem[] {
       label: 'Menu Piket & Keamanan',
       shortLabel: 'Menu',
       icon: LayoutGrid,
-      badge: 'PIKET',
       targetPath: '/attendance/gate-scanner',
       isActive: (p) => p.startsWith('/attendance') && !['/attendance/gate-scanner', '/attendance/terlambat', '/attendance/dispensasi'].includes(p),
       children: [

@@ -597,18 +597,18 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
 
   const currentSubtabTitle = useMemo(() => {
     switch (activeTab) {
-      case 'beranda': return 'Pusat Kendali Jurusan';
-      case 'siswa': return 'Data Siswa Jurusan';
-      case 'pkl': return 'Praktik Kerja Lapangan (PKL)';
-      case 'sidang_pkl': return 'Sidang & Pengujian PKL';
-      case 'kehadiran': return 'Presensi Rombel Jurusan';
-      case 'pelanggaran': return 'Catatan Kedisiplinan & Pelanggaran';
-      case 'prestasi': return 'Prestasi Siswa Jurusan';
-      case 'guru': return 'Guru Produktif Kejuruan';
-      case 'sarana': return 'Sarana Bengkel & Lab';
-      case 'ukk': return 'Uji Kompetensi Keahlian (UKK)';
-      case 'rapor': return 'Rapor & Rekap Nilai';
-      default: return 'Manajemen Jurusan';
+      case 'beranda': return 'Pusat Kendali';
+      case 'siswa': return 'Data Siswa';
+      case 'pkl': return 'Praktik Kerja (PKL)';
+      case 'sidang_pkl': return 'Sidang PKL';
+      case 'kehadiran': return 'Presensi Jurusan';
+      case 'pelanggaran': return 'Pelanggaran Siswa';
+      case 'prestasi': return 'Prestasi Siswa';
+      case 'guru': return 'Guru Produktif';
+      case 'sarana': return 'Sarana Bengkel';
+      case 'ukk': return 'Uji Kompetensi (UKK)';
+      case 'rapor': return 'Rapor & Nilai';
+      default: return 'Beranda';
     }
   }, [activeTab]);
 

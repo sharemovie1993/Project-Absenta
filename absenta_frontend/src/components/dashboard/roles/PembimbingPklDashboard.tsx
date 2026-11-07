@@ -371,15 +371,15 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
 
   const currentSubtabTitle = useMemo(() => {
     switch (activeTab) {
-      case 'ringkasan': return 'Pusat Kendali Pembimbing PKL';
-      case 'bimbingan': return 'Data Siswa Bimbingan';
-      case 'verifikasi_absensi': return 'Verifikasi Presensi DU/DI';
-      case 'absensi': return 'Rekap Presensi Siswa';
-      case 'jurnal': return 'Review Jurnal & Logbook';
-      case 'monitoring': return 'Monitoring & Supervisi Industri';
-      case 'penilaian': return 'Penilaian Pembimbing DU/DI';
-      case 'rekap': return 'Rekapitulasi & Cetak Nilai';
-      default: return 'Dashboard Pembimbing PKL';
+      case 'ringkasan': return 'Pusat Kendali';
+      case 'bimbingan': return 'Siswa Bimbingan';
+      case 'verifikasi_absensi': return 'Verifikasi Presensi';
+      case 'absensi': return 'Rekap Presensi';
+      case 'jurnal': return 'Jurnal & Logbook';
+      case 'monitoring': return 'Monitoring Industri';
+      case 'penilaian': return 'Penilaian PKL';
+      case 'rekap': return 'Cetak Nilai';
+      default: return 'Beranda';
     }
   }, [activeTab]);
 

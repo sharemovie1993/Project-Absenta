@@ -229,12 +229,12 @@ export const ToolmanDashboard: React.FC<ToolmanDashboardProps> = () => {
 
   const currentSubtabTitle = useMemo(() => {
     switch (activeTab) {
-      case 'ringkasan': return 'Pusat Kendali Toolman & Alat Praktik';
-      case 'pinjam': return 'Sirkulasi & Peminjaman Alat';
-      case 'servis': return 'Perawatan & Servis Perkakas';
-      case 'alat': return 'Inventaris Alat & Mesin Bengkel';
-      case 'rekap': return 'Rekapitulasi & Kartu Kontrol Alat';
-      default: return 'Dashboard Toolman';
+      case 'ringkasan': return 'Pusat Kendali';
+      case 'pinjam': return 'Peminjaman Alat';
+      case 'servis': return 'Servis Perkakas';
+      case 'alat': return 'Inventaris Bengkel';
+      case 'rekap': return 'Kartu Kontrol';
+      default: return 'Beranda';
     }
   }, [activeTab]);
 

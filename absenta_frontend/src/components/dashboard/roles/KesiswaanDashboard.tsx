@@ -253,16 +253,16 @@ export const KesiswaanDashboard: React.FC<KesiswaanDashboardProps> = ({ user }) 
 
   const currentSubtabTitle = useMemo(() => {
     switch (activeTab) {
-      case 'ringkasan': return 'Pusat Kendali Kesiswaan';
-      case 'pelanggaran': return 'Kedisiplinan & Pelanggaran';
-      case 'prestasi': return 'Prestasi & Penghargaan Siswa';
-      case 'dhuha': return 'Pembiasaan Karakter & Dhuha';
-      case 'ketarunaan': return 'Bina Karakter & Ketarunaan';
-      case 'tatib': return 'Tata Tertib & Buku Poin';
-      case 'rekap': return 'Rekapitulasi & Cetak Dokumen';
-      case 'aturan_absensi': return 'Aturan Presensi Siswa';
-      case 'struktur_organisasi': return 'Struktur Organisasi Kesiswaan';
-      default: return 'Dashboard Kesiswaan';
+      case 'ringkasan': return 'Pusat Kendali';
+      case 'pelanggaran': return 'Pelanggaran & Disiplin';
+      case 'prestasi': return 'Prestasi Siswa';
+      case 'dhuha': return 'Pembiasaan Dhuha';
+      case 'ketarunaan': return 'Ketarunaan';
+      case 'tatib': return 'Tata Tertib & Poin';
+      case 'rekap': return 'Cetak Dokumen';
+      case 'aturan_absensi': return 'Aturan Presensi';
+      case 'struktur_organisasi': return 'Struktur Organisasi';
+      default: return 'Beranda';
     }
   }, [activeTab]);
 

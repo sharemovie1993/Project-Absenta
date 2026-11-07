@@ -550,25 +550,25 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
 
   const currentSubtabTitle = useMemo(() => {
     switch (activeTab) {
-      case 'ringkasan': return 'Pusat Kendali Kurikulum';
-      case 'delegasi': return 'Jadwal & Delegasi Inval';
-      case 'rekap_kbm': return 'Realisasi KBM Harian';
-      case 'perangkat': return 'Verifikasi Perangkat Ajar';
-      case 'jadwal': return 'Jadwal Pelajaran KBM';
-      case 'plotting': return 'Plotting Beban Mengajar';
-      case 'atp': return 'Alur Tujuan Pembelajaran (ATP)';
-      case 'kosp': return 'KOSP & Kurikulum Operasional';
-      case 'struktur': return 'Struktur Kurikulum';
-      case 'supervisi': return 'Supervisi Kinerja Guru';
-      case 'rekap': return 'Rekapitulasi KBM & Absensi';
+      case 'ringkasan': return 'Pusat Kendali';
+      case 'delegasi': return 'Delegasi Inval';
+      case 'rekap_kbm': return 'Realisasi KBM';
+      case 'perangkat': return 'Perangkat Ajar';
+      case 'jadwal': return 'Jadwal Pelajaran';
+      case 'plotting': return 'Plotting Guru';
+      case 'atp': return 'Alur Tujuan (ATP)';
+      case 'kosp': return 'Kurikulum Operasional';
+      case 'struktur': return 'Struktur Modul';
+      case 'supervisi': return 'Supervisi Guru';
+      case 'rekap': return 'Rekapitulasi KBM';
       case 'penilaian': return 'Buku Nilai & Rapor';
-      case 'kalender': return 'Kalender Pendidikan';
-      case 'kokurikuler': return 'Kokurikuler & P5';
-      case 'pengumuman': return 'Pengumuman Akademik';
-      case 'jam_kbm': return 'Konfigurasi Jam Pelajaran';
-      case 'rekap_mapel': return 'Rekapitulasi Mata Pelajaran';
-      case 'settings': return 'Pengaturan Kurikulum';
-      default: return 'Dashboard Kurikulum';
+      case 'kalender': return 'Kalender Akademik';
+      case 'kokurikuler': return 'Kokurikuler (P5)';
+      case 'pengumuman': return 'Pengumuman';
+      case 'jam_kbm': return 'Jam Pelajaran';
+      case 'rekap_mapel': return 'Rekap Mapel';
+      case 'settings': return 'Pengaturan';
+      default: return 'Beranda';
     }
   }, [activeTab]);
 

@@ -260,17 +260,17 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
   const currentSubtabTitle = useMemo(() => {
     switch (activeTab) {
       case 'ringkasan': return 'Ringkasan Rombel';
-      case 'siswa': return 'Data Siswa Binaan';
-      case 'struktur': return 'Struktur Organisasi Kelas';
-      case 'presensi': return 'Presensi Rombel Binaan';
-      case 'deteksi': return 'Deteksi Dini & Kerawanan';
-      case 'ketuntasan': return 'Ketuntasan Belajar Siswa';
-      case 'jurnal': return 'Jurnal Pembelajaran Kelas';
-      case 'izin': return 'Verifikasi Izin & Dispensasi';
-      case 'disiplin': return 'Kedisiplinan & Pelanggaran';
-      case 'prestasi': return 'Prestasi Siswa Rombel';
-      case 'rekap': return 'Rekapitulasi Absensi & KBM';
-      case 'rapor': return 'Cetak Rapor & Leger';
+      case 'siswa': return 'Data Siswa';
+      case 'struktur': return 'Struktur Kelas';
+      case 'presensi': return 'Presensi Rombel';
+      case 'deteksi': return 'Deteksi Kerawanan';
+      case 'ketuntasan': return 'Ketuntasan Belajar';
+      case 'jurnal': return 'Jurnal KBM';
+      case 'izin': return 'Verifikasi Izin';
+      case 'disiplin': return 'Kedisiplinan';
+      case 'prestasi': return 'Prestasi Siswa';
+      case 'rekap': return 'Rekap Absensi';
+      case 'rapor': return 'Rapor & Leger';
       default: return 'Kelas Binaan';
     }
   }, [activeTab]);

@@ -238,15 +238,15 @@ export const SarprasDashboard: React.FC<SarprasDashboardProps> = ({ user }) => {
 
   const currentSubtabTitle = useMemo(() => {
     switch (activeTab) {
-      case 'ringkasan': return 'Pusat Kendali Sarpras';
-      case 'inventaris': return 'Daftar Aset & Inventaris Sekolah';
-      case 'peminjaman': return 'Sirkulasi & Peminjaman Alat';
-      case 'perbaikan': return 'Servis & Pemeliharaan Sarana';
-      case 'katalog': return 'Katalog Sarpras & Standar Ruang';
-      case 'rekap': return 'Rekapitulasi & Cetak Dokumen Aset';
-      case 'denah': return 'Denah Gedung & Penempatan Ruang';
-      case 'struktur_organisasi': return 'Struktur Organisasi Sarpras';
-      default: return 'Dashboard Sarpras';
+      case 'ringkasan': return 'Pusat Kendali';
+      case 'inventaris': return 'Aset & Inventaris';
+      case 'peminjaman': return 'Peminjaman Alat';
+      case 'perbaikan': return 'Servis & Perbaikan';
+      case 'katalog': return 'Katalog Sarpras';
+      case 'rekap': return 'Cetak Dokumen';
+      case 'denah': return 'Denah Gedung';
+      case 'struktur_organisasi': return 'Struktur Organisasi';
+      default: return 'Beranda';
     }
   }, [activeTab]);
 

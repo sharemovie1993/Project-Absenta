@@ -232,13 +232,13 @@ export const SiswaDashboard: React.FC = () => {
 
   const currentSubtabTitle = useMemo(() => {
     switch (activeTab) {
-      case 'ringkasan': return 'Pusat Kendali Siswa';
-      case 'kehadiran': return 'Riwayat Presensi & Kehadiran';
-      case 'pkl': return 'Praktik Kerja Lapangan (PKL)';
-      case 'cbt': return 'Asesmen & Ujian Online (CBT)';
-      case 'catatan': return 'Catatan Pembinaan & Poin Tatib';
-      case 'berkas': return 'Arsip & Berkas Akademik';
-      case 'profil': return 'Profil & Data Pribadi Siswa';
+      case 'ringkasan': return 'Pusat Kendali';
+      case 'kehadiran': return 'Riwayat Presensi';
+      case 'pkl': return 'Praktik Kerja (PKL)';
+      case 'cbt': return 'Ujian Online (CBT)';
+      case 'catatan': return 'Poin & Kedisiplinan';
+      case 'berkas': return 'Berkas Akademik';
+      case 'profil': return 'Profil Saya';
       default: return 'Portal Siswa';
     }
   }, [activeTab]);

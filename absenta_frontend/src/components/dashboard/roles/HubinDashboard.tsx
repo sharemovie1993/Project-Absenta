@@ -239,17 +239,17 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
 
   const currentSubtabTitle = useMemo(() => {
     switch (activeTab) {
-      case 'ringkasan': return 'Pusat Kendali Hubin & Kemitraan';
-      case 'mitra': return 'Dunia Usaha & Industri (DUDI)';
-      case 'penempatan': return 'Penempatan & Monitoring PKL';
-      case 'absensi': return 'Presensi Harian Siswa PKL';
-      case 'nilai': return 'Penilaian Pembimbing & Penguji';
-      case 'bkk': return 'Bursa Kerja Khusus & Lowongan';
-      case 'tracer': return 'Tracer Study & Alumni Sekolah';
-      case 'rekap': return 'Rekapitulasi & Cetak Dokumen';
-      case 'pengaturan': return 'Pengaturan & Kuota Industri';
-      case 'struktur_organisasi': return 'Struktur Organisasi Hubinmas';
-      default: return 'Dashboard Hubin';
+      case 'ringkasan': return 'Pusat Kendali';
+      case 'mitra': return 'Mitra DUDI';
+      case 'penempatan': return 'Penempatan PKL';
+      case 'absensi': return 'Presensi PKL';
+      case 'nilai': return 'Penilaian PKL';
+      case 'bkk': return 'Bursa Kerja (BKK)';
+      case 'tracer': return 'Tracer Study';
+      case 'rekap': return 'Cetak Dokumen';
+      case 'pengaturan': return 'Pengaturan & Kuota';
+      case 'struktur_organisasi': return 'Struktur Organisasi';
+      default: return 'Beranda';
     }
   }, [activeTab]);
 
