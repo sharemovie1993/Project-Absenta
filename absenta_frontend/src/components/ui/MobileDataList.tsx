@@ -73,8 +73,13 @@ export function MobileDataList<T>({
       {(title || onRefresh || (canManage && onAdd)) && (
         <div className="flex items-center justify-between gap-2 px-1">
           {title && (
-            <h2 className="text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">
-              {title} {typeof totalItems === 'number' ? `(${totalItems})` : ''}
+            <h2 className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+              <span>{title}</span>
+              {typeof totalItems === 'number' && (
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 -translate-y-0.5 leading-none">
+                  {totalItems}
+                </span>
+              )}
             </h2>
           )}
           <div className="flex items-center gap-2 ml-auto">

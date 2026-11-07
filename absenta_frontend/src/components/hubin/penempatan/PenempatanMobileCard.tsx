@@ -87,10 +87,10 @@ export const PenempatanMobileCard: React.FC<PenempatanMobileCardProps> = React.m
   return (
     <div
       key={row.id}
-      className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3 w-full max-w-full min-w-0"
+      className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2.5 w-full max-w-full min-w-0"
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
           {selectable && (
             <input
               type="checkbox"
@@ -104,8 +104,8 @@ export const PenempatanMobileCard: React.FC<PenempatanMobileCardProps> = React.m
             nama={toTitleCase(row.Siswa?.nama_siswa)}
             nis={row.Siswa?.nis}
             kelas={row.Siswa?.Kelas?.nama_kelas}
-            size="md"
-            nameClassName="font-bold text-xs tracking-tight"
+            size="sm"
+            nameClassName="font-bold text-xs tracking-tight !whitespace-normal !overflow-visible break-words leading-snug"
             showMeta={true}
           />
         </div>
@@ -134,47 +134,51 @@ export const PenempatanMobileCard: React.FC<PenempatanMobileCardProps> = React.m
         </div>
       </div>
 
-      <div className="p-2.5 bg-slate-50/70 dark:bg-slate-800/30 rounded-xl border border-slate-100/90 dark:border-slate-800/70 space-y-2 text-xs">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200 min-w-0">
-            <Building2 size={13} className="text-indigo-500 shrink-0" />
+      <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-1.5 text-xs">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start gap-1.5 font-bold text-slate-800 dark:text-slate-200 min-w-0 flex-1">
+            <Building2 size={13} className="text-indigo-500 shrink-0 mt-0.5" />
             {row.mitra_id ? (
               <button
                 type="button"
                 onClick={() => onEditMitraKontak(row.mitra_id)}
-                className="truncate hover:text-indigo-600 dark:hover:text-indigo-400 text-left hover:underline cursor-pointer font-semibold text-slate-800 dark:text-slate-200"
+                className="break-words text-left hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline cursor-pointer font-bold text-xs text-slate-800 dark:text-slate-200"
                 title="Klik untuk melihat / perbarui kontak & PIC DUDI"
               >
                 {toTitleCase(row.Mitra?.nama)}
               </button>
             ) : (
-              <span className="truncate font-semibold text-slate-800 dark:text-slate-200">{toTitleCase(row.Mitra?.nama)}</span>
+              <span className="break-words font-bold text-xs text-slate-800 dark:text-slate-200">
+                {toTitleCase(row.Mitra?.nama)}
+              </span>
             )}
           </div>
           {!hidePembimbing && (
-            <span className="text-[10px] font-bold text-slate-500 shrink-0">
-              Pmb: {row.Pembimbing?.nama_guru || 'Belum ada'}
+            <span className="text-[10px] font-semibold text-slate-500 shrink-0 ml-1">
+              Pmb: {row.Pembimbing?.nama_guru ? row.Pembimbing.nama_guru.split(' ')[0] : 'Belum ada'}
             </span>
           )}
         </div>
 
-        <div className="flex items-center justify-between text-[10px] text-slate-500 border-t border-slate-200/50 dark:border-slate-800 pt-1.5">
+        <div className="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
           <span>
             Periode: {formatDate(row.tanggal_mulai, { day: '2-digit', month: 'short' })} - {row.tanggal_selesai ? formatDate(row.tanggal_selesai, { day: '2-digit', month: 'short', year: 'numeric' }) : 'Selesai'}
           </span>
-          <span className="font-bold">{visitCount}/{targetVisits} Visit ({percentage}%)</span>
+          <span className="font-bold text-slate-600 dark:text-slate-400">
+            {visitCount}/{targetVisits} Visit ({percentage}%)
+          </span>
         </div>
 
         {/* Contact WA Links (Hanya tampil jika ada nomor telepon) */}
         {(siswaPhone || mitraPhone) && (
-          <div className="flex items-center gap-2 pt-1 flex-wrap">
-            <span className="text-[10px] font-bold text-slate-400">Kontak WA:</span>
+          <div className="flex items-center gap-1.5 pt-1">
+            <span className="text-[10px] font-medium text-slate-400">WA:</span>
             {siswaPhone && (
               <a
                 href={siswaWaLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full"
+                className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md"
               >
                 <MessageCircle size={10} /> Siswa
               </a>
@@ -184,7 +188,7 @@ export const PenempatanMobileCard: React.FC<PenempatanMobileCardProps> = React.m
                 href={mitraWaLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/20 px-2 py-0.5 rounded-full"
+                className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-md"
               >
                 <Building2 size={10} /> HRD
               </a>

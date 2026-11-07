@@ -30,6 +30,7 @@ import { usePembimbingPklOptions } from '@/hooks/usePembimbingPklOptions';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { MobileAcademicList } from '@/components/academic/shared/MobileAcademicList';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
+import { HubCard } from '@/components/ui/hub';
 
 import { PenempatanMobileCard } from './PenempatanMobileCard';
 import { usePenempatanActions } from './usePenempatanActions';
@@ -408,12 +409,12 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
     const finishedCount = backendStats?.finished ?? (rawPenempatan?.filter((p: SiswaPkl) => p.status === 'SELESAI').length || 0);
     const mitraCount = backendStats?.mitraCount ?? (Array.from(new Set((rawPenempatan ?? [])?.map((p: SiswaPkl) => p.mitra_id))).length || 0);
 
-    return [
-      { title: 'Total Penempatan', value: totalCount, icon: <ClipboardList className="w-5 h-5 text-blue-500" />, bg: 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-200/70 dark:border-blue-900/40 text-blue-700 dark:text-blue-300' },
-      { title: 'Penempatan Aktif', value: activeCount, icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />, bg: 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200/70 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-300' },
-      { title: 'Penempatan Selesai', value: finishedCount, icon: <GraduationCap className="w-5 h-5 text-purple-500" />, bg: 'bg-purple-50/80 dark:bg-purple-950/40 border-purple-200/70 dark:border-purple-900/40 text-purple-700 dark:text-purple-300' },
-      { title: 'Mitra Terlibat', value: mitraCount, icon: <Building2 className="w-5 h-5 text-amber-500" />, bg: 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-200/70 dark:border-amber-900/40 text-amber-700 dark:text-amber-300' }
-    ];
+    return {
+      totalCount,
+      activeCount,
+      finishedCount,
+      mitraCount,
+    };
   }, [penempatanData, pagination, rawPenempatan]);
 
   const handleBulkDelete = useCallback(async () => {
@@ -628,27 +629,44 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
         </div>
       )}
 
-      {/* 1. Header KPI Stats Cards (Bisa disembunyikan via props) */}
+      {/* 1. Header KPI Stats 1-Baris Hairline Strip (Shopee-Grade High-Density) */}
       {!hideHeaderStats && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
-          {statsList.map((s, idx) => (
-            <div
-              key={idx}
-              className={cn(
-                'p-2.5 sm:p-3.5 rounded-2xl border flex items-center justify-between shadow-2xs transition-all',
-                s.bg
-              )}
-            >
-              <div className="min-w-0">
-                <div className="text-[10px] sm:text-[11px] font-medium opacity-80 truncate">{s.title}</div>
-                <div className="text-base sm:text-xl font-bold font-mono mt-0.5">{s.value}</div>
+        <HubCard noPadding className="w-full">
+          <div className="grid grid-cols-4 divide-x divide-slate-100 dark:divide-slate-800/80 py-2 sm:py-2.5 text-center">
+            <div className="px-1 min-w-0">
+              <div className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-none">
+                {statsList.totalCount}
               </div>
-              <div className="p-1.5 sm:p-2 rounded-xl bg-white/70 dark:bg-slate-900/60 shadow-2xs shrink-0">
-                {s.icon}
+              <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+                Total
               </div>
             </div>
-          ))}
-        </div>
+            <div className="px-1 min-w-0">
+              <div className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 leading-none">
+                {statsList.activeCount}
+              </div>
+              <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+                Aktif
+              </div>
+            </div>
+            <div className="px-1 min-w-0">
+              <div className="text-sm sm:text-base font-black text-purple-600 dark:text-purple-400 leading-none">
+                {statsList.finishedCount}
+              </div>
+              <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+                Selesai
+              </div>
+            </div>
+            <div className="px-1 min-w-0">
+              <div className="text-sm sm:text-base font-black text-amber-600 dark:text-amber-400 leading-none">
+                {statsList.mitraCount}
+              </div>
+              <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+                Mitra
+              </div>
+            </div>
+          </div>
+        </HubCard>
       )}
 
       {/* 2. Main Section Card Konten Plotting PKL */}
@@ -689,11 +707,11 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
 
         {/* Banner Aksi Cepat: Siswa Periode Berakhir */}
         {overdueStudents?.length > 0 && canManage && (
-          <div className="mx-4 mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/90 dark:border-amber-900/50 rounded-2xl animate-in fade-in duration-200">
-            <div className="flex items-center gap-2.5 text-xs text-amber-800 dark:text-amber-200">
-              <Clock size={16} className="text-amber-600 dark:text-amber-400 shrink-0" />
-              <span>
-                Terdapat <strong>{overdueStudents.length} siswa</strong> yang jadwal PKL-nya telah berakhir dan menunggu konfirmasi penarikan.
+          <div className="mx-3 sm:mx-4 mt-3 flex items-center justify-between gap-2.5 p-2.5 sm:p-3 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/40 rounded-xl animate-in fade-in duration-200">
+            <div className="flex items-center gap-2 text-xs text-amber-800 dark:text-amber-200 min-w-0">
+              <Clock size={15} className="text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="truncate">
+                <strong>{overdueStudents.length} siswa</strong> habis masa PKL
               </span>
             </div>
             <Button
@@ -702,9 +720,9 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
               variant="warning"
               onClick={handleBatchCheckoutOverdue}
               disabled={isBatchCheckingOut}
-              className="shrink-0 text-xs font-bold rounded-xl shadow-sm cursor-pointer"
+              className="shrink-0 h-7 px-2.5 text-[11px] font-bold rounded-lg shadow-2xs cursor-pointer"
             >
-              {isBatchCheckingOut ? 'Memproses...' : `⚡ Tandai Selesai (${overdueStudents.length} Siswa)`}
+              {isBatchCheckingOut ? 'Memproses...' : `Selesaikan (${overdueStudents.length})`}
             </Button>
           </div>
         )}
@@ -734,10 +752,75 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
 
         <div className="bg-transparent overflow-hidden">
           {isMobile ? (
-            <div className="p-4 space-y-4">
-              <div className="flex justify-end mb-2">
-                {toolbar}
-              </div>
+            <div className="p-3 sm:p-4 space-y-3">
+              {/* Responsive Mobile Action Toolbar */}
+              {canManage && (
+                <div className="space-y-2">
+                  {actions.selectedRowKeys.size > 0 && (
+                    <div className="flex items-center justify-between gap-1.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 px-2.5 py-1.5 rounded-xl">
+                      <span className="text-xs font-bold text-rose-700 dark:text-rose-300">
+                        {actions.selectedRowKeys.size} dipilih
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          onClick={handleBulkDelete}
+                          disabled={actions.bulkDeleteMutation.isPending}
+                          variant="destructive"
+                          size="sm"
+                          className="h-7 px-2 text-xs flex items-center gap-1"
+                        >
+                          <Trash2 size={12} /> Hapus
+                        </Button>
+                        <Button
+                          onClick={() => actions.setSelectedRowKeys(new Set())}
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-slate-500"
+                        >
+                          Batal
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-3 gap-1.5 w-full">
+                    <Button
+                      onClick={() => {
+                        actions.setSelectedPkl(null);
+                        actions.setSelectedSiswaId('');
+                        actions.setSelectedMitraId('');
+                        actions.setSelectedPembimbingId('');
+                        actions.setIsPlottingOpen(true);
+                      }}
+                      variant="primary"
+                      size="sm"
+                      className="h-8 px-1.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1 shadow-2xs whitespace-nowrap"
+                    >
+                      <UserPlus size={13} className="shrink-0" />
+                      <span>Plot Baru</span>
+                    </Button>
+                    <Button
+                      onClick={() => actions.setIsBulkPlottingOpen(true)}
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-1.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1 border-slate-200 dark:border-slate-700 shadow-2xs whitespace-nowrap"
+                    >
+                      <Users size={13} className="shrink-0" />
+                      <span>Kolektif</span>
+                    </Button>
+                    <Button
+                      onClick={() => actions.setIsImportWizardOpen(true)}
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-1.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/30 shadow-2xs whitespace-nowrap"
+                    >
+                      <FileSpreadsheet size={13} className="shrink-0" />
+                      <span>Excel</span>
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <MobileAcademicList
                 title="Daftar Siswa PKL"
                 data={filteredData}
