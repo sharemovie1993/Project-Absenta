@@ -895,7 +895,7 @@ export function getSatpamTabs(currentSubtab?: string): MobileBottomTabItem[] {
       isActive: (p, t) => (t === 'satpam' || t === 'gerbang') && (!currentSubtab || currentSubtab === 'scan'),
     },
     {
-      id: 'satpam_ops',
+      id: 'satpam_menu',
       label: 'Operasional Pos Keamanan',
       shortLabel: 'Menu',
       icon: LayoutGrid,
@@ -1104,7 +1104,7 @@ export function getAdminTabs(teacherDashboards: MobileBottomSubItem[]): MobileBo
       isActive: (p) => p.startsWith('/academic'),
     },
     {
-      id: 'admin_divisi',
+      id: 'admin_menu',
       label: 'Semua Dashboard Divisi',
       shortLabel: 'Menu',
       icon: LayoutGrid,
