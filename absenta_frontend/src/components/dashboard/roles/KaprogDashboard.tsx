@@ -560,7 +560,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
       case 'beranda': return 'Pusat Kendali';
       case 'siswa': return 'Data Siswa';
       case 'pkl': return 'Formulasi TP DUDI';
-      case 'ploting_pkl': return 'Ploting PKL';
+      case 'ploting_pkl': return 'Ploting Siswa PKL';
       case 'presensi_pkl': return 'Absensi PKL';
       case 'nilai_pkl': return 'Penilaian PKL';
       case 'ploting_penguji': return 'Ploting Penguji';
