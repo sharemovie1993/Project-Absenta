@@ -95,6 +95,7 @@ export interface EcosystemTheme {
   inactiveTextClass: string;
   activePillClass: string;
   dotColorClass: string;
+  fabClass?: string;
 }
 
 /**
@@ -114,6 +115,7 @@ export function getEcosystemTheme(
       inactiveTextClass: 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-medium',
       activePillClass: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 shadow-xs',
       dotColorClass: 'bg-indigo-600 dark:bg-indigo-400',
+      fabClass: 'bg-indigo-600 dark:bg-indigo-500 text-white ring-4 ring-white dark:ring-slate-900 shadow-xl shadow-indigo-600/35',
     };
   }
 
@@ -127,6 +129,7 @@ export function getEcosystemTheme(
         inactiveTextClass: 'text-amber-100/75 hover:text-white font-medium',
         activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
         dotColorClass: 'bg-amber-200',
+        fabClass: 'bg-gradient-to-tr from-amber-600 to-amber-700 text-white ring-4 ring-white dark:ring-slate-900 shadow-xl shadow-amber-950/40',
       };
 
     // 🟦 WALI KELAS (Kelas Binaan & Pengasuhan Rombel)
@@ -138,6 +141,7 @@ export function getEcosystemTheme(
         inactiveTextClass: 'text-sky-100/75 hover:text-white font-medium',
         activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
         dotColorClass: 'bg-sky-200',
+        fabClass: 'bg-gradient-to-tr from-sky-600 to-blue-700 text-white ring-4 ring-white dark:ring-slate-900 shadow-xl shadow-sky-950/40',
       };
 
     // 🪪 TATA USAHA (Administrasi, Persuratan & Kepegawaian)
@@ -149,6 +153,7 @@ export function getEcosystemTheme(
         inactiveTextClass: 'text-indigo-100/75 hover:text-white font-medium',
         activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
         dotColorClass: 'bg-indigo-200',
+        fabClass: 'bg-gradient-to-tr from-indigo-700 to-slate-800 text-white ring-4 ring-white dark:ring-slate-900 shadow-xl shadow-indigo-950/40',
       };
 
     // 🟩 WAKA KURIKULUM (Akademik, KBM, Penjadwalan & CBT)
@@ -160,6 +165,7 @@ export function getEcosystemTheme(
         inactiveTextClass: 'text-emerald-100/75 hover:text-white font-medium',
         activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
         dotColorClass: 'bg-emerald-200',
+        fabClass: 'bg-gradient-to-tr from-emerald-600 to-teal-700 text-white ring-4 ring-white dark:ring-slate-900 shadow-xl shadow-emerald-950/40',
       };
 
     // 🟥 WAKA KESISWAAN (Induk: Kesiswaan, Ekskul, Piket, Satpam/Gerbang)
@@ -174,6 +180,7 @@ export function getEcosystemTheme(
         inactiveTextClass: 'text-rose-100/75 hover:text-white font-medium',
         activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
         dotColorClass: 'bg-rose-200',
+        fabClass: 'bg-gradient-to-tr from-rose-600 to-red-700 text-white ring-4 ring-white dark:ring-slate-900 shadow-xl shadow-rose-950/40',
       };
 
     // 🟧 WAKA HUBINMAS (Induk: Hubin, Pembimbing PKL, BKK/Tracer Study)
@@ -187,6 +194,7 @@ export function getEcosystemTheme(
         inactiveTextClass: 'text-orange-100/75 hover:text-white font-medium',
         activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
         dotColorClass: 'bg-orange-200',
+        fabClass: 'bg-gradient-to-tr from-orange-600 to-amber-700 text-white ring-4 ring-white dark:ring-slate-900 shadow-xl shadow-orange-950/40',
       };
 
     // 🌲 WAKA SARPRAS (Induk: Sarpras & Toolman / Bengkel)
@@ -199,6 +207,7 @@ export function getEcosystemTheme(
         inactiveTextClass: 'text-teal-100/75 hover:text-white font-medium',
         activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
         dotColorClass: 'bg-teal-200',
+        fabClass: 'bg-gradient-to-tr from-teal-700 to-emerald-800 text-white ring-4 ring-white dark:ring-slate-900 shadow-xl shadow-teal-950/40',
       };
 
     // 🟪 BIMBINGAN KONSELING (BP / BK)
@@ -210,6 +219,7 @@ export function getEcosystemTheme(
         inactiveTextClass: 'text-purple-100/75 hover:text-white font-medium',
         activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
         dotColorClass: 'bg-purple-200',
+        fabClass: 'bg-gradient-to-tr from-purple-600 to-violet-800 text-white ring-4 ring-white dark:ring-slate-900 shadow-xl shadow-purple-950/40',
       };
 
     // 🟢 KOPERASI SEKOLAH (Ritel & Niaga)
@@ -221,6 +231,7 @@ export function getEcosystemTheme(
         inactiveTextClass: 'text-emerald-100/75 hover:text-white font-medium',
         activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
         dotColorClass: 'bg-emerald-200',
+        fabClass: 'bg-gradient-to-tr from-emerald-700 to-green-800 text-white ring-4 ring-white dark:ring-slate-900 shadow-xl shadow-emerald-950/40',
       };
 
     // 👑 ADMINISTRATOR (IT Master Data & Platform)
@@ -232,6 +243,7 @@ export function getEcosystemTheme(
         inactiveTextClass: 'text-slate-300 hover:text-white font-medium',
         activePillClass: 'bg-white/25 text-white ring-1 ring-white/50 shadow-xs backdrop-blur-xs',
         dotColorClass: 'bg-slate-300',
+        fabClass: 'bg-gradient-to-tr from-slate-800 to-slate-950 text-white ring-4 ring-white dark:ring-slate-900 shadow-xl shadow-slate-950/40',
       };
     default:
       return {
@@ -241,6 +253,7 @@ export function getEcosystemTheme(
         inactiveTextClass: 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-medium',
         activePillClass: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 shadow-xs',
         dotColorClass: 'bg-indigo-600 dark:bg-indigo-400',
+        fabClass: 'bg-indigo-600 dark:bg-indigo-500 text-white ring-4 ring-white dark:ring-slate-900 shadow-xl shadow-indigo-600/35',
       };
   }
 }

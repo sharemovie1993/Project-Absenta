@@ -36,17 +36,14 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
       >
         <div
           className={cn(
-            "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 relative active:scale-95 shadow-lg -translate-y-2.5",
-            isHighlighted
-              ? theme.isLayer2
-                ? "bg-white text-indigo-700 ring-4 ring-white/50 shadow-xl shadow-black/40 scale-105"
-                : "bg-indigo-600 dark:bg-indigo-500 text-white ring-4 ring-indigo-50 dark:ring-indigo-950/70 shadow-xl shadow-indigo-600/40 scale-105"
-              : theme.isLayer2
-                ? "bg-white text-slate-900 ring-4 ring-white/30 shadow-md shadow-black/20 hover:scale-105"
-                : "bg-indigo-600 dark:bg-indigo-500 text-white ring-4 ring-white dark:ring-slate-900 shadow-md shadow-indigo-600/35 hover:scale-105"
+            "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 relative active:scale-95 -translate-y-2.5",
+            theme.fabClass || (theme.isLayer2 
+              ? "bg-gradient-to-tr from-emerald-600 to-teal-700 text-white ring-4 ring-white dark:ring-slate-900 shadow-xl" 
+              : "bg-indigo-600 dark:bg-indigo-500 text-white ring-4 ring-white dark:ring-slate-900 shadow-xl"),
+            isHighlighted ? "scale-105 brightness-110 shadow-2xl" : "hover:scale-105"
           )}
         >
-          <ItemIcon size={21} className="stroke-[2.2] transition-transform duration-200 group-hover:rotate-6" />
+          <ItemIcon size={21} className="stroke-[2.4] text-white transition-transform duration-200 group-hover:rotate-6" />
 
           {item.badge && (
             <span className="absolute -top-1 -right-1 text-[8px] font-black px-1.5 py-0.5 rounded-full bg-rose-500 text-white shadow-md leading-none ring-2 ring-white dark:ring-slate-900">
