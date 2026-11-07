@@ -21,6 +21,7 @@ export interface KaprogMobileChildItem {
   id: string;
   label: string;
   shortLabel?: string;
+  category?: string;
   icon: LucideIcon;
   targetPath: string;
   color?: string;
@@ -123,6 +124,7 @@ export function getKaprogMobileChildren(): KaprogMobileChildItem[] {
     id: tab.id,
     label: tab.label,
     shortLabel: tab.shortLabel,
+    category: tab.category,
     icon: tab.icon,
     targetPath: tab.targetPath,
     color: tab.color,

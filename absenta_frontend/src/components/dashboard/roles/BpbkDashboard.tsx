@@ -39,6 +39,10 @@ import {
   useMobileSubtabSidebar,
   UniversalEcosystemTopbar,
 } from './common';
+import {
+  BPBK_CATEGORIES,
+  getBpbkNavTabs,
+} from './bpbk/bpbkNavigation.config';
 
 const Modal = lazy(() => import('@/components/ui/Modal').then((m) => ({ default: m.Modal })));
 const SiswaForm = lazy(() =>
@@ -148,64 +152,14 @@ export const BpbkDashboard: React.FC<BpbkDashboardProps> = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Navigation Items Desktop Sidebar
-  const navTabs: BpbkNavTabItem[] = useMemo(
-    () => [
-      {
-        id: 'ringkasan',
-        label: 'Ringkasan',
-        shortLabel: 'Ringkasan',
-        icon: LayoutDashboard,
-      },
-      {
-        id: 'cases',
-        label: 'Kasus',
-        shortLabel: 'Kasus',
-        icon: FileText,
-        badge: (stats?.criticalStudents?.length ?? 0) > 0 ? `${stats?.criticalStudents.length}` : undefined,
-        badgeColor: 'bg-amber-500 text-white',
-      },
-      {
-        id: 'konseling',
-        label: 'Konseling',
-        shortLabel: 'Konseling',
-        icon: HeartHandshake,
-        badge: (stats?.activeCounselingCount ?? 0) > 0 ? `${stats?.activeCounselingCount}` : undefined,
-        badgeColor: 'bg-emerald-500 text-white',
-      },
-      {
-        id: 'pemanggilan',
-        label: 'Panggilan',
-        shortLabel: 'Panggilan',
-        icon: MailOpen,
-        badge: (stats?.pendingCallsCount ?? 0) > 0 ? `${stats?.pendingCallsCount}` : undefined,
-        badgeColor: 'bg-rose-500 text-white',
-      },
-      {
-        id: 'homevisit',
-        label: 'Visit',
-        shortLabel: 'Visit',
-        icon: Home,
-      },
-      {
-        id: 'rujukan',
-        label: 'Rujukan',
-        shortLabel: 'Rujukan',
-        icon: Share2,
-      },
-      {
-        id: 'asesmen',
-        label: 'Asesmen',
-        shortLabel: 'Asesmen',
-        icon: ClipboardList,
-      },
-      {
-        id: 'rekap',
-        label: 'Cetak',
-        shortLabel: 'Cetak',
-        icon: Printer,
-      },
-    ],
+  // Navigation Items Desktop Sidebar (SSOT Kanonikal - 100% DRY)
+  const navTabs = useMemo(
+    () =>
+      getBpbkNavTabs({
+        criticalStudentsCount: stats?.criticalStudents?.length,
+        activeCounselingCount: stats?.activeCounselingCount,
+        pendingCallsCount: stats?.pendingCallsCount,
+      }),
     [stats]
   );
 
@@ -307,10 +261,12 @@ export const BpbkDashboard: React.FC<BpbkDashboardProps> = () => {
           title="Bimbingan Konseling"
           subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • Layanan Siswa`}
           roleBadge="BP / BK"
+          scope="bpbk"
           roleIcon={HeartHandshake}
           tabs={navTabs}
           activeTab={activeTab}
           onSelectTab={(tabId) => handleTabSelect(tabId as BpbkTabId)}
+          categories={BPBK_CATEGORIES}
         />
 
         {/* 2. Desktop 2-Column Sidebar Layout */}

@@ -281,6 +281,7 @@ export const EkskulDashboard: React.FC<EkskulDashboardProps> = () => {
             title="Ekstrakurikuler & Organisasi"
             subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • ${semesterNama}`}
             roleBadge="EKSTRAKURIKULER"
+            scope="ekskul"
             roleIcon={Compass}
             tabs={navTabs}
             activeTab={activeTab}

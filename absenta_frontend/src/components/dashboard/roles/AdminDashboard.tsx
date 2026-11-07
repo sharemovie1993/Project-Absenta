@@ -418,6 +418,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
           title="Panel Administrator"
           subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • ${semNama}`}
           roleBadge="ADMINISTRATOR"
+          scope="admin"
           roleIcon={ShieldCheck}
           tabs={navTabs}
           activeTab={activeTab}

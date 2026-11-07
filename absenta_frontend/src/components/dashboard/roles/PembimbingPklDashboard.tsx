@@ -430,6 +430,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
           title="Pembimbing PKL"
           subtitle={`${academicFilter.selectedTpNama || '2026/2027'} • DU/DI Kemitraan`}
           roleBadge="PEMBIMBING PKL"
+          scope="pembimbing_pkl"
           roleIcon={Briefcase}
           tabs={navTabs}
           activeTab={activeTab}

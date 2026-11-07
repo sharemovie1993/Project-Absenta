@@ -307,6 +307,7 @@ export const SatpamDashboard: React.FC = () => {
         title="Pos Keamanan & Satpam"
         subtitle="Gerbang Utama & Terminal RFID"
         roleBadge="SATPAM"
+        scope="satpam"
         roleIcon={ShieldCheck}
         tabs={tabsConfig}
         activeTab={currentTab}

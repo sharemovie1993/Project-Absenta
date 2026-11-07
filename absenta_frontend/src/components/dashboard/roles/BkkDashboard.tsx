@@ -35,6 +35,10 @@ import {
   useMobileSubtabSidebar,
   UniversalEcosystemTopbar,
 } from './common';
+import {
+  BKK_CATEGORIES,
+  getBkkNavTabs,
+} from './bkk/bkkNavigation.config';
 
 export interface BkkDashboardProps {
   user?: {
@@ -167,54 +171,15 @@ export const BkkDashboard: React.FC<BkkDashboardProps> = () => {
 
   const stats = bkkStatsData;
 
-  // Navigation Items Desktop Sidebar
-  const navTabs: BkkNavTabItem[] = useMemo(
-    () => [
-      {
-        id: 'ringkasan',
-        label: 'Ringkasan',
-        shortLabel: 'Ringkasan',
-        icon: LayoutDashboard,
-      },
-      {
-        id: 'loker',
-        label: 'Lowongan',
-        shortLabel: 'Lowongan',
-        icon: Briefcase,
-        badge: (stats?.active_jobs ?? 0) > 0 ? `${stats?.active_jobs}` : undefined,
-        badgeColor: 'bg-emerald-500 text-white',
-      },
-      {
-        id: 'pelamar',
-        label: 'Pelamar',
-        shortLabel: 'Pelamar',
-        icon: Users,
-        badge: (stats?.pending_interviews ?? 0) > 0 ? `${stats?.pending_interviews}` : undefined,
-        badgeColor: 'bg-blue-500 text-white',
-      },
-      {
-        id: 'tracer',
-        label: 'Tracer',
-        shortLabel: 'Tracer',
-        icon: GraduationCap,
-        badge: stats?.tracer_absorbed_pct ? String(stats.tracer_absorbed_pct) : undefined,
-        badgeColor: 'bg-purple-500 text-white',
-      },
-      {
-        id: 'mitra',
-        label: 'Mitra',
-        shortLabel: 'Mitra',
-        icon: Building2,
-        badge: (stats?.total_mitra ?? 0) > 0 ? `${stats?.total_mitra}` : undefined,
-        badgeColor: 'bg-amber-500 text-white',
-      },
-      {
-        id: 'rekap',
-        label: 'Cetak',
-        shortLabel: 'Cetak',
-        icon: Printer,
-      },
-    ],
+  // Navigation Items Desktop Sidebar (SSOT Kanonikal - 100% DRY)
+  const navTabs = useMemo(
+    () =>
+      getBkkNavTabs({
+        activeJobs: stats?.active_jobs,
+        pendingInterviews: stats?.pending_interviews,
+        tracerAbsorbedPct: stats?.tracer_absorbed_pct,
+        totalMitra: stats?.total_mitra,
+      }),
     [stats]
   );
 
@@ -302,10 +267,12 @@ export const BkkDashboard: React.FC<BkkDashboardProps> = () => {
           title="Bursa Kerja Khusus"
           subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • Karir & Penyaluran`}
           roleBadge="BKK"
+          scope="bkk"
           roleIcon={Briefcase}
           tabs={navTabs}
           activeTab={activeTab}
           onSelectTab={(tabId) => handleTabSelect(tabId as BkkTabId)}
+          categories={BKK_CATEGORIES}
         />
 
         {/* 2. Desktop 2-Column Sidebar Layout */}

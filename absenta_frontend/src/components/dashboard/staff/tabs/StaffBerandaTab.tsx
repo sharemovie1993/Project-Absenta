@@ -581,6 +581,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
             title={guruNama || 'Ruang Pendidik'}
             subtitle={`Beban Mengajar ${(teacherBeban?.total_calculated_jp ?? teacherBeban?.current_jp ?? 0)}/${(teacherBeban?.max_jp ?? 24)} JP`}
             roleBadge="GURU PENGAJAR"
+            scope="portal"
             roleIcon={BookOpen}
             tabs={navTabs}
             activeTab={activeSubTab}

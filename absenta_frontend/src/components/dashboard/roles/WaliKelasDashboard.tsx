@@ -39,6 +39,10 @@ import {
   useMobileSubtabSidebar,
   UniversalEcosystemTopbar,
 } from './common';
+import {
+  WALAS_CATEGORIES,
+  getWalasNavTabs,
+} from './walikelas/walasNavigation.config';
 import { cn } from '@/lib/utils';
 
 export interface WaliKelasDashboardProps {
@@ -158,7 +162,7 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
 
   const walasPerluRemedialCount = radarWalasRes?.data?.stats?.total_perlu_remedial || 0;
 
-  // Tab Definitions with dynamic badges matching Kaprog's nav tabs
+  // Tab Definitions with dynamic badges matching Kaprog's nav tabs (SSOT Kanonikal - 100% DRY)
   const navTabs = useMemo(() => {
     // 1. Data Siswa: total siswa di rombel
     const totalSiswa = walasData?.kelasInfo?.totalSiswa || (walasData?.kelasInfo as any)?.total_siswa || 0;
@@ -170,7 +174,6 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
     const terlambat = walasData?.kehadiranStats?.terlambat ?? 0;
     const tidakHadirToday = alfa + sakit + izin + terlambat;
     const atRiskCount = walasData?.earlyWarningAlerts?.length ?? 0;
-    const presensiCounter = atRiskCount > 0 ? atRiskCount : tidakHadirToday > 0 ? tidakHadirToday : undefined;
 
     // 3. Jurnal Walas: total jurnal walas tercatat
     const totalJurnal = walasData?.totalJurnalWalasTercatat || (walasData as any)?.jurnalCount || 0;
@@ -184,73 +187,16 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
     // 6. Prestasi Siswa: total prestasi siswa rombel periode ini
     const totalPrestasi = (walasData as any)?.totalPrestasiPeriodeIni ?? (walasData as any)?.prestasiCount ?? 0;
 
-    return [
-      { id: 'ringkasan' as WaliKelasTabId, label: 'Ringkasan', shortLabel: 'Ringkasan', icon: LayoutDashboard },
-      { 
-        id: 'siswa' as WaliKelasTabId, 
-        label: 'Siswa', 
-        shortLabel: 'Siswa', 
-        icon: Users,
-        badge: totalSiswa > 0 ? totalSiswa : undefined,
-      },
-      { 
-        id: 'struktur' as WaliKelasTabId, 
-        label: 'Struktur', 
-        shortLabel: 'Struktur', 
-        icon: Shield,
-      },
-      { 
-        id: 'presensi' as WaliKelasTabId, 
-        label: 'Presensi', 
-        shortLabel: 'Presensi', 
-        icon: CalendarCheck, 
-        badge: tidakHadirToday > 0 ? tidakHadirToday : undefined,
-      },
-      { 
-        id: 'deteksi' as WaliKelasTabId, 
-        label: 'Deteksi', 
-        shortLabel: 'Deteksi', 
-        icon: ShieldAlert, 
-        badge: atRiskCount > 0 ? atRiskCount : undefined,
-      },
-      { 
-        id: 'ketuntasan' as WaliKelasTabId, 
-        label: 'Ketuntasan', 
-        shortLabel: 'Ketuntasan', 
-        icon: Radio,
-        badge: walasPerluRemedialCount > 0 ? walasPerluRemedialCount : undefined,
-      },
-      { 
-        id: 'jurnal' as WaliKelasTabId, 
-        label: 'Jurnal', 
-        shortLabel: 'Jurnal', 
-        icon: BookOpen,
-        badge: totalJurnal > 0 ? totalJurnal : undefined,
-      },
-      { 
-        id: 'izin' as WaliKelasTabId, 
-        label: 'Izin', 
-        shortLabel: 'Izin', 
-        icon: FileCheck2, 
-        badge: pendingIzin > 0 ? pendingIzin : undefined,
-      },
-      { 
-        id: 'disiplin' as WaliKelasTabId, 
-        label: 'Disiplin', 
-        shortLabel: 'Disiplin', 
-        icon: ShieldAlert, 
-        badge: totalPelanggaran > 0 ? totalPelanggaran : undefined,
-      },
-      { 
-        id: 'prestasi' as WaliKelasTabId, 
-        label: 'Prestasi', 
-        shortLabel: 'Prestasi', 
-        icon: Award,
-        badge: totalPrestasi > 0 ? totalPrestasi : undefined,
-      },
-      { id: 'rekap' as WaliKelasTabId, label: 'Rekap', shortLabel: 'Rekap', icon: FileSpreadsheet },
-      { id: 'rapor' as WaliKelasTabId, label: 'Rapor', shortLabel: 'Rapor', icon: Printer },
-    ];
+    return getWalasNavTabs({
+      totalSiswa,
+      tidakHadirToday,
+      atRiskCount,
+      remedialCount: walasPerluRemedialCount,
+      totalJurnal,
+      pendingIzin,
+      totalPelanggaran,
+      totalPrestasi,
+    });
   }, [walasData, walasPerluRemedialCount]);
 
   const handleClassChange = (newKelasId: string) => {
@@ -335,10 +281,12 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
         title={activeKelasNama}
         subtitle={`${academicFilter.selectedTahunPelajaranNama || '2026/2027'} • ${academicFilter.selectedSemesterNama || 'Ganjil'}`}
         roleBadge="WALI KELAS"
+        scope="walas"
         roleIcon={GraduationCap}
         tabs={navTabs}
         activeTab={activeTab}
         onSelectTab={(tabId) => handleTabSelect(tabId as WaliKelasTabId)}
+        categories={WALAS_CATEGORIES}
       />
 
       {/* 2. Desktop 2-Column Layout (>= lg: Left Sidebar Controls + Wide Main Content Canvas) */}

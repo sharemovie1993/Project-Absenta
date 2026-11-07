@@ -298,6 +298,7 @@ export const ToolmanDashboard: React.FC<ToolmanDashboardProps> = () => {
           title="Toolman & Bengkel"
           subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • Sirkulasi Alat`}
           roleBadge="TOOLMAN"
+          scope="toolman"
           roleIcon={Wrench}
           tabs={navTabs}
           activeTab={activeTab}

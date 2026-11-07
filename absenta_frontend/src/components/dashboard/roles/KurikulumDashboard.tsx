@@ -48,6 +48,10 @@ import {
 } from '@/components/kurikulum/dashboard/DashboardComponents';
 import { KurikulumDashboardSkeleton } from './kurikulum/KurikulumDashboardSkeleton';
 import type { KurikulumTabId, KurikulumNavTabItem } from './kurikulum/types';
+import {
+  KURIKULUM_CATEGORIES,
+  getKurikulumNavTabs
+} from './kurikulum/kurikulumNavigation.config';
 import { 
   UniversalMobileSubtabSidebar, 
   useMobileSubtabSidebar,
@@ -370,163 +374,18 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
 
   const overloadCount = teachersLoad.filter((t) => t.jp > 24).length;
 
-  // Nav Tabs Definition (Subtab Ringkas 1 Kata & Noise-Free)
+  // Nav Tabs Definition (SSOT - 100% DRY)
   const navTabs: KurikulumNavTabItem[] = useMemo(
-    () => [
-      // ⚡ KATEGORI 1: OPERASIONAL
-      {
-        id: 'ringkasan',
-        label: 'Monitoring',
-        shortLabel: 'Monitoring',
-        category: 'operasional',
-        icon: LayoutDashboard,
-      },
-      {
-        id: 'delegasi',
-        label: 'Delegasi',
-        shortLabel: 'Delegasi',
-        category: 'operasional',
-        icon: ArrowRightLeft,
-      },
-      {
-        id: 'rekap_kbm',
-        label: 'Realisasi',
-        shortLabel: 'Realisasi',
-        category: 'operasional',
-        icon: BarChart2,
-      },
-      {
-        id: 'perangkat',
-        label: 'Perangkat',
-        shortLabel: 'Perangkat',
-        category: 'operasional',
-        icon: FileText,
-        badge: perangkatStats.pending > 0 ? `${perangkatStats.pending}` : undefined,
-        badgeColor: 'bg-teal-500 text-white',
-      },
-      {
-        id: 'supervisi',
-        label: 'Supervisi',
-        shortLabel: 'Supervisi',
-        category: 'operasional',
-        icon: CheckCircle2,
-      },
-      {
-        id: 'cbt',
-        label: 'Asesmen',
-        shortLabel: 'Asesmen',
-        category: 'operasional',
-        icon: Laptop,
-      },
-      {
-        id: 'rapor',
-        label: 'Rapor',
-        shortLabel: 'Rapor',
-        category: 'operasional',
-        icon: Award,
-      },
-
-      // ⚙️ KATEGORI 2: PERSIAPAN
-      {
-        id: 'kalender',
-        label: 'Kalender',
-        shortLabel: 'Kalender',
-        category: 'persiapan',
-        icon: CalendarDays,
-      },
-      {
-        id: 'jam_kbm',
-        label: 'Jam',
-        shortLabel: 'Jam',
-        category: 'persiapan',
-        icon: Clock,
-      },
-      {
-        id: 'aturan_absensi',
-        label: 'Aturan',
-        shortLabel: 'Aturan',
-        category: 'persiapan',
-        icon: Settings2,
-      },
-      {
-        id: 'struktur',
-        label: 'Struktur',
-        shortLabel: 'Struktur',
-        category: 'persiapan',
-        icon: Layers,
-      },
-      {
-        id: 'guru_mapel',
-        label: 'Plotting',
-        shortLabel: 'Plotting',
-        category: 'persiapan',
-        icon: Users,
-        badge: overloadCount > 0 ? `${overloadCount}` : undefined,
-        badgeColor: 'bg-rose-500 text-white',
-      },
-      {
-        id: 'wali_kelas',
-        label: 'Walas',
-        shortLabel: 'Walas',
-        category: 'persiapan',
-        icon: UserCheck,
-      },
-      {
-        id: 'jadwal',
-        label: 'Jadwal',
-        shortLabel: 'Jadwal',
-        category: 'persiapan',
-        icon: Calendar,
-        badge: conflicts.length > 0 ? `${conflicts.length}` : undefined,
-        badgeColor: 'bg-amber-500 text-white',
-      },
-      {
-        id: 'piket',
-        label: 'Piket',
-        shortLabel: 'Piket',
-        category: 'persiapan',
-        icon: ShieldCheck,
-      },
-      {
-        id: 'titimangsa_rapor',
-        label: 'Titimangsa',
-        shortLabel: 'Titimangsa',
-        category: 'persiapan',
-        icon: FileText,
-      },
-      {
-        id: 'cetak',
-        label: 'Cetak',
-        shortLabel: 'Cetak',
-        category: 'persiapan',
-        icon: Printer,
-      },
-      {
-        id: 'struktur_organisasi',
-        label: 'Organisasi',
-        shortLabel: 'Organisasi',
-        category: 'persiapan',
-        icon: Network,
-      },
-    ],
+    () =>
+      getKurikulumNavTabs({
+        pendingPerangkat: perangkatStats.pending,
+        overloadCount,
+        conflicts: conflicts.length,
+      }),
     [conflicts.length, overloadCount, perangkatStats.pending]
   );
 
-  const kurikulumCategories = useMemo(
-    () => [
-      {
-        id: 'operasional',
-        label: 'Operasional',
-        shortLabel: 'Operasional',
-      },
-      {
-        id: 'persiapan',
-        label: 'Persiapan',
-        shortLabel: 'Persiapan',
-      },
-    ],
-    []
-  );
+  const kurikulumCategories = KURIKULUM_CATEGORIES;
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -621,6 +480,7 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
         title="Dashboard Kurikulum"
         subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • ${semNama}`}
         roleBadge="KURIKULUM"
+        scope="kurikulum"
         roleIcon={BookOpen}
         tabs={navTabs}
         activeTab={activeTab}

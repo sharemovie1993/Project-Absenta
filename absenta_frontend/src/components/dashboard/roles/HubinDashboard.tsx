@@ -42,6 +42,10 @@ import {
   useMobileSubtabSidebar,
   UniversalEcosystemTopbar,
 } from './common';
+import {
+  HUBIN_CATEGORIES,
+  getHubinNavTabs,
+} from './hubin/hubinNavigation.config';
 
 export interface HubinDashboardProps {
   user?: {
@@ -145,80 +149,16 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
   const stats = (statsRes?.data as HubinStats) || null;
   const activities = (actRes?.data as HubinActivity[]) || [];
 
-  // Navigation Items Desktop Sidebar
-  const navTabs: HubinNavTabItem[] = useMemo(
-    () => [
-      {
-        id: 'ringkasan',
-        label: 'Ringkasan',
-        shortLabel: 'Ringkasan',
-        icon: LayoutDashboard,
-      },
-      {
-        id: 'mitra',
-        label: 'Mitra',
-        shortLabel: 'Mitra',
-        icon: Building2,
-        badge: (stats?.mouExpiringCount ?? 0) > 0 ? `${stats?.mouExpiringCount} Exp` : undefined,
-        badgeColor: 'bg-amber-500 text-white',
-      },
-      {
-        id: 'penempatan',
-        label: 'Penempatan',
-        shortLabel: 'Penempatan',
-        icon: Users,
-        badge: (stats?.pklAktif ?? 0) > 0 ? `${stats?.pklAktif}` : undefined,
-        badgeColor: 'bg-teal-500 text-white',
-      },
-      {
-        id: 'absensi',
-        label: 'Presensi',
-        shortLabel: 'Presensi',
-        icon: ClipboardList,
-        badge: (stats?.todayPresensi?.unverified ?? 0) > 0 ? `${stats?.todayPresensi?.unverified}` : undefined,
-        badgeColor: 'bg-emerald-500 text-white',
-      },
-      {
-        id: 'nilai',
-        label: 'Penilaian',
-        shortLabel: 'Penilaian',
-        icon: Award,
-        badge: (stats?.penilaianStats?.belumDinilai ?? 0) > 0 ? `${stats?.penilaianStats?.belumDinilai}` : undefined,
-        badgeColor: 'bg-purple-500 text-white',
-      },
-      {
-        id: 'bkk',
-        label: 'Loker',
-        shortLabel: 'Loker',
-        icon: Briefcase,
-        badge: (stats?.totalLowonganAktif ?? 0) > 0 ? `${stats?.totalLowonganAktif}` : undefined,
-        badgeColor: 'bg-sky-500 text-white',
-      },
-      {
-        id: 'tracer',
-        label: 'Tracer',
-        shortLabel: 'Tracer',
-        icon: GraduationCap,
-      },
-      {
-        id: 'rekap',
-        label: 'Cetak',
-        shortLabel: 'Cetak',
-        icon: Printer,
-      },
-      {
-        id: 'pengaturan',
-        label: 'Pengaturan',
-        shortLabel: 'Pengaturan',
-        icon: Settings,
-      },
-      {
-        id: 'struktur_organisasi',
-        label: 'Organisasi',
-        shortLabel: 'Organisasi',
-        icon: Network,
-      },
-    ],
+  // Navigation Items Desktop Sidebar (SSOT Kanonikal - 100% DRY)
+  const navTabs = useMemo(
+    () =>
+      getHubinNavTabs({
+        mouExpiringCount: stats?.mouExpiringCount,
+        pklAktif: stats?.pklAktif,
+        unverifiedPresensi: stats?.todayPresensi?.unverified,
+        belumDinilai: stats?.penilaianStats?.belumDinilai,
+        totalLowonganAktif: stats?.totalLowonganAktif,
+      }),
     [stats?.mouExpiringCount, stats?.pklAktif, stats?.todayPresensi?.unverified, stats?.penilaianStats?.belumDinilai, stats?.totalLowonganAktif]
   );
 
@@ -318,10 +258,12 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
           title="Dashboard Hubin"
           subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • ${semNama}`}
           roleBadge="HUBIN"
+          scope="hubin"
           roleIcon={Briefcase}
           tabs={navTabs}
           activeTab={activeTab}
           onSelectTab={(tabId) => handleTabSelect(tabId as HubinTabId)}
+          categories={HUBIN_CATEGORIES}
         />
 
         {/* 2. Desktop 2-Column Layout */}

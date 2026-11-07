@@ -32,6 +32,10 @@ import {
   useMobileSubtabSidebar,
   UniversalEcosystemTopbar,
 } from './common';
+import {
+  TU_CATEGORIES,
+  getTuNavTabs,
+} from './tu/tuNavigation.config';
 
 // Code-splitting Universal Views (Pilar 21B & TBT Optimization)
 const SuratMasukView = lazy(() =>
@@ -151,81 +155,18 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
 
   const tuStats: TuStatsData = statsResponse?.data || {};
 
-  // Definisi Navigasi Tabs TU (Sidebar Menu Vertikal)
-  const navTabs: TuNavTabItem[] = useMemo(
-    () => [
-      { id: 'beranda', label: 'Ringkasan', shortLabel: 'Ringkasan', icon: LayoutDashboard },
-      {
-        id: 'surat-masuk',
-        label: 'Masuk',
-        shortLabel: 'Masuk',
-        icon: Inbox,
-        badge: tuStats?.suratMasuk?.baru !== undefined && tuStats.suratMasuk.baru > 0
-          ? `${tuStats.suratMasuk.baru}`
-          : undefined,
-      },
-      {
-        id: 'surat-keluar',
-        label: 'Keluar',
-        shortLabel: 'Keluar',
-        icon: Send,
-        badge: tuStats?.suratKeluar?.draft !== undefined && tuStats.suratKeluar.draft > 0
-          ? `${tuStats.suratKeluar.draft}`
-          : undefined,
-      },
-      {
-        id: 'surat-keterangan',
-        label: 'Keterangan',
-        shortLabel: 'Keterangan',
-        icon: FileText,
-        badge: tuStats?.persuratan?.suratKeteranganBulanIni !== undefined && tuStats.persuratan.suratKeteranganBulanIni > 0
-          ? `${tuStats.persuratan.suratKeteranganBulanIni}`
-          : undefined,
-      },
-      {
-        id: 'mutasi',
-        label: 'Mutasi',
-        shortLabel: 'Mutasi',
-        icon: ArrowLeftRight,
-        badge: tuStats?.mutasi?.total !== undefined && tuStats.mutasi.total > 0 ? `${tuStats.mutasi.total}` : undefined,
-      },
-      {
-        id: 'bast-ijazah',
-        label: 'Clearance',
-        shortLabel: 'Clearance',
-        icon: Award,
-        badge: tuStats?.ijazah?.sisaBrankas !== undefined && tuStats.ijazah.sisaBrankas > 0 ? `${tuStats.ijazah.sisaBrankas}` : undefined,
-      },
-      { id: 'dkn', label: 'DKN', shortLabel: 'DKN', icon: FileSpreadsheet },
-      {
-        id: 'buku-induk',
-        label: 'Klapper',
-        shortLabel: 'Klapper',
-        icon: BookOpen,
-        badge: tuStats?.bukuInduk?.totalSiswaAktif !== undefined ? `${tuStats.bukuInduk.totalSiswaAktif}` : undefined,
-      },
-      {
-        id: 'kepegawaian',
-        label: 'PTK',
-        shortLabel: 'PTK',
-        icon: Users,
-        badge: tuStats?.kepegawaian?.totalPtk !== undefined && tuStats.kepegawaian.totalPtk > 0
-          ? `${tuStats.kepegawaian.totalPtk}`
-          : undefined,
-      },
-      {
-        id: 'dapodik',
-        label: 'Dapodik',
-        shortLabel: 'Dapodik',
-        icon: Database,
-      },
-      {
-        id: 'struktur_organisasi',
-        label: 'Organisasi',
-        shortLabel: 'Organisasi',
-        icon: Network,
-      },
-    ],
+  // Definisi Navigasi Tabs TU (Sidebar Menu Vertikal - SSOT Kanonikal 100% DRY)
+  const navTabs = useMemo(
+    () =>
+      getTuNavTabs({
+        suratMasukBaru: tuStats?.suratMasuk?.baru,
+        suratKeluarDraft: tuStats?.suratKeluar?.draft,
+        suratKeteranganBulanIni: tuStats?.persuratan?.suratKeteranganBulanIni,
+        mutasiTotal: tuStats?.mutasi?.total,
+        sisaIjazah: tuStats?.ijazah?.sisaBrankas,
+        totalSiswaAktif: tuStats?.bukuInduk?.totalSiswaAktif,
+        totalPtk: tuStats?.kepegawaian?.totalPtk,
+      }),
     [tuStats]
   );
 
@@ -316,10 +257,12 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
           title="Unit Tata Usaha"
           subtitle={`TP ${academicFilter.selectedTpNama || '2026/2027'} • ${academicFilter.selectedSemNama || 'Semester Ganjil'}`}
           roleBadge="TATA USAHA"
+          scope="tu"
           roleIcon={Building2}
           tabs={navTabs}
           activeTab={activeTab}
           onSelectTab={(tabId) => handleTabSelect(tabId as TuTabId)}
+          categories={TU_CATEGORIES}
         />
       </div>
 

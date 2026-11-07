@@ -40,6 +40,10 @@ import {
   useMobileSubtabSidebar,
   UniversalEcosystemTopbar,
 } from './common';
+import {
+  SARPRAS_CATEGORIES,
+  getSarprasNavTabs,
+} from './sarpras/sarprasNavigation.config';
 
 export interface SarprasDashboardProps {
   user?: {
@@ -159,64 +163,14 @@ export const SarprasDashboard: React.FC<SarprasDashboardProps> = ({ user }) => {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Navigation Items Desktop Sidebar
-  const navTabs: SarprasNavTabItem[] = useMemo(
-    () => [
-      {
-        id: 'ringkasan',
-        label: 'Ringkasan',
-        shortLabel: 'Ringkasan',
-        icon: LayoutDashboard,
-      },
-      {
-        id: 'inventaris',
-        label: 'Inventaris',
-        shortLabel: 'Inventaris',
-        icon: Layers,
-        badge: (stats?.total ?? 0) > 0 ? `${stats?.total}` : undefined,
-        badgeColor: 'bg-teal-500 text-white',
-      },
-      {
-        id: 'peminjaman',
-        label: 'Peminjaman',
-        shortLabel: 'Peminjaman',
-        icon: ArrowLeftRight,
-        badge: (stats?.borrowed ?? 0) > 0 ? `${stats?.borrowed}` : undefined,
-        badgeColor: 'bg-indigo-500 text-white',
-      },
-      {
-        id: 'perbaikan',
-        label: 'Perbaikan',
-        shortLabel: 'Perbaikan',
-        icon: Wrench,
-        badge: (stats?.repair ?? 0) > 0 ? `${stats?.repair}` : undefined,
-        badgeColor: 'bg-rose-500 text-white',
-      },
-      {
-        id: 'katalog',
-        label: 'Katalog',
-        shortLabel: 'Katalog',
-        icon: Package,
-      },
-      {
-        id: 'rekap',
-        label: 'Cetak',
-        shortLabel: 'Cetak',
-        icon: Printer,
-      },
-      {
-        id: 'denah',
-        label: 'Denah',
-        shortLabel: 'Denah',
-        icon: Map,
-      },
-      {
-        id: 'struktur_organisasi',
-        label: 'Organisasi',
-        shortLabel: 'Organisasi',
-        icon: Network,
-      },
-    ],
+  // Navigation Items Desktop Sidebar (SSOT Kanonikal - 100% DRY)
+  const navTabs = useMemo(
+    () =>
+      getSarprasNavTabs({
+        totalAset: stats?.total,
+        borrowedAset: stats?.borrowed,
+        repairAset: stats?.repair,
+      }),
     [stats?.total, stats?.borrowed, stats?.repair]
   );
 
@@ -314,10 +268,12 @@ export const SarprasDashboard: React.FC<SarprasDashboardProps> = ({ user }) => {
             title="Dashboard Sarpras"
             subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • ${semNama}`}
             roleBadge="SARPRAS"
+            scope="sarpras"
             roleIcon={Package}
             tabs={navTabs}
             activeTab={activeTab}
             onSelectTab={(tabId) => handleTabSelect(tabId as SarprasTabId)}
+            categories={SARPRAS_CATEGORIES}
           />
 
         {/* 2. Desktop 2-Column Layout */}

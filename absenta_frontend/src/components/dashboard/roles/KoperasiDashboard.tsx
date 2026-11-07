@@ -351,6 +351,7 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
             title="Dashboard Koperasi"
             subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • ${semNama}`}
             roleBadge="KOPERASI"
+            scope="koperasi"
             roleIcon={Receipt}
             tabs={navTabs}
             activeTab={activeTab}

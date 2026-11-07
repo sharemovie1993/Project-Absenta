@@ -49,11 +49,20 @@ import {
   LucideIcon
 } from 'lucide-react';
 import { getKaprogMobileChildren } from '@/components/dashboard/roles/kaprog/kaprogNavigation.config';
+import { getKurikulumMobileChildren } from '@/components/dashboard/roles/kurikulum/kurikulumNavigation.config';
+import { getKesiswaanMobileChildren } from '@/components/dashboard/roles/kesiswaan/kesiswaanNavigation.config';
+import { getWalasMobileChildren } from '@/components/dashboard/roles/walikelas/walasNavigation.config';
+import { getTuMobileChildren } from '@/components/dashboard/roles/tu/tuNavigation.config';
+import { getHubinMobileChildren } from '@/components/dashboard/roles/hubin/hubinNavigation.config';
+import { getSarprasMobileChildren } from '@/components/dashboard/roles/sarpras/sarprasNavigation.config';
+import { getBpbkMobileChildren } from '@/components/dashboard/roles/bpbk/bpbkNavigation.config';
+import { getBkkMobileChildren } from '@/components/dashboard/roles/bkk/bkkNavigation.config';
 
 export interface MobileBottomSubItem {
   id: string;
   label: string;
   shortLabel?: string;
+  category?: string;
   icon: LucideIcon | any;
   targetPath: string;
   badge?: string | number | null;
@@ -522,20 +531,7 @@ export function getWalasTabs(waliKelasNama: string, currentSubtab: string | null
       icon: LayoutGrid,
       targetPath: '/dashboard?tab=binaan',
       isActive: (p, t) => t === 'binaan' && Boolean(currentSubtab && !['ringkasan', 'presensi', 'izin'].includes(currentSubtab)),
-      children: [
-        { id: 'ringkasan', label: 'Ringkasan', icon: Home, targetPath: '/dashboard?tab=binaan&subtab=ringkasan', color: 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400' },
-        { id: 'siswa', label: 'Siswa', icon: Users, targetPath: '/dashboard?tab=binaan&subtab=siswa', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
-        { id: 'struktur', label: 'Struktur', icon: Shield, targetPath: '/dashboard?tab=binaan&subtab=struktur', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
-        { id: 'presensi', label: 'Presensi', icon: CalendarCheck, targetPath: '/dashboard?tab=binaan&subtab=presensi', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
-        { id: 'deteksi', label: 'Deteksi', icon: ShieldAlert, targetPath: '/dashboard?tab=binaan&subtab=deteksi', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
-        { id: 'ketuntasan', label: 'Ketuntasan', icon: Activity, targetPath: '/dashboard?tab=binaan&subtab=ketuntasan', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
-        { id: 'jurnal', label: 'Jurnal', icon: BookOpenCheck, targetPath: '/dashboard?tab=binaan&subtab=jurnal', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
-        { id: 'izin', label: 'Izin', icon: FileCheck2, targetPath: '/dashboard?tab=binaan&subtab=izin', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
-        { id: 'disiplin', label: 'Disiplin', icon: ShieldAlert, targetPath: '/dashboard?tab=binaan&subtab=disiplin', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
-        { id: 'prestasi', label: 'Prestasi', icon: Award, targetPath: '/dashboard?tab=binaan&subtab=prestasi', color: 'bg-yellow-50 dark:bg-yellow-950/70 text-yellow-600 dark:text-yellow-400' },
-        { id: 'rekap', label: 'Rekap', icon: FileSpreadsheet, targetPath: '/dashboard?tab=binaan&subtab=rekap', color: 'bg-cyan-50 dark:bg-cyan-950/70 text-cyan-600 dark:text-cyan-400' },
-        { id: 'rapor', label: 'Rapor', icon: Printer, targetPath: '/dashboard?tab=binaan&subtab=rapor', color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400' },
-      ],
+      children: getWalasMobileChildren(),
     },
     {
       id: 'walas_presensi',
@@ -582,17 +578,7 @@ export function getTuTabs(tuTabMeta: any, currentSubtab: string | null, isPendid
       badge: tuTabMeta.badge,
       targetPath: '/dashboard?tab=kepegawaian',
       isActive: (p, t) => t === 'kepegawaian' && Boolean(currentSubtab && !['beranda', 'surat-masuk', 'surat-keluar', 'buku-induk'].includes(currentSubtab)),
-      children: [
-        { id: 'beranda', label: 'Ringkasan', icon: Home, targetPath: '/dashboard?tab=kepegawaian&subtab=beranda', color: 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400' },
-        { id: 'surat-masuk', label: 'Masuk', icon: Inbox, targetPath: '/dashboard?tab=kepegawaian&subtab=surat-masuk', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
-        { id: 'surat-keluar', label: 'Keluar', icon: Send, targetPath: '/dashboard?tab=kepegawaian&subtab=surat-keluar', color: 'bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400' },
-        { id: 'surat-keterangan', label: 'Keterangan', icon: FileText, targetPath: '/dashboard?tab=kepegawaian&subtab=surat-keterangan', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
-        { id: 'mutasi', label: 'Mutasi', icon: ArrowLeftRight, targetPath: '/dashboard?tab=kepegawaian&subtab=mutasi', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
-        { id: 'bast-ijazah', label: 'Clearance', icon: Award, targetPath: '/dashboard?tab=kepegawaian&subtab=bast-ijazah', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
-        { id: 'dkn', label: 'DKN', icon: FileSpreadsheet, targetPath: '/dashboard?tab=kepegawaian&subtab=dkn', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
-        { id: 'buku-induk', label: 'Klapper', icon: BookOpen, targetPath: '/dashboard?tab=kepegawaian&subtab=buku-induk', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
-        { id: 'kepegawaian', label: 'PTK', icon: Users, targetPath: '/dashboard?tab=kepegawaian&subtab=kepegawaian', color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400' },
-      ],
+      children: getTuMobileChildren(),
     },
     {
       id: 'tu_surat_keluar',
@@ -638,15 +624,7 @@ export function getKurikulumTabs(currentSubtab?: string | null): MobileBottomTab
       icon: LayoutGrid,
       targetPath: '/dashboard?tab=kurikulum',
       isActive: (p, t) => t === 'kurikulum' && Boolean(currentSubtab && !['ringkasan', 'jadwal', 'guru_mapel'].includes(currentSubtab)),
-      children: [
-        { id: 'struktur', label: 'Struktur', icon: Layers, targetPath: '/dashboard?tab=kurikulum&subtab=struktur', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
-        { id: 'piket', label: 'Piket', icon: Clock, targetPath: '/dashboard?tab=kurikulum&subtab=piket', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
-        { id: 'rapor', label: 'Rapor', icon: Award, targetPath: '/dashboard?tab=kurikulum&subtab=rapor', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
-        { id: 'jadwal-page', label: 'Jadwal', icon: Calendar, targetPath: '/kurikulum/jadwal', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
-        { id: 'guru-mapel-page', label: 'Guru', icon: Users, targetPath: '/kurikulum/guru-mapel', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
-        { id: 'perangkat-page', label: 'Perangkat', icon: FileText, targetPath: '/kurikulum/perangkat', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
-        { id: 'supervisi-page', label: 'Supervisi', icon: CheckCircle2, targetPath: '/kurikulum/supervisi', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
-      ],
+      children: getKurikulumMobileChildren(),
     },
     {
       id: 'kuri_jadwal',
@@ -692,14 +670,7 @@ export function getKesiswaanTabs(currentSubtab?: string): MobileBottomTabItem[] 
       icon: LayoutGrid,
       targetPath: '/dashboard?tab=kesiswaan',
       isActive: (p, t) => t === 'kesiswaan' && Boolean(currentSubtab && !['ringkasan', 'pelanggaran', 'prestasi'].includes(currentSubtab)),
-      children: [
-        { id: 'ketarunaan', label: 'Ketarunaan', icon: Award, targetPath: '/dashboard?tab=kesiswaan&subtab=ketarunaan', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
-        { id: 'tatib', label: 'Tatib', icon: FileSpreadsheet, targetPath: '/dashboard?tab=kesiswaan&subtab=tatib', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
-        { id: 'rekap', label: 'Rekap', icon: Printer, targetPath: '/dashboard?tab=kesiswaan&subtab=rekap', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
-        { id: 'monitoring-page', label: 'Monitoring', icon: Activity, targetPath: '/kesiswaan/monitoring', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
-        { id: 'pelanggaran-page', label: 'Pelanggaran', icon: ShieldAlert, targetPath: '/kesiswaan/pelanggaran', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
-        { id: 'prestasi-page', label: 'Prestasi', icon: Trophy, targetPath: '/kesiswaan/prestasi', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
-      ],
+      children: getKesiswaanMobileChildren(),
     },
     {
       id: 'kesis_pelanggaran',
@@ -745,14 +716,7 @@ export function getHubinTabs(currentSubtab?: string): MobileBottomTabItem[] {
       icon: LayoutGrid,
       targetPath: '/dashboard?tab=hubin',
       isActive: (p, t) => t === 'hubin' && Boolean(currentSubtab && !['ringkasan', 'mitra', 'penempatan'].includes(currentSubtab)),
-      children: [
-        { id: 'absensi', label: 'Presensi', icon: CalendarCheck, targetPath: '/dashboard?tab=hubin&subtab=absensi', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
-        { id: 'nilai', label: 'Penilaian', icon: Award, targetPath: '/dashboard?tab=hubin&subtab=nilai', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
-        { id: 'bkk', label: 'BKK', icon: Briefcase, targetPath: '/dashboard?tab=hubin&subtab=bkk', color: 'bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400' },
-        { id: 'tracer', label: 'Tracer', icon: GraduationCap, targetPath: '/dashboard?tab=hubin&subtab=tracer', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
-        { id: 'rekap', label: 'Cetak', icon: Printer, targetPath: '/dashboard?tab=hubin&subtab=rekap', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
-        { id: 'tv-page', label: 'TV', icon: Activity, targetPath: '/hubin/dashboard', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
-      ],
+      children: getHubinMobileChildren(),
     },
     {
       id: 'hubin_mitra',
@@ -798,14 +762,7 @@ export function getBpbkTabs(currentSubtab?: string): MobileBottomTabItem[] {
       icon: LayoutGrid,
       targetPath: '/dashboard?tab=bpbk',
       isActive: (p, t) => t === 'bpbk' && Boolean(currentSubtab && !['ringkasan', 'cases', 'konseling'].includes(currentSubtab)),
-      children: [
-        { id: 'pemanggilan', label: 'Panggilan', icon: MailOpen, targetPath: '/dashboard?tab=bpbk&subtab=pemanggilan', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
-        { id: 'homevisit', label: 'Visit', icon: Home, targetPath: '/dashboard?tab=bpbk&subtab=homevisit', color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400' },
-        { id: 'rujukan', label: 'Rujukan', icon: Share2, targetPath: '/dashboard?tab=bpbk&subtab=rujukan', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
-        { id: 'asesmen', label: 'Asesmen', icon: ClipboardList, targetPath: '/dashboard?tab=bpbk&subtab=asesmen', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
-        { id: 'rekap', label: 'Cetak', icon: Printer, targetPath: '/dashboard?tab=bpbk&subtab=rekap', color: 'bg-slate-50 dark:bg-slate-950/70 text-slate-600 dark:text-slate-400' },
-        { id: 'tv-page', label: 'TV', icon: Activity, targetPath: '/bpbk/dashboard', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
-      ],
+      children: getBpbkMobileChildren(),
     },
     {
       id: 'bk_cases',
@@ -851,11 +808,7 @@ export function getBkkTabs(currentSubtab?: string): MobileBottomTabItem[] {
       icon: LayoutGrid,
       targetPath: '/dashboard?tab=bkk',
       isActive: (p, t) => t === 'bkk' && Boolean(currentSubtab && !['ringkasan', 'loker', 'pelamar'].includes(currentSubtab)),
-      children: [
-        { id: 'tracer', label: 'Tracer', icon: GraduationCap, targetPath: '/dashboard?tab=bkk&subtab=tracer', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
-        { id: 'mitra', label: 'Mitra', icon: Building2, targetPath: '/dashboard?tab=bkk&subtab=mitra', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
-        { id: 'rekap', label: 'Cetak', icon: Printer, targetPath: '/dashboard?tab=bkk&subtab=rekap', color: 'bg-slate-50 dark:bg-slate-950/70 text-slate-600 dark:text-slate-400' },
-      ],
+      children: getBkkMobileChildren(),
     },
     {
       id: 'bkk_loker',
@@ -901,15 +854,7 @@ export function getSarprasTabs(currentSubtab?: string): MobileBottomTabItem[] {
       icon: LayoutGrid,
       targetPath: '/dashboard?tab=sarpras',
       isActive: (p, t) => t === 'sarpras' && Boolean(currentSubtab && !['ringkasan', 'inventaris', 'peminjaman'].includes(currentSubtab)),
-      children: [
-        { id: 'perbaikan', label: 'Perbaikan', icon: Wrench, targetPath: '/dashboard?tab=sarpras&subtab=perbaikan', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
-        { id: 'katalog', label: 'Katalog', icon: Package, targetPath: '/dashboard?tab=sarpras&subtab=katalog', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
-        { id: 'rekap', label: 'Cetak', icon: Printer, targetPath: '/dashboard?tab=sarpras&subtab=rekap', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
-        { id: 'monitor-tv', label: 'TV', icon: Activity, targetPath: '/sarpras/dashboard', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
-        { id: 'inventory-full', label: 'Inventaris', icon: Layers, targetPath: '/sarpras/inventory', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
-        { id: 'loans-full', label: 'Peminjaman', icon: ArrowLeftRight, targetPath: '/sarpras/loans', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
-        { id: 'maintenance-full', label: 'Servis', icon: Wrench, targetPath: '/sarpras/maintenance', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
-      ],
+      children: getSarprasMobileChildren(),
     },
     {
       id: 'sarpras_inv',

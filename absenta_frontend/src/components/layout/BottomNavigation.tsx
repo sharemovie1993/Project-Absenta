@@ -21,6 +21,14 @@ import {
   getEcosystemLabel 
 } from '@/config/bottomNavEcosystems.config';
 import { KAPROG_CATEGORIES } from '@/components/dashboard/roles/kaprog/kaprogNavigation.config';
+import { KURIKULUM_CATEGORIES } from '@/components/dashboard/roles/kurikulum/kurikulumNavigation.config';
+import { KESISWAAN_CATEGORIES } from '@/components/dashboard/roles/kesiswaan/kesiswaanNavigation.config';
+import { WALAS_CATEGORIES } from '@/components/dashboard/roles/walikelas/walasNavigation.config';
+import { HUBIN_CATEGORIES } from '@/components/dashboard/roles/hubin/hubinNavigation.config';
+import { SARPRAS_CATEGORIES } from '@/components/dashboard/roles/sarpras/sarprasNavigation.config';
+import { BPBK_CATEGORIES } from '@/components/dashboard/roles/bpbk/bpbkNavigation.config';
+import { BKK_CATEGORIES } from '@/components/dashboard/roles/bkk/bkkNavigation.config';
+import { TU_CATEGORIES } from '@/components/dashboard/roles/tu/tuNavigation.config';
 
 export type { MobileBottomSubItem, MobileBottomTabItem, EcosystemType, EcosystemTheme };
 
@@ -100,14 +108,6 @@ export const BottomNavigation: React.FC = React.memo(() => {
     const list: UniversalSubtabItem[] = [];
     const seen = new Set<string>();
 
-    const getKaprogCategory = (id: string) => {
-      if (['beranda', 'siswa', 'guru', 'sarana'].includes(id)) return 'jurusan';
-      if (['kehadiran', 'pelanggaran', 'prestasi'].includes(id)) return 'pembinaan';
-      if (['pkl', 'sidang_pkl', 'ploting_pkl', 'presensi_pkl', 'nilai_pkl', 'ploting_penguji'].includes(id)) return 'pkl';
-      if (['ukk', 'rapor'].includes(id)) return 'asesmen';
-      return undefined;
-    };
-
     // 1. Jika ada tab eksplisit dengan children (misal Menu Kaprog / Menu TU), prioritaskan seluruh children-nya
     const menuTab = activeTabsList.find((t) => t.children && t.children.length > 0);
     if (menuTab && menuTab.children) {
@@ -121,7 +121,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
             shortLabel: child.shortLabel || child.label,
             icon: child.icon,
             badge: child.badge,
-            category: (child as any).category || (activeEcosystem === 'kaprog' ? getKaprogCategory(child.id) : undefined),
+            category: child.category || (child as any).category,
           });
         }
       });
@@ -150,6 +150,30 @@ export const BottomNavigation: React.FC = React.memo(() => {
   const fallbackCategories = useMemo(() => {
     if (activeEcosystem === 'kaprog') {
       return KAPROG_CATEGORIES;
+    }
+    if (activeEcosystem === 'kurikulum') {
+      return KURIKULUM_CATEGORIES;
+    }
+    if (activeEcosystem === 'kesiswaan') {
+      return KESISWAAN_CATEGORIES;
+    }
+    if (activeEcosystem === 'walas') {
+      return WALAS_CATEGORIES;
+    }
+    if (activeEcosystem === 'hubin') {
+      return HUBIN_CATEGORIES;
+    }
+    if (activeEcosystem === 'sarpras') {
+      return SARPRAS_CATEGORIES;
+    }
+    if (activeEcosystem === 'bpbk') {
+      return BPBK_CATEGORIES;
+    }
+    if (activeEcosystem === 'bkk') {
+      return BKK_CATEGORIES;
+    }
+    if (activeEcosystem === 'tu') {
+      return TU_CATEGORIES;
     }
     return undefined;
   }, [activeEcosystem]);

@@ -272,6 +272,7 @@ export const SiswaDashboard: React.FC = () => {
         title={data.studentName || 'Portal Siswa'}
         subtitle={`Kelas ${data.currentClassName} • NISN: ${data.nisn || '-'}`}
         roleBadge="SISWA"
+        scope="siswa"
         roleIcon={User}
         tabs={navTabs}
         activeTab={activeTab}

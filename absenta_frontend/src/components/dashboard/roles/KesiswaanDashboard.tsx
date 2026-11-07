@@ -28,6 +28,10 @@ import {
   useMobileSubtabSidebar,
   UniversalEcosystemTopbar,
 } from './common';
+import {
+  KESISWAAN_CATEGORIES,
+  getKesiswaanNavTabs,
+} from './kesiswaan/kesiswaanNavigation.config';
 import toast from 'react-hot-toast';
 
 // Tab Subcomponents
@@ -170,68 +174,13 @@ export const KesiswaanDashboard: React.FC<KesiswaanDashboardProps> = ({ user }) 
     return { today, severe, totalPoints, needDiscipline };
   }, [violations]);
 
-  // Navigation Items Desktop Sidebar
-  const navTabs: KesiswaanNavTabItem[] = useMemo(
-    () => [
-      {
-        id: 'ringkasan',
-        label: 'Ringkasan',
-        shortLabel: 'Ringkasan',
-        icon: LayoutDashboard,
-      },
-      {
-        id: 'pelanggaran',
-        label: 'Pelanggaran',
-        shortLabel: 'Pelanggaran',
-        icon: ShieldAlert,
-        badge: stats.today > 0 ? `${stats.today}` : undefined,
-        badgeColor: 'bg-rose-500 text-white',
-      },
-      {
-        id: 'prestasi',
-        label: 'Prestasi',
-        shortLabel: 'Prestasi',
-        icon: Trophy,
-        badge: (leaderboard?.data as any[])?.length > 0 ? `${(leaderboard?.data as any[]).length}` : undefined,
-        badgeColor: 'bg-amber-500 text-white',
-      },
-      {
-        id: 'dhuha',
-        label: 'Dhuha',
-        shortLabel: 'Dhuha',
-        icon: HeartPulse,
-      },
-      {
-        id: 'ketarunaan',
-        label: 'Ketarunaan',
-        shortLabel: 'Ketarunaan',
-        icon: Award,
-      },
-      {
-        id: 'tatib',
-        label: 'Tatib',
-        shortLabel: 'Tatib',
-        icon: FileSpreadsheet,
-      },
-      {
-        id: 'rekap',
-        label: 'Cetak',
-        shortLabel: 'Cetak',
-        icon: Printer,
-      },
-      {
-        id: 'aturan_absensi',
-        label: 'Aturan',
-        shortLabel: 'Aturan',
-        icon: Clock,
-      },
-      {
-        id: 'struktur_organisasi',
-        label: 'Organisasi',
-        shortLabel: 'Organisasi',
-        icon: Network,
-      },
-    ],
+  // Navigation Items Desktop Sidebar (SSOT Kanonikal - 100% DRY)
+  const navTabs = useMemo(
+    () =>
+      getKesiswaanNavTabs({
+        todayViolations: stats.today,
+        totalPrestasi: (leaderboard?.data as any[])?.length,
+      }),
     [stats.today, leaderboard?.data]
   );
 
@@ -325,10 +274,12 @@ export const KesiswaanDashboard: React.FC<KesiswaanDashboardProps> = ({ user }) 
         title="Dashboard Kesiswaan"
         subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • ${semNama}`}
         roleBadge="KESISWAAN"
+        scope="kesiswaan"
         roleIcon={ShieldAlert}
         tabs={navTabs}
         activeTab={activeTab}
         onSelectTab={(tabId) => handleTabSelect(tabId as KesiswaanTabId)}
+        categories={KESISWAAN_CATEGORIES}
       />
 
       {/* 2. Desktop 2-Column Layout (>= lg: Left Sidebar Controls + Wide Main Content Canvas) */}

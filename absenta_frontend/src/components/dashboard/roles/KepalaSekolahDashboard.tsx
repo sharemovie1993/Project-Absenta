@@ -381,6 +381,7 @@ export const KepalaSekolahDashboard: React.FC<KepalaSekolahDashboardProps> = Rea
         title="Overview Kepala Sekolah"
         subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • ${semNama}`}
         roleBadge="KEPALA SEKOLAH"
+        scope="kepsek"
         roleIcon={Award}
         tabs={navTabs}
         activeTab={activeTab}
