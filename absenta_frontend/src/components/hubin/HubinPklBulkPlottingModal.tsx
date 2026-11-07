@@ -284,7 +284,7 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
       title={
         <div className="flex items-center gap-2">
           <Users size={20} className="text-indigo-600" />
-          <span>Plotting Penempatan PKL Kolektif (Lintas Kelas)</span>
+          <span>Plotting Kolektif</span>
         </div>
       }
     >
@@ -447,7 +447,7 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <SimpleFormField htmlFor="bulk-mitra" label="Mitra Industri DU/DI" required>
+              <SimpleFormField htmlFor="bulk-mitra" label="Perusahaan" required>
                 <SearchableSelect
                   id="bulk-mitra"
                   options={mitraOptions}
@@ -504,7 +504,7 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
                 )}
               </SimpleFormField>
 
-              <SimpleFormField htmlFor="bulk-pembimbing" label="Guru Pembimbing Lapangan">
+              <SimpleFormField htmlFor="bulk-pembimbing" label="Pembimbing">
                 <SearchableSelect
                   id="bulk-pembimbing"
                   options={guruOptions}
@@ -519,7 +519,7 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <SimpleFormField htmlFor="bulk-tanggal-mulai" label="Tanggal Mulai PKL" required>
+              <SimpleFormField htmlFor="bulk-tanggal-mulai" label="Tanggal Mulai" required>
                 <Input
                   id="bulk-tanggal-mulai"
                   type="date"
@@ -527,7 +527,7 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
                   required
                 />
               </SimpleFormField>
-              <SimpleFormField htmlFor="bulk-tanggal-selesai" label="Tanggal Selesai PKL (Estimasi)">
+              <SimpleFormField htmlFor="bulk-tanggal-selesai" label="Tanggal Selesai">
                 <Input
                   id="bulk-tanggal-selesai"
                   type="date"
@@ -621,7 +621,7 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
             Batal
           </Button>
           <Button type="submit" variant="primary" isLoading={isPending} disabled={selectedStudentList.length === 0}>
-            Terapkan Plotting Kolektif ({selectedStudentList.length} Siswa)
+            Simpan ({selectedStudentList.length} Siswa)
           </Button>
         </div>
       </form>

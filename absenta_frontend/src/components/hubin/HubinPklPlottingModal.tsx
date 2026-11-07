@@ -104,8 +104,8 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
       size="3xl"
       title={
         <div className="flex items-center gap-2">
-          <UserPlus size={20} className="text-blue-605 text-indigo-600" />
-          <span>{editingPkl ? 'Edit Detail Penempatan PKL' : 'Plotting Penempatan Baru'}</span>
+          <UserPlus size={20} className="text-indigo-600" />
+          <span>{editingPkl ? 'Edit Penempatan' : 'Plotting Baru'}</span>
         </div>
       }
     >
@@ -128,7 +128,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
           className="w-full !p-2 sm:!p-2.5 !rounded-xl !bg-slate-50 dark:!bg-slate-900/40 !border-slate-200/70 dark:!border-slate-800/80 shadow-2xs"
         />
         {editingPkl ? (
-          <SimpleFormField label="Siswa PKL (Terkunci)">
+          <SimpleFormField label="Siswa">
             <Input 
               value={`${editingPkl.Siswa?.nama_siswa} (${editingPkl.Siswa?.nis})`} 
               disabled 
@@ -136,7 +136,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
             />
           </SimpleFormField>
         ) : (
-          <SimpleFormField label="Pilih Siswa PKL" required>
+          <SimpleFormField label="Siswa" required>
             <SmartStudentPicker 
               onSelect={(s: Student) => {
                 setSelectedSiswaId(s.id);
@@ -187,7 +187,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <SimpleFormField htmlFor="plotting-mitra" label="Mitra Industri" required>
+          <SimpleFormField htmlFor="plotting-mitra" label="Perusahaan" required>
             <SearchableSelect
               id="plotting-mitra"
               options={mitraOptions}
@@ -214,11 +214,11 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
                     {selectedMitra.kuota > 0 ? (
                       selectedMitra.isPenuh ? (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-900/50 dark:text-amber-300">
-                          ⚠️ Penuh (Over-Kuota)
+                          Penuh
                         </span>
                       ) : (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-900/50 dark:text-emerald-300">
-                          ✓ Sisa {selectedMitra.sisa} Slot
+                          Sisa {selectedMitra.sisa} Slot
                         </span>
                       )
                     ) : (
@@ -226,20 +226,12 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
                     )}
                   </div>
                 </div>
-                {/* Referensi Keahlian Mitra (Opsional / Info Saja) */}
-                {selectedMitra.kompetensi_keahlian && (
-                  <div className="mt-1.5 pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-                    <span>Fokus Keahlian:</span>
-                    <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[170px]" title={selectedMitra.kompetensi_keahlian}>
-                      {selectedMitra.kompetensi_keahlian}
-                    </span>
-                  </div>
-                )}
+                
               </div>
             )}
           </SimpleFormField>
 
-          <SimpleFormField htmlFor="plotting-pembimbing" label="Guru Pembimbing">
+          <SimpleFormField htmlFor="plotting-pembimbing" label="Pembimbing">
             <SearchableSelect
               id="plotting-pembimbing"
               options={guruOptions}
@@ -254,7 +246,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <SimpleFormField htmlFor="plotting-tanggal-mulai" label="Tanggal Mulai PKL" required>
+          <SimpleFormField htmlFor="plotting-tanggal-mulai" label="Tanggal Mulai" required>
             <Input
               id="plotting-tanggal-mulai"
               type="date"
@@ -267,7 +259,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label htmlFor="plotting-tanggal-selesai" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Tanggal Selesai PKL (Estimasi)
+                Tanggal Selesai
               </label>
               <div className="flex items-center gap-1">
                 <span className="text-[10px] text-slate-400 font-medium mr-0.5">Preset:</span>
@@ -309,7 +301,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
 
         {/* Status Dropdown Khusus Saat Edit Detail Penempatan */}
         {editingPkl && (
-          <SimpleFormField htmlFor="plotting-status" label="Status Penempatan Siswa">
+          <SimpleFormField htmlFor="plotting-status" label="Status">
             <select
               id="plotting-status"
               name="status"
@@ -317,9 +309,9 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
               onChange={(e) => setStatus(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500/20"
             >
-              <option value="AKTIF">🟢 AKTIF (Aktif Praktik)</option>
-              <option value="SELESAI">🔵 SELESAI (Praktik Tuntas)</option>
-              <option value="BATAL">🔴 BATAL (Dibatalkan)</option>
+              <option value="AKTIF">Aktif</option>
+              <option value="SELESAI">Selesai</option>
+              <option value="BATAL">Batal</option>
             </select>
           </SimpleFormField>
         )}
@@ -328,7 +320,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
         <details className="group border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden text-xs">
           <summary className="p-3 font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/30 select-none">
             <span className="font-bold text-xs text-slate-700 dark:text-slate-300">
-              Pengaturan Lanjutan (Geofencing & Koordinat Lokasi)
+              Pengaturan Lokasi
             </span>
             <ChevronDown size={14} className="group-open:rotate-180 transition-transform text-slate-400" />
           </summary>
@@ -342,12 +334,12 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
                 className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20 h-4 w-4 cursor-pointer dark:bg-slate-900 dark:border-slate-700"
               />
               <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Lokasi Presensi Fleksibel (Toleransi Geofence dengan Verifikasi)
+                Bebaskan Lokasi Presensi
               </span>
             </label>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <SimpleFormField htmlFor="plotting-lat-override" label="Latitude Override">
+              <SimpleFormField htmlFor="plotting-lat-override" label="Latitude">
                 <Input
                   id="plotting-lat-override"
                   name="lat_override"
@@ -358,7 +350,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
                   className="text-xs bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                 />
               </SimpleFormField>
-              <SimpleFormField htmlFor="plotting-lon-override" label="Longitude Override">
+              <SimpleFormField htmlFor="plotting-lon-override" label="Longitude">
                 <Input
                   id="plotting-lon-override"
                   name="lon_override"
@@ -369,7 +361,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
                   className="text-xs bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                 />
               </SimpleFormField>
-              <SimpleFormField htmlFor="plotting-radius-override" label="Radius Override (Meter)">
+              <SimpleFormField htmlFor="plotting-radius-override" label="Radius (Meter)">
                 <Input
                   id="plotting-radius-override"
                   name="radius_override"
@@ -388,7 +380,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
             Batal
           </Button>
           <Button type="submit" variant="primary" isLoading={isPending}>
-            {editingPkl ? 'Simpan Perubahan' : 'Simpan Penempatan'}
+            Simpan
           </Button>
         </div>
       </form>
