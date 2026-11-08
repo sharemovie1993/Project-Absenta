@@ -394,54 +394,54 @@ export const JadwalPiketPintar: React.FC<JadwalPiketPintarProps> = React.memo(({
   return (
     <div className="space-y-4 w-full">
       {/* Top Smart Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 sm:p-3.5 bg-gradient-to-r from-emerald-50/80 via-teal-50/50 to-white dark:from-emerald-950/30 dark:via-slate-900 dark:to-slate-900 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/60 shadow-2xs">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-600 text-white shadow-xs shrink-0">
+      <div className="flex items-center justify-between gap-2 p-2 sm:p-3 bg-gradient-to-r from-emerald-50/80 via-teal-50/50 to-white dark:from-emerald-950/30 dark:via-slate-900 dark:to-slate-900 rounded-xl sm:rounded-2xl border border-emerald-200/80 dark:border-emerald-800/60 shadow-2xs">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-emerald-600 text-white shadow-xs flex items-center justify-center shrink-0">
             <Sparkles className="w-4 h-4" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                Jadwal Piket Pintar
+                Jadwal Piket
               </h4>
-              <Badge variant="outline" className="text-[9px] sm:text-[10px] px-1.5 py-0 bg-emerald-100/60 text-emerald-800 dark:text-emerald-300 border-emerald-300">
+              <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-100/60 text-emerald-800 dark:text-emerald-300 border-emerald-300">
                 {totalAssignedStudents} Siswa
               </Badge>
             </div>
-            <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 truncate">
+            <p className="text-[10px] text-slate-400 truncate hidden sm:block">
               Membagi rata slot 5 hari ({studentsList.length > 0 ? `${Math.floor(studentsList.length / 5)}-${Math.ceil(studentsList.length / 5)} siswa/hari` : 'Senin s/d Jumat'})
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 self-end sm:self-auto w-full sm:w-auto justify-end">
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setIsPrintModalOpen(true)}
-            className="h-7 sm:h-8 px-2 sm:px-2.5 text-xs text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-900 rounded-xl flex items-center gap-1 cursor-pointer shadow-2xs"
+            className="h-7 sm:h-8 px-2 sm:px-2.5 text-xs text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-900 rounded-lg sm:rounded-xl flex items-center gap-1 cursor-pointer shadow-2xs"
             title="Cetak Jadwal Piket Kebersihan (PDF/Kop Resmi)"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span className="text-[11px]">Cetak</span>
+            <span className="text-[11px] hidden sm:inline">Cetak</span>
           </Button>
 
           <Button
             variant="outline"
             size="sm"
             onClick={handleCopyWhatsApp}
-            className="h-7 sm:h-8 px-2 sm:px-2.5 text-xs text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-900 rounded-xl flex items-center gap-1"
+            className="h-7 sm:h-8 px-2 sm:px-2.5 text-xs text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-900 rounded-lg sm:rounded-xl flex items-center gap-1"
             title="Salin untuk WhatsApp"
           >
             <Share2 className="w-3.5 h-3.5" />
-            <span className="text-[11px]">Salin WA</span>
+            <span className="text-[11px] hidden sm:inline">Salin WA</span>
           </Button>
 
           <Button
             variant="primary"
             size="sm"
             onClick={handleAutoDistribute}
-            className="h-7 sm:h-8 px-2.5 sm:px-3 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs flex items-center gap-1"
+            className="h-7 sm:h-8 px-2 sm:px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg sm:rounded-xl shadow-xs flex items-center gap-1"
             title="Bagi rata seluruh siswa rombel ke 5 hari"
           >
             <Sparkles className="w-3.5 h-3.5" />

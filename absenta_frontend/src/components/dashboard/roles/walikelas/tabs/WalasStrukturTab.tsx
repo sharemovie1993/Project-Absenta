@@ -1,13 +1,10 @@
 import React, { useState } from 'react';
 import { 
-  Shield, 
   GitBranch, 
-  Sparkles, 
-  Layers
+  Sparkles,
+  Users
 } from 'lucide-react';
-import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui';
-import { HubStatusStrip } from '@/components/ui/hub';
 import { useSiswaOptions } from '@/hooks/useSiswaOptions';
 import { useAuthStore } from '@/store/authStore';
 import { useGuruMe } from '@/hooks/useGuruMe';
@@ -56,137 +53,80 @@ export const WalasStrukturTab: React.FC<WalasStrukturTabProps> = React.memo(({
     onlyActive: true,
   });
 
-  // Active view switcher: 'all' | 'struktur' | 'piket'
-  const [activeSection, setActiveSection] = useState<'all' | 'struktur' | 'piket'>('all');
-
-  // Deteksi Hari Ini
-  const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-  const todayName = dayNames[new Date().getDay()] || 'Senin';
+  // Active view switcher: Langsung fokus ke 'struktur' (Bagan) atau 'piket' (Jadwal Piket)
+  const [activeSection, setActiveSection] = useState<'struktur' | 'piket'>('struktur');
 
   const totalSiswaRombel = studentsList.length || kelasInfo?.totalSiswa || 0;
 
   return (
-    <div className="space-y-4 w-full max-w-full min-w-0 pb-12 animate-in fade-in duration-200">
-      {/* ── 1. Mini Status Strip (Shopee-Grade High-Density) ── */}
-      <HubStatusStrip
-        items={[
-          {
-            id: 'total_siswa',
-            title: `${totalSiswaRombel} Siswa`,
-            subtitle: 'Rombel Aktif',
-            className: 'text-indigo-600 dark:text-indigo-400',
-          },
-          {
-            id: 'struktur_pos',
-            title: '8 Posisi',
-            subtitle: 'Struktur Organisasi',
-            className: 'text-violet-600 dark:text-violet-400',
-          },
-          {
-            id: 'regu_piket',
-            title: '5 Regu',
-            subtitle: 'Bagi Rata (Senin-Jum)',
-            className: 'text-emerald-600 dark:text-emerald-400',
-          },
-          {
-            id: 'hari_ini',
-            title: todayName,
-            subtitle: 'Piket Hari Ini',
-            className: 'text-amber-600 dark:text-amber-400',
-          },
-        ]}
-      />
-
-      {/* ── 2. Header & Tab Navigation Bar ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
-            <Shield className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <span>Tata Kelola {effectiveKelasNama}</span>
-              <Badge variant="outline" className="text-[10px] px-2 py-0.5 border-indigo-200 text-indigo-700 dark:text-indigo-300">
-                Wali: {waliKelasNama}
-              </Badge>
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Bagan pohon organisasi kepengurusan & jadwal piket kebersihan kelas
-            </p>
-          </div>
-        </div>
-
-        {/* Section View Switcher (Shopee-Grade Segmented Tabs) */}
-        <div className="grid grid-cols-3 sm:flex items-center p-1 bg-slate-100 dark:bg-slate-850 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs w-full sm:w-auto">
-          <button
-            type="button"
-            onClick={() => setActiveSection('all')}
-            className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
-              activeSection === 'all'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Semua</span>
-          </button>
+    <div className="space-y-3.5 w-full max-w-full min-w-0 pb-16 animate-in fade-in duration-200">
+      {/* ── 1. Direct Segmented Switcher (Fokus Langsung: Bagan Organisasi vs Jadwal Piket) ── */}
+      <div className="flex items-center justify-between gap-2 p-1.5 bg-slate-100 dark:bg-slate-850 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+        <div className="grid grid-cols-2 gap-1 w-full sm:w-auto sm:flex sm:items-center">
           <button
             type="button"
             onClick={() => setActiveSection('struktur')}
-            className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeSection === 'struktur'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs ring-1 ring-slate-200/60 dark:ring-slate-700/60'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
-            <GitBranch className="w-3.5 h-3.5" />
-            <span>Bagan</span>
+            <GitBranch className="w-4 h-4" />
+            <span>Bagan Organisasi</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 font-extrabold ml-0.5">
+              8 Posisi
+            </span>
           </button>
           <button
             type="button"
             onClick={() => setActiveSection('piket')}
-            className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeSection === 'piket'
-                ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs ring-1 ring-slate-200/60 dark:ring-slate-700/60'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Piket</span>
+            <Sparkles className="w-4 h-4" />
+            <span>Jadwal Piket</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-extrabold ml-0.5">
+              5 Regu
+            </span>
           </button>
+        </div>
+
+        <div className="hidden sm:flex items-center gap-2 pr-3 text-xs">
+          <span className="font-bold text-slate-800 dark:text-slate-200">{effectiveKelasNama}</span>
+          <span className="text-slate-300 dark:text-slate-600">•</span>
+          <span className="text-slate-500 dark:text-slate-400">Wali: {waliKelasNama}</span>
+          <Badge variant="outline" className="text-[10px] px-2 py-0.5 border-indigo-200 text-indigo-700 dark:text-indigo-300">
+            {totalSiswaRombel} Siswa
+          </Badge>
         </div>
       </div>
 
-      {/* ── 3. Content Sections ── */}
-      <div className="space-y-4 sm:space-y-6">
-        {/* SECTION A: BAGAN STRUKTUR ORGANISASI KELAS (BAGAN POHON) */}
-        {(activeSection === 'all' || activeSection === 'struktur') && (
-          <Card className="p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-3 sm:space-y-4">
-            <BaganStrukturOrganisasi
-              kelasId={effectiveKelasId}
-              kelasNama={effectiveKelasNama}
-              waliKelasNama={waliKelasNama}
-              waliKelasNip={waliKelasNip}
-              tahunPelajaran={tahunPelajaran}
-              studentsList={studentsList}
-              isLoadingStudents={isLoadingStudents}
-            />
-          </Card>
-        )}
-
-        {/* SECTION B: JADWAL PIKET PINTAR (MEMBAGI RATA KE JUMLAH SISWA) */}
-        {(activeSection === 'all' || activeSection === 'piket') && (
-          <Card className="p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-3 sm:space-y-4">
-            <JadwalPiketPintar
-              kelasId={effectiveKelasId}
-              kelasNama={effectiveKelasNama}
-              waliKelasNama={waliKelasNama}
-              waliKelasNip={waliKelasNip}
-              tahunPelajaran={tahunPelajaran}
-              studentsList={studentsList}
-              isLoadingStudents={isLoadingStudents}
-            />
-          </Card>
+      {/* ── 2. Content Workspaces (Tanpa Double Card Border, Langsung Menyajikan Kanvas Kerja) ── */}
+      <div className="p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+        {activeSection === 'struktur' ? (
+          <BaganStrukturOrganisasi
+            kelasId={effectiveKelasId}
+            kelasNama={effectiveKelasNama}
+            waliKelasNama={waliKelasNama}
+            waliKelasNip={waliKelasNip}
+            tahunPelajaran={tahunPelajaran}
+            studentsList={studentsList}
+            isLoadingStudents={isLoadingStudents}
+          />
+        ) : (
+          <JadwalPiketPintar
+            kelasId={effectiveKelasId}
+            kelasNama={effectiveKelasNama}
+            waliKelasNama={waliKelasNama}
+            waliKelasNip={waliKelasNip}
+            tahunPelajaran={tahunPelajaran}
+            studentsList={studentsList}
+            isLoadingStudents={isLoadingStudents}
+          />
         )}
       </div>
     </div>

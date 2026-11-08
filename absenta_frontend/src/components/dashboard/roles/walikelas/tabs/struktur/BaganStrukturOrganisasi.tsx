@@ -251,48 +251,48 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
 
   return (
     <div className="space-y-4 w-full">
-      {/* Action Header & Switcher */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50/80 dark:bg-slate-850/60 rounded-2xl border border-slate-200/80 dark:border-slate-800">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+      {/* Action Header & Switcher (Shopee-Grade Flat Toolbar) */}
+      <div className="flex items-center justify-between gap-2 p-2 sm:p-2.5 bg-slate-50/80 dark:bg-slate-850/60 rounded-xl sm:rounded-2xl border border-slate-200/80 dark:border-slate-800">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
             <GitBranch className="w-4 h-4" />
           </div>
-          <div>
-            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100">
-              Bagan Struktur Organisasi Rombel
+          <div className="min-w-0">
+            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+              Susunan Pengurus
             </h4>
-            <p className="text-[10px] text-slate-500">
-              Hirarki kepemimpinan dan pembagian peran kepengurusan siswa
+            <p className="text-[10px] text-slate-400 truncate hidden sm:block">
+              Hirarki kepemimpinan dan pembagian peran kepengurusan
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 ml-auto">
+        <div className="flex items-center gap-1.5 shrink-0">
           {/* Switch View Mode */}
-          <div className="flex items-center p-1 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-2xs">
+          <div className="flex items-center p-0.5 sm:p-1 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-lg sm:rounded-xl shadow-2xs">
             <button
               type="button"
               onClick={() => setViewMode('visual_tree')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-md sm:rounded-lg text-[10.5px] sm:text-[11px] font-bold transition-all cursor-pointer ${
                 viewMode === 'visual_tree'
                   ? 'bg-indigo-600 text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
-              <GitBranch className="w-3.5 h-3.5" />
-              <span>Bagan Pohon</span>
+              <GitBranch className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span>Bagan</span>
             </button>
             <button
               type="button"
               onClick={() => setViewMode('vertical_tree')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-md sm:rounded-lg text-[10.5px] sm:text-[11px] font-bold transition-all cursor-pointer ${
                 viewMode === 'vertical_tree'
                   ? 'bg-indigo-600 text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
-              <ListTree className="w-3.5 h-3.5" />
-              <span>Daftar Alur</span>
+              <ListTree className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span>Daftar</span>
             </button>
           </div>
 
@@ -300,11 +300,11 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
             variant="outline"
             size="sm"
             onClick={() => setIsPrintModalOpen(true)}
-            className="h-8 px-2.5 text-xs text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 bg-white dark:bg-slate-900 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            className="h-7 sm:h-8 px-2 sm:px-2.5 text-xs text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 bg-white dark:bg-slate-900 rounded-lg sm:rounded-xl flex items-center gap-1 cursor-pointer shadow-2xs"
             title="Cetak Struktur Organisasi Kelas (PDF/Kop Resmi)"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Cetak Dokumen</span>
+            <span className="hidden sm:inline text-xs">Cetak</span>
           </Button>
 
           <Button
@@ -319,10 +319,10 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
                 // ignore
               }
             }}
-            className="h-8 px-2 text-xs text-slate-500 border-slate-200 dark:border-slate-800 rounded-xl"
+            className="h-7 sm:h-8 px-2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 border-slate-200 dark:border-slate-800 rounded-lg sm:rounded-xl"
             title="Reset ke struktur default"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
           </Button>
         </div>
       </div>
