@@ -99,6 +99,7 @@ export class CbtTestEngineService {
         tanggal_selesai: j.tanggal_selesai,
         durasi_menit: j.durasi_menit,
         status_jadwal: j.status,
+        nama_sesi_waktu: (j.setting_keamanan as any)?.nama_sesi_waktu || null,
         ruang_ujian: (j.setting_keamanan as any)?.ruang_ujian || null,
         ruang_ujian_nama: (j.setting_keamanan as any)?.ruang_ujian_nama || null,
         status_peserta: peserta?.status || 'BELUM_MULAI',

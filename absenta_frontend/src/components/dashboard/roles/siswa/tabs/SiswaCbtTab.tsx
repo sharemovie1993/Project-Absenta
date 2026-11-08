@@ -13,6 +13,7 @@ import {
   CalendarClock,
   DoorOpen,
   Lock,
+  Info,
   FileQuestion,
   KeyRound,
   RefreshCw,
@@ -31,6 +32,7 @@ import { cn } from '@/lib/utils';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtStudentExamItem } from '@/types/cbt.types';
 import { getTimezone, getTimezoneLabel } from '@/utils/attendance/time';
+import { Modal } from '@/components/ui';
 
 type FilterKey = 'aktif' | 'mendatang' | 'riwayat' | 'semua';
 
@@ -40,6 +42,59 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: 'riwayat', label: 'Riwayat & Nilai' },
   { key: 'semua', label: 'Semua Ujian' },
 ];
+
+const formatExamDateIndo = (iso?: string | null) => {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '-';
+  const tz = getTimezone();
+  return d.toLocaleDateString('id-ID', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    timeZone: tz,
+  });
+};
+
+const formatExamTimeRange = (startIso?: string | null, endIso?: string | null) => {
+  if (!startIso) return '-';
+  const s = new Date(startIso);
+  if (Number.isNaN(s.getTime())) return '-';
+  const tz = getTimezone();
+  const startTime = s.toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: tz,
+  });
+  const tzLabel = getTimezoneLabel(tz);
+  if (!endIso) return `${startTime} ${tzLabel}`;
+  const e = new Date(endIso);
+  if (Number.isNaN(e.getTime())) return `${startTime} ${tzLabel}`;
+  const endTime = e.toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: tz,
+  });
+  return `${startTime} – ${endTime} ${tzLabel}`;
+};
+
+const resolveSesiLabel = (item: CbtStudentExamItem) => {
+  if (item.nama_sesi_waktu) return item.nama_sesi_waktu;
+  const match = item.nama_sesi.match(/Sesi\s*\d+/i);
+  if (match) return match[0];
+  const d = new Date(item.tanggal_mulai);
+  if (!Number.isNaN(d.getTime())) {
+    const tz = getTimezone();
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', hour12: false }).formatToParts(d);
+    const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? d.getHours());
+    if (hour < 9) return 'Sesi 1';
+    if (hour < 11) return 'Sesi 2';
+    if (hour < 13) return 'Sesi 3';
+    if (hour < 15) return 'Sesi 4';
+  }
+  return 'Sesi 1';
+};
 
 const formatDateTime = (iso?: string | null) => {
   if (!iso) return '-';
@@ -176,6 +231,7 @@ const getStatusMeta = (item: CbtStudentExamItem): StatusMeta => {
 export const SiswaCbtTab: React.FC = () => {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<FilterKey>('aktif');
+  const [selectedDetailItem, setSelectedDetailItem] = useState<CbtStudentExamItem | null>(null);
   const didAutoSelectTab = useRef(false);
 
   const {
@@ -480,6 +536,62 @@ export const SiswaCbtTab: React.FC = () => {
                   ? item.hasil.jumlah_benar + item.hasil.jumlah_salah
                   : 0;
 
+              if (item.status_jadwal === 'DRAFT') {
+                return (
+                  <li
+                    key={item.id}
+                    className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
+                  >
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      {/* Baris 1: Hari, Tanggal & Ruangan */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="inline-flex items-center gap-1.5 text-xs font-black text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/70 dark:border-indigo-900 px-2.5 py-1 rounded-lg">
+                          <CalendarDays size={13} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                          <span>{formatExamDateIndo(item.tanggal_mulai)}</span>
+                        </span>
+
+                        <span className="inline-flex items-center gap-1.5 text-xs font-black text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/60 border border-violet-200/70 dark:border-violet-900 px-2.5 py-1 rounded-lg">
+                          <DoorOpen size={13} className="text-violet-600 dark:text-violet-400 shrink-0" />
+                          <span>Ruang: {item.ruang_ujian_nama || item.ruang_ujian || 'Ruang Kelas'}</span>
+                        </span>
+                      </div>
+
+                      {/* Baris 2: Nama Mata Pelajaran (Fokus Utama Siswa) */}
+                      <div>
+                        <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-snug">
+                          {item.mapel && item.mapel !== '-' ? item.mapel : item.nama_sesi}
+                        </h4>
+                      </div>
+
+                      {/* Baris 3: Sesi & Jam Pelaksanaan */}
+                      <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-400">
+                        <Clock size={13} className="text-slate-400 shrink-0" />
+                        <span>{resolveSesiLabel(item)}</span>
+                        <span className="text-slate-300 dark:text-slate-600">•</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                          {formatExamTimeRange(item.tanggal_mulai, item.tanggal_selesai)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Sisi Kanan: Tombol [Lihat Detail] */}
+                    <div className="shrink-0 flex sm:flex-col sm:items-end justify-between items-center gap-1.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDetailItem(item)}
+                        className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs active:scale-98"
+                      >
+                        <Info size={13} className="text-slate-400" />
+                        <span>Lihat Detail</span>
+                      </button>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                        Dibuka saat Hari H
+                      </span>
+                    </div>
+                  </li>
+                );
+              }
+
               return (
                 <li
                   key={item.id}
@@ -704,6 +816,95 @@ export const SiswaCbtTab: React.FC = () => {
           </ul>
         )}
       </div>
+
+      {/* Modal Detail Sesi Ujian (On-Demand Zero-Noise) */}
+      {selectedDetailItem && (
+        <Modal
+          isOpen={Boolean(selectedDetailItem)}
+          onClose={() => setSelectedDetailItem(null)}
+          title="Rincian Sesi Ujian"
+          size="sm"
+        >
+          <div className="space-y-4 text-xs">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-1">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                Nama Sesi Resmi
+              </span>
+              <p className="font-bold text-slate-900 dark:text-white text-sm">
+                {selectedDetailItem.nama_sesi}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-0.5">
+                <span className="text-[10px] font-semibold text-slate-400 block">Mata Pelajaran</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                  {selectedDetailItem.mapel}
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-0.5">
+                <span className="text-[10px] font-semibold text-slate-400 block">Ruang Ujian</span>
+                <span className="font-bold text-violet-700 dark:text-violet-300 text-xs">
+                  {selectedDetailItem.ruang_ujian_nama || selectedDetailItem.ruang_ujian || 'Ruang Kelas'}
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-0.5">
+                <span className="text-[10px] font-semibold text-slate-400 block">Hari &amp; Tanggal</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                  {formatExamDateIndo(selectedDetailItem.tanggal_mulai)}
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-0.5">
+                <span className="text-[10px] font-semibold text-slate-400 block">Waktu / Sesi</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                  {resolveSesiLabel(selectedDetailItem)} ({formatExamTimeRange(selectedDetailItem.tanggal_mulai, selectedDetailItem.tanggal_selesai)})
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-0.5">
+                <span className="text-[10px] font-semibold text-slate-400 block">Alokasi Waktu</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                  {selectedDetailItem.durasi_menit} Menit
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-0.5">
+                <span className="text-[10px] font-semibold text-slate-400 block">Jumlah Soal</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                  {selectedDetailItem.total_soal} Butir
+                </span>
+              </div>
+            </div>
+
+            {selectedDetailItem.guru && (
+              <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-slate-500">Guru Pengampu:</span>
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{selectedDetailItem.guru}</span>
+              </div>
+            )}
+
+            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/60 flex items-start gap-2 text-amber-800 dark:text-amber-300 text-[11px]">
+              <Lock size={14} className="shrink-0 mt-0.5" />
+              <span>
+                Sesi ujian ini dijadwalkan secara resmi oleh panitia sekolah dan akan dibuka oleh guru pengawas ruangan saat jam ujian dimulai di Hari H.
+              </span>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedDetailItem(null)}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer transition-colors"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

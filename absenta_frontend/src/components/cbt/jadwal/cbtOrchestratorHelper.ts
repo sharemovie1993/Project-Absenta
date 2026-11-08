@@ -293,6 +293,7 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
                 auto_transfer_rapor: false,
                 ruang_ujian: slotRuang,
                 ruang_ujian_nama: namaRuang,
+                nama_sesi_waktu: session.nama_sesi,
               },
             });
           });
@@ -317,6 +318,7 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
               show_result_instant: false,
               auto_transfer_rapor: false,
               ruang_ujian: 'Multi-Ruang Kelas',
+              nama_sesi_waktu: session.nama_sesi,
             },
           });
         }
