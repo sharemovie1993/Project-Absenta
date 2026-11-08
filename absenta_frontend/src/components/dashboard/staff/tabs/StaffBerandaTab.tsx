@@ -290,8 +290,6 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
     ...(isPengujiSidang ? ['sidang_guru' as const] : []),
   ], [isPengawasCbt, isPengujiSidang]);
 
-  const [teacherCbtMode, setTeacherCbtMode] = useState<'bank' | 'jadwal' | 'monitor'>('bank');
-  const [teacherMonitorJadwalId, setTeacherMonitorJadwalId] = useState<string | undefined>(undefined);
   const [selectedPengawasJadwalId, setSelectedPengawasJadwalId] = useState<string | undefined>(undefined);
 
   const activeSubTab = validSubTabs.includes(subTabParam) ? subTabParam : 'agenda';
