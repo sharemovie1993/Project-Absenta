@@ -17,8 +17,6 @@ import {
   BookOpen,
   Plus,
   Rocket,
-  Search,
-  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -393,32 +391,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
 
   return (
     <div className="space-y-4 w-full max-w-full min-w-0">
-      {/* ── Mobile Top Action: Akses Cepat Buat Bank Soal (< sm) ── */}
-      {!readOnly && (
-        <div className="flex sm:hidden items-center justify-between gap-2 p-2.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 shadow-2xs">
-          <div className="min-w-0">
-            <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
-              Bank Soal CBT Guru
-            </h4>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-              Susun butir soal &amp; paket asesmen
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedBankSoal(null);
-              setIsFormModalOpen(true);
-            }}
-            className="h-8 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs shadow-xs shrink-0 flex items-center gap-1.5 cursor-pointer transition-all"
-          >
-            <Plus size={14} className="stroke-[2.5]" />
-            <span>Buat Bank Soal</span>
-          </button>
-        </div>
-      )}
-
-      {/* Filter Toolbar: Full Academic Filter untuk Panitia CBT, Simple Clean Search Bar untuk Guru */}
+      {/* ── Toolbar: Panitia CBT menggunakan AcademicFilterToolbar, Guru cukup tombol '+ Buat Bank Soal' ── */}
       {isPanitiaCbt ? (
         <AcademicFilterToolbar
           {...filter.toolbarProps}
@@ -434,49 +407,24 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
           className="shadow-2xs"
         />
       ) : (
-        /* Tampilan Ramping Khusus Guru: Bebas dari Accordion Dropdown Tingkat/Mapel */
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          <div className="relative flex-1 max-w-full sm:max-w-sm">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={filter.searchQuery}
-              onChange={(e) => filter.setSearchQuery(e.target.value)}
-              placeholder="Cari bank soal saya..."
-              className="w-full pl-9 pr-9 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 shadow-2xs transition-all"
-              aria-label="Cari bank soal"
-            />
-            {filter.searchQuery && (
-              <button
-                type="button"
-                onClick={() => filter.setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer"
-                aria-label="Hapus kata kunci pencarian"
-              >
-                <X size={13} />
-              </button>
-            )}
+        /* Area Guru: Cukup tombol '+ Buat Bank Soal' ramping tanpa card banner & tanpa input pencarian */
+        !readOnly && (
+          <div className="flex items-center justify-end">
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                setSelectedBankSoal(null);
+                setIsFormModalOpen(true);
+              }}
+              className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs h-8 sm:h-9 px-3.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all"
+            >
+              <Plus size={14} className="stroke-[2.5]" />
+              <span>+ Buat Bank Soal</span>
+            </Button>
           </div>
-
-          {/* Tombol Buat Bank Soal di Desktop untuk Guru */}
-          {!readOnly && (
-            <div className="hidden sm:flex items-center gap-2 shrink-0">
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                  setSelectedBankSoal(null);
-                  setIsFormModalOpen(true);
-                }}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs h-9 px-3.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer"
-              >
-                <Plus size={15} className="stroke-[2.5]" />
-                <span>+ Buat Bank Soal</span>
-              </Button>
-            </div>
-          )}
-        </div>
+        )
       )}
 
       {/* Konten Data: Mobile List vs Desktop Table */}
