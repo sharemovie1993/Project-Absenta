@@ -751,17 +751,17 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
     >
       {/* ── 1. HEADER BAR: Nomor Soal & Kunci Aktif ── */}
       <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
-        <div className="flex items-center gap-2">
-          <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-[#673ab7] text-white flex items-center justify-center font-black text-xs font-mono">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink-0">
+          <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-[#673ab7] text-white flex items-center justify-center font-black text-xs font-mono shrink-0">
             {nomorUrut}
           </span>
-          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
             {soal ? `Edit Soal #${nomorUrut}` : `Soal Baru #${nomorUrut}`}
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold">
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold whitespace-nowrap shrink-0">
             <CheckCircle2 size={12} />
             <span>Kunci: {kunciJawaban}</span>
           </span>

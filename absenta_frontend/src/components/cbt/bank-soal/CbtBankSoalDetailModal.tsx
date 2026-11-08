@@ -222,27 +222,27 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                           'hover:border-purple-400 dark:hover:border-purple-700 cursor-pointer group'
                       )}
                     >
-                      {/* Header Nomor Soal & Poin */}
-                      <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                        <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-lg bg-purple-50 dark:bg-purple-950/60 text-[#673ab7] dark:text-purple-300 flex items-center justify-center font-black text-xs font-mono">
+                      {/* Header Nomor Soal & Poin (Single-Line, Anti-Wrap) */}
+                      <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink-0">
+                          <span className="w-6 h-6 rounded-lg bg-purple-50 dark:bg-purple-950/60 text-[#673ab7] dark:text-purple-300 flex items-center justify-center font-black text-xs font-mono shrink-0">
                             {soal.nomor_urut || index + 1}
                           </span>
-                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
                             Soal #{soal.nomor_urut || index + 1}
                           </span>
                           {!readOnly && (
-                            <span className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:inline whitespace-nowrap">
                               (Klik untuk edit langsung)
                             </span>
                           )}
                         </div>
 
                         <div
-                          className="flex items-center gap-1.5"
+                          className="flex items-center gap-1.5 shrink-0"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <span className="text-[11px] font-bold font-mono px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                          <span className="text-[11px] font-bold font-mono px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 whitespace-nowrap shrink-0">
                             {soal.bobot} Poin
                           </span>
 

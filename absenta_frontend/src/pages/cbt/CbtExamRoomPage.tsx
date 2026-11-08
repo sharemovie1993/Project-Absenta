@@ -568,11 +568,11 @@ export default function CbtExamRoomPage() {
           {currentSoal ? (
             <div className="max-w-3xl mx-auto space-y-6">
               {/* Soal Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                <span className="text-base font-black text-indigo-400 tracking-wide">
+              <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-800">
+                <span className="text-sm sm:text-base font-black text-indigo-400 tracking-wide whitespace-nowrap shrink-0">
                   SOAL NOMOR {currentIdx + 1}
                 </span>
-                <span className="text-xs text-slate-500 font-semibold">
+                <span className="text-xs text-slate-400 font-semibold whitespace-nowrap shrink-0">
                   Bobot: {currentSoal.bobot} Poin
                 </span>
               </div>
