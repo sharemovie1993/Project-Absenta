@@ -126,12 +126,6 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
   const items = data?.items || [];
   const pagination = data?.pagination;
 
-  // Deteksi paket Master MGMP dari rekan guru se-mapel yang belum diklaim
-  const unclaimedMasterList = useMemo(() => {
-    if (!currentGuruId || isPanitiaCbt) return [];
-    return items.filter((b) => b.guru_id !== currentGuruId && b.status === 'PUBLISHED');
-  }, [items, currentGuruId, isPanitiaCbt]);
-
   // Delete Mutation
   const deleteMutation = useMutation({
     mutationFn: (id: string) => cbtApi.deleteBankSoal(id),
@@ -443,28 +437,6 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
             </Button>
           </div>
         )
-      )}
-
-      {/* ── Banner Notifikasi Master MGMP dari Rekan Guru ── */}
-      {unclaimedMasterList.length > 0 && (
-        <div className="p-3 sm:p-3.5 rounded-2xl bg-indigo-50/90 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 shadow-2xs flex items-start gap-2.5">
-          <div className="p-2 rounded-xl bg-indigo-600 text-white shrink-0 mt-0.5">
-            <Users size={16} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-bold text-xs sm:text-sm text-indigo-950 dark:text-indigo-100">
-                Tersedia Master Soal MGMP Siap Digunakan
-              </span>
-              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-600 text-white">
-                {unclaimedMasterList.length} Paket
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 leading-snug">
-              Rekan koordinator MGMP telah menerbitkan paket soal bersama untuk mata pelajaran Anda. Klik <strong>Klaim &amp; Gunakan</strong> pada kartu soal di bawah untuk langsung dipakai di kelas binaan Anda tanpa mengetik ulang soal.
-            </p>
-          </div>
-        </div>
       )}
 
       {/* Konten Data: Mobile List vs Desktop Table */}
