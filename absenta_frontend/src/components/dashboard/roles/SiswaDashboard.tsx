@@ -199,7 +199,7 @@ export const SiswaDashboard: React.FC = () => {
 
   const navTabs: SiswaNavTabItem[] = useMemo(() => {
     const tabs: SiswaNavTabItem[] = [
-      { id: 'ringkasan', label: 'Ringkasan', shortLabel: 'Ringkasan', icon: LayoutList, category: 'OPERASIONAL SISWA' },
+      { id: 'ringkasan', label: 'Ringkasan', shortLabel: 'Ringkasan', icon: LayoutList, category: 'operasional' },
     ];
     if (data.isAktifPkl || data.myPenempatan) {
       tabs.push({
@@ -208,16 +208,16 @@ export const SiswaDashboard: React.FC = () => {
         shortLabel: 'PKL',
         icon: Briefcase,
         badge: data.pendingJurnalCount > 0 ? data.pendingJurnalCount : undefined,
-        category: 'OPERASIONAL SISWA',
+        category: 'operasional',
       });
     }
     tabs.push(
-      { id: 'cbt', label: 'Ujian CBT', shortLabel: 'Ujian', icon: Laptop, category: 'AKADEMIK & PENILAIAN' },
-      { id: 'kehadiran', label: 'Presensi', shortLabel: 'Presensi', icon: CheckCircle2, category: 'OPERASIONAL SISWA' },
-      { id: 'catatan', label: 'Disiplin', shortLabel: 'Disiplin', icon: FileText, badge: data.pelanggaranCount, category: 'OPERASIONAL SISWA' },
-      { id: 'berkas', label: 'Dokumen', shortLabel: 'Dokumen', icon: FolderOpen, category: 'AKADEMIK & PENILAIAN' },
-      { id: 'portal', label: 'Portal', shortLabel: 'Portal', icon: LayoutGrid, category: 'LAYANAN & INFORMASI' },
-      { id: 'profil', label: 'Profil', shortLabel: 'Profil', icon: User, category: 'LAYANAN & INFORMASI' }
+      { id: 'cbt', label: 'Ujian CBT', shortLabel: 'Ujian', icon: Laptop, category: 'akademik' },
+      { id: 'kehadiran', label: 'Presensi', shortLabel: 'Presensi', icon: CheckCircle2, category: 'operasional' },
+      { id: 'catatan', label: 'Disiplin', shortLabel: 'Disiplin', icon: FileText, badge: data.pelanggaranCount, category: 'operasional' },
+      { id: 'berkas', label: 'Dokumen', shortLabel: 'Dokumen', icon: FolderOpen, category: 'akademik' },
+      { id: 'portal', label: 'Portal', shortLabel: 'Portal', icon: LayoutGrid, category: 'layanan' },
+      { id: 'profil', label: 'Profil', shortLabel: 'Profil', icon: User, category: 'layanan' }
     );
     return tabs;
   }, [data.isAktifPkl, data.myPenempatan, data.pendingJurnalCount, data.pelanggaranCount]);

@@ -97,11 +97,12 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
   } = useCapabilities();
 
   const guruProfile = user?.guru_profile;
-  const roleName = typeof user?.role === 'string' ? user.role : (user?.role as any)?.name;
+  const rawRole = typeof user?.role === 'string' ? user.role : (user?.role as any)?.name;
+  const roleName = String(rawRole || '').toUpperCase();
   const isAdminRole = isAdmin || roleName === 'ADMIN' || roleName === 'SUPERADMIN';
   const jenisPtk = (guruProfile?.jenis_ptk || (user?.guru_profile as any)?.jenis_ptk || (user as any)?.jenis_ptk || '').toUpperCase();
-  const isTuStaff = isTU || user?.role === 'TU' || jenisPtk === 'TENAGA_KEPENDIDIKAN' || (guruProfile?.is_tu ?? false);
-  const isPendidik = !isTuStaff && !isKepsek && (jenisPtk === 'PENDIDIK' || !jenisPtk && (roleName === 'GURU' || isWaliKelasFromCaps));
+  const isTuStaff = isTU || roleName === 'TU' || jenisPtk === 'TENAGA_KEPENDIDIKAN' || (guruProfile?.is_tu ?? false);
+  const isPendidik = !isTuStaff && !isKepsek && (jenisPtk === 'PENDIDIK' || !jenisPtk && (roleName === 'GURU' || Boolean((user as any)?.isTeacher) || Boolean(guruProfile) || isWaliKelasFromCaps));
   const isPembimbingPkl = !isHubin && !isKepsek && Boolean(
     (guruProfile as any)?.is_pembimbing_pkl || 
     ((guruProfile as any)?.active_pkl_count && (guruProfile as any).active_pkl_count > 0) ||

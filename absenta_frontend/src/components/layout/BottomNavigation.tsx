@@ -1,6 +1,17 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Briefcase, GraduationCap } from 'lucide-react';
+import { 
+  Briefcase, 
+  GraduationCap, 
+  LayoutGrid, 
+  User, 
+  Clock, 
+  CheckCircle2, 
+  FileText, 
+  FolderOpen, 
+  Laptop, 
+  CheckSquare 
+} from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils';
 import { useBottomNavTabs } from './bottom-nav/useBottomNavTabs';
@@ -73,7 +84,9 @@ export const BottomNavigation: React.FC = React.memo(() => {
     return normalizeRoleToScope(undefined, target);
   }, [isKepsek, isSiswa, activeEcosystem]);
 
-  const hasMountedDrawer = registeredScopes.includes(normalizedTargetScope);
+  // Khusus Layer 1 Base Portal ('portal'): Selalu gunakan drawer BottomNavigation agar menampilkan launcher seluruh jabatan (teacherDashboards) & layanan KBM
+  const isLayer1Portal = activeEcosystem === 'portal' && !isKepsek && !isSiswa;
+  const hasMountedDrawer = isLayer1Portal ? false : registeredScopes.includes(normalizedTargetScope);
 
   const handleTabClick = useCallback((item: MobileBottomTabItem) => {
     // 👤 Shopee-Style Tab "Saya" / Akun: Buka Mobile Account Sheet instan
@@ -84,7 +97,15 @@ export const BottomNavigation: React.FC = React.memo(() => {
       return;
     }
 
-    if (item.children && item.children.length > 0) {
+    // Deteksi apakah tab yang diklik adalah trigger Menu FAB sentral atau memiliki sub-menu
+    const isMenuTrigger = Boolean(
+      (item.children && item.children.length > 0) ||
+      item.id.includes('menu') ||
+      item.id === 'base_divisi_more' ||
+      item.id === 'lensa_more'
+    );
+
+    if (isMenuTrigger) {
       const targetScope = isKepsek ? 'kepsek' : isSiswa ? 'siswa' : activeEcosystem;
       // 🚀 Buka / Tutup Drawer Sisi Kiri (Universal Mobile Subtab Sidebar Drawer)
       useMobileSubtabSidebarStore.getState().toggle(targetScope);
@@ -122,10 +143,31 @@ export const BottomNavigation: React.FC = React.memo(() => {
             shortLabel: child.shortLabel || child.label,
             icon: child.icon,
             badge: child.badge,
-            category: child.category || (child as any).category,
+            category: child.category || (activeEcosystem === 'portal' ? 'jabatan' : undefined),
+            targetPath: child.targetPath,
           });
         }
       });
+
+      // Untuk Layer 1 Guru/Portal: Tambahkan juga pintasan KBM operasional agar komprehensif
+      if (activeEcosystem === 'portal') {
+        const kbmOps: UniversalSubtabItem[] = [
+          { id: 'kbm_jadwal', label: 'Jadwal Mengajar', shortLabel: 'KBM', icon: Clock, category: 'operasional', targetPath: '/dashboard?tab=jadwal' },
+          { id: 'kbm_presensi', label: 'Presensi KBM Harian', shortLabel: 'Presensi', icon: CheckCircle2, category: 'operasional', targetPath: '/dashboard?tab=manual_presensi' },
+          { id: 'kbm_jurnal', label: 'Jurnal Mengajar Guru', shortLabel: 'Jurnal', icon: FileText, category: 'operasional', targetPath: '/kurikulum/jurnal' },
+          { id: 'kbm_perangkat', label: 'Perangkat Ajar Saya', shortLabel: 'Perangkat', icon: FolderOpen, category: 'operasional', targetPath: '/dashboard?tab=ringkasan&subtab=perangkat' },
+          { id: 'kbm_cbt', label: 'Bank Soal CBT Online', shortLabel: 'CBT', icon: Laptop, category: 'operasional', targetPath: '/dashboard?tab=ringkasan&subtab=cbt' },
+          { id: 'kbm_nilai', label: 'Buku Nilai Guru', shortLabel: 'Nilai', icon: GraduationCap, category: 'operasional', targetPath: '/rapor/input-nilai' },
+          { id: 'kbm_tugas', label: 'Pusat Tugas & Peringatan', shortLabel: 'Tugas', icon: CheckSquare, category: 'operasional', targetPath: '/dashboard?tab=action_hub' },
+        ];
+        kbmOps.forEach((op) => {
+          if (!seen.has(op.id)) {
+            seen.add(op.id);
+            list.push(op);
+          }
+        });
+      }
+
       return list;
     }
 
@@ -142,6 +184,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
           icon: tab.icon,
           badge: tab.badge,
           category: (tab as any).category,
+          targetPath: tab.targetPath,
         });
       }
     });
@@ -176,11 +219,31 @@ export const BottomNavigation: React.FC = React.memo(() => {
     if (activeEcosystem === 'tu') {
       return TU_CATEGORIES;
     }
+    if (activeEcosystem === 'portal') {
+      return [
+        { id: 'jabatan', label: 'Ekosistem Jabatan & Peran', shortLabel: 'Jabatan' },
+        { id: 'operasional', label: 'Operasional KBM & Mengajar', shortLabel: 'KBM' },
+      ];
+    }
+    if (isSiswa || activeEcosystem === 'siswa') {
+      return [
+        { id: 'operasional', label: 'Operasional Siswa', shortLabel: 'Operasional' },
+        { id: 'akademik', label: 'Akademik & Penilaian', shortLabel: 'Akademik' },
+        { id: 'layanan', label: 'Layanan & Informasi', shortLabel: 'Layanan' },
+      ];
+    }
     return undefined;
-  }, [activeEcosystem]);
+  }, [activeEcosystem, isSiswa]);
 
   const handleSelectFallbackTab = useCallback((tabId: string) => {
     useMobileSubtabSidebarStore.getState().close();
+    // 1. Cek langsung pada fallbackDrawerTabs yang sedang aktif
+    const foundFallback = fallbackDrawerTabs.find((t) => t.id === tabId);
+    if (foundFallback && (foundFallback as any).targetPath) {
+      navigate((foundFallback as any).targetPath);
+      return;
+    }
+    // 2. Cek pada activeTabsList dan children
     for (const tab of activeTabsList) {
       if (tab.children) {
         const foundChild = tab.children.find((c) => c.id === tabId);
@@ -194,7 +257,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
         return;
       }
     }
-  }, [activeTabsList, navigate]);
+  }, [fallbackDrawerTabs, activeTabsList, navigate]);
 
   const user = useAuthStore((s) => s.user);
 
@@ -220,6 +283,24 @@ export const BottomNavigation: React.FC = React.memo(() => {
         roleIcon: GraduationCap,
       };
     }
+    if (activeEcosystem === 'portal') {
+      return {
+        title: 'Pusat Layanan & Menu',
+        subtitle: 'Ekosistem Peran & Aksi Cepat',
+        roleBadge: 'PORTAL',
+        logoUrl: (user as any)?.tenant?.logo_url || null,
+        roleIcon: LayoutGrid,
+      };
+    }
+    if (isSiswa || activeEcosystem === 'siswa') {
+      return {
+        title: (user as any)?.siswa_profile?.nama_lengkap || user?.full_name || 'Portal Siswa',
+        subtitle: 'Menu Layanan & Akademik Siswa',
+        roleBadge: 'SISWA',
+        logoUrl: (user as any)?.tenant?.logo_url || null,
+        roleIcon: User,
+      };
+    }
     const label = getEcosystemLabel(activeEcosystem);
     return {
       title: label,
@@ -228,7 +309,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
       logoUrl: (user as any)?.tenant?.logo_url || null,
       roleIcon: undefined,
     };
-  }, [activeEcosystem, user]);
+  }, [activeEcosystem, user, isSiswa]);
 
   if (shouldHideNav) {
     return null;
@@ -271,7 +352,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
             height={68}
           />
 
-          <div className="flex items-center w-full h-[64px] sm:h-[68px] relative z-10 px-1">
+          <div className="flex items-center w-full h-[64px] sm:h-[68px] relative z-10 px-1 overflow-visible">
             {activeTabsList.map((item, index) => {
               const isCenterItem = index === centerIndex;
               const isSelected = item.isActive(location.pathname, currentTab) || (isCenterItem && isSidebarOpen);

@@ -46,7 +46,7 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
         type="button"
         onClick={() => onClick(item)}
         className={cn(
-          "shrink-0 h-full flex flex-col items-center justify-end pb-2 select-none cursor-pointer relative group focus:outline-none z-20",
+          "shrink-0 h-full flex flex-col items-center justify-end pb-2 select-none cursor-pointer relative group focus:outline-none z-20 overflow-visible pointer-events-auto",
           is7Tabs ? "w-[76px] sm:w-[84px]" : "w-[96px] sm:w-[104px]"
         )}
         aria-label={item.label}
@@ -119,7 +119,7 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
                   roleStyle.iconColor,
                   roleStyle.pillRing,
                   roleStyle.glowShadow,
-                  'shadow-xs animate-pulse hover:scale-110 active:scale-95 transition-all'
+                  'hover:scale-110 active:scale-95 transition-all'
                 )
               : 'bg-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
         )}
@@ -161,11 +161,11 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
 
         {/* Indikator Berkedip / Pulsing Live Beacon untuk Launcher Ekosistem Role */}
         {isRoleLauncher && roleStyle && !item.badge && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 pointer-events-none z-10" aria-hidden="true">
+          <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 pointer-events-none z-10" aria-hidden="true">
             <span 
-              className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-75", roleStyle.pulseDotRing)} 
+              className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-80", roleStyle.pulseDotRing)} 
             />
-            <span className={cn("relative inline-flex rounded-full h-2 w-2 shadow-xs", roleStyle.dotColor)} />
+            <span className={cn("relative inline-flex rounded-full h-2.5 w-2.5 ring-1.5 ring-white dark:ring-slate-900 shadow-xs", roleStyle.dotColor)} />
           </span>
         )}
 
@@ -183,7 +183,7 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
           isHighlighted
             ? "font-extrabold"
             : isRoleLauncher && roleStyle
-              ? "font-bold"
+              ? cn("font-bold", roleStyle.labelColor)
               : "font-semibold opacity-85"
         )}
       >

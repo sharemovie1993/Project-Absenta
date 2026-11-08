@@ -33,6 +33,7 @@ export interface UniversalSubtabItem {
   category?: string;
   description?: string;
   disabled?: boolean;
+  targetPath?: string;
 }
 
 export interface UniversalSubtabCategory {
@@ -49,7 +50,7 @@ export function normalizeRoleToScope(roleBadge?: string, scope?: string): string
   const raw = scope || roleBadge || '';
   if (!raw) return '';
   const clean = raw.toLowerCase().replace(/[^a-z0-9]/g, '');
-  if (clean.includes('guru') || clean.includes('pendidik') || clean.includes('pengajar')) return 'portal';
+  if (clean === 'portal' || clean.includes('portal') || clean.includes('guru') || clean.includes('pendidik') || clean.includes('pengajar')) return 'portal';
   if (clean.includes('kaprog')) return 'kaprog';
   if (clean.includes('wali') || clean.includes('walas')) return 'walas';
   if (clean.includes('kurikulum')) return 'kurikulum';
@@ -66,7 +67,7 @@ export function normalizeRoleToScope(roleBadge?: string, scope?: string): string
   if (clean.includes('tatausaha') || clean.includes('tu') || clean.includes('kepegawaian')) return 'tu';
   if (clean.includes('admin')) return 'admin';
   if (clean.includes('kepala') || clean.includes('kepsek')) return 'kepsek';
-  if (clean.includes('siswa')) return 'siswa';
+  if (clean.includes('siswa') || clean.includes('student')) return 'siswa';
   return clean;
 }
 
@@ -74,7 +75,7 @@ export function checkScopeMatchesUrlTab(scope: string, currentTab: string): bool
   switch (scope) {
     case 'portal':
     case 'guru':
-      return !currentTab || currentTab === 'ringkasan' || currentTab === 'action_hub' || currentTab === 'rekap_mapel';
+      return !currentTab || ['ringkasan', 'action_hub', 'rekap_mapel', 'jadwal', 'manual_presensi', 'kelola', 'profil'].includes(currentTab);
     case 'kaprog':
       return currentTab === 'kaprog';
     case 'walas':
@@ -195,13 +196,14 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
   const activeStoreScope = useMobileSubtabSidebarStore((state) => state.activeScope);
 
   const isScopeMatch = useMemo(() => {
+    if (isFallback) return true;
     if (!myScope) return true;
     if (activeStoreScope && activeStoreScope !== myScope) return false;
     if (location.pathname === '/dashboard' || location.pathname === '/dashboard/') {
       return checkScopeMatchesUrlTab(myScope, currentTab);
     }
     return true;
-  }, [myScope, activeStoreScope, location.pathname, currentTab]);
+  }, [isFallback, myScope, activeStoreScope, location.pathname, currentTab]);
 
   const isEffectivelyOpen = Boolean(isOpen && isActive !== false && isScopeMatch);
 
