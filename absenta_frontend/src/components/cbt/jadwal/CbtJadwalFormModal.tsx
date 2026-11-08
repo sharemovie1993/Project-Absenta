@@ -40,6 +40,7 @@ interface CbtJadwalFormModalProps {
   jadwalToEdit?: CbtJadwalUjian | null;
   onSuccess: () => void;
   defaultGuruId?: string;
+  initialBankSoalId?: string;
   initialTahunPelajaranId?: string;
   initialSemesterId?: string;
 }
@@ -50,6 +51,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
   jadwalToEdit,
   onSuccess,
   defaultGuruId,
+  initialBankSoalId,
   initialTahunPelajaranId,
   initialSemesterId,
 }) => {
@@ -202,13 +204,21 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
     } else {
       const now = getVirtualDate();
       const startStr = formatLocalDateTime(now);
-      setBankSoalId('');
+      const targetBank = initialBankSoalId
+        ? (bankSoalData?.items || []).find((b) => b.id === initialBankSoalId)
+        : null;
+      setBankSoalId(initialBankSoalId || '');
       setTpId(initialTahunPelajaranId || activeTpYear?.id || tpOptions[0]?.value || '');
       setSemId(initialSemesterId || activeSemester?.id || semOptions[0]?.value || '');
-      setNamaSesi(`UAS Sesi ${now.toLocaleDateString('id-ID', { month: 'short', day: '2-digit', timeZone: activeTz })}`);
+      setNamaSesi(
+        targetBank
+          ? `Ulangan ${targetBank.judul}`
+          : `Sesi Ujian ${now.toLocaleDateString('id-ID', { month: 'short', day: '2-digit', timeZone: activeTz })}`
+      );
       setTanggalMulai(startStr);
-      setTanggalSelesai(computeEndFromStart(startStr, 90, activeTz));
-      setDurasiMenit(90);
+      const defaultDuration = targetBank?.alokasi_menit || 90;
+      setTanggalSelesai(computeEndFromStart(startStr, defaultDuration, activeTz));
+      setDurasiMenit(defaultDuration);
       setToleransiMenit(15);
       setTargetKelasIds([]);
       setBlockTabSwitch(true);
@@ -222,14 +232,30 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
       setPengawas1Id(teacherGuruId || '');
       setProktorId('');
     }
-  }, [isOpen, jadwalToEdit]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen, jadwalToEdit, initialBankSoalId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-select bank soal & kelas bawaan
   useEffect(() => {
-    if (isOpen && !jadwalToEdit && bankSoalOptions.length === 1 && !bankSoalId) {
-      setBankSoalId(bankSoalOptions[0].value);
+    if (isOpen && !jadwalToEdit) {
+      if (initialBankSoalId) {
+        setBankSoalId(initialBankSoalId);
+        const b = (bankSoalData?.items || []).find((item) => item.id === initialBankSoalId);
+        if (b) {
+          setNamaSesi((prev) => {
+            if (!prev || prev.startsWith('Sesi Ujian') || prev.startsWith('UAS Sesi')) {
+              return `Ulangan ${b.judul}`;
+            }
+            return prev;
+          });
+          if (b.alokasi_menit) {
+            setDurasiMenit((prev) => (prev === 90 ? b.alokasi_menit : prev));
+          }
+        }
+      } else if (bankSoalOptions.length === 1 && !bankSoalId) {
+        setBankSoalId(bankSoalOptions[0].value);
+      }
     }
-  }, [isOpen, jadwalToEdit, bankSoalOptions, bankSoalId]);
+  }, [isOpen, jadwalToEdit, initialBankSoalId, bankSoalData?.items, bankSoalOptions, bankSoalId]);
 
   useEffect(() => {
     if (isOpen && !jadwalToEdit && teacherClasses.length > 0 && targetKelasIds.length === 0) {

@@ -16,6 +16,7 @@ import {
   Copy,
   BookOpen,
   Plus,
+  Rocket,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -26,6 +27,7 @@ import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtBankSoal } from '@/types/cbt.types';
 import { CbtBankSoalFormModal } from './CbtBankSoalFormModal';
 import { CbtBankSoalDetailModal } from './CbtBankSoalDetailModal';
+import { CbtJadwalFormModal } from '../jadwal/CbtJadwalFormModal';
 import { getTingkatRoman } from './cbtAsesmenHelper';
 import useConfirm from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
@@ -37,6 +39,7 @@ export interface UniversalCbtBankSoalViewProps {
   hideLayout?: boolean;
   readOnly?: boolean;
   roleContext?: 'GURU' | 'KURIKULUM' | 'ADMIN';
+  onScheduleSuccess?: () => void;
   onClose?: () => void;
 }
 
@@ -47,6 +50,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
   hideLayout = false,
   readOnly = false,
   roleContext,
+  onScheduleSuccess,
   onClose,
 }) => {
   const queryClient = useQueryClient();
@@ -60,6 +64,13 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedBankSoal, setSelectedBankSoal] = useState<CbtBankSoal | null>(null);
+  const [isJadwalModalOpen, setIsJadwalModalOpen] = useState(false);
+  const [bankSoalForJadwal, setBankSoalForJadwal] = useState<CbtBankSoal | null>(null);
+
+  const handleOpenJadwalModal = (bankSoal: CbtBankSoal) => {
+    setBankSoalForJadwal(bankSoal);
+    setIsJadwalModalOpen(true);
+  };
 
   // 1. Unified Academic Filter Hook
   const filter = useAcademicFilter({
@@ -273,8 +284,23 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
         className: 'min-w-[220px] text-right',
         render: (_val: unknown, row: CbtBankSoal) => {
           const isFromColleague = Boolean(currentGuruId && row.guru_id !== currentGuruId);
+          const questionCount = row.jumlah_soal || row._count?.Soal || 0;
           return (
             <div className="flex items-center justify-end gap-1 flex-nowrap" onClick={(e) => e.stopPropagation()}>
+              {!readOnly && !isFromColleague && questionCount > 0 && (
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
+                  onClick={() => handleOpenJadwalModal(row)}
+                  className="text-xs h-7 px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg flex items-center gap-1 shadow-2xs cursor-pointer"
+                  title="Jadwalkan & Aktifkan Ujian untuk Kelas Binaan Anda"
+                >
+                  <Rocket size={12} />
+                  <span>Aktifkan</span>
+                </Button>
+              )}
+
               <Button
                 type="button"
                 variant="outline"
@@ -283,7 +309,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                   setSelectedBankSoal(row);
                   setIsDetailModalOpen(true);
                 }}
-                className="text-xs h-7 px-2.5 bg-indigo-50/50 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 font-bold rounded-lg"
+                className="text-xs h-7 px-2.5 bg-indigo-50/50 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 font-bold rounded-lg cursor-pointer"
               >
                 <Eye size={13} className="mr-1" />
                 <span>{isFromColleague || readOnly ? 'Lihat Soal' : 'Kelola Soal'}</span>
@@ -474,43 +500,61 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                   </div>
                 </div>
 
-                {/* Tombol Aksi Utama: Susun & Kelola Butir Soal */}
-                <div className="flex items-center gap-1.5 pt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedBankSoal(item);
-                      setIsDetailModalOpen(true);
-                    }}
-                    className="flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white flex items-center justify-center gap-1.5"
-                  >
-                    <BookOpen size={14} />
-                    <span>{isFromColleague || readOnly ? 'Lihat Soal' : 'Susun & Kelola Soal'}</span>
-                  </button>
-
-                  {!readOnly && !isFromColleague && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedBankSoal(item);
-                          setIsFormModalOpen(true);
-                        }}
-                        className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white transition-colors cursor-pointer"
-                        title="Edit Informasi Bank Soal"
-                      >
-                        <Edit2 size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(item)}
-                        className="p-2 rounded-xl border border-rose-200 dark:border-rose-900/50 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
-                        title="Hapus Bank Soal"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </>
+                {/* Tombol Aksi: Aktifkan Ujian & Kelola Soal */}
+                <div className="space-y-1.5 pt-0.5">
+                  {questionCount > 0 && !readOnly && !isFromColleague && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenJadwalModal(item)}
+                      className="w-full py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer transition-all"
+                    >
+                      <Rocket size={14} />
+                      <span>Aktifkan Ujian untuk Kelas Binaan</span>
+                    </button>
                   )}
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedBankSoal(item);
+                        setIsDetailModalOpen(true);
+                      }}
+                      className={cn(
+                        "flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center justify-center gap-1.5",
+                        questionCount > 0 && !readOnly && !isFromColleague
+                          ? "border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50"
+                          : "bg-indigo-600 hover:bg-indigo-700 text-white"
+                      )}
+                    >
+                      <BookOpen size={14} />
+                      <span>{isFromColleague || readOnly ? 'Lihat Soal' : (questionCount > 0 ? 'Susun & Kelola Soal' : 'Mulai Susun Soal')}</span>
+                    </button>
+
+                    {!readOnly && !isFromColleague && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedBankSoal(item);
+                            setIsFormModalOpen(true);
+                          }}
+                          className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white transition-colors cursor-pointer"
+                          title="Edit Informasi Bank Soal"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(item)}
+                          className="p-2 rounded-xl border border-rose-200 dark:border-rose-900/50 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+                          title="Hapus Bank Soal"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -572,6 +616,35 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
           }}
           bankSoal={selectedBankSoal}
           readOnly={readOnly || Boolean(currentGuruId && selectedBankSoal.guru_id !== currentGuruId)}
+          onAktifkanUjian={(b) => {
+            setIsDetailModalOpen(false);
+            handleOpenJadwalModal(b);
+          }}
+        />
+      )}
+
+      {/* Modal Aktivasi Sesi Ujian Langsung dari Bank Soal */}
+      {isJadwalModalOpen && (
+        <CbtJadwalFormModal
+          isOpen={isJadwalModalOpen}
+          onClose={() => {
+            setIsJadwalModalOpen(false);
+            setBankSoalForJadwal(null);
+          }}
+          defaultGuruId={currentGuruId}
+          initialBankSoalId={bankSoalForJadwal?.id}
+          onSuccess={() => {
+            const judul = bankSoalForJadwal?.judul;
+            setIsJadwalModalOpen(false);
+            setBankSoalForJadwal(null);
+            queryClient.invalidateQueries({
+              queryKey: cbtQueryKeys.jadwal(),
+              exact: false,
+              refetchType: 'all',
+            });
+            toast.success(`Ujian "${judul || 'Bank Soal'}" berhasil diaktifkan!`);
+            onScheduleSuccess?.();
+          }}
         />
       )}
     </div>

@@ -23,6 +23,7 @@ import {
   Lock,
   LayoutDashboard,
   Laptop,
+  Rocket,
 } from 'lucide-react';
 import { 
   UniversalMobileSubtabSidebar, 
@@ -129,6 +130,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
   const [searchParams, setSearchParams] = useSearchParams();
   const { tenantId } = useTenant();
   const [showIzinModal, setShowIzinModal] = useState(false);
+  const [teacherCbtMode, setTeacherCbtMode] = useState<'bank' | 'sesi'>('bank');
   const { isOrkestrasi, eventName } = useCbtOperationMode();
 
   // User Profil & Avatar Data untuk Mobile Topbar Header
@@ -833,19 +835,71 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
               </Suspense>
             )}
 
-            {/* SUB-TAB CBT: FOKUS GURU MEMBUAT BANK SOAL & MENYUSUN BUTIR SOAL */}
+            {/* SUB-TAB CBT: FOKUS GURU MEMBUAT BANK SOAL, MENYUSUN BUTIR SOAL, & AKTIVASI SESI UJIAN */}
             {activeSubTab === 'cbt' && (
               <div className="space-y-4">
-                <Suspense
-                  fallback={
-                    <div className="p-12 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-col items-center justify-center gap-3">
-                      <Loader className="animate-spin text-indigo-600" size={32} />
-                      <p className="text-xs text-slate-500 font-semibold">Memuat Bank Soal Guru...</p>
-                    </div>
-                  }
-                >
-                  <CbtBankSoalView guruId={effectiveGuruId} hideLayout={true} roleContext="GURU" />
-                </Suspense>
+                {/* 2-Pill Modern Switcher: Bank Soal Saya vs Sesi Ujian Kelas Binaan */}
+                <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl w-fit border border-slate-200/60 dark:border-slate-700/60 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setTeacherCbtMode('bank')}
+                    className={cn(
+                      'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer',
+                      teacherCbtMode === 'bank'
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    )}
+                  >
+                    <BookOpen size={14} />
+                    <span>Bank Soal Saya</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setTeacherCbtMode('sesi')}
+                    className={cn(
+                      'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer',
+                      teacherCbtMode === 'sesi'
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    )}
+                  >
+                    <Rocket size={14} />
+                    <span>Sesi Ujian Kelas Binaan</span>
+                  </button>
+                </div>
+
+                {teacherCbtMode === 'bank' ? (
+                  <Suspense
+                    fallback={
+                      <div className="p-12 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-col items-center justify-center gap-3">
+                        <Loader className="animate-spin text-indigo-600" size={32} />
+                        <p className="text-xs text-slate-500 font-semibold">Memuat Bank Soal Guru...</p>
+                      </div>
+                    }
+                  >
+                    <CbtBankSoalView
+                      guruId={effectiveGuruId}
+                      hideLayout={true}
+                      roleContext="GURU"
+                      onScheduleSuccess={() => setTeacherCbtMode('sesi')}
+                    />
+                  </Suspense>
+                ) : (
+                  <Suspense
+                    fallback={
+                      <div className="p-12 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-col items-center justify-center gap-3">
+                        <Loader className="animate-spin text-indigo-600" size={32} />
+                        <p className="text-xs text-slate-500 font-semibold">Memuat Sesi Ujian Kelas Binaan...</p>
+                      </div>
+                    }
+                  >
+                    <CbtJadwalView
+                      guruId={effectiveGuruId}
+                      hideLayout={true}
+                    />
+                  </Suspense>
+                )}
               </div>
             )}
 

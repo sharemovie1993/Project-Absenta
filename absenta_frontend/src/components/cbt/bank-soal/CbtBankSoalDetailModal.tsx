@@ -9,6 +9,7 @@ import {
   Edit2,
   Trash2,
   BookOpen,
+  Rocket,
   X,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -26,6 +27,7 @@ interface CbtBankSoalDetailModalProps {
   onClose: () => void;
   bankSoal: CbtBankSoal | null;
   readOnly?: boolean;
+  onAktifkanUjian?: (bankSoal: CbtBankSoal) => void;
 }
 
 export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
@@ -33,6 +35,7 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
   onClose,
   bankSoal,
   readOnly = false,
+  onAktifkanUjian,
 }) => {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -152,6 +155,19 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                   >
                     <Plus size={15} />
                     <span>Tambah Soal</span>
+                  </Button>
+                )}
+
+                {!readOnly && soalList.length > 0 && onAktifkanUjian && (
+                  <Button
+                    type="button"
+                    onClick={() => onAktifkanUjian(bankSoal)}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs h-8 sm:h-9 px-3 sm:px-3.5 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    title="Jadwalkan & Aktifkan Ujian untuk Kelas Binaan"
+                  >
+                    <Rocket size={14} />
+                    <span className="hidden sm:inline">Aktifkan Ujian</span>
+                    <span className="sm:hidden">Aktifkan</span>
                   </Button>
                 )}
 
