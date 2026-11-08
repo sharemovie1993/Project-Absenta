@@ -31,7 +31,7 @@ export const CbtReadinessStatsBar: React.FC<CbtReadinessStatsBarProps> = ({
         <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
           <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-              <BookOpen size={13} className="text-violet-600 dark:text-violet-400" />
+              <BookOpen size={13} className="text-indigo-600 dark:text-indigo-400" />
               <span>1. Total Teori Bank Soal {scopeLabel ? `(${scopeLabel})` : ''}</span>
             </span>
             <div className="flex items-baseline gap-2 mt-1">
@@ -42,7 +42,7 @@ export const CbtReadinessStatsBar: React.FC<CbtReadinessStatsBarProps> = ({
               Mewadahi {totalGuruPenugasan} penugasan guru {scopeLabel ? scopeLabel.toLowerCase() : 'aktif'}
             </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 flex items-center justify-center font-black text-sm">
+          <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-black text-sm">
             100%
           </div>
         </div>

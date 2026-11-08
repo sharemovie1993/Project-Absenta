@@ -479,7 +479,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
             className={cn(
               'px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
               activeTab === 'PAKET_MAPEL'
-                ? 'bg-violet-600 text-white shadow-2xs'
+                ? 'bg-indigo-600 text-white shadow-2xs'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
             )}
           >
@@ -515,7 +515,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
               setDefaultTingkatForCreate(undefined);
               setIsFormModalOpen(true);
             }}
-            className="text-xs h-9 px-3 font-bold border-violet-300 text-violet-700 bg-white hover:bg-violet-50 cursor-pointer"
+            className="text-xs h-9 px-3 font-bold border-indigo-300 text-indigo-700 bg-white hover:bg-indigo-50 cursor-pointer"
           >
             <Plus size={14} className="mr-1" />
             <span>+ Buat Bank Soal</span>
@@ -527,7 +527,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
               variant="primary"
               size="sm"
               onClick={onProceedToNextPhase}
-              className="text-xs h-9 px-4 font-bold bg-violet-600 hover:bg-violet-700 text-white shadow-2xs cursor-pointer"
+              className="text-xs h-9 px-4 font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs cursor-pointer"
             >
               <span>Lanjut ke Fase 2</span>
               <ArrowRight size={14} className="ml-1" />

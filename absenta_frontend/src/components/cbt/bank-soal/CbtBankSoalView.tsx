@@ -209,7 +209,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                   Tingkat {row.tingkat}
                 </Badge>
                 {isMassalPackage ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-violet-50 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300 border border-violet-200 dark:border-violet-800">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
                     🏛️ Paket Terpusat
                   </span>
                 ) : isSharedBank ? (
@@ -337,7 +337,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                   size="sm"
                   onClick={() => handleDuplicate(row)}
                   disabled={duplicateMutation.isPending}
-                  className="text-xs h-7 px-2 text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/30 rounded-lg"
+                  className="text-xs h-7 px-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg cursor-pointer"
                   title="Duplikat Bank Soal"
                 >
                   <Copy size={13} />
@@ -383,7 +383,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
     <div className="space-y-4 w-full max-w-full min-w-0">
       {/* ── Mobile Top Action: Akses Cepat Buat Bank Soal (< sm) ── */}
       {!readOnly && (
-        <div className="flex sm:hidden items-center justify-between gap-2 p-2.5 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/5 border border-indigo-200/80 dark:border-indigo-900/50 shadow-2xs">
+        <div className="flex sm:hidden items-center justify-between gap-2 p-2.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 shadow-2xs">
           <div className="min-w-0">
             <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
               Bank Soal CBT Guru

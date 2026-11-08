@@ -109,18 +109,18 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
       size="full"
       disableClose={true}
       className="p-0 border-0 bg-transparent shadow-2xl"
-      contentClassName="p-0 overflow-hidden flex flex-col bg-[#f0ebf8] dark:bg-slate-950 max-h-[96vh] sm:max-h-[92vh]"
+      contentClassName="p-0 overflow-hidden flex flex-col bg-slate-50 dark:bg-slate-950 max-h-[96vh] sm:max-h-[92vh]"
     >
       <div className="flex flex-col h-full max-h-[96vh] sm:max-h-[92vh] overflow-hidden text-slate-800 dark:text-slate-100">
-        {/* ── 1. STICKY GOOGLE FORMS TOP HEADER CARD ── */}
+        {/* ── 1. STICKY TOP HEADER CARD ── */}
         <div className="bg-white dark:bg-slate-900 border-b border-slate-200/90 dark:border-slate-800 shrink-0 z-20 shadow-xs">
-          <div className="h-2 bg-[#673ab7] w-full" />
+          <div className="h-1.5 bg-indigo-600 w-full" />
 
           <div className="px-3.5 py-3 sm:px-6 sm:py-3.5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
               <div className="space-y-0.5 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-purple-100 text-[#673ab7] dark:bg-purple-950/70 dark:text-purple-300">
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/50">
                     {bankSoal.kode_bank}
                   </span>
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">
@@ -139,7 +139,7 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
 
               <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
                 <div className="flex items-center gap-1.5 text-xs">
-                  <span className="px-2.5 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/60 text-[#673ab7] dark:text-purple-300 font-bold border border-purple-200/80 dark:border-purple-800/80 text-[11px]">
+                  <span className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200/80 dark:border-indigo-800/80 text-[11px]">
                     {totalPoin} Poin
                   </span>
                   <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[11px]">
@@ -151,7 +151,7 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                   <Button
                     type="button"
                     onClick={() => setActiveCardId('NEW')}
-                    className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold text-xs h-8 sm:h-9 px-3 sm:px-3.5 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs h-8 sm:h-9 px-3 sm:px-3.5 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
                   >
                     <Plus size={15} />
                     <span>Tambah Soal</span>
@@ -184,19 +184,19 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
           </div>
         </div>
 
-        {/* ── 2. SCROLLABLE LIVE GOOGLE FORMS STREAM (1 LAYAR KE BAWAH) ── */}
+        {/* ── 2. SCROLLABLE LIVE FORM STREAM (1 LAYAR KE BAWAH) ── */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-6 custom-scrollbar">
           <div className="max-w-3xl mx-auto space-y-3.5 pb-32 sm:pb-20">
             {isLoading ? (
               <div className="py-16 flex flex-col items-center justify-center space-y-3 bg-white dark:bg-slate-900 rounded-2xl shadow-xs border border-slate-200/80 dark:border-slate-800">
-                <Loader size="lg" className="text-[#673ab7]" />
+                <Loader size="lg" className="text-indigo-600" />
                 <p className="text-xs font-bold text-slate-500">Memuat daftar soal...</p>
               </div>
             ) : (
               <>
                 {soalList.length === 0 && readOnly && (
                   <div className="py-14 text-center space-y-3 bg-white dark:bg-slate-900 rounded-2xl shadow-xs border border-slate-200/80 dark:border-slate-800 p-6">
-                    <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/60 text-[#673ab7] flex items-center justify-center mx-auto">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 flex items-center justify-center mx-auto">
                       <BookOpen size={24} />
                     </div>
                     <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
@@ -235,20 +235,20 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                       className={cn(
                         'bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-200/90 dark:border-slate-800 transition-all space-y-3 relative',
                         !readOnly &&
-                          'hover:border-purple-400 dark:hover:border-purple-700 cursor-pointer group'
+                          'hover:border-indigo-400 dark:hover:border-indigo-600 cursor-pointer group'
                       )}
                     >
                       {/* Header Nomor Soal & Poin (Single-Line, Anti-Wrap) */}
                       <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
                         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink-0">
-                          <span className="w-6 h-6 rounded-lg bg-purple-50 dark:bg-purple-950/60 text-[#673ab7] dark:text-purple-300 flex items-center justify-center font-black text-xs font-mono shrink-0">
+                          <span className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-black text-xs font-mono shrink-0">
                             {soal.nomor_urut || index + 1}
                           </span>
                           <span className="text-xs font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
                             Soal #{soal.nomor_urut || index + 1}
                           </span>
                           {!readOnly && (
-                            <span className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:inline whitespace-nowrap">
+                            <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:inline whitespace-nowrap">
                               (Klik untuk edit langsung)
                             </span>
                           )}
@@ -267,7 +267,7 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => setActiveCardId(soal.id)}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-[#673ab7] hover:bg-purple-50 dark:hover:bg-purple-950/60 transition-colors cursor-pointer"
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 transition-colors cursor-pointer"
                                 title="Edit Soal"
                                 aria-label={`Edit Soal Nomor ${soal.nomor_urut}`}
                               >
@@ -304,8 +304,8 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                       />
 
                       {soal.pembahasan && (
-                        <div className="p-2.5 bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-900/40 rounded-xl text-xs">
-                          <span className="font-bold text-[#673ab7] dark:text-purple-300 text-[11px] block">
+                        <div className="p-2.5 bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/40 rounded-xl text-xs">
+                          <span className="font-bold text-indigo-700 dark:text-indigo-300 text-[11px] block">
                             Pembahasan:
                           </span>
                           <p className="text-slate-600 dark:text-slate-300 text-xs">
@@ -339,7 +339,7 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setActiveCardId('NEW')}
-                        className="w-full py-3.5 px-4 rounded-2xl border-2 border-dashed border-purple-300 dark:border-purple-800 bg-white/80 dark:bg-slate-900/70 hover:bg-purple-50/70 dark:hover:bg-purple-950/30 text-[#673ab7] dark:text-purple-300 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
+                        className="w-full py-3.5 px-4 rounded-2xl border-2 border-dashed border-indigo-300 dark:border-indigo-800 bg-white/80 dark:bg-slate-900/70 hover:bg-indigo-50/70 dark:hover:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
                       >
                         <Plus size={16} />
                         <span>Tambah Soal #{soalList.length + 1} di Bawah</span>

@@ -217,7 +217,7 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
       <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900 dark:bg-slate-950 text-white shadow-md border border-slate-800">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <span className="p-1.5 rounded-lg bg-violet-600/30 text-violet-300 border border-violet-500/30 shrink-0">
+            <span className="p-1.5 rounded-lg bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 shrink-0">
               <Layers size={17} />
             </span>
             <div>
@@ -259,7 +259,7 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
                 className={cn(
                   'px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5',
                   isOrkestrasi
-                    ? 'bg-violet-600 text-white shadow-xs'
+                    ? 'bg-indigo-600 text-white shadow-xs'
                     : 'text-slate-400 hover:text-white'
                 )}
               >
@@ -325,7 +325,7 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
                       className={cn(
                         'w-5 h-5 rounded-full text-[11px] font-black flex items-center justify-center shrink-0',
                         isActive
-                          ? 'bg-violet-600 text-white'
+                          ? 'bg-indigo-600 text-white'
                           : phase.isDone
                           ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-400/50'
                           : 'bg-white/20 text-white'
@@ -336,7 +336,7 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
                     <Icon
                       size={14}
                       className={cn(
-                        isActive ? 'text-violet-600' : 'text-violet-300'
+                        isActive ? 'text-indigo-600' : 'text-indigo-300'
                       )}
                     />
                   </div>

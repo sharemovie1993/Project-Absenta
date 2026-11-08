@@ -449,7 +449,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
                     setSelectedJadwal(row);
                     setIsTransferModalOpen(true);
                   }}
-                  className="text-xs h-7 px-2 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800 font-bold bg-violet-50/60 hover:bg-violet-100"
+                  className="text-xs h-7 px-2 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 font-bold bg-indigo-50/60 hover:bg-indigo-100 cursor-pointer"
                   title="Transfer Nilai Hasil CBT ke Slot Rapor (SUM 1, SUM 2, SUM 3, SUM AKHIR)"
                 >
                   <ArrowRightLeft size={12} className="mr-1" />
@@ -615,14 +615,14 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
 
       {/* Lock Notice jika Guru dibatasi dalam Mode Orkestrasi */}
       {isTeacherLocked && (
-        <div className="p-3 rounded-xl bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 text-violet-800 dark:text-violet-300 text-xs flex items-center justify-between gap-2 flex-wrap">
+        <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 text-indigo-800 dark:text-indigo-300 text-xs flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
-            <Lock size={14} className="text-violet-600 shrink-0" />
+            <Lock size={14} className="text-indigo-600 shrink-0" />
             <span>
               <strong>Mode Orkestrasi Aktif ({eventName}):</strong> Pembuatan sesi baru dikelola terpusat oleh Panitia CBT.
             </span>
           </div>
-          <Badge variant="outline" className="text-[10px] bg-violet-100 text-violet-700 border-violet-300 font-bold">
+          <Badge variant="outline" className="text-[10px] bg-indigo-100 text-indigo-700 border-indigo-300 font-bold">
             Jadwal Terpusat Panitia
           </Badge>
         </div>

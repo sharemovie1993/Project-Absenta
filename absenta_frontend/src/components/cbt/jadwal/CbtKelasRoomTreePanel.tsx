@@ -122,7 +122,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">
+            <span className="p-1.5 rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
               <DoorOpen size={18} />
             </span>
             <h4 className="text-sm font-black text-slate-900 dark:text-slate-100">
@@ -136,7 +136,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
 
         {/* Stats Strip */}
         <div className="flex items-center gap-2 flex-wrap text-xs">
-          <Badge variant="outline" className="px-2.5 py-1 font-bold border-violet-200 bg-violet-50 text-violet-700">
+          <Badge variant="outline" className="px-2.5 py-1 font-bold border-indigo-200 bg-indigo-50 text-indigo-700">
             <School size={13} className="mr-1" />
             <span>{totalClasses} Rombel</span>
           </Badge>
@@ -162,7 +162,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                 className={cn(
                   'px-2 py-0.5 text-xs font-bold rounded-md border transition-all cursor-pointer',
                   roomPrefix === pf
-                    ? 'bg-violet-600 text-white border-violet-600 shadow-2xs'
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
                     : 'bg-white dark:bg-slate-900 text-slate-600 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                 )}
               >
@@ -178,10 +178,10 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
             variant="outline"
             size="sm"
             onClick={handleAutoPlottingRooms}
-            className="text-xs h-8 px-3 font-bold text-violet-700 border-violet-300 bg-white dark:bg-slate-900 hover:bg-violet-50 cursor-pointer"
+            className="text-xs h-8 px-3 font-bold text-indigo-700 border-indigo-300 bg-white dark:bg-slate-900 hover:bg-indigo-50 cursor-pointer"
             title="Generate otomatis urutan slot R.01 s/d R.n sesuai urutan kelas"
           >
-            <Wand2 size={13} className="mr-1.5 text-violet-600" />
+            <Wand2 size={13} className="mr-1.5 text-indigo-600" />
             <span>Plot Otomatis</span>
           </Button>
 
@@ -190,7 +190,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
             variant="primary"
             size="sm"
             onClick={handleSaveToStorage}
-            className="text-xs h-8 px-3.5 font-bold bg-violet-600 hover:bg-violet-700 text-white cursor-pointer"
+            className="text-xs h-8 px-3.5 font-bold bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-2xs"
             title="Simpan ploting ruang"
           >
             <Save size={13} className="mr-1.5" />
@@ -306,7 +306,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                     Tingkat {formatTingkatRomawi(cls.tingkat)}
                   </span>
                   {cls.kode_jurusan && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
                       {cls.kode_jurusan}
                     </span>
                   )}
@@ -323,7 +323,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                     value={cls.slot_ruang}
                     onChange={(e) => handleUpdateSingleRoom(cls.kelas_id, 'slot_ruang', e.target.value)}
                     aria-label={`Slot ruang untuk ${cls.nama_kelas}`}
-                    className="w-full mt-0.5 px-2.5 py-1.5 text-xs font-mono font-black rounded-xl border border-violet-200 dark:border-violet-800 bg-violet-50/50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300"
+                    className="w-full mt-0.5 px-2.5 py-1.5 text-xs font-mono font-black rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300"
                   />
                 </div>
                 <div>
@@ -381,7 +381,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                     {/* 2. Rombel / Kelas */}
                     <td className="py-2.5 px-3">
                       <div className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-violet-600 shrink-0" />
+                        <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0" />
                         <span>{cls.nama_kelas}</span>
                       </div>
                     </td>
@@ -396,7 +396,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                     {/* 4. Jurusan */}
                     <td className="py-2.5 px-3">
                       {cls.kode_jurusan ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
                           {cls.kode_jurusan}
                         </span>
                       ) : (
@@ -411,7 +411,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                         value={cls.slot_ruang}
                         onChange={(e) => handleUpdateSingleRoom(cls.kelas_id, 'slot_ruang', e.target.value)}
                         aria-label={`Slot ruang untuk ${cls.nama_kelas}`}
-                        className="w-full px-2.5 py-1 text-xs font-mono font-black rounded-lg border border-violet-200 dark:border-violet-800 bg-violet-50/50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 focus:bg-white focus:outline-hidden"
+                        className="w-full px-2.5 py-1 text-xs font-mono font-black rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 focus:bg-white focus:outline-hidden"
                       />
                     </td>
 
@@ -457,7 +457,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
             type="button"
             variant="primary"
             onClick={onProceedToNextPhase}
-            className="flex items-center gap-2 cursor-pointer bg-violet-600 hover:bg-violet-700 text-white shrink-0 text-xs px-4 py-2"
+            className="flex items-center gap-2 cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white shrink-0 text-xs px-4 py-2 shadow-2xs"
           >
             <span>Lanjut ke Fase 3: Matriks Hari &amp; Sesi</span>
             <ArrowRight size={14} />

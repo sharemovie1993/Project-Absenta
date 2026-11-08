@@ -399,14 +399,14 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
           className={cn(
             'flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer',
             step === 1
-              ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-2xs'
+              ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-2xs'
               : 'text-slate-500 hover:text-slate-800'
           )}
         >
           <span
             className={cn(
               'w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center shrink-0',
-              step === 1 ? 'bg-violet-600 text-white' : 'bg-emerald-500 text-white'
+              step === 1 ? 'bg-indigo-600 text-white' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300'
             )}
           >
             {step > 1 ? '✓' : '1'}
@@ -421,14 +421,14 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
           className={cn(
             'flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer',
             step === 2
-              ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-2xs'
+              ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-2xs'
               : 'text-slate-500 hover:text-slate-800'
           )}
         >
           <span
             className={cn(
               'w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center shrink-0',
-              step === 2 ? 'bg-violet-600 text-white' : 'bg-slate-300 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+              step === 2 ? 'bg-indigo-600 text-white' : 'bg-slate-300 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
             )}
           >
             2
@@ -453,14 +453,14 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                   className={cn(
                     'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5',
                     scope === 'TERPUSAT_MASSAL'
-                      ? 'bg-violet-50 dark:bg-violet-950/40 border-violet-600 ring-2 ring-violet-500/20 text-violet-950 dark:text-violet-100'
+                      ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-600 ring-2 ring-indigo-500/20 text-indigo-950 dark:text-indigo-100'
                       : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
                   )}
                 >
                   <div
                     className={cn(
                       'p-1.5 rounded-lg shrink-0',
-                      scope === 'TERPUSAT_MASSAL' ? 'bg-violet-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                      scope === 'TERPUSAT_MASSAL' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
                     )}
                   >
                     <Layers size={16} />
@@ -505,7 +505,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                     <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                       Kegiatan Asesmen
                     </label>
-                    <span className="text-[10.5px] text-violet-600 dark:text-violet-400 font-semibold flex items-center gap-1">
+                    <span className="text-[10.5px] text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1">
                       <Sparkles size={11} />
                       <span>Saran {smartDetection.monthName}: <strong>{smartDetection.recommendedKey}</strong></span>
                     </span>
@@ -527,9 +527,9 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                         className={cn(
                           'p-2 rounded-xl text-left transition-all cursor-pointer border flex flex-col justify-between gap-0.5',
                           isSelected
-                            ? 'bg-violet-600 text-white border-violet-600 shadow-2xs'
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
                             : isRecommended
-                            ? 'bg-violet-50/60 dark:bg-violet-950/20 text-slate-700 dark:text-slate-300 border-violet-300 dark:border-violet-700 hover:border-violet-400'
+                            ? 'bg-indigo-50/60 dark:bg-indigo-950/20 text-slate-700 dark:text-slate-300 border-indigo-300 dark:border-indigo-700 hover:border-indigo-400'
                             : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300'
                         )}
                       >
@@ -541,7 +541,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                                 'text-[8.5px] font-bold px-1.5 py-0.2 rounded-full flex items-center gap-0.5',
                                 isSelected
                                   ? 'bg-amber-400 text-amber-950 font-black'
-                                  : 'bg-violet-100 text-violet-700 dark:bg-violet-900/60 dark:text-violet-300'
+                                  : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300'
                               )}
                             >
                               <Sparkles size={8} />
@@ -552,7 +552,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                         <p
                           className={cn(
                             'text-[10.5px] font-medium truncate',
-                            isSelected ? 'text-violet-100' : 'text-slate-500 dark:text-slate-400'
+                            isSelected ? 'text-indigo-100' : 'text-slate-500 dark:text-slate-400'
                           )}
                         >
                           {k.keterangan}
@@ -574,7 +574,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowAllMapels((prev) => !prev)}
-                    className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
+                    className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
                   >
                     {showAllMapels ? 'Mapel Saya' : 'Semua Mapel'}
                   </button>
@@ -637,7 +637,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                         !isAllowed
                           ? 'opacity-35 bg-slate-100 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed line-through'
                           : isSelected
-                          ? 'bg-violet-600 text-white border-violet-600 shadow-2xs cursor-pointer'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs cursor-pointer'
                           : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300 cursor-pointer'
                       )}
                       title={!isAllowed ? `Tidak relevan untuk ${jenisKegiatanMassal}` : item.label}
@@ -663,7 +663,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                     <button
                       type="button"
                       onClick={() => triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal)}
-                      className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 flex items-center gap-1 hover:underline cursor-pointer"
+                      className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 hover:underline cursor-pointer"
                       title="Generate otomatis judul standar"
                     >
                       <Sparkles size={11} />
@@ -733,7 +733,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                     className={cn(
                       'py-2 px-2 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
                       alokasiMenit === dur
-                        ? 'bg-violet-600 text-white border-violet-600 shadow-2xs'
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
                         : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
                     )}
                   >
@@ -764,7 +764,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                     className={cn(
                       'py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
                       isShared
-                        ? 'bg-violet-600 text-white border-violet-600 shadow-2xs'
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
                         : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
                     )}
                   >
@@ -777,7 +777,10 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                     className={cn(
                       'py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
                       !isShared
-                        ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900'
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
+                    )}
+                  >
                         : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
                     )}
                   >
@@ -847,7 +850,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               variant="primary"
               size="sm"
               onClick={handleNextStep}
-              className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold flex items-center gap-1.5 cursor-pointer"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
             >
               <span>Lanjut ke Tahap 2</span>
               <ArrowRight size={14} />
@@ -859,7 +862,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               variant="primary"
               size="sm"
               disabled={isSubmitting}
-              className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold cursor-pointer"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold cursor-pointer shadow-2xs"
             >
               {isSubmitting ? 'Menyimpan...' : scope === 'TERPUSAT_MASSAL' ? 'Terbitkan Paket Massal' : 'Simpan Bank Soal'}
             </Button>

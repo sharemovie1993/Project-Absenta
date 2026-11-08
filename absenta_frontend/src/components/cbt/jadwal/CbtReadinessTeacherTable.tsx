@@ -183,7 +183,7 @@ export const CbtReadinessTeacherTable: React.FC<CbtReadinessTeacherTableProps> =
                         if (target.bankSoal) onPeriksaButir(target.bankSoal);
                       }}
                       aria-label={`Periksa soal ${target.nama_mapel}`}
-                      className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 dark:bg-violet-950/40 dark:border-violet-800 dark:text-violet-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                      className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/40 dark:border-indigo-800 dark:text-indigo-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                     >
                       <Eye size={13} />
                       <span>Periksa Soal</span>
@@ -295,7 +295,7 @@ export const CbtReadinessTeacherTable: React.FC<CbtReadinessTeacherTableProps> =
                             <span>Pembuat Asli ({target.soalCount} Soal)</span>
                           </span>
                           {target.isShared && (
-                            <span className="text-[10px] text-violet-600 dark:text-violet-400 font-semibold">
+                            <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">
                               👥 Dibagikan ke Rekan MGMP
                             </span>
                           )}
@@ -376,7 +376,7 @@ export const CbtReadinessTeacherTable: React.FC<CbtReadinessTeacherTableProps> =
                             if (target.bankSoal) onPeriksaButir(target.bankSoal);
                           }}
                           aria-label={`Periksa soal ${target.nama_mapel}`}
-                          className="py-1 px-2.5 rounded-lg bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 dark:bg-violet-950/40 dark:border-violet-800 dark:text-violet-300 text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer"
+                          className="py-1 px-2.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/40 dark:border-indigo-800 dark:text-indigo-300 text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer"
                           title="Periksa butir soal & kisi-kisi"
                         >
                           <Eye size={12} />

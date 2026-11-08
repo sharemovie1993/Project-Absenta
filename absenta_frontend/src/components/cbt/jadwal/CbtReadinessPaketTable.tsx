@@ -74,7 +74,7 @@ export const CbtReadinessPaketTable: React.FC<CbtReadinessPaketTableProps> = ({
                   type="button"
                   onClick={() => onPeriksaButir(paket.bankSoal!)}
                   aria-label={`Periksa soal ${paket.nama_mapel}`}
-                  className="w-full sm:w-auto min-h-[40px] px-3.5 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="w-full sm:w-auto min-h-[40px] px-3.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Eye size={13} />
                   <span>Periksa Butir Soal</span>
@@ -146,7 +146,7 @@ export const CbtReadinessPaketTable: React.FC<CbtReadinessPaketTableProps> = ({
                       type="button"
                       onClick={() => onPeriksaButir(paket.bankSoal!)}
                       aria-label={`Periksa soal ${paket.nama_mapel}`}
-                      className="py-1 px-2.5 rounded-lg bg-violet-50 hover:bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 text-[11px] font-bold cursor-pointer"
+                      className="py-1 px-2.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 text-[11px] font-bold cursor-pointer"
                     >
                       Periksa
                     </button>

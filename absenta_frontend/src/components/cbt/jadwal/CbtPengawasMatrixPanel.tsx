@@ -305,7 +305,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
             size="sm"
             disabled={dirtyPlottingItems.length === 0 || bulkPlottingMutation.isPending}
             onClick={() => bulkPlottingMutation.mutate()}
-            className="text-xs h-9 px-4 font-bold bg-violet-600 hover:bg-violet-700 text-white"
+            className="text-xs h-9 px-4 font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs cursor-pointer"
           >
             <Save size={14} className="mr-1.5" />
             <span>
@@ -369,7 +369,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
                       isConflict
                         ? 'bg-rose-50/50 dark:bg-rose-950/20'
                         : draft.dirty
-                        ? 'bg-violet-50/40 dark:bg-violet-950/20'
+                        ? 'bg-indigo-50/40 dark:bg-indigo-950/20'
                         : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'
                     )}
                   >
@@ -409,7 +409,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
                           onChange={(e) => handleUpdatePlotRow(row.id, 'ruang_ujian', e.target.value)}
                           placeholder="R.01"
                           aria-label={`Ruang ujian untuk ${row.nama_sesi}`}
-                          className="w-full pl-7 pr-2.5 py-1.5 text-xs font-mono font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-violet-700"
+                          className="w-full pl-7 pr-2.5 py-1.5 text-xs font-mono font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300"
                         />
                       </div>
                     </td>
@@ -444,7 +444,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
                       <button
                         type="button"
                         onClick={() => setSelectedJadwalForPrint(row)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 transition-colors cursor-pointer"
                         title="Pratinjau & Cetak Berita Acara Ruang Ujian"
                         aria-label="Cetak Berita Acara Ruang"
                       >
@@ -469,7 +469,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
             type="button"
             variant="primary"
             onClick={onProceedToNextPhase}
-            className="flex items-center gap-2 cursor-pointer bg-violet-600 hover:bg-violet-700 text-white shrink-0 text-xs px-4 py-2"
+            className="flex items-center gap-2 cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white shrink-0 text-xs px-4 py-2 shadow-2xs"
           >
             <span>Lanjut ke Fase 5: Hari H &amp; Live Proctoring</span>
             <ArrowRight size={14} />

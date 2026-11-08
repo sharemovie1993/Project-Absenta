@@ -185,7 +185,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h4 className="text-sm font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <Calendar size={18} className="text-violet-600" />
+              <Calendar size={18} className="text-indigo-600" />
               <span>Matriks Ploting Mapel ke Hari &amp; Sesi Ujian Massal</span>
             </h4>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -202,7 +202,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                 className={cn(
                   'px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer',
                   generationMode === 'per_rombel_ruang'
-                    ? 'bg-white dark:bg-slate-900 text-violet-700 shadow-2xs'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-700 shadow-2xs'
                     : 'text-slate-500 hover:text-slate-800'
                 )}
                 title="Menghasilkan jadwal spesifik untuk setiap kelas dan slot ruang (R.01 s/d R.n) agar Berita Acara & Pengawas per ruang valid"
@@ -215,7 +215,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                 className={cn(
                   'px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer',
                   generationMode === 'per_tingkat'
-                    ? 'bg-white dark:bg-slate-900 text-violet-700 shadow-2xs'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-700 shadow-2xs'
                     : 'text-slate-500 hover:text-slate-800'
                 )}
                 title="1 Jadwal Ujian Terpadu untuk seluruh rombel di tingkat tersebut"
@@ -245,7 +245,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
               className={cn(
                 'px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer',
                 eventPrefix === nom
-                  ? 'bg-violet-600 text-white border-violet-600 shadow-2xs'
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
                   : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
               )}
             >
@@ -265,7 +265,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
             {/* Header Hari */}
             <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="font-bold bg-violet-50 text-violet-700 border-violet-200 text-xs">
+                <Badge variant="outline" className="font-bold bg-indigo-50 text-indigo-700 border-indigo-200 text-xs">
                   {day.nama_hari} (Hari {day.day_index})
                 </Badge>
                 <div className="flex items-center gap-1.5">
@@ -305,7 +305,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                     {activeTingkatList.map((tingkat) => (
                       <th key={tingkat} className="p-3 min-w-[220px]">
                         Tingkat {formatTingkatRomawi(tingkat)} (Kelas {tingkat})
-                        <div className="text-[10px] text-violet-600 normal-case font-semibold">
+                        <div className="text-[10px] text-indigo-600 normal-case font-semibold">
                           {groupedRoomsByTingkat.get(tingkat)?.length || 0} Rombel
                         </div>
                       </th>
@@ -316,7 +316,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                   {day.sessions.map((sess) => (
                     <tr key={sess.session_index} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                       <td className="p-3 align-top font-bold text-slate-900 dark:text-slate-100">
-                        <div className="flex items-center gap-1.5 text-violet-700 dark:text-violet-400">
+                        <div className="flex items-center gap-1.5 text-indigo-700 dark:text-indigo-400">
                           <Clock size={13} />
                           <span>{sess.nama_sesi}</span>
                         </div>
@@ -344,7 +344,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                               className={cn(
                                 'w-full px-2.5 py-1.5 text-xs rounded-xl border font-semibold transition-all cursor-pointer',
                                 selectedBankId
-                                  ? 'bg-violet-50 text-violet-900 border-violet-300 dark:bg-violet-950/40 dark:text-violet-200 dark:border-violet-700'
+                                  ? 'bg-indigo-50 text-indigo-900 border-indigo-300 dark:bg-indigo-950/40 dark:text-indigo-200 dark:border-indigo-700'
                                   : 'bg-white dark:bg-slate-900 text-slate-600 border-slate-200 dark:border-slate-700'
                               )}
                             >
@@ -378,14 +378,14 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
       </div>
 
       {/* Action Footer */}
-      <div className="p-4 rounded-xl bg-violet-50/60 dark:bg-violet-950/20 border border-violet-200/80 dark:border-violet-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="p-4 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-200/80 dark:border-indigo-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={handleAddDay}
-            className="text-xs h-9 px-3 font-bold border-violet-300 text-violet-700 bg-white hover:bg-violet-50"
+            className="text-xs h-9 px-3 font-bold border-indigo-300 text-indigo-700 bg-white hover:bg-indigo-50 cursor-pointer"
           >
             <Plus size={14} className="mr-1" />
             <span>Tambah Hari Ujian</span>
@@ -402,7 +402,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
           size="sm"
           disabled={totalSlotsFilled === 0 || bulkCreateMutation.isPending}
           onClick={() => bulkCreateMutation.mutate()}
-          className="text-xs h-9 px-5 font-bold bg-violet-600 hover:bg-violet-700 text-white shadow-xs"
+          className="text-xs h-9 px-5 font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs cursor-pointer"
         >
           <Sparkles size={14} className="mr-1.5" />
           <span>

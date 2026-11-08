@@ -444,7 +444,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={jadwalToEdit ? 'Edit Jadwal Ujian CBT' : 'Jadwalkan Sesi Ujian CBT Baru'} size="md">
-      <div className="-mt-3 sm:-mt-6 -mx-3 sm:-mx-6 mb-3 sm:mb-4 h-1.5 bg-[#673ab7]" />
+      <div className="-mt-3 sm:-mt-6 -mx-3 sm:-mx-6 mb-3 sm:mb-4 h-1.5 bg-indigo-600" />
 
       {/* Stepper Header 3 Langkah */}
       <div className="grid grid-cols-3 gap-1.5 p-1 mb-4 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/60">
@@ -460,11 +460,20 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
             className={cn(
               'flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer min-w-0',
               step === s.num
-                ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-2xs'
+                ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-2xs'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             )}
           >
-            <span className={cn('w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center shrink-0', step === s.num ? 'bg-violet-600 text-white' : step > s.num ? 'bg-emerald-500 text-white' : 'bg-slate-300 dark:bg-slate-700 text-slate-600 dark:text-slate-300')}>
+            <span
+              className={cn(
+                'w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center shrink-0',
+                step === s.num
+                  ? 'bg-indigo-600 text-white'
+                  : step > s.num
+                  ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
+                  : 'bg-slate-300 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+              )}
+            >
               {s.num}
             </span>
             <span className="truncate">{s.label}</span>
@@ -476,13 +485,13 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
         {step === 1 ? (
           <div className="space-y-3.5 py-0.5">
             {/* Indikator Konteks Akademik Terpadu */}
-            <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-violet-50/80 dark:bg-violet-950/40 border border-violet-200/60 dark:border-violet-800/50 text-xs">
+            <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/50 text-xs">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-violet-600 animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
                 <span className="text-slate-600 dark:text-slate-300">Konteks Akademik:</span>
-                <span className="font-bold text-violet-900 dark:text-violet-200">{activeTpLabel}</span>
+                <span className="font-bold text-indigo-900 dark:text-indigo-200">{activeTpLabel}</span>
               </div>
-              <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-violet-100 dark:bg-violet-900/60 text-violet-700 dark:text-violet-300">
+              <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
                 {activeSemLabel}
               </span>
             </div>
@@ -494,16 +503,16 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                   Pakai bank soal yang mana?
                 </label>
                 {teacherGuruId && !initialBankSoalId && (
-                  <button type="button" onClick={() => setShowAllSchoolBank((prev) => !prev)} className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer">
+                  <button type="button" onClick={() => setShowAllSchoolBank((prev) => !prev)} className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
                     {showAllSchoolBank ? 'Milik Saya' : 'Semua Bank Soal'}
                   </button>
                 )}
               </div>
               {initialBankSoalId && selectedBankSoal ? (
-                <div className="p-2.5 rounded-xl bg-violet-50/70 dark:bg-violet-950/40 border border-violet-200/80 dark:border-violet-800/60 flex items-center justify-between gap-2">
+                <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-mono text-[10px] font-black text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-900/60 px-1.5 py-0.2 rounded">
+                      <span className="font-mono text-[10px] font-black text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/60 px-1.5 py-0.2 rounded">
                         {selectedBankSoal.kode_bank}
                       </span>
                       <span className="text-[10px] font-bold text-slate-500">Tingkat {selectedBankSoal.tingkat}</span>
@@ -512,7 +521,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                       {selectedBankSoal.judul}
                     </p>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 shrink-0">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300 shrink-0">
                     Bank Terpilih
                   </span>
                 </div>
@@ -542,7 +551,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                 <label htmlFor="jadwal-mulai" className="text-xs font-bold text-slate-800 dark:text-slate-200">
                   Kapan ujian dimulai ({tzLabel})?
                 </label>
-                <button type="button" onClick={syncWithNow} className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer">
+                <button type="button" onClick={syncWithNow} className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
                   Sekarang
                 </button>
               </div>
@@ -569,7 +578,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                     onClick={() => handleDurationChange(mnt)}
                     className={cn(
                       'py-2 px-2 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
-                      durasiMenit === mnt ? 'bg-violet-600 text-white border-violet-600' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-violet-300'
+                      durasiMenit === mnt ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-indigo-300'
                     )}
                   >
                     {mnt}m
@@ -601,7 +610,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                       className={cn(
                         'text-[10px] font-black px-2 py-0.5 rounded-full border',
                         isAllSelected
-                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                          ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700'
                           : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-300 dark:border-amber-700'
                       )}
                     >
@@ -613,7 +622,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                 </div>
                 <div className="flex items-center gap-2.5 shrink-0">
                   {teacherClasses.length > 0 && (
-                    <button type="button" onClick={() => setShowAllGradeClasses((prev) => !prev)} className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer">
+                    <button type="button" onClick={() => setShowAllGradeClasses((prev) => !prev)} className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
                       {showAllGradeClasses ? 'Kelas Saya' : 'Semua Kelas'}
                     </button>
                   )}
@@ -638,11 +647,11 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                         className={cn(
                           'inline-flex items-center px-2.5 py-1 rounded-lg border text-xs transition-all cursor-pointer select-none',
                           isChecked
-                            ? 'bg-violet-50 text-violet-700 border-violet-300 dark:bg-violet-950/60 dark:text-violet-300 dark:border-violet-700 font-bold shadow-2xs'
+                            ? 'bg-indigo-50 text-indigo-700 border-indigo-300 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-700 font-bold shadow-2xs'
                             : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
                         )}
                       >
-                        {isChecked && <Check size={11} className="mr-1 stroke-[3] text-violet-600 dark:text-violet-400" />}
+                        {isChecked && <Check size={11} className="mr-1 stroke-[3] text-indigo-600 dark:text-indigo-400" />}
                         <span>{k.nama_kelas}</span>
                       </button>
                     );
@@ -655,13 +664,13 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
             {!isTeacherMode && (
               selectedCount > 1 ? (
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/70 flex items-start gap-2.5">
-                  <div className="p-1.5 rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 shrink-0 mt-0.5">
+                  <div className="p-1.5 rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 shrink-0 mt-0.5">
                     <Layers size={14} />
                   </div>
                   <div className="text-xs space-y-0.5 min-w-0">
                     <div className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 flex-wrap">
                       <span>Ujian Serentak Multi-Kelas ({selectedCount} Rombel)</span>
-                      <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-800">
+                      <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.2 rounded border border-indigo-200 dark:border-indigo-800">
                         Paralel
                       </span>
                     </div>
@@ -706,10 +715,28 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
             <div className="space-y-1.5">
               <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Tampilkan nilai langsung ke siswa setelah selesai?</p>
               <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => setShowResultInstant(true)} className={cn('py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center', showResultInstant ? 'bg-violet-600 text-white border-violet-600' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800')}>
+                <button
+                  type="button"
+                  onClick={() => setShowResultInstant(true)}
+                  className={cn(
+                    'py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
+                    showResultInstant
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  )}
+                >
                   Ya
                 </button>
-                <button type="button" onClick={() => setShowResultInstant(false)} className={cn('py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center', !showResultInstant ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800')}>
+                <button
+                  type="button"
+                  onClick={() => setShowResultInstant(false)}
+                  className={cn(
+                    'py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
+                    !showResultInstant
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  )}
+                >
                   Tidak
                 </button>
               </div>
@@ -718,10 +745,28 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
             <div className="space-y-1.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
               <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Aktifkan mode anti-curang (acak soal & kunci tab)?</p>
               <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => { setBlockTabSwitch(true); setShuffleQuestions(true); setShuffleOptions(true); }} className={cn('py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center', blockTabSwitch ? 'bg-violet-600 text-white border-violet-600' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800')}>
+                <button
+                  type="button"
+                  onClick={() => { setBlockTabSwitch(true); setShuffleQuestions(true); setShuffleOptions(true); }}
+                  className={cn(
+                    'py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
+                    blockTabSwitch
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  )}
+                >
                   Ya
                 </button>
-                <button type="button" onClick={() => setBlockTabSwitch(false)} className={cn('py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center', !blockTabSwitch ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800')}>
+                <button
+                  type="button"
+                  onClick={() => setBlockTabSwitch(false)}
+                  className={cn(
+                    'py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
+                    !blockTabSwitch
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  )}
+                >
                   Tidak
                 </button>
               </div>
@@ -731,10 +776,28 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
             <div className="space-y-1.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
               <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Transfer nilai otomatis ke e-Rapor?</p>
               <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => setAutoTransferRapor(true)} className={cn('py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center', autoTransferRapor ? 'bg-violet-600 text-white border-violet-600' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800')}>
+                <button
+                  type="button"
+                  onClick={() => setAutoTransferRapor(true)}
+                  className={cn(
+                    'py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
+                    autoTransferRapor
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  )}
+                >
                   Ya
                 </button>
-                <button type="button" onClick={() => setAutoTransferRapor(false)} className={cn('py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center', !autoTransferRapor ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800')}>
+                <button
+                  type="button"
+                  onClick={() => setAutoTransferRapor(false)}
+                  className={cn(
+                    'py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
+                    !autoTransferRapor
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  )}
+                >
                   Tidak
                 </button>
               </div>
@@ -756,7 +819,12 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                         key={slot.key}
                         type="button"
                         onClick={() => setTargetRaporSlot(slot.key)}
-                        className={cn('py-2 px-2 rounded-lg border text-xs font-bold text-center transition-all cursor-pointer', active ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-emerald-400')}
+                        className={cn(
+                          'py-2 px-2 rounded-lg border text-xs font-bold text-center transition-all cursor-pointer',
+                          active
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-indigo-300'
+                        )}
                       >
                         {slot.label}
                       </button>
@@ -782,17 +850,17 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
           )}
 
           {step === 1 ? (
-            <Button key="btn-next-step2" type="button" variant="primary" size="sm" onClick={(e) => handleGoToStep(2, e)} className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold flex items-center gap-1.5">
+            <Button key="btn-next-step2" type="button" variant="primary" size="sm" onClick={(e) => handleGoToStep(2, e)} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer">
               <span>Lanjut</span>
               <ArrowRight size={14} />
             </Button>
           ) : step === 2 ? (
-            <Button key="btn-next-step3" type="button" variant="primary" size="sm" onClick={(e) => handleGoToStep(3, e)} className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold flex items-center gap-1.5">
+            <Button key="btn-next-step3" type="button" variant="primary" size="sm" onClick={(e) => handleGoToStep(3, e)} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer">
               <span>Lanjut</span>
               <ArrowRight size={14} />
             </Button>
           ) : (
-            <Button key="btn-submit" type="submit" variant="primary" size="sm" disabled={isSubmitting} className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold">
+            <Button key="btn-submit" type="submit" variant="primary" size="sm" disabled={isSubmitting} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-2xs cursor-pointer">
               {isSubmitting ? 'Menyimpan...' : 'Simpan'}
             </Button>
           )}

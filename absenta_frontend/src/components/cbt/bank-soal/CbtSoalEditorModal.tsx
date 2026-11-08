@@ -747,12 +747,12 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
   return (
     <div
       ref={cardRef}
-      className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl shadow-md border border-purple-300 dark:border-purple-800 border-l-[6px] border-l-[#673ab7] p-4 sm:p-5 space-y-4 transition-all"
+      className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl shadow-md border border-indigo-200 dark:border-indigo-800 border-l-[6px] border-l-indigo-600 p-4 sm:p-5 space-y-4 transition-all"
     >
       {/* ── 1. HEADER BAR: Nomor Soal & Kunci Aktif ── */}
       <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink-0">
-          <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-[#673ab7] text-white flex items-center justify-center font-black text-xs font-mono shrink-0">
+          <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-black text-xs font-mono shrink-0 shadow-2xs">
             {nomorUrut}
           </span>
           <span className="text-xs font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
@@ -801,7 +801,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
         className={cn(
           'space-y-2 rounded-xl transition-all',
           dragTarget === 'question' &&
-            'ring-2 ring-[#673ab7] bg-purple-50/50 dark:bg-purple-950/30 p-2'
+            'ring-2 ring-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30 p-2'
         )}
       >
         <div className="flex items-start gap-2">
@@ -814,7 +814,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
               onChange={(e) => setKontenPertanyaan(e.target.value)}
               onPaste={handleQuestionPaste}
               placeholder="Tulis pertanyaan soal..."
-              className="w-full px-3.5 py-2.5 text-xs sm:text-sm font-medium rounded-xl bg-slate-50/90 hover:bg-slate-100/70 focus:bg-white dark:bg-slate-800/60 dark:focus:bg-slate-900 text-slate-900 dark:text-white border-b-2 border-b-slate-200 dark:border-b-slate-700 focus:border-b-[#673ab7] focus:outline-none transition-all resize-y min-h-[60px]"
+              className="w-full px-3.5 py-2.5 text-xs sm:text-sm font-medium rounded-xl bg-slate-50/90 hover:bg-slate-100/70 focus:bg-white dark:bg-slate-800/60 dark:focus:bg-slate-900 text-slate-900 dark:text-white border-b-2 border-b-slate-200 dark:border-b-slate-700 focus:border-b-indigo-600 focus:outline-none transition-all resize-y min-h-[60px]"
               aria-label="Pertanyaan Soal"
             />
           </div>
@@ -825,8 +825,8 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
             className={cn(
               'p-2.5 rounded-xl border transition-colors cursor-pointer shrink-0',
               gambarStimulusUrl
-                ? 'bg-purple-50 text-[#673ab7] border-purple-300 dark:bg-purple-950/60 dark:border-purple-800'
-                : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:text-[#673ab7] hover:bg-slate-50 dark:hover:bg-slate-800'
+                ? 'bg-indigo-50 text-indigo-700 border-indigo-300 dark:bg-indigo-950/60 dark:border-indigo-800'
+                : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:text-indigo-600 hover:bg-slate-50 dark:hover:bg-slate-800'
             )}
             title="Sisipkan gambar soal"
             aria-label="Sisipkan gambar pertanyaan"
@@ -845,7 +845,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
         </div>
 
         {uploadingStimulus ? (
-          <div className="p-2.5 rounded-xl border border-dashed border-purple-300 bg-purple-50/40 flex items-center justify-center gap-2 text-xs font-bold text-[#673ab7]">
+          <div className="p-2.5 rounded-xl border border-dashed border-indigo-300 bg-indigo-50/40 flex items-center justify-center gap-2 text-xs font-bold text-indigo-700">
             <UploadCloud size={15} className="animate-bounce" />
             <span>Mengunggah gambar...</span>
           </div>
@@ -908,7 +908,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
               className={cn(
                 'rounded-xl px-2.5 py-1.5 transition-all flex flex-col gap-1.5',
                 isDragOverThisOption
-                  ? 'ring-2 ring-[#673ab7] bg-purple-50/60 dark:bg-purple-950/30 border border-purple-400'
+                  ? 'ring-2 ring-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-400'
                   : isKey
                   ? 'bg-emerald-50/60 dark:bg-emerald-950/25 border border-emerald-300/80 dark:border-emerald-800/80'
                   : 'hover:bg-slate-50 dark:hover:bg-slate-800/40 border border-transparent'
@@ -936,7 +936,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
                     onPaste={(e) => handleOpsiPaste(index, e)}
                     placeholder={`Pilihan ${opt.kode}...`}
                     className={cn(
-                      'w-full py-1 px-1.5 text-xs sm:text-sm font-medium bg-transparent border-b border-b-slate-200 dark:border-b-slate-700 focus:border-b-[#673ab7] focus:outline-none transition-colors',
+                      'w-full py-1 px-1.5 text-xs sm:text-sm font-medium bg-transparent border-b border-b-slate-200 dark:border-b-slate-700 focus:border-b-indigo-600 focus:outline-none transition-colors',
                       isKey && 'font-bold text-emerald-950 dark:text-emerald-200'
                     )}
                     aria-label={`Teks Pilihan Jawaban ${opt.kode}`}
@@ -945,7 +945,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
 
                 <div className="flex items-center gap-1 shrink-0">
                   <label
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-[#673ab7] hover:bg-purple-50 dark:hover:bg-purple-950/60 cursor-pointer transition-colors"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 cursor-pointer transition-colors"
                     title={`Sisipkan 1 atau beberapa gambar sekaligus mulai dari Opsi ${opt.kode}`}
                     aria-label={`Sisipkan gambar untuk Opsi ${opt.kode}`}
                   >
@@ -982,7 +982,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
               </div>
 
               {uploadingOpsiIndex === index ? (
-                <div className="ml-8 flex items-center gap-1.5 text-[11px] font-bold text-[#673ab7]">
+                <div className="ml-8 flex items-center gap-1.5 text-[11px] font-bold text-indigo-600">
                   <UploadCloud size={13} className="animate-bounce" />
                   <span>Mengunggah gambar opsi {opt.kode}...</span>
                 </div>
@@ -1012,7 +1012,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
             <button
               type="button"
               onClick={handleAddOption}
-              className="text-xs font-bold text-slate-500 hover:text-[#673ab7] transition-colors flex items-center gap-1 cursor-pointer py-0.5"
+              className="text-xs font-bold text-slate-500 hover:text-indigo-600 transition-colors flex items-center gap-1 cursor-pointer py-0.5"
             >
               <Plus size={13} />
               <span>Tambahkan opsi</span>
@@ -1035,13 +1035,13 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
             value={pembahasan}
             onChange={(e) => setPembahasan(e.target.value)}
             placeholder="Tulis pembahasan soal (opsional)..."
-            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#673ab7]"
+            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-600"
             aria-label="Catatan Pembahasan Soal"
           />
         </div>
       )}
 
-      {/* ── 5. GOOGLE FORMS INLINE FOOTER TOOLBAR ── */}
+      {/* ── 5. INLINE FOOTER TOOLBAR ── */}
       <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div className="flex items-center justify-between sm:justify-start gap-2.5">
           <button
@@ -1050,7 +1050,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
             className={cn(
               'px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5',
               showPembahasanBox
-                ? 'bg-purple-50 text-[#673ab7] border-purple-200 dark:bg-purple-950/60 dark:border-purple-800'
+                ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:border-indigo-800'
                 : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50'
             )}
           >
@@ -1065,7 +1065,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
               min={0.5}
               value={bobot}
               onChange={(e) => setBobot(Number(e.target.value))}
-              className="w-12 px-1.5 py-1 text-center font-mono font-black text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:border-[#673ab7]"
+              className="w-12 px-1.5 py-1 text-center font-mono font-black text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:border-indigo-600"
               aria-label="Bobot Nilai"
             />
             <span className="text-[11px] text-slate-500">Poin</span>
@@ -1078,7 +1078,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
               type="button"
               onClick={() => handleSave('duplicate')}
               disabled={isSubmitting}
-              className="p-1.5 rounded-lg text-slate-500 hover:text-[#673ab7] hover:bg-purple-50 transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
               title="Duplikat Soal Ini"
               aria-label="Duplikat Soal"
             >
@@ -1119,8 +1119,8 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
             onClick={() => handleSave('stay')}
             disabled={isSubmitting}
             className={cn(
-              'text-xs h-8 px-3 font-bold flex items-center gap-1',
-              soal && 'bg-[#673ab7] hover:bg-[#5e35b1] text-white'
+              'text-xs h-8 px-3 font-bold flex items-center gap-1 shadow-2xs cursor-pointer',
+              soal && 'bg-indigo-600 hover:bg-indigo-700 text-white'
             )}
           >
             <Save size={13} />
@@ -1134,7 +1134,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
               size="sm"
               onClick={() => handleSave('add-next')}
               disabled={isSubmitting}
-              className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold text-xs h-8 px-3.5 flex items-center gap-1 shrink-0 whitespace-nowrap"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs h-8 px-3.5 flex items-center gap-1 shrink-0 whitespace-nowrap shadow-2xs cursor-pointer"
             >
               <Plus size={14} />
               <span>Simpan & Lanjut</span>
