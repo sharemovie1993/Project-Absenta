@@ -395,20 +395,22 @@ export const SiswaDashboard: React.FC = () => {
 
         {/* Right Column: Main Content & Subtabs */}
         <main className="space-y-4 min-w-0">
-          {/* Header Identity Banner */}
-          <SiswaHeaderBanner
-            studentName={data.studentName}
-            studentInitials={data.studentInitials}
-            studentPhotoUrl={data.studentPhotoUrl}
-            currentNisn={data.currentNisn}
-            currentJurusan={data.currentJurusan}
-            currentClassName={data.currentClassName}
-            isPetugasKelas={data.isPetugasKelas}
-            studentBadges={data.studentBadges}
-            gamification={data.gamification}
-            onOpenDigitalCard={() => setShowDigitalCardModal(true)}
-            onOpenBelumAbsen={() => setShowBelumAbsenModal(true)}
-          />
+          {/* Header Identity Banner (Sembunyikan saat di Tab CBT agar langsung ke kartu ujian tanpa boros scrolling di HP) */}
+          {activeTab !== 'cbt' && (
+            <SiswaHeaderBanner
+              studentName={data.studentName}
+              studentInitials={data.studentInitials}
+              studentPhotoUrl={data.studentPhotoUrl}
+              currentNisn={data.currentNisn}
+              currentJurusan={data.currentJurusan}
+              currentClassName={data.currentClassName}
+              isPetugasKelas={data.isPetugasKelas}
+              studentBadges={data.studentBadges}
+              gamification={data.gamification}
+              onOpenDigitalCard={() => setShowDigitalCardModal(true)}
+              onOpenBelumAbsen={() => setShowBelumAbsenModal(true)}
+            />
+          )}
 
           {/* Subtab Panels with Keep-Alive Cache */}
           {visitedTabs.has('ringkasan') && (
