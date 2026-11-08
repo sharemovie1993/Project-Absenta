@@ -28,20 +28,21 @@ interface DenahBatchActionBarProps {
   isSaving?: boolean;
 }
 
-export const DenahBatchActionBar: React.FC<DenahBatchActionBarProps> = ({
-  selectedCount,
-  totalCount,
-  currentSize,
-  onRotateAll,
-  onFlipHAll,
-  onDeleteAll,
-  onDeselectAll,
-  onSelectAll,
-  onResizeStep,
-  onSetSize,
-  onSave,
-  isSaving = false,
-}) => {
+export const DenahBatchActionBar = React.memo<DenahBatchActionBarProps>(
+  ({
+    selectedCount,
+    totalCount,
+    currentSize,
+    onRotateAll,
+    onFlipHAll,
+    onDeleteAll,
+    onDeselectAll,
+    onSelectAll,
+    onResizeStep,
+    onSetSize,
+    onSave,
+    isSaving = false,
+  }) => {
   const [showPresets, setShowPresets] = useState(false);
 
   if (selectedCount <= 0) return null;
@@ -223,4 +224,6 @@ export const DenahBatchActionBar: React.FC<DenahBatchActionBarProps> = ({
       </button>
     </div>
   );
-};
+});
+
+DenahBatchActionBar.displayName = 'DenahBatchActionBar';

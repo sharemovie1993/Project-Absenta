@@ -68,57 +68,59 @@ const KATEGORI_STYLES: Record<string, { bg: string; border: string; text: string
   },
 };
 
-export const DenahNodeCard: React.FC<DenahNodeCardProps> = ({
-  node,
-  isSelected,
-  isHighlighted = false,
-  highlightLabel,
-  onSelect,
-  onRotate,
-  onFlipH,
-  onFlipV,
-  onDelete,
-  onStartDrag,
-  onStartResize,
-  isReadOnly = false,
-}) => {
-  const catStyle = KATEGORI_STYLES[node.kategori_ruang] || KATEGORI_STYLES.LAINNYA;
-  const scaleX = node.flip_h ? -1 : 1;
-  const scaleY = node.flip_v ? -1 : 1;
+export const DenahNodeCard = React.memo<DenahNodeCardProps>(
+  ({
+    node,
+    isSelected,
+    isHighlighted = false,
+    highlightLabel,
+    onSelect,
+    onRotate,
+    onFlipH,
+    onFlipV,
+    onDelete,
+    onStartDrag,
+    onStartResize,
+    isReadOnly = false,
+  }) => {
+    const catStyle = KATEGORI_STYLES[node.kategori_ruang] || KATEGORI_STYLES.LAINNYA;
+    const scaleX = node.flip_h ? -1 : 1;
+    const scaleY = node.flip_v ? -1 : 1;
 
-  // Adaptasi ukuran tipografi berdasarkan dimensi kotak agar teks selalu besar & jelas saat zoom kecil
-  const isMini = node.width < 115 || node.height < 65;
-  const isMedium = node.width < 155 || node.height < 85;
+    // Adaptasi ukuran tipografi berdasarkan dimensi kotak agar teks selalu besar & jelas saat zoom kecil
+    const isMini = node.width < 115 || node.height < 65;
+    const isMedium = node.width < 155 || node.height < 85;
 
-  return (
-    <div
-      onClick={(e) => {
-        e.stopPropagation();
-        onSelect(e, node.id);
-      }}
-      onMouseDown={(e) => {
-        if (!isReadOnly && (e.target as HTMLElement).tagName !== 'BUTTON') {
-          onStartDrag(e, node.id);
-        }
-      }}
-      style={{
-        transform: `translate(${node.x}px, ${node.y}px) rotate(${node.rotation}deg) scale(${scaleX}, ${scaleY})`,
-        width: `${node.width}px`,
-        height: `${node.height}px`,
-        transformOrigin: 'center center',
-        backgroundColor: isHighlighted ? undefined : (node.warna_bg || undefined),
-        borderColor: isHighlighted ? undefined : (node.warna_border || undefined),
-      }}
-      className={`absolute select-none cursor-move rounded-xl border-2 shadow-sm transition-all duration-200 flex flex-col items-center justify-center p-1 ${
-        isHighlighted ? 'overflow-visible' : 'overflow-hidden'
-      } group ${
-        isHighlighted
-          ? 'ring-4 ring-violet-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 border-violet-600 bg-gradient-to-br from-violet-100 via-white to-indigo-100 dark:from-violet-950/90 dark:via-slate-900 dark:to-indigo-950/90 shadow-2xl shadow-violet-500/60 z-40 animate-[pulse_1.8s_cubic-bezier(0.4,0,0.6,1)_infinite]'
-          : isSelected
-          ? 'ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 shadow-md z-30 ' + catStyle.bg + (node.warna_border ? '' : ' ' + catStyle.border)
-          : 'hover:shadow hover:z-20 z-10 ' + catStyle.bg + (node.warna_border ? '' : ' ' + catStyle.border)
-      }`}
-    >
+    return (
+      <div
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect(e, node.id);
+        }}
+        onMouseDown={(e) => {
+          if (!isReadOnly && (e.target as HTMLElement).tagName !== 'BUTTON') {
+            onStartDrag(e, node.id);
+          }
+        }}
+        style={{
+          transform: `translate3d(${node.x}px, ${node.y}px, 0) rotate(${node.rotation}deg) scale(${scaleX}, ${scaleY})`,
+          width: `${node.width}px`,
+          height: `${node.height}px`,
+          transformOrigin: 'center center',
+          backgroundColor: isHighlighted ? undefined : (node.warna_bg || undefined),
+          borderColor: isHighlighted ? undefined : (node.warna_border || undefined),
+          willChange: isSelected ? 'transform' : 'auto',
+        }}
+        className={`absolute select-none cursor-move rounded-xl border-2 shadow-sm transition-colors duration-150 flex flex-col items-center justify-center p-1 ${
+          isHighlighted ? 'overflow-visible' : 'overflow-hidden'
+        } group ${
+          isHighlighted
+            ? 'ring-4 ring-violet-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 border-violet-600 bg-gradient-to-br from-violet-100 via-white to-indigo-100 dark:from-violet-950/90 dark:via-slate-900 dark:to-indigo-950/90 shadow-2xl shadow-violet-500/60 z-40 animate-[pulse_1.8s_cubic-bezier(0.4,0,0.6,1)_infinite]'
+            : isSelected
+            ? 'ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 shadow-md z-30 ' + catStyle.bg + (node.warna_border ? '' : ' ' + catStyle.border)
+            : 'hover:shadow hover:z-20 z-10 ' + catStyle.bg + (node.warna_border ? '' : ' ' + catStyle.border)
+        }`}
+      >
       {/* Efek Berdenyut (Radar Pulse Wave) saat Highlight Denah Aktif */}
       {isHighlighted && (
         <>
@@ -230,4 +232,14 @@ export const DenahNodeCard: React.FC<DenahNodeCardProps> = ({
       )}
     </div>
   );
-};
+}, (prev, next) => {
+  return (
+    prev.node === next.node &&
+    prev.isSelected === next.isSelected &&
+    prev.isHighlighted === next.isHighlighted &&
+    prev.highlightLabel === next.highlightLabel &&
+    prev.isReadOnly === next.isReadOnly
+  );
+});
+
+DenahNodeCard.displayName = 'DenahNodeCard';

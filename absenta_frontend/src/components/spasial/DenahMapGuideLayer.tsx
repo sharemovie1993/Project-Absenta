@@ -32,12 +32,8 @@ const TILE_URLS: Record<MapTileProvider, { url: string; maxNativeZoom: number; s
   },
 };
 
-export const DenahMapGuideLayer: React.FC<DenahMapGuideLayerProps> = ({
-  config,
-  width,
-  height,
-  onMapChange,
-}) => {
+export const DenahMapGuideLayer = React.memo<DenahMapGuideLayerProps>(
+  ({ config, width, height, onMapChange }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const currentTileLayerRef = useRef<L.TileLayer | null>(null);
@@ -232,4 +228,19 @@ export const DenahMapGuideLayer: React.FC<DenahMapGuideLayerProps> = ({
       />
     </div>
   );
-};
+}, (prev, next) => {
+  return (
+    prev.width === next.width &&
+    prev.height === next.height &&
+    prev.config.enabled === next.config.enabled &&
+    prev.config.lat === next.config.lat &&
+    prev.config.lng === next.config.lng &&
+    prev.config.zoom === next.config.zoom &&
+    prev.config.rotation === next.config.rotation &&
+    prev.config.opacity === next.config.opacity &&
+    prev.config.layer === next.config.layer &&
+    prev.config.is_locked === next.config.is_locked
+  );
+});
+
+DenahMapGuideLayer.displayName = 'DenahMapGuideLayer';

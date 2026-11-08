@@ -52,15 +52,16 @@ const VIRTUAL_PRESETS: Array<{
   { label: 'TANGGA LANTAI', sub: 'Akses Bertingkat', kategori: 'KORIDOR', width: 80, height: 60 },
 ];
 
-export const DenahPaletteSidebar: React.FC<DenahPaletteSidebarProps> = ({
-  unassignedRooms,
-  placedKelasIds,
-  onAddRoomNode,
-  onAddVirtualNode,
-  isLightMode = false,
-  isCollapsed = false,
-  onToggleCollapse,
-}) => {
+export const DenahPaletteSidebar = React.memo<DenahPaletteSidebarProps>(
+  ({
+    unassignedRooms,
+    placedKelasIds,
+    onAddRoomNode,
+    onAddVirtualNode,
+    isLightMode = false,
+    isCollapsed = false,
+    onToggleCollapse,
+  }) => {
   // If no exam rooms passed, start on 'virtual' tab automatically
   const [activeTab, setActiveTab] = useState<'ruang_sekolah' | 'virtual'>(() =>
     unassignedRooms.length > 0 ? 'ruang_sekolah' : 'virtual'
@@ -444,4 +445,6 @@ export const DenahPaletteSidebar: React.FC<DenahPaletteSidebarProps> = ({
       </div>
     </aside>
   );
-};
+});
+
+DenahPaletteSidebar.displayName = 'DenahPaletteSidebar';

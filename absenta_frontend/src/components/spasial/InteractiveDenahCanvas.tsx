@@ -262,13 +262,41 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
     toast.success(`Berhasil menyusun tata letak otomatis (${generated.length} elemen)`);
   };
 
-  // Node transformations
-  const handleRotateNode = (id: string) =>
-    pushHistory(nodes.map((n) => (n.id === id ? { ...n, rotation: (n.rotation + 90) % 360 } : n)));
-  const handleFlipH = (id: string) =>
-    pushHistory(nodes.map((n) => (n.id === id ? { ...n, flip_h: !n.flip_h } : n)));
-  const handleFlipV = (id: string) =>
-    pushHistory(nodes.map((n) => (n.id === id ? { ...n, flip_v: !n.flip_v } : n)));
+  // Node transformations with stable memoized callbacks (zero re-render churn)
+  const handleRotateNode = useCallback(
+    (id: string) => {
+      setNodes((current) => {
+        const updated = current.map((n) =>
+          n.id === id ? { ...n, rotation: (n.rotation + 90) % 360 } : n
+        );
+        pushHistory(updated);
+        return updated;
+      });
+    },
+    [pushHistory]
+  );
+
+  const handleFlipH = useCallback(
+    (id: string) => {
+      setNodes((current) => {
+        const updated = current.map((n) => (n.id === id ? { ...n, flip_h: !n.flip_h } : n));
+        pushHistory(updated);
+        return updated;
+      });
+    },
+    [pushHistory]
+  );
+
+  const handleFlipV = useCallback(
+    (id: string) => {
+      setNodes((current) => {
+        const updated = current.map((n) => (n.id === id ? { ...n, flip_v: !n.flip_v } : n));
+        pushHistory(updated);
+        return updated;
+      });
+    },
+    [pushHistory]
+  );
 
   // Multi-selection & batch drag engine
   const {
@@ -296,11 +324,17 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
     isReadOnly,
   });
 
-  const handleDeleteNode = (nodeId: string) => {
-    const updated = nodes.filter((n) => n.id !== nodeId);
-    pushHistory(updated);
-    setSelectedNodeIds((prev) => prev.filter((id) => id !== nodeId));
-  };
+  const handleDeleteNode = useCallback(
+    (nodeId: string) => {
+      setNodes((current) => {
+        const updated = current.filter((n) => n.id !== nodeId);
+        pushHistory(updated);
+        return updated;
+      });
+      setSelectedNodeIds((prev) => prev.filter((id) => id !== nodeId));
+    },
+    [pushHistory, setSelectedNodeIds]
+  );
 
   const handleSaveDenah = async () => {
     setIsSaving(true);
@@ -337,8 +371,24 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
     }
   };
 
-  const placedKelasIds = new Set(
-    nodes.filter((n) => n.kelas_id).map((n) => n.kelas_id as string)
+  // Memoized lookups for O(1) checks during 60FPS dragging
+  const placedKelasIds = useMemo(() => {
+    return new Set(nodes.filter((n) => n.kelas_id).map((n) => n.kelas_id as string));
+  }, [nodes]);
+
+  const selectedNodeIdsSet = useMemo(() => new Set(selectedNodeIds), [selectedNodeIds]);
+
+  const handleMapChange = useCallback(
+    (updated: Partial<DenahMapGuideConfig>) => {
+      setMapGuideConfig((prev) => {
+        const next = { ...prev, ...updated };
+        try {
+          localStorage.setItem(`absenta_denah_map_${denah.id}`, JSON.stringify(next));
+        } catch (_) {}
+        return next;
+      });
+    },
+    [denah.id]
   );
 
   // Deteksi pencocokan ruang yang di-highlight dari kartu sesi siswa
@@ -363,6 +413,12 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
     },
     []
   );
+
+  const highlightedNodeId = useMemo(() => {
+    if (!highlightRoomCode || nodes.length === 0) return null;
+    const target = nodes.find((n) => isRoomHighlighted(n, highlightRoomCode));
+    return target ? target.id : null;
+  }, [highlightRoomCode, nodes, isRoomHighlighted]);
 
   // Jika highlightRoomCode diberikan tetapi belum ada di nodes denah, tambahkan dinamis agar selalu tampil & berdenyut
   useEffect(() => {
@@ -482,10 +538,10 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
             backgroundSize: `${20 * scale}px ${20 * scale}px`,
           }}
         >
-          {/* Scalable Container */}
+          {/* Scalable Container with Hardware Accelerated Layer */}
           <div
             style={{
-              transform: `scale(${scale})`,
+              transform: `scale(${scale}) translateZ(0)`,
               transformOrigin: 'top left',
               width: `${denah.canvas_width || 2400}px`,
               height: `${denah.canvas_height || 1600}px`,
@@ -499,21 +555,13 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
                 : 'bg-slate-900/40 border-slate-700/60'
             }`}
           >
-            {/* Realtime Satellite/Map Guide Layer */}
+            {/* Realtime Satellite/Map Guide Layer (Memoized) */}
             {mapGuideConfig.enabled && (
               <DenahMapGuideLayer
                 config={mapGuideConfig}
                 width={denah.canvas_width || 2400}
                 height={denah.canvas_height || 1600}
-                onMapChange={(updated) => {
-                  setMapGuideConfig((prev) => {
-                    const next = { ...prev, ...updated };
-                    try {
-                      localStorage.setItem(`absenta_denah_map_${denah.id}`, JSON.stringify(next));
-                    } catch (_) {}
-                    return next;
-                  });
-                }}
+                onMapChange={handleMapChange}
               />
             )}
 
@@ -541,8 +589,8 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
               <DenahNodeCard
                 key={node.id}
                 node={node}
-                isSelected={selectedNodeIds.includes(node.id)}
-                isHighlighted={isRoomHighlighted(node, highlightRoomCode)}
+                isSelected={selectedNodeIdsSet.has(node.id)}
+                isHighlighted={highlightedNodeId === node.id}
                 highlightLabel={highlightLabel}
                 onSelect={handleSelectNode}
                 onRotate={handleRotateNode}

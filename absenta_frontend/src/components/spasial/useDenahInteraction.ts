@@ -31,6 +31,12 @@ export function useDenahInteraction({
   const hasResizedRef = useRef(false);
   const latestNodesRef = useRef<DenahElementNode[]>(nodes);
 
+  // RAF Throttling & Snapped Tracking for 60FPS Drag & Drop on Low-Spec Hardware
+  const rafIdRef = useRef<number | null>(null);
+  const latestMousePosRef = useRef<{ clientX: number; clientY: number }>({ clientX: 0, clientY: 0 });
+  const lastSnappedOffsetRef = useRef<{ dx: number; dy: number }>({ dx: 0, dy: 0 });
+  const lastSnappedSizeRef = useRef<{ dx: number; dy: number }>({ dx: 0, dy: 0 });
+
   const marqueeStartRef = useRef<{ isSelecting: boolean; startX: number; startY: number } | null>(null);
   const dragState = useRef<{
     isDragging: boolean;
@@ -93,8 +99,10 @@ export function useDenahInteraction({
 
       hasMovedRef.current = false;
       latestNodesRef.current = nodes;
+      lastSnappedOffsetRef.current = { dx: 0, dy: 0 };
 
-      const targetNodes = nodes.filter((n) => activeSelection.includes(n.id));
+      const activeSet = new Set(activeSelection);
+      const targetNodes = nodes.filter((n) => activeSet.has(n.id));
       dragState.current = {
         isDragging: true,
         startX: e.clientX,
@@ -116,11 +124,13 @@ export function useDenahInteraction({
         setSelectedNodeIds([nodeId]);
       }
 
-      const targetNodes = nodes.filter((n) => activeSelection.includes(n.id));
+      const activeSet = new Set(activeSelection);
+      const targetNodes = nodes.filter((n) => activeSet.has(n.id));
       if (targetNodes.length === 0) return;
 
       hasResizedRef.current = false;
       latestNodesRef.current = nodes;
+      lastSnappedSizeRef.current = { dx: 0, dy: 0 };
 
       resizeState.current = {
         isResizing: true,
@@ -160,78 +170,131 @@ export function useDenahInteraction({
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
-      if (dragState.current.isDragging && dragState.current.initialPositions.length > 0) {
-        hasMovedRef.current = true;
-        const dx = (e.clientX - dragState.current.startX) / scale;
-        const dy = (e.clientY - dragState.current.startY) / scale;
-        const snappedDx = snap(dx);
-        const snappedDy = snap(dy);
+      const isDrag = dragState.current.isDragging && dragState.current.initialPositions.length > 0;
+      const isResize = resizeState.current.isResizing && resizeState.current.initialSizes.length > 0;
+      const isMarquee = Boolean(marqueeStartRef.current?.isSelecting);
 
-        const posMap = new Map(dragState.current.initialPositions.map((p) => [p.id, p]));
+      if (!isDrag && !isResize && !isMarquee) return;
 
-        setNodes((prev) => {
-          const updated = prev.map((n) => {
-            const initial = posMap.get(n.id);
-            if (initial) {
-              return {
-                ...n,
-                x: Math.max(0, initial.x + snappedDx),
-                y: Math.max(0, initial.y + snappedDy),
-              };
+      latestMousePosRef.current = { clientX: e.clientX, clientY: e.clientY };
+
+      if (!rafIdRef.current) {
+        rafIdRef.current = requestAnimationFrame(() => {
+          rafIdRef.current = null;
+          const { clientX, clientY } = latestMousePosRef.current;
+
+          if (dragState.current.isDragging && dragState.current.initialPositions.length > 0) {
+            const dx = (clientX - dragState.current.startX) / scale;
+            const dy = (clientY - dragState.current.startY) / scale;
+            const snappedDx = snap(dx);
+            const snappedDy = snap(dy);
+
+            // Jika koordinat snap grid 20px belum berubah, lewati render untuk menghemat CPU
+            if (
+              snappedDx === lastSnappedOffsetRef.current.dx &&
+              snappedDy === lastSnappedOffsetRef.current.dy
+            ) {
+              return;
             }
-            return n;
-          });
-          latestNodesRef.current = updated;
-          return updated;
-        });
-      } else if (resizeState.current.isResizing && resizeState.current.initialSizes.length > 0) {
-        hasResizedRef.current = true;
-        const dx = (e.clientX - resizeState.current.startX) / scale;
-        const dy = (e.clientY - resizeState.current.startY) / scale;
-        const snappedDx = snap(dx);
-        const snappedDy = snap(dy);
 
-        const sizeMap = new Map(resizeState.current.initialSizes.map((s) => [s.id, s]));
+            lastSnappedOffsetRef.current = { dx: snappedDx, dy: snappedDy };
+            hasMovedRef.current = true;
 
-        setNodes((prev) => {
-          const updated = prev.map((n) => {
-            const initial = sizeMap.get(n.id);
-            if (initial) {
-              const newW = Math.max(80, initial.origW + snappedDx);
-              const newH = Math.max(50, initial.origH + snappedDy);
-              return { ...n, width: newW, height: newH };
+            const posMap = new Map(dragState.current.initialPositions.map((p) => [p.id, p]));
+
+            setNodes((prev) => {
+              let changed = false;
+              const updated = prev.map((n) => {
+                const initial = posMap.get(n.id);
+                if (initial) {
+                  const newX = Math.max(0, initial.x + snappedDx);
+                  const newY = Math.max(0, initial.y + snappedDy);
+                  if (newX !== n.x || newY !== n.y) {
+                    changed = true;
+                    return { ...n, x: newX, y: newY };
+                  }
+                }
+                return n;
+              });
+              if (!changed) return prev;
+              latestNodesRef.current = updated;
+              return updated;
+            });
+          } else if (resizeState.current.isResizing && resizeState.current.initialSizes.length > 0) {
+            const dx = (clientX - resizeState.current.startX) / scale;
+            const dy = (clientY - resizeState.current.startY) / scale;
+            const snappedDx = snap(dx);
+            const snappedDy = snap(dy);
+
+            if (
+              snappedDx === lastSnappedSizeRef.current.dx &&
+              snappedDy === lastSnappedSizeRef.current.dy
+            ) {
+              return;
             }
-            return n;
-          });
-          latestNodesRef.current = updated;
-          return updated;
+
+            lastSnappedSizeRef.current = { dx: snappedDx, dy: snappedDy };
+            hasResizedRef.current = true;
+
+            const sizeMap = new Map(resizeState.current.initialSizes.map((s) => [s.id, s]));
+
+            setNodes((prev) => {
+              let changed = false;
+              const updated = prev.map((n) => {
+                const initial = sizeMap.get(n.id);
+                if (initial) {
+                  const newW = Math.max(80, initial.origW + snappedDx);
+                  const newH = Math.max(50, initial.origH + snappedDy);
+                  if (newW !== n.width || newH !== n.height) {
+                    changed = true;
+                    return { ...n, width: newW, height: newH };
+                  }
+                }
+                return n;
+              });
+              if (!changed) return prev;
+              latestNodesRef.current = updated;
+              return updated;
+            });
+          } else if (marqueeStartRef.current?.isSelecting && canvasRef.current) {
+            const rect = canvasRef.current.getBoundingClientRect();
+            const curX = (clientX - rect.left - panOffset.x + canvasRef.current.scrollLeft) / scale;
+            const curY = (clientY - rect.top - panOffset.y + canvasRef.current.scrollTop) / scale;
+
+            const bx = Math.min(marqueeStartRef.current.startX, curX);
+            const by = Math.min(marqueeStartRef.current.startY, curY);
+            const bw = Math.abs(curX - marqueeStartRef.current.startX);
+            const bh = Math.abs(curY - marqueeStartRef.current.startY);
+
+            setMarqueeBox({ x: bx, y: by, width: bw, height: bh });
+
+            const selected = nodesRef.current.filter(
+              (n) => n.x < bx + bw && n.x + n.width > bx && n.y < by + bh && n.y + n.height > by
+            );
+            const newIds = selected.map((n) => n.id);
+            setSelectedNodeIds((prev) => {
+              if (prev.length === newIds.length && prev.every((id, idx) => id === newIds[idx])) {
+                return prev;
+              }
+              return newIds;
+            });
+          }
         });
-      } else if (marqueeStartRef.current?.isSelecting && canvasRef.current) {
-        const rect = canvasRef.current.getBoundingClientRect();
-        const curX = (e.clientX - rect.left - panOffset.x + canvasRef.current.scrollLeft) / scale;
-        const curY = (e.clientY - rect.top - panOffset.y + canvasRef.current.scrollTop) / scale;
-
-        const bx = Math.min(marqueeStartRef.current.startX, curX);
-        const by = Math.min(marqueeStartRef.current.startY, curY);
-        const bw = Math.abs(curX - marqueeStartRef.current.startX);
-        const bh = Math.abs(curY - marqueeStartRef.current.startY);
-
-        setMarqueeBox({ x: bx, y: by, width: bw, height: bh });
-
-        // Select all nodes intersecting marquee rectangle
-        const selected = nodesRef.current.filter(
-          (n) => n.x < bx + bw && n.x + n.width > bx && n.y < by + bh && n.y + n.height > by
-        );
-        setSelectedNodeIds(selected.map((n) => n.id));
       }
     },
     [scale, panOffset, setNodes, canvasRef]
   );
 
   const handleMouseUp = useCallback(() => {
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+
     if (dragState.current.isDragging) {
       dragState.current.isDragging = false;
       dragState.current.initialPositions = [];
+      lastSnappedOffsetRef.current = { dx: 0, dy: 0 };
       if (hasMovedRef.current) {
         pushHistory(latestNodesRef.current);
         hasMovedRef.current = false;
@@ -241,6 +304,7 @@ export function useDenahInteraction({
       resizeState.current.isResizing = false;
       resizeState.current.nodeId = null;
       resizeState.current.initialSizes = [];
+      lastSnappedSizeRef.current = { dx: 0, dy: 0 };
       if (hasResizedRef.current) {
         pushHistory(latestNodesRef.current);
         hasResizedRef.current = false;
@@ -359,15 +423,19 @@ export function useDenahInteraction({
     [selectedNodeIds, nodes, pushHistory]
   );
 
-  // Calculate current average size of selected nodes
-  const selectedNodes = nodes.filter((n) => selectedNodeIds.includes(n.id));
-  const currentSize =
-    selectedNodes.length > 0
-      ? {
-          width: Math.round(selectedNodes.reduce((acc, n) => acc + n.width, 0) / selectedNodes.length),
-          height: Math.round(selectedNodes.reduce((acc, n) => acc + n.height, 0) / selectedNodes.length),
-        }
-      : undefined;
+  // Calculate current average size of selected nodes (Memoized for O(1) rendering)
+  const currentSize = useMemo(() => {
+    if (selectedNodeIds.length === 0) return undefined;
+    const selectedSet = new Set(selectedNodeIds);
+    const selected = nodes.filter((n) => selectedSet.has(n.id));
+    if (selected.length === 0) return undefined;
+    const totalW = selected.reduce((acc, n) => acc + n.width, 0);
+    const totalH = selected.reduce((acc, n) => acc + n.height, 0);
+    return {
+      width: Math.round(totalW / selected.length),
+      height: Math.round(totalH / selected.length),
+    };
+  }, [nodes, selectedNodeIds]);
 
   return {
     selectedNodeIds,
