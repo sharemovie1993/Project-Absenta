@@ -1,6 +1,7 @@
 import React from 'react';
 import { RotateCw, FlipHorizontal, Trash2, Maximize2, Type } from 'lucide-react';
 import type { DenahElementNode } from '../../types/spasial.types';
+import { detectNodeTingkat, TINGKAT_STYLES } from './denahTingkatHelper';
 
 interface DenahNodeCardProps {
   node: DenahElementNode;
@@ -89,6 +90,17 @@ export const DenahNodeCard = React.memo<DenahNodeCardProps>(
     const scaleX = node.flip_h ? -1 : 1;
     const scaleY = node.flip_v ? -1 : 1;
 
+    // Deteksi tingkat rombel (Tingkat 10, 11, 12) agar kartu ruangan terkelompokkan dengan warna pembeda kontras
+    const detectedTingkat = detectNodeTingkat(node);
+    const tingkatStyle =
+      (node.kategori_ruang === 'RUANG_UJIAN' || !node.kategori_ruang) && detectedTingkat
+        ? TINGKAT_STYLES[detectedTingkat]
+        : null;
+
+    const effectiveBg = tingkatStyle ? tingkatStyle.bg : catStyle.bg;
+    const effectiveBorder = tingkatStyle ? tingkatStyle.border : catStyle.border;
+    const effectiveGlow = tingkatStyle ? tingkatStyle.glow : 'shadow-sm';
+
     // Deteksi rotasi 90° atau 270° dan fitur rotasi kotak tanpa memutar teks
     const isRotated90or270 = node.rotation === 90 || node.rotation === 270;
     const isTextUpright = node.kunci_teks_tegak !== false; // Default: true (Teks selalu tegak & mudah dibaca)
@@ -120,14 +132,14 @@ export const DenahNodeCard = React.memo<DenahNodeCardProps>(
           borderColor: isHighlighted ? undefined : (node.warna_border || undefined),
           willChange: isSelected ? 'transform' : 'auto',
         }}
-        className={`absolute select-none cursor-move rounded-xl border-2 shadow-sm transition-colors duration-150 flex flex-col items-center justify-center p-1 ${
+        className={`absolute select-none cursor-move rounded-xl border-2 transition-colors duration-150 flex flex-col items-center justify-center p-1 ${
           isHighlighted ? 'overflow-visible' : 'overflow-hidden'
         } group ${
           isHighlighted
             ? 'ring-4 ring-violet-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 border-violet-600 bg-gradient-to-br from-violet-100 via-white to-indigo-100 dark:from-violet-950/90 dark:via-slate-900 dark:to-indigo-950/90 shadow-2xl shadow-violet-500/60 z-40 animate-[pulse_1.8s_cubic-bezier(0.4,0,0.6,1)_infinite]'
             : isSelected
-            ? 'ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 shadow-md z-30 ' + catStyle.bg + (node.warna_border ? '' : ' ' + catStyle.border)
-            : 'hover:shadow hover:z-20 z-10 ' + catStyle.bg + (node.warna_border ? '' : ' ' + catStyle.border)
+            ? 'ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 shadow-md z-30 ' + effectiveBg + (node.warna_border ? '' : ' ' + effectiveBorder)
+            : 'hover:shadow hover:z-20 z-10 ' + effectiveGlow + ' ' + effectiveBg + (node.warna_border ? '' : ' ' + effectiveBorder)
         }`}
       >
       {/* Efek Berdenyut (Radar Pulse Wave) saat Highlight Denah Aktif */}
@@ -220,10 +232,31 @@ export const DenahNodeCard = React.memo<DenahNodeCardProps>(
         }}
         onMouseDown={(e) => !isReadOnly && onStartDrag(e, node.id)}
       >
+        {/* Badge Tingkat Kelas (TK. X / TK. XI / TK. XII) - Membedakan Kelompok Tingkat Secara Instan */}
+        {tingkatStyle && (
+          <span
+            className={`inline-flex items-center font-black tracking-wider uppercase rounded-xs ${
+              tingkatStyle.badge
+            } ${
+              isMini
+                ? 'text-[7.5px] px-1 py-0 leading-tight mb-0.5'
+                : isMedium
+                ? 'text-[8.5px] px-1.5 py-0.2 leading-tight mb-0.5'
+                : 'text-[9.5px] px-2 py-0.5 leading-tight mb-1'
+            }`}
+          >
+            {tingkatStyle.badgeLabel}
+          </span>
+        )}
+
         {/* Label Nomor Ruang: R.01 (Bongsor, Tebal, & Kontras Tinggi) */}
         <div
           className={`font-black tracking-tight leading-none font-mono ${
-            isHighlighted ? 'text-violet-700 dark:text-violet-300' : catStyle.text
+            isHighlighted
+              ? 'text-violet-700 dark:text-violet-300'
+              : tingkatStyle
+              ? tingkatStyle.text
+              : catStyle.text
           } ${
             isMini
               ? 'text-base sm:text-lg'
@@ -239,12 +272,14 @@ export const DenahNodeCard = React.memo<DenahNodeCardProps>(
         {/* Label Nama Kelas: X AKL 1 (Jelas & Terbaca meski dari Zoom Jauh) */}
         {node.label_sub && (
           <div
-            className={`font-extrabold text-slate-800 dark:text-slate-100 truncate max-w-full leading-tight ${
+            className={`font-extrabold truncate max-w-full leading-tight ${
+              tingkatStyle ? tingkatStyle.subtext : 'text-slate-800 dark:text-slate-100'
+            } ${
               isMini
                 ? 'text-[10px] sm:text-[11px] mt-0.5'
                 : isMedium
-                ? 'text-xs sm:text-sm mt-1'
-                : 'text-sm sm:text-base mt-1.5'
+                ? 'text-xs sm:text-sm mt-0.5'
+                : 'text-sm sm:text-base mt-1'
             }`}
           >
             {node.label_sub}

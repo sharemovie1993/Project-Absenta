@@ -116,6 +116,39 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
   const totalClasses = kelasList.length;
   const mappedCount = roomMappings.filter((m) => Boolean(m.slot_ruang.trim())).length;
 
+  const getTingkatBadgeProps = (tingkat: number) => {
+    switch (tingkat) {
+      case 10:
+        return {
+          cardBorder: 'border-l-4 border-l-sky-500',
+          badge:
+            'bg-sky-100 text-sky-800 dark:bg-sky-950/70 dark:text-sky-300 border border-sky-200/90 dark:border-sky-800',
+          dot: 'bg-sky-500',
+        };
+      case 11:
+        return {
+          cardBorder: 'border-l-4 border-l-emerald-500',
+          badge:
+            'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200/90 dark:border-emerald-800',
+          dot: 'bg-emerald-500',
+        };
+      case 12:
+        return {
+          cardBorder: 'border-l-4 border-l-amber-500',
+          badge:
+            'bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-200/90 dark:border-amber-800',
+          dot: 'bg-amber-500',
+        };
+      default:
+        return {
+          cardBorder: 'border-l-4 border-l-purple-500',
+          badge:
+            'bg-purple-100 text-purple-800 dark:bg-purple-950/70 dark:text-purple-300 border border-purple-200/90 dark:border-purple-800',
+          dot: 'bg-purple-500',
+        };
+    }
+  };
+
   return (
     <Card className="p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl shadow-2xs space-y-4 w-full max-w-full min-w-0">
       {/* ── 1. Overview & Action Toolbar ── */}
@@ -252,19 +285,39 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
           </button>
           {tingkatList.map((t) => {
             const count = roomMappings.filter((m) => m.tingkat === t).length;
+            const isSelected = filterTingkat === t;
+            const activeBg =
+              t === 10
+                ? 'bg-sky-600 text-white border-sky-600 shadow-2xs'
+                : t === 11
+                ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                : t === 12
+                ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                : 'bg-purple-600 text-white border-purple-600 shadow-2xs';
+
+            const dotColor =
+              t === 10
+                ? 'bg-sky-400'
+                : t === 11
+                ? 'bg-emerald-400'
+                : t === 12
+                ? 'bg-amber-400'
+                : 'bg-purple-400';
+
             return (
               <button
                 key={t}
                 type="button"
                 onClick={() => setFilterTingkat(t)}
                 className={cn(
-                  'px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer whitespace-nowrap',
-                  filterTingkat === t
-                    ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 border-slate-200 dark:border-slate-800'
+                  'px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5',
+                  isSelected
+                    ? activeBg
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300'
                 )}
               >
-                Tingkat {formatTingkatRomawi(t)} ({count})
+                <span className={cn('w-2 h-2 rounded-full', isSelected ? 'bg-white' : dotColor)} />
+                <span>Tingkat {formatTingkatRomawi(t)} ({count})</span>
               </button>
             );
           })}
@@ -289,70 +342,76 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
       ) : isMobile ? (
         /* Mobile Card Deck (Pilar 30 Anti-Overlapping) */
         <div className="space-y-2.5 w-full max-w-full min-w-0" role="region" aria-label="Daftar Ploting Ruang Seluler">
-          {filteredList.map((cls, idx) => (
-            <div
-              key={cls.kelas_id}
-              className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xs space-y-2.5"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-mono font-bold text-slate-400">#{idx + 1}</span>
-                  <span className="font-bold text-sm text-slate-800 dark:text-slate-100">
-                    {cls.nama_kelas}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                    Tingkat {formatTingkatRomawi(cls.tingkat)}
-                  </span>
-                  {cls.kode_jurusan && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
-                      {cls.kode_jurusan}
+          {filteredList.map((cls, idx) => {
+            const tProps = getTingkatBadgeProps(cls.tingkat);
+            return (
+              <div
+                key={cls.kelas_id}
+                className={cn(
+                  'p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xs space-y-2.5',
+                  tProps.cardBorder
+                )}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-mono font-bold text-slate-400">#{idx + 1}</span>
+                    <span className="font-bold text-sm text-slate-800 dark:text-slate-100">
+                      {cls.nama_kelas}
                     </span>
-                  )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className={cn('px-2 py-0.5 rounded-full text-[10px] font-black', tProps.badge)}>
+                      Tingkat {formatTingkatRomawi(cls.tingkat)}
+                    </span>
+                    {cls.kode_jurusan && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
+                        {cls.kode_jurusan}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase">
-                    Slot Ruang
-                  </label>
-                  <input
-                    type="text"
-                    value={cls.slot_ruang}
-                    onChange={(e) => handleUpdateSingleRoom(cls.kelas_id, 'slot_ruang', e.target.value)}
-                    aria-label={`Slot ruang untuk ${cls.nama_kelas}`}
-                    className="w-full mt-0.5 px-2.5 py-1.5 text-xs font-mono font-black rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300"
-                  />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase">
+                      Slot Ruang
+                    </label>
+                    <input
+                      type="text"
+                      value={cls.slot_ruang}
+                      onChange={(e) => handleUpdateSingleRoom(cls.kelas_id, 'slot_ruang', e.target.value)}
+                      aria-label={`Slot ruang untuk ${cls.nama_kelas}`}
+                      className="w-full mt-0.5 px-2.5 py-1.5 text-xs font-mono font-black rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase">
+                      Nama Ruang Fisik
+                    </label>
+                    <input
+                      type="text"
+                      value={cls.nama_ruang}
+                      onChange={(e) => handleUpdateSingleRoom(cls.kelas_id, 'nama_ruang', e.target.value)}
+                      aria-label={`Nama ruang untuk ${cls.nama_kelas}`}
+                      className="w-full mt-0.5 px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase">
-                    Nama Ruang Fisik
-                  </label>
-                  <input
-                    type="text"
-                    value={cls.nama_ruang}
-                    onChange={(e) => handleUpdateSingleRoom(cls.kelas_id, 'nama_ruang', e.target.value)}
-                    aria-label={`Nama ruang untuk ${cls.nama_kelas}`}
-                    className="w-full mt-0.5 px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
-                  />
-                </div>
-              </div>
 
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => handlePrintSingleLabel(cls.kelas_id)}
-                  aria-label={`Cetak label ruang ${cls.nama_kelas}`}
-                  className="w-full min-h-[38px] px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <Printer size={13} />
-                  <span>Cetak Label ({cls.slot_ruang || 'Slot'})</span>
-                </button>
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => handlePrintSingleLabel(cls.kelas_id)}
+                    aria-label={`Cetak label ruang ${cls.nama_kelas}`}
+                    className="w-full min-h-[38px] px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Printer size={13} />
+                    <span>Cetak Label ({cls.slot_ruang || 'Slot'})</span>
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         /* Desktop Tabular Table */
@@ -371,38 +430,40 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {filteredList.map((cls, idx) => (
-                  <tr key={cls.kelas_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                    {/* 1. No */}
-                    <td className="py-2.5 px-3 text-center text-slate-400 font-medium">
-                      {idx + 1}
-                    </td>
+                {filteredList.map((cls, idx) => {
+                  const tProps = getTingkatBadgeProps(cls.tingkat);
+                  return (
+                    <tr key={cls.kelas_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                      {/* 1. No */}
+                      <td className="py-2.5 px-3 text-center text-slate-400 font-medium">
+                        {idx + 1}
+                      </td>
 
-                    {/* 2. Rombel / Kelas */}
-                    <td className="py-2.5 px-3">
-                      <div className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0" />
-                        <span>{cls.nama_kelas}</span>
-                      </div>
-                    </td>
+                      {/* 2. Rombel / Kelas */}
+                      <td className="py-2.5 px-3">
+                        <div className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                          <span className={cn('w-2 h-2 rounded-full shrink-0', tProps.dot)} />
+                          <span>{cls.nama_kelas}</span>
+                        </div>
+                      </td>
 
-                    {/* 3. Tingkat */}
-                    <td className="py-2.5 px-3 text-center">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                        Tingkat {formatTingkatRomawi(cls.tingkat)}
-                      </span>
-                    </td>
-
-                    {/* 4. Jurusan */}
-                    <td className="py-2.5 px-3">
-                      {cls.kode_jurusan ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
-                          {cls.kode_jurusan}
+                      {/* 3. Tingkat */}
+                      <td className="py-2.5 px-3 text-center">
+                        <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-black', tProps.badge)}>
+                          Tingkat {formatTingkatRomawi(cls.tingkat)}
                         </span>
-                      ) : (
-                        <span className="text-slate-400 text-[11px]">-</span>
-                      )}
-                    </td>
+                      </td>
+
+                      {/* 4. Jurusan */}
+                      <td className="py-2.5 px-3">
+                        {cls.kode_jurusan ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
+                            {cls.kode_jurusan}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 text-[11px]">-</span>
+                        )}
+                      </td>
 
                     {/* 5. Slot Kode Ruang */}
                     <td className="py-2 px-3">

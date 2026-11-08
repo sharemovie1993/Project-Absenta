@@ -1,5 +1,6 @@
 import type { DenahElementNode } from '../../types/spasial.types';
 import type { UnassignedRoomItem } from './DenahPaletteSidebar';
+import { detectNodeTingkat } from './denahTingkatHelper';
 
 const snap = (val: number, step = 20) => Math.round(val / step) * step;
 
@@ -25,6 +26,8 @@ export function generateAutoFloorplan(unassignedRooms: UnassignedRoomItem[]): De
       const row = Math.floor(idx / perRow);
       // Place blocks with corridor separation
       const yOffset = row >= corridorRow ? row * (roomHeight + gap) + 50 : row * (roomHeight + gap);
+      const tingkat = room.tingkat || detectNodeTingkat({ label_sub: room.kelas_nama, catatan: room.nama_ruang });
+
       generated.push({
         id: `node-auto-${room.kelas_id}-${idx}`,
         x: snap(60 + col * (roomWidth + gap)),
@@ -37,6 +40,7 @@ export function generateAutoFloorplan(unassignedRooms: UnassignedRoomItem[]): De
         kategori_ruang: 'RUANG_UJIAN',
         kelas_id: room.kelas_id,
         catatan: room.nama_ruang,
+        tingkat: tingkat || undefined,
       });
     });
 
@@ -55,22 +59,22 @@ export function generateAutoFloorplan(unassignedRooms: UnassignedRoomItem[]): De
   } else {
     // Standard School Campus Template (16 Ruang Ujian + Selasar Koridor + Lab CBT + Kantor Pengawas + Toilet)
     const standardClasses = [
-      { room: 'R.01', name: 'X TJKT 1' },
-      { room: 'R.02', name: 'X TJKT 2' },
-      { room: 'R.03', name: 'X AKL 1' },
-      { room: 'R.04', name: 'X AKL 2' },
-      { room: 'R.05', name: 'X MPLB 1' },
-      { room: 'R.06', name: 'X MPLB 2' },
-      { room: 'R.07', name: 'XI TJKT 1' },
-      { room: 'R.08', name: 'XI TJKT 2' },
-      { room: 'R.09', name: 'XI AKL 1' },
-      { room: 'R.10', name: 'XI AKL 2' },
-      { room: 'R.11', name: 'XI MPLB 1' },
-      { room: 'R.12', name: 'XI MPLB 2' },
-      { room: 'R.13', name: 'XII TJKT 1' },
-      { room: 'R.14', name: 'XII TJKT 2' },
-      { room: 'R.15', name: 'XII AKL 1' },
-      { room: 'R.16', name: 'XII AKL 2' },
+      { room: 'R.01', name: 'X TJKT 1', tingkat: 10 },
+      { room: 'R.02', name: 'X TJKT 2', tingkat: 10 },
+      { room: 'R.03', name: 'X AKL 1', tingkat: 10 },
+      { room: 'R.04', name: 'X AKL 2', tingkat: 10 },
+      { room: 'R.05', name: 'X MPLB 1', tingkat: 10 },
+      { room: 'R.06', name: 'X MPLB 2', tingkat: 10 },
+      { room: 'R.07', name: 'XI TJKT 1', tingkat: 11 },
+      { room: 'R.08', name: 'XI TJKT 2', tingkat: 11 },
+      { room: 'R.09', name: 'XI AKL 1', tingkat: 11 },
+      { room: 'R.10', name: 'XI AKL 2', tingkat: 11 },
+      { room: 'R.11', name: 'XI MPLB 1', tingkat: 11 },
+      { room: 'R.12', name: 'XI MPLB 2', tingkat: 11 },
+      { room: 'R.13', name: 'XII TJKT 1', tingkat: 12 },
+      { room: 'R.14', name: 'XII TJKT 2', tingkat: 12 },
+      { room: 'R.15', name: 'XII AKL 1', tingkat: 12 },
+      { room: 'R.16', name: 'XII AKL 2', tingkat: 12 },
     ];
 
     const perRow = 6;
@@ -90,6 +94,7 @@ export function generateAutoFloorplan(unassignedRooms: UnassignedRoomItem[]): De
         label_sub: item.name,
         kategori_ruang: 'RUANG_UJIAN',
         catatan: `Ruang Ujian Resmi ${item.room}`,
+        tingkat: item.tingkat,
       });
     });
 

@@ -80,6 +80,7 @@ export const DenahSpasialView: React.FC<UniversalDenahSpasialViewProps> = React.
           nama_ruang: m.nama_ruang,
           kelas_nama: m.nama_kelas,
           kelas_id: m.kelas_id,
+          tingkat: m.tingkat,
         }));
     }
 
@@ -93,6 +94,7 @@ export const DenahSpasialView: React.FC<UniversalDenahSpasialViewProps> = React.
           kelas_nama: m.nama_kelas,
           slot_ruang: saved?.slot_ruang || m.slot_ruang,
           nama_ruang: saved?.nama_ruang || m.nama_ruang,
+          tingkat: m.tingkat,
         };
       });
     }

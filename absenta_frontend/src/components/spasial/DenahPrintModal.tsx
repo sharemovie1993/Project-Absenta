@@ -4,6 +4,7 @@ import { PrintDocumentSheet, PrintHeader } from '@/components/ui';
 import { DenahMapGuideLayer } from './DenahMapGuideLayer';
 import toast from 'react-hot-toast';
 import type { DenahElementNode, DenahSpasial, DenahMapGuideConfig } from '../../types/spasial.types';
+import { detectNodeTingkat, PRINT_TINGKAT_STYLES } from './denahTingkatHelper';
 
 interface DenahPrintModalProps {
   isOpen: boolean;
@@ -411,6 +412,19 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
 
                   const style = KATEGORI_PRINT_STYLES[node.kategori_ruang] || KATEGORI_PRINT_STYLES.LAINNYA;
 
+                  // Deteksi tingkat kelas agar dokumen cetak & PDF otomatis membedakan warna kelompok tingkat
+                  const detectedTingkat = detectNodeTingkat(node);
+                  const tingkatPrintStyle =
+                    (node.kategori_ruang === 'RUANG_UJIAN' || !node.kategori_ruang) && detectedTingkat
+                      ? PRINT_TINGKAT_STYLES[detectedTingkat]
+                      : null;
+
+                  const effectiveBg =
+                    node.warna_bg || (showSatelliteLayer ? '#ffffff' : tingkatPrintStyle?.bg || style.bg);
+                  const effectiveBorder = node.warna_border || tingkatPrintStyle?.border || style.border;
+                  const effectiveText = node.warna_teks || tingkatPrintStyle?.text || style.text;
+                  const effectiveSubtext = node.warna_teks || tingkatPrintStyle?.subtext || style.text;
+
                   // Proporsional Font Size: Menyesuaikan persis tinggi visual kotak agar tidak bertabrakan/overflow
                   const effectiveH = isRotated90or270 ? width : height;
                   const mainFontSize = Math.max(9, Math.min(16, Math.round(effectiveH * 0.38)));
@@ -427,8 +441,8 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
                         height: `${height}px`,
                         transform: `rotate(${node.rotation}deg) scale(${flipX}, ${flipY})`,
                         transformOrigin: 'center center',
-                        backgroundColor: node.warna_bg || (showSatelliteLayer ? '#ffffff' : style.bg),
-                        borderColor: node.warna_border || style.border,
+                        backgroundColor: effectiveBg,
+                        borderColor: effectiveBorder,
                         borderWidth: '2px',
                         borderStyle: node.kategori_ruang === 'KORIDOR' ? 'dashed' : 'solid',
                         borderRadius: '6px',
@@ -446,12 +460,31 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
                           transformOrigin: 'center center',
                         }}
                       >
+                        {/* Tag Tingkat Cetak: TK. X / TK. XI / TK. XII */}
+                        {tingkatPrintStyle && (
+                          <div
+                            style={{
+                              fontSize: `${Math.max(6, Math.round(effectiveH * 0.16))}px`,
+                              backgroundColor: tingkatPrintStyle.badge,
+                              color: tingkatPrintStyle.badgeText,
+                              padding: '0px 3px',
+                              borderRadius: '2px',
+                              fontWeight: 900,
+                              lineHeight: 1.1,
+                              marginBottom: '1px',
+                              textTransform: 'uppercase',
+                            }}
+                          >
+                            TK. {detectedTingkat === 10 ? 'X' : detectedTingkat === 11 ? 'XI' : detectedTingkat === 12 ? 'XII' : detectedTingkat}
+                          </div>
+                        )}
+
                         {/* Nomor Ruang: R.01 (Bongsor, Bebas Truncate Ellipsis) */}
                         <div
                           className="font-black font-sans tracking-tight leading-none whitespace-nowrap overflow-hidden select-none"
                           style={{
                             fontSize: `${mainFontSize}px`,
-                            color: node.warna_teks || style.text,
+                            color: effectiveText,
                           }}
                         >
                           {node.label_utama}
@@ -463,7 +496,7 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
                             className="font-bold font-sans tracking-tight leading-tight whitespace-nowrap overflow-hidden select-none mt-0.5"
                             style={{
                               fontSize: `${subFontSize}px`,
-                              color: node.warna_teks || style.text,
+                              color: effectiveSubtext,
                             }}
                           >
                             {node.label_sub}

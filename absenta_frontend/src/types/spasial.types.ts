@@ -28,6 +28,7 @@ export interface DenahElementNode {
   warna_border?: string;
   warna_teks?: string;
   kelas_id?: string;
+  tingkat?: number; // Tingkat kelas: 10 (X), 11 (XI), 12 (XII), 13 (XIII)
   ruang_id?: string;
   kapasitas?: number;
   catatan?: string;

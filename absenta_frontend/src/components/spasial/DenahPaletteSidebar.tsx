@@ -11,12 +11,14 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import type { DenahElementNode, KategoriRuang } from '../../types/spasial.types';
+import { detectNodeTingkat, TINGKAT_STYLES } from './denahTingkatHelper';
 
 export interface UnassignedRoomItem {
   slot_ruang: string; // e.g. "R.01" or "LAB-1"
   nama_ruang: string; // e.g. "Ruang 01"
   kelas_nama: string; // e.g. "X TJKT 1"
   kelas_id: string;
+  tingkat?: number;
 }
 
 interface DenahPaletteSidebarProps {
@@ -72,9 +74,12 @@ export const DenahPaletteSidebar = React.memo<DenahPaletteSidebarProps>(
   const [customLabel, setCustomLabel] = useState('');
   const [customSub, setCustomSub] = useState('');
   const [customCat, setCustomCat] = useState<KategoriRuang>('LAINNYA');
+  const [selectedTingkatFilter, setSelectedTingkatFilter] = useState<'ALL' | number>('ALL');
 
   const filteredRooms = unassignedRooms.filter((r) => {
     const q = search.toLowerCase();
+    const t = r.tingkat || detectNodeTingkat({ label_sub: r.kelas_nama, catatan: r.nama_ruang });
+    if (selectedTingkatFilter !== 'ALL' && t !== selectedTingkatFilter) return false;
     return (
       r.slot_ruang.toLowerCase().includes(q) ||
       r.kelas_nama.toLowerCase().includes(q) ||
@@ -257,6 +262,68 @@ export const DenahPaletteSidebar = React.memo<DenahPaletteSidebarProps>(
             }`}
           />
         </div>
+
+        {/* Tingkat Quick-Filter Pills (Pembeda Kelompok Tingkat X, XI, XII) */}
+        {activeTab === 'ruang_sekolah' && unassignedRooms.length > 0 && (
+          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pt-0.5">
+            <button
+              type="button"
+              onClick={() => setSelectedTingkatFilter('ALL')}
+              className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${
+                selectedTingkatFilter === 'ALL'
+                  ? 'bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 shadow-2xs'
+                  : isLightMode
+                  ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  : 'bg-slate-800 text-slate-400 hover:bg-slate-750'
+              }`}
+            >
+              Semua ({unassignedRooms.length})
+            </button>
+            {[10, 11, 12, 13].map((tk) => {
+              const count = unassignedRooms.filter(
+                (r) =>
+                  (r.tingkat ||
+                    detectNodeTingkat({ label_sub: r.kelas_nama, catatan: r.nama_ruang })) === tk
+              ).length;
+              if (count === 0) return null;
+              const isSelected = selectedTingkatFilter === tk;
+              const dotColor =
+                tk === 10
+                  ? 'bg-sky-500'
+                  : tk === 11
+                  ? 'bg-emerald-500'
+                  : tk === 12
+                  ? 'bg-amber-500'
+                  : 'bg-purple-500';
+              const activeClass =
+                tk === 10
+                  ? 'bg-sky-600 text-white'
+                  : tk === 11
+                  ? 'bg-emerald-600 text-white'
+                  : tk === 12
+                  ? 'bg-amber-600 text-white'
+                  : 'bg-purple-600 text-white';
+
+              return (
+                <button
+                  key={tk}
+                  type="button"
+                  onClick={() => setSelectedTingkatFilter(tk)}
+                  className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                    isSelected
+                      ? `${activeClass} shadow-2xs`
+                      : isLightMode
+                      ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      : 'bg-slate-800 text-slate-400 hover:bg-slate-750'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : dotColor}`} />
+                  <span>Tk. {tk === 10 ? 'X' : tk === 11 ? 'XI' : tk === 12 ? 'XII' : tk} ({count})</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Body content */}
@@ -277,6 +344,11 @@ export const DenahPaletteSidebar = React.memo<DenahPaletteSidebarProps>(
           ) : (
             filteredRooms.map((room) => {
               const isPlaced = placedKelasIds.has(room.kelas_id);
+              const roomTingkat =
+                room.tingkat ||
+                detectNodeTingkat({ label_sub: room.kelas_nama, catatan: room.nama_ruang });
+              const tStyle = roomTingkat ? TINGKAT_STYLES[roomTingkat] : null;
+
               return (
                 <div
                   key={room.kelas_id}
@@ -291,12 +363,25 @@ export const DenahPaletteSidebar = React.memo<DenahPaletteSidebarProps>(
                   title={isPlaced ? 'Sudah diletakkan di denah' : `Klik untuk menambahkan ${room.slot_ruang} (${room.kelas_nama})`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-mono font-black px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 rounded text-[11px] shrink-0 border border-indigo-100 dark:border-indigo-900">
+                    <span
+                      className={`font-mono font-black px-1.5 py-0.5 rounded text-[11px] shrink-0 border ${
+                        tStyle
+                          ? tStyle.badge
+                          : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-100 dark:border-indigo-900'
+                      }`}
+                    >
                       {room.slot_ruang || 'R.XX'}
                     </span>
                     <div className="min-w-0">
-                      <div className="font-bold text-[11.5px] truncate text-slate-800 dark:text-slate-100">
-                        {room.kelas_nama}
+                      <div className="font-bold text-[11.5px] truncate text-slate-800 dark:text-slate-100 flex items-center">
+                        <span className="truncate">{room.kelas_nama}</span>
+                        {tStyle && (
+                          <span
+                            className={`text-[8px] font-black uppercase tracking-wider px-1 py-0 rounded ml-1 shrink-0 ${tStyle.badge}`}
+                          >
+                            {tStyle.badgeLabel}
+                          </span>
+                        )}
                       </div>
                       <div className="text-[10px] text-slate-400 truncate leading-none">
                         {room.nama_ruang}

@@ -13,6 +13,7 @@ import { useDenahInteraction } from './useDenahInteraction';
 import { generateAutoFloorplan } from './denahAutoLayout';
 import { updateDenah } from '../../api/spasial.api';
 import type { DenahElementNode, DenahSpasial, DenahMapGuideConfig } from '../../types/spasial.types';
+import { detectNodeTingkat, TINGKAT_STYLES } from './denahTingkatHelper';
 
 interface InteractiveDenahCanvasProps {
   denah: DenahSpasial;
@@ -174,6 +175,10 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
       return;
     }
 
+    const detectedTingkat =
+      room.tingkat ||
+      detectNodeTingkat({ label_sub: room.kelas_nama, catatan: room.nama_ruang });
+
     const newNode: DenahElementNode = {
       id: `node-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       x: snap(80 + (nodes.length % 5) * 40),
@@ -186,6 +191,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
       kategori_ruang: 'RUANG_UJIAN',
       kelas_id: room.kelas_id,
       catatan: room.nama_ruang,
+      tingkat: detectedTingkat || undefined,
     };
 
     pushHistory([...nodes, newNode]);
@@ -348,6 +354,35 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
       setSelectedNodeIds((prev) => prev.filter((id) => id !== nodeId));
     },
     [pushHistory, setSelectedNodeIds]
+  );
+
+  // Hitung sebaran tingkat kelas pada kanvas denah
+  const tingkatCounts = useMemo(() => {
+    const counts: Record<number, number> = { 10: 0, 11: 0, 12: 0, 13: 0 };
+    nodes.forEach((n) => {
+      const t = n.tingkat || detectNodeTingkat(n);
+      if (t && counts[t] !== undefined) counts[t]++;
+    });
+    return counts;
+  }, [nodes]);
+
+  const hasAnyTingkat = tingkatCounts[10] > 0 || tingkatCounts[11] > 0 || tingkatCounts[12] > 0;
+
+  const handleSelectTingkatBatch = useCallback(
+    (tingkat: number) => {
+      const matchingIds = nodes
+        .filter((n) => (n.tingkat || detectNodeTingkat(n)) === tingkat)
+        .map((n) => n.id);
+      if (matchingIds.length > 0) {
+        setSelectedNodeIds(matchingIds);
+        toast.success(
+          `Memilih ${matchingIds.length} ruangan Tingkat ${
+            tingkat === 10 ? 'X' : tingkat === 11 ? 'XI' : tingkat === 12 ? 'XII' : tingkat
+          }`
+        );
+      }
+    },
+    [nodes, setSelectedNodeIds]
   );
 
   const handleSaveDenah = async () => {
@@ -654,6 +689,64 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
             }}
             isLightMode={isLightMode}
           />
+        )}
+
+        {/* Floating Tingkat Legend & Quick Group Selector */}
+        {hasAnyTingkat && (
+          <div className="absolute top-3 right-3 z-30 flex items-center gap-1.5 p-1 rounded-xl bg-slate-900/85 text-white backdrop-blur-md border border-slate-700/60 shadow-lg text-xs select-none pointer-events-auto">
+            <span className="text-[10px] font-bold text-slate-400 px-1 uppercase tracking-wider hidden sm:inline">
+              Kelompok:
+            </span>
+            {[10, 11, 12, 13].map((tk) => {
+              const count = tingkatCounts[tk];
+              if (count === 0) return null;
+              const matchingIds = nodes
+                .filter((n) => (n.tingkat || detectNodeTingkat(n)) === tk)
+                .map((n) => n.id);
+              const isAllSelected =
+                matchingIds.length > 0 &&
+                selectedNodeIds.length === matchingIds.length &&
+                matchingIds.every((id) => selectedNodeIdsSet.has(id));
+
+              const dotColor =
+                tk === 10
+                  ? 'bg-sky-400'
+                  : tk === 11
+                  ? 'bg-emerald-400'
+                  : tk === 12
+                  ? 'bg-amber-400'
+                  : 'bg-purple-400';
+
+              const activeBg =
+                tk === 10
+                  ? 'bg-sky-600 text-white'
+                  : tk === 11
+                  ? 'bg-emerald-600 text-white'
+                  : tk === 12
+                  ? 'bg-amber-600 text-white'
+                  : 'bg-purple-600 text-white';
+
+              return (
+                <button
+                  key={tk}
+                  type="button"
+                  onClick={() => handleSelectTingkatBatch(tk)}
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                    isAllSelected
+                      ? `${activeBg} shadow-xs`
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                  }`}
+                  title={`Klik untuk memilih seluruh ${count} ruangan Tingkat ${
+                    tk === 10 ? 'X' : tk === 11 ? 'XI' : tk === 12 ? 'XII' : tk
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${isAllSelected ? 'bg-white' : dotColor}`} />
+                  <span>Tk. {tk === 10 ? 'X' : tk === 11 ? 'XI' : tk === 12 ? 'XII' : tk}</span>
+                  <span className="text-[9px] opacity-75">({count})</span>
+                </button>
+              );
+            })}
+          </div>
         )}
 
         {/* Floating Batch Action Bar for Multiple Selected Rooms */}
