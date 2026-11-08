@@ -17,6 +17,7 @@ import {
   PanelLeftOpen,
   Plus,
   X,
+  FileJson,
 } from 'lucide-react';
 import type { DenahSpasial } from '../../types/spasial.types';
 
@@ -42,6 +43,7 @@ interface InteractiveDenahCanvasToolbarProps {
   isMapGuideOpen?: boolean;
   onToggleMapGuide?: () => void;
   onOpenPrint: () => void;
+  onOpenConfig?: () => void;
   onSave: () => void;
   isSaving: boolean;
   isReadOnly?: boolean;
@@ -71,6 +73,7 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
   isMapGuideOpen = false,
   onToggleMapGuide,
   onOpenPrint,
+  onOpenConfig,
   onSave,
   isSaving,
   isReadOnly = false,
@@ -303,6 +306,23 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
             <Printer className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Cetak A4</span>
           </button>
+
+          {/* Konfigurasi Denah (Ekspor & Impor JSON) */}
+          {onOpenConfig && (
+            <button
+              type="button"
+              onClick={onOpenConfig}
+              className={`px-2.5 py-1.5 text-xs font-bold border rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 ${
+                isLightMode
+                  ? 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200'
+                  : 'bg-amber-950/40 hover:bg-amber-900/50 text-amber-300 border-amber-800'
+              }`}
+              title="Ekspor & Impor Konfigurasi Denah (JSON)"
+            >
+              <FileJson className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span className="hidden sm:inline">Ekspor &amp; Impor</span>
+            </button>
+          )}
         </div>
 
         {/* Pinned Action Group: Simpan & Tutup (Always Visible & Never Clipped) */}

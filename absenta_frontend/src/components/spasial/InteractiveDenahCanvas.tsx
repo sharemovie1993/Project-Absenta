@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { DenahNodeCard } from './DenahNodeCard';
 import { DenahPaletteSidebar, UnassignedRoomItem } from './DenahPaletteSidebar';
 import { DenahPrintModal } from './DenahPrintModal';
+import { DenahConfigModal } from './DenahConfigModal';
 import { InteractiveDenahCanvasToolbar } from './InteractiveDenahCanvasToolbar';
 import { DenahMapGuideLayer } from './DenahMapGuideLayer';
 import { DenahMapGuideFloatingBar } from './DenahMapGuideFloatingBar';
@@ -94,6 +95,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   const [panOffset, setPanOffset] = useState({ x: 40, y: 40 });
   const [isSaving, setIsSaving] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isLightMode, setIsLightMode] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(!isReadOnly);
 
@@ -440,6 +442,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
           });
         }}
         onOpenPrint={() => setIsPrintModalOpen(true)}
+        onOpenConfig={() => setIsConfigModalOpen(true)}
         onSave={handleSaveDenah}
         isSaving={isSaving}
         isReadOnly={isReadOnly}
@@ -616,6 +619,26 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
         denah={denah}
         nodes={nodes}
         mapGuideConfig={mapGuideConfig}
+      />
+
+      {/* Modal Ekspor & Impor Konfigurasi Denah (JSON) */}
+      <DenahConfigModal
+        isOpen={isConfigModalOpen}
+        onClose={() => setIsConfigModalOpen(false)}
+        denah={denah}
+        nodes={nodes}
+        mapGuideConfig={mapGuideConfig}
+        isReadOnly={isReadOnly}
+        onImportConfig={(importedNodes, importedMapConfig) => {
+          pushHistory(importedNodes);
+          if (importedMapConfig) {
+            setMapGuideConfig(importedMapConfig);
+            setIsMapGuideOpen(importedMapConfig.enabled !== false);
+            try {
+              localStorage.setItem(`absenta_denah_map_${denah.id}`, JSON.stringify(importedMapConfig));
+            } catch (_) {}
+          }
+        }}
       />
     </div>
   );
