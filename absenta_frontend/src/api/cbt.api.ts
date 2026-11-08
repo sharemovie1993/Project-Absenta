@@ -115,6 +115,25 @@ export const cbtApi = {
     return res.data?.data as { importedCount: number; totalSoal: number };
   },
 
+  parseGoogleForm: async (url: string) => {
+    const res = await api.post('/cbt/bank-soal/parse-google-form', { url });
+    return res.data?.data as {
+      title: string;
+      description?: string;
+      total_parsed: number;
+      items: Array<{
+        nomor_urut: number;
+        jenis_soal: 'PG';
+        konten_pertanyaan: string;
+        gambar_stimulus_url: string | null;
+        bobot: number;
+        opsi_jawaban_json: Array<{ kode: string; teks: string }>;
+        kunci_jawaban: 'A' | 'B' | 'C' | 'D' | 'E';
+        pembahasan: string | null;
+      }>;
+    };
+  },
+
   // ==========================================
   // 3. JADWAL UJIAN & SESI PROCTOR
   // ==========================================

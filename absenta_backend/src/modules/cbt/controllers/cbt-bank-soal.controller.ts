@@ -7,6 +7,7 @@ import {
   createSoalPgSchema,
   updateSoalPgSchema,
   bulkImportSoalSchema,
+  parseGoogleFormSchema,
 } from '../schemas/cbt.schema';
 import { z } from 'zod';
 
@@ -153,6 +154,19 @@ export class CbtBankSoalController {
         return sendError(reply, 400, error.errors.map((e) => e.message).join(', '));
       }
       return sendError(reply, 400, error.message || 'Gagal mengimpor butir soal');
+    }
+  }
+
+  static async parseGoogleForm(req: any, reply: any) {
+    try {
+      const parsed = parseGoogleFormSchema.parse(req.body);
+      const result = await CbtBankSoalService.parseGoogleForm(parsed.url);
+      return sendResponse(reply, 200, true, 'Berhasil mengekstrak butir soal dari Google Form', result);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return sendError(reply, 400, error.errors.map((e) => e.message).join(', '));
+      }
+      return sendError(reply, 400, error.message || 'Gagal mengekstrak soal dari Google Form');
     }
   }
 }

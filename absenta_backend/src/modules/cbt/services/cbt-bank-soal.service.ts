@@ -1,6 +1,7 @@
 import { prisma } from '@/utils/prisma';
 import { Prisma } from '@prisma/client';
 import { storageService } from '@/infra/storage/storage.service';
+import axios from 'axios';
 
 export interface QueryBankSoalDto {
   page?: number;
@@ -623,5 +624,169 @@ export class CbtBankSoalService {
         totalSoal,
       };
     });
+  }
+
+  /**
+   * Mengambil dan mengekstrak butir soal dari tautan Google Form publik
+   */
+  static async parseGoogleForm(url: string) {
+    if (!url || typeof url !== 'string') {
+      throw new Error('URL Google Form wajib disertakan.');
+    }
+
+    const trimmedUrl = url.trim();
+
+    // Validasi domain dasar
+    if (!trimmedUrl.includes('docs.google.com/forms') && !trimmedUrl.includes('forms.gle')) {
+      throw new Error('Tautan harus berasal dari Google Form (docs.google.com/forms atau forms.gle).');
+    }
+
+    // Normalisasi URL
+    let targetUrl = trimmedUrl;
+    if (targetUrl.includes('docs.google.com/forms')) {
+      // Ganti /edit atau /formResponse dengan /viewform
+      targetUrl = targetUrl.replace(/\/(edit|formResponse)(\?.*)?$/, '/viewform$2');
+      if (!targetUrl.includes('/viewform')) {
+        targetUrl = targetUrl.replace(/\/$/, '') + '/viewform';
+      }
+    }
+
+    let htmlContent = '';
+    let finalUrl = targetUrl;
+    try {
+      const response = await axios.get(targetUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+        },
+        timeout: 15000,
+        maxRedirects: 5,
+        validateStatus: (status) => status < 400,
+      });
+      htmlContent = String(response.data || '');
+      finalUrl = (response.request as any)?.res?.responseUrl || targetUrl;
+    } catch (err: any) {
+      if (err.response?.status === 404) {
+        throw new Error('Google Form tidak ditemukan (Error 404). Pastikan tautan sudah benar.');
+      }
+      throw new Error(`Gagal menghubungi server Google Forms: ${err.message}`);
+    }
+
+    // Deteksi jika Google Form terkunci login (Google Workspace / Akun Khusus)
+    if (finalUrl.includes('accounts.google.com') || htmlContent.includes('ServiceLogin') || htmlContent.includes('Sign in to continue')) {
+      throw new Error(
+        'Google Form ini dibatasi aksesnya (memerlukan login akun organisasi/sekolah). Buka setelan Google Form Anda, lalu nonaktifkan centang "Batasi untuk pengguna di [Organisasi]" agar form dapat diakses publik.'
+      );
+    }
+
+    // Ekstrak FB_PUBLIC_LOAD_DATA_
+    const match = htmlContent.match(/FB_PUBLIC_LOAD_DATA_\s*=\s*(\[.+?\]);\s*(?:<\/script>|\n)/s)
+      || htmlContent.match(/var\s+FB_PUBLIC_LOAD_DATA_\s*=\s*(.+?);\s*<\/script>/s);
+
+    if (!match || !match[1]) {
+      throw new Error('Tidak dapat menemukan data butir soal di Google Form ini. Pastikan formulir sudah dipublikasikan.');
+    }
+
+    let parsedData: any;
+    try {
+      parsedData = JSON.parse(match[1]);
+    } catch (parseErr) {
+      throw new Error('Gagal mem-parsing payload data internal Google Form.');
+    }
+
+    // Ekstrak Informasi Form
+    const formTitle = String(parsedData[1]?.[8] || parsedData[0] || 'Asesmen Google Form').trim();
+    const formDesc = String(parsedData[1]?.[0] || '').trim();
+    const rawQuestions = Array.isArray(parsedData[1]?.[1]) ? parsedData[1][1] : [];
+
+    const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+    const parsedQuestions: Array<{
+      nomor_urut: number;
+      jenis_soal: 'PG';
+      konten_pertanyaan: string;
+      gambar_stimulus_url: string | null;
+      bobot: number;
+      opsi_jawaban_json: Array<{ kode: string; teks: string }>;
+      kunci_jawaban: string;
+      pembahasan: string | null;
+    }> = [];
+
+    let questionIndex = 1;
+
+    for (const item of rawQuestions) {
+      if (!Array.isArray(item)) continue;
+      const title = item[1];
+      const desc = item[2] || '';
+      const fieldType = item[3];
+
+      // Lewati section header (type 6 atau 8) atau item tanpa teks pertanyaan
+      if (!title || fieldType === 6 || fieldType === 8) {
+        continue;
+      }
+
+      // Cari opsi jawaban di item[4]
+      let rawOptions: any[] = [];
+      if (item[4] && Array.isArray(item[4])) {
+        for (const sub of item[4]) {
+          if (sub && Array.isArray(sub[1]) && sub[1].length > 0) {
+            rawOptions = sub[1];
+            break;
+          }
+        }
+      }
+
+      // Bersihkan opsi (abaikan opsi kosong atau opsi "__other_option__")
+      const cleanedOptions = rawOptions
+        .map((opt: any) => {
+          if (typeof opt === 'string') return opt.trim();
+          if (Array.isArray(opt) && opt[0]) return String(opt[0]).trim();
+          return '';
+        })
+        .filter((txt: string) => txt.length > 0 && txt !== '__other_option__');
+
+      // Ambil stimulus gambar jika ada
+      let stimulusImage: string | null = null;
+      if (item[6] && typeof item[6] === 'string' && item[6].startsWith('http')) {
+        stimulusImage = item[6];
+      } else if (Array.isArray(item[6]) && typeof item[6][0] === 'string') {
+        stimulusImage = item[6][0];
+      }
+
+      // Gabungkan deskripsi jika ada
+      const questionContent = desc ? `${String(title).trim()}\n\n${String(desc).trim()}` : String(title).trim();
+
+      // Format opsi ke JSON A, B, C, D, ...
+      const opsiJson = cleanedOptions.length >= 2
+        ? cleanedOptions.map((optText: string, idx: number) => ({
+            kode: OPTION_LETTERS[idx] || String.fromCharCode(65 + idx),
+            teks: optText,
+          }))
+        : [
+            { kode: 'A', teks: 'Benar' },
+            { kode: 'B', teks: 'Salah' },
+          ];
+
+      parsedQuestions.push({
+        nomor_urut: questionIndex++,
+        jenis_soal: 'PG',
+        konten_pertanyaan: questionContent,
+        gambar_stimulus_url: stimulusImage,
+        bobot: 1.0,
+        opsi_jawaban_json: opsiJson,
+        kunci_jawaban: 'A', // Default kunci jawaban A (guru dapat menyesuaikan di modal pratinjau)
+        pembahasan: null,
+      });
+    }
+
+    if (parsedQuestions.length === 0) {
+      throw new Error('Tidak ditemukan pertanyaan atau butir soal yang dapat diekstrak dari Google Form tersebut.');
+    }
+
+    return {
+      title: formTitle,
+      description: formDesc,
+      total_parsed: parsedQuestions.length,
+      items: parsedQuestions,
+    };
   }
 }

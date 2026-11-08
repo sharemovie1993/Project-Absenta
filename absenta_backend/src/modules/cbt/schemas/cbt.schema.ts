@@ -116,6 +116,10 @@ export const bulkImportSoalSchema = z.object({
   items: z.array(createSoalPgSchema).min(1, 'Daftar soal impor tidak boleh kosong'),
 });
 
+export const parseGoogleFormSchema = z.object({
+  url: z.string().url('Tautan Google Form harus berupa URL yang valid (http/https)'),
+});
+
 export const settingKeamananSchema = z.object({
   lock_device: z.boolean().default(true),
   block_tab_switching: z.boolean().default(true),
