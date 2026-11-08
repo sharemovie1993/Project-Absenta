@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'react-hot-toast';
 import type { DenahElementNode } from '../../types/spasial.types';
 

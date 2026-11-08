@@ -616,7 +616,10 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
   }, [activeEcosystem, isSiswa, isKepsek]);
 
   const activeTabsList = isSiswa ? siswaTabs : isKepsek ? kepsekTabs : staffTabs;
-  const shouldHideNav = location.pathname.startsWith('/parent-app') || location.pathname.startsWith('/cooperative/rat');
+  const shouldHideNav =
+    location.pathname.startsWith('/parent-app') ||
+    location.pathname.startsWith('/cooperative/rat') ||
+    location.pathname.startsWith('/cbt/ruang-ujian');
 
   return {
     activeTabsList,

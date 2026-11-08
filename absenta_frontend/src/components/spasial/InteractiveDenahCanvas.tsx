@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Wand2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { DenahNodeCard } from './DenahNodeCard';
