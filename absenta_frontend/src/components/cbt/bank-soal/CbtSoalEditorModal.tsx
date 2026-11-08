@@ -813,7 +813,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
               value={kontenPertanyaan}
               onChange={(e) => setKontenPertanyaan(e.target.value)}
               onPaste={handleQuestionPaste}
-              placeholder="Ketik pertanyaan di sini... (Bisa Ctrl+V atau Drag & Drop gambar soal)"
+              placeholder="Tulis pertanyaan soal..."
               className="w-full px-3.5 py-2.5 text-xs sm:text-sm font-medium rounded-xl bg-slate-50/90 hover:bg-slate-100/70 focus:bg-white dark:bg-slate-800/60 dark:focus:bg-slate-900 text-slate-900 dark:text-white border-b-2 border-b-slate-200 dark:border-b-slate-700 focus:border-b-[#673ab7] focus:outline-none transition-all resize-y min-h-[60px]"
               aria-label="Pertanyaan Soal"
             />
@@ -871,9 +871,12 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
 
       {/* ── 3. OPSI PILIHAN GANDA A–E (KLIK HURUF UNTUK KUNCI JAWABAN) ── */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-          <span className="font-bold text-slate-700 dark:text-slate-300">
-            Pilihan Jawaban (Klik huruf A–E untuk memilih Kunci Jawaban)
+        <div className="flex items-center justify-between gap-2 text-xs">
+          <span className="font-bold text-slate-800 dark:text-slate-200">
+            Pilihan Jawaban
+          </span>
+          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+            Klik huruf untuk kunci
           </span>
         </div>
 
@@ -931,7 +934,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
                     value={opt.teks}
                     onChange={(e) => handleOpsiTeksChange(index, e.target.value)}
                     onPaste={(e) => handleOpsiPaste(index, e)}
-                    placeholder={`Teks opsi ${opt.kode}... (Bisa paste daftar opsi / Ctrl+V gambar)`}
+                    placeholder={`Pilihan ${opt.kode}...`}
                     className={cn(
                       'w-full py-1 px-1.5 text-xs sm:text-sm font-medium bg-transparent border-b border-b-slate-200 dark:border-b-slate-700 focus:border-b-[#673ab7] focus:outline-none transition-colors',
                       isKey && 'font-bold text-emerald-950 dark:text-emerald-200'
@@ -1016,6 +1019,11 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
             </button>
           </div>
         )}
+        <div className="pt-0.5 px-1">
+          <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
+            Mendukung paste teks bertingkat A–E langsung dari Word / Excel atau gambar Ctrl+V.
+          </p>
+        </div>
       </div>
 
       {/* ── 4. PEMBAHASAN (OPSIONAL) ── */}
@@ -1026,7 +1034,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
             rows={2}
             value={pembahasan}
             onChange={(e) => setPembahasan(e.target.value)}
-            placeholder="Tuliskan pembahasan / alasan kunci jawaban..."
+            placeholder="Tulis pembahasan soal (opsional)..."
             className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#673ab7]"
             aria-label="Catatan Pembahasan Soal"
           />
@@ -1126,10 +1134,10 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
               size="sm"
               onClick={() => handleSave('add-next')}
               disabled={isSubmitting}
-              className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold text-xs h-8 px-3.5 flex items-center gap-1"
+              className="bg-[#673ab7] hover:bg-[#5e35b1] text-white font-bold text-xs h-8 px-3.5 flex items-center gap-1 shrink-0 whitespace-nowrap"
             >
               <Plus size={14} />
-              <span>Simpan & Lanjut Soal #{nomorUrut + 1}</span>
+              <span>Simpan & Lanjut</span>
             </Button>
           )}
         </div>
