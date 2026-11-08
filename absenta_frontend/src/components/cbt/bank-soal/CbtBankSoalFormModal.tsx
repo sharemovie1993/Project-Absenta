@@ -287,11 +287,18 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       return;
     }
 
-    if (
-      scope === 'TERPUSAT_MASSAL' &&
-      (!judul || judul.startsWith('SAS -') || judul.startsWith('PAS -') || judul.startsWith('SAT -') || judul.startsWith('PSAJ -'))
-    ) {
-      triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal);
+    if (scope === 'TERPUSAT_MASSAL') {
+      const isAutoTitle =
+        !judul ||
+        officialAsesmenTypes.some(
+          (t) =>
+            judul.startsWith(`${t.defaultPrefix} -`) ||
+            judul.startsWith(`${t.key} -`) ||
+            judul.startsWith(`${t.singkatan} -`)
+        );
+      if (isAutoTitle) {
+        triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal);
+      }
     } else if (scope === 'MANDIRI_GURU' && !judul) {
       const selectedMapel = mapelOptions.find((m) => m.value === mapelId);
       const mapelName = selectedMapel?.label?.split('(')[0]?.trim() || 'Mata Pelajaran';

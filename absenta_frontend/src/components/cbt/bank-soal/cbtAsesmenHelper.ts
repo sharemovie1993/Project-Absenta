@@ -300,11 +300,15 @@ export function generateAutoFillMassal(params: {
   const allTypes = getOfficialAsesmenTypes(jenjang);
   const selectedDef = allTypes.find((t) => t.key === targetKegiatanKey);
   const prefix = selectedDef?.defaultPrefix || targetKegiatanKey;
-  const fullOfficialName = selectedDef?.namaResmi || targetKegiatanKey;
   const romanTingkat = getTingkatRoman(targetTingkat);
+  const isSemua = !targetTingkat || targetTingkat.toUpperCase() === 'SEMUA';
 
-  const generatedCode = `${prefix}-${year}-${cleanMapelCode}-${romanTingkat}`;
-  const generatedTitle = `${prefix} - ${mapelName} Tingkat ${romanTingkat} (${fullOfficialName})`;
+  const generatedCode = isSemua
+    ? `${prefix}-${year}-${cleanMapelCode}`
+    : `${prefix}-${year}-${cleanMapelCode}-${romanTingkat}`;
+  const generatedTitle = isSemua
+    ? `${prefix} - ${mapelName}`
+    : `${prefix} - ${mapelName} Tingkat ${romanTingkat}`;
 
   return { kodeBank: generatedCode, judul: generatedTitle };
 }
