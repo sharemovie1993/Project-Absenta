@@ -1,5 +1,5 @@
 import React from 'react';
-import { RotateCw, FlipHorizontal, Trash2, Maximize2 } from 'lucide-react';
+import { RotateCw, FlipHorizontal, Trash2, Maximize2, Type } from 'lucide-react';
 import type { DenahElementNode } from '../../types/spasial.types';
 
 interface DenahNodeCardProps {
@@ -9,6 +9,7 @@ interface DenahNodeCardProps {
   highlightLabel?: string;
   onSelect: (e: React.MouseEvent, id: string) => void;
   onRotate: (id: string) => void;
+  onToggleTextUpright?: (id: string) => void;
   onFlipH: (id: string) => void;
   onFlipV: (id: string) => void;
   onDelete: (id: string) => void;
@@ -76,6 +77,7 @@ export const DenahNodeCard = React.memo<DenahNodeCardProps>(
     highlightLabel,
     onSelect,
     onRotate,
+    onToggleTextUpright,
     onFlipH,
     onFlipV,
     onDelete,
@@ -87,9 +89,16 @@ export const DenahNodeCard = React.memo<DenahNodeCardProps>(
     const scaleX = node.flip_h ? -1 : 1;
     const scaleY = node.flip_v ? -1 : 1;
 
-    // Adaptasi ukuran tipografi berdasarkan dimensi kotak agar teks selalu besar & jelas saat zoom kecil
-    const isMini = node.width < 115 || node.height < 65;
-    const isMedium = node.width < 155 || node.height < 85;
+    // Deteksi rotasi 90° atau 270° dan fitur rotasi kotak tanpa memutar teks
+    const isRotated90or270 = node.rotation === 90 || node.rotation === 270;
+    const isTextUpright = node.kunci_teks_tegak !== false; // Default: true (Teks selalu tegak & mudah dibaca)
+    const textRotation = isTextUpright ? -node.rotation : 0;
+
+    // Adaptasi ukuran tipografi berdasarkan dimensi visual kotak
+    const effectiveW = isRotated90or270 ? node.height : node.width;
+    const effectiveH = isRotated90or270 ? node.width : node.height;
+    const isMini = effectiveW < 115 || effectiveH < 65;
+    const isMedium = effectiveW < 155 || effectiveH < 85;
 
     return (
       <div
@@ -137,11 +146,11 @@ export const DenahNodeCard = React.memo<DenahNodeCardProps>(
       {!isReadOnly && (
         <div
           className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 dark:bg-slate-800/95 rounded-md p-0.5 shadow-md border border-slate-200 dark:border-slate-700 backdrop-blur-xs z-20 pointer-events-auto"
-          style={{ transform: `scale(${scaleX}, ${scaleY})` }}
+          style={{ transform: `rotate(${textRotation}deg) scale(${scaleX}, ${scaleY})` }}
         >
           <button
             type="button"
-            title="Putar 90°"
+            title="Putar Kotak 90° (Teks Tetap Tegak)"
             onClick={(e) => {
               e.stopPropagation();
               onRotate(node.id);
@@ -150,6 +159,27 @@ export const DenahNodeCard = React.memo<DenahNodeCardProps>(
           >
             <RotateCw className="w-3 h-3" />
           </button>
+          {onToggleTextUpright && (
+            <button
+              type="button"
+              title={
+                isTextUpright
+                  ? 'Teks Terkunci Tegak (Klik agar teks ikut miring dengan kotak)'
+                  : 'Teks Mengikuti Rotasi Kotak (Klik untuk mengunci teks tegak lurus)'
+              }
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleTextUpright(node.id);
+              }}
+              className={`p-1 rounded transition-colors cursor-pointer ${
+                isTextUpright
+                  ? 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 font-black'
+                  : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+              }`}
+            >
+              <Type className="w-3 h-3" />
+            </button>
+          )}
           <button
             type="button"
             title="Flip Horizontal (Cermin Kiri-Kanan)"
@@ -179,10 +209,15 @@ export const DenahNodeCard = React.memo<DenahNodeCardProps>(
         </div>
       )}
 
-      {/* Fokus Utama: HANYA Nomor Ruang (R.01) & Nama Kelas (X AKL 1) dengan ruang 100% penuh */}
+      {/* Fokus Utama: HANYA Nomor Ruang (R.01) & Nama Kelas (X AKL 1) - Bebas Rotasi (Teks Tetap Tegak Lurus) */}
       <div
-        className="w-full h-full flex flex-col items-center justify-center text-center cursor-move px-1"
-        style={{ transform: `scale(${scaleX}, ${scaleY})` }}
+        className="flex flex-col items-center justify-center text-center cursor-move px-1"
+        style={{
+          width: isRotated90or270 && isTextUpright ? `${node.height}px` : '100%',
+          height: isRotated90or270 && isTextUpright ? `${node.width}px` : '100%',
+          transform: `rotate(${textRotation}deg) scale(${scaleX}, ${scaleY})`,
+          transformOrigin: 'center center',
+        }}
         onMouseDown={(e) => !isReadOnly && onStartDrag(e, node.id)}
       >
         {/* Label Nomor Ruang: R.01 (Bongsor, Tebal, & Kontras Tinggi) */}

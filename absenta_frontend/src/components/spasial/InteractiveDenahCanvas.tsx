@@ -309,6 +309,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
     handleStartResize,
     handleCanvasMouseDown,
     handleBatchRotate,
+    handleBatchToggleTextUpright,
     handleBatchFlipH,
     handleBatchDelete,
     handleSelectAll,
@@ -323,6 +324,19 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
     canvasRef,
     isReadOnly,
   });
+
+  const handleToggleTextUpright = useCallback(
+    (id: string) => {
+      setNodes((current) => {
+        const updated = current.map((n) =>
+          n.id === id ? { ...n, kunci_teks_tegak: n.kunci_teks_tegak === false ? true : false } : n
+        );
+        pushHistory(updated);
+        return updated;
+      });
+    },
+    [pushHistory]
+  );
 
   const handleDeleteNode = useCallback(
     (nodeId: string) => {
@@ -594,6 +608,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
                 highlightLabel={highlightLabel}
                 onSelect={handleSelectNode}
                 onRotate={handleRotateNode}
+                onToggleTextUpright={handleToggleTextUpright}
                 onFlipH={handleFlipH}
                 onFlipV={handleFlipV}
                 onDelete={handleDeleteNode}
@@ -648,6 +663,14 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
             totalCount={nodes.length}
             currentSize={currentSize}
             onRotateAll={handleBatchRotate}
+            onToggleTextUprightAll={handleBatchToggleTextUpright}
+            allTextUpright={
+              selectedNodeIds.length > 0 &&
+              selectedNodeIds.every((id) => {
+                const n = nodes.find((item) => item.id === id);
+                return n ? n.kunci_teks_tegak !== false : true;
+              })
+            }
             onFlipHAll={handleBatchFlipH}
             onDeleteAll={handleBatchDelete}
             onDeselectAll={() => setSelectedNodeIds([])}

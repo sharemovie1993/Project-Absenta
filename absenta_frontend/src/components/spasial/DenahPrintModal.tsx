@@ -405,12 +405,16 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
                   const height = node.height * uniformScale;
                   const flipX = node.flip_h ? -1 : 1;
                   const flipY = node.flip_v ? -1 : 1;
+                  const isRotated90or270 = node.rotation === 90 || node.rotation === 270;
+                  const isTextUpright = node.kunci_teks_tegak !== false;
+                  const textRotation = isTextUpright ? -node.rotation : 0;
 
                   const style = KATEGORI_PRINT_STYLES[node.kategori_ruang] || KATEGORI_PRINT_STYLES.LAINNYA;
 
-                  // Proporsional Font Size: Menyesuaikan persis tinggi kotak agar tidak bertabrakan/overflow
-                  const mainFontSize = Math.max(9, Math.min(16, Math.round(height * 0.38)));
-                  const subFontSize = Math.max(7, Math.min(11, Math.round(height * 0.24)));
+                  // Proporsional Font Size: Menyesuaikan persis tinggi visual kotak agar tidak bertabrakan/overflow
+                  const effectiveH = isRotated90or270 ? width : height;
+                  const mainFontSize = Math.max(9, Math.min(16, Math.round(effectiveH * 0.38)));
+                  const subFontSize = Math.max(7, Math.min(11, Math.round(effectiveH * 0.24)));
 
                   return (
                     <div
@@ -434,8 +438,13 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
                       className="flex flex-col items-center justify-center shadow-md overflow-hidden"
                     >
                       <div
-                        className="flex flex-col items-center justify-center w-full h-full px-0.5 text-center select-none overflow-hidden"
-                        style={{ transform: `scale(${flipX}, ${flipY})` }}
+                        className="flex flex-col items-center justify-center px-0.5 text-center select-none overflow-hidden"
+                        style={{
+                          width: isRotated90or270 && isTextUpright ? `${height}px` : '100%',
+                          height: isRotated90or270 && isTextUpright ? `${width}px` : '100%',
+                          transform: `rotate(${textRotation}deg) scale(${flipX}, ${flipY})`,
+                          transformOrigin: 'center center',
+                        }}
                       >
                         {/* Nomor Ruang: R.01 (Bongsor, Bebas Truncate Ellipsis) */}
                         <div

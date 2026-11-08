@@ -17,6 +17,7 @@ export interface DenahElementNode {
   width: number;
   height: number;
   rotation: number; // 0, 90, 180, 270
+  kunci_teks_tegak?: boolean; // Jika true / undefined (default), teks tidak ikut berputar saat kotak di-rotate
   flip_h?: boolean; // Mirror horizontal
   flip_v?: boolean; // Mirror vertical
   posisi_pintu?: 'BAWAH' | 'ATAS' | 'KIRI' | 'KANAN' | 'TIDAK_ADA';

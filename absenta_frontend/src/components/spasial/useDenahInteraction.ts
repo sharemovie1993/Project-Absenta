@@ -323,7 +323,26 @@ export function useDenahInteraction({
       selectedNodeIds.includes(n.id) ? { ...n, rotation: (n.rotation + 90) % 360 } : n
     );
     pushHistory(updated);
-    toast.success(`Memutar 90° (${selectedNodeIds.length} ruangan)`);
+    toast.success(`Memutar kotak 90° (${selectedNodeIds.length} ruangan)`);
+  }, [selectedNodeIds, nodes, pushHistory]);
+
+  const handleBatchToggleTextUpright = useCallback(() => {
+    if (selectedNodeIds.length === 0) return;
+    const targetSet = new Set(selectedNodeIds);
+    const anyNotUpright = nodes.some(
+      (n) => targetSet.has(n.id) && n.kunci_teks_tegak === false
+    );
+    const nextState = anyNotUpright ? true : false;
+
+    const updated = nodes.map((n) =>
+      targetSet.has(n.id) ? { ...n, kunci_teks_tegak: nextState } : n
+    );
+    pushHistory(updated);
+    toast.success(
+      nextState
+        ? `Teks dikunci tegak lurus (${selectedNodeIds.length} ruangan)`
+        : `Teks mengikuti rotasi kotak (${selectedNodeIds.length} ruangan)`
+    );
   }, [selectedNodeIds, nodes, pushHistory]);
 
   const handleBatchFlipH = useCallback(() => {
@@ -447,6 +466,7 @@ export function useDenahInteraction({
     handleStartResize,
     handleCanvasMouseDown,
     handleBatchRotate,
+    handleBatchToggleTextUpright,
     handleBatchFlipH,
     handleBatchDelete,
     handleSelectAll,

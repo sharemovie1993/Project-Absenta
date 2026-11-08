@@ -27,12 +27,12 @@ export function getOptionBadgeColor(
   isSelected: boolean = false,
   isExam: boolean = false
 ): string {
-  // Mode Ujian Siswa (Exam Room - Dark Theme)
+  // Mode Ujian Siswa (Exam Room - Theme Aware: Light & Dark Adaptive)
   if (isExam) {
     if (isSelected) {
-      return 'bg-white text-indigo-700 border-white shadow-xs font-black';
+      return 'bg-indigo-600 text-white border-indigo-600 shadow-xs font-black';
     }
-    return 'bg-indigo-950/60 text-indigo-300 border border-indigo-500/40 font-bold';
+    return 'bg-slate-100 dark:bg-indigo-950/60 text-slate-700 dark:text-indigo-300 border-slate-200 dark:border-indigo-500/40 font-bold';
   }
 
   // Mode Pratinjau Guru - Jika Opsi ini adalah Kunci Jawaban (Wajib Emerald Green)
@@ -142,7 +142,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
         const isSelected = selectedAnswer === opt.kode;
         const badgeColorClass = getOptionBadgeColor(opt.kode, isCorrectKey, isSelected, isExam);
 
-        // ── MODE 1: UJIAN SISWA (EXAM ROOM - DARK THEME) ──
+        // ── MODE 1: UJIAN SISWA (EXAM ROOM - THEME ADAPTIVE: LIGHT & DARK) ──
         if (isExam) {
           if (is1Row) {
             return (
@@ -154,8 +154,8 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
                 className={cn(
                   'p-2 sm:p-2.5 rounded-xl border flex items-center justify-center gap-1.5 transition-all duration-150 select-none text-center min-w-0 cursor-pointer active:scale-95',
                   isSelected
-                    ? 'border-indigo-500 bg-indigo-600 text-white shadow-md ring-2 ring-indigo-500/60'
-                    : 'border-slate-800 bg-slate-900/70 hover:border-slate-700 hover:bg-slate-900 text-slate-200'
+                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-900 dark:text-white shadow-xs ring-2 ring-indigo-500/40'
+                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/70 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-800 dark:text-slate-200'
                 )}
               >
                 <div
@@ -182,8 +182,8 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
                   'p-2.5 sm:p-3.5 rounded-xl border flex items-start gap-2.5 transition-all duration-150 select-none min-w-0',
                   !readOnly && 'cursor-pointer active:scale-[0.99]',
                   isSelected
-                    ? 'border-indigo-500 bg-indigo-600/20 text-white shadow-md ring-1 ring-indigo-500'
-                    : 'border-slate-800 bg-slate-900/60 hover:border-slate-700 hover:bg-slate-900 text-slate-200'
+                    ? 'border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-950 dark:text-white shadow-xs ring-1 ring-indigo-500'
+                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-800 dark:text-slate-200'
                 )}
               >
                 <div
@@ -195,7 +195,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
                   {opt.kode}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-semibold text-slate-200 leading-snug break-words whitespace-normal">
+                  <p className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 leading-snug break-words whitespace-normal">
                     {opt.teks || '-'}
                   </p>
                 </div>
@@ -212,8 +212,8 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
                 'p-3 sm:p-4 rounded-xl border flex items-start gap-3 transition-all duration-150 select-none min-w-0',
                 !readOnly && 'cursor-pointer active:scale-[0.99]',
                 isSelected
-                  ? 'border-indigo-500 bg-indigo-600/15 text-white shadow-md ring-1 ring-indigo-500'
-                  : 'border-slate-800 bg-slate-900/60 hover:border-slate-700 hover:bg-slate-900 text-slate-200'
+                  ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-white shadow-xs ring-1 ring-indigo-500'
+                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-800 dark:text-slate-200'
               )}
             >
               <div
@@ -226,7 +226,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
               </div>
               <div className="flex-1 min-w-0 space-y-2 pt-0.5">
                 {(opt.teks?.trim() || !opt.gambar_url) && (
-                  <p className="text-sm font-medium text-slate-200 leading-relaxed break-words whitespace-normal">
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-relaxed break-words whitespace-normal">
                     {opt.teks || '-'}
                   </p>
                 )}
@@ -235,7 +235,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
                     src={opt.gambar_url}
                     alt={`Opsi ${opt.kode}`}
                     decoding="async"
-                    className="max-h-36 object-contain rounded-lg border border-slate-700 bg-white/95 p-1"
+                    className="max-h-36 object-contain rounded-lg border border-slate-200 dark:border-slate-700 bg-white p-1"
                   />
                 )}
               </div>

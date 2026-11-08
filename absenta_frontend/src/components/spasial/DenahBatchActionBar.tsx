@@ -11,6 +11,7 @@ import {
   Sliders,
   Save,
   Loader2,
+  Type,
 } from 'lucide-react';
 
 interface DenahBatchActionBarProps {
@@ -18,6 +19,8 @@ interface DenahBatchActionBarProps {
   totalCount: number;
   currentSize?: { width: number; height: number };
   onRotateAll: () => void;
+  onToggleTextUprightAll?: () => void;
+  allTextUpright?: boolean;
   onFlipHAll: () => void;
   onDeleteAll: () => void;
   onDeselectAll: () => void;
@@ -34,6 +37,8 @@ export const DenahBatchActionBar = React.memo<DenahBatchActionBarProps>(
     totalCount,
     currentSize,
     onRotateAll,
+    onToggleTextUprightAll,
+    allTextUpright = true,
     onFlipHAll,
     onDeleteAll,
     onDeselectAll,
@@ -171,11 +176,28 @@ export const DenahBatchActionBar = React.memo<DenahBatchActionBarProps>(
         type="button"
         onClick={onRotateAll}
         className="px-2.5 py-1 hover:bg-slate-800 rounded-lg text-xs font-medium text-slate-200 hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
-        title="Putar 90° Seluruh Ruangan Terpilih"
+        title="Putar Kotak 90° (Teks Tetap Tegak Lurus)"
       >
         <RotateCw className="w-3.5 h-3.5 text-blue-400" />
-        <span>Putar 90°</span>
+        <span>Putar Kotak</span>
       </button>
+
+      {/* Toggle Text Upright */}
+      {onToggleTextUprightAll && (
+        <button
+          type="button"
+          onClick={onToggleTextUprightAll}
+          className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1 cursor-pointer transition-colors ${
+            allTextUpright
+              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
+              : 'hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-transparent'
+          }`}
+          title="Kunci posisi teks selalu tegak lurus (tidak ikut berputar saat kotak diputar)"
+        >
+          <Type className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Teks Tegak</span>
+        </button>
+      )}
 
       {/* Flip H all selected */}
       <button
