@@ -805,11 +805,11 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
               </div>
             )}
 
-            {/* SUB-TAB TUGAS SAYA (Action Hub Full View) */}
+            {/* SUB-TAB TUGAS SAYA (Action Hub Full View: Langsung Menampilkan Bento Grid Tanpa Redudansi Judul) */}
             {activeSubTab === 'tugas' && (
               <div className="space-y-4">
                 <TeacherActionHubWidget
-                  title="Pusat Tugas & Peringatan Saya"
+                  hideHeader={true}
                   actions={actionHubData.actions || []}
                   summary={actionHubData.summary || { total: 0, critical: 0, today: 0, upcoming: 0 }}
                   isLoading={loadingActionHub}

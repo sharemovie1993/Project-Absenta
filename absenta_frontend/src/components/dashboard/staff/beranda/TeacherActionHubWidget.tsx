@@ -31,6 +31,7 @@ interface TeacherActionHubWidgetProps {
   onNavigateTab?: (tabId: string) => void;
   className?: string;
   title?: string;
+  hideHeader?: boolean;
 }
 
 type FilterCategory = 'ALL' | 'CRITICAL' | 'TODAY' | 'UPCOMING';
@@ -54,6 +55,7 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
   onNavigateTab,
   className,
   title = 'Tugas Saya',
+  hideHeader = true,
 }) => {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<FilterCategory>('ALL');
@@ -184,7 +186,7 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
     return (
       <HubCard className={className} noPadding>
         <div className="p-3.5 space-y-2">
-          <div className="h-4 w-32 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
+          {!hideHeader && <div className="h-4 w-32 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />}
           <div className="h-16 bg-slate-50 dark:bg-slate-800/60 rounded-xl animate-pulse" />
         </div>
       </HubCard>
@@ -229,8 +231,8 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
   );
 
   return (
-    <HubCard title={headerNode} className={className} noPadding>
-      {/* ─── 1. Bento Analytics Grid Ala Shopee (Hairline 2x2, Ramping & Bisa Diklik) ─── */}
+    <HubCard title={!hideHeader ? headerNode : undefined} className={className} noPadding>
+      {/* ─── 1. Bento Analytics Grid Ala Shopee (Hairline 2x2, Langsung Disajikan Di Atas) ─── */}
       <div className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/30 dark:bg-slate-900/40">
         <HubBentoGrid 
           cells={bentoCells} 
@@ -250,9 +252,23 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
             </strong>
           </span>
         </div>
-        <span className="text-[10px] text-slate-400">
-          {filteredActions.length} item
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-slate-400 font-medium">
+            {filteredActions.length} item
+          </span>
+          {onRefresh && (
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              aria-label="Segarkan data tugas"
+              className="p-1 rounded hover:bg-slate-200/60 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+              title="Segarkan data tugas"
+            >
+              <RefreshCw size={11} className={isRefreshing ? 'animate-spin text-indigo-600' : ''} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ─── 3. Daftar Tugas Hairline (Shopee Flat List) ─── */}

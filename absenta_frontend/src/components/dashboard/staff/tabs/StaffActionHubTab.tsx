@@ -44,9 +44,9 @@ export const StaffActionHubTab: React.FC<StaffActionHubTabProps> = React.memo(({
       transition={{ duration: 0.12 }}
       className="space-y-3 max-w-full pb-16 sm:pb-6"
     >
-      {/* ─── Shopee-Grade High-Density Task Hub (Above-the-Fold on Mobile) ─── */}
+      {/* ─── Shopee-Grade High-Density Task Hub (Above-the-Fold on Mobile, Direct Bento Grid) ─── */}
       <TeacherActionHubWidget
-        title="Tugas & Peringatan Saya"
+        hideHeader={true}
         actions={actionData.actions || []}
         summary={actionData.summary || { total: 0, critical: 0, today: 0, upcoming: 0 }}
         isLoading={isLoading}
