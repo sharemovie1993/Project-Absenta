@@ -17,8 +17,9 @@ export interface CbtOptionsRendererProps {
 }
 
 /**
- * Palet warna pembeda khas untuk setiap opsi huruf (A, B, C, D, E)
- * agar ada kontras jelas antara huruf opsi dan isi teks opsi jawaban.
+ * Warna badge opsi huruf (A, B, C, D, E) yang SELARAS SATU WARNA
+ * dengan lingkungan ekosistem dashboard (Indigo / Ruang Pendidik).
+ * Tidak warna-warni, rapi, dan memberikan pembeda jelas antara huruf opsi dan teks opsi.
  */
 export function getOptionBadgeColor(
   kode: string,
@@ -31,42 +32,16 @@ export function getOptionBadgeColor(
     if (isSelected) {
       return 'bg-white text-indigo-700 border-white shadow-xs font-black';
     }
-    switch (kode.toUpperCase()) {
-      case 'A':
-        return 'bg-sky-500/20 text-sky-300 border-sky-500/40';
-      case 'B':
-        return 'bg-purple-500/20 text-purple-300 border-purple-500/40';
-      case 'C':
-        return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
-      case 'D':
-        return 'bg-teal-500/20 text-teal-300 border-teal-500/40';
-      case 'E':
-        return 'bg-rose-500/20 text-rose-300 border-rose-500/40';
-      default:
-        return 'bg-slate-800 text-slate-300 border-slate-700';
-    }
+    return 'bg-indigo-950/60 text-indigo-300 border border-indigo-500/40 font-bold';
   }
 
-  // Mode Pratinjau Guru - Jika Opsi ini adalah Kunci Jawaban
+  // Mode Pratinjau Guru - Jika Opsi ini adalah Kunci Jawaban (Wajib Emerald Green)
   if (isCorrectKey) {
-    return 'bg-emerald-600 text-white border-emerald-600 shadow-2xs';
+    return 'bg-emerald-600 text-white border-emerald-600 shadow-2xs font-black';
   }
 
-  // Mode Pratinjau Guru - Warna Pembeda Khusus per Huruf Opsi (A, B, C, D, E)
-  switch (kode.toUpperCase()) {
-    case 'A':
-      return 'bg-sky-100 dark:bg-sky-950/70 text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-800';
-    case 'B':
-      return 'bg-purple-100 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-800';
-    case 'C':
-      return 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800';
-    case 'D':
-      return 'bg-teal-100 dark:bg-teal-950/70 text-teal-800 dark:text-teal-300 border-teal-300 dark:border-teal-800';
-    case 'E':
-      return 'bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800';
-    default:
-      return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700';
-  }
+  // Mode Pratinjau Guru - Satu warna selaras ekosistem dashboard (Indigo/Purple Ruang Pendidik)
+  return 'bg-indigo-50/90 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/90 dark:border-indigo-800/80 shadow-2xs font-bold';
 }
 
 /**
@@ -277,7 +252,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
                 'p-1.5 sm:p-2 rounded-xl border flex items-center justify-center gap-1 sm:gap-1.5 transition-all text-center min-w-0 shadow-2xs',
                 isCorrectKey
                   ? 'border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-bold ring-1 ring-emerald-500/50'
-                  : 'border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                  : 'border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-800'
               )}
             >
               <div
@@ -303,7 +278,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
                 'p-2 sm:p-2.5 rounded-xl border flex items-start gap-2 transition-all min-w-0 shadow-2xs',
                 isCorrectKey
                   ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 ring-1 ring-emerald-500/50'
-                  : 'border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                  : 'border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-800'
               )}
             >
               <div
@@ -345,7 +320,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
               'p-2.5 sm:p-3 rounded-xl border flex items-start gap-2.5 transition-all min-w-0 shadow-2xs',
               isCorrectKey
                 ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30 ring-1 ring-emerald-500/30'
-                : 'border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300'
+                : 'border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-300 dark:hover:border-indigo-800'
             )}
           >
             <div
