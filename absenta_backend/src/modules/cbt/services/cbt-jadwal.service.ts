@@ -925,6 +925,7 @@ export class CbtJadwalService {
 
   /**
    * Merangkai / Membuat Banyak Jadwal Ujian Serentak Sekaligus dari Daftar Bank Soal (Oleh Kurikulum / Panitia)
+   * Idempoten: Tidak akan membuat duplikasi sesi ujian jika kombinasi bank_soal, waktu, dan rombel sudah ada.
    */
   static async bulkCreate(tenantId: string, items: any[]) {
     const bankIds = Array.from(new Set(items.map((i) => i.bank_soal_id)));
@@ -937,11 +938,53 @@ export class CbtJadwalService {
     });
 
     const bankMap = new Map(banks.map((b) => [b.id, b]));
+
+    // 1. Ambil jadwal yang sudah ada untuk bank soal terkait di tenant ini agar IDEMPOTEN
+    const existingJadwal = await prisma.cbtJadwalUjian.findMany({
+      where: {
+        tenant_id: tenantId,
+        bank_soal_id: { in: bankIds },
+      },
+      select: {
+        id: true,
+        bank_soal_id: true,
+        tanggal_mulai: true,
+        target_kelas_ids: true,
+      },
+    });
+
+    // Helper untuk mendeteksi apakah jadwal dengan kombinasi bank_soal, waktu, dan rombel sudah pernah dibuat
+    const isAlreadyCreated = (data: any) => {
+      const itemStart = new Date(data.tanggal_mulai).getTime();
+      const itemTargetKelas: string[] = Array.isArray(data.target_kelas_ids) ? data.target_kelas_ids : [];
+
+      return existingJadwal.some((exist) => {
+        if (exist.bank_soal_id !== data.bank_soal_id) return false;
+        const existStart = new Date(exist.tanggal_mulai).getTime();
+        // Selisih waktu < 60 detik dianggap sesi yang sama
+        if (Math.abs(existStart - itemStart) > 60000) return false;
+
+        const existTargetKelas: string[] = Array.isArray(exist.target_kelas_ids)
+          ? (exist.target_kelas_ids as string[])
+          : [];
+
+        // Jika ada irisan kelas target
+        return itemTargetKelas.some((kId: string) => existTargetKelas.includes(kId));
+      });
+    };
+
     const operations: any[] = [];
+    let skippedCount = 0;
 
     for (const data of items) {
       const bankSoal = bankMap.get(data.bank_soal_id);
       if (!bankSoal || bankSoal._count.Soal === 0) continue;
+
+      // Cek apakah jadwal ini sudah pernah dibuat sebelumnya (Idempotensi Guard)
+      if (isAlreadyCreated(data)) {
+        skippedCount++;
+        continue;
+      }
 
       const token = this.generateToken();
       operations.push(
@@ -973,12 +1016,21 @@ export class CbtJadwalService {
     }
 
     if (operations.length === 0) {
+      if (skippedCount > 0) {
+        return {
+          created_count: 0,
+          skipped_count: skippedCount,
+          items: [],
+          message: `Seluruh ${skippedCount} jadwal ujian yang dipilih sudah pernah diterbitkan sebelumnya (idempoten). Tidak ada jadwal duplikat yang dibuat.`,
+        };
+      }
       throw new Error('Tidak ada bank soal valid yang memiliki butir soal untuk dijadwalkan');
     }
 
     const created = await prisma.$transaction(operations);
     return {
       created_count: created.length,
+      skipped_count: skippedCount,
       items: created,
     };
   }

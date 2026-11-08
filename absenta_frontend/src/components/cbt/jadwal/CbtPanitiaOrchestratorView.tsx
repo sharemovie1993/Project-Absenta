@@ -496,6 +496,7 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
                 activeTpId={activeTp?.id}
                 activeSemId={activeSemester?.id}
                 defaultTodayStr={defaultTodayStr}
+                existingSchedules={jadwalList}
                 onSuccessGenerate={() => {
                   refetchJadwal();
                   setActiveTab('fase_4_pengawas');

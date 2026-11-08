@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
-import type { CbtBankSoal } from '@/types/cbt.types';
+import type { CbtBankSoal, CbtJadwalUjian } from '@/types/cbt.types';
 import { useJenjang } from '@/hooks/useJenjang';
 import { formatTingkatRomawi } from '../bank-soal/cbtAsesmenHelper';
 import { resolveBankTingkatNumber } from './cbtJadwalHelper';
@@ -34,6 +34,7 @@ interface CbtTimetableMatrixPanelProps {
   activeTpId?: string;
   activeSemId?: string;
   defaultTodayStr: string;
+  existingSchedules?: CbtJadwalUjian[];
   onSuccessGenerate?: () => void;
 }
 
@@ -43,6 +44,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
   activeTpId,
   activeSemId,
   defaultTodayStr,
+  existingSchedules,
   onSuccessGenerate,
 }) => {
   const queryClient = useQueryClient();
@@ -74,6 +76,19 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
     });
     return map;
   }, [bankList]);
+
+  // Map bank_soal_id ke daftar sesi ujian yang sudah ada di database (untuk Idempotensi & On-Demand)
+  const publishedSessionsByBankId = useMemo(() => {
+    const map = new Map<string, CbtJadwalUjian[]>();
+    if (!existingSchedules) return map;
+    existingSchedules.forEach((j) => {
+      if (j.bank_soal_id) {
+        if (!map.has(j.bank_soal_id)) map.set(j.bank_soal_id, []);
+        map.get(j.bank_soal_id)!.push(j);
+      }
+    });
+    return map;
+  }, [existingSchedules]);
 
   // Kumpulan ID bank soal yang sedang terpasang di dalam slot matriks
   const usedBankIdsInMatrix = useMemo(() => {
@@ -138,19 +153,33 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
   // Hitung perkiraan jadwal yang akan di-generate
   const totalSlotsFilled = useMemo(() => Object.keys(matrix).length, [matrix]);
 
-  const estimatedGeneratedCount = useMemo(() => {
-    if (generationMode === 'per_tingkat') return totalSlotsFilled;
-    let count = 0;
-    Object.keys(matrix).forEach((key) => {
+  // Hitung jadwal baru vs jadwal yang sudah pernah diterbitkan (Idempotensi)
+  const { newGeneratedCount, alreadyPublishedCount } = useMemo(() => {
+    let newCount = 0;
+    let publishedCount = 0;
+
+    Object.entries(matrix).forEach(([key, bankId]) => {
+      if (!bankId) return;
       const parts = key.split('_');
       const tingkat = Number(parts[2]);
-      const rombelCount = groupedRoomsByTingkat.get(tingkat)?.length || 0;
-      count += rombelCount;
-    });
-    return count;
-  }, [matrix, generationMode, groupedRoomsByTingkat, totalSlotsFilled]);
+      const rombelCount = generationMode === 'per_tingkat' ? 1 : (groupedRoomsByTingkat.get(tingkat)?.length || 0);
 
-  // Bulk Create Mutation
+      const isPublished = (publishedSessionsByBankId.get(bankId)?.length || 0) > 0;
+      if (isPublished) {
+        publishedCount += rombelCount;
+      } else {
+        newCount += rombelCount;
+      }
+    });
+
+    return { newGeneratedCount: newCount, alreadyPublishedCount: publishedCount };
+  }, [matrix, generationMode, groupedRoomsByTingkat, publishedSessionsByBankId]);
+
+  const estimatedGeneratedCount = useMemo(() => {
+    return newGeneratedCount + alreadyPublishedCount;
+  }, [newGeneratedCount, alreadyPublishedCount]);
+
+  // Bulk Create Mutation (Idempoten & Aman Dipanggil Berkali-kali)
   const bulkCreateMutation = useMutation({
     mutationFn: async () => {
       if (!activeTpId || !activeSemId) {
@@ -178,7 +207,12 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
       return cbtApi.bulkCreateJadwal(payloads);
     },
     onSuccess: async (res) => {
-      toast.success(`Berhasil menerbitkan ${res?.created_count || estimatedGeneratedCount} jadwal ujian massal serentak!`);
+      if (res?.created_count === 0 && (res?.skipped_count || 0) > 0) {
+        toast.success(res.message || 'Semua jadwal yang dipilih sudah pernah diterbitkan sebelumnya (aman & idempoten).');
+      } else {
+        const skippedText = res?.skipped_count ? ` (${res.skipped_count} jadwal lama sudah terbit & dilewati)` : '';
+        toast.success(`Berhasil menerbitkan ${res?.created_count} jadwal ujian baru!${skippedText}`);
+      }
       await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false, refetchType: 'all' });
       if (onSuccessGenerate) onSuccessGenerate();
     },
@@ -403,11 +437,24 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                             </select>
 
                             {selectedBankId && (
-                              <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500">
-                                <span className="text-emerald-600 font-bold flex items-center gap-1">
-                                  <CheckCircle2 size={11} /> Siap Diploting
-                                </span>
-                                <span>{groupedRoomsByTingkat.get(tingkat)?.length || 0} Ruang</span>
+                              <div className="mt-1 flex items-center justify-between text-[10px]">
+                                {(publishedSessionsByBankId.get(selectedBankId)?.length || 0) > 0 ? (
+                                  <>
+                                    <span className="text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
+                                      <CheckCircle2 size={11} /> Sudah Terbit ({publishedSessionsByBankId.get(selectedBankId)?.length} Ruang)
+                                    </span>
+                                    <span className="text-emerald-600 dark:text-emerald-400 text-[9px] font-semibold">Idempoten ✓</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1">
+                                      <Sparkles size={11} /> Siap Diterbitkan
+                                    </span>
+                                    <span className="text-slate-500 font-medium">
+                                      {groupedRoomsByTingkat.get(tingkat)?.length || 0} Ruang
+                                    </span>
+                                  </>
+                                )}
                               </div>
                             )}
                           </td>
@@ -424,7 +471,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
 
       {/* Action Footer */}
       <div className="p-4 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-200/80 dark:border-indigo-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             type="button"
             variant="outline"
@@ -436,25 +483,57 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
             <span>Tambah Hari Ujian</span>
           </Button>
 
-          <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-            Total {totalSlotsFilled} slot mapel terpilih (~{estimatedGeneratedCount} jadwal ujian)
-          </span>
+          <div className="text-xs text-slate-600 dark:text-slate-300">
+            {newGeneratedCount > 0 ? (
+              <span>
+                <strong className="text-indigo-600 dark:text-indigo-400 font-black">{newGeneratedCount}</strong> jadwal baru siap diterbitkan
+                {alreadyPublishedCount > 0 && (
+                  <span className="text-emerald-700 dark:text-emerald-400 ml-1 font-semibold">
+                    ({alreadyPublishedCount} jadwal lama sudah terbit &amp; aman dilewati)
+                  </span>
+                )}
+              </span>
+            ) : alreadyPublishedCount > 0 ? (
+              <span className="text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
+                <CheckCircle2 size={14} /> Seluruh {alreadyPublishedCount} jadwal di matriks sudah aktif diterbitkan (Aman &amp; Idempoten)
+              </span>
+            ) : (
+              <span>Pilih mata pelajaran pada slot matriks di atas untuk memulai</span>
+            )}
+          </div>
         </div>
 
         <Button
           type="button"
           variant="primary"
           size="sm"
-          disabled={totalSlotsFilled === 0 || bulkCreateMutation.isPending}
+          disabled={totalSlotsFilled === 0 || newGeneratedCount === 0 || bulkCreateMutation.isPending}
           onClick={() => bulkCreateMutation.mutate()}
-          className="text-xs h-9 px-5 font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs cursor-pointer"
+          className={cn(
+            'text-xs h-9 px-5 font-bold shadow-2xs transition-all cursor-pointer',
+            newGeneratedCount === 0 && alreadyPublishedCount > 0
+              ? 'bg-emerald-600 text-white opacity-90 cursor-not-allowed'
+              : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+          )}
         >
-          <Sparkles size={14} className="mr-1.5" />
-          <span>
-            {bulkCreateMutation.isPending
-              ? 'Menerbitkan...'
-              : `Terbitkan ${estimatedGeneratedCount} Jadwal Ujian Massal`}
-          </span>
+          {bulkCreateMutation.isPending ? (
+            'Menerbitkan...'
+          ) : newGeneratedCount > 0 ? (
+            <>
+              <Sparkles size={14} className="mr-1.5" />
+              <span>Terbitkan {newGeneratedCount} Jadwal Baru</span>
+            </>
+          ) : alreadyPublishedCount > 0 ? (
+            <>
+              <CheckCircle2 size={14} className="mr-1.5" />
+              <span>Semua Jadwal Sudah Terbit (Idempoten)</span>
+            </>
+          ) : (
+            <>
+              <Sparkles size={14} className="mr-1.5" />
+              <span>Terbitkan 0 Jadwal</span>
+            </>
+          )}
         </Button>
       </div>
     </Card>

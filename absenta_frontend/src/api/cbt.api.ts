@@ -162,7 +162,12 @@ export const cbtApi = {
 
   bulkCreateJadwal: async (items: Array<Partial<CbtJadwalUjian>>) => {
     const res = await api.post('/cbt/jadwal/bulk-create', { items });
-    return res.data?.data as { created_count: number; items: CbtJadwalUjian[] };
+    return res.data?.data as {
+      created_count: number;
+      skipped_count?: number;
+      message?: string;
+      items: CbtJadwalUjian[];
+    };
   },
 
   bulkUpdatePlotting: async (
