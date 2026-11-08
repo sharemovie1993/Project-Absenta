@@ -939,101 +939,21 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
               </Suspense>
             )}
 
-            {/* SUB-TAB 6A: MEJA PENGAWAS & PROKTOR UJIAN CBT (ADAPTIF - HANYA MUNCUL JIKA TERPLOTING) */}
+            {/* SUB-TAB 6A: MEJA PENGAWAS & PROKTOR UJIAN CBT (FOKUS FUNGSI - ZERO NOISE) */}
             {activeSubTab === 'pengawas_cbt' && isPengawasCbt && (
-              <div className="space-y-4">
-                <div className="p-4 bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-300/80 dark:border-emerald-800/70 rounded-2xl shadow-xs space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs shrink-0 relative">
-                        <Eye size={20} />
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-300 animate-ping absolute -top-0.5 -right-0.5" />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-black text-emerald-950 dark:text-emerald-100 flex items-center gap-2">
-                          <span>Meja Pengawas &amp; Proktor Ujian CBT</span>
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-600 text-white animate-pulse">
-                            TUGAS AKTIF
-                          </span>
-                        </h4>
-                        <p className="text-xs text-emerald-800/80 dark:text-emerald-300/80">
-                          Anda terdaftar sebagai Pengawas Ruang / Proktor pada{' '}
-                          <strong>{myPengawasCbtData?.length ?? 0} sesi ujian</strong>. Anda memiliki akses penuh ke
-                          Token Masuk, Aktivasi Sesi, Live Monitoring, Reset Login Siswa, &amp; Cetak Berita Acara.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Daftar Kartu Sesi Ujian yang Diploting kepada Guru Ini */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                    {(myPengawasCbtData || []).map((sesi) => {
-                      const activeTargetId =
-                        selectedPengawasJadwalId || (myPengawasCbtData && myPengawasCbtData[0]?.id);
-                      const isSelected = activeTargetId === sesi.id;
-                      const isRoleProktor =
-                        sesi.setting_keamanan?.proktor_id === effectiveGuruId ||
-                        sesi.setting_keamanan?.pengawas_2_id === effectiveGuruId;
-                      const jamMulai = formatLocalTimeFromISO(sesi.tanggal_mulai);
-                      const jamSelesai = formatLocalTimeFromISO(sesi.tanggal_selesai);
-
-                      return (
-                        <button
-                          key={sesi.id}
-                          type="button"
-                          onClick={() => setSelectedPengawasJadwalId(sesi.id)}
-                          className={cn(
-                            'p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-3',
-                            isSelected
-                              ? 'bg-white dark:bg-slate-900 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
-                              : 'bg-white/70 dark:bg-slate-900/60 border-emerald-200/80 dark:border-emerald-900/60 hover:bg-white'
-                          )}
-                        >
-                          <div className="min-w-0 space-y-1">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
-                                {sesi.nama_sesi}
-                              </span>
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
-                                {isRoleProktor ? 'Proktor' : 'Pengawas Ruang'}
-                              </span>
-                            </div>
-                            <div className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">
-                              {sesi.BankSoal?.Mapel?.nama_mapel || sesi.BankSoal?.MataPelajaran?.nama_mapel || 'Mapel'}
-                              {sesi.setting_keamanan?.ruang_ujian ? (
-                                <span className="text-slate-600 dark:text-slate-300 ml-1.5 inline-flex items-center gap-0.5">
-                                  • <MapPin size={10} /> {sesi.setting_keamanan.ruang_ujian}
-                                </span>
-                              ) : null}
-                            </div>
-                            <div className="text-[10px] text-slate-500">
-                              Jam: {jamMulai}–{jamSelesai} • Status: <strong>{sesi.status}</strong>
-                            </div>
-                          </div>
-
-                          <div className="shrink-0 text-right">
-                            <div className="text-[10px] uppercase font-bold text-slate-400">Token</div>
-                            <div className="font-mono text-sm font-black tracking-widest text-emerald-700 dark:text-emerald-400">
-                              {sesi.token_ujian}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
+              <div className="space-y-4 pb-20 sm:pb-8">
                 <Suspense
                   fallback={
                     <div className="p-12 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-col items-center justify-center gap-3">
                       <Loader className="animate-spin text-emerald-600" size={32} />
-                      <p className="text-xs text-slate-500 font-semibold">Memuat Layar Monitoring Pengawas CBT...</p>
+                      <p className="text-xs text-slate-500 font-semibold">Memuat Layar Pengawas CBT...</p>
                     </div>
                   }
                 >
                   <CbtProctorMonitoringView
                     initialJadwalId={selectedPengawasJadwalId || myPengawasCbtData?.[0]?.id}
                     guruId={effectiveGuruId}
+                    myPengawasData={myPengawasCbtData}
                   />
                 </Suspense>
               </div>
