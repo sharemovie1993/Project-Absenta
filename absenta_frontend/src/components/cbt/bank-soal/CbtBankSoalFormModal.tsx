@@ -781,9 +781,6 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                         : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
                     )}
                   >
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
-                    )}
-                  >
                     Pribadi
                   </button>
                 </div>
