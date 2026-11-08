@@ -344,8 +344,8 @@ export function resolveMapelShortCode(mapelLabel: string, rawMapel?: any): strin
 
   // Matematika
   if (lower.includes('matematika') || lower.includes('mtk')) {
-    if (lower.includes('lanjut') || lower.includes('peminatan')) return 'MAT-LANJUT';
-    return 'MAT';
+    if (lower.includes('lanjut') || lower.includes('peminatan')) return 'MTK-LANJUT';
+    return 'MTK';
   }
 
   // Sains & IPAS
