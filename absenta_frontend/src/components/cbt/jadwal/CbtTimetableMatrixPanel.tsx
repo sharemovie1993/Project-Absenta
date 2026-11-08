@@ -75,6 +75,15 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
     return map;
   }, [bankList]);
 
+  // Kumpulan ID bank soal yang sedang terpasang di dalam slot matriks
+  const usedBankIdsInMatrix = useMemo(() => {
+    const set = new Set<string>();
+    Object.values(matrix).forEach((bankId) => {
+      if (bankId) set.add(bankId);
+    });
+    return set;
+  }, [matrix]);
+
   const handleSelectBankSoal = (dayIdx: number, sessIdx: number, tingkat: number, bankId: string) => {
     const key = `${dayIdx}_${sessIdx}_${tingkat}`;
     setMatrix((prev) => {
@@ -302,14 +311,33 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                 <thead>
                   <tr className="bg-slate-50/50 dark:bg-slate-800/40 border-b border-slate-200/60 dark:border-slate-800 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     <th className="p-3 w-40 min-w-[140px]">Sesi &amp; Jam</th>
-                    {activeTingkatList.map((tingkat) => (
-                      <th key={tingkat} className="p-3 min-w-[220px]">
-                        Tingkat {formatTingkatRomawi(tingkat)} (Kelas {tingkat})
-                        <div className="text-[10px] text-indigo-600 normal-case font-semibold">
-                          {groupedRoomsByTingkat.get(tingkat)?.length || 0} Rombel
-                        </div>
-                      </th>
-                    ))}
+                    {activeTingkatList.map((tingkat) => {
+                      const slottedCount = Object.keys(matrix).filter(
+                        (k) => k.endsWith(`_${tingkat}`) && Boolean(matrix[k])
+                      ).length;
+                      const totalBanks = banksByTingkat.get(tingkat)?.length || 0;
+
+                      return (
+                        <th key={tingkat} className="p-3 min-w-[220px]">
+                          Tingkat {formatTingkatRomawi(tingkat)} (Kelas {tingkat})
+                          <div className="flex items-center gap-1.5 mt-0.5 text-[10px] normal-case font-semibold">
+                            <span className="text-indigo-600 dark:text-indigo-400">
+                              {groupedRoomsByTingkat.get(tingkat)?.length || 0} Rombel
+                            </span>
+                            <span className="text-slate-300 dark:text-slate-600">&bull;</span>
+                            <span
+                              className={cn(
+                                slottedCount >= totalBanks && totalBanks > 0
+                                  ? 'text-emerald-600 dark:text-emerald-400 font-bold'
+                                  : 'text-slate-500 dark:text-slate-400'
+                              )}
+                            >
+                              {slottedCount}/{totalBanks} Soal Terplot
+                            </span>
+                          </div>
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -331,7 +359,17 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                       {activeTingkatList.map((tingkat) => {
                         const matrixKey = `${day.day_index}_${sess.session_index}_${tingkat}`;
                         const selectedBankId = matrix[matrixKey] || '';
-                        const availableBanks = banksByTingkat.get(tingkat) || [];
+                        const allBanksForTingkat = banksByTingkat.get(tingkat) || [];
+
+                        // Filter: Jangan tampilkan bank soal yang sudah dimasukkan ke slot lain
+                        const availableBanks = allBanksForTingkat.filter((b) => {
+                          if (b.id === selectedBankId) return true;
+                          if (usedBankIdsInMatrix.has(b.id)) return false;
+                          return true;
+                        });
+
+                        const isAllPlotted =
+                          !selectedBankId && availableBanks.length === 0 && allBanksForTingkat.length > 0;
 
                         return (
                           <td key={tingkat} className="p-2.5 align-top">
@@ -341,14 +379,21 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                                 handleSelectBankSoal(day.day_index, sess.session_index, tingkat, e.target.value)
                               }
                               aria-label={`Bank Soal ${day.nama_hari} ${sess.nama_sesi} Tingkat ${tingkat}`}
+                              disabled={isAllPlotted}
                               className={cn(
                                 'w-full px-2.5 py-1.5 text-xs rounded-xl border font-semibold transition-all cursor-pointer',
                                 selectedBankId
                                   ? 'bg-indigo-50 text-indigo-900 border-indigo-300 dark:bg-indigo-950/40 dark:text-indigo-200 dark:border-indigo-700'
+                                  : isAllPlotted
+                                  ? 'bg-slate-50 dark:bg-slate-800/50 text-slate-400 border-slate-200 dark:border-slate-800 cursor-not-allowed'
                                   : 'bg-white dark:bg-slate-900 text-slate-600 border-slate-200 dark:border-slate-700'
                               )}
                             >
-                              <option value="">— Belum Dijadwalkan —</option>
+                              <option value="">
+                                {isAllPlotted
+                                  ? '— Semua Soal Sudah Terplot —'
+                                  : '— Belum Dijadwalkan —'}
+                              </option>
                               {availableBanks.map((b) => (
                                 <option key={b.id} value={b.id}>
                                   {b.Mapel?.nama_mapel || b.MataPelajaran?.nama_mapel || b.judul} (
