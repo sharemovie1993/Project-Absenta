@@ -25,6 +25,7 @@ import { cbtApi } from '@/api/cbt.api';
 import { cbtOfflineStorage, LocalAnswerRecord } from '@/utils/cbtOfflineStorage';
 import type { CbtSoal, CbtStudentAnswerItem } from '@/types/cbt.types';
 import { CbtContentRenderer } from '@/components/cbt/common/CbtContentRenderer';
+import { CbtOptionsRenderer } from '@/components/cbt/common/CbtOptionsRenderer';
 import { ErrorBoundary as InfraErrorBoundary } from '@/components/common/ErrorBoundary';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
@@ -586,52 +587,19 @@ export default function CbtExamRoomPage() {
                 />
               </div>
 
-              {/* 5 Opsi Pilihan Jawaban */}
-              <div className="space-y-3">
+              {/* Pilihan Jawaban A-E (Auto-Adaptive: Grid 1 Baris, 2 Kolom, atau 1 Kolom Penuh) */}
+              <div className="space-y-2.5">
                 <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
                   PILIHAN JAWABAN:
                 </span>
 
-                {currentSoal.opsi_jawaban_json?.map((opt) => {
-                  const isSelected = currentAnswer === opt.kode;
-                  return (
-                    <div
-                      key={opt.kode}
-                      onClick={() => handleSelectAnswer(currentSoal.id, opt.kode)}
-                      className={`p-4 rounded-xl border flex items-start gap-3.5 cursor-pointer transition-all duration-150 ${
-                        isSelected
-                          ? 'border-indigo-500 bg-indigo-600/15 shadow-md'
-                          : 'border-slate-800 bg-slate-900/60 hover:border-slate-700 hover:bg-slate-900'
-                      }`}
-                    >
-                      <div
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm shrink-0 transition-colors ${
-                          isSelected
-                            ? 'bg-indigo-600 text-white shadow-sm'
-                            : 'bg-slate-800 text-slate-300'
-                        }`}
-                      >
-                        {opt.kode}
-                      </div>
-
-                      <div className="flex-1 min-w-0 pt-1 space-y-2">
-                        {(opt.teks?.trim() || !opt.gambar_url) && (
-                          <p className="text-sm font-medium text-slate-200 leading-relaxed">
-                            {opt.teks || '-'}
-                          </p>
-                        )}
-                        {opt.gambar_url && (
-                          <img
-                            src={opt.gambar_url}
-                            alt={`Opsi ${opt.kode}`}
-                            decoding="async"
-                            className="max-h-36 object-contain rounded-lg border border-slate-700 bg-white/95 p-1"
-                          />
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                <CbtOptionsRenderer
+                  options={currentSoal.opsi_jawaban_json}
+                  selectedAnswer={currentAnswer}
+                  onSelectAnswer={(kode) => handleSelectAnswer(currentSoal.id, kode)}
+                  modeContext="exam"
+                  readOnly={false}
+                />
               </div>
 
               {/* Bottom Navigasi Tombol */}

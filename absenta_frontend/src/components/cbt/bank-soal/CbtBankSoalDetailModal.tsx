@@ -9,14 +9,13 @@ import {
   Edit2,
   Trash2,
   BookOpen,
-  CheckCircle2,
-  Check,
   X,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtBankSoal, CbtSoal } from '@/types/cbt.types';
 import { CbtContentRenderer } from '../common/CbtContentRenderer';
+import { CbtOptionsRenderer } from '../common/CbtOptionsRenderer';
 import { CbtInlineSoalCard } from './CbtSoalEditorModal';
 import useConfirm from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
@@ -279,64 +278,14 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                         imageAlt={`Stimulus Soal No ${soal.nomor_urut}`}
                       />
 
-                      {/* Daftar Opsi Jawaban A-E */}
-                      <div className="space-y-1.5 pt-1">
-                        {soal.opsi_jawaban_json?.map((opt) => {
-                          const isCorrectKey = soal.kunci_jawaban === opt.kode;
-                          return (
-                            <div
-                              key={opt.kode}
-                              className={cn(
-                                'p-2 rounded-xl border flex items-start gap-2.5 transition-all',
-                                isCorrectKey
-                                  ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30'
-                                  : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900'
-                              )}
-                            >
-                              <div
-                                className={cn(
-                                  'w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 mt-0.5',
-                                  isCorrectKey
-                                    ? 'bg-emerald-600 text-white'
-                                    : 'border border-slate-300 dark:border-slate-600 text-slate-600'
-                                )}
-                              >
-                                {isCorrectKey ? <Check size={12} /> : opt.kode}
-                              </div>
-
-                              <div className="flex-1 min-w-0 space-y-1">
-                                {(opt.teks?.trim() || !opt.gambar_url) && (
-                                  <p
-                                    className={cn(
-                                      'text-xs leading-relaxed',
-                                      isCorrectKey
-                                        ? 'text-emerald-950 dark:text-emerald-200 font-bold'
-                                        : 'text-slate-700 dark:text-slate-300 font-medium'
-                                    )}
-                                  >
-                                    {opt.teks || '-'}
-                                  </p>
-                                )}
-                                {opt.gambar_url && (
-                                  <img
-                                    src={opt.gambar_url}
-                                    alt={`Opsi ${opt.kode}`}
-                                    decoding="async"
-                                    className="h-14 w-auto object-contain rounded-lg border border-slate-200 bg-white p-1"
-                                  />
-                                )}
-                              </div>
-
-                              {isCorrectKey && (
-                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200 shrink-0 flex items-center gap-1">
-                                  <CheckCircle2 size={11} />
-                                  <span>Kunci</span>
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
+                      {/* Daftar Opsi Jawaban A-E (Auto-Adaptive: Grid 1 Baris, 2 Kolom, atau 1 Kolom Penuh) */}
+                      <CbtOptionsRenderer
+                        options={soal.opsi_jawaban_json}
+                        kunciJawaban={soal.kunci_jawaban}
+                        modeContext="preview"
+                        readOnly={true}
+                        className="pt-1"
+                      />
 
                       {soal.pembahasan && (
                         <div className="p-2.5 bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-900/40 rounded-xl text-xs">
