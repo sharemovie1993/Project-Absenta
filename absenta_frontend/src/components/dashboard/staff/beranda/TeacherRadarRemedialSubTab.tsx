@@ -184,37 +184,6 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
     toast.success(`${remedialList.length} data remedial berhasil disalin ke clipboard!`);
   };
 
-  return (
-    <div className={`space-y-4 ${className || ''}`}>
-      {/* ─── Header Banner Radar Remedial ─── */}
-      <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-500/10 via-amber-500/5 to-purple-500/10 border border-rose-200/80 dark:border-rose-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-500 text-white flex items-center justify-center shrink-0 shadow-md">
-            <Radio size={20} className="animate-pulse" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm sm:text-base">
-                {headerTitle}
-              </h3>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 uppercase tracking-wide">
-                {headerBadge}
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              {headerDesc}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-xs font-bold text-emerald-700 dark:text-emerald-300 shadow-2xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            {activeSemester?.nama || 'Semester Ganjil'} {activeYear?.nama || ''}
-          </span>
-        </div>
-      </div>
-
   // ─── Bento Grid 4 Sel Garis Rambut (Standar Shopee-Grade UI) ───
   const bentoCells: HubBentoCell[] = useMemo(() => [
     {
@@ -285,6 +254,35 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
 
   return (
     <div className={`space-y-4 ${className || ''}`}>
+      {/* ─── Header Banner Radar Remedial (Desktop only, di mobile hemat ruang) ─── */}
+      <div className="hidden sm:flex p-4 rounded-2xl bg-gradient-to-r from-rose-500/10 via-amber-500/5 to-purple-500/10 border border-rose-200/80 dark:border-rose-900/50 flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-500 text-white flex items-center justify-center shrink-0 shadow-md">
+            <Radio size={20} className="animate-pulse" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm sm:text-base">
+                {headerTitle}
+              </h3>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 uppercase tracking-wide">
+                {headerBadge}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {headerDesc}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-xs font-bold text-emerald-700 dark:text-emerald-300 shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            {activeSemester?.nama || 'Semester Ganjil'} {activeYear?.nama || ''}
+          </span>
+        </div>
+      </div>
+
       {/* ─── Bento Grid 4 Sel Garis Rambut (Standar Shopee UI) ─── */}
       <HubCard noPadding>
         <HubBentoGrid cells={bentoCells} columns={4} />
