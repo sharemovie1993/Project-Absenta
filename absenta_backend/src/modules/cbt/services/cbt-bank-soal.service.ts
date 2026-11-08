@@ -699,6 +699,13 @@ export class CbtBankSoalService {
     const formDesc = String(parsedData[1]?.[0] || '').trim();
     const rawQuestions = Array.isArray(parsedData[1]?.[1]) ? parsedData[1][1] : [];
 
+    const IDENTITY_TITLES = [
+      'nama', 'nama lengkap', 'nama siswa', 'nama peserta',
+      'kelas', 'rombel', 'tingkat', 'jurusan',
+      'nomor absen', 'no absen', 'absen', 'no urut',
+      'nis', 'nisn', 'token', 'email', 'alamat email'
+    ];
+
     const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
     const parsedQuestions: Array<{
       nomor_urut: number;
@@ -719,8 +726,8 @@ export class CbtBankSoalService {
       const desc = item[2] || '';
       const fieldType = item[3];
 
-      // Lewati section header (type 6 atau 8) atau item tanpa teks pertanyaan
-      if (!title || fieldType === 6 || fieldType === 8) {
+      // Lewati section header (type 6 atau 8)
+      if (fieldType === 6 || fieldType === 8) {
         continue;
       }
 
@@ -744,16 +751,32 @@ export class CbtBankSoalService {
         })
         .filter((txt: string) => txt.length > 0 && txt !== '__other_option__');
 
-      // Ambil stimulus gambar jika ada
+      // Filter otomatis field identitas responden (Nama, Kelas, No Absen, dsb) tanpa opsi pilihan ganda
+      const lowerTitle = String(title || '').trim().toLowerCase();
+      if (cleanedOptions.length === 0 && IDENTITY_TITLES.includes(lowerTitle)) {
+        continue;
+      }
+
+      // Ambil stimulus gambar jika ada (dari item[6] atau item[9] Google Forms image array)
       let stimulusImage: string | null = null;
       if (item[6] && typeof item[6] === 'string' && item[6].startsWith('http')) {
         stimulusImage = item[6];
       } else if (Array.isArray(item[6]) && typeof item[6][0] === 'string') {
         stimulusImage = item[6][0];
+      } else if (item[9] && Array.isArray(item[9]) && item[9][0]) {
+        const imgId = item[9][0][0];
+        if (imgId && typeof imgId === 'string') {
+          stimulusImage = `https://lh3.googleusercontent.com/d/${imgId}`;
+        }
       }
 
+      // Jika judul pertanyaan kosong (misal guru menyisipkan formula matematika murni sebagai gambar), beri penomoran default
+      const finalTitle = title && String(title).trim().length > 0
+        ? String(title).trim()
+        : `Soal Nomor ${questionIndex}`;
+
       // Gabungkan deskripsi jika ada
-      const questionContent = desc ? `${String(title).trim()}\n\n${String(desc).trim()}` : String(title).trim();
+      const questionContent = desc ? `${finalTitle}\n\n${String(desc).trim()}` : finalTitle;
 
       // Format opsi ke JSON A, B, C, D, ...
       const opsiJson = cleanedOptions.length >= 2
