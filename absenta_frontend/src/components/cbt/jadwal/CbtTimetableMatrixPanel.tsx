@@ -50,7 +50,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
   const queryClient = useQueryClient();
   const { jenjang } = useJenjang();
 
-  const [eventPrefix, setEventPrefix] = useState('SAS Ganjil');
+  const [eventPrefix, setEventPrefix] = useState('PSAS Ganjil');
   const [generationMode, setGenerationMode] = useState<'per_rombel_ruang' | 'per_tingkat'>('per_rombel_ruang');
   const [days, setDays] = useState<ExamDayConfig[]>(() => createDefaultExamDays(defaultTodayStr, 5));
   const [matrix, setMatrix] = useState<TimetableMatrixState>({});

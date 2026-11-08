@@ -714,7 +714,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                   id="form-judul-bank"
                   value={judul}
                   onChange={(e) => setJudul(e.target.value)}
-                  placeholder="Contoh: SAS Ganjil - Matematika Tingkat X"
+                  placeholder="Contoh: PSAS Ganjil - Matematika Tingkat X"
                   aria-label="Judul Bank Soal"
                   required
                 />

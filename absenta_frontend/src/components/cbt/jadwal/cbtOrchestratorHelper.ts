@@ -239,6 +239,13 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
   const roomMapByKelasId = new Map(roomMappings.map((m) => [m.kelas_id, m]));
   const groupedRoomsByTingkat = groupMappingsByTingkat(roomMappings);
 
+  // Standardisasi Nomenklatur: Ganti SAS/SAT/STS menjadi PSAS/PSAT/PSTS sesuai regulasi asesmen sumatif
+  const rawPrefix = (eventPrefix || 'PSAS Ganjil').trim();
+  const normalizedPrefix = rawPrefix
+    .replace(/^SAS\b/i, 'PSAS')
+    .replace(/^SAT\b/i, 'PSAT')
+    .replace(/^STS\b/i, 'PSTS');
+
   const payloads: any[] = [];
 
   days.forEach((day) => {
@@ -270,7 +277,7 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
               bank_soal_id: bank.id,
               tahun_pelajaran_id: activeTpId,
               semester_id: activeSemId,
-              nama_sesi: `${eventPrefix} - ${mapelName} (${cls.nama_kelas} - ${slotRuang})`,
+              nama_sesi: `${normalizedPrefix} - ${mapelName} (${cls.nama_kelas} - ${slotRuang})`,
               tanggal_mulai: startIso,
               tanggal_selesai: endIso,
               durasi_menit: session.durasi_menit || bank.alokasi_menit || 90,
@@ -295,7 +302,7 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
             bank_soal_id: bank.id,
             tahun_pelajaran_id: activeTpId,
             semester_id: activeSemId,
-            nama_sesi: `${eventPrefix} - ${mapelName} (Tingkat ${tingkat} - ${session.nama_sesi})`,
+            nama_sesi: `${normalizedPrefix} - ${mapelName} (Tingkat ${tingkat} - ${session.nama_sesi})`,
             tanggal_mulai: startIso,
             tanggal_selesai: endIso,
             durasi_menit: session.durasi_menit || bank.alokasi_menit || 90,
