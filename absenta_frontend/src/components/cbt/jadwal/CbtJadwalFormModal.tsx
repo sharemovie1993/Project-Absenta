@@ -156,7 +156,6 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
   const [ruangUjian, setRuangUjian] = useState('');
   const [pengawas1Id, setPengawas1Id] = useState('');
   const [proktorId, setProktorId] = useState('');
-  const [showCustomProctor, setShowCustomProctor] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Konteks Mode Guru Mandiri vs Panitia/Admin
@@ -652,146 +651,53 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
               )}
             </div>
 
-            {/* Ploting Ruang & Pengawas / Proktor (Adaptif Berdasarkan Konteks Guru Mandiri vs Orkestrasi Panitia) */}
-            {isTeacherMode ? (
-              <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-violet-500/10 via-indigo-500/10 to-violet-500/5 border border-violet-200/80 dark:border-violet-900/50 space-y-2.5 shadow-2xs">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-xl bg-violet-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
-                        <ShieldCheck size={16} />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-violet-700 dark:text-violet-300">
-                            Pengawasan Mandiri Guru
-                          </span>
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-violet-100 text-violet-800 dark:bg-violet-900/60 dark:text-violet-200">
-                            Otomatis
-                          </span>
-                        </div>
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate mt-0.5">
-                          {pengawas1Obj?.nama_guru || currentTeacherName}
-                        </h4>
-                      </div>
+            {/* Ploting Ruang & Pengawas / Proktor (Hanya Muncul untuk Mode Panitia / Kurikulum / Super Admin) */}
+            {!isTeacherMode && (
+              selectedCount > 1 ? (
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/70 flex items-start gap-2.5">
+                  <div className="p-1.5 rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 shrink-0 mt-0.5">
+                    <Layers size={14} />
+                  </div>
+                  <div className="text-xs space-y-0.5 min-w-0">
+                    <div className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 flex-wrap">
+                      <span>Ujian Serentak Multi-Kelas ({selectedCount} Rombel)</span>
+                      <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-800">
+                        Paralel
+                      </span>
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setShowCustomProctor((prev) => !prev)}
-                      className="px-2.5 py-1 text-xs font-bold rounded-xl border border-violet-200 dark:border-violet-700 bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-slate-800 transition-all cursor-pointer shrink-0 shadow-2xs"
-                    >
-                      {showCustomProctor ? 'Tutup Pengaturan' : 'Sesuaikan Ruang / Pengawas'}
-                    </button>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
+                      Ploting slot ruang fisik (<span className="font-mono font-semibold text-slate-700 dark:text-slate-300">R.01 s/d R.{String(selectedCount).padStart(2, '0')}</span>) &amp; guru pengawas diatur terpusat melalui <strong>Meja Orkestrasi CBT</strong>.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+                  <div className="space-y-1">
+                    <label htmlFor="jadwal-ruang" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                      Di ruang / kelas mana ujian berlangsung? <span className="font-normal text-slate-400">(Opsional)</span>
+                    </label>
+                    <Input id="jadwal-ruang" value={ruangUjian} onChange={(e) => setRuangUjian(e.target.value)} placeholder="Contoh: Ruang 10 / Lab Komputer" aria-label="Ruang atau Kelas Ujian" />
                   </div>
 
-                  {/* Status Strip Ringkas */}
-                  <div className="flex items-center gap-2.5 text-[11px] text-slate-600 dark:text-slate-300 pt-1.5 border-t border-violet-200/60 dark:border-violet-800/60 flex-wrap">
-                    <span className="flex items-center gap-1">
-                      <span className="text-slate-400">📍 Ruang:</span>
-                      <strong>
-                        {ruangUjian.trim() || (selectedCount > 1 ? 'Multi-Ruang Kelas' : (firstSelectedClass ? `Kelas ${firstSelectedClass.nama_kelas}` : 'Ruang Kelas Siswa'))}
-                      </strong>
-                    </span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1">
-                      <span className="text-slate-400">👥 Proktor:</span>
-                      <strong>{proktorObj?.nama_guru || 'Mandiri (Anda Sendiri)'}</strong>
-                    </span>
-                  </div>
-
-                  {/* Form Kustomisasi Ruang & Pengawas (Hanya tampil saat guru klik Sesuaikan) */}
-                  {showCustomProctor && (
-                    <div className="space-y-2.5 pt-2.5 mt-1 border-t border-violet-200/80 dark:border-violet-800/80">
-                      <div className="space-y-1">
-                        <label htmlFor="jadwal-ruang" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                          Nama Ruang / Lokasi Fisik <span className="font-normal text-slate-400">(Opsional)</span>
-                        </label>
-                        <Input
-                          id="jadwal-ruang"
-                          value={ruangUjian}
-                          onChange={(e) => setRuangUjian(e.target.value)}
-                          placeholder={selectedCount > 1 ? 'Multi-Ruang Kelas' : (firstSelectedClass ? `Kelas ${firstSelectedClass.nama_kelas}` : 'Contoh: Lab Komputer 1')}
-                          aria-label="Ruang atau Kelas Ujian"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        <div className="space-y-1 min-w-0">
-                          <label htmlFor="jadwal-pengawas-1" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                            Ganti Pengawas Utama
-                          </label>
-                          <SearchableSelect
-                            id="jadwal-pengawas-1"
-                            options={pengawasSelectOptions}
-                            value={pengawas1Id}
-                            onChange={setPengawas1Id}
-                            placeholder="Pilih Guru Pengawas..."
-                            aria-label="Pilih Pengawas Ruang"
-                          />
-                        </div>
-                        <div className="space-y-1 min-w-0">
-                          <label htmlFor="jadwal-proktor" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                            Proktor / Pengawas 2 <span className="font-normal text-slate-400">(Opsional)</span>
-                          </label>
-                          <SearchableSelect
-                            id="jadwal-proktor"
-                            options={pengawasSelectOptions}
-                            value={proktorId}
-                            onChange={setProktorId}
-                            placeholder="Kosongkan jika cukup 1 pengawas..."
-                            aria-label="Pilih Proktor Ujian"
-                          />
-                        </div>
-                      </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div className="space-y-1 min-w-0">
+                      <label htmlFor="jadwal-pengawas-1" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                        Siapa Pengawas Ruang / Kelas?
+                      </label>
+                      <SearchableSelect id="jadwal-pengawas-1" options={pengawasSelectOptions} value={pengawas1Id} onChange={setPengawas1Id} placeholder="Pilih Guru Pengawas..." aria-label="Pilih Pengawas Ruang" />
                     </div>
-                  )}
-                </div>
-              </div>
-            ) : selectedCount > 1 ? (
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/70 flex items-start gap-2.5">
-                <div className="p-1.5 rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 shrink-0 mt-0.5">
-                  <Layers size={14} />
-                </div>
-                <div className="text-xs space-y-0.5 min-w-0">
-                  <div className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 flex-wrap">
-                    <span>Ujian Serentak Multi-Kelas ({selectedCount} Rombel)</span>
-                    <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-800">
-                      Paralel
-                    </span>
+                    <div className="space-y-1 min-w-0">
+                      <label htmlFor="jadwal-proktor" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                        Proktor / Pengawas 2 <span className="font-normal text-slate-400">(Opsional)</span>
+                      </label>
+                      <SearchableSelect id="jadwal-proktor" options={pengawasSelectOptions} value={proktorId} onChange={setProktorId} placeholder="Kosongkan jika cukup 1 pengawas..." aria-label="Pilih Proktor Ujian" />
+                    </div>
                   </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
-                    Ploting slot ruang fisik (<span className="font-mono font-semibold text-slate-700 dark:text-slate-300">R.01 s/d R.{String(selectedCount).padStart(2, '0')}</span>) &amp; guru pengawas diatur terpusat melalui <strong>Meja Orkestrasi CBT</strong>.
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    💡 Guru yang di-plot sebagai <strong>Pengawas</strong> otomatis mendapatkan akses Token, Monitoring, Reset Login, & Berita Acara.
                   </p>
                 </div>
-              </div>
-            ) : (
-              <div className="space-y-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
-                <div className="space-y-1">
-                  <label htmlFor="jadwal-ruang" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                    Di ruang / kelas mana ujian berlangsung? <span className="font-normal text-slate-400">(Opsional)</span>
-                  </label>
-                  <Input id="jadwal-ruang" value={ruangUjian} onChange={(e) => setRuangUjian(e.target.value)} placeholder="Contoh: Ruang 10 / Lab Komputer" aria-label="Ruang atau Kelas Ujian" />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div className="space-y-1 min-w-0">
-                    <label htmlFor="jadwal-pengawas-1" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                      Siapa Pengawas Ruang / Kelas?
-                    </label>
-                    <SearchableSelect id="jadwal-pengawas-1" options={pengawasSelectOptions} value={pengawas1Id} onChange={setPengawas1Id} placeholder="Pilih Guru Pengawas..." aria-label="Pilih Pengawas Ruang" />
-                  </div>
-                  <div className="space-y-1 min-w-0">
-                    <label htmlFor="jadwal-proktor" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                      Proktor / Pengawas 2 <span className="font-normal text-slate-400">(Opsional)</span>
-                    </label>
-                    <SearchableSelect id="jadwal-proktor" options={pengawasSelectOptions} value={proktorId} onChange={setProktorId} placeholder="Kosongkan jika cukup 1 pengawas..." aria-label="Pilih Proktor Ujian" />
-                  </div>
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  💡 Guru yang di-plot sebagai <strong>Pengawas</strong> otomatis mendapatkan akses Token, Monitoring, Reset Login, & Berita Acara.
-                </p>
-              </div>
+              )
             )}
           </div>
         ) : (
