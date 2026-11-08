@@ -10,7 +10,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CbtBankSoal } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
-import { Layers, User, Sparkles, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Layers, User, Sparkles, ArrowRight, ArrowLeft, CheckCircle2, Users } from 'lucide-react';
 import {
   type CbtBankSoalScope,
   getOfficialAsesmenTypes,
@@ -383,7 +383,13 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={bankSoalToEdit ? 'Edit Paket Bank Soal' : 'Buat Paket Bank Soal'}
+      title={
+        bankSoalToEdit
+          ? 'Edit Paket Bank Soal'
+          : scope === 'TERPUSAT_MASSAL'
+          ? 'Buat Master Bank Soal MGMP (Ujian Bersama)'
+          : 'Buat Bank Soal Mandiri'
+      }
       size="lg"
     >
       {/* ── Stepper Ramping & Bersih ── */}
@@ -411,7 +417,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
           >
             {step > 1 ? '✓' : '1'}
           </span>
-          <span>Sasaran Asesmen</span>
+          <span>1. Sasaran &amp; Rekan MGMP</span>
         </button>
 
         <button
@@ -433,41 +439,48 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
           >
             2
           </span>
-          <span>Identitas &amp; Waktu</span>
+          <span>2. Identitas &amp; Waktu</span>
         </button>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3.5">
         {step === 1 ? (
-          /* ── TAHAP 1: KONTEKS, SASARAN, & MATA PELAJARAN ── */
+          /* ── TAHAP 1: KONTEKS, SASARAN, MATA PELAJARAN, & DISTRIBUSI MGMP ── */
           <div className="space-y-3">
             {/* 1. Konteks Penggunaan */}
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Jenis Bank Soal
+                Peruntukan Bank Soal
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => handleChangeScope('TERPUSAT_MASSAL')}
                   className={cn(
-                    'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5',
+                    'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5 relative',
                     scope === 'TERPUSAT_MASSAL'
-                      ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-600 ring-2 ring-indigo-500/20 text-indigo-950 dark:text-indigo-100'
+                      ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-600 ring-2 ring-indigo-500/20 text-indigo-950 dark:text-indigo-100 shadow-2xs'
                       : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
                   )}
                 >
                   <div
                     className={cn(
-                      'p-1.5 rounded-lg shrink-0',
-                      scope === 'TERPUSAT_MASSAL' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                      'p-2 rounded-xl shrink-0 mt-0.5',
+                      scope === 'TERPUSAT_MASSAL' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
                     )}
                   >
-                    <Layers size={16} />
+                    <Users size={16} />
                   </div>
-                  <div className="min-w-0">
-                    <div className="font-bold text-xs">Paket Massal Sekolah</div>
-                    <div className="text-[10.5px] text-slate-500 dark:text-slate-400 truncate">SAS, SAT, STS, PSAJ Serentak</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-xs">Master MGMP / Bersama</span>
+                      <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300">
+                        Ujian Orkestrasi
+                      </span>
+                    </div>
+                    <div className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">
+                      1 koordinator membuat soal untuk dibagikan ke rekan guru se-mapel &amp; tingkat
+                    </div>
                   </div>
                 </button>
 
@@ -475,23 +488,30 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                   type="button"
                   onClick={() => handleChangeScope('MANDIRI_GURU')}
                   className={cn(
-                    'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5',
+                    'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5 relative',
                     scope === 'MANDIRI_GURU'
-                      ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-600 ring-2 ring-indigo-500/20 text-indigo-950 dark:text-indigo-100'
+                      ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-600 ring-2 ring-indigo-500/20 text-indigo-950 dark:text-indigo-100 shadow-2xs'
                       : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
                   )}
                 >
                   <div
                     className={cn(
-                      'p-1.5 rounded-lg shrink-0',
-                      scope === 'MANDIRI_GURU' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                      'p-2 rounded-xl shrink-0 mt-0.5',
+                      scope === 'MANDIRI_GURU' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
                     )}
                   >
                     <User size={16} />
                   </div>
-                  <div className="min-w-0">
-                    <div className="font-bold text-xs">Mandiri Guru</div>
-                    <div className="text-[10.5px] text-slate-500 dark:text-slate-400 truncate">Ulangan harian &amp; kuis kelas</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-xs">Mandiri Guru</span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                        Internal Kelas
+                      </span>
+                    </div>
+                    <div className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">
+                      Ulangan harian, kuis &amp; latihan khusus kelas binaan Anda sendiri
+                    </div>
                   </div>
                 </button>
               </div>
@@ -648,6 +668,18 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                 })}
               </div>
             </div>
+
+            {/* 5. Target Pembagian MGMP (Langsung ditanyakan di Tahap 1) */}
+            {scope === 'TERPUSAT_MASSAL' && (
+              <CbtMgmpColleaguePicker
+                mapelId={mapelId}
+                tingkat={tingkat}
+                currentGuruId={guruId}
+                selectedIds={selectedColleagueIds}
+                onChangeSelectedIds={setSelectedColleagueIds}
+                title="Target Distribusi: Mau dibagi ke rekan guru siapa saja?"
+              />
+            )}
           </div>
         ) : (
           /* ── TAHAP 2: IDENTITAS, DURASI, & PENYUSUN SOAL ── */
@@ -752,8 +784,25 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
             </div>
 
             {/* Visibilitas & Berbagi Soal */}
-            {scope === 'MANDIRI_GURU' ? (
-              <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-slate-800">
+            {scope === 'TERPUSAT_MASSAL' ? (
+              <div className="pt-1 border-t border-slate-100 dark:border-slate-800">
+                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11.5px] text-emerald-900 dark:text-emerald-200 space-y-1">
+                  <div className="flex items-center gap-2 font-bold">
+                    <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                    <span>Master MGMP Siap Diterbitkan &amp; Terdistribusi</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-700 dark:text-emerald-300 pl-5 leading-relaxed">
+                    Paket soal otomatis berstatus <strong>PUBLISHED</strong> untuk penjadwalan terpusat sekolah.
+                    {selectedColleagueIds.length > 0 ? (
+                      <> Terdistribusi ke <strong>{selectedColleagueIds.length} rekan guru paralel</strong> yang telah Anda pilih.</>
+                    ) : (
+                      <> Siap digunakan langsung untuk rombel binaan Anda.</>
+                    )}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800">
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Visibilitas &amp; Berbagi Soal
                 </label>
@@ -784,26 +833,20 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                     Pribadi
                   </button>
                 </div>
+
+                {isShared && (
+                  <div className="pt-2">
+                    <CbtMgmpColleaguePicker
+                      mapelId={mapelId}
+                      tingkat={tingkat}
+                      currentGuruId={guruId}
+                      selectedIds={selectedColleagueIds}
+                      onChangeSelectedIds={setSelectedColleagueIds}
+                      title="Mau dibagi ke siapa saja?"
+                    />
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="pt-1 border-t border-slate-100 dark:border-slate-800">
-                <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
-                  <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
-                  <span>
-                    Paket soal massal otomatis berstatus <strong>PUBLISHED</strong> untuk penjadwalan terpusat.
-                  </span>
-                </div>
-              </div>
-            )}
-            {/* Kolaborasi MGMP Rekan Guru Paralel (Arah Push) */}
-            {(scope === 'TERPUSAT_MASSAL' || isShared) && (
-              <CbtMgmpColleaguePicker
-                mapelId={mapelId}
-                tingkat={tingkat}
-                currentGuruId={guruId}
-                selectedIds={selectedColleagueIds}
-                onChangeSelectedIds={setSelectedColleagueIds}
-              />
             )}
           </div>
         )}
@@ -849,7 +892,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               onClick={handleNextStep}
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
             >
-              <span>Lanjut ke Tahap 2</span>
+              <span>Lanjut: Identitas &amp; Waktu</span>
               <ArrowRight size={14} />
             </Button>
           ) : (
@@ -861,7 +904,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               disabled={isSubmitting}
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold cursor-pointer shadow-2xs"
             >
-              {isSubmitting ? 'Menyimpan...' : scope === 'TERPUSAT_MASSAL' ? 'Terbitkan Paket Massal' : 'Simpan Bank Soal'}
+              {isSubmitting ? 'Menyimpan...' : scope === 'TERPUSAT_MASSAL' ? 'Terbitkan Master MGMP' : 'Simpan Bank Soal'}
             </Button>
           )}
         </div>

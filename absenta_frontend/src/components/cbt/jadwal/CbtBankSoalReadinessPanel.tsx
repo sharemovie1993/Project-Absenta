@@ -215,10 +215,12 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
         } else {
           const masterBank = masterBanksByMapelTingkat.get(mtKey);
           const masterSharedIds = masterBank ? mgmpSharedMap[masterBank.id] || [] : [];
+          const hasSpecificSharing = masterSharedIds.length > 0;
           const isCovered =
             masterBank &&
-            (Boolean(masterBank.is_shared || masterBank.status === 'PUBLISHED') ||
-              masterSharedIds.includes(gId));
+            (hasSpecificSharing
+              ? masterSharedIds.includes(gId)
+              : Boolean(masterBank.is_shared || masterBank.status === 'PUBLISHED'));
 
           if (isCovered && masterBank) {
             const mCount = masterBank.jumlah_soal || masterBank._count?.Soal || 0;
