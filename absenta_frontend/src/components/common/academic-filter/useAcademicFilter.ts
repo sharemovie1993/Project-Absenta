@@ -673,9 +673,6 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     allowAllMitra,
     isKelasDisabled,
     onReset: resetFilters,
-
-    unifiedPeriodOptions,
-    onSelectUnifiedPeriod: handleSelectUnifiedPeriod,
   };
 
   return {

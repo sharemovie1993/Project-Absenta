@@ -591,18 +591,22 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
         )}
 
         {/* Floating Batch Action Bar for Multiple Selected Rooms */}
-        <DenahBatchActionBar
-          selectedCount={selectedNodeIds.length}
-          totalCount={nodes.length}
-          currentSize={currentSize}
-          onRotateAll={handleBatchRotate}
-          onFlipHAll={handleBatchFlipH}
-          onDeleteAll={handleBatchDelete}
-          onDeselectAll={() => setSelectedNodeIds([])}
-          onSelectAll={handleSelectAll}
-          onResizeStep={handleBatchResizeStep}
-          onSetSize={handleBatchSetSize}
-        />
+        {!isReadOnly && (
+          <DenahBatchActionBar
+            selectedCount={selectedNodeIds.length}
+            totalCount={nodes.length}
+            currentSize={currentSize}
+            onRotateAll={handleBatchRotate}
+            onFlipHAll={handleBatchFlipH}
+            onDeleteAll={handleBatchDelete}
+            onDeselectAll={() => setSelectedNodeIds([])}
+            onSelectAll={handleSelectAll}
+            onResizeStep={handleBatchResizeStep}
+            onSetSize={handleBatchSetSize}
+            onSave={handleSaveDenah}
+            isSaving={isSaving}
+          />
+        )}
       </div>
 
       {/* Print & PDF Modal */}

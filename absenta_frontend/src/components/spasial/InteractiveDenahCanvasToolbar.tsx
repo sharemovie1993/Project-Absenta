@@ -86,7 +86,7 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
       }`}
     >
       {/* Sisi Kiri: Toggle Panel + Identitas Denah + Switcher */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0">
         {!isReadOnly && onToggleSidebar && (
           <button
             type="button"
@@ -109,7 +109,7 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
               const sel = denahList.find((d) => d.id === e.target.value);
               if (sel) onSelectDenah(sel);
             }}
-            className="text-xs font-bold px-2 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-hidden cursor-pointer"
+            className="text-xs font-bold px-2 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-hidden cursor-pointer max-w-[130px] sm:max-w-none truncate"
           >
             {denahList.map((d) => (
               <option key={d.id} value={d.id}>
@@ -123,19 +123,19 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
               <MapPin className="w-3.5 h-3.5" />
             </span>
             <h2 className="text-xs sm:text-sm font-bold flex items-center gap-1">
-              <span>{denah.nama_denah}</span>
-              <span className="text-[11px] text-slate-400 font-normal">
+              <span className="truncate max-w-[120px] sm:max-w-none">{denah.nama_denah}</span>
+              <span className="text-[11px] text-slate-400 font-normal hidden xs:inline">
                 • Lantai {denah.lantai}
               </span>
             </h2>
           </div>
         )}
 
-        {onCreateNewDenah && (
+        {!isReadOnly && onCreateNewDenah && (
           <button
             type="button"
             onClick={onCreateNewDenah}
-            className="p-1 px-2 text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+            className="p-1 px-2 text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg transition-colors cursor-pointer flex items-center gap-1 shrink-0"
             title="Buat Denah Baru"
           >
             <Plus className="w-3 h-3" />
@@ -144,60 +144,61 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
         )}
       </div>
 
-      {/* Sisi Tengah/Kanan: Toolbar Kontrol Studio */}
-      <div className="flex items-center gap-1 sm:gap-1.5">
-        {!isReadOnly && (
+      {/* Sisi Kanan: Tools Studio (scrollable) + Pinned Simpan & Tutup */}
+      <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
+        <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          {!isReadOnly && (
+            <button
+              type="button"
+              onClick={onAutoLayout}
+              className={`px-2.5 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer border shrink-0 ${
+                isLightMode
+                  ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200'
+                  : 'bg-indigo-950/60 text-indigo-300 hover:bg-indigo-900 border-indigo-800'
+              }`}
+              title="Susun otomatis kotak ruangan dari data rombel"
+            >
+              <Wand2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Susun Otomatis</span>
+            </button>
+          )}
+
+          {/* Satellite Map Guide Toggle */}
+          {onToggleMapGuide && (
+            <button
+              type="button"
+              onClick={onToggleMapGuide}
+              className={`px-2.5 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer border shrink-0 ${
+                isMapGuideOpen
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                  : isLightMode
+                  ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                  : 'bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-750'
+              }`}
+              title="Panduan Peta Satelit / Google Maps"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Peta Satelit</span>
+              {isMapGuideOpen && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
+            </button>
+          )}
+
           <button
             type="button"
-            onClick={onAutoLayout}
-            className={`px-2.5 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer border ${
+            onClick={onToggleLightMode}
+            className={`p-1.5 rounded-lg border transition-colors cursor-pointer shrink-0 ${
               isLightMode
-                ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200'
-                : 'bg-indigo-950/60 text-indigo-300 hover:bg-indigo-900 border-indigo-800'
+                ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
             }`}
-            title="Susun otomatis kotak ruangan dari data rombel"
+            title={isLightMode ? 'Mode Gelap' : 'Mode Terang'}
           >
-            <Wand2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Susun Otomatis</span>
+            {isLightMode ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
           </button>
-        )}
-
-        {/* Satellite Map Guide Toggle */}
-        {onToggleMapGuide && (
-          <button
-            type="button"
-            onClick={onToggleMapGuide}
-            className={`px-2.5 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer border ${
-              isMapGuideOpen
-                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                : isLightMode
-                ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
-                : 'bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-750'
-            }`}
-            title="Panduan Peta Satelit / Google Maps"
-          >
-            <Globe className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Peta Satelit</span>
-            {isMapGuideOpen && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
-          </button>
-        )}
-
-        <button
-          type="button"
-          onClick={onToggleLightMode}
-          className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
-            isLightMode
-              ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
-              : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-          }`}
-          title={isLightMode ? 'Mode Gelap' : 'Mode Terang'}
-        >
-          {isLightMode ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
-        </button>
 
           {/* Zoom Controls */}
           <div
-            className={`flex items-center rounded-lg p-0.5 border ${
+            className={`flex items-center rounded-lg p-0.5 border shrink-0 ${
               isLightMode ? 'bg-slate-100 border-slate-200' : 'bg-slate-800 border-slate-700'
             }`}
           >
@@ -260,73 +261,77 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
             </button>
           </div>
 
-        {/* Undo / Redo */}
-        {!isReadOnly && (
-          <div
-            className={`flex items-center rounded-lg p-0.5 border ${
-              isLightMode ? 'bg-slate-100 border-slate-200' : 'bg-slate-800 border-slate-700'
+          {/* Undo / Redo */}
+          {!isReadOnly && (
+            <div
+              className={`flex items-center rounded-lg p-0.5 border shrink-0 ${
+                isLightMode ? 'bg-slate-100 border-slate-200' : 'bg-slate-800 border-slate-700'
+              }`}
+            >
+              <button
+                type="button"
+                onClick={onUndo}
+                disabled={!canUndo}
+                className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 disabled:opacity-30 cursor-pointer"
+                title="Urungkan"
+              >
+                <Undo2 className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={onRedo}
+                disabled={!canRedo}
+                className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 disabled:opacity-30 cursor-pointer"
+                title="Ulangi"
+              >
+                <Redo2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Print Map Modal */}
+          <button
+            type="button"
+            onClick={onOpenPrint}
+            className={`px-2.5 py-1.5 text-xs font-bold border rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 ${
+              isLightMode
+                ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                : 'bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-700'
             }`}
+            title="Pratinjau Cetak & Unduh PDF"
           >
+            <Printer className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Cetak A4</span>
+          </button>
+        </div>
+
+        {/* Pinned Action Group: Simpan & Tutup (Always Visible & Never Clipped) */}
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 pl-1 border-l border-slate-200 dark:border-slate-750">
+          {!isReadOnly && (
             <button
               type="button"
-              onClick={onUndo}
-              disabled={!canUndo}
-              className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 disabled:opacity-30 cursor-pointer"
-              title="Urungkan"
+              onClick={onSave}
+              disabled={isSaving}
+              className="px-3 sm:px-3.5 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-lg flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all disabled:opacity-50 cursor-pointer shrink-0"
+              title="Simpan Denah Spasial ke Database"
             >
-              <Undo2 className="w-3.5 h-3.5" />
+              {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              <span>Simpan</span>
             </button>
+          )}
+
+          {/* Close Button if Modal */}
+          {onClose && (
             <button
               type="button"
-              onClick={onRedo}
-              disabled={!canRedo}
-              className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 disabled:opacity-30 cursor-pointer"
-              title="Ulangi"
+              onClick={onClose}
+              className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer ml-0.5 shrink-0"
+              title="Tutup Studio Denah"
             >
-              <Redo2 className="w-3.5 h-3.5" />
+              <X className="w-4 h-4" />
             </button>
-          </div>
-        )}
-
-        {/* Print Map Modal */}
-        <button
-          type="button"
-          onClick={onOpenPrint}
-          className={`px-2.5 py-1.5 text-xs font-bold border rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer ${
-            isLightMode
-              ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
-              : 'bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-700'
-          }`}
-          title="Pratinjau Cetak & Unduh PDF"
-        >
-          <Printer className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Cetak A4</span>
-        </button>
-
-        {/* Save Button */}
-        {!isReadOnly && (
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={isSaving}
-            className="px-3 py-1.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
-          >
-            {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-            <span>Simpan</span>
-          </button>
-        )}
-
-        {/* Close Button if Modal */}
-        {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer ml-0.5"
-            title="Tutup Studio Denah"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
+          )}
+        </div>
       </div>
     </header>
   );

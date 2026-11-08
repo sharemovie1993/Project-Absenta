@@ -486,6 +486,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
           onClose={() => setIsDenahModalOpen(false)}
           roomMappings={roomMappings}
           eventName={eventName}
+          isReadOnly={false}
         />
       )}
     </Card>

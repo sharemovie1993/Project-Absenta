@@ -67,6 +67,7 @@ export interface MobileBottomSubItem {
   targetPath: string;
   badge?: string | number | null;
   color?: string;
+  roleEcosystem?: EcosystemType;
 }
 
 export interface MobileBottomTabItem {
@@ -78,6 +79,8 @@ export interface MobileBottomTabItem {
   targetPath: string;
   isActive: (pathname: string, currentTabParam: string | null) => boolean;
   children?: MobileBottomSubItem[];
+  roleEcosystem?: EcosystemType;
+  isRoleDashboard?: boolean;
 }
 
 export type EcosystemType = 
@@ -358,6 +361,199 @@ export function getEcosystemTokens(ecosystem: EcosystemType): EcosystemColorToke
         shadowClass: 'shadow-indigo-600/25',
         focusRingClass: 'focus:ring-indigo-500/20',
         accentClass: 'accent-indigo-600 text-indigo-600',
+      };
+  }
+}
+
+/**
+ * ── DESIGN TOKEN: LAYER 1 BASE PORTAL ROLE DASHBOARD STYLING ──
+ * Digunakan saat tombol launcher divisi berada di bilah Layer 1 (Portal Pendidik).
+ * Membawa warna khas lingkungan divisi + pulsing/blinking live highlight indicator.
+ */
+export interface RoleEcosystemStyle {
+  pillBg: string;
+  iconColor: string;
+  pillRing: string;
+  labelColor: string;
+  dotColor: string;
+  pulseDotRing: string;
+  glowShadow: string;
+}
+
+export function getRoleEcosystemFromDashId(dashId: string): EcosystemType | null {
+  switch (dashId) {
+    case 'dash-kaprog': return 'kaprog';
+    case 'dash-walas': return 'walas';
+    case 'dash-tu': return 'tu';
+    case 'dash-kurikulum': return 'kurikulum';
+    case 'dash-kesiswaan': return 'kesiswaan';
+    case 'dash-hubin': return 'hubin';
+    case 'dash-bk': return 'bpbk';
+    case 'dash-bkk': return 'bkk';
+    case 'dash-sarpras': return 'sarpras';
+    case 'dash-toolman': return 'toolman';
+    case 'dash-ekskul': return 'ekskul';
+    case 'dash-pembimbing-pkl': return 'pembimbing_pkl';
+    case 'dash-koperasi': return 'koperasi';
+    case 'dash-satpam': return 'satpam';
+    case 'dash-piket': return 'piket';
+    default: return null;
+  }
+}
+
+export function getRoleEcosystemStyles(ecosystem: EcosystemType): RoleEcosystemStyle {
+  switch (ecosystem) {
+    case 'walas':
+      return {
+        pillBg: 'bg-sky-50 dark:bg-sky-950/70',
+        iconColor: 'text-sky-600 dark:text-sky-400',
+        pillRing: 'ring-1 ring-sky-300/80 dark:ring-sky-700/80',
+        labelColor: 'text-sky-600 dark:text-sky-400',
+        dotColor: 'bg-sky-500',
+        pulseDotRing: 'bg-sky-400',
+        glowShadow: 'shadow-xs shadow-sky-500/20',
+      };
+    case 'kaprog':
+      return {
+        pillBg: 'bg-amber-50 dark:bg-amber-950/70',
+        iconColor: 'text-amber-600 dark:text-amber-400',
+        pillRing: 'ring-1 ring-amber-300/80 dark:ring-amber-700/80',
+        labelColor: 'text-amber-600 dark:text-amber-400',
+        dotColor: 'bg-amber-500',
+        pulseDotRing: 'bg-amber-400',
+        glowShadow: 'shadow-xs shadow-amber-500/20',
+      };
+    case 'tu':
+      return {
+        pillBg: 'bg-indigo-50 dark:bg-indigo-950/70',
+        iconColor: 'text-indigo-600 dark:text-indigo-400',
+        pillRing: 'ring-1 ring-indigo-300/80 dark:ring-indigo-700/80',
+        labelColor: 'text-indigo-600 dark:text-indigo-400',
+        dotColor: 'bg-indigo-500',
+        pulseDotRing: 'bg-indigo-400',
+        glowShadow: 'shadow-xs shadow-indigo-500/20',
+      };
+    case 'kurikulum':
+      return {
+        pillBg: 'bg-emerald-50 dark:bg-emerald-950/70',
+        iconColor: 'text-emerald-600 dark:text-emerald-400',
+        pillRing: 'ring-1 ring-emerald-300/80 dark:ring-emerald-700/80',
+        labelColor: 'text-emerald-600 dark:text-emerald-400',
+        dotColor: 'bg-emerald-500',
+        pulseDotRing: 'bg-emerald-400',
+        glowShadow: 'shadow-xs shadow-emerald-500/20',
+      };
+    case 'kesiswaan':
+    case 'ekskul':
+    case 'satpam':
+      return {
+        pillBg: 'bg-rose-50 dark:bg-rose-950/70',
+        iconColor: 'text-rose-600 dark:text-rose-400',
+        pillRing: 'ring-1 ring-rose-300/80 dark:ring-rose-700/80',
+        labelColor: 'text-rose-600 dark:text-rose-400',
+        dotColor: 'bg-rose-500',
+        pulseDotRing: 'bg-rose-400',
+        glowShadow: 'shadow-xs shadow-rose-500/20',
+      };
+    case 'piket':
+      return {
+        pillBg: 'bg-blue-50 dark:bg-blue-950/70',
+        iconColor: 'text-blue-600 dark:text-blue-400',
+        pillRing: 'ring-1 ring-blue-300/80 dark:ring-blue-700/80',
+        labelColor: 'text-blue-600 dark:text-blue-400',
+        dotColor: 'bg-blue-500',
+        pulseDotRing: 'bg-blue-400',
+        glowShadow: 'shadow-xs shadow-blue-500/20',
+      };
+    case 'hubin':
+      return {
+        pillBg: 'bg-orange-50 dark:bg-orange-950/70',
+        iconColor: 'text-orange-600 dark:text-orange-400',
+        pillRing: 'ring-1 ring-orange-300/80 dark:ring-orange-700/80',
+        labelColor: 'text-orange-600 dark:text-orange-400',
+        dotColor: 'bg-orange-500',
+        pulseDotRing: 'bg-orange-400',
+        glowShadow: 'shadow-xs shadow-orange-500/20',
+      };
+    case 'pembimbing_pkl':
+      return {
+        pillBg: 'bg-teal-50 dark:bg-teal-950/70',
+        iconColor: 'text-teal-600 dark:text-teal-400',
+        pillRing: 'ring-1 ring-teal-300/80 dark:ring-teal-700/80',
+        labelColor: 'text-teal-600 dark:text-teal-400',
+        dotColor: 'bg-teal-500',
+        pulseDotRing: 'bg-teal-400',
+        glowShadow: 'shadow-xs shadow-teal-500/20',
+      };
+    case 'bpbk':
+      return {
+        pillBg: 'bg-purple-50 dark:bg-purple-950/70',
+        iconColor: 'text-purple-600 dark:text-purple-400',
+        pillRing: 'ring-1 ring-purple-300/80 dark:ring-purple-700/80',
+        labelColor: 'text-purple-600 dark:text-purple-400',
+        dotColor: 'bg-purple-500',
+        pulseDotRing: 'bg-purple-400',
+        glowShadow: 'shadow-xs shadow-purple-500/20',
+      };
+    case 'bkk':
+      return {
+        pillBg: 'bg-cyan-50 dark:bg-cyan-950/70',
+        iconColor: 'text-cyan-600 dark:text-cyan-400',
+        pillRing: 'ring-1 ring-cyan-300/80 dark:ring-cyan-700/80',
+        labelColor: 'text-cyan-600 dark:text-cyan-400',
+        dotColor: 'bg-cyan-500',
+        pulseDotRing: 'bg-cyan-400',
+        glowShadow: 'shadow-xs shadow-cyan-500/20',
+      };
+    case 'sarpras':
+      return {
+        pillBg: 'bg-teal-50 dark:bg-teal-950/70',
+        iconColor: 'text-teal-600 dark:text-teal-400',
+        pillRing: 'ring-1 ring-teal-300/80 dark:ring-teal-700/80',
+        labelColor: 'text-teal-600 dark:text-teal-400',
+        dotColor: 'bg-teal-500',
+        pulseDotRing: 'bg-teal-400',
+        glowShadow: 'shadow-xs shadow-teal-500/20',
+      };
+    case 'toolman':
+      return {
+        pillBg: 'bg-amber-50 dark:bg-amber-950/70',
+        iconColor: 'text-amber-600 dark:text-amber-400',
+        pillRing: 'ring-1 ring-amber-300/80 dark:ring-amber-700/80',
+        labelColor: 'text-amber-600 dark:text-amber-400',
+        dotColor: 'bg-amber-500',
+        pulseDotRing: 'bg-amber-400',
+        glowShadow: 'shadow-xs shadow-amber-500/20',
+      };
+    case 'koperasi':
+      return {
+        pillBg: 'bg-emerald-50 dark:bg-emerald-950/70',
+        iconColor: 'text-emerald-600 dark:text-emerald-400',
+        pillRing: 'ring-1 ring-emerald-300/80 dark:ring-emerald-700/80',
+        labelColor: 'text-emerald-600 dark:text-emerald-400',
+        dotColor: 'bg-emerald-500',
+        pulseDotRing: 'bg-emerald-400',
+        glowShadow: 'shadow-xs shadow-emerald-500/20',
+      };
+    case 'admin':
+      return {
+        pillBg: 'bg-slate-100 dark:bg-slate-800',
+        iconColor: 'text-slate-700 dark:text-slate-300',
+        pillRing: 'ring-1 ring-slate-300 dark:ring-slate-700',
+        labelColor: 'text-slate-700 dark:text-slate-300',
+        dotColor: 'bg-slate-500',
+        pulseDotRing: 'bg-slate-400',
+        glowShadow: 'shadow-xs shadow-slate-500/20',
+      };
+    default:
+      return {
+        pillBg: 'bg-indigo-50 dark:bg-indigo-950/70',
+        iconColor: 'text-indigo-600 dark:text-indigo-400',
+        pillRing: 'ring-1 ring-indigo-200/80 dark:ring-indigo-800/80',
+        labelColor: 'text-indigo-600 dark:text-indigo-400',
+        dotColor: 'bg-indigo-500',
+        pulseDotRing: 'bg-indigo-400',
+        glowShadow: 'shadow-xs shadow-indigo-500/20',
       };
   }
 }

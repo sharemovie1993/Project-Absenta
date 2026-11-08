@@ -1,7 +1,12 @@
 import React from 'react';
 import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
-import type { MobileBottomTabItem, EcosystemTheme } from '@/config/bottomNavEcosystems.config';
+import { 
+  type MobileBottomTabItem, 
+  type EcosystemTheme,
+  getRoleEcosystemStyles,
+  getRoleEcosystemFromDashId,
+} from '@/config/bottomNavEcosystems.config';
 
 export interface BottomNavTabItemProps {
   item: MobileBottomTabItem;
@@ -26,6 +31,13 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
   const ItemIcon = item.icon;
   const hasChildren = Boolean(item.children && item.children.length > 0);
   const isHighlighted = isSelected || Boolean(isFlyoutOpen);
+
+  // ── DETEKSI ROLE LAUNCHER DI LAYER 1 BASE PORTAL ──
+  // Menampilkan warna khas lingkungan peran + berkedip pulsing highlight (beacon dot + glowing pill)
+  const isLayer1 = !theme.isLayer2;
+  const roleEco = item.roleEcosystem || (item.id.startsWith('dash-') ? getRoleEcosystemFromDashId(item.id) : null);
+  const isRoleLauncher = Boolean(isLayer1 && !isSelected && roleEco);
+  const roleStyle = roleEco ? getRoleEcosystemStyles(roleEco) : null;
 
   // ── VARIAN 1: TOMBOL MENU SENTRAL ELEVASI (GAYA 1: NOTCH CRADLE FLOATING FAB) ──
   if (isCenterElevated) {
@@ -88,7 +100,9 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
         is7Tabs ? 'px-0' : 'px-0.5',
         isHighlighted
           ? theme.activeTextClass
-          : theme.inactiveTextClass
+          : isRoleLauncher && roleStyle
+            ? roleStyle.labelColor
+            : theme.inactiveTextClass
       )}
     >
       <div
@@ -99,7 +113,15 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
             ? theme.isLayer2
               ? 'bg-white/25 text-white ring-1 ring-white/50 shadow-2xs backdrop-blur-xs scale-105'
               : 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 ring-1 ring-indigo-200/80 dark:ring-indigo-800/80 shadow-2xs scale-105'
-            : 'bg-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+            : isRoleLauncher && roleStyle
+              ? cn(
+                  roleStyle.pillBg,
+                  roleStyle.iconColor,
+                  roleStyle.pillRing,
+                  roleStyle.glowShadow,
+                  'shadow-xs animate-pulse hover:scale-110 active:scale-95 transition-all'
+                )
+              : 'bg-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
         )}
       >
         {isProfileTab ? (
@@ -131,9 +153,20 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
             size={is7Tabs ? 18 : 19} 
             className={cn(
               "transition-all duration-150",
-              isHighlighted ? "stroke-[2.4]" : "stroke-[1.8]"
+              isHighlighted || isRoleLauncher ? "stroke-[2.2]" : "stroke-[1.8]",
+              isRoleLauncher && roleStyle ? roleStyle.iconColor : ""
             )} 
           />
+        )}
+
+        {/* Indikator Berkedip / Pulsing Live Beacon untuk Launcher Ekosistem Role */}
+        {isRoleLauncher && roleStyle && !item.badge && (
+          <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 pointer-events-none z-10" aria-hidden="true">
+            <span 
+              className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-75", roleStyle.pulseDotRing)} 
+            />
+            <span className={cn("relative inline-flex rounded-full h-2 w-2 shadow-xs", roleStyle.dotColor)} />
+          </span>
         )}
 
         {item.badge && (
@@ -147,7 +180,11 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
         className={cn(
           "text-center tracking-tight leading-tight line-clamp-1 transition-colors duration-150 mt-0.5 truncate",
           is7Tabs ? "max-w-[50px] text-[8.5px] sm:text-[9px]" : "max-w-[64px] text-[9.5px] sm:text-[10px]",
-          isHighlighted ? "font-extrabold" : "font-semibold opacity-85"
+          isHighlighted
+            ? "font-extrabold"
+            : isRoleLauncher && roleStyle
+              ? "font-bold"
+              : "font-semibold opacity-85"
         )}
       >
         {item.shortLabel}

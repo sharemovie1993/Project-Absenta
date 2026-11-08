@@ -19,7 +19,7 @@ export const CbtDenahModal: React.FC<CbtDenahModalProps> = ({
   eventName,
   highlightRoomCode,
   highlightLabel,
-  isReadOnly = true,
+  isReadOnly = false,
 }) => {
   if (!isOpen) return null;
 

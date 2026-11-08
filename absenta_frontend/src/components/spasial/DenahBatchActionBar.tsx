@@ -1,5 +1,17 @@
 import React, { useState } from 'react';
-import { RotateCw, FlipHorizontal, Trash2, X, CheckSquare, Layers, Minimize2, Maximize2, Sliders } from 'lucide-react';
+import {
+  RotateCw,
+  FlipHorizontal,
+  Trash2,
+  X,
+  CheckSquare,
+  Layers,
+  Minimize2,
+  Maximize2,
+  Sliders,
+  Save,
+  Loader2,
+} from 'lucide-react';
 
 interface DenahBatchActionBarProps {
   selectedCount: number;
@@ -12,6 +24,8 @@ interface DenahBatchActionBarProps {
   onSelectAll: () => void;
   onResizeStep: (deltaW: number, deltaH: number) => void;
   onSetSize: (width: number, height: number) => void;
+  onSave?: () => void;
+  isSaving?: boolean;
 }
 
 export const DenahBatchActionBar: React.FC<DenahBatchActionBarProps> = ({
@@ -25,6 +39,8 @@ export const DenahBatchActionBar: React.FC<DenahBatchActionBarProps> = ({
   onSelectAll,
   onResizeStep,
   onSetSize,
+  onSave,
+  isSaving = false,
 }) => {
   const [showPresets, setShowPresets] = useState(false);
 
@@ -181,6 +197,20 @@ export const DenahBatchActionBar: React.FC<DenahBatchActionBarProps> = ({
         <Trash2 className="w-3.5 h-3.5 text-rose-400" />
         <span className="hidden sm:inline">Hapus</span>
       </button>
+
+      {/* Quick Save */}
+      {onSave && (
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={isSaving}
+          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-sm ml-1"
+          title="Simpan Perubahan ke Database"
+        >
+          {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+          <span>Simpan</span>
+        </button>
+      )}
 
       {/* Cancel selection */}
       <button

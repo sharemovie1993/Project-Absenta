@@ -49,6 +49,7 @@ import {
   getPiketTabs,
   getAdminTabs,
   getSiswaTabs,
+  getRoleEcosystemFromDashId,
 } from '@/config/bottomNavEcosystems.config';
 
 export interface UseBottomNavTabsReturn {
@@ -215,6 +216,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         icon: Award,
         targetPath: '/dashboard?tab=kaprog&subtab=beranda',
         color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
+        roleEcosystem: 'kaprog',
       });
     }
 
@@ -226,6 +228,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         icon: Users,
         targetPath: '/dashboard?tab=binaan&subtab=ringkasan',
         color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400',
+        roleEcosystem: 'walas',
       });
     }
 
@@ -238,6 +241,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         targetPath: '/dashboard?tab=kepegawaian&subtab=beranda',
         color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
         badge: tuTabMeta.badge || 'TU',
+        roleEcosystem: 'tu',
       });
     }
 
@@ -249,6 +253,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         icon: BookOpen,
         targetPath: '/dashboard?tab=kurikulum',
         color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
+        roleEcosystem: 'kurikulum',
       });
     }
 
@@ -260,6 +265,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         icon: ShieldAlert,
         targetPath: '/dashboard?tab=kesiswaan',
         color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400',
+        roleEcosystem: 'kesiswaan',
       });
     }
 
@@ -271,6 +277,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         icon: Briefcase,
         targetPath: '/dashboard?tab=hubin',
         color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
+        roleEcosystem: 'hubin',
       });
     }
 
@@ -282,6 +289,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         icon: HeartHandshake,
         targetPath: '/dashboard?tab=bpbk',
         color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400',
+        roleEcosystem: 'bpbk',
       });
     }
 
@@ -293,6 +301,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         icon: GraduationCap,
         targetPath: '/dashboard?tab=bkk',
         color: 'bg-cyan-50 dark:bg-cyan-950/70 text-cyan-600 dark:text-cyan-400',
+        roleEcosystem: 'bkk',
       });
     }
 
@@ -304,6 +313,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         icon: Building2,
         targetPath: '/dashboard?tab=sarpras',
         color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400',
+        roleEcosystem: 'sarpras',
       });
     }
 
@@ -315,6 +325,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         icon: Wrench,
         targetPath: '/dashboard?tab=toolman',
         color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
+        roleEcosystem: 'toolman',
       });
     }
 
@@ -326,6 +337,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         icon: Compass,
         targetPath: '/dashboard?tab=ekskul',
         color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
+        roleEcosystem: 'ekskul',
       });
     }
 
@@ -337,6 +349,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         icon: Briefcase,
         targetPath: '/dashboard?tab=pembimbing_pkl',
         color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400',
+        roleEcosystem: 'pembimbing_pkl',
       });
     }
 
@@ -348,6 +361,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         icon: PiggyBank,
         targetPath: '/cooperative/pos',
         color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
+        roleEcosystem: 'koperasi',
       });
     }
 
@@ -359,6 +373,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         icon: ShieldCheck,
         targetPath: '/dashboard?tab=satpam',
         color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400',
+        roleEcosystem: 'satpam',
       });
     }
 
@@ -370,6 +385,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         icon: ScanLine,
         targetPath: '/dashboard?tab=kelola',
         color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400',
+        roleEcosystem: 'piket',
       });
     }
 
@@ -491,6 +507,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
           icon: dash.icon,
           targetPath: dash.targetPath,
           badge: dash.badge ? String(dash.badge) : undefined,
+          roleEcosystem: dash.roleEcosystem || (getRoleEcosystemFromDashId(dash.id) ?? undefined),
+          isRoleDashboard: true,
           isActive: (p: string, t: string | null) => isDashActive(dash.targetPath, p, t),
         });
 
