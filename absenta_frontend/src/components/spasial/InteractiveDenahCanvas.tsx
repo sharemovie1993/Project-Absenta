@@ -22,6 +22,8 @@ interface InteractiveDenahCanvasProps {
   onSelectDenah?: (denah: DenahSpasial) => void;
   onCreateNewDenah?: () => void;
   onClose?: () => void;
+  highlightRoomCode?: string | null;
+  highlightLabel?: string;
 }
 
 export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
@@ -33,9 +35,14 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   onSelectDenah,
   onCreateNewDenah,
   onClose,
+  highlightRoomCode,
+  highlightLabel,
 }) => {
-  // Canvas dimulai bersih jika denah baru dibuat (tidak langsung auto-generate seluruh ruang ke canvas)
-  const initialNodes = denah.elements && denah.elements.length > 0 ? denah.elements : [];
+  // Canvas dimulai dari elemen tersimpan. Jika kosong, gunakan auto-floorplan agar canvas tidak hampa
+  const initialNodes =
+    denah.elements && denah.elements.length > 0
+      ? denah.elements
+      : generateAutoFloorplan(unassignedRooms);
 
   const [nodes, setNodes] = useState<DenahElementNode[]>(initialNodes);
   const [scale, setScale] = useState(1);
@@ -43,7 +50,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isLightMode, setIsLightMode] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(!isReadOnly);
 
   // Satellite Map Guide State
   const [mapGuideConfig, setMapGuideConfig] = useState<DenahMapGuideConfig>(() => {
@@ -275,6 +282,69 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
     nodes.filter((n) => n.kelas_id).map((n) => n.kelas_id as string)
   );
 
+  // Deteksi pencocokan ruang yang di-highlight dari kartu sesi siswa
+  const isRoomHighlighted = useCallback(
+    (node: DenahElementNode, code?: string | null): boolean => {
+      if (!code) return false;
+      const clean = (str?: string | null) => (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const target = clean(code);
+      if (!target) return false;
+
+      const nodeMain = clean(node.label_utama);
+      const nodeSub = clean(node.label_sub);
+      const nodeCat = clean(node.catatan);
+
+      return (
+        nodeMain === target ||
+        nodeCat === target ||
+        nodeMain.includes(target) ||
+        target.includes(nodeMain) ||
+        nodeSub.includes(target)
+      );
+    },
+    []
+  );
+
+  // Jika highlightRoomCode diberikan tetapi belum ada di nodes denah, tambahkan dinamis agar selalu tampil & berdenyut
+  useEffect(() => {
+    if (!highlightRoomCode) return;
+    const exists = nodes.some((n) => isRoomHighlighted(n, highlightRoomCode));
+    if (!exists) {
+      const newNode: DenahElementNode = {
+        id: `node-highlight-${Date.now()}`,
+        x: 180,
+        y: 60,
+        width: 110,
+        height: 65,
+        rotation: 0,
+        label_utama: highlightRoomCode,
+        label_sub: 'Ruang Ujian Anda',
+        kategori_ruang: 'RUANG_UJIAN',
+        catatan: `Ruang Ujian Terplot ${highlightRoomCode}`,
+      };
+      setNodes((prev) => [newNode, ...prev]);
+    }
+  }, [highlightRoomCode, nodes, isRoomHighlighted]);
+
+  // Otomatis pusatkan kamera (panOffset) ke ruangan yang di-highlight saat modal dibuka
+  useEffect(() => {
+    if (!highlightRoomCode || nodes.length === 0) return;
+    const target = nodes.find((n) => isRoomHighlighted(n, highlightRoomCode));
+    if (target) {
+      setSelectedNodeIds([target.id]);
+      if (canvasRef.current) {
+        const w = canvasRef.current.clientWidth || 800;
+        const h = canvasRef.current.clientHeight || 600;
+        const targetCenterX = target.x + target.width / 2;
+        const targetCenterY = target.y + target.height / 2;
+        setPanOffset({
+          x: Math.round(w / 2 - targetCenterX * scale),
+          y: Math.round(h / 2 - targetCenterY * scale),
+        });
+      }
+    }
+  }, [highlightRoomCode, nodes, scale, isRoomHighlighted, setSelectedNodeIds]);
+
   return (
     <div
       className={`flex flex-col h-full min-h-[620px] flex-1 w-full rounded-2xl overflow-hidden shadow-xl select-none transition-colors border ${
@@ -412,6 +482,8 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
                 key={node.id}
                 node={node}
                 isSelected={selectedNodeIds.includes(node.id)}
+                isHighlighted={isRoomHighlighted(node, highlightRoomCode)}
+                highlightLabel={highlightLabel}
                 onSelect={handleSelectNode}
                 onRotate={handleRotateNode}
                 onFlipH={handleFlipH}

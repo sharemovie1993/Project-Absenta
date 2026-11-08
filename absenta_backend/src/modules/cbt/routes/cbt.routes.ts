@@ -13,6 +13,10 @@ const cbtStudentExempt = {
   exemptRoles: ['ADMIN', 'SUPERADMIN', 'SISWA'] as any[],
 };
 
+const cbtDenahViewExempt = {
+  exemptRoles: ['ADMIN', 'SUPERADMIN', 'KURIKULUM', 'GURU', 'WALIKELAS', 'SISWA'] as any[],
+};
+
 export async function cbtRoutes(fastify: any) {
   // ==========================================
   // 1. BANK SOAL ROUTES
@@ -155,11 +159,11 @@ export async function cbtRoutes(fastify: any) {
   // 5. DENAH SPASIAL RUANG UJIAN (CBT)
   // ==========================================
   fastify.get('/denah', {
-    preHandler: [requireCapability(['cbt.jadwal.manage', 'sarpras.denah.view', 'cbt.denah.view'], cbtGuruExempt), determineDataScope()],
+    preHandler: [requireCapability(['cbt.jadwal.manage', 'sarpras.denah.view', 'cbt.denah.view'], cbtDenahViewExempt), determineDataScope()],
   }, DenahSpasialController.list);
 
   fastify.get('/denah/:id', {
-    preHandler: [requireCapability(['cbt.jadwal.manage', 'sarpras.denah.view', 'cbt.denah.view'], cbtGuruExempt), determineDataScope()],
+    preHandler: [requireCapability(['cbt.jadwal.manage', 'sarpras.denah.view', 'cbt.denah.view'], cbtDenahViewExempt), determineDataScope()],
   }, DenahSpasialController.getById);
 
   fastify.post('/denah', {

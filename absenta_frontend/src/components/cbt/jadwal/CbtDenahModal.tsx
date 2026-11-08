@@ -9,22 +9,28 @@ import type { KelasRoomMapping } from './cbtOrchestratorHelper';
 interface CbtDenahModalProps {
   isOpen: boolean;
   onClose: () => void;
-  roomMappings: KelasRoomMapping[];
+  roomMappings?: KelasRoomMapping[];
   eventName?: string;
+  highlightRoomCode?: string | null;
+  highlightLabel?: string;
+  isReadOnly?: boolean;
 }
 
 export const CbtDenahModal: React.FC<CbtDenahModalProps> = ({
   isOpen,
   onClose,
-  roomMappings,
+  roomMappings = [],
   eventName,
+  highlightRoomCode,
+  highlightLabel,
+  isReadOnly = false,
 }) => {
   const [loading, setLoading] = useState(false);
   const [denahList, setDenahList] = useState<DenahSpasial[]>([]);
   const [activeDenah, setActiveDenah] = useState<DenahSpasial | null>(null);
 
   // Convert roomMappings to unassigned palette items
-  const unassignedRooms = roomMappings
+  const unassignedRooms = (roomMappings || [])
     .filter((m) => Boolean(m.slot_ruang.trim()))
     .map((m) => ({
       slot_ruang: m.slot_ruang,
@@ -136,6 +142,9 @@ export const CbtDenahModal: React.FC<CbtDenahModalProps> = ({
             onSelectDenah={setActiveDenah}
             onCreateNewDenah={handleCreateNewDenah}
             onClose={onClose}
+            isReadOnly={isReadOnly}
+            highlightRoomCode={highlightRoomCode}
+            highlightLabel={highlightLabel}
             onSaveSuccess={(updated) => {
               setDenahList((prev) =>
                 prev.map((d) => (d.id === updated.id ? updated : d))

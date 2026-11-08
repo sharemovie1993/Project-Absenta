@@ -5,6 +5,8 @@ import type { DenahElementNode } from '../../types/spasial.types';
 interface DenahNodeCardProps {
   node: DenahElementNode;
   isSelected: boolean;
+  isHighlighted?: boolean;
+  highlightLabel?: string;
   onSelect: (e: React.MouseEvent, id: string) => void;
   onRotate: (id: string) => void;
   onFlipH: (id: string) => void;
@@ -69,6 +71,8 @@ const KATEGORI_STYLES: Record<string, { bg: string; border: string; text: string
 export const DenahNodeCard: React.FC<DenahNodeCardProps> = ({
   node,
   isSelected,
+  isHighlighted = false,
+  highlightLabel,
   onSelect,
   onRotate,
   onFlipH,
@@ -102,17 +106,31 @@ export const DenahNodeCard: React.FC<DenahNodeCardProps> = ({
         width: `${node.width}px`,
         height: `${node.height}px`,
         transformOrigin: 'center center',
-        backgroundColor: node.warna_bg || undefined,
-        borderColor: node.warna_border || undefined,
+        backgroundColor: isHighlighted ? undefined : (node.warna_bg || undefined),
+        borderColor: isHighlighted ? undefined : (node.warna_border || undefined),
       }}
-      className={`absolute select-none cursor-move rounded-xl border-2 shadow-sm transition-shadow duration-150 flex flex-col items-center justify-center p-1 overflow-hidden group ${
-        catStyle.bg
-      } ${node.warna_border ? '' : catStyle.border} ${
-        isSelected
-          ? 'ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 shadow-md z-30'
-          : 'hover:shadow hover:z-20 z-10'
+      className={`absolute select-none cursor-move rounded-xl border-2 shadow-sm transition-all duration-200 flex flex-col items-center justify-center p-1 ${
+        isHighlighted ? 'overflow-visible' : 'overflow-hidden'
+      } group ${
+        isHighlighted
+          ? 'ring-4 ring-violet-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 border-violet-600 bg-gradient-to-br from-violet-100 via-white to-indigo-100 dark:from-violet-950/90 dark:via-slate-900 dark:to-indigo-950/90 shadow-2xl shadow-violet-500/60 z-40 animate-[pulse_1.8s_cubic-bezier(0.4,0,0.6,1)_infinite]'
+          : isSelected
+          ? 'ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 shadow-md z-30 ' + catStyle.bg + (node.warna_border ? '' : ' ' + catStyle.border)
+          : 'hover:shadow hover:z-20 z-10 ' + catStyle.bg + (node.warna_border ? '' : ' ' + catStyle.border)
       }`}
     >
+      {/* Efek Berdenyut (Radar Pulse Wave) saat Highlight Denah Aktif */}
+      {isHighlighted && (
+        <>
+          <div className="absolute -inset-3 rounded-2xl bg-violet-500/30 animate-ping pointer-events-none z-0" />
+          <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-violet-600 text-white text-[10px] font-black shadow-lg animate-bounce whitespace-nowrap border border-white/40">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              {highlightLabel || 'RUANGAN ANDA'}
+            </span>
+          </div>
+        </>
+      )}
       {/* Floating Hover Action Toolbar (Posisi absolute: TIDAK memakan ruang tinggi kartu) */}
       {!isReadOnly && (
         <div
@@ -167,14 +185,16 @@ export const DenahNodeCard: React.FC<DenahNodeCardProps> = ({
       >
         {/* Label Nomor Ruang: R.01 (Bongsor, Tebal, & Kontras Tinggi) */}
         <div
-          className={`font-black tracking-tight leading-none font-mono ${catStyle.text} ${
+          className={`font-black tracking-tight leading-none font-mono ${
+            isHighlighted ? 'text-violet-700 dark:text-violet-300' : catStyle.text
+          } ${
             isMini
               ? 'text-base sm:text-lg'
               : isMedium
               ? 'text-xl sm:text-2xl'
               : 'text-2xl sm:text-3xl'
           }`}
-          style={{ color: node.warna_teks || undefined }}
+          style={{ color: isHighlighted ? undefined : (node.warna_teks || undefined) }}
         >
           {node.label_utama || 'R.XX'}
         </div>

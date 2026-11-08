@@ -169,7 +169,9 @@ export async function sarprasRoutes(fastify: any) {
   // --- Denah Spasial Kampus & Sarpras (Universal: Sarpras, CBT & Kurikulum) ---
   fastify.get('/denah', {
     preHandler: [
-      requireCapability(['sarpras.denah.view', 'sarpras.inventory.view.list', 'cbt.jadwal.manage', 'academic.manage.academic']),
+      requireCapability(['sarpras.denah.view', 'sarpras.inventory.view.list', 'cbt.jadwal.manage', 'academic.manage.academic'], {
+        exemptRoles: ['ADMIN', 'SUPERADMIN', 'KURIKULUM', 'GURU', 'WALIKELAS', 'SISWA'] as any[],
+      }),
       organizationalScopeMiddleware,
       determineDataScope()
     ]
@@ -177,7 +179,9 @@ export async function sarprasRoutes(fastify: any) {
 
   fastify.get('/denah/:id', {
     preHandler: [
-      requireCapability(['sarpras.denah.view', 'sarpras.inventory.view.list', 'cbt.jadwal.manage', 'academic.manage.academic']),
+      requireCapability(['sarpras.denah.view', 'sarpras.inventory.view.list', 'cbt.jadwal.manage', 'academic.manage.academic'], {
+        exemptRoles: ['ADMIN', 'SUPERADMIN', 'KURIKULUM', 'GURU', 'WALIKELAS', 'SISWA'] as any[],
+      }),
       organizationalScopeMiddleware,
       determineDataScope()
     ]

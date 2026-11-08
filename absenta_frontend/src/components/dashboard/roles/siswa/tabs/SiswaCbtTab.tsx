@@ -25,12 +25,14 @@ import {
   ShieldCheck,
   ShieldAlert,
   BookOpen,
+  MapPin,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtStudentExamItem } from '@/types/cbt.types';
 import { getTimezone, getTimezoneLabel } from '@/utils/attendance/time';
 import { Modal } from '@/components/ui';
+import { CbtDenahModal } from '@/components/cbt/jadwal/CbtDenahModal';
 
 type FilterKey = 'aktif' | 'mendatang' | 'riwayat' | 'semua';
 
@@ -230,7 +232,19 @@ export const SiswaCbtTab: React.FC = () => {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<FilterKey>('aktif');
   const [selectedDetailItem, setSelectedDetailItem] = useState<CbtStudentExamItem | null>(null);
+  const [denahModalOpen, setDenahModalOpen] = useState(false);
+  const [denahHighlightRoom, setDenahHighlightRoom] = useState<string | null>(null);
+  const [denahHighlightLabel, setDenahHighlightLabel] = useState<string>('Ruang Ujian Anda');
+  const [denahEventName, setDenahEventName] = useState<string>('Ujian CBT');
   const didAutoSelectTab = useRef(false);
+
+  const handleOpenDenah = (item: CbtStudentExamItem) => {
+    const roomCode = item.ruang_ujian || item.ruang_ujian_nama || 'Ruang Kelas';
+    setDenahHighlightRoom(roomCode);
+    setDenahHighlightLabel(`Ruang Anda: ${roomCode}`);
+    setDenahEventName(item.nama_sesi || 'Ujian CBT');
+    setDenahModalOpen(true);
+  };
 
   const {
     data: exams = [],
@@ -534,11 +548,17 @@ export const SiswaCbtTab: React.FC = () => {
                           <span>{formatExamDateIndo(item.tanggal_mulai)}</span>
                         </span>
 
-                        {/* Badge Ruangan */}
-                        <span className="inline-flex items-center gap-1.5 text-xs font-black text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/60 border border-violet-200/80 dark:border-violet-900 px-2.5 py-1 rounded-xl shadow-2xs">
-                          <DoorOpen size={13} className="text-violet-600 dark:text-violet-400 shrink-0" />
+                        {/* Badge Ruangan (Interaktif - Buka Denah Ruang) */}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDenah(item)}
+                          className="inline-flex items-center gap-1.5 text-xs font-black text-violet-700 dark:text-violet-300 bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/60 dark:hover:bg-violet-900/60 border border-violet-200/80 dark:border-violet-900 px-2.5 py-1 rounded-xl shadow-2xs cursor-pointer transition-all active:scale-95 group"
+                          title="Klik untuk membuka denah posisi ruangan ujian"
+                        >
+                          <DoorOpen size={13} className="text-violet-600 dark:text-violet-400 shrink-0 group-hover:scale-110 transition-transform" />
                           <span>Ruang: {item.ruang_ujian_nama || item.ruang_ujian || 'Ruang Kelas'}</span>
-                        </span>
+                          <MapPin size={11} className="text-violet-500 animate-pulse ml-0.5" />
+                        </button>
                       </div>
 
                       {/* Status Hari H Pill */}
@@ -562,11 +582,17 @@ export const SiswaCbtTab: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Footer Bar: Tombol Lihat Detail */}
-                    <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
-                      <span className="text-[11px] text-slate-400 dark:text-slate-500 hidden sm:inline">
-                        Menunggu pengawas membuka sesi di ruang ujian
-                      </span>
+                    {/* Footer Bar: Tombol Lihat Denah & Lihat Detail */}
+                    <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDenah(item)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-violet-200/80 dark:border-violet-900 bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/60 dark:hover:bg-violet-900/60 text-xs font-bold text-violet-700 dark:text-violet-300 transition-all cursor-pointer shadow-2xs active:scale-98"
+                        title="Buka Denah Spasial Kampus & Ruang Ujian"
+                      >
+                        <MapPin size={13} className="text-violet-600 dark:text-violet-400 animate-pulse shrink-0" />
+                        <span>Lihat Denah Ruang</span>
+                      </button>
                       <button
                         type="button"
                         onClick={() => setSelectedDetailItem(item)}
@@ -638,13 +664,19 @@ export const SiswaCbtTab: React.FC = () => {
                       </span>
 
                       {(item.ruang_ujian || item.ruang_ujian_nama) && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200/80 dark:border-indigo-800">
-                          <DoorOpen size={12} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDenah(item)}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200/80 dark:border-indigo-800 cursor-pointer transition-all active:scale-95 group"
+                          title="Buka Denah Ruangan Ujian"
+                        >
+                          <DoorOpen size={12} className="text-indigo-600 dark:text-indigo-400 shrink-0 group-hover:scale-110 transition-transform" />
                           <span>Ruang: {item.ruang_ujian_nama || item.ruang_ujian}</span>
                           {item.ruang_ujian && item.ruang_ujian_nama && item.ruang_ujian !== item.ruang_ujian_nama && (
                             <span className="text-[10px] text-indigo-500 font-medium">({item.ruang_ujian})</span>
                           )}
-                        </span>
+                          <MapPin size={10} className="text-indigo-500 animate-pulse ml-0.5" />
+                        </button>
                       )}
 
                       <span className="inline-flex items-center gap-1">
@@ -832,11 +864,26 @@ export const SiswaCbtTab: React.FC = () => {
                 </span>
               </div>
 
-              <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-0.5">
+              <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-1">
                 <span className="text-[10px] font-semibold text-slate-400 block">Ruang Ujian</span>
-                <span className="font-bold text-violet-700 dark:text-violet-300 text-xs">
-                  {selectedDetailItem.ruang_ujian_nama || selectedDetailItem.ruang_ujian || 'Ruang Kelas'}
-                </span>
+                <div className="flex items-center justify-between gap-1 flex-wrap">
+                  <span className="font-bold text-violet-700 dark:text-violet-300 text-xs">
+                    {selectedDetailItem.ruang_ujian_nama || selectedDetailItem.ruang_ujian || 'Ruang Kelas'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const item = selectedDetailItem;
+                      setSelectedDetailItem(null);
+                      handleOpenDenah(item);
+                    }}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-violet-600 hover:bg-violet-700 text-white text-[10px] font-bold shadow-2xs cursor-pointer transition-colors"
+                    title="Buka Denah Spasial Kampus"
+                  >
+                    <MapPin size={10} />
+                    <span>Buka Denah</span>
+                  </button>
+                </div>
               </div>
 
               <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-0.5">
@@ -894,6 +941,16 @@ export const SiswaCbtTab: React.FC = () => {
           </div>
         </Modal>
       )}
+
+      {/* Modal Denah Spasial Kampus (Interaktif dengan Highlight & Efek Berdenyut) */}
+      <CbtDenahModal
+        isOpen={denahModalOpen}
+        onClose={() => setDenahModalOpen(false)}
+        eventName={denahEventName}
+        highlightRoomCode={denahHighlightRoom}
+        highlightLabel={denahHighlightLabel}
+        isReadOnly={true}
+      />
     </div>
   );
 };
