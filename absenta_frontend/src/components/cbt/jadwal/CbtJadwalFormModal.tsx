@@ -13,7 +13,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import type { CbtJadwalUjian, CbtRaporSlot } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
-import { ArrowRight, ArrowLeft, Layers, Info, Check } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Layers, Info, Check, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   formatLocalDateTime,
@@ -156,7 +156,20 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
   const [ruangUjian, setRuangUjian] = useState('');
   const [pengawas1Id, setPengawas1Id] = useState('');
   const [proktorId, setProktorId] = useState('');
+  const [showCustomProctor, setShowCustomProctor] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Konteks Mode Guru Mandiri vs Panitia/Admin
+  const isTeacherMode = useMemo(() => {
+    return Boolean(defaultGuruId || (teacherGuruId && !isAdmin));
+  }, [defaultGuruId, teacherGuruId, isAdmin]);
+
+  const currentTeacherObj = useMemo(() => {
+    if (!teacherGuruId) return null;
+    return rawStaffList.find((g) => g.id === teacherGuruId) || null;
+  }, [rawStaffList, teacherGuruId]);
+
+  const currentTeacherName = currentTeacherObj?.nama_guru || user?.full_name || 'Anda Sendiri';
 
   // Sinkronisasi ID kelas terpilih yang valid dan aktif di layar
   const validTargetKelasIds = useMemo(() => {
@@ -166,6 +179,19 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
   const selectedCount = validTargetKelasIds.length;
   const totalCount = displayedKelasList.length;
   const isAllSelected = totalCount > 0 && selectedCount === totalCount;
+
+  const firstSelectedClass = useMemo(() => {
+    if (validTargetKelasIds.length === 0) return null;
+    return rawKelasList.find((k) => k.id === validTargetKelasIds[0]) || null;
+  }, [validTargetKelasIds, rawKelasList]);
+
+  const pengawas1Obj = useMemo(() => {
+    return rawStaffList.find((g) => g.id === pengawas1Id) || currentTeacherObj || null;
+  }, [rawStaffList, pengawas1Id, currentTeacherObj]);
+
+  const proktorObj = useMemo(() => {
+    return rawStaffList.find((g) => g.id === proktorId) || null;
+  }, [rawStaffList, proktorId]);
 
   // Initial Sync Konteks Akademik & Edit State
   useEffect(() => {
@@ -355,8 +381,15 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
 
     try {
       setIsSubmitting(true);
-      const pengawas1Obj = rawStaffList.find((g) => g.id === pengawas1Id);
-      const proktorObj = rawStaffList.find((g) => g.id === proktorId);
+      const defaultAutoRuang = selectedCount > 1
+        ? 'Multi-Ruang Kelas'
+        : (firstSelectedClass ? `Kelas ${firstSelectedClass.nama_kelas}` : 'Ruang Kelas');
+
+      const finalPengawasId = (selectedCount > 1 && !isTeacherMode)
+        ? null
+        : (pengawas1Id || (isTeacherMode ? teacherGuruId : null) || null);
+
+      const finalPengawasObj = rawStaffList.find((g) => g.id === finalPengawasId) || currentTeacherObj;
 
       const payload = {
         bank_soal_id: bankSoalId,
@@ -378,13 +411,13 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
           auto_transfer_rapor: autoTransferRapor,
           target_rapor_slot: autoTransferRapor ? targetRaporSlot : null,
           created_by_guru_id: teacherGuruId || null,
-          ruang_ujian: selectedCount > 1 ? (ruangUjian.trim() || 'Multi-Ruang Kelas') : (ruangUjian.trim() || null),
-          pengawas_1_id: selectedCount > 1 ? null : (pengawas1Id || null),
-          pengawas_1_nama: selectedCount > 1 ? null : (pengawas1Obj?.nama_guru || null),
-          pengawas_1_nip: selectedCount > 1 ? null : (pengawas1Obj?.nip || null),
-          proktor_id: selectedCount > 1 ? null : (proktorId || null),
-          proktor_nama: selectedCount > 1 ? null : (proktorObj?.nama_guru || null),
-          proktor_nip: selectedCount > 1 ? null : (proktorObj?.nip || null),
+          ruang_ujian: ruangUjian.trim() || defaultAutoRuang,
+          pengawas_1_id: finalPengawasId,
+          pengawas_1_nama: finalPengawasObj?.nama_guru || null,
+          pengawas_1_nip: finalPengawasObj?.nip || null,
+          proktor_id: (selectedCount > 1 && !isTeacherMode) ? null : (proktorId || null),
+          proktor_nama: (selectedCount > 1 && !isTeacherMode) ? null : (proktorObj?.nama_guru || null),
+          proktor_nip: (selectedCount > 1 && !isTeacherMode) ? null : (proktorObj?.nip || null),
         },
       };
 
@@ -461,20 +494,39 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
                 <label htmlFor="jadwal-bank-soal" className="text-xs font-bold text-slate-800 dark:text-slate-200">
                   Pakai bank soal yang mana?
                 </label>
-                {teacherGuruId && (
+                {teacherGuruId && !initialBankSoalId && (
                   <button type="button" onClick={() => setShowAllSchoolBank((prev) => !prev)} className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer">
                     {showAllSchoolBank ? 'Milik Saya' : 'Semua Bank Soal'}
                   </button>
                 )}
               </div>
-              <SearchableSelect
-                id="jadwal-bank-soal"
-                options={bankSoalOptions}
-                value={bankSoalId}
-                onChange={setBankSoalId}
-                placeholder={isBankSoalLoading ? 'Memuat bank soal...' : bankSoalOptions.length === 0 ? 'Belum ada bank soal tersedia' : 'Pilih bank soal...'}
-                aria-label="Pilih Bank Soal"
-              />
+              {initialBankSoalId && selectedBankSoal ? (
+                <div className="p-2.5 rounded-xl bg-violet-50/70 dark:bg-violet-950/40 border border-violet-200/80 dark:border-violet-800/60 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-mono text-[10px] font-black text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-900/60 px-1.5 py-0.2 rounded">
+                        {selectedBankSoal.kode_bank}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-500">Tingkat {selectedBankSoal.tingkat}</span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                      {selectedBankSoal.judul}
+                    </p>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 shrink-0">
+                    Bank Terpilih
+                  </span>
+                </div>
+              ) : (
+                <SearchableSelect
+                  id="jadwal-bank-soal"
+                  options={bankSoalOptions}
+                  value={bankSoalId}
+                  onChange={setBankSoalId}
+                  placeholder={isBankSoalLoading ? 'Memuat bank soal...' : bankSoalOptions.length === 0 ? 'Belum ada bank soal tersedia' : 'Pilih bank soal...'}
+                  aria-label="Pilih Bank Soal"
+                />
+              )}
             </div>
 
             {/* Pertanyaan 2: Nama Sesi */}
@@ -600,8 +652,103 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
               )}
             </div>
 
-            {/* Ploting Ruang & Pengawas / Proktor (Adaptif Berdasarkan Jumlah Kelas Terpilih) */}
-            {selectedCount > 1 ? (
+            {/* Ploting Ruang & Pengawas / Proktor (Adaptif Berdasarkan Konteks Guru Mandiri vs Orkestrasi Panitia) */}
+            {isTeacherMode ? (
+              <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-violet-500/10 via-indigo-500/10 to-violet-500/5 border border-violet-200/80 dark:border-violet-900/50 space-y-2.5 shadow-2xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-violet-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
+                        <ShieldCheck size={16} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-violet-700 dark:text-violet-300">
+                            Pengawasan Mandiri Guru
+                          </span>
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-violet-100 text-violet-800 dark:bg-violet-900/60 dark:text-violet-200">
+                            Otomatis
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                          {pengawas1Obj?.nama_guru || currentTeacherName}
+                        </h4>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomProctor((prev) => !prev)}
+                      className="px-2.5 py-1 text-xs font-bold rounded-xl border border-violet-200 dark:border-violet-700 bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-slate-800 transition-all cursor-pointer shrink-0 shadow-2xs"
+                    >
+                      {showCustomProctor ? 'Tutup Pengaturan' : 'Sesuaikan Ruang / Pengawas'}
+                    </button>
+                  </div>
+
+                  {/* Status Strip Ringkas */}
+                  <div className="flex items-center gap-2.5 text-[11px] text-slate-600 dark:text-slate-300 pt-1.5 border-t border-violet-200/60 dark:border-violet-800/60 flex-wrap">
+                    <span className="flex items-center gap-1">
+                      <span className="text-slate-400">📍 Ruang:</span>
+                      <strong>
+                        {ruangUjian.trim() || (selectedCount > 1 ? 'Multi-Ruang Kelas' : (firstSelectedClass ? `Kelas ${firstSelectedClass.nama_kelas}` : 'Ruang Kelas Siswa'))}
+                      </strong>
+                    </span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1">
+                      <span className="text-slate-400">👥 Proktor:</span>
+                      <strong>{proktorObj?.nama_guru || 'Mandiri (Anda Sendiri)'}</strong>
+                    </span>
+                  </div>
+
+                  {/* Form Kustomisasi Ruang & Pengawas (Hanya tampil saat guru klik Sesuaikan) */}
+                  {showCustomProctor && (
+                    <div className="space-y-2.5 pt-2.5 mt-1 border-t border-violet-200/80 dark:border-violet-800/80">
+                      <div className="space-y-1">
+                        <label htmlFor="jadwal-ruang" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                          Nama Ruang / Lokasi Fisik <span className="font-normal text-slate-400">(Opsional)</span>
+                        </label>
+                        <Input
+                          id="jadwal-ruang"
+                          value={ruangUjian}
+                          onChange={(e) => setRuangUjian(e.target.value)}
+                          placeholder={selectedCount > 1 ? 'Multi-Ruang Kelas' : (firstSelectedClass ? `Kelas ${firstSelectedClass.nama_kelas}` : 'Contoh: Lab Komputer 1')}
+                          aria-label="Ruang atau Kelas Ujian"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div className="space-y-1 min-w-0">
+                          <label htmlFor="jadwal-pengawas-1" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                            Ganti Pengawas Utama
+                          </label>
+                          <SearchableSelect
+                            id="jadwal-pengawas-1"
+                            options={pengawasSelectOptions}
+                            value={pengawas1Id}
+                            onChange={setPengawas1Id}
+                            placeholder="Pilih Guru Pengawas..."
+                            aria-label="Pilih Pengawas Ruang"
+                          />
+                        </div>
+                        <div className="space-y-1 min-w-0">
+                          <label htmlFor="jadwal-proktor" className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                            Proktor / Pengawas 2 <span className="font-normal text-slate-400">(Opsional)</span>
+                          </label>
+                          <SearchableSelect
+                            id="jadwal-proktor"
+                            options={pengawasSelectOptions}
+                            value={proktorId}
+                            onChange={setProktorId}
+                            placeholder="Kosongkan jika cukup 1 pengawas..."
+                            aria-label="Pilih Proktor Ujian"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : selectedCount > 1 ? (
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/70 flex items-start gap-2.5">
                 <div className="p-1.5 rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 shrink-0 mt-0.5">
                   <Layers size={14} />
