@@ -26,6 +26,52 @@ interface InteractiveDenahCanvasProps {
   highlightLabel?: string;
 }
 
+export const extractMapGuideConfig = (elements?: any[], denahId?: string): DenahMapGuideConfig => {
+  // 1. Coba dari elemen database metadata
+  if (Array.isArray(elements)) {
+    const metaNode = elements.find((el: any) => el?.id === '__MAP_GUIDE_CONFIG__');
+    if (metaNode && metaNode.catatan) {
+      try {
+        const parsed = JSON.parse(metaNode.catatan);
+        if (parsed && typeof parsed.lat === 'number') {
+          return {
+            ...parsed,
+            enabled: parsed.enabled !== false,
+          };
+        }
+      } catch (_) {}
+    }
+  }
+
+  // 2. Coba dari localStorage
+  if (denahId) {
+    try {
+      const saved = localStorage.getItem(`absenta_denah_map_${denahId}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed.lat === 'number') {
+          return {
+            ...parsed,
+            enabled: parsed.enabled !== false,
+          };
+        }
+      }
+    } catch (_) {}
+  }
+
+  // 3. Default Satelit Sekolah Aktif (Google Hybrid Realistis)
+  return {
+    enabled: true,
+    lat: -6.6548,
+    lng: 107.3912,
+    zoom: 18.5,
+    opacity: 0.85,
+    layer: 'google_hybrid',
+    is_locked: true,
+    location_name: 'Kampus SMKN 1 Plered Purwakarta',
+  };
+};
+
 export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   denah,
   unassignedRooms = [],
@@ -38,11 +84,10 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   highlightRoomCode,
   highlightLabel,
 }) => {
-  // Canvas dimulai dari elemen tersimpan. Jika kosong, gunakan auto-floorplan agar canvas tidak hampa
-  const initialNodes =
-    denah.elements && denah.elements.length > 0
-      ? denah.elements
-      : generateAutoFloorplan(unassignedRooms);
+  // Canvas dimulai dari elemen tersimpan (filter metadata peta). Jika kosong, gunakan auto-floorplan agar canvas tidak hampa
+  const rawElements = Array.isArray(denah.elements) ? denah.elements : [];
+  const realNodes = rawElements.filter((el: any) => el?.id !== '__MAP_GUIDE_CONFIG__');
+  const initialNodes = realNodes.length > 0 ? realNodes : generateAutoFloorplan(unassignedRooms);
 
   const [nodes, setNodes] = useState<DenahElementNode[]>(initialNodes);
   const [scale, setScale] = useState(1);
@@ -52,22 +97,14 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   const [isLightMode, setIsLightMode] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(!isReadOnly);
 
-  // Satellite Map Guide State
-  const [mapGuideConfig, setMapGuideConfig] = useState<DenahMapGuideConfig>(() => {
-    try {
-      const saved = localStorage.getItem(`absenta_denah_map_${denah.id}`);
-      if (saved) return JSON.parse(saved);
-    } catch (_) {}
-    return {
-      enabled: false,
-      lat: -6.837, // Default Jawa Barat / Indonesia
-      lng: 108.225,
-      zoom: 18,
-      opacity: 0.7,
-      layer: 'google_hybrid',
-      is_locked: true,
-    };
-  });
+  // Satellite Map Guide State (Disinkronkan otomatis dari database denah)
+  const [mapGuideConfig, setMapGuideConfig] = useState<DenahMapGuideConfig>(() =>
+    extractMapGuideConfig(denah.elements, denah.id)
+  );
+
+  useEffect(() => {
+    setMapGuideConfig(extractMapGuideConfig(denah.elements, denah.id));
+  }, [denah.id, denah.elements]);
   const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);
 
   // History for Undo/Redo
@@ -266,10 +303,30 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   const handleSaveDenah = async () => {
     setIsSaving(true);
     try {
+      const cleanNodes = nodes.filter((n) => n.id !== '__MAP_GUIDE_CONFIG__');
+      const mapMetaNode: DenahElementNode = {
+        id: '__MAP_GUIDE_CONFIG__',
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        rotation: 0,
+        label_utama: '__MAP_GUIDE__',
+        kategori_ruang: 'LAINNYA',
+        catatan: JSON.stringify(mapGuideConfig),
+      };
+
+      const payload = [...cleanNodes, mapMetaNode];
+
       const saved = await updateDenah(denah.id, {
-        elements: nodes,
+        elements: payload,
       });
-      toast.success('Denah spasial berhasil disimpan ke database!');
+
+      try {
+        localStorage.setItem(`absenta_denah_map_${denah.id}`, JSON.stringify(mapGuideConfig));
+      } catch (_) {}
+
+      toast.success('Denah spasial & peta satelit berhasil disimpan ke database!');
       if (onSaveSuccess) onSaveSuccess(saved);
     } catch (err: any) {
       toast.error(err.message || 'Gagal menyimpan denah');

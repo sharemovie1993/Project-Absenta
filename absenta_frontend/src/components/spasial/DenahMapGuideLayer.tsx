@@ -93,12 +93,21 @@ export const DenahMapGuideLayer: React.FC<DenahMapGuideLayerProps> = ({
     map.on('moveend', handleMoveEnd);
     map.on('zoomend', handleMoveEnd);
 
-    // Initial resize check
-    setTimeout(() => {
+    // Initial resize checks for modals & tab transitions
+    const t1 = setTimeout(() => map.invalidateSize(), 150);
+    const t2 = setTimeout(() => map.invalidateSize(), 400);
+    const t3 = setTimeout(() => map.invalidateSize(), 800);
+
+    const handleWindowResize = () => {
       map.invalidateSize();
-    }, 150);
+    };
+    window.addEventListener('resize', handleWindowResize);
 
     return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      window.removeEventListener('resize', handleWindowResize);
       map.off('moveend', handleMoveEnd);
       map.off('zoomend', handleMoveEnd);
       map.remove();
