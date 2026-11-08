@@ -142,13 +142,13 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
 
   const assignedMapels = useMemo(() => {
     const list = teacherAssignedMapels?.data || [];
-    const map = new Map<string, { value: string; label: string }>();
+    const map = new Map<string, { value: string; label: string; raw?: any }>();
     list.forEach((item: any) => {
       const id = item.mapel_id || item.Mapel?.id;
       if (id && !map.has(id)) {
         const canonical = mapelOptions.find((m) => m.value === id);
         const label = canonical?.label || item.Mapel?.nama_mapel || id;
-        map.set(id, { value: id, label });
+        map.set(id, { value: id, label, raw: (canonical as any)?.raw || item.Mapel });
       }
     });
     return Array.from(map.values());
@@ -169,7 +169,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   // Sinkronisasi otomatis judul & kode bank pada mode massal
   const triggerAutoFillMassal = (targetMapelId: string, targetTingkat: string, targetKegiatanKey: string) => {
     const { kodeBank: genCode, judul: genTitle } = generateAutoFillMassal({
-      mapelOptions,
+      mapelOptions: activeMapelOptions,
       targetMapelId,
       targetTingkat,
       targetKegiatanKey,

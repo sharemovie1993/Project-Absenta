@@ -279,10 +279,145 @@ export function detectSmartAsesmenType(
 }
 
 /**
+ * Resolves standard curriculum subject acronym / short code
+ * - Mapel umum panjang: Pendidikan Agama dan Budi Pekerti -> PABK, Pancasila -> PKN, Jasmani -> PJOK
+ * - Produktif / Kejuruan: MPP-TKJ, DDPK-TKJ, KK-RPL tetap utuh dengan tanda hubung (tidak dipotong)
+ */
+export function resolveMapelShortCode(mapelLabel: string, rawMapel?: any): string {
+  // 1. Cek kode resmi dari raw object jika ada
+  const rawCode = (rawMapel?.kode_mapel || rawMapel?.kode || '').trim().toUpperCase();
+  if (rawCode && rawCode.length >= 2 && rawCode.length <= 15) {
+    if (rawCode.includes('-')) {
+      return rawCode;
+    }
+  }
+
+  // 2. Cek apakah di dalam label terdapat kurung berisi kode (misal: "Pendidikan Agama (PABK)" atau "(MPP-TKJ)")
+  const parenMatch = mapelLabel.match(/\(([A-Za-z0-9\-_]+)\)/);
+  if (parenMatch) {
+    const codeInParen = parenMatch[1].trim().toUpperCase();
+    if (codeInParen.length >= 2 && codeInParen.length <= 12) {
+      return codeInParen;
+    }
+  }
+
+  // Ambil nama mapel bersih (sebelum tanda kurung atau strip kelompok)
+  const cleanName = mapelLabel.split('(')[0].split(' - [')[0].trim();
+  const lower = cleanName.toLowerCase();
+
+  // 3. Deteksi nama mapel produktif yang sudah berbentuk singkatan (misal: MPP-TKJ, DDPK-TKJ, MP-KODING-AI)
+  if (/^[A-Za-z0-9]+-[A-Za-z0-9]+(-[A-Za-z0-9]+)?$/.test(cleanName)) {
+    return cleanName.toUpperCase();
+  }
+
+  // 4. Kamus Resmi Singkatan Mapel Nasional (Kurikulum Merdeka & K13)
+  // Agama & Budi Pekerti -> PABK / PAI / PAK / dll.
+  if (lower.includes('agama') || lower.includes('budi pekerti')) {
+    if (lower.includes('islam')) return 'PAI';
+    if (lower.includes('kristen')) return 'PAK';
+    if (lower.includes('katolik')) return 'PAKT';
+    if (lower.includes('hindu')) return 'PAH';
+    if (lower.includes('buddha')) return 'PAB';
+    if (lower.includes('khonghucu')) return 'PAKONG';
+    return 'PABK';
+  }
+
+  // Pancasila & Kewarganegaraan -> PKN
+  if (lower.includes('pancasila') || lower.includes('kewarganegaraan') || lower.includes('ppkn') || lower.includes('pkn')) {
+    return 'PKN';
+  }
+
+  // Penjasorkes / PJOK -> PJOK
+  if (lower.includes('jasmani') || lower.includes('olahraga') || lower.includes('penjas') || lower.includes('pjok')) {
+    return 'PJOK';
+  }
+
+  // Bahasa
+  if (lower.includes('bahasa indonesia') || lower.includes('b. indonesia')) return 'BIND';
+  if (lower.includes('bahasa inggris') || lower.includes('b. inggris')) return 'BING';
+  if (lower.includes('sunda')) return 'BSUN';
+  if (lower.includes('jawa')) return 'BJAW';
+  if (lower.includes('arab')) return 'BARB';
+  if (lower.includes('jepang')) return 'BJEP';
+  if (lower.includes('mandarin')) return 'BMAND';
+  if (lower.includes('jerman')) return 'BJER';
+
+  // Matematika
+  if (lower.includes('matematika') || lower.includes('mtk')) {
+    if (lower.includes('lanjut') || lower.includes('peminatan')) return 'MAT-LANJUT';
+    return 'MAT';
+  }
+
+  // Sains & IPAS
+  if (lower.includes('ipas')) return 'IPAS';
+  if (lower.includes('alam') || lower.includes('ipa')) return 'IPA';
+  if (lower.includes('fisika')) return 'FIS';
+  if (lower.includes('kimia')) return 'KIM';
+  if (lower.includes('biologi')) return 'BIO';
+
+  // Sosial & Humaniora
+  if (lower.includes('sosial') || lower.includes('ips')) return 'IPS';
+  if (lower.includes('sejarah')) return 'SEJ';
+  if (lower.includes('geografi')) return 'GEO';
+  if (lower.includes('ekonomi')) return 'EKO';
+  if (lower.includes('sosiologi')) return 'SOS';
+
+  // Informatika & Koding
+  if (lower.includes('informatika') || lower.includes('komputer')) return 'INF';
+  if (lower.includes('koding') || lower.includes('coding')) return 'KODING';
+
+  // Seni & Prakarya
+  if (lower.includes('seni musik')) return 'MUSIK';
+  if (lower.includes('seni rupa')) return 'RUPA';
+  if (lower.includes('seni tari')) return 'TARI';
+  if (lower.includes('seni teater')) return 'TEATER';
+  if (lower.includes('seni budaya') || lower.includes('seni')) return 'SBK';
+  if (lower.includes('prakarya') || lower.includes('kewirausahaan') || lower.includes('pkwu')) return 'PKWU';
+
+  // Bimbingan Konseling
+  if (lower.includes('bimbingan') || lower.includes('konseling') || lower.includes('bk')) return 'BK';
+
+  // 5. Pola Kejuruan / Produktif (DDPK, MPP, KK dengan jurusan)
+  if (lower.includes('dasar') && lower.includes('kejuruan')) {
+    const jur = cleanName.match(/\b(TKJ|RPL|DKV|TAV|TITL|TKRO|TBSM|OTKP|AKL|BDP|TB|PH|MM|SIJA)\b/i);
+    return jur ? `DDPK-${jur[1].toUpperCase()}` : 'DDPK';
+  }
+  if (lower.includes('pilihan') || lower.includes('mpp')) {
+    const jur = cleanName.match(/\b(TKJ|RPL|DKV|TAV|TITL|TKRO|TBSM|OTKP|AKL|BDP|TB|PH|MM|SIJA)\b/i);
+    return jur ? `MPP-${jur[1].toUpperCase()}` : 'MPP';
+  }
+  if (lower.includes('konsentrasi') || lower.includes('kk')) {
+    const jur = cleanName.match(/\b(TKJ|RPL|DKV|TAV|TITL|TKRO|TBSM|OTKP|AKL|BDP|TB|PH|MM|SIJA)\b/i);
+    return jur ? `KK-${jur[1].toUpperCase()}` : 'KK';
+  }
+
+  // 6. Jika rawCode tersedia
+  if (rawCode) {
+    return rawCode;
+  }
+
+  // 7. Fallback cerdas: Inisial kata pertama (akronim)
+  const words = cleanName.split(/[\s_-]+/).filter(Boolean);
+  if (words.length >= 2) {
+    const acronym = words
+      .filter((w) => !['dan', 'untuk', 'yang', 'di', 'ke', 'dari', 'pada'].includes(w.toLowerCase()))
+      .map((w) => w[0])
+      .join('')
+      .toUpperCase();
+    if (acronym.length >= 2 && acronym.length <= 6) {
+      return acronym;
+    }
+  }
+
+  // Single word: bersihkan karakter non-alphanumeric, ambil max 6 karakter
+  return cleanName.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6).toUpperCase() || 'MAPEL';
+}
+
+/**
  * Generator Otomatis Judul & Kode Bank Soal Standar
  */
 export function generateAutoFillMassal(params: {
-  mapelOptions: Array<{ value: string; label: string }>;
+  mapelOptions: Array<{ value: string; label: string; raw?: any }>;
   targetMapelId: string;
   targetTingkat: string;
   targetKegiatanKey: string;
@@ -290,12 +425,11 @@ export function generateAutoFillMassal(params: {
 }): { kodeBank: string; judul: string } {
   const { mapelOptions, targetMapelId, targetTingkat, targetKegiatanKey, jenjang } = params;
   const selectedMapel = mapelOptions.find((m) => m.value === targetMapelId);
-  const mapelName = selectedMapel?.label?.split('(')[0]?.trim() || 'Mata Pelajaran';
+  const mapelLabel = selectedMapel?.label || 'Mata Pelajaran';
+  const mapelName = mapelLabel.split('(')[0]?.trim() || 'Mata Pelajaran';
   const year = new Date().getFullYear();
-  const cleanMapelCode = (selectedMapel?.label || 'MAPEL')
-    .replace(/[^a-zA-Z0-9]/g, '')
-    .slice(0, 4)
-    .toUpperCase();
+
+  const mapelShortCode = resolveMapelShortCode(mapelLabel, selectedMapel?.raw);
 
   const allTypes = getOfficialAsesmenTypes(jenjang);
   const selectedDef = allTypes.find((t) => t.key === targetKegiatanKey);
@@ -304,8 +438,8 @@ export function generateAutoFillMassal(params: {
   const isSemua = !targetTingkat || targetTingkat.toUpperCase() === 'SEMUA';
 
   const generatedCode = isSemua
-    ? `${prefix}-${year}-${cleanMapelCode}`
-    : `${prefix}-${year}-${cleanMapelCode}-${romanTingkat}`;
+    ? `${prefix}-${year}-${mapelShortCode}`
+    : `${prefix}-${year}-${mapelShortCode}-${romanTingkat}`;
   const generatedTitle = isSemua
     ? `${prefix} - ${mapelName}`
     : `${prefix} - ${mapelName} Tingkat ${romanTingkat}`;
