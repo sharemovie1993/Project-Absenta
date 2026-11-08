@@ -20,6 +20,7 @@ import toast from 'react-hot-toast';
 import { z } from 'zod';
 import type { CbtSoal, OpsiJawaban } from '@/types/cbt.types';
 import { cn } from '@/lib/utils';
+import { getOptionBadgeColor } from '../common/CbtOptionsRenderer';
 
 export interface CbtInlineSoalCardProps {
   bankSoalId: string;
@@ -915,15 +916,13 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
                   type="button"
                   onClick={() => setKunciJawaban(opt.kode)}
                   className={cn(
-                    'w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center font-black text-xs shrink-0 cursor-pointer transition-all',
-                    isKey
-                      ? 'bg-emerald-600 text-white shadow-2xs'
-                      : 'border-2 border-slate-300 dark:border-slate-600 text-slate-600 hover:border-[#673ab7] hover:text-[#673ab7]'
+                    'w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center font-black text-xs shrink-0 cursor-pointer transition-all border shadow-2xs',
+                    getOptionBadgeColor(opt.kode, isKey)
                   )}
                   title={`Jadikan Opsi ${opt.kode} sebagai Kunci Jawaban`}
                   aria-label={`Jadikan Opsi ${opt.kode} sebagai Kunci Jawaban`}
                 >
-                  {isKey ? <Check size={13} /> : opt.kode}
+                  {isKey ? <Check size={13} className="stroke-[2.5]" /> : opt.kode}
                 </button>
 
                 <div className="flex-1 min-w-0">

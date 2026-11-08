@@ -17,6 +17,59 @@ export interface CbtOptionsRendererProps {
 }
 
 /**
+ * Palet warna pembeda khas untuk setiap opsi huruf (A, B, C, D, E)
+ * agar ada kontras jelas antara huruf opsi dan isi teks opsi jawaban.
+ */
+export function getOptionBadgeColor(
+  kode: string,
+  isCorrectKey: boolean,
+  isSelected: boolean = false,
+  isExam: boolean = false
+): string {
+  // Mode Ujian Siswa (Exam Room - Dark Theme)
+  if (isExam) {
+    if (isSelected) {
+      return 'bg-white text-indigo-700 border-white shadow-xs font-black';
+    }
+    switch (kode.toUpperCase()) {
+      case 'A':
+        return 'bg-sky-500/20 text-sky-300 border-sky-500/40';
+      case 'B':
+        return 'bg-purple-500/20 text-purple-300 border-purple-500/40';
+      case 'C':
+        return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+      case 'D':
+        return 'bg-teal-500/20 text-teal-300 border-teal-500/40';
+      case 'E':
+        return 'bg-rose-500/20 text-rose-300 border-rose-500/40';
+      default:
+        return 'bg-slate-800 text-slate-300 border-slate-700';
+    }
+  }
+
+  // Mode Pratinjau Guru - Jika Opsi ini adalah Kunci Jawaban
+  if (isCorrectKey) {
+    return 'bg-emerald-600 text-white border-emerald-600 shadow-2xs';
+  }
+
+  // Mode Pratinjau Guru - Warna Pembeda Khusus per Huruf Opsi (A, B, C, D, E)
+  switch (kode.toUpperCase()) {
+    case 'A':
+      return 'bg-sky-100 dark:bg-sky-950/70 text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-800';
+    case 'B':
+      return 'bg-purple-100 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-800';
+    case 'C':
+      return 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800';
+    case 'D':
+      return 'bg-teal-100 dark:bg-teal-950/70 text-teal-800 dark:text-teal-300 border-teal-300 dark:border-teal-800';
+    case 'E':
+      return 'bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800';
+    default:
+      return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700';
+  }
+}
+
+/**
  * Mendeteksi secara adaptif mode grid terbaik untuk opsi jawaban:
  * 1. 'grid-1-row': Semua opsi sangat pendek (<= 5 karakter, tanpa gambar) -> 4 atau 5 kolom sebaris horizontal.
  * 2. 'grid-2-col': Semua opsi berukuran ringkas (1-3 kata pendek, <= 20 karakter, tanpa gambar) -> 2 kolom per baris.
@@ -112,6 +165,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
       {safeOptions.map((opt) => {
         const isCorrectKey = kunciJawaban === opt.kode;
         const isSelected = selectedAnswer === opt.kode;
+        const badgeColorClass = getOptionBadgeColor(opt.kode, isCorrectKey, isSelected, isExam);
 
         // ── MODE 1: UJIAN SISWA (EXAM ROOM - DARK THEME) ──
         if (isExam) {
@@ -131,10 +185,8 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
               >
                 <div
                   className={cn(
-                    'w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg flex items-center justify-center font-black text-xs shrink-0 transition-colors',
-                    isSelected
-                      ? 'bg-white text-indigo-700 shadow-2xs'
-                      : 'bg-slate-800 text-slate-300'
+                    'w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg flex items-center justify-center font-black text-xs shrink-0 transition-colors border',
+                    badgeColorClass
                   )}
                 >
                   {opt.kode}
@@ -161,10 +213,8 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
               >
                 <div
                   className={cn(
-                    'w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center font-black text-xs shrink-0 transition-colors mt-0.5',
-                    isSelected
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'bg-slate-800 text-slate-300'
+                    'w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center font-black text-xs shrink-0 transition-colors mt-0.5 border',
+                    badgeColorClass
                   )}
                 >
                   {opt.kode}
@@ -193,10 +243,8 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
             >
               <div
                 className={cn(
-                  'w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-black text-sm shrink-0 transition-colors mt-0.5',
-                  isSelected
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'bg-slate-800 text-slate-300'
+                  'w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-black text-sm shrink-0 transition-colors mt-0.5 border',
+                  badgeColorClass
                 )}
               >
                 {opt.kode}
@@ -226,18 +274,16 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
             <div
               key={opt.kode}
               className={cn(
-                'p-1.5 sm:p-2 rounded-xl border flex items-center justify-center gap-1 sm:gap-1.5 transition-all text-center min-w-0',
+                'p-1.5 sm:p-2 rounded-xl border flex items-center justify-center gap-1 sm:gap-1.5 transition-all text-center min-w-0 shadow-2xs',
                 isCorrectKey
-                  ? 'border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-bold ring-1 ring-emerald-500/50 shadow-2xs'
-                  : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300'
+                  ? 'border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-bold ring-1 ring-emerald-500/50'
+                  : 'border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-slate-300'
               )}
             >
               <div
                 className={cn(
-                  'w-5 h-5 rounded-full flex items-center justify-center text-[10.5px] font-black shrink-0',
-                  isCorrectKey
-                    ? 'bg-emerald-600 text-white shadow-2xs'
-                    : 'border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800'
+                  'w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 border transition-transform',
+                  badgeColorClass
                 )}
               >
                 {isCorrectKey ? <Check size={11} className="stroke-[3]" /> : opt.kode}
@@ -254,18 +300,16 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
             <div
               key={opt.kode}
               className={cn(
-                'p-2 sm:p-2.5 rounded-xl border flex items-start gap-2 transition-all min-w-0',
+                'p-2 sm:p-2.5 rounded-xl border flex items-start gap-2 transition-all min-w-0 shadow-2xs',
                 isCorrectKey
-                  ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 ring-1 ring-emerald-500/50 shadow-2xs'
-                  : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300'
+                  ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 ring-1 ring-emerald-500/50'
+                  : 'border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-slate-300'
               )}
             >
               <div
                 className={cn(
-                  'w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 mt-0.5',
-                  isCorrectKey
-                    ? 'bg-emerald-600 text-white shadow-2xs'
-                    : 'border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800'
+                  'w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 mt-0.5 border shadow-2xs',
+                  badgeColorClass
                 )}
               >
                 {isCorrectKey ? <Check size={11} className="stroke-[3]" /> : opt.kode}
@@ -277,14 +321,14 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
                     'text-xs font-semibold leading-snug break-words whitespace-normal',
                     isCorrectKey
                       ? 'text-emerald-950 dark:text-emerald-100 font-bold'
-                      : 'text-slate-700 dark:text-slate-300'
+                      : 'text-slate-800 dark:text-slate-200'
                   )}
                 >
                   {opt.teks || '-'}
                 </p>
 
                 {isCorrectKey && (
-                  <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded">
+                  <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded shadow-2xs">
                     <CheckCircle2 size={10} /> Kunci
                   </span>
                 )}
@@ -298,18 +342,16 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
           <div
             key={opt.kode}
             className={cn(
-              'p-2.5 sm:p-3 rounded-xl border flex items-start gap-2.5 transition-all min-w-0',
+              'p-2.5 sm:p-3 rounded-xl border flex items-start gap-2.5 transition-all min-w-0 shadow-2xs',
               isCorrectKey
-                ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30'
-                : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900'
+                ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30 ring-1 ring-emerald-500/30'
+                : 'border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300'
             )}
           >
             <div
               className={cn(
-                'w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 mt-0.5',
-                isCorrectKey
-                  ? 'bg-emerald-600 text-white'
-                  : 'border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800'
+                'w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[11.5px] font-black shrink-0 mt-0.5 border shadow-2xs',
+                badgeColorClass
               )}
             >
               {isCorrectKey ? <Check size={12} className="stroke-[2.5]" /> : opt.kode}
@@ -322,7 +364,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
                     'text-xs leading-relaxed break-words whitespace-normal',
                     isCorrectKey
                       ? 'text-emerald-950 dark:text-emerald-200 font-bold'
-                      : 'text-slate-700 dark:text-slate-300 font-medium'
+                      : 'text-slate-800 dark:text-slate-200 font-medium'
                   )}
                 >
                   {opt.teks || '-'}
@@ -338,7 +380,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
             </div>
 
             {isCorrectKey && (
-              <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded-md flex items-center gap-0.5 shrink-0 self-start">
+              <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded-md flex items-center gap-0.5 shrink-0 self-start shadow-2xs">
                 <CheckCircle2 size={11} /> Kunci
               </span>
             )}
