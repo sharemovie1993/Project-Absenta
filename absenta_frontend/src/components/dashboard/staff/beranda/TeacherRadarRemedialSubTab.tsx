@@ -204,15 +204,15 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
     },
     {
       id: 'needs_remedial',
-      title: 'Perlu Remedial',
+      title: 'Harus Remedial',
       value: `${stats.total_perlu_remedial} Siswa`,
       icon: AlertCircle,
       iconColorClass: statusFilter === 'needs_remedial'
         ? 'text-rose-600 bg-rose-50 dark:bg-rose-950/60 ring-1 ring-rose-500/40'
         : 'text-rose-600 bg-rose-50/70 dark:bg-rose-950/40',
       badge: statusFilter === 'needs_remedial' ? (
-        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300">
-          <Check size={9} /> Aktif
+        <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded-full text-[8.5px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300 shrink-0">
+          <Check size={8} /> Aktif
         </span>
       ) : undefined,
       isActive: statusFilter === 'needs_remedial',
@@ -290,7 +290,7 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
 
       {/* ─── Kontainer Utama: Daftar Siswa Radar Remedial ─── */}
       <HubCard
-        title="Daftar Siswa Butuh Penuntasan &amp; Remedial"
+        title="Siswa Harus Remedial"
         badge={`${filteredItems.length} Siswa`}
         badgeVariant={statusFilter === 'needs_remedial' ? 'rose' : statusFilter === 'unassessed' ? 'amber' : 'purple'}
         action={
@@ -390,18 +390,25 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
                 return (
                   <div
                     key={`mobile-${item.id}-${idx}`}
-                    className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-2"
+                    className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-2.5"
                   >
-                    {/* Header: Kelas, Mapel & Status Badge */}
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 font-bold text-[10px] border border-purple-200/60 dark:border-purple-800/60 shrink-0">
-                          {item.nama_kelas}
-                        </span>
-                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                          {item.nama_mapel}
-                        </span>
+                    {/* Header Siswa-Centrik: Nama Siswa, Tag Kelas, & Status Badge */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm leading-tight">
+                            {rowNumber}. {item.nama_siswa}
+                          </h4>
+                          <span className="px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 font-bold text-[9.5px] border border-purple-200/60 dark:border-purple-800/60 shrink-0">
+                            {item.nama_kelas}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          NIS: {item.nis || '-'}
+                        </p>
                       </div>
+
+                      {/* Status Badge */}
                       <span
                         className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 border ${
                           isRemedial
@@ -430,21 +437,25 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
                       </span>
                     </div>
 
-                    {/* Siswa & Guru Pengajar */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h4 className="font-bold text-slate-900 dark:text-white text-xs leading-tight">
-                          {rowNumber}. {item.nama_siswa}
-                        </h4>
-                        <p className="text-[10px] text-slate-400 mt-0.5">
-                          NIS: {item.nis || '-'}
-                          {item.nama_guru ? ` • Pengajar: ${item.nama_guru}` : ''}
+                    {/* Strip Konteks: Mata Pelajaran & Nilai vs KKM */}
+                    <div className="p-2 sm:p-2.5 rounded-lg bg-slate-50/80 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+                          Mata Pelajaran
+                        </span>
+                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate mt-0.5">
+                          {item.nama_mapel}
                         </p>
+                        {item.nama_guru && (
+                          <p className="text-[10px] text-slate-400 mt-0.5 truncate">
+                            Pengajar: {item.nama_guru}
+                          </p>
+                        )}
                       </div>
 
-                      <div className="text-right shrink-0">
+                      <div className="text-right shrink-0 pl-2.5 border-l border-slate-200 dark:border-slate-700">
                         <span className="text-[9px] font-bold uppercase text-slate-400 block">Nilai vs KKM</span>
-                        <div className="flex items-center gap-1 justify-end">
+                        <div className="flex items-center gap-1 justify-end mt-0.5">
                           <span
                             className={`px-1.5 py-0.2 rounded font-black text-xs ${
                               isRemedial
@@ -456,13 +467,13 @@ export const TeacherRadarRemedialSubTab: React.FC<UniversalRadarRemedialProps> =
                           >
                             {item.nilai_saat_ini !== null ? item.nilai_saat_ini : '-'}
                           </span>
-                          <span className="text-[10px] text-slate-400">/{kkm}</span>
+                          <span className="text-[10px] font-semibold text-slate-400">/{kkm}</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Tombol Aksi Mobile Touch-Friendly */}
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end">
+                    <div className="pt-0.5 flex items-center justify-end">
                       <button
                         type="button"
                         onClick={() => setActiveModalItem(item)}

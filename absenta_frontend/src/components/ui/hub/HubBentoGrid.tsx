@@ -77,7 +77,7 @@ export const HubBentoGrid: React.FC<HubBentoGridProps> = React.memo(({
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1 min-w-0">
-                  <span className="text-[10.5px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 truncate leading-none">
+                  <span className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 truncate leading-none">
                     {cell.title}
                   </span>
                   {cell.badge}
