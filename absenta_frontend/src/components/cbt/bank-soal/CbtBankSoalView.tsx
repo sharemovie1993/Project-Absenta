@@ -17,11 +17,14 @@ import {
   BookOpen,
   Plus,
   Rocket,
+  Search,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAuthStore } from '@/store/authStore';
+import { useCapabilities } from '@/hooks/useCapabilities';
 import { MobileAcademicList } from '@/components/academic/shared/MobileAcademicList';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtBankSoal } from '@/types/cbt.types';
@@ -57,7 +60,16 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
   const isMobile = useIsMobile();
   const confirm = useConfirm();
   const { user } = useAuthStore();
+  const { isAdmin, isKurikulum } = useCapabilities();
   const currentGuruId = guruId || user?.guru_profile?.id;
+
+  // Konteks Mode: Panitia CBT (Kurikulum / Admin) vs Guru Mandiri
+  const isPanitiaCbt = useMemo(() => {
+    if (roleContext === 'KURIKULUM' || roleContext === 'ADMIN') return true;
+    if (roleContext === 'GURU') return false;
+    if (guruId) return false;
+    return Boolean(isAdmin || isKurikulum);
+  }, [roleContext, guruId, isAdmin, isKurikulum]);
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -76,8 +88,8 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
   const filter = useAcademicFilter({
     enableTp: false,
     enableSemester: false,
-    enableTingkat: true,
-    enableMapel: !mapelId,
+    enableTingkat: isPanitiaCbt,
+    enableMapel: isPanitiaCbt && !mapelId,
     enableSearch: true,
     searchDebounceMs: 400,
     allowAllKelas: true,
@@ -97,8 +109,8 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
       page,
       limit,
       search: filter.debouncedSearchQuery,
-      tingkat: normalizedTingkat,
-      mapel_id: mapelId || filter.values.mapelId,
+      tingkat: isPanitiaCbt ? normalizedTingkat : undefined,
+      mapel_id: mapelId || (isPanitiaCbt ? filter.values.mapelId : undefined),
       guru_id: guruId,
     }),
     queryFn: () =>
@@ -106,8 +118,8 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
         page,
         limit,
         search: filter.debouncedSearchQuery,
-        tingkat: normalizedTingkat,
-        mapel_id: mapelId || filter.values.mapelId,
+        tingkat: isPanitiaCbt ? normalizedTingkat : undefined,
+        mapel_id: mapelId || (isPanitiaCbt ? filter.values.mapelId : undefined),
         guru_id: guruId,
       }),
   });
@@ -406,20 +418,66 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
         </div>
       )}
 
-      {/* Filter Engine Terpadu */}
-      <AcademicFilterToolbar
-        {...filter.toolbarProps}
-        onAdd={
-          !readOnly
-            ? () => {
-                setSelectedBankSoal(null);
-                setIsFormModalOpen(true);
-              }
-            : undefined
-        }
-        addLabel="Buat Bank Soal"
-        className="shadow-2xs"
-      />
+      {/* Filter Toolbar: Full Academic Filter untuk Panitia CBT, Simple Clean Search Bar untuk Guru */}
+      {isPanitiaCbt ? (
+        <AcademicFilterToolbar
+          {...filter.toolbarProps}
+          onAdd={
+            !readOnly
+              ? () => {
+                  setSelectedBankSoal(null);
+                  setIsFormModalOpen(true);
+                }
+              : undefined
+          }
+          addLabel="Buat Bank Soal"
+          className="shadow-2xs"
+        />
+      ) : (
+        /* Tampilan Ramping Khusus Guru: Bebas dari Accordion Dropdown Tingkat/Mapel */
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="relative flex-1 max-w-full sm:max-w-sm">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={filter.searchQuery}
+              onChange={(e) => filter.setSearchQuery(e.target.value)}
+              placeholder="Cari bank soal saya..."
+              className="w-full pl-9 pr-9 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 shadow-2xs transition-all"
+              aria-label="Cari bank soal"
+            />
+            {filter.searchQuery && (
+              <button
+                type="button"
+                onClick={() => filter.setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer"
+                aria-label="Hapus kata kunci pencarian"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+
+          {/* Tombol Buat Bank Soal di Desktop untuk Guru */}
+          {!readOnly && (
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  setSelectedBankSoal(null);
+                  setIsFormModalOpen(true);
+                }}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs h-9 px-3.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus size={15} className="stroke-[2.5]" />
+                <span>+ Buat Bank Soal</span>
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Konten Data: Mobile List vs Desktop Table */}
       {isMobile ? (
