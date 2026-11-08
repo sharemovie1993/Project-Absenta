@@ -434,8 +434,8 @@ export const UniversalStudentIdentity: React.FC<UniversalStudentIdentityProps> =
             {identity.namaKelas}
           </span>
         </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-          NIS: {identity.nis} • {identity.jurusanNama}
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+          NIS: {identity.nis}{identity.jurusanNama && identity.jurusanNama !== '-' ? ` • ${identity.jurusanNama}` : ''}
         </p>
         <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-500 dark:text-slate-400">
           <span className="inline-flex items-center gap-1">

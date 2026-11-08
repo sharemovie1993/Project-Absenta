@@ -149,9 +149,15 @@ export function formatTanggalIndonesia(dateVal?: string | Date | null): string {
  */
 export function formatTtl(tempat?: string | null, tanggal?: string | Date | null): string {
   const tStr = (tempat || '').trim();
+  const cleanTempat = tStr
+    ? tStr
+        .split(/\s+/)
+        .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : ''))
+        .join(' ')
+    : '';
   const dStr = formatTanggalIndonesia(tanggal).trim();
-  if (tStr && dStr) return `${tStr}, ${dStr}`;
-  return tStr || dStr || '';
+  if (cleanTempat && dStr) return `${cleanTempat}, ${dStr}`;
+  return cleanTempat || dStr || '';
 }
 
 /**

@@ -345,13 +345,25 @@ export default function CbtExamRoomPage() {
   const totalTerjawab = Object.values(answersMap).filter((v) => Boolean(v.jawaban)).length;
   const totalRagu = Object.values(answersMap).filter((v) => v.isRagu).length;
 
+  // Sanitasi subtitle sesi agar tidak mengulang nama mata pelajaran
+  const cleanSesiSubtitle = useMemo(() => {
+    if (!examOverview?.nama_sesi) return '';
+    const mapel = (examOverview?.mapel || '').trim();
+    let str = examOverview.nama_sesi;
+    if (mapel) {
+      str = str.replace(new RegExp(`\\s*[-–•]?\\s*${mapel}\\s*[-–•]?\\s*`, 'gi'), ' ');
+    }
+    str = str.replace(/\s+/g, ' ').replace(/^\s*[-–•]\s*/, '').replace(/\s*[-–•]\s*$/, '').trim();
+    return str || '';
+  }, [examOverview]);
+
   const renderContent = () => {
     // ─── RENDER 1: TOKEN GATEKEEPER ─────────────────────────────────────────────
     if (step === 'TOKEN_GATE') {
       return (
-        <div className="min-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md p-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xl rounded-2xl space-y-6 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto border border-indigo-100 dark:border-indigo-900/40">
+        <div className="min-h-[calc(100vh-3.5rem)] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex items-center justify-center p-3 sm:p-4">
+          <Card className="w-full max-w-md p-5 sm:p-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm rounded-2xl space-y-5 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto border border-indigo-100 dark:border-indigo-900/40 shadow-xs">
               <Maximize2 size={28} />
             </div>
 
@@ -370,7 +382,7 @@ export default function CbtExamRoomPage() {
                   value={tokenInput}
                   onChange={(e) => setTokenInput(e.target.value.toUpperCase())}
                   placeholder="TOKEN"
-                  className="w-full text-center tracking-[0.35em] font-mono text-2xl font-bold py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-indigo-600 dark:text-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                  className="w-full text-center tracking-[0.35em] font-mono text-2xl font-bold py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-indigo-600 dark:text-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase placeholder:text-slate-400 dark:placeholder:text-slate-600 shadow-2xs"
                   aria-label="Input Token Ujian CBT"
                   required
                   autoFocus
@@ -387,7 +399,7 @@ export default function CbtExamRoomPage() {
               </Button>
             </form>
 
-            <div className="pt-2 text-[11px] text-slate-400 dark:text-slate-500 flex items-center justify-center gap-1.5">
+            <div className="pt-1 text-[11px] text-slate-400 dark:text-slate-500 flex items-center justify-center gap-1.5">
               <ShieldAlert size={14} className="text-amber-500" />
               <span>Anti-Cheat Guard & Offline-First Active</span>
             </div>
@@ -399,21 +411,21 @@ export default function CbtExamRoomPage() {
     // ─── RENDER 2: KONFIRMASI SESI SEBELUM MULAI ────────────────────────────────
     if (step === 'CONFIRMATION') {
       return (
-        <div className="min-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex items-center justify-center p-4">
-          <Card className="w-full max-w-lg p-5 sm:p-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xl rounded-2xl space-y-5">
+        <div className="min-h-[calc(100vh-3.5rem)] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex items-center justify-center p-3 sm:p-4">
+          <Card className="w-full max-w-md p-4 sm:p-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm rounded-2xl space-y-4">
             {/* Header Sesi Ujian */}
-            <div className="text-center space-y-2 pb-1 border-b border-slate-100 dark:border-slate-800/80">
+            <div className="text-center space-y-1.5 pb-2 border-b border-slate-100 dark:border-slate-800/80">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
                 <CheckCircle2 size={13} className="stroke-[2.5]" />
                 <span>Token Valid</span>
               </div>
-              <div>
-                <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+              <div className="space-y-0.5">
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
                   {examOverview?.mapel || examOverview?.nama_sesi}
                 </h2>
-                {examOverview?.nama_sesi && examOverview?.nama_sesi !== examOverview?.mapel && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    {examOverview.nama_sesi}
+                {cleanSesiSubtitle && (
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    {cleanSesiSubtitle}
                   </p>
                 )}
               </div>
@@ -421,63 +433,68 @@ export default function CbtExamRoomPage() {
 
             {/* Biodata Peserta Terhubung Universal Academic Identity (SSoT) */}
             <div className="space-y-1.5">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-                Biodata Peserta Ujian
-              </span>
+              <div className="flex items-center justify-between px-0.5">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                  Identitas Peserta
+                </span>
+                <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">
+                  Terverifikasi
+                </span>
+              </div>
               <UniversalStudentIdentity
                 id={studentId}
                 data={user?.siswa_profile || (user as any)?.siswa || user}
                 variant="card"
-                className="bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-700/60 shadow-none"
+                className="bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-700/60 shadow-none rounded-xl p-3 sm:p-3.5"
               />
             </div>
 
             {/* Spesifikasi Ujian Ringkas (Bebas Noise & Redundansi) */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-700/60 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-100 dark:border-indigo-900/40">
-                  <Clock size={18} />
+            <div className="grid grid-cols-2 divide-x divide-slate-200/80 dark:divide-slate-700/60 bg-slate-50 dark:bg-slate-800/40 rounded-xl p-3 border border-slate-200/70 dark:border-slate-700/60">
+              <div className="flex items-center gap-2.5 pr-2">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                  <Clock size={16} />
                 </div>
                 <div className="min-w-0">
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide block">
                     Durasi
                   </span>
-                  <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200">
+                  <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate block">
                     {examOverview?.durasi_menit} Menit
-                  </p>
+                  </span>
                 </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-700/60 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-900/40">
-                  <CheckCircle2 size={18} />
+              <div className="flex items-center gap-2.5 pl-3">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <CheckCircle2 size={16} />
                 </div>
                 <div className="min-w-0">
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-                    Jumlah Soal
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide block">
+                    Soal
                   </span>
-                  <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200">
+                  <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate block">
                     {examOverview?.total_soal} Butir (PG)
-                  </p>
+                  </span>
                 </div>
               </div>
             </div>
 
             {/* Protokol Keamanan Ringkas */}
-            <div className="p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 flex items-start gap-2.5 text-xs text-amber-800 dark:text-amber-300">
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-900 dark:text-amber-200">
               <ShieldAlert size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <p className="text-[11px] leading-relaxed">
-                Ujian menggunakan mode <strong>Layar Penuh</strong>. Dilarang berpindah tab browser atau meminimalkan jendela selama ujian.
+                Mode <strong>Layar Penuh</strong> aktif saat ujian dimulai. Dilarang berpindah tab browser atau meminimalkan jendela selama ujian.
               </p>
             </div>
 
             {/* Tombol Aksi Sederhana (Cukup "Mulai" Bebas Teks Bertumpuk) */}
-            <div className="flex items-center gap-3 pt-1">
+            <div className="grid grid-cols-2 gap-3 pt-1">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setStep('TOKEN_GATE')}
-                className="flex-1 h-11 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold text-xs"
+                className="h-11 border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl font-bold text-xs"
               >
                 Ganti Token
               </Button>
@@ -486,7 +503,7 @@ export default function CbtExamRoomPage() {
                 variant="primary"
                 onClick={handleStartExam}
                 disabled={loadingVerify}
-                className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md text-sm transition-all"
+                className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md text-sm transition-all"
               >
                 {loadingVerify ? 'Memuat...' : 'Mulai'}
               </Button>

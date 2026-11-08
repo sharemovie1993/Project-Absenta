@@ -72,6 +72,7 @@ function MainLayoutContent() {
 
   const isSiswa = typeof user?.role === 'string' ? user.role === 'SISWA' : ((user?.role as any)?.name === 'SISWA' || (user as any)?.roleName === 'SISWA');
   const isDashboardPage = location.pathname === '/dashboard' || location.pathname === '/' || location.pathname === '/apps';
+  const isCbtExamRoom = location.pathname.startsWith('/cbt/ruang-ujian');
   const activeApp = getActiveApp(location.pathname);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
@@ -185,12 +186,13 @@ function MainLayoutContent() {
         
         {/* Main Content Area - Below Topbar */}
         <div className={cn(
-          "flex-1 w-full pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-12 px-4 relative transition-all duration-300",
+          "flex-1 w-full relative transition-all duration-300",
+          isCbtExamRoom ? "pb-4 lg:pb-8 px-2 sm:px-4" : "pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-12 px-4",
           isTvMode ? "pt-4" : "pt-2.5 sm:pt-3 lg:pt-[72px]"
         )}>
           <div className={cn(
             "w-full gap-4 items-start transition-all duration-500",
-            isTvMode || !activeApp || isDashboardPage
+            isTvMode || !activeApp || isDashboardPage || isCbtExamRoom
               ? "grid grid-cols-1"
               : isSidebarCollapsed
               ? `grid grid-cols-1 lg:grid-cols-[64px_1fr] ${showInstruction ? 'xl:grid-cols-[64px_1fr_300px]' : ''}`
@@ -198,7 +200,7 @@ function MainLayoutContent() {
           )}>
             
             {/* Contextual In-App Sidebar (Desktop Grid-Integrated) */}
-            {!isMobile && !isTvMode && activeApp && !isDashboardPage && (
+            {!isMobile && !isTvMode && !isCbtExamRoom && activeApp && !isDashboardPage && (
               <aside className={cn(
                 "hidden lg:block flex-shrink-0 transition-all duration-300",
                 isSidebarCollapsed ? "w-16" : "w-64"
