@@ -170,7 +170,7 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
 
         {/* ── 2. SCROLLABLE LIVE GOOGLE FORMS STREAM (1 LAYAR KE BAWAH) ── */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-6 custom-scrollbar">
-          <div className="max-w-3xl mx-auto space-y-3.5 pb-8">
+          <div className="max-w-3xl mx-auto space-y-3.5 pb-32 sm:pb-20">
             {isLoading ? (
               <div className="py-16 flex flex-col items-center justify-center space-y-3 bg-white dark:bg-slate-900 rounded-2xl shadow-xs border border-slate-200/80 dark:border-slate-800">
                 <Loader size="lg" className="text-[#673ab7]" />

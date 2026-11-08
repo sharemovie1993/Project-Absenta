@@ -1042,8 +1042,8 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
       )}
 
       {/* ── 5. GOOGLE FORMS INLINE FOOTER TOOLBAR ── */}
-      <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+      <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="flex items-center justify-between sm:justify-start gap-2.5">
           <button
             type="button"
             onClick={() => setShowPembahasanBox((prev) => !prev)}
@@ -1072,7 +1072,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center justify-end gap-1.5 pt-1 sm:pt-0">
           {soal && (
             <button
               type="button"
