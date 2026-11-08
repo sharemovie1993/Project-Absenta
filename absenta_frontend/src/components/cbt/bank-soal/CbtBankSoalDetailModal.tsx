@@ -11,7 +11,6 @@ import {
   BookOpen,
   Rocket,
   X,
-  Download,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
@@ -19,7 +18,6 @@ import type { CbtBankSoal, CbtSoal } from '@/types/cbt.types';
 import { CbtContentRenderer } from '../common/CbtContentRenderer';
 import { CbtOptionsRenderer } from '../common/CbtOptionsRenderer';
 import { CbtInlineSoalCard } from './CbtSoalEditorModal';
-import { CbtGoogleFormImportModal } from './CbtGoogleFormImportModal';
 import useConfirm from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
@@ -44,7 +42,6 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
 
   // activeCardId: ID soal yang sedang diedit inline, atau 'NEW' untuk form soal baru di bagian bawah, atau null
   const [activeCardId, setActiveCardId] = useState<string | 'NEW' | null>(null);
-  const [isGformImportOpen, setIsGformImportOpen] = useState(false);
 
   // Fetch list of questions for this bank
   const { data: soalList = [], isLoading, refetch } = useQuery({
@@ -151,29 +148,14 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                 </div>
 
                 {!readOnly && (
-                  <>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsGformImportOpen(true)}
-                      className="border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 bg-indigo-50/70 hover:bg-indigo-100 dark:bg-indigo-950/40 font-bold text-xs h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                      title="Impor soal pilihan ganda dari Google Form secara otomatis"
-                    >
-                      <Download size={14} />
-                      <span className="hidden sm:inline">Import Google Form</span>
-                      <span className="sm:hidden">G-Form</span>
-                    </Button>
-
-                    <Button
-                      type="button"
-                      onClick={() => setActiveCardId('NEW')}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs h-8 sm:h-9 px-3 sm:px-3.5 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Plus size={15} />
-                      <span>Tambah Soal</span>
-                    </Button>
-                  </>
+                  <Button
+                    type="button"
+                    onClick={() => setActiveCardId('NEW')}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs h-8 sm:h-9 px-3 sm:px-3.5 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus size={15} />
+                    <span>Tambah Soal</span>
+                  </Button>
                 )}
 
                 {!readOnly && soalList.length > 0 && onAktifkanUjian && (
@@ -370,28 +352,6 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
           </div>
         </div>
       </div>
-
-      {isGformImportOpen && bankSoal && (
-        <CbtGoogleFormImportModal
-          isOpen={isGformImportOpen}
-          onClose={() => setIsGformImportOpen(false)}
-          bankSoalId={bankSoal.id}
-          bankSoalJudul={bankSoal.judul}
-          onSuccess={async () => {
-            await queryClient.invalidateQueries({
-              queryKey: cbtQueryKeys.soalList(bankSoal.id),
-              exact: false,
-              refetchType: 'all',
-            });
-            await queryClient.invalidateQueries({
-              queryKey: cbtQueryKeys.bankSoal(),
-              exact: false,
-              refetchType: 'all',
-            });
-            refetch();
-          }}
-        />
-      )}
     </Modal>
   );
 };
