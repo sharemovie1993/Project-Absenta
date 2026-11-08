@@ -297,6 +297,20 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
           const questionCount = row.jumlah_soal || row._count?.Soal || 0;
           return (
             <div className="flex items-center justify-end gap-1 flex-nowrap" onClick={(e) => e.stopPropagation()}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSelectedBankSoal(row);
+                  setIsDetailModalOpen(true);
+                }}
+                className="text-xs h-7 px-2.5 bg-indigo-50/50 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 font-bold rounded-lg cursor-pointer flex items-center gap-1"
+              >
+                <Eye size={13} />
+                <span>{isFromColleague || readOnly ? 'Lihat Soal' : 'Kelola Soal'}</span>
+              </Button>
+
               {!readOnly && !isFromColleague && questionCount > 0 && (
                 <Button
                   type="button"
@@ -310,20 +324,6 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                   <span>Aktifkan</span>
                 </Button>
               )}
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSelectedBankSoal(row);
-                  setIsDetailModalOpen(true);
-                }}
-                className="text-xs h-7 px-2.5 bg-indigo-50/50 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 font-bold rounded-lg cursor-pointer"
-              >
-                <Eye size={13} className="mr-1" />
-                <span>{isFromColleague || readOnly ? 'Lihat Soal' : 'Kelola Soal'}</span>
-              </Button>
 
               {!readOnly && isFromColleague && (
                 <Button
@@ -506,19 +506,8 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                   </div>
                 </div>
 
-                {/* Tombol Aksi: Aktifkan Ujian & Kelola Soal */}
+                {/* Tombol Aksi: Susun & Kelola Soal DULU, baru Aktifkan Ujian */}
                 <div className="space-y-1.5 pt-0.5">
-                  {questionCount > 0 && !readOnly && !isFromColleague && (
-                    <button
-                      type="button"
-                      onClick={() => handleOpenJadwalModal(item)}
-                      className="w-full py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer transition-all"
-                    >
-                      <Rocket size={14} />
-                      <span>Aktifkan Ujian untuk Kelas Binaan</span>
-                    </button>
-                  )}
-
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
@@ -529,7 +518,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                       className={cn(
                         "flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center justify-center gap-1.5",
                         questionCount > 0 && !readOnly && !isFromColleague
-                          ? "border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50"
+                          ? "border border-indigo-200 dark:border-indigo-800/80 bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100"
                           : "bg-indigo-600 hover:bg-indigo-700 text-white"
                       )}
                     >
@@ -561,6 +550,17 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                       </>
                     )}
                   </div>
+
+                  {questionCount > 0 && !readOnly && !isFromColleague && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenJadwalModal(item)}
+                      className="w-full py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer transition-all"
+                    >
+                      <Rocket size={14} />
+                      <span>Aktifkan Ujian untuk Kelas Binaan</span>
+                    </button>
+                  )}
                 </div>
               </div>
             );
