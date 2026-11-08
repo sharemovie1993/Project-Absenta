@@ -16,6 +16,7 @@ export interface TingkatVisualMeta {
   accent: string;
   glow: string;
   legendColor: string;
+  rgbaColor: string;
 }
 
 export const TINGKAT_STYLES: Record<number, TingkatVisualMeta> = {
@@ -30,6 +31,7 @@ export const TINGKAT_STYLES: Record<number, TingkatVisualMeta> = {
     accent: 'text-sky-600 dark:text-sky-400',
     glow: 'shadow-[0_2px_10px_rgba(14,165,233,0.18)]',
     legendColor: 'bg-sky-500',
+    rgbaColor: '14, 165, 233',
   },
   11: {
     name: 'Tingkat XI (11)',
@@ -42,6 +44,7 @@ export const TINGKAT_STYLES: Record<number, TingkatVisualMeta> = {
     accent: 'text-emerald-600 dark:text-emerald-400',
     glow: 'shadow-[0_2px_10px_rgba(16,185,129,0.18)]',
     legendColor: 'bg-emerald-500',
+    rgbaColor: '16, 185, 129',
   },
   12: {
     name: 'Tingkat XII (12)',
@@ -54,6 +57,7 @@ export const TINGKAT_STYLES: Record<number, TingkatVisualMeta> = {
     accent: 'text-amber-600 dark:text-amber-400',
     glow: 'shadow-[0_2px_10px_rgba(245,158,11,0.18)]',
     legendColor: 'bg-amber-500',
+    rgbaColor: '245, 158, 11',
   },
   13: {
     name: 'Tingkat XIII (13)',
@@ -66,6 +70,7 @@ export const TINGKAT_STYLES: Record<number, TingkatVisualMeta> = {
     accent: 'text-purple-600 dark:text-purple-400',
     glow: 'shadow-[0_2px_10px_rgba(168,85,247,0.18)]',
     legendColor: 'bg-purple-500',
+    rgbaColor: '168, 85, 247',
   },
 };
 
@@ -167,3 +172,31 @@ export function getTingkatRomawi(tingkat: number): string {
       return String(tingkat);
   }
 }
+
+/**
+ * Menghasilkan warna background transparan/kaca (RGBA) berdasarkan tingkat kelas atau kategori ruang.
+ * Menjamin kanvas peta satelit di bawahnya tidak terblokir, namun teks tetap kontras terbaca.
+ */
+export function getNodeTranslucentBg(
+  tingkat: number | null,
+  isDark: boolean = false,
+  opacity: number = 0.28,
+  kategoriRuang?: string
+): string {
+  if (tingkat && TINGKAT_STYLES[tingkat]) {
+    const rgb = TINGKAT_STYLES[tingkat].rgbaColor;
+    return `rgba(${rgb}, ${opacity})`;
+  }
+
+  if (kategoriRuang === 'LAB') return `rgba(6, 182, 212, ${opacity})`;
+  if (kategoriRuang === 'TOILET') return `rgba(244, 63, 94, ${opacity})`;
+  if (kategoriRuang === 'KANTOR') return `rgba(168, 85, 247, ${opacity})`;
+  if (kategoriRuang === 'LAPANGAN') return `rgba(16, 185, 129, ${opacity})`;
+  if (kategoriRuang === 'KORIDOR') return `rgba(100, 116, 139, ${opacity * 0.7})`;
+
+  // Default Ruang Ujian / Netral
+  return isDark
+    ? `rgba(15, 23, 42, ${Math.max(0.3, opacity * 1.2)})`
+    : `rgba(255, 255, 255, ${Math.max(0.45, opacity * 1.5)})`;
+}
+

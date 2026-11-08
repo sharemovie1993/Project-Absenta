@@ -18,6 +18,7 @@ import {
   Plus,
   X,
   FileJson,
+  Eye,
 } from 'lucide-react';
 import type { DenahSpasial } from '../../types/spasial.types';
 
@@ -42,6 +43,8 @@ interface InteractiveDenahCanvasToolbarProps {
   onAutoLayout: () => void;
   isMapGuideOpen?: boolean;
   onToggleMapGuide?: () => void;
+  isBoxTransparent?: boolean;
+  onToggleBoxTransparent?: () => void;
   onOpenPrint: () => void;
   onOpenConfig?: () => void;
   onSave: () => void;

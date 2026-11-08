@@ -458,7 +458,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
             )}
           >
             <AlertCircle size={13} />
-            <span>1. Guru Belum Buat ({activeStats.guruBelumSiap})</span>
+            <span>Guru Belum Siap ({activeStats.guruBelumSiap})</span>
           </button>
 
           <button
@@ -472,7 +472,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
             )}
           >
             <CheckCircle2 size={13} />
-            <span>2. Guru Sudah Siap ({activeStats.guruSudahSiap})</span>
+            <span>Guru Sudah Siap ({activeStats.guruSudahSiap})</span>
           </button>
 
           <button
@@ -486,7 +486,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
             )}
           >
             <BookOpen size={13} />
-            <span>3. Teori Paket Mapel ({activeStats.totalTeoriPaket})</span>
+            <span>Paket Mapel ({activeStats.totalTeoriPaket})</span>
           </button>
         </div>
 

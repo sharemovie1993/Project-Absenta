@@ -164,48 +164,42 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
   const phases: Array<{
     id: CbtPanitiaPhase;
     title: string;
-    subtitle: string;
-    badge: string;
+    stat: string;
     isDone: boolean;
     icon: React.ElementType;
   }> = [
     {
       id: 'fase_1_soal',
-      title: 'Fase 1: Kesiapan Soal',
-      subtitle: `${stats.bankSiap}/${stats.totalBank || 0} Bank Siap`,
-      badge: stats.isSoalReady ? 'Lengkap' : `${stats.bankSiap} Siap`,
+      title: '1. Kesiapan Soal',
+      stat: `${stats.bankSiap} Bank Siap`,
       isDone: stats.isSoalReady,
       icon: BookOpen,
     },
     {
       id: 'fase_2_ruang',
-      title: 'Fase 2: Alokasi Ruang Fisik',
-      subtitle: `${stats.ruangMapped}/${stats.totalKelas} Rombel (R.01-Rn)`,
-      badge: stats.isRuangReady ? '100% Terpetakan' : `${stats.ruangMapped} Terplot`,
+      title: '2. Ruang Ujian',
+      stat: `${stats.ruangMapped} Rombel`,
       isDone: stats.isRuangReady,
       icon: DoorOpen,
     },
     {
       id: 'fase_3_jadwal',
-      title: 'Fase 3: Matriks Hari & Sesi',
-      subtitle: `${stats.totalJadwal} Sesi Terbit`,
-      badge: stats.totalJadwal > 0 ? `${stats.totalJadwal} Sesi` : 'Belum Dibuat',
+      title: '3. Hari & Sesi',
+      stat: `${stats.totalJadwal} Sesi`,
       isDone: stats.isJadwalReady,
       icon: Calendar,
     },
     {
       id: 'fase_4_pengawas',
-      title: 'Fase 4: Ploting Pengawas',
-      subtitle: `${stats.pengawasAssigned}/${stats.totalJadwal || 0} Terplot`,
-      badge: stats.isPengawasReady ? 'Lengkap' : `${stats.pengawasAssigned} Terplot`,
+      title: '4. Pengawas',
+      stat: `${stats.pengawasAssigned} Terplot`,
       isDone: stats.isPengawasReady,
       icon: Users,
     },
     {
       id: 'fase_5_monitor',
-      title: 'Fase 5: Hari H & Berita Acara',
-      subtitle: 'Monitoring & Cetak Form',
-      badge: 'Live',
+      title: '5. Monitoring',
+      stat: 'Hari H CBT',
       isDone: false,
       icon: Activity,
     },
@@ -213,97 +207,67 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
 
   return (
     <div className="space-y-4 w-full max-w-full min-w-0">
-      {/* ── Header Meja Kerja Panitia CBT (Compact & Sleek) ── */}
-      <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900 dark:bg-slate-950 text-white shadow-md border border-slate-800">
+      {/* ── Header Meja Kerja Panitia CBT (Sleek & Focused) ── */}
+      <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900 dark:bg-slate-950 text-white shadow-xs border border-slate-800">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <span className="p-1.5 rounded-lg bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 shrink-0">
               <Layers size={17} />
             </span>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-sm sm:text-base font-black tracking-tight text-white">
-                  Meja Kerja Panitia CBT
-                </h2>
-                <span className="px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider uppercase bg-amber-400 text-amber-950">
-                  SOP 5 Fase
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400">
-                Alur terintegrasi persiapan &amp; pelaksanaan ujian serentak massal sekolah.
-              </p>
-            </div>
+            <h2 className="text-sm sm:text-base font-bold tracking-tight text-white">
+              Meja Kerja Panitia CBT
+            </h2>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto bg-white/5 px-2.5 py-1.5 rounded-xl border border-white/10 text-xs">
-            <ShieldCheck size={14} className="text-emerald-400 shrink-0" />
-            <div className="text-[11px]">
-              <span className="text-slate-400">TP: </span>
-              <span className="font-bold text-white">
-                {activeTp?.nama || 'TP Aktif'} &bull; {activeSemester?.nama || 'Semester'}
+          <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto text-xs">
+            {isOrkestrasi && eventName && (
+              <span className="px-2.5 py-1 rounded-lg bg-indigo-950/80 border border-indigo-700/60 text-indigo-200 text-xs font-semibold flex items-center gap-1.5">
+                <Lock size={12} className="text-indigo-400" />
+                <span>{eventName}</span>
               </span>
-            </div>
+            )}
+            <span className="bg-white/5 px-2.5 py-1 rounded-lg border border-white/10 text-slate-300 text-xs font-semibold">
+              {activeTp?.nama || 'TP Aktif'} • {activeSemester?.nama || 'Semester'}
+            </span>
           </div>
         </div>
 
-        {/* ── Mode Operasional Controller Strip (Mandiri vs Orkestrasi) ── */}
-        <div className="mt-3 pt-3 border-t border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between gap-2.5 text-xs">
-          <div className="flex items-center gap-2 flex-wrap">
+        {/* Mode Operasional Controller Strip */}
+        <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between gap-2.5 text-xs">
+          <div className="flex items-center gap-2">
             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-              Mode Pelaksanaan:
+              Mode:
             </span>
             <div className="flex items-center gap-1 p-0.5 rounded-xl bg-slate-800/90 border border-slate-700/80">
               <button
                 type="button"
                 onClick={() => updateMode('ORKESTRASI')}
                 className={cn(
-                  'px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5',
-                  isOrkestrasi
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'text-slate-400 hover:text-white'
+                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                  isOrkestrasi ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
                 )}
               >
                 <Sparkles size={12} />
-                <span>Ujian Massal (Orkestrasi)</span>
+                <span>Ujian Massal</span>
               </button>
               <button
                 type="button"
                 onClick={() => updateMode('MANDIRI')}
                 className={cn(
-                  'px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5',
-                  isMandiri
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-slate-400 hover:text-white'
+                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                  isMandiri ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
                 )}
               >
                 <UserCheck size={12} />
-                <span>KBM Harian (Mandiri)</span>
+                <span>KBM Mandiri</span>
               </button>
             </div>
           </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            {isOrkestrasi ? (
-              <div className="flex items-center gap-1.5 bg-violet-950/70 border border-violet-700/60 px-2.5 py-1 rounded-lg text-violet-200">
-                <Lock size={12} className="text-violet-400 shrink-0" />
-                <span className="text-[11px]">
-                  Event: <strong className="text-white">{eventName}</strong> (Jadwal Guru Dikunci)
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 bg-emerald-950/70 border border-emerald-700/60 px-2.5 py-1 rounded-lg text-emerald-200">
-                <Unlock size={12} className="text-emerald-400 shrink-0" />
-                <span className="text-[11px]">
-                  Guru bebas membuat jadwal sesi mandiri di kelas KBM
-                </span>
-              </div>
-            )}
-          </div>
         </div>
 
-        {/* ── Pipeline Stepper 5 Fase (Shopee-Grade High-Density) ── */}
-        <div className="mt-3.5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 pt-3 border-t border-slate-800/80">
-          {phases.map((phase, idx) => {
+        {/* ── Pipeline Stepper 5 Fase (Sleek & Noise-Free) ── */}
+        <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 pt-2.5 border-t border-slate-800/80">
+          {phases.map((phase) => {
             const Icon = phase.icon;
             const isActive = activeTab === phase.id;
 
@@ -313,65 +277,31 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
                 type="button"
                 onClick={() => setActiveTab(phase.id)}
                 className={cn(
-                  'group relative p-2.5 rounded-xl text-left transition-all duration-200 cursor-pointer flex flex-col justify-between gap-1.5 border',
+                  'p-2.5 rounded-xl text-left transition-all duration-200 cursor-pointer flex items-center justify-between gap-2 border',
                   isActive
-                    ? 'bg-white text-slate-900 border-white shadow-md scale-[1.02]'
+                    ? 'bg-white text-slate-900 border-white shadow-sm'
                     : 'bg-white/5 hover:bg-white/10 text-white border-white/10 hover:border-white/20'
                 )}
               >
-                <div className="flex items-center justify-between gap-1 w-full">
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className={cn(
-                        'w-5 h-5 rounded-full text-[11px] font-black flex items-center justify-center shrink-0',
-                        isActive
-                          ? 'bg-indigo-600 text-white'
-                          : phase.isDone
-                          ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-400/50'
-                          : 'bg-white/20 text-white'
-                      )}
-                    >
-                      {phase.isDone ? <CheckCircle2 size={12} /> : idx + 1}
-                    </span>
-                    <Icon
-                      size={14}
-                      className={cn(
-                        isActive ? 'text-indigo-600' : 'text-indigo-300'
-                      )}
-                    />
-                  </div>
-
+                <div className="flex items-center gap-2 min-w-0">
                   <span
                     className={cn(
-                      'text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider',
+                      'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs',
                       isActive
-                        ? 'bg-violet-100 text-violet-800'
-                        : phase.isDone
-                        ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-500/40'
-                        : 'bg-white/10 text-violet-200'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white/10 text-indigo-300'
                     )}
                   >
-                    {phase.badge}
+                    <Icon size={14} />
                   </span>
-                </div>
-
-                <div className="min-w-0">
-                  <p
-                    className={cn(
-                      'text-xs font-bold truncate leading-tight',
-                      isActive ? 'text-slate-900' : 'text-white'
-                    )}
-                  >
-                    {phase.title}
-                  </p>
-                  <p
-                    className={cn(
-                      'text-[10px] truncate',
-                      isActive ? 'text-slate-500 font-medium' : 'text-violet-200/80'
-                    )}
-                  >
-                    {phase.subtitle}
-                  </p>
+                  <div className="min-w-0">
+                    <p className={cn('text-xs font-bold truncate leading-tight', isActive ? 'text-slate-900' : 'text-white')}>
+                      {phase.title}
+                    </p>
+                    <p className={cn('text-[10px] font-semibold truncate', isActive ? 'text-indigo-600' : 'text-slate-400')}>
+                      {phase.stat}
+                    </p>
+                  </div>
                 </div>
               </button>
             );
@@ -383,37 +313,33 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
       <div className="transition-opacity duration-200">
         {activeTab === 'fase_1_soal' && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between gap-3 px-1 flex-wrap">
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <SlidersHorizontal size={13} className="text-violet-600" />
-                <span>Pilih Tampilan Fase 1:</span>
-              </span>
-              <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 shrink-0">
+            <div className="flex items-center justify-end px-1">
+              <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 shrink-0">
                 <button
                   type="button"
                   onClick={() => setSubModeFase1('readiness')}
                   className={cn(
-                    'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                    'px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
                     subModeFase1 === 'readiness'
-                      ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-2xs'
+                      ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-2xs'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   )}
                 >
                   <CheckCircle2 size={13} />
-                  <span>Checklist Kesiapan Soal</span>
+                  <span>Kesiapan Soal</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setSubModeFase1('manage')}
                   className={cn(
-                    'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                    'px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
                     subModeFase1 === 'manage'
-                      ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-2xs'
+                      ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-2xs'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   )}
                 >
                   <BookOpen size={13} />
-                  <span>Kelola Seluruh Butir Soal &amp; Kisi-Kisi</span>
+                  <span>Kelola Butir Soal</span>
                 </button>
               </div>
             </div>

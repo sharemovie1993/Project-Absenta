@@ -1,13 +1,15 @@
 import React from 'react';
 import { RotateCw, FlipHorizontal, Trash2, Maximize2, Type } from 'lucide-react';
 import type { DenahElementNode } from '../../types/spasial.types';
-import { detectNodeTingkat, TINGKAT_STYLES } from './denahTingkatHelper';
+import { detectNodeTingkat, TINGKAT_STYLES, getNodeTranslucentBg } from './denahTingkatHelper';
 
 interface DenahNodeCardProps {
   node: DenahElementNode;
   isSelected: boolean;
   isHighlighted?: boolean;
   highlightLabel?: string;
+  isTransparent?: boolean;
+  boxOpacity?: number;
   onSelect: (e: React.MouseEvent, id: string) => void;
   onRotate: (id: string) => void;
   onToggleTextUpright?: (id: string) => void;
@@ -84,6 +86,8 @@ export const DenahNodeCard = React.memo<DenahNodeCardProps>(
     onDelete,
     onStartDrag,
     onStartResize,
+    isTransparent = false,
+    boxOpacity,
     isReadOnly = false,
   }) => {
     const catStyle = KATEGORI_STYLES[node.kategori_ruang] || KATEGORI_STYLES.LAINNYA;
@@ -96,6 +100,13 @@ export const DenahNodeCard = React.memo<DenahNodeCardProps>(
       (node.kategori_ruang === 'RUANG_UJIAN' || !node.kategori_ruang) && detectedTingkat
         ? TINGKAT_STYLES[detectedTingkat]
         : null;
+
+    const isTranslucent = isTransparent || (typeof boxOpacity === 'number' && boxOpacity < 0.95);
+    const activeOpacity = typeof boxOpacity === 'number' ? boxOpacity : 0.32;
+
+    const dynamicBg = isHighlighted
+      ? undefined
+      : node.warna_bg || (isTranslucent ? getNodeTranslucentBg(detectedTingkat, false, activeOpacity, node.kategori_ruang) : undefined);
 
     const effectiveBg = tingkatStyle ? tingkatStyle.bg : catStyle.bg;
     const effectiveBorder = tingkatStyle ? tingkatStyle.border : catStyle.border;
@@ -128,8 +139,10 @@ export const DenahNodeCard = React.memo<DenahNodeCardProps>(
           width: `${node.width}px`,
           height: `${node.height}px`,
           transformOrigin: 'center center',
-          backgroundColor: isHighlighted ? undefined : (node.warna_bg || undefined),
+          backgroundColor: dynamicBg,
           borderColor: isHighlighted ? undefined : (node.warna_border || undefined),
+          backdropFilter: isTranslucent ? 'blur(3px)' : undefined,
+          WebkitBackdropFilter: isTranslucent ? 'blur(3px)' : undefined,
           willChange: isSelected ? 'transform' : 'auto',
         }}
         className={`absolute select-none cursor-move rounded-xl border-2 transition-colors duration-150 flex flex-col items-center justify-center p-1 ${
@@ -138,8 +151,8 @@ export const DenahNodeCard = React.memo<DenahNodeCardProps>(
           isHighlighted
             ? 'ring-4 ring-violet-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 border-violet-600 bg-gradient-to-br from-violet-100 via-white to-indigo-100 dark:from-violet-950/90 dark:via-slate-900 dark:to-indigo-950/90 shadow-2xl shadow-violet-500/60 z-40 animate-[pulse_1.8s_cubic-bezier(0.4,0,0.6,1)_infinite]'
             : isSelected
-            ? 'ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 shadow-md z-30 ' + effectiveBg + (node.warna_border ? '' : ' ' + effectiveBorder)
-            : 'hover:shadow hover:z-20 z-10 ' + effectiveGlow + ' ' + effectiveBg + (node.warna_border ? '' : ' ' + effectiveBorder)
+            ? 'ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 shadow-md z-30 ' + (isTranslucent ? '' : effectiveBg) + (node.warna_border ? '' : ' ' + effectiveBorder)
+            : 'hover:shadow hover:z-20 z-10 ' + effectiveGlow + ' ' + (isTranslucent ? '' : effectiveBg) + (node.warna_border ? '' : ' ' + effectiveBorder)
         }`}
       >
       {/* Efek Berdenyut (Radar Pulse Wave) saat Highlight Denah Aktif */}
@@ -263,7 +276,7 @@ export const DenahNodeCard = React.memo<DenahNodeCardProps>(
               : isMedium
               ? 'text-xl sm:text-2xl'
               : 'text-2xl sm:text-3xl'
-          }`}
+          } ${isTranslucent ? 'drop-shadow-[0_1px_2px_rgba(255,255,255,0.95)] dark:drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)]' : ''}`}
           style={{ color: isHighlighted ? undefined : (node.warna_teks || undefined) }}
         >
           {node.label_utama || 'R.XX'}
@@ -280,7 +293,7 @@ export const DenahNodeCard = React.memo<DenahNodeCardProps>(
                 : isMedium
                 ? 'text-xs sm:text-sm mt-0.5'
                 : 'text-sm sm:text-base mt-1'
-            }`}
+            } ${isTranslucent ? 'drop-shadow-[0_1px_2px_rgba(255,255,255,0.95)] dark:drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)]' : ''}`}
           >
             {node.label_sub}
           </div>
@@ -308,6 +321,8 @@ export const DenahNodeCard = React.memo<DenahNodeCardProps>(
     prev.isSelected === next.isSelected &&
     prev.isHighlighted === next.isHighlighted &&
     prev.highlightLabel === next.highlightLabel &&
+    prev.isTransparent === next.isTransparent &&
+    prev.boxOpacity === next.boxOpacity &&
     prev.isReadOnly === next.isReadOnly
   );
 });
