@@ -18,16 +18,19 @@ export interface CbtOptionsRendererProps {
 
 /**
  * Mendeteksi secara adaptif mode grid terbaik untuk opsi jawaban:
- * 1. 'grid-1-row': Semua opsi sangat pendek (<= 6 karakter, tanpa gambar) -> 4 atau 5 kolom sebaris horizontal.
- * 2. 'grid-2-col': Semua opsi berukuran sedang (<= 28 karakter, tanpa gambar) -> 2 kolom per baris.
- * 3. 'grid-1-col': Opsi panjang (> 28 karakter) atau memiliki gambar -> 1 kolom penuh vertikal.
+ * 1. 'grid-1-row': Semua opsi sangat pendek (<= 5 karakter, tanpa gambar) -> 4 atau 5 kolom sebaris horizontal.
+ * 2. 'grid-2-col': Semua opsi berukuran ringkas (1-3 kata pendek, <= 20 karakter, tanpa gambar) -> 2 kolom per baris.
+ * 3. 'grid-1-col': Opsi kalimat panjang (> 20 karakter), memiliki gambar, atau multi-line -> 1 kolom penuh vertikal.
+ *
+ * PERHATIAN: Dilarang keras melakukan truncate (...) atau line-clamp pada opsi jawaban!
+ * Seluruh teks opsi wajib ditampilkan utuh (break-words whitespace-normal).
  */
 export function detectOptionGridMode(options: OpsiJawaban[] = []): CbtOptionGridMode {
   if (!Array.isArray(options) || options.length === 0) {
     return 'grid-1-col';
   }
 
-  // Jika ada gambar pada opsi, wajib 1 kolom penuh agar ilustrasi jelas
+  // Jika ada gambar pada salah satu opsi, wajib 1 kolom penuh agar ilustrasi jelas dan proporsional
   const hasImage = options.some((opt) => Boolean(opt.gambar_url));
   if (hasImage) {
     return 'grid-1-col';
@@ -38,17 +41,20 @@ export function detectOptionGridMode(options: OpsiJawaban[] = []): CbtOptionGrid
     ...options.map((opt) => (opt.teks || '').trim().length)
   );
 
-  // Jika teks sangat pendek (misal: 'a', '10', 'Ya', 'x=2', <= 6 karakter)
-  if (maxLen <= 6) {
+  // 1. Grid 1 Row (4 atau 5 kolom sebaris):
+  // Khusus opsi sangat pendek (misal: 'a', '10', 'Ya', 'x=2', <= 5 karakter)
+  if (maxLen <= 5) {
     return 'grid-1-row';
   }
 
-  // Jika teks pendek/sedang (1-3 kata, <= 28 karakter)
-  if (maxLen <= 28) {
+  // 2. Grid 2 Row 2 Kolom (2 kolom seimbang):
+  // Opsi frasa ringkas (1-3 kata pendek, <= 20 karakter)
+  if (maxLen <= 20) {
     return 'grid-2-col';
   }
 
-  // Default: kalimat panjang atau multiline
+  // 3. Grid 4 Row 1 Kolom (1 kolom penuh):
+  // Kalimat panjang (> 20 karakter), paragraf, atau multi-line
   return 'grid-1-col';
 }
 
@@ -117,7 +123,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
                 onClick={() => !readOnly && onSelectAnswer?.(opt.kode)}
                 disabled={readOnly}
                 className={cn(
-                  'p-2 sm:p-3 rounded-xl border flex items-center justify-center gap-1.5 sm:gap-2 transition-all duration-150 select-none text-center min-w-0 cursor-pointer active:scale-95',
+                  'p-2 sm:p-2.5 rounded-xl border flex items-center justify-center gap-1.5 transition-all duration-150 select-none text-center min-w-0 cursor-pointer active:scale-95',
                   isSelected
                     ? 'border-indigo-500 bg-indigo-600 text-white shadow-md ring-2 ring-indigo-500/60'
                     : 'border-slate-800 bg-slate-900/70 hover:border-slate-700 hover:bg-slate-900 text-slate-200'
@@ -133,7 +139,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
                 >
                   {opt.kode}
                 </div>
-                <span className="text-xs sm:text-sm font-bold truncate">
+                <span className="text-xs sm:text-sm font-bold break-words whitespace-normal leading-tight">
                   {opt.teks || '-'}
                 </span>
               </button>
@@ -146,7 +152,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
                 key={opt.kode}
                 onClick={() => !readOnly && onSelectAnswer?.(opt.kode)}
                 className={cn(
-                  'p-3 sm:p-3.5 rounded-xl border flex items-center gap-2.5 transition-all duration-150 select-none min-w-0',
+                  'p-2.5 sm:p-3.5 rounded-xl border flex items-start gap-2.5 transition-all duration-150 select-none min-w-0',
                   !readOnly && 'cursor-pointer active:scale-[0.99]',
                   isSelected
                     ? 'border-indigo-500 bg-indigo-600/20 text-white shadow-md ring-1 ring-indigo-500'
@@ -155,7 +161,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
               >
                 <div
                   className={cn(
-                    'w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs shrink-0 transition-colors',
+                    'w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center font-black text-xs shrink-0 transition-colors mt-0.5',
                     isSelected
                       ? 'bg-indigo-600 text-white shadow-sm'
                       : 'bg-slate-800 text-slate-300'
@@ -164,7 +170,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
                   {opt.kode}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-semibold text-slate-200 line-clamp-2 leading-snug">
+                  <p className="text-xs sm:text-sm font-semibold text-slate-200 leading-snug break-words whitespace-normal">
                     {opt.teks || '-'}
                   </p>
                 </div>
@@ -187,7 +193,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
             >
               <div
                 className={cn(
-                  'w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm shrink-0 transition-colors mt-0.5',
+                  'w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-black text-sm shrink-0 transition-colors mt-0.5',
                   isSelected
                     ? 'bg-indigo-600 text-white shadow-sm'
                     : 'bg-slate-800 text-slate-300'
@@ -195,9 +201,9 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
               >
                 {opt.kode}
               </div>
-              <div className="flex-1 min-w-0 space-y-2 pt-1">
+              <div className="flex-1 min-w-0 space-y-2 pt-0.5">
                 {(opt.teks?.trim() || !opt.gambar_url) && (
-                  <p className="text-sm font-medium text-slate-200 leading-relaxed">
+                  <p className="text-sm font-medium text-slate-200 leading-relaxed break-words whitespace-normal">
                     {opt.teks || '-'}
                   </p>
                 )}
@@ -236,7 +242,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
               >
                 {isCorrectKey ? <Check size={11} className="stroke-[3]" /> : opt.kode}
               </div>
-              <span className="text-xs font-bold truncate">
+              <span className="text-xs font-bold break-words whitespace-normal leading-tight">
                 {opt.teks || '-'}
               </span>
             </div>
@@ -248,33 +254,41 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
             <div
               key={opt.kode}
               className={cn(
-                'p-2 sm:p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all min-w-0',
+                'p-2 sm:p-2.5 rounded-xl border flex items-start gap-2 transition-all min-w-0',
                 isCorrectKey
-                  ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 ring-1 ring-emerald-500/40'
+                  ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 ring-1 ring-emerald-500/50 shadow-2xs'
                   : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300'
               )}
             >
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <div
-                  className={cn(
-                    'w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black shrink-0',
-                    isCorrectKey
-                      ? 'bg-emerald-600 text-white'
-                      : 'border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800'
-                  )}
-                >
-                  {isCorrectKey ? <Check size={11} className="stroke-[3]" /> : opt.kode}
-                </div>
-                <p className="text-xs font-semibold truncate leading-tight">
-                  {opt.teks || '-'}
-                </p>
+              <div
+                className={cn(
+                  'w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 mt-0.5',
+                  isCorrectKey
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800'
+                )}
+              >
+                {isCorrectKey ? <Check size={11} className="stroke-[3]" /> : opt.kode}
               </div>
 
-              {isCorrectKey && (
-                <span className="text-[9.5px] font-black uppercase text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-1.5 py-0.2 rounded shrink-0">
-                  Kunci
-                </span>
-              )}
+              <div className="flex-1 min-w-0 space-y-1">
+                <p
+                  className={cn(
+                    'text-xs font-semibold leading-snug break-words whitespace-normal',
+                    isCorrectKey
+                      ? 'text-emerald-950 dark:text-emerald-100 font-bold'
+                      : 'text-slate-700 dark:text-slate-300'
+                  )}
+                >
+                  {opt.teks || '-'}
+                </p>
+
+                {isCorrectKey && (
+                  <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded">
+                    <CheckCircle2 size={10} /> Kunci
+                  </span>
+                )}
+              </div>
             </div>
           );
         }
@@ -284,9 +298,9 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
           <div
             key={opt.kode}
             className={cn(
-              'p-2 sm:p-2.5 rounded-xl border flex items-start gap-2.5 transition-all min-w-0',
+              'p-2.5 sm:p-3 rounded-xl border flex items-start gap-2.5 transition-all min-w-0',
               isCorrectKey
-                ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30'
+                ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30'
                 : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900'
             )}
           >
@@ -301,11 +315,11 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
               {isCorrectKey ? <Check size={12} className="stroke-[2.5]" /> : opt.kode}
             </div>
 
-            <div className="flex-1 min-w-0 space-y-1">
+            <div className="flex-1 min-w-0 space-y-1.5">
               {(opt.teks?.trim() || !opt.gambar_url) && (
                 <p
                   className={cn(
-                    'text-xs leading-relaxed',
+                    'text-xs leading-relaxed break-words whitespace-normal',
                     isCorrectKey
                       ? 'text-emerald-950 dark:text-emerald-200 font-bold'
                       : 'text-slate-700 dark:text-slate-300 font-medium'
@@ -324,7 +338,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
             </div>
 
             {isCorrectKey && (
-              <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded-md flex items-center gap-0.5 shrink-0 self-center">
+              <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded-md flex items-center gap-0.5 shrink-0 self-start">
                 <CheckCircle2 size={11} /> Kunci
               </span>
             )}

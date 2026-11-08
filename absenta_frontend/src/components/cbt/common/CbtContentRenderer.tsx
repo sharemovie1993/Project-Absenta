@@ -26,7 +26,7 @@ export const CbtContentRenderer: React.FC<CbtContentRendererProps> = ({
         return <div key={idx} className="h-2" />;
       }
       return (
-        <p key={idx} className="leading-relaxed">
+        <p key={idx} className="leading-relaxed break-words whitespace-pre-wrap">
           {line}
         </p>
       );
