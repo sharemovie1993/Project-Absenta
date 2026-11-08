@@ -515,7 +515,7 @@ export const SiswaCbtTab: React.FC = () => {
             )}
           </div>
         ) : (
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="p-3 sm:p-4 space-y-3 bg-slate-50/70 dark:bg-slate-950/40">
             {filtered.map((item) => {
               const meta = getStatusMeta(item);
               const StatusIcon = meta.icon;
@@ -540,53 +540,59 @@ export const SiswaCbtTab: React.FC = () => {
                 return (
                   <li
                     key={item.id}
-                    className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
+                    className="p-4 sm:p-4.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-800 transition-all space-y-3"
                   >
-                    <div className="min-w-0 flex-1 space-y-1.5">
-                      {/* Baris 1: Hari, Tanggal & Ruangan */}
+                    {/* Header Bar: Tanggal, Ruangan & Status */}
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="inline-flex items-center gap-1.5 text-xs font-black text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/70 dark:border-indigo-900 px-2.5 py-1 rounded-lg">
+                        {/* Badge Hari & Tanggal */}
+                        <span className="inline-flex items-center gap-1.5 text-xs font-black text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/80 dark:border-indigo-900 px-2.5 py-1 rounded-xl shadow-2xs">
                           <CalendarDays size={13} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
                           <span>{formatExamDateIndo(item.tanggal_mulai)}</span>
                         </span>
 
-                        <span className="inline-flex items-center gap-1.5 text-xs font-black text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/60 border border-violet-200/70 dark:border-violet-900 px-2.5 py-1 rounded-lg">
+                        {/* Badge Ruangan */}
+                        <span className="inline-flex items-center gap-1.5 text-xs font-black text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/60 border border-violet-200/80 dark:border-violet-900 px-2.5 py-1 rounded-xl shadow-2xs">
                           <DoorOpen size={13} className="text-violet-600 dark:text-violet-400 shrink-0" />
                           <span>Ruang: {item.ruang_ujian_nama || item.ruang_ujian || 'Ruang Kelas'}</span>
                         </span>
                       </div>
 
-                      {/* Baris 2: Nama Mata Pelajaran (Fokus Utama Siswa) */}
-                      <div>
-                        <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-snug">
-                          {item.mapel && item.mapel !== '-' ? item.mapel : item.nama_sesi}
-                        </h4>
-                      </div>
+                      {/* Status Hari H Pill */}
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                        <Lock size={12} className="text-slate-400" />
+                        <span>Dibuka Hari H</span>
+                      </span>
+                    </div>
 
-                      {/* Baris 3: Sesi & Jam Pelaksanaan */}
+                    {/* Body: Nama Mapel & Jam Sesi */}
+                    <div className="space-y-1">
+                      <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-snug">
+                        {item.mapel && item.mapel !== '-' ? item.mapel : item.nama_sesi}
+                      </h4>
+
                       <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-400">
                         <Clock size={13} className="text-slate-400 shrink-0" />
-                        <span>{resolveSesiLabel(item)}</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">{resolveSesiLabel(item)}</span>
                         <span className="text-slate-300 dark:text-slate-600">•</span>
-                        <span className="font-bold text-slate-800 dark:text-slate-200">
-                          {formatExamTimeRange(item.tanggal_mulai, item.tanggal_selesai)}
-                        </span>
+                        <span>{formatExamTimeRange(item.tanggal_mulai, item.tanggal_selesai)}</span>
                       </div>
                     </div>
 
-                    {/* Sisi Kanan: Tombol [Lihat Detail] */}
-                    <div className="shrink-0 flex sm:flex-col sm:items-end justify-between items-center gap-1.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
+                    {/* Footer Bar: Tombol Lihat Detail */}
+                    <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500 hidden sm:inline">
+                        Menunggu pengawas membuka sesi di ruang ujian
+                      </span>
                       <button
                         type="button"
                         onClick={() => setSelectedDetailItem(item)}
-                        className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs active:scale-98"
+                        className="w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-98"
                       >
                         <Info size={13} className="text-slate-400" />
-                        <span>Lihat Detail</span>
+                        <span>Lihat Detail Sesi</span>
+                        <ChevronRight size={13} className="text-slate-400" />
                       </button>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
-                        Dibuka saat Hari H
-                      </span>
                     </div>
                   </li>
                 );
@@ -595,7 +601,7 @@ export const SiswaCbtTab: React.FC = () => {
               return (
                 <li
                   key={item.id}
-                  className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors"
+                  className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-4"
                 >
                   <div className="min-w-0 flex-1 space-y-2.5">
                     {/* Baris Badge Status, Mapel, Bank Soal & Konteks Akademik */}
