@@ -314,7 +314,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
         };
       case 'cbt':
         return {
-          currentSubtabTitle: 'Bank Soal & Asesmen CBT',
+          currentSubtabTitle: 'Bank Soal CBT',
           currentSubtabIcon: Laptop,
         };
       case 'pengawas_cbt':
@@ -833,92 +833,18 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
               </Suspense>
             )}
 
-            {/* SUB-TAB CBT: BANK SOAL & JADWAL UJIAN GURU */}
+            {/* SUB-TAB CBT: FOKUS GURU MEMBUAT BANK SOAL & MENYUSUN BUTIR SOAL */}
             {activeSubTab === 'cbt' && (
               <div className="space-y-4">
-                {isOrkestrasi && (
-                  <div className="p-3.5 rounded-2xl bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 text-violet-900 dark:text-violet-200 flex items-start gap-3">
-                    <span className="p-1.5 rounded-xl bg-violet-600/20 text-violet-700 dark:text-violet-300 shrink-0">
-                      <Lock size={16} />
-                    </span>
-                    <div className="space-y-0.5 min-w-0 flex-1 text-xs">
-                      <p className="font-bold">
-                        Periode Ujian Massal Aktif: {eventName}
-                      </p>
-                      <p className="text-violet-800/80 dark:text-violet-300/80 leading-relaxed text-[11px]">
-                        Pembuatan jadwal sesi &amp; alokasi ruang ujian dikelola terpusat oleh Panitia CBT sekolah. Bapak/Ibu Guru dipersilakan fokus menyusun dan melengkapi butir soal di tab <strong>Bank Soal</strong>.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex-wrap gap-2">
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setTeacherCbtMode('bank')}
-                      className={cn(
-                        "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
-                        teacherCbtMode === 'bank'
-                          ? "bg-violet-600 text-white shadow-xs"
-                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      )}
-                    >
-                      Bank Soal Saya
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTeacherCbtMode('jadwal')}
-                      className={cn(
-                        "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
-                        teacherCbtMode === 'jadwal'
-                          ? "bg-violet-600 text-white shadow-xs"
-                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      )}
-                    >
-                      Jadwal Ujian Aktif
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTeacherCbtMode('monitor')}
-                      className={cn(
-                        "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
-                        teacherCbtMode === 'monitor'
-                          ? "bg-violet-600 text-white shadow-xs"
-                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      )}
-                    >
-                      Live Proctoring
-                    </button>
-                  </div>
-                </div>
-
                 <Suspense
                   fallback={
                     <div className="p-12 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-col items-center justify-center gap-3">
-                      <Loader className="animate-spin text-violet-600" size={32} />
-                      <p className="text-xs text-slate-500 font-semibold">Memuat Modul CBT Guru...</p>
+                      <Loader className="animate-spin text-indigo-600" size={32} />
+                      <p className="text-xs text-slate-500 font-semibold">Memuat Bank Soal Guru...</p>
                     </div>
                   }
                 >
-                  {teacherCbtMode === 'bank' ? (
-                    <CbtBankSoalView guruId={effectiveGuruId} hideLayout={true} roleContext="GURU" />
-                  ) : teacherCbtMode === 'jadwal' ? (
-                    <CbtJadwalView
-                      guruId={effectiveGuruId}
-                      hideLayout={true}
-                      onNavigateMonitor={(jadwalId) => {
-                        setTeacherMonitorJadwalId(jadwalId);
-                        setTeacherCbtMode('monitor');
-                      }}
-                    />
-                  ) : (
-                    <CbtProctorMonitoringView
-                      initialJadwalId={teacherMonitorJadwalId}
-                      guruId={effectiveGuruId}
-                      onBack={() => setTeacherCbtMode('jadwal')}
-                    />
-                  )}
+                  <CbtBankSoalView guruId={effectiveGuruId} hideLayout={true} roleContext="GURU" />
                 </Suspense>
               </div>
             )}

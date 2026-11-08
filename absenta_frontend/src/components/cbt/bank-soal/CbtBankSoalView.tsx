@@ -14,7 +14,10 @@ import {
   Eye,
   Share2,
   Copy,
+  BookOpen,
+  Plus,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAuthStore } from '@/store/authStore';
@@ -352,6 +355,31 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
 
   return (
     <div className="space-y-4 w-full max-w-full min-w-0">
+      {/* ── Mobile Top Action: Akses Cepat Buat Bank Soal (< sm) ── */}
+      {!readOnly && (
+        <div className="flex sm:hidden items-center justify-between gap-2 p-2.5 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/5 border border-indigo-200/80 dark:border-indigo-900/50 shadow-2xs">
+          <div className="min-w-0">
+            <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+              Bank Soal CBT Guru
+            </h4>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+              Susun butir soal &amp; paket asesmen
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedBankSoal(null);
+              setIsFormModalOpen(true);
+            }}
+            className="h-8 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs shadow-xs shrink-0 flex items-center gap-1.5 cursor-pointer transition-all"
+          >
+            <Plus size={14} className="stroke-[2.5]" />
+            <span>Buat Bank Soal</span>
+          </button>
+        </div>
+      )}
+
       {/* Filter Engine Terpadu */}
       <AcademicFilterToolbar
         {...filter.toolbarProps}
@@ -387,9 +415,105 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
             onPageChange: setPage,
             onLimitChange: setLimit,
           }}
-          onItemClick={(item) => {
-            setSelectedBankSoal(item);
-            setIsDetailModalOpen(true);
+          renderCard={(item: CbtBankSoal) => {
+            const isSharedBank = item.status === 'PUBLISHED';
+            const isFromColleague = Boolean(currentGuruId && item.guru_id !== currentGuruId);
+            const questionCount = item.jumlah_soal || item._count?.Soal || 0;
+
+            return (
+              <div
+                key={item.id}
+                className="p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-2.5"
+              >
+                {/* Header: Kode, Tingkat & Status */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-mono text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-100 dark:border-indigo-900/40">
+                        {item.kode_bank}
+                      </span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        Tingkat {item.tingkat}
+                      </span>
+                    </div>
+                    <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm mt-1 leading-tight line-clamp-2">
+                      {item.judul}
+                    </h4>
+                  </div>
+
+                  <span
+                    className={cn(
+                      "px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 border",
+                      isSharedBank
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
+                        : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800"
+                    )}
+                  >
+                    {isSharedBank ? 'Telah Terbit' : 'Draft'}
+                  </span>
+                </div>
+
+                {/* Strip Detail: Mapel, Durasi & Jumlah Soal */}
+                <div className="p-2 sm:p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2 text-xs">
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Mata Pelajaran
+                    </span>
+                    <p className="font-semibold text-slate-800 dark:text-slate-200 truncate mt-0.5">
+                      {item.Mapel?.nama_mapel || '-'}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0 pl-2.5 border-l border-slate-200 dark:border-slate-700">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Butir Soal
+                    </span>
+                    <span className="font-black text-indigo-600 dark:text-indigo-400">
+                      {questionCount} Soal
+                    </span>
+                    <span className="text-[10px] text-slate-400 ml-1">({item.alokasi_menit}m)</span>
+                  </div>
+                </div>
+
+                {/* Tombol Aksi Utama: Susun & Kelola Butir Soal */}
+                <div className="flex items-center gap-1.5 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedBankSoal(item);
+                      setIsDetailModalOpen(true);
+                    }}
+                    className="flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white flex items-center justify-center gap-1.5"
+                  >
+                    <BookOpen size={14} />
+                    <span>{isFromColleague || readOnly ? 'Lihat Soal' : 'Susun & Kelola Soal'}</span>
+                  </button>
+
+                  {!readOnly && !isFromColleague && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedBankSoal(item);
+                          setIsFormModalOpen(true);
+                        }}
+                        className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white transition-colors cursor-pointer"
+                        title="Edit Informasi Bank Soal"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item)}
+                        className="p-2 rounded-xl border border-rose-200 dark:border-rose-900/50 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+                        title="Hapus Bank Soal"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
           }}
         />
       ) : (
