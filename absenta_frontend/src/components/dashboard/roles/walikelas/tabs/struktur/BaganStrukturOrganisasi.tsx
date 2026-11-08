@@ -253,7 +253,7 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
     <div className="space-y-4 w-full">
       {/* Action Header & Switcher (Shopee-Grade Flat Toolbar) */}
       <div className="flex items-center justify-between gap-2 p-2 sm:p-2.5 bg-slate-50/80 dark:bg-slate-850/60 rounded-xl sm:rounded-2xl border border-slate-200/80 dark:border-slate-800">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="hidden sm:flex items-center gap-2 min-w-0">
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
             <GitBranch className="w-4 h-4" />
           </div>
@@ -261,13 +261,13 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
             <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
               Susunan Pengurus
             </h4>
-            <p className="text-[10px] text-slate-400 truncate hidden sm:block">
+            <p className="text-[10px] text-slate-400 truncate">
               Hirarki kepemimpinan dan pembagian peran kepengurusan
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center justify-between sm:justify-end gap-1.5 w-full sm:w-auto">
           {/* Switch View Mode */}
           <div className="flex items-center p-0.5 sm:p-1 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-lg sm:rounded-xl shadow-2xs">
             <button
@@ -296,34 +296,36 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
             </button>
           </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsPrintModalOpen(true)}
-            className="h-7 sm:h-8 px-2 sm:px-2.5 text-xs text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 bg-white dark:bg-slate-900 rounded-lg sm:rounded-xl flex items-center gap-1 cursor-pointer shadow-2xs"
-            title="Cetak Struktur Organisasi Kelas (PDF/Kop Resmi)"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline text-xs">Cetak</span>
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsPrintModalOpen(true)}
+              className="h-7 sm:h-8 px-2 sm:px-2.5 text-xs text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 bg-white dark:bg-slate-900 rounded-lg sm:rounded-xl flex items-center gap-1 cursor-pointer shadow-2xs"
+              title="Cetak Struktur Organisasi Kelas (PDF/Kop Resmi)"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span className="text-xs">Cetak</span>
+            </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              try {
-                localStorage.removeItem(storageKey);
-                setPositions(DEFAULT_POSITIONS);
-                toast.info('Struktur kepengurusan direset ke standar awal');
-              } catch {
-                // ignore
-              }
-            }}
-            className="h-7 sm:h-8 px-2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 border-slate-200 dark:border-slate-800 rounded-lg sm:rounded-xl"
-            title="Reset ke struktur default"
-          >
-            <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-          </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                try {
+                  localStorage.removeItem(storageKey);
+                  setPositions(DEFAULT_POSITIONS);
+                  toast.info('Struktur kepengurusan direset ke standar awal');
+                } catch {
+                  // ignore
+                }
+              }}
+              className="h-7 sm:h-8 px-2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 border-slate-200 dark:border-slate-800 rounded-lg sm:rounded-xl"
+              title="Reset ke struktur default"
+            >
+              <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            </Button>
+          </div>
         </div>
       </div>
 
