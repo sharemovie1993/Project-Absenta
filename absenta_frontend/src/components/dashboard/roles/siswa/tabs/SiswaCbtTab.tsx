@@ -10,6 +10,9 @@ import {
   XCircle,
   Clock,
   CalendarDays,
+  CalendarClock,
+  DoorOpen,
+  Lock,
   FileQuestion,
   KeyRound,
   RefreshCw,
@@ -29,10 +32,11 @@ import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtStudentExamItem } from '@/types/cbt.types';
 import { getTimezone, getTimezoneLabel } from '@/utils/attendance/time';
 
-type FilterKey = 'aktif' | 'riwayat' | 'semua';
+type FilterKey = 'aktif' | 'mendatang' | 'riwayat' | 'semua';
 
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: 'aktif', label: 'Sedang Berlangsung' },
+  { key: 'mendatang', label: 'Jadwal Mendatang' },
   { key: 'riwayat', label: 'Riwayat & Nilai' },
   { key: 'semua', label: 'Semua Ujian' },
 ];
@@ -101,6 +105,18 @@ const isActionable = (item: CbtStudentExamItem) =>
   item.status_peserta !== 'FINISHED' &&
   item.status_peserta !== 'DISQUALIFIED';
 
+/** Ujian resmi yang sudah terbit namun belum dibuka pengawas */
+const isUpcoming = (item: CbtStudentExamItem) =>
+  item.status_jadwal === 'DRAFT' &&
+  item.status_peserta !== 'FINISHED' &&
+  item.status_peserta !== 'DISQUALIFIED';
+
+/** Ujian yang sudah selesai, diskualifikasi, atau ditutup */
+const isHistory = (item: CbtStudentExamItem) =>
+  item.status_peserta === 'FINISHED' ||
+  item.status_peserta === 'DISQUALIFIED' ||
+  item.status_jadwal === 'COMPLETED';
+
 interface StatusMeta {
   label: string;
   className: string;
@@ -143,6 +159,13 @@ const getStatusMeta = (item: CbtStudentExamItem): StatusMeta => {
       icon: PlayCircle,
     };
   }
+  if (item.status_jadwal === 'DRAFT') {
+    return {
+      label: 'Jadwal Resmi Diterbitkan',
+      className: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-900',
+      icon: CalendarClock,
+    };
+  }
   return {
     label: 'Tidak Mengikuti',
     className: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
@@ -171,26 +194,46 @@ export const SiswaCbtTab: React.FC = () => {
   const counts = useMemo(
     () => ({
       aktif: exams.filter(isActionable).length,
-      riwayat: exams.filter((e) => !isActionable(e)).length,
+      mendatang: exams.filter(isUpcoming).length,
+      riwayat: exams.filter(isHistory).length,
       semua: exams.length,
     }),
     [exams]
   );
 
-  // Otomatis tampilkan tab Riwayat jika tidak ada ujian yang sedang berlangsung namun ada riwayat ujian
+  // Otomatis tampilkan tab Mendatang atau Riwayat jika tidak ada ujian aktif
   useEffect(() => {
     if (!isLoading && !didAutoSelectTab.current && exams.length > 0) {
       didAutoSelectTab.current = true;
-      if (counts.aktif === 0 && counts.riwayat > 0) {
-        setFilter('riwayat');
+      if (counts.aktif === 0) {
+        if (counts.mendatang > 0) {
+          setFilter('mendatang');
+        } else if (counts.riwayat > 0) {
+          setFilter('riwayat');
+        }
       }
     }
-  }, [isLoading, exams.length, counts.aktif, counts.riwayat]);
+  }, [isLoading, exams.length, counts.aktif, counts.mendatang, counts.riwayat]);
 
   const filtered = useMemo(() => {
-    if (filter === 'aktif') return exams.filter(isActionable);
-    if (filter === 'riwayat') return exams.filter((e) => !isActionable(e));
-    return exams;
+    let list = exams;
+    if (filter === 'aktif') list = exams.filter(isActionable);
+    else if (filter === 'mendatang') list = exams.filter(isUpcoming);
+    else if (filter === 'riwayat') list = exams.filter(isHistory);
+
+    // Urutkan jadwal mendatang secara kronologis terdekat (Senin Sesi 1 duluan)
+    if (filter === 'mendatang') {
+      return [...list].sort(
+        (a, b) => new Date(a.tanggal_mulai).getTime() - new Date(b.tanggal_mulai).getTime()
+      );
+    }
+    // Urutkan riwayat secara terbalik (terbaru selesai di atas)
+    if (filter === 'riwayat') {
+      return [...list].sort(
+        (a, b) => new Date(b.tanggal_selesai).getTime() - new Date(a.tanggal_selesai).getTime()
+      );
+    }
+    return list;
   }, [exams, filter]);
 
   const finishedCount = useMemo(
@@ -381,20 +424,36 @@ export const SiswaCbtTab: React.FC = () => {
               <FileQuestion size={22} />
             </div>
             <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
-              {filter === 'aktif' ? 'Tidak ada ujian yang sedang berlangsung' : 'Belum ada riwayat ujian'}
+              {filter === 'aktif'
+                ? 'Tidak ada ujian yang sedang berlangsung'
+                : filter === 'mendatang'
+                ? 'Belum ada jadwal ujian mendatang'
+                : 'Belum ada riwayat ujian'}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
               {filter === 'aktif'
-                ? 'Ujian akan muncul di sini saat pengawas mengaktifkan sesi untuk kelasmu. Kamu juga bisa melihat nilai ujian sebelumnya di tab Riwayat & Nilai.'
+                ? 'Ujian akan muncul di sini saat pengawas mengaktifkan sesi untuk kelasmu. Kamu juga bisa melihat jadwal ujian di tab Jadwal Mendatang.'
+                : filter === 'mendatang'
+                ? 'Jadwal ujian resmi yang diterbitkan oleh kurikulum/panitia akan muncul di sini lengkap dengan alokasi ruang fisik.'
                 : 'Ujian yang sudah selesai dikerjakan atau ditutup oleh pengawas akan tercatat lengkap beserta nilainya di sini.'}
             </p>
-            {filter === 'aktif' && counts.riwayat > 0 && (
+            {filter === 'aktif' && counts.mendatang > 0 && (
+              <button
+                type="button"
+                onClick={() => setFilter('mendatang')}
+                className="mt-1 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold cursor-pointer transition-colors"
+              >
+                Lihat {counts.mendatang} Jadwal Ujian Mendatang
+                <ChevronRight size={13} />
+              </button>
+            )}
+            {filter === 'aktif' && counts.mendatang === 0 && counts.riwayat > 0 && (
               <button
                 type="button"
                 onClick={() => setFilter('riwayat')}
                 className="mt-1 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 text-xs font-bold cursor-pointer transition-colors"
               >
-                Lihat {counts.riwayat} Riwayat Ujian & Nilai
+                Lihat {counts.riwayat} Riwayat Ujian &amp; Nilai
                 <ChevronRight size={13} />
               </button>
             )}
@@ -477,6 +536,16 @@ export const SiswaCbtTab: React.FC = () => {
                         </span>
                       </span>
 
+                      {(item.ruang_ujian || item.ruang_ujian_nama) && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200/80 dark:border-indigo-800">
+                          <DoorOpen size={12} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                          <span>Ruang: {item.ruang_ujian_nama || item.ruang_ujian}</span>
+                          {item.ruang_ujian && item.ruang_ujian_nama && item.ruang_ujian !== item.ruang_ujian_nama && (
+                            <span className="text-[10px] text-indigo-500 font-medium">({item.ruang_ujian})</span>
+                          )}
+                        </span>
+                      )}
+
                       <span className="inline-flex items-center gap-1">
                         <Clock size={13} className="text-slate-400 shrink-0" />
                         <span>Alokasi {item.durasi_menit} menit</span>
@@ -548,7 +617,7 @@ export const SiswaCbtTab: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Panel Kanan: Tombol Aksi atau Kartu Hasil Nilai */}
+                  {/* Panel Kanan: Tombol Aksi, Status Terkunci Mendatang, atau Kartu Hasil Nilai */}
                   <div className="shrink-0 lg:text-right">
                     {actionable ? (
                       <button
@@ -565,6 +634,16 @@ export const SiswaCbtTab: React.FC = () => {
                         {isPaused ? <PauseCircle size={14} /> : isResume ? <RotateCcw size={14} /> : <PlayCircle size={14} />}
                         {isPaused ? 'Menunggu Pengawas' : isResume ? 'Lanjutkan Ujian' : 'Kerjakan Ujian'}
                       </button>
+                    ) : item.status_jadwal === 'DRAFT' ? (
+                      <div className="flex flex-col items-stretch lg:items-end gap-1 min-w-[190px]">
+                        <div className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center justify-center lg:justify-end gap-1.5 shadow-2xs">
+                          <Lock size={13} className="text-slate-400" />
+                          <span>Dibuka saat Hari H</span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 text-center lg:text-right">
+                          Menunggu pengawas ruangan
+                        </span>
+                      </div>
                     ) : isFinished ? (
                       item.hasil && predikat ? (
                         <div

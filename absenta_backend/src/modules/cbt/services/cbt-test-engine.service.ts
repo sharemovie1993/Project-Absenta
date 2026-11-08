@@ -25,7 +25,7 @@ export class CbtTestEngineService {
     const jadwalList = await prisma.cbtJadwalUjian.findMany({
       where: {
         tenant_id: tenantId,
-        status: { in: ['ACTIVE', 'PAUSED', 'COMPLETED'] },
+        status: { in: ['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED'] },
         target_kelas_ids: { array_contains: [siswa.kelas_id] },
       },
       orderBy: { tanggal_mulai: 'desc' },
@@ -99,6 +99,8 @@ export class CbtTestEngineService {
         tanggal_selesai: j.tanggal_selesai,
         durasi_menit: j.durasi_menit,
         status_jadwal: j.status,
+        ruang_ujian: (j.setting_keamanan as any)?.ruang_ujian || null,
+        ruang_ujian_nama: (j.setting_keamanan as any)?.ruang_ujian_nama || null,
         status_peserta: peserta?.status || 'BELUM_MULAI',
         waktu_mulai: peserta?.waktu_mulai || null,
         waktu_selesai: peserta?.waktu_selesai || null,
