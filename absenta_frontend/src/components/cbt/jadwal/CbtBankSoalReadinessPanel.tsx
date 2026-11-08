@@ -518,7 +518,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
             className="text-xs h-9 px-3 font-bold border-indigo-300 text-indigo-700 bg-white hover:bg-indigo-50 cursor-pointer"
           >
             <Plus size={14} className="mr-1" />
-            <span>+ Buat Bank Soal</span>
+            <span>Buat Bank Soal</span>
           </Button>
 
           {onProceedToNextPhase && (

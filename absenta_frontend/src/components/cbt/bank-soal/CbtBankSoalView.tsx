@@ -421,7 +421,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
               className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs h-8 sm:h-9 px-3.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all"
             >
               <Plus size={14} className="stroke-[2.5]" />
-              <span>+ Buat Bank Soal</span>
+              <span>Buat Bank Soal</span>
             </Button>
           </div>
         )
