@@ -4,7 +4,7 @@ import { PrintDocumentSheet, PrintHeader } from '@/components/ui';
 import { DenahMapGuideLayer } from './DenahMapGuideLayer';
 import toast from 'react-hot-toast';
 import type { DenahElementNode, DenahSpasial, DenahMapGuideConfig } from '../../types/spasial.types';
-import { detectNodeTingkat, PRINT_TINGKAT_STYLES } from './denahTingkatHelper';
+import { detectNodeTingkat, PRINT_TINGKAT_STYLES, getNodeTranslucentBg } from './denahTingkatHelper';
 
 interface DenahPrintModalProps {
   isOpen: boolean;
@@ -420,7 +420,10 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
                       : null;
 
                   const effectiveBg =
-                    node.warna_bg || (showSatelliteLayer ? '#ffffff' : tingkatPrintStyle?.bg || style.bg);
+                    node.warna_bg ||
+                    (showSatelliteLayer
+                      ? getNodeTranslucentBg(detectedTingkat, false, 0.35, node.kategori_ruang)
+                      : tingkatPrintStyle?.bg || style.bg);
                   const effectiveBorder = node.warna_border || tingkatPrintStyle?.border || style.border;
                   const effectiveText = node.warna_teks || tingkatPrintStyle?.text || style.text;
                   const effectiveSubtext = node.warna_teks || tingkatPrintStyle?.subtext || style.text;
@@ -447,6 +450,8 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
                         borderStyle: node.kategori_ruang === 'KORIDOR' ? 'dashed' : 'solid',
                         borderRadius: '6px',
                         boxSizing: 'border-box',
+                        backdropFilter: showSatelliteLayer ? 'blur(2px)' : undefined,
+                        WebkitBackdropFilter: showSatelliteLayer ? 'blur(2px)' : undefined,
                         zIndex: 10,
                       }}
                       className="flex flex-col items-center justify-center shadow-md overflow-hidden"

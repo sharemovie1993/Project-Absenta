@@ -75,6 +75,8 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
   onAutoLayout,
   isMapGuideOpen = false,
   onToggleMapGuide,
+  isBoxTransparent = false,
+  onToggleBoxTransparent,
   onOpenPrint,
   onOpenConfig,
   onSave,
@@ -186,6 +188,29 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
               <Globe className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Peta Satelit</span>
               {isMapGuideOpen && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
+            </button>
+          )}
+
+          {/* Quick Toggle: Kotak Kaca Transparan / Solid agar Kanvas Peta Tidak Terblokir */}
+          {onToggleBoxTransparent && (
+            <button
+              type="button"
+              onClick={onToggleBoxTransparent}
+              className={`px-2.5 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer border shrink-0 ${
+                isBoxTransparent
+                  ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/50 hover:bg-emerald-500/30'
+                  : isLightMode
+                  ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                  : 'bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-750'
+              }`}
+              title={
+                isBoxTransparent
+                  ? 'Mode Kaca Transparan Aktif (Peta terlihat tembus pandang). Klik untuk beralih ke mode solid pekat.'
+                  : 'Mode Solid Aktif. Klik untuk beralih ke mode kaca transparan agar kanvas peta satelit tidak terblokir.'
+              }
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{isBoxTransparent ? 'Kotak Transparan' : 'Kotak Solid'}</span>
             </button>
           )}
 

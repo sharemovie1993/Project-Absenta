@@ -22,6 +22,8 @@ import { DenahMapInteractivitySection } from './DenahMapInteractivitySection';
 interface DenahMapGuideFloatingBarProps {
   config: DenahMapGuideConfig;
   onUpdateConfig: (updated: Partial<DenahMapGuideConfig>) => void;
+  boxOpacity?: number;
+  onUpdateBoxOpacity?: (opacity: number) => void;
   onClose: () => void;
   isLightMode: boolean;
 }
@@ -29,6 +31,8 @@ interface DenahMapGuideFloatingBarProps {
 export const DenahMapGuideFloatingBar: React.FC<DenahMapGuideFloatingBarProps> = ({
   config,
   onUpdateConfig,
+  boxOpacity = 0.32,
+  onUpdateBoxOpacity,
   onClose,
   isLightMode,
 }) => {
@@ -404,7 +408,7 @@ export const DenahMapGuideFloatingBar: React.FC<DenahMapGuideFloatingBarProps> =
             </div>
           </div>
 
-          {/* Opacity Slider */}
+          {/* Opacity Slider Satelit */}
           <div>
             <div className="flex items-center justify-between text-xs mb-1">
               <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -424,6 +428,59 @@ export const DenahMapGuideFloatingBar: React.FC<DenahMapGuideFloatingBarProps> =
               className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
             />
           </div>
+
+          {/* Opacity Slider Kotak Ruangan (Mencegah Menutupi/Ngeblok Kanvas Peta) */}
+          {onUpdateBoxOpacity && (
+            <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  <span>Transparansi Kotak Ruang</span>
+                </span>
+                <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                  {Math.round(boxOpacity * 100)}% {boxOpacity >= 0.95 ? '(Solid)' : '(Kaca)'}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0.05"
+                max="1"
+                step="0.05"
+                value={boxOpacity}
+                onChange={(e) => onUpdateBoxOpacity(parseFloat(e.target.value))}
+                className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+              />
+              <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
+                <button
+                  type="button"
+                  onClick={() => onUpdateBoxOpacity(0.15)}
+                  className="hover:text-emerald-600 font-semibold cursor-pointer"
+                >
+                  15% (Kaca)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onUpdateBoxOpacity(0.32)}
+                  className="hover:text-emerald-600 font-semibold cursor-pointer"
+                >
+                  32% (Ideal)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onUpdateBoxOpacity(0.65)}
+                  className="hover:text-emerald-600 font-semibold cursor-pointer"
+                >
+                  65% (Sedang)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onUpdateBoxOpacity(1.0)}
+                  className="hover:text-emerald-600 font-semibold cursor-pointer"
+                >
+                  100% (Solid)
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </aside>

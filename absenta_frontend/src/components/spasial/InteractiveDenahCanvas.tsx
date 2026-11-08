@@ -110,6 +110,15 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   }, [denah.id, denah.elements]);
   const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);
 
+  // Transparansi Kotak Ruangan: Kaca Transparan agar kanvas peta satelit tidak terblokir
+  const [isBoxTransparent, setIsBoxTransparent] = useState<boolean>(() => {
+    const hasMap = Boolean(extractMapGuideConfig(denah.elements, denah.id)?.enabled);
+    return hasMap;
+  });
+  const [boxOpacity, setBoxOpacity] = useState<number>(0.32);
+
+  const effectiveBoxTransparent = isBoxTransparent || mapGuideConfig.enabled;
+
   // History for Undo/Redo
   const [history, setHistory] = useState<DenahElementNode[][]>([initialNodes]);
   const [historyIdx, setHistoryIdx] = useState(0);
@@ -542,10 +551,13 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
             const next = !prev;
             if (next) {
               setMapGuideConfig((c) => ({ ...c, enabled: true }));
+              setIsBoxTransparent(true);
             }
             return next;
           });
         }}
+        isBoxTransparent={effectiveBoxTransparent}
+        onToggleBoxTransparent={() => setIsBoxTransparent((prev) => !prev)}
         onOpenPrint={() => setIsPrintModalOpen(true)}
         onOpenConfig={() => setIsConfigModalOpen(true)}
         onSave={handleSaveDenah}
@@ -641,6 +653,8 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
                 isSelected={selectedNodeIdsSet.has(node.id)}
                 isHighlighted={highlightedNodeId === node.id}
                 highlightLabel={highlightLabel}
+                isTransparent={effectiveBoxTransparent}
+                boxOpacity={effectiveBoxTransparent ? boxOpacity : 1.0}
                 onSelect={handleSelectNode}
                 onRotate={handleRotateNode}
                 onToggleTextUpright={handleToggleTextUpright}
@@ -682,6 +696,11 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
                 } catch (_) {}
                 return next;
               });
+            }}
+            boxOpacity={boxOpacity}
+            onUpdateBoxOpacity={(op) => {
+              setBoxOpacity(op);
+              if (op < 0.95) setIsBoxTransparent(true);
             }}
             onClose={() => {
               setIsMapGuideOpen(false);
