@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Wand2 } from 'lucide-react';
+import { Wand2, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { DenahNodeCard } from './DenahNodeCard';
 import { DenahPaletteSidebar, UnassignedRoomItem } from './DenahPaletteSidebar';
@@ -11,6 +11,7 @@ import { DenahMapGuideFloatingBar } from './DenahMapGuideFloatingBar';
 import { DenahBatchActionBar } from './DenahBatchActionBar';
 import { DenahMobileNavigationSheet } from './DenahMobileNavigationSheet';
 import { DenahVerticalFloorStepper } from './DenahVerticalFloorStepper';
+import { DenahMobilePaletteDrawer } from './DenahMobilePaletteDrawer';
 import { useDenahInteraction } from './useDenahInteraction';
 import { generateAutoFloorplan } from './denahAutoLayout';
 import { updateDenah } from '../../api/spasial.api';
@@ -103,6 +104,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isLightMode, setIsLightMode] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(!isReadOnly);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
   // Satellite Map Guide State (Disinkronkan otomatis dari database denah)
   const [mapGuideConfig, setMapGuideConfig] = useState<DenahMapGuideConfig>(() =>
@@ -179,12 +181,20 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
 
   const snap = (val: number, step = 20) => Math.round(val / step) * step;
 
-  // Add room node from palette
+  // Add room node from palette (Diletakkan di tengah viewport pandangan mata saat ini)
   const handleAddRoomNode = (room: UnassignedRoomItem) => {
     const existing = nodes.find((n) => n.kelas_id === room.kelas_id);
     if (existing) {
       setSelectedNodeIds([existing.id]);
-      toast('Ruang ini sudah diletakkan pada denah', { icon: 'ℹ️' });
+      if (canvasRef.current) {
+        const w = canvasRef.current.clientWidth || 800;
+        const h = canvasRef.current.clientHeight || 600;
+        setPanOffset({
+          x: Math.round(w / 2 - (existing.x + existing.width / 2) * scale),
+          y: Math.round(h / 2 - (existing.y + existing.height / 2) * scale),
+        });
+      }
+      toast('Ruang ini sudah ada di denah (kamera dipusatkan)', { icon: '📍' });
       return;
     }
 
@@ -192,10 +202,17 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
       room.tingkat ||
       detectNodeTingkat({ label_sub: room.kelas_nama, catatan: room.nama_ruang });
 
+    const viewportCenterX = canvasRef.current
+      ? Math.max(40, snap(Math.round((-panOffset.x + canvasRef.current.clientWidth / 2) / scale - 50)))
+      : snap(80 + (nodes.length % 5) * 40);
+    const viewportCenterY = canvasRef.current
+      ? Math.max(40, snap(Math.round((-panOffset.y + canvasRef.current.clientHeight / 2) / scale - 30)))
+      : snap(80 + Math.floor(nodes.length / 5) * 40);
+
     const newNode: DenahElementNode = {
       id: `node-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-      x: snap(80 + (nodes.length % 5) * 40),
-      y: snap(80 + Math.floor(nodes.length / 5) * 40),
+      x: viewportCenterX,
+      y: viewportCenterY,
       width: 100,
       height: 60,
       rotation: 0,
@@ -214,11 +231,20 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
 
   // Add virtual node
   const handleAddVirtualNode = (virtual: Omit<DenahElementNode, 'id' | 'x' | 'y'>) => {
+    const vW = virtual.width || 100;
+    const vH = virtual.height || 60;
+    const viewportCenterX = canvasRef.current
+      ? Math.max(40, snap(Math.round((-panOffset.x + canvasRef.current.clientWidth / 2) / scale - vW / 2)))
+      : snap(120);
+    const viewportCenterY = canvasRef.current
+      ? Math.max(40, snap(Math.round((-panOffset.y + canvasRef.current.clientHeight / 2) / scale - vH / 2)))
+      : snap(120);
+
     const newNode: DenahElementNode = {
       ...virtual,
       id: `node-v-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-      x: snap(120),
-      y: snap(120),
+      x: viewportCenterX,
+      y: viewportCenterY,
     };
     pushHistory([...nodes, newNode]);
     setSelectedNodeIds([newNode.id]);
@@ -681,7 +707,13 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
         isSaving={isSaving}
         isReadOnly={isReadOnly}
         isSidebarOpen={isSidebarOpen}
-        onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+        onToggleSidebar={() => {
+          if (typeof window !== 'undefined' && window.innerWidth < 640) {
+            setIsMobileDrawerOpen((prev) => !prev);
+          } else {
+            setIsSidebarOpen((prev) => !prev);
+          }
+        }}
         denahList={denahList}
         onSelectDenah={onSelectDenah}
         onCreateNewDenah={onCreateNewDenah}
@@ -691,15 +723,17 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
       {/* Main Studio Body: Palette Sidebar + Canvas Surface */}
       <div className="flex-1 flex overflow-hidden relative">
         {!isReadOnly && (
-          <DenahPaletteSidebar
-            unassignedRooms={unassignedRooms}
-            placedKelasIds={placedKelasIds}
-            onAddRoomNode={handleAddRoomNode}
-            onAddVirtualNode={handleAddVirtualNode}
-            isLightMode={isLightMode}
-            isCollapsed={!isSidebarOpen}
-            onToggleCollapse={() => setIsSidebarOpen((prev) => !prev)}
-          />
+          <div className="hidden sm:block">
+            <DenahPaletteSidebar
+              unassignedRooms={unassignedRooms}
+              placedKelasIds={placedKelasIds}
+              onAddRoomNode={handleAddRoomNode}
+              onAddVirtualNode={handleAddVirtualNode}
+              isLightMode={isLightMode}
+              isCollapsed={!isSidebarOpen}
+              onToggleCollapse={() => setIsSidebarOpen((prev) => !prev)}
+            />
+          </div>
         )}
 
         {/* Canvas Surface with Infinite Grid & Touch Pan/Pinch */}
@@ -937,6 +971,39 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
             denahGedung={denah.gedung}
             onCenterRoom={handleCenterToRoom}
             onClose={onClose}
+            isLightMode={isLightMode}
+          />
+        )}
+
+        {/* Floating Mobile Field Action Button (Buka Drawer Katalog Ruang & Template) */}
+        {!isReadOnly && (
+          <div className="sm:hidden absolute left-3 bottom-24 z-40 flex items-center pointer-events-auto">
+            <button
+              type="button"
+              onClick={() => setIsMobileDrawerOpen(true)}
+              className="group relative flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-xs shadow-xl border-2 border-white/90 dark:border-slate-800 shadow-indigo-500/40 cursor-pointer active:scale-95"
+              title="Buka Katalog Ruang & Fasilitas"
+            >
+              <Plus className="w-4 h-4 shrink-0" />
+              <span>Katalog Ruang</span>
+              {unassignedRooms.length - placedKelasIds.size > 0 && (
+                <span className="w-5 h-5 rounded-full bg-amber-400 text-amber-950 text-[10px] flex items-center justify-center font-black shrink-0">
+                  {unassignedRooms.length - placedKelasIds.size}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* Mobile Slide-up Palette Drawer (Mode Lapangan / Field Inspector) */}
+        {!isReadOnly && (
+          <DenahMobilePaletteDrawer
+            isOpen={isMobileDrawerOpen}
+            onClose={() => setIsMobileDrawerOpen(false)}
+            unassignedRooms={unassignedRooms}
+            placedKelasIds={placedKelasIds}
+            onAddRoomNode={handleAddRoomNode}
+            onAddVirtualNode={handleAddVirtualNode}
             isLightMode={isLightMode}
           />
         )}
