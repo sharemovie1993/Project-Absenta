@@ -29,7 +29,6 @@ import {
   type HubBentoCell, 
   type HubActionItem 
 } from '@/components/ui/hub';
-import { WorkspaceAppLauncherCard } from '@/components/common/WorkspaceAppLauncherCard';
 import { Loader } from '@/components/ui/Loader';
 import type { AdminTabId } from '../types';
 import type { DashboardOverviewStats, ChartData } from '@/types/dashboard';
@@ -242,10 +241,7 @@ export const AdminRingkasanTab: React.FC<AdminRingkasanTabProps> = React.memo(({
 
   return (
     <div className="space-y-4">
-      {/* ── 1. Workspace App Launcher Portal ── */}
-      <WorkspaceAppLauncherCard workspaceId="ADMIN_WORKSPACE" />
-
-      {/* ── 2. Bento Grid 4 Sel Garis Rambut (Standar Shopee UI) ── */}
+      {/* ── 1. Bento Grid 4 Sel Garis Rambut (Standar Shopee UI) ── */}
       <HubBentoGrid cells={bentoCells} columns={4} />
 
       {/* ── 3. Quick Action Slider 1-Baris Headerless (Shopee UI Paradigm) ── */}

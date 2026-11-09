@@ -23,7 +23,6 @@ import { AnalyticsCard } from "../../components/ui/AnalyticsCard";
 import { Button, Modal, ModalFooter } from "../../components/ui";
 import { useInstruction } from "../../contexts/InstructionContext";
 import { MyJobdeskWidget } from "../../components/dashboard/MyJobdeskWidget";
-import { WorkspaceAppLauncherCard } from "../../components/common/WorkspaceAppLauncherCard";
 
 import { Loader } from "../../components/ui/Loader";
 
@@ -135,9 +134,6 @@ export default function DashboardOverview() {
 
   const renderOverviewContent = () => (
     <>
-      {/* Workspace App Launcher Portal (Admin & Data Master Suite) */}
-      <WorkspaceAppLauncherCard workspaceId="ADMIN_WORKSPACE" className="mb-8" />
-
       <>
         {/* Marketplace Upsell disabled per user request */}
         {/* {((subscription?.Plan?.name === 'CORE_PLATFORM' || subscription?.plan?.name === 'CORE_PLATFORM') || subscription?.status === 'TRIAL') && isAdminOrSuperadmin && (

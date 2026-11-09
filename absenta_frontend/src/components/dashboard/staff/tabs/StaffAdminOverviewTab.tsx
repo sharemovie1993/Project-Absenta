@@ -10,7 +10,6 @@ import {
 import { getDashboardOverview, getAttendanceChart } from '@/api/dashboard.api';
 import { getAcademicStats, type AcademicStats } from '@/api/academic-stats.api';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
-import { WorkspaceAppLauncherCard } from '@/components/common/WorkspaceAppLauncherCard';
 import { Loader } from '@/components/ui/Loader';
 import type { DashboardOverviewStats, ChartData } from '@/types/dashboard';
 
@@ -76,9 +75,6 @@ export const StaffAdminOverviewTab: React.FC<StaffAdminOverviewTabProps> = ({ us
 
   return (
     <div className="space-y-6">
-      {/* Workspace App Launcher Portal */}
-      <WorkspaceAppLauncherCard workspaceId="ADMIN_WORKSPACE" />
-
       {/* Quick Shortcuts */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {quickShortcuts.map((sc, i) => {
