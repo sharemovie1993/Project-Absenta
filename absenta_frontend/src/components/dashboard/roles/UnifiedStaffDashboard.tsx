@@ -1302,13 +1302,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
         {/* Tab Navigation Row Inset (Desktop) */}
         <div className="hidden md:flex p-1.5 rounded-2xl bg-slate-950/80 backdrop-blur-md border border-white/10 items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar relative z-10 shadow-lg">
-          {tabs.map((tab) => {
+          {tabs.map((tab, idx) => {
             const TabIcon = tab.icon;
             const isTabActive = activeTab === tab.id;
 
             return (
               <button
-                key={tab.id}
+                key={tab.id || `tab-idx-${idx}`}
                 type="button"
                 onClick={() => handleTabChange(tab.id)}
                 className={cn(

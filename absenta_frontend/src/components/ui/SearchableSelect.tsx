@@ -292,7 +292,7 @@ export function SearchableSelect({
                 if (option.isGroupHeader) {
                   return (
                     <div
-                      key={`header-${option.value || idx}`}
+                      key={`header-${idx}-${option.value || 'title'}`}
                       className="px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-100/90 dark:bg-slate-800/90 sticky top-0 rounded-md my-1 z-10 select-none flex items-center justify-between"
                     >
                       <span>{option.label}</span>
@@ -301,7 +301,7 @@ export function SearchableSelect({
                 }
                 return (
               <div
-                key={option.value || idx}
+                key={`opt-${idx}-${option.value || 'none'}`}
                 onClick={(e) => {
                    e.stopPropagation(); 
                    if (!option.disabled) handleSelect(option.value, option.label);

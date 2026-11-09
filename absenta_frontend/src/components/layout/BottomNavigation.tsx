@@ -222,7 +222,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
     }
 
     return list;
-  }, [activeTabsList, activeEcosystem]);
+  }, [activeTabsList, activeEcosystem, isPengawasCbt, pengawasCbtActiveCount]);
 
   const fallbackCategories = useMemo(() => {
     if (activeEcosystem === 'kaprog') {
@@ -402,7 +402,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
               const isSelected = item.isActive(location.pathname, currentTab) || (isCenterItem && isSidebarOpen);
               return (
                 <BottomNavTabItem
-                  key={item.id}
+                  key={item.id ? `nav-${item.id}` : `nav-idx-${index}`}
                   item={item}
                   isSelected={isSelected}
                   isFlyoutOpen={false}

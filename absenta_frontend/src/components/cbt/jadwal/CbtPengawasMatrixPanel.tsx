@@ -26,6 +26,8 @@ import {
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import { CbtBeritaAcaraPrintModal } from './CbtBeritaAcaraPrintModal';
+import { CbtAutoPlotConfigModal, type AutoPlotConfigOptions } from './CbtAutoPlotConfigModal';
+import { executeAutoPlotSupervisors } from './cbtAutoPlotEngine';
 
 interface PlottingDraftRow {
   jadwal_id: string;
@@ -52,6 +54,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [onlyUnplotted, setOnlyUnplotted] = useState(false);
   const [selectedJadwalForPrint, setSelectedJadwalForPrint] = useState<CbtJadwalUjian | null>(null);
+  const [isAutoPlotModalOpen, setIsAutoPlotModalOpen] = useState(false);
 
   const guruMap = useMemo(() => new Map((guruList || []).map((g) => [g.id, g])), [guruList]);
 
@@ -218,67 +221,56 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
     }).length;
   }, [jadwalList, plottingDrafts]);
 
-  // Anti-Conflict Auto-Distribute (Prioritize Pendidik Only; TU can be chosen manually)
-  const handleAutoDistributeSupervisors = () => {
-    const autoCandidates = pendidikList.length > 0 ? pendidikList : guruList;
-    if (!autoCandidates.length) {
+  // Buka Dialog Konfigurasi Ploting Otomatis Berbasis SOP Sekolah
+  const handleOpenAutoPlotModal = () => {
+    const totalCandidates = pendidikList.length + tenagaKependidikanList.length;
+    if (totalCandidates === 0 && guruList.length === 0) {
       toast.error('Data guru pendidik belum tersedia untuk distribusi otomatis');
       return;
     }
+    setIsAutoPlotModalOpen(true);
+  };
 
-    const nextDrafts = { ...plottingDrafts };
-    let assignedCount = 0;
-    let teacherCursor = 0;
+  // Eksekusi Distribusi Otomatis Berdasarkan Konfigurasi yang Dipilih
+  const handleApplyAutoPlot = (config: AutoPlotConfigOptions) => {
+    let candidates = config.candidateScope === 'PENDIDIK_ONLY'
+      ? (pendidikList.length > 0 ? pendidikList : guruList)
+      : [...pendidikList, ...tenagaKependidikanList];
 
-    jadwalList.forEach((jadwal) => {
-      const curr = nextDrafts[jadwal.id];
-      if (!curr) return;
+    if (candidates.length === 0) {
+      candidates = guruList;
+    }
 
-      const needsSupervisor = !curr.pengawas_1_id;
-      if (!needsSupervisor) return;
+    if (!candidates.length) {
+      toast.error('Tidak ada data guru yang tersedia untuk diploting');
+      return;
+    }
 
-      const startJ = new Date(jadwal.tanggal_mulai).getTime();
-      const endJ = new Date(jadwal.tanggal_selesai).getTime();
-      let chosenGuruId = curr.pengawas_1_id;
+    const result = executeAutoPlotSupervisors(
+      jadwalList,
+      plottingDrafts,
+      candidates,
+      config
+    );
 
-      for (let attempt = 0; attempt < autoCandidates.length; attempt++) {
-        const candidate = autoCandidates[(teacherCursor + attempt) % autoCandidates.length];
-        const isBusy = jadwalList.some((other) => {
-          if (other.id === jadwal.id) return false;
-          const otherDraft = nextDrafts[other.id];
-          if (otherDraft?.pengawas_1_id !== candidate.id && otherDraft?.proktor_id !== candidate.id) {
-            return false;
-          }
-          const sO = new Date(other.tanggal_mulai).getTime();
-          const eO = new Date(other.tanggal_selesai).getTime();
-          return startJ < eO && sO < endJ;
-        });
-
-        if (!isBusy) {
-          chosenGuruId = candidate.id;
-          teacherCursor = (teacherCursor + attempt + 1) % autoCandidates.length;
-          break;
-        }
-      }
-
-      nextDrafts[jadwal.id] = {
-        ...curr,
-        pengawas_1_id: chosenGuruId,
-        dirty: true,
-      };
-      assignedCount++;
-    });
-
-    if (assignedCount === 0) {
-      toast('Seluruh sesi ujian sudah memiliki pengawas. Gunakan tombol "Kosongkan Ploting" jika ingin membagi ulang dari awal.', {
+    if (result.assignedCount === 0) {
+      toast('Tidak ada sesi yang diploting. Pastikan ada sesi ujian yang belum terplot atau pilih opsi "Kocok Ulang Seluruh Sesi".', {
         icon: 'ℹ️',
       });
       return;
     }
 
-    setPlottingDrafts(nextDrafts);
+    setPlottingDrafts(result.nextDrafts);
+
+    const strategyLabel = config.roomStrategy === 'STAY_ROOM'
+      ? 'Tetap 1 Ruang Seharian (Full Day)'
+      : config.roomStrategy === 'MAX_N_SESSION_PER_ROOM'
+      ? `Maks ${config.maxSessionsPerRoom} Sesi per Ruang`
+      : 'Rotasi Sesi Silang';
+
     toast.success(
-      `Berhasil mendistribusikan ${assignedCount} sesi/ruang ke Guru Pendidik! (Staf TU tetap dapat dipilih secara manual)`
+      `Berhasil mendistribusikan ${result.assignedCount} sesi ke ${candidates.length} guru pengawas! (Pola: ${strategyLabel})`,
+      { duration: 4000 }
     );
   };
 
@@ -453,12 +445,12 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
             type="button"
             variant="outline"
             size="sm"
-            onClick={handleAutoDistributeSupervisors}
-            className="text-xs h-9 px-3 font-bold text-indigo-600 border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100"
-            title="Plot otomatis memprioritaskan Guru Pendidik tanpa bentrok jam. Kelompok Tenaga Kependidikan/TU tetap dapat dipilih secara manual."
+            onClick={handleOpenAutoPlotModal}
+            className="text-xs h-9 px-3 font-bold text-indigo-600 border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100 cursor-pointer shadow-2xs"
+            title="Buka dialog konfigurasi distribusi otomatis berbasis SOP sekolah (Full Day per Ruang, Rotasi Tiap Sesi, atau Batas Sesi)"
           >
             <Wand2 size={14} className="mr-1.5" />
-            <span>Plot Otomatis Guru (Anti-Bentrok)</span>
+            <span>Plot Otomatis Guru (SOP Fleksibel)</span>
           </Button>
 
           <Button
@@ -663,6 +655,19 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
           isOpen={Boolean(selectedJadwalForPrint)}
           onClose={() => setSelectedJadwalForPrint(null)}
           jadwal={selectedJadwalForPrint}
+        />
+      )}
+
+      {/* Modal Konfigurasi Distribusi Otomatis Pengawas */}
+      {isAutoPlotModalOpen && (
+        <CbtAutoPlotConfigModal
+          isOpen={isAutoPlotModalOpen}
+          onClose={() => setIsAutoPlotModalOpen(false)}
+          onConfirm={handleApplyAutoPlot}
+          jadwalList={jadwalList}
+          pendidikCount={pendidikList.length || guruList.length}
+          tenagaKependidikanCount={tenagaKependidikanList.length}
+          alreadyPlottedCount={totalPlottedCount}
         />
       )}
     </Card>

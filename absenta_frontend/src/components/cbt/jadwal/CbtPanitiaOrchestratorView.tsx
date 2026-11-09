@@ -43,7 +43,7 @@ import { CbtBankSoalReadinessPanel } from './CbtBankSoalReadinessPanel';
 import { CbtKelasRoomTreePanel } from './CbtKelasRoomTreePanel';
 import { CbtTimetableMatrixPanel } from './CbtTimetableMatrixPanel';
 import { CbtPengawasMatrixPanel } from './CbtPengawasMatrixPanel';
-import { CbtProctorMonitoringView } from '../sesi/CbtProctorMonitoringView';
+import { CbtPanitiaLiveCommandPanel } from './CbtPanitiaLiveCommandPanel';
 
 const CbtBankSoalView = lazy(() =>
   import('@/components/cbt/bank-soal/CbtBankSoalView').then((m) => ({ default: m.CbtBankSoalView }))
@@ -458,9 +458,12 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
         )}
 
         {activeTab === 'fase_5_monitor' && (
-          <CbtProctorMonitoringView
-            initialJadwalId={jadwalList[0]?.id}
-            onBack={() => setActiveTab('fase_4_pengawas')}
+          <CbtPanitiaLiveCommandPanel
+            jadwalList={jadwalList}
+            isLoadingJadwal={isLoadingJadwal}
+            refetchJadwal={refetchJadwal}
+            guruList={guruList}
+            onBackToPengawas={() => setActiveTab('fase_4_pengawas')}
           />
         )}
       </div>

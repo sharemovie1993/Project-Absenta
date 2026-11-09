@@ -412,7 +412,7 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
                 groupedSections.map((group, gIdx) => {
                   const cat = group.category;
                   return (
-                    <div key={cat?.id || `group-${gIdx}`} className="space-y-0.5">
+                    <div key={cat?.id ? `cat-${cat.id}` : `group-${gIdx}`} className="space-y-0.5">
                       {/* Category Label (Satu Kata / Minimalis) */}
                       {cat && (
                         <div className="px-2 pt-2 pb-1 text-[10px] font-bold tracking-wider text-slate-400 dark:text-slate-500 uppercase">
@@ -427,7 +427,7 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
                           const isActive = activeTab === tab.id;
                           return (
                             <button
-                              key={tab.id}
+                              key={tab.id ? `tab-${tab.id}` : `tab-idx-${idx}`}
                               type="button"
                               disabled={tab.disabled}
                               onClick={() => handleSelect(tab.id, tab.disabled)}
