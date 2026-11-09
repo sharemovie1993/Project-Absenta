@@ -16,7 +16,6 @@ Project Absenta/
 ├── docs/                     # Dokumentasi spesifikasi, audit, dan panduan teknis
 ├── supabase_temp/            # Salinan repositori Supabase (sementara)
 ├── tunnels/                  # Konfigurasi Easy Tunnel (WireGuard VPN)
-├── Caddyfile                 # Konfigurasi reverse proxy SSL tingkat lokal/pusat
 ├── deploy-onprem-windows.ps1 # Skrip otomatisasi deployment lokal Windows
 ├── ecosystem.config.js       # Konfigurasi PM2 Process Manager
 └── quick-update.ps1          # Skrip pembaharuan cepat backend & frontend

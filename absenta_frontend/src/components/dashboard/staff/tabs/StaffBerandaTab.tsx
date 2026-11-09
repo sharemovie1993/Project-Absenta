@@ -37,10 +37,9 @@ import { piketApi } from '../../../../api/piket.api';
 import { kurikulumApi } from '../../../../api/kurikulum.api';
 import { getRekapBulananGuruMe } from '../../../../api/attendance/rekap.api';
 import { getMyActionHub } from '../../../../api/dashboard.api';
-import { TimelineItem } from './StaffKbmAbsenTab';
+import type { TimelineItem } from './StaffKbmAbsenTab';
 import { StaffWeeklyScheduleWidget } from '../../widgets/StaffWeeklyScheduleWidget';
 import { BebanMengajarWidget } from '../widgets/BebanMengajarWidget';
-import { PengajuanIzinGuruModal } from '../profil/PengajuanIzinGuruModal';
 import { useTenant } from '../../../../hooks/useTenant';
 import { toLocalDate, formatLocalTimeFromISO } from '../../../../utils/attendance/time';
 import { useMyPengawasCbt } from '@/hooks/useMyPengawasCbt';
@@ -56,11 +55,20 @@ import { TeacherActionHubWidget } from '../beranda/TeacherActionHubWidget';
 import { TeacherSidebarNav } from '../beranda/TeacherSidebarNav';
 import { TeacherSubTabId } from '../beranda/TeacherSubNavPills';
 import { DirectKbmFeed } from '../beranda/DirectKbmFeed';
-import { TeacherBukuNilaiSubTab } from '../beranda/TeacherBukuNilaiSubTab';
-import { TeacherRadarRemedialSubTab } from '../beranda/TeacherRadarRemedialSubTab';
 import { raporApi } from '@/api/rapor.api';
 import { hubinApi } from '@/api/hubin.api';
 import { cbtApi } from '@/api/cbt.api';
+
+// Code-Split Sub-Tabs & Heavy Modals (Zero Network Leak on Initial Load)
+const TeacherBukuNilaiSubTab = lazy(() =>
+  import('../beranda/TeacherBukuNilaiSubTab').then((m) => ({ default: m.TeacherBukuNilaiSubTab }))
+);
+const TeacherRadarRemedialSubTab = lazy(() =>
+  import('../beranda/TeacherRadarRemedialSubTab').then((m) => ({ default: m.TeacherRadarRemedialSubTab }))
+);
+const PengajuanIzinGuruModal = lazy(() =>
+  import('../profil/PengajuanIzinGuruModal').then((m) => ({ default: m.PengajuanIzinGuruModal }))
+);
 
 // Universal Role-Ready Views (In-Place Sub-Tab)
 const PerangkatAjarView = lazy(() =>
@@ -872,12 +880,30 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
 
             {/* SUB-TAB 3: BUKU NILAI & ASESMEN SISWA */}
             {activeSubTab === 'nilai' && (
-              <TeacherBukuNilaiSubTab guruId={effectiveGuruId} guruNama={guruNama} />
+              <Suspense
+                fallback={
+                  <div className="p-12 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-col items-center justify-center gap-3">
+                    <Loader className="animate-spin text-indigo-600" size={32} />
+                    <p className="text-xs text-slate-500 font-semibold">Memuat Buku Nilai &amp; Asesmen...</p>
+                  </div>
+                }
+              >
+                <TeacherBukuNilaiSubTab guruId={effectiveGuruId} guruNama={guruNama} />
+              </Suspense>
             )}
 
             {/* SUB-TAB 4: RADAR REMEDIAL SISWA (EARLY DETECTION HUB) */}
             {activeSubTab === 'remedial' && (
-              <TeacherRadarRemedialSubTab guruId={effectiveGuruId} />
+              <Suspense
+                fallback={
+                  <div className="p-12 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-col items-center justify-center gap-3">
+                    <Loader className="animate-spin text-rose-600" size={32} />
+                    <p className="text-xs text-slate-500 font-semibold">Memuat Radar Remedial Siswa...</p>
+                  </div>
+                }
+              >
+                <TeacherRadarRemedialSubTab guruId={effectiveGuruId} />
+              </Suspense>
             )}
 
             {/* SUB-TAB 4: REKAPITULASI PRESENSI MAPEL */}
@@ -997,10 +1023,12 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
 
       {/* Modal Pengajuan Izin Mandiri Guru */}
       {showIzinModal && (
-        <PengajuanIzinGuruModal
-          isOpen={showIzinModal}
-          onClose={() => setShowIzinModal(false)}
-        />
+        <Suspense fallback={null}>
+          <PengajuanIzinGuruModal
+            isOpen={showIzinModal}
+            onClose={() => setShowIzinModal(false)}
+          />
+        </Suspense>
       )}
     </motion.div>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, Suspense, lazy } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -16,8 +16,13 @@ import {
 import { Button, Badge } from '../../../ui';
 import { cn } from '../../../../lib/utils';
 import { toast } from 'react-hot-toast';
-import { BahanAjarReaderModal } from '../../../kurikulum/bahan-ajar/BahanAjarReaderModal';
-import { ModulAjarStudioModal } from '../../../kurikulum/bahan-ajar/ModulAjarStudioModal';
+
+const BahanAjarReaderModal = lazy(() =>
+  import('../../../kurikulum/bahan-ajar/BahanAjarReaderModal').then((m) => ({ default: m.BahanAjarReaderModal }))
+);
+const ModulAjarStudioModal = lazy(() =>
+  import('../../../kurikulum/bahan-ajar/ModulAjarStudioModal').then((m) => ({ default: m.ModulAjarStudioModal }))
+);
 
 // ── ICON BUKU BERDIRI (STANDING BOOK 3D) ──
 const StandingBookIcon: React.FC<{
@@ -624,31 +629,35 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
 
       {/* ── MODALS: READER & STUDIO ── */}
       {isReaderOpen && (
-        <BahanAjarReaderModal
-          isOpen={isReaderOpen}
-          onClose={() => setIsReaderOpen(false)}
-          perangkatId={readerPerangkatId}
-          mapelNama={readerContext.mapelNama}
-          fase={readerContext.fase}
-          tingkat={readerContext.tingkat}
-        />
+        <Suspense fallback={null}>
+          <BahanAjarReaderModal
+            isOpen={isReaderOpen}
+            onClose={() => setIsReaderOpen(false)}
+            perangkatId={readerPerangkatId}
+            mapelNama={readerContext.mapelNama}
+            fase={readerContext.fase}
+            tingkat={readerContext.tingkat}
+          />
+        </Suspense>
       )}
 
       {isStudioOpen && studioPerangkat && (
-        <ModulAjarStudioModal
-          isOpen={isStudioOpen}
-          onClose={() => {
-            setIsStudioOpen(false);
-            setStudioPerangkat(null);
-          }}
-          perangkatId={studioPerangkat.id}
-          perangkatJudul={studioPerangkat.judul}
-          mapelId={studioPerangkat.mapelId}
-          mapelNama={studioPerangkat.mapelNama}
-          guruId={guruId}
-          fase={studioPerangkat.fase}
-          tingkat={studioPerangkat.tingkat}
-        />
+        <Suspense fallback={null}>
+          <ModulAjarStudioModal
+            isOpen={isStudioOpen}
+            onClose={() => {
+              setIsStudioOpen(false);
+              setStudioPerangkat(null);
+            }}
+            perangkatId={studioPerangkat.id}
+            perangkatJudul={studioPerangkat.judul}
+            mapelId={studioPerangkat.mapelId}
+            mapelNama={studioPerangkat.mapelNama}
+            guruId={guruId}
+            fase={studioPerangkat.fase}
+            tingkat={studioPerangkat.tingkat}
+          />
+        </Suspense>
       )}
     </div>
   );

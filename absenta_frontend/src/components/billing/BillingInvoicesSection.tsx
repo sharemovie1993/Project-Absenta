@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Button, Badge, Loader } from '../ui';
 import { Receipt, CheckCircle, Box, Printer, AlertTriangle, CloudOff, RefreshCw, CheckCircle2 } from 'lucide-react';
-import * as LucideIcons from 'lucide-react';
+import { iconForName, isValidIconName } from '@/lib/iconForName';
 import type { Invoice } from '../../types/invoice';
 import { formatCurrency, getServiceStyle } from '@/lib/billingUtils';
 
@@ -179,7 +179,7 @@ export const BillingInvoicesSection: React.FC<BillingInvoicesSectionProps> = ({
                         const sub = (inv as any).Subscription || (inv as any).Billing?.[0]?.Subscription;
                         const serviceName = sub?.Plan?.Module?.name || sub?.Plan?.name || sub?.service_code || 'Umum';
                         const style = getServiceStyle(serviceName);
-                        const IconComponent = (LucideIcons as any)[style.icon] || Box;
+                        const IconComponent = isValidIconName(style.icon) ? iconForName(style.icon) : Box;
 
                         return (
                           <div className="flex items-center gap-2">

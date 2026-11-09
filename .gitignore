@@ -44,6 +44,7 @@ Thumbs.db
 !hardeningAuditReport.json
 !composer.json
 !*.schema.json
+!**/serve.json
 !absenta_backend/prisma/schema.prisma
 
 # Sub-repository Git folders (PENTING)

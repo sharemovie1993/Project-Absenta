@@ -213,34 +213,41 @@ DILARANG KERAS menggunakan conditional rendering murni `{activeTab === 'tabId' &
 
 Conditional rendering murni menghancurkan (*unmount*) seluruh node DOM dan state internal komponen (posisi scroll, halaman pagination tabel, keyword pencarian, dan nilai form) setiap kali pengguna berpindah tab. Akibatnya, saat pengguna kembali ke tab tersebut, browser dipaksa membangun ulang ribuan node DOM dari nol dan memicu jeda render (*lag / no instant loading*).
 
-### 🏛️ Aturan Baku Implementasi Keep-Alive Tab:
+### 🏛️ Aturan Baku Implementasi Keep-Alive + Lazy-Mount + Network Code-Splitting:
 
-1. **Registri `visitedTabs` (Set State)**:
+1. **Registri `visitedTabs` (Set State — DOM Lazy-Mount)**:
    Catat tab yang pernah dikunjungi agar sub-tab yang belum pernah dibuka tidak membebani initial mount (*lazy initial mount*).
-2. **CSS Visibility Toggle (`block` vs `hidden`)**:
+2. **Wajib `React.lazy()` untuk Sub-Tab & Modal (Network Code-Splitting / Anti-Chunk-Leak)**:
+   - **PERINGATAN KRITIS**: Menggunakan `visitedTabs.has('tabId')` dengan *top-level static import* (`import { SubTab } from ...`) hanya menahan pembuatan node DOM, tetapi **TIDAK** menahan browser mengunduh file `.js` chunk milik tab tersebut beserta seluruh dependensi turunannya (misal `excel-advanced.utils` 260 KiB, `InputNilaiView`, `ModulAjarStudioModal`, `PiketPrintSlip`) saat halaman pertama kali dibuka!
+   - Oleh karena itu, seluruh Tab/Sub-Tab selain tab utama (`beranda`/`ringkasan`) dan seluruh Modal besar **DILARANG** di-import secara statis di atas file. **WAJIB** menggunakan `React.lazy()` + `<Suspense>` di dalam blok `visitedTabs.has(...)` atau `{isModalOpen && ...}`.
+   - Utilitas berat di dalam View/Hook (seperti `excel-advanced.utils`) **WAJIB** di-load dengan `await import(...)` di dalam fungsi klik tombol (*Dynamic Import on Action*), bukan di bagian atas file.
+3. **CSS Visibility Toggle (`block` vs `hidden` — Keep-Alive)**:
    Tab yang sudah pernah dikunjungi dipertahankan di memori DOM menggunakan kelas CSS `block` dan `hidden` (`display: none`).
-3. **Non-Blocking Transition**:
+4. **Non-Blocking Transition**:
    Gunakan animasi masuk CSS ringan (`animate-in fade-in duration-100`). Hindari Framer Motion `AnimatePresence mode="wait"` yang memblokir rendering tab baru selama ratusan milidetik.
-4. **Code-Split Modal Views (`React.lazy`)**:
-   Modul modal views berukuran besar wajib di-load secara asinkron via `React.lazy()` + `<Suspense>` agar initial bundle dashboard tetap ringan dan hemat memori.
 
 ### 📋 Contoh Implementasi Kanonikal di Dashboard Role:
 
 ```tsx
-import React, { useState, useCallback, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useCallback, Suspense, lazy } from 'react';
 import { cn } from '@/lib/utils';
 import { Loader } from '@/components/ui';
 
-// 1. Lazy load modal-modal views besar (Pilar 21B & TBT Optimization)
+// 1. Tab utama (above-the-fold) boleh static import agar First Paint instan
+import { BerandaTab } from './tabs/BerandaTab';
+
+// 2. WAJIB React.lazy untuk seluruh Sub-Tab sekunder & Modal besar (Zero Network Leak pada Initial Load)
+const SiswaTab = lazy(() => import('./tabs/SiswaTab').then(m => ({ default: m.SiswaTab })));
+const PrestasiTab = lazy(() => import('./tabs/PrestasiTab').then(m => ({ default: m.PrestasiTab })));
 const PenempatanPklView = lazy(() => import('@/components/hubin/penempatan/PenempatanPklView').then(m => ({ default: m.PenempatanPklView })));
 
 export const RoleDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabId>('beranda');
 
-  // 2. Keep-Alive Cache: Simpan tab yang pernah dibuka
+  // 3. Keep-Alive Cache: Simpan tab yang pernah dibuka
   const [visitedTabs, setVisitedTabs] = useState<Set<TabId>>(() => new Set([activeTab]));
 
-  // 3. Tab Selector Handler
+  // 4. Tab Selector Handler
   const handleTabSelect = useCallback((tabId: TabId) => {
     setActiveTab(tabId);
     setVisitedTabs((prev) => (prev.has(tabId) ? prev : new Set(prev).add(tabId)));
@@ -257,7 +264,7 @@ export const RoleDashboard: React.FC = () => {
         ))}
       </nav>
 
-      {/* Kontainer Tab Panes (Keep-Alive + Zero DOM Destruction) */}
+      {/* Kontainer Tab Panes (Keep-Alive + Lazy-Mount + React.lazy Network Split) */}
       <main className="relative w-full min-w-0">
         {visitedTabs.has('beranda') && (
           <div className={cn('w-full', activeTab === 'beranda' ? 'block animate-in fade-in duration-100' : 'hidden')}>
@@ -267,18 +274,22 @@ export const RoleDashboard: React.FC = () => {
 
         {visitedTabs.has('siswa') && (
           <div className={cn('w-full', activeTab === 'siswa' ? 'block animate-in fade-in duration-100' : 'hidden')}>
-            <SiswaTab />
+            <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>
+              <SiswaTab />
+            </Suspense>
           </div>
         )}
 
         {visitedTabs.has('prestasi') && (
           <div className={cn('w-full', activeTab === 'prestasi' ? 'block animate-in fade-in duration-100' : 'hidden')}>
-            <PrestasiTab />
+            <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>
+              <PrestasiTab />
+            </Suspense>
           </div>
         )}
       </main>
 
-      {/* 4. Modal di-render secara asinkron dengan Suspense Fallback */}
+      {/* 5. Modal di-render secara asinkron dengan Suspense Fallback */}
       {isModalOpen && (
         <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} size="full">
           <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>
@@ -302,5 +313,5 @@ Saat menstandarisasi modul menjadi Universal Role-Ready View, pastikan:
 - [ ] Menggunakan `AcademicFilterToolbar` & `useAcademicFilter` dengan fallback internal jika prop filter tidak disediakan.
 - [ ] Tersedia pembungkus Tab (`[Role]Tab.tsx`) dan Modal (`[Role]Modal.tsx`) tanpa duplikasi kode logika bisnis.
 - [ ] Halaman route utama (`[Modul]Page.tsx`) direfaktor menjadi *thin wrapper* yang hanya memanggil `<[Modul]View />`.
-- [ ] Dashboard role induk mengadopsi pola **Keep-Alive + Lazy-Mount** (`visitedTabs` + CSS `hidden`/`block`) untuk menjamin True Instant Tab Switching (<16ms) tanpa *DOM destruction*.
-- [ ] Modal dialog views besar di-load secara asinkron dengan `React.lazy` + `Suspense` untuk menjaga ukuran initial bundle tetap ringan.
+- [ ] Dashboard role induk mengadopsi pola **Keep-Alive + Lazy-Mount + `React.lazy()`** (`visitedTabs` + `<Suspense>` + CSS `hidden`/`block`) untuk menjamin True Instant Tab Switching (<16ms) sekaligus **Zero Cross-Role Network Chunk Leak** pada initial load.
+- [ ] Modal dialog views besar di-load secara asinkron dengan `React.lazy` + `Suspense`, dan utilitas berat (`excel-advanced.utils`, dll.) di-load dengan `await import(...)` saat aksi diklik.

@@ -12,10 +12,14 @@ import { Mail, Lock, ShieldCheck, ArrowRight, AlertCircle, Home, UserCheck, Smar
 import { Navbar } from '@/components/layout/Navbar';
 import { RouteAccessBadge } from '@/components/layout/RouteAccessBadge';
 import { InfraErrorBoundary } from '../../components/superadmin/infra/InfraErrorBoundary';
-import { LoginQrScannerModal, type ScannedQrPayload } from '@/components/auth/LoginQrScannerModal';
+import type { ScannedQrPayload } from '@/components/auth/LoginQrScannerModal';
 import { DemoRoleSelector } from '@/components/auth/DemoRoleSelector';
 import { type DemoRoleProfile } from '@/config/demoProfiles.config';
 import { ServerDomainSetupModal } from '@/components/auth/ServerDomainSetupModal';
+
+const LoginQrScannerModal = React.lazy(() =>
+  import('@/components/auth/LoginQrScannerModal').then((m) => ({ default: m.LoginQrScannerModal }))
+);
 import { getSavedServerDomain, isCapacitorApp } from '@/services/serverConfig';
 import { isSystemSuperAdmin } from '@/utils/rbac';
 import { getUserPositions } from '@/config/navigation.config';
@@ -762,7 +766,11 @@ export default function LoginPage() {
         </div>
 
         {/* Camera QR/Barcode Scanner Modal */}
-        <LoginQrScannerModal isOpen={isScannerOpen} onClose={() => setIsScannerOpen(false)} onScanSuccess={handleScanSuccess} />
+        {isScannerOpen && (
+          <React.Suspense fallback={null}>
+            <LoginQrScannerModal isOpen={isScannerOpen} onClose={() => setIsScannerOpen(false)} onScanSuccess={handleScanSuccess} />
+          </React.Suspense>
+        )}
 
         {/* Server Domain Gateway / Switcher Modal */}
         <ServerDomainSetupModal isOpen={isServerModalOpen} onClose={() => setIsServerModalOpen(false)} />

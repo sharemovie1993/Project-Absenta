@@ -56,30 +56,30 @@ import {
 
 // Components
 import { type QuickAction } from '../shared/QuickActionGrid';
-import { JurnalKbmModal } from '../../kurikulum/JurnalKbmModal';
-import { SesiAttendanceList } from '../../attendance/sesi/SesiAttendanceList';
 import { Modal, Badge, Button, Loader } from '../../ui';
 import { StaffPortalAppLauncher } from '../portal/StaffPortalAppLauncher';
 import { resolveSmartDashboardMode } from '../../../helpers/dashboardModeHelper';
 import { useWaliKelasOptions } from '../../../hooks/useWaliKelasOptions';
-import { PiketOperations } from '../../piket/PiketOperations';
-import { PiketPrintSlip } from '../../piket/PiketPrintSlip';
 import { usePiketIzinKeluarOptions } from '../../../hooks/usePiketIzinKeluarOptions';
 import { tenantApi } from '../../../api/tenants.api';
 import { raporApi } from '../../../api/rapor.api';
 import { useNavStore } from '../../../store/navStore';
 import { useMobileSubtabSidebarStore } from './common/UniversalMobileSubtabSidebar';
 
-// Staff Dashboard Modular Tabs
-import { StaffBerandaTab } from '../staff/tabs/StaffBerandaTab';
-import { StaffKbmAbsenTab } from '../staff/tabs/StaffKbmAbsenTab';
+// Lazy-Loaded Heavy Modals (Zero Network Leak on Initial Load)
+const JurnalKbmModal = React.lazy(() => import('../../kurikulum/JurnalKbmModal').then(m => ({ default: m.JurnalKbmModal })));
+const SesiAttendanceList = React.lazy(() => import('../../attendance/sesi/SesiAttendanceList').then(m => ({ default: m.SesiAttendanceList })));
+
+// Staff Dashboard Modular Tabs (Code-Split via React.lazy)
+const StaffBerandaTab = React.lazy(() => import('../staff/tabs/StaffBerandaTab').then(m => ({ default: m.StaffBerandaTab })));
+const StaffKbmAbsenTab = React.lazy(() => import('../staff/tabs/StaffKbmAbsenTab').then(m => ({ default: m.StaffKbmAbsenTab })));
 const StaffActionHubTab = React.lazy(() => import('../staff/tabs/StaffActionHubTab').then(m => ({ default: m.StaffActionHubTab })));
 const StaffRekapMapelTab = React.lazy(() => import('../staff/tabs/StaffRekapMapelTab').then(m => ({ default: m.StaffRekapMapelTab })));
 // Wali Kelas Dashboard — clean modular design (replaces legacy StaffWaliKelasTab)
 const WaliKelasDashboard = React.lazy(() => import('./WaliKelasDashboard').then(m => ({ default: m.WaliKelasDashboard })));
-import { StaffPiketOperasionalTab } from '../staff/tabs/StaffPiketOperasionalTab';
-import { StaffProfilGuruTab } from '../staff/tabs/StaffProfilGuruTab';
-import { StaffManualInputTab } from '../staff/tabs/StaffManualInputTab';
+const StaffPiketOperasionalTab = React.lazy(() => import('../staff/tabs/StaffPiketOperasionalTab').then(m => ({ default: m.StaffPiketOperasionalTab })));
+const StaffProfilGuruTab = React.lazy(() => import('../staff/tabs/StaffProfilGuruTab').then(m => ({ default: m.StaffProfilGuruTab })));
+const StaffManualInputTab = React.lazy(() => import('../staff/tabs/StaffManualInputTab').then(m => ({ default: m.StaffManualInputTab })));
 // Kaprog Dashboard — clean 3-zone design (replaced StaffKaprogTab)
 const KaprogDashboard = React.lazy(() => import('./KaprogDashboard').then(m => ({ default: m.KaprogDashboard })));
 // Admin Dashboard — clean role-patterned architecture
@@ -107,9 +107,6 @@ const PembimbingPklDashboard = React.lazy(() => import('./PembimbingPklDashboard
 // Satpam / Gerbang Dashboard — clean role-patterned architecture
 const SatpamDashboard = React.lazy(() => import('./SatpamDashboard').then(m => ({ default: m.SatpamDashboard })));
 
-// Modular Dashboards are accessed via dedicated role dashboards and top workspace launcher
-// Admin Overview Tab — dirender di tab Admin untuk role ADMIN/SUPERADMIN
-import { StaffAdminOverviewTab } from '../staff/tabs/StaffAdminOverviewTab';
 // Executive Principal Dashboard — dirender di tab Overview Eksekutif untuk KEPALA_SEKOLAH
 const KepalaSekolahDashboard = React.lazy(() => import('./KepalaSekolahDashboard').then(m => ({ default: m.KepalaSekolahDashboard })));
 // Kepegawaian Dashboard — dirender di tab TU Kepegawaian
@@ -119,25 +116,6 @@ const TataUsahaDashboard = React.lazy(() => import('./TataUsahaDashboard').then(
 
 const CatatPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/CatatPelanggaranModal').then(m => ({ default: m.CatatPelanggaranModal })));
 const TindakMasalPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/TindakMasalPelanggaranModal').then(m => ({ default: m.TindakMasalPelanggaranModal })));
-
-// Widgets
-import { StaffScheduleWidget } from '../widgets/StaffScheduleWidget';
-import { StaffImpactWidget } from '../widgets/StaffImpactWidget';
-import { StaffAttendanceLogWidget } from '../widgets/StaffAttendanceLogWidget';
-
-// Sidebar Panels
-import { KurikulumSidebarPanel } from '../panels/KurikulumSidebarPanel';
-import { KesiswaanSidebarPanel } from '../panels/KesiswaanSidebarPanel';
-import {
-  SarpraSidebarPanel,
-  HubinSidebarPanel,
-  ToolmanSidebarPanel,
-  KaprogSidebarPanel,
-  KabengSidebarPanel,
-  BpbkSidebarPanel,
-  BkkSidebarPanel,
-  GerbangSidebarPanel,
-} from '../panels/OperationalSidebarPanels';
 
 // Hooks & APIs
 import { useStaffTimeline } from '../../../hooks/useStaffTimeline';
@@ -1209,15 +1187,19 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
         {/* Modals */}
         {journalModalOpen && sessionForJournal && (
-          <JurnalKbmModal
-            isOpen={journalModalOpen}
-            onClose={() => { setJournalModalOpen(false); setSessionForJournal(null); }}
-            sesi={sessionForJournal}
-          />
+          <Suspense fallback={null}>
+            <JurnalKbmModal
+              isOpen={journalModalOpen}
+              onClose={() => { setJournalModalOpen(false); setSessionForJournal(null); }}
+              sesi={sessionForJournal}
+            />
+          </Suspense>
         )}
         {selectedSesi && (
           <Modal isOpen={!!selectedSesi} onClose={() => setSelectedSesi(null)} title="Presensi Sesi KBM">
-            <SesiAttendanceList sesiId={selectedSesi.id} sesi={selectedSesi} />
+            <Suspense fallback={<div className="py-8 flex justify-center"><Loader /></div>}>
+              <SesiAttendanceList sesiId={selectedSesi.id} sesi={selectedSesi} />
+            </Suspense>
           </Modal>
         )}
         {catatModalOpen && (
@@ -1348,24 +1330,26 @@ export const UnifiedStaffDashboard: React.FC = () => {
                 <SatpamDashboard />
               </Suspense>
             ) : (
-              <StaffBerandaTab
-                user={user}
-                guruId={guruId}
-                guruNama={guruProfile?.nama_guru || user?.full_name}
-                waliKelasNama={waliKelasNama}
-                waliKelasId={waliKelasId}
-                isWaliKelas={isWaliKelas}
-                isPembimbingPkl={isPembimbingPkl}
-                isKaprog={isKaprog}
-                kaprogJurusan={kaprogJurusan}
-                hasGerbangDuty={hasGerbangDuty}
-                isPureGerbang={isPureGerbangStaff}
-                isPendidik={isEffectivePendidik}
-                timelineItems={timelineItems || []}
-                onNavigateTab={handleTabChange}
-                onOpenAttendance={(sesi) => setSelectedSesi(sesi)}
-                onOpenJournal={(sesi) => { setSessionForJournal(sesi); setJournalModalOpen(true); }}
-              />
+              <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
+                <StaffBerandaTab
+                  user={user}
+                  guruId={guruId}
+                  guruNama={guruProfile?.nama_guru || user?.full_name}
+                  waliKelasNama={waliKelasNama}
+                  waliKelasId={waliKelasId}
+                  isWaliKelas={isWaliKelas}
+                  isPembimbingPkl={isPembimbingPkl}
+                  isKaprog={isKaprog}
+                  kaprogJurusan={kaprogJurusan}
+                  hasGerbangDuty={hasGerbangDuty}
+                  isPureGerbang={isPureGerbangStaff}
+                  isPendidik={isEffectivePendidik}
+                  timelineItems={timelineItems || []}
+                  onNavigateTab={handleTabChange}
+                  onOpenAttendance={(sesi) => setSelectedSesi(sesi)}
+                  onOpenJournal={(sesi) => { setSessionForJournal(sesi); setJournalModalOpen(true); }}
+                />
+              </Suspense>
             )}
           </div>
           </EcosystemProvider>
@@ -1380,13 +1364,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
             aria-hidden={activeTab !== 'jadwal'}
             className={cn("w-full min-w-0", activeTab === 'jadwal' ? "block" : "hidden")}
           >
-            <StaffKbmAbsenTab
-              guruId={guruId}
-              guruNama={guruProfile?.nama_guru || user?.full_name}
-              timelineItems={timelineItems || []}
-              isLoadingTimeline={timelineLoading}
-              onRefreshTimeline={refetchTimeline}
-            />
+            <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
+              <StaffKbmAbsenTab
+                guruId={guruId}
+                guruNama={guruProfile?.nama_guru || user?.full_name}
+                timelineItems={timelineItems || []}
+                isLoadingTimeline={timelineLoading}
+                onRefreshTimeline={refetchTimeline}
+              />
+            </Suspense>
           </div>
           </EcosystemProvider>
         )}
@@ -1754,7 +1740,9 @@ export const UnifiedStaffDashboard: React.FC = () => {
             aria-hidden={activeTab !== 'manual_presensi'}
             className={cn("w-full min-w-0", activeTab === 'manual_presensi' ? "block" : "hidden")}
           >
-            <StaffManualInputTab />
+            <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
+              <StaffManualInputTab />
+            </Suspense>
           </div>
           </EcosystemProvider>
         )}
@@ -1768,15 +1756,17 @@ export const UnifiedStaffDashboard: React.FC = () => {
             aria-hidden={activeTab !== 'kelola'}
             className={cn("w-full min-w-0", activeTab === 'kelola' ? "block" : "hidden")}
           >
-            <StaffPiketOperasionalTab
-              dailyPermits={dailyPermitsRes?.data || dailyPermits || []}
-              refetchPermits={refetchPermits}
-              printedPermit={printedPermit}
-              setPrintedPermit={setPrintedPermit}
-              printPaperSize={printPaperSize}
-              setPrintPaperSize={setPrintPaperSize}
-              tenantInfo={tenantInfo}
-            />
+            <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
+              <StaffPiketOperasionalTab
+                dailyPermits={dailyPermitsRes?.data || dailyPermits || []}
+                refetchPermits={refetchPermits}
+                printedPermit={printedPermit}
+                setPrintedPermit={setPrintedPermit}
+                printPaperSize={printPaperSize}
+                setPrintPaperSize={setPrintPaperSize}
+                tenantInfo={tenantInfo}
+              />
+            </Suspense>
           </div>
           </EcosystemProvider>
         )}
@@ -1790,12 +1780,14 @@ export const UnifiedStaffDashboard: React.FC = () => {
             aria-hidden={activeTab !== 'profil'}
             className={cn("w-full min-w-0", activeTab === 'profil' ? "block" : "hidden")}
           >
-            <StaffProfilGuruTab
-              user={user}
-              teacherInitials={teacherInitials}
-              nipText={nipText}
-              waliKelasNama={waliKelasNama}
-            />
+            <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
+              <StaffProfilGuruTab
+                user={user}
+                teacherInitials={teacherInitials}
+                nipText={nipText}
+                waliKelasNama={waliKelasNama}
+              />
+            </Suspense>
           </div>
           </EcosystemProvider>
         )}
@@ -1804,15 +1796,19 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
       {/* Modals */}
       {journalModalOpen && sessionForJournal && (
-        <JurnalKbmModal
-          isOpen={journalModalOpen}
-          onClose={() => { setJournalModalOpen(false); setSessionForJournal(null); }}
-          sesi={sessionForJournal}
-        />
+        <Suspense fallback={null}>
+          <JurnalKbmModal
+            isOpen={journalModalOpen}
+            onClose={() => { setJournalModalOpen(false); setSessionForJournal(null); }}
+            sesi={sessionForJournal}
+          />
+        </Suspense>
       )}
       {selectedSesi && (
         <Modal isOpen={!!selectedSesi} onClose={() => setSelectedSesi(null)} title="Presensi Sesi KBM">
-          <SesiAttendanceList sesiId={selectedSesi.id} sesi={selectedSesi} />
+          <Suspense fallback={<div className="py-8 flex justify-center"><Loader /></div>}>
+            <SesiAttendanceList sesiId={selectedSesi.id} sesi={selectedSesi} />
+          </Suspense>
         </Modal>
       )}
       {catatModalOpen && (

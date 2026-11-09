@@ -32,6 +32,10 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
+      target: 'es2020',
+      modulePreload: {
+        polyfill: false,
+      },
       chunkSizeWarningLimit: 2000,
       rollupOptions: {
         input: {
@@ -41,7 +45,6 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: {
             'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-            'vendor-icons': ['lucide-react'],
             'vendor-framer': ['framer-motion'],
             'vendor-query': ['@tanstack/react-query'],
             'vendor-date': ['date-fns'],

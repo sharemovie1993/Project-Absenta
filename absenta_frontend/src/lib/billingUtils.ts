@@ -1,4 +1,3 @@
-import * as LucideIcons from 'lucide-react';
 import { 
   Building2, 
   Wallet, 
@@ -7,6 +6,7 @@ import {
   LayoutGrid, 
   Sparkles 
 } from 'lucide-react';
+import { iconForName, isValidIconName } from './iconForName';
 
 export const formatCurrency = (amount: number = 0, currency: string = 'IDR') => {
   return new Intl.NumberFormat('id-ID', {
@@ -17,8 +17,8 @@ export const formatCurrency = (amount: number = 0, currency: string = 'IDR') => 
 };
 
 export const getServiceIcon = (code: string | undefined | null, moduleIcon?: string | null) => {
-  if (moduleIcon && (LucideIcons as any)[moduleIcon]) {
-     return (LucideIcons as any)[moduleIcon];
+  if (moduleIcon && isValidIconName(moduleIcon)) {
+     return iconForName(moduleIcon);
   }
 
   const c = String(code || '').toUpperCase();

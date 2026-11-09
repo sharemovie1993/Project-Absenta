@@ -1,6 +1,3 @@
-import ExcelJS from 'exceljs';
-import { saveAs } from 'file-saver';
-
 export interface AdvancedColumnConfig {
   header: string;
   key: string;
@@ -26,6 +23,10 @@ export const generateAdvancedTemplate = async (
   columns: AdvancedColumnConfig[],
   options: AdvancedTemplateOptions
 ) => {
+  const [{ default: ExcelJS }, { saveAs }] = await Promise.all([
+    import('exceljs'),
+    import('file-saver'),
+  ]);
   const workbook = new ExcelJS.Workbook();
   const mainSheet = workbook.addWorksheet('Input Data');
   const refSheet = workbook.addWorksheet('REFERENSI', { state: 'hidden' });
@@ -150,6 +151,7 @@ export interface StyledGradeTemplateOptions {
  * Generate a styled Excel template specifically for e-Rapor grade entry with school metadata
  */
 export const generateStyledExcelTemplate = async (opts: StyledGradeTemplateOptions): Promise<Blob> => {
+  const { default: ExcelJS } = await import('exceljs');
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Format Nilai Rapor');
 
