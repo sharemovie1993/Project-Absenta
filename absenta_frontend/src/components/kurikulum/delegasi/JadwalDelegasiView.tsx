@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, ArrowRightLeft, UserCheck, Clock, BookOpen, Layers, X, Filter, RefreshCw, RotateCcw } from 'lucide-react';
+import { Users, ArrowRightLeft, UserCheck, Clock, BookOpen, Layers, X, Filter, RefreshCw, RotateCcw, Search } from 'lucide-react';
 import { AcademicPageLayout } from '../../academic/AcademicPageLayout';
 import { Button, Badge, SearchableSelect, SectionCard, Table, type Column } from '../../ui';
 import { AcademicFilterToolbar, useAcademicFilter } from '../../common/academic-filter';
@@ -51,9 +51,11 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
     enableTp: true,
     enableSemester: true,
     enableKelas: !propKelasId,
+    allowAllKelas: true,
     enableSearch: true,
     initialTpId: propTpId,
     initialSemesterId: propSemId,
+    initialKelasId: propKelasId || '',
     onTpChange: () => setCurrentPage(1),
     onKelasChange: () => setCurrentPage(1),
     onSearchChange: () => setCurrentPage(1),
@@ -480,7 +482,35 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
 
   const renderTableToolbar = useMemo(() => (
     <div className="flex items-center gap-2 flex-wrap">
-      <div className="w-36">
+      {/* Search Input */}
+      <div className="relative w-44 sm:w-56">
+        <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
+        <input
+          type="text"
+          placeholder="Cari guru, kelas, mapel..."
+          value={searchQuery}
+          onChange={(e) => academicFilter.setSearchQuery(e.target.value)}
+          className="w-full pl-8 pr-2.5 py-1 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 h-8"
+        />
+      </div>
+
+      {/* Kelas Dropdown */}
+      <div className="w-40">
+        <SearchableSelect
+          value={selectedKelasId || ''}
+          onValueChange={(val) => academicFilter.setKelasId(val)}
+          options={[
+            { value: '', label: 'Semua Kelas' },
+            ...kelasOptions,
+          ]}
+          placeholder="Semua Kelas"
+          aria-label="Pilih Kelas"
+          triggerClassName="h-8 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+        />
+      </div>
+
+      {/* Hari Dropdown */}
+      <div className="w-32">
         <SearchableSelect
           value={selectedHari}
           onValueChange={(val) => handleFilterChange(setSelectedHari, val)}
@@ -513,7 +543,7 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
         <RefreshCw className="w-3 h-3" />
       </Button>
     </div>
-  ), [selectedHari, onlyDelegated, HARI_FILTER_OPTIONS, handleFilterChange, refetchJadwal]);
+  ), [searchQuery, selectedKelasId, kelasOptions, selectedHari, onlyDelegated, HARI_FILTER_OPTIONS, academicFilter, handleFilterChange, refetchJadwal]);
 
   const content = (
     <div className="space-y-4">
@@ -531,7 +561,30 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
           {isMobile ? (
             <div className="space-y-3">
               <div className="p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5">
+                <div className="relative w-full">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Cari guru, kelas, mapel..."
+                    value={searchQuery}
+                    onChange={(e) => academicFilter.setSearchQuery(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 h-9"
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-2">
+                  <SearchableSelect
+                    value={selectedKelasId || ''}
+                    onValueChange={(val) => academicFilter.setKelasId(val)}
+                    options={[
+                      { value: '', label: 'Semua Kelas' },
+                      ...kelasOptions,
+                    ]}
+                    placeholder="Semua Kelas"
+                    aria-label="Pilih Kelas Mobile"
+                    triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                  />
+
                   <SearchableSelect
                     value={selectedHari}
                     onValueChange={(val) => handleFilterChange(setSelectedHari, val)}
@@ -540,18 +593,18 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
                     aria-label="Pilih Hari Mobile"
                     triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                   />
-
-                  <Button
-                    type="button"
-                    variant={onlyDelegated ? 'toolbarPrimary' : 'toolbarOutline'}
-                    size="toolbar"
-                    onClick={() => handleFilterChange(setOnlyDelegated, !onlyDelegated)}
-                    className="w-full h-9 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5"
-                  >
-                    <Filter className="w-3.5 h-3.5" />
-                    <span>{onlyDelegated ? 'Semua Jadwal' : 'Hanya Inval'}</span>
-                  </Button>
                 </div>
+
+                <Button
+                  type="button"
+                  variant={onlyDelegated ? 'toolbarPrimary' : 'toolbarOutline'}
+                  size="toolbar"
+                  onClick={() => handleFilterChange(setOnlyDelegated, !onlyDelegated)}
+                  className="w-full h-9 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5"
+                >
+                  <Filter className="w-3.5 h-3.5" />
+                  <span>{onlyDelegated ? 'Semua Jadwal' : 'Hanya Inval'}</span>
+                </Button>
               </div>
 
               <MobileAcademicList
