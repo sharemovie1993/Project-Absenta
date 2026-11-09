@@ -51,6 +51,15 @@ export const GuruMapelView: React.FC<UniversalGuruMapelViewProps> = ({
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+
+  // Academic Filter SSOT saat berdiri sebagai standalone page
+  const academicFilter = useAcademicFilter({
+    enableTp: !hideLayout,
+    initialTpId: propTahunPelajaranId,
+  });
+
+  const effectiveTpId = propTahunPelajaranId || academicFilter.values.tahunPelajaranId;
 
   const handleSyncFromJadwal = useCallback(async () => {
     try {
@@ -64,15 +73,6 @@ export const GuruMapelView: React.FC<UniversalGuruMapelViewProps> = ({
       setIsSyncing(false);
     }
   }, [effectiveTpId]);
-  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
-
-  // Academic Filter SSOT saat berdiri sebagai standalone page
-  const academicFilter = useAcademicFilter({
-    enableTp: !hideLayout,
-    initialTpId: propTahunPelajaranId,
-  });
-
-  const effectiveTpId = propTahunPelajaranId || academicFilter.values.tahunPelajaranId;
 
   const handleOpenTimeOff = useCallback((guruId: string, guruName?: string) => {
     setTimeOffGuruId(guruId);
