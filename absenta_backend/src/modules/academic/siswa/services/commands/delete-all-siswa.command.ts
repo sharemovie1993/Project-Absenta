@@ -1,6 +1,7 @@
 import { siswaDb } from '../repositories/siswa.db';
+import { activityLogService } from '@/modules/activity/services/activity-log.service';
 
-export async function deleteAllSiswaCommand(tenantId: string): Promise<{ count: number }> {
+export async function deleteAllSiswaCommand(tenantId: string, userId?: string): Promise<{ count: number }> {
   // Step 1: Fetch siswa IDs and user IDs for this tenant
   const siswas = await siswaDb.siswa.findMany({
     where: { tenant_id: tenantId },
@@ -65,6 +66,21 @@ export async function deleteAllSiswaCommand(tenantId: string): Promise<{ count: 
     } catch (error) {
       console.error('Failed to batch delete associated users:', error);
     }
+  }
+
+  try {
+    activityLogService.logEvent({
+      event_type: 'ACADEMIC_SISWA_BULK_DELETED',
+      tenant_id: tenantId,
+      user_id: userId ?? null,
+      entity: 'Siswa',
+      entity_id: tenantId,
+      metadata: {
+        total_deleted: count,
+      },
+    });
+  } catch (logErr) {
+    console.error('[deleteAllSiswaCommand] Failed to record activity log:', logErr);
   }
 
   return { count };

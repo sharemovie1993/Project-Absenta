@@ -2,6 +2,7 @@ import { prisma } from '@/utils/prisma';
 import { findBestMatch, parseSmartDate, normalizePhone } from '@/utils/normalization';
 import { createSiswaCommand } from './create-siswa.command';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
+import { activityLogService } from '@/modules/activity/services/activity-log.service';
 
 function getRowValue(row: Record<string, any>, ...possibleKeys: string[]): any {
   if (!row) return undefined;
@@ -191,7 +192,7 @@ export async function importFromRowsCommand(rows: any[], tenantId: string, optio
       if (!createInput.nama_siswa) throw new Error('Kolom Nama Siswa wajib diisi');
 
       // 4. Call createSiswaCommand
-      await createSiswaCommand(createInput, { tenantId, org: options?.org });
+      await createSiswaCommand(createInput, { tenantId, org: options?.org, userId: options?.userId });
       successCount++;
     } catch (error: any) {
       failedCount++;
@@ -204,6 +205,23 @@ export async function importFromRowsCommand(rows: any[], tenantId: string, optio
 
   if (successCount > 0) {
     await cacheInvalidationService.invalidateSiswaCache(tenantId);
+  }
+
+  try {
+    activityLogService.logEvent({
+      event_type: 'ACADEMIC_SISWA_IMPORTED',
+      tenant_id: tenantId,
+      user_id: options?.userId ?? null,
+      entity: 'Siswa',
+      entity_id: tenantId,
+      metadata: {
+        total_rows: rows.length,
+        total_imported: successCount,
+        failed: failedCount,
+      },
+    });
+  } catch (logErr) {
+    console.error('[importFromRowsCommand] Failed to record activity log:', logErr);
   }
 
   return {

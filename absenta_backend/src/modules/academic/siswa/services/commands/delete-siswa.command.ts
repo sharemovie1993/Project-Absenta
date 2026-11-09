@@ -1,11 +1,12 @@
 import { RoleName } from '@/constants/enums';
 import { userService } from '@/modules/user/services/user.service';
+import { activityLogService } from '@/modules/activity/services/activity-log.service';
 import { siswaDb } from '../repositories/siswa.db';
 import type { SiswaResponse } from '../siswa.types';
 
 export async function deleteSiswaCommand(
   siswaId: string,
-  scope: { tenantId: string; org: any }
+  scope: { tenantId: string; org: any; userId?: string }
 ): Promise<SiswaResponse> {
   const { tenantId, org } = scope;
   const whereClause: any = { id: siswaId, tenant_id: tenantId };
@@ -69,6 +70,23 @@ export async function deleteSiswaCommand(
     } catch (error) {
       console.error(`Failed to delete associated user ${deletedSiswa.user_id}:`, error);
     }
+  }
+
+  try {
+    activityLogService.logEvent({
+      event_type: 'ACADEMIC_SISWA_DELETED',
+      tenant_id: tenantId,
+      user_id: scope.userId ?? null,
+      entity: 'Siswa',
+      entity_id: siswaId,
+      metadata: {
+        nama_siswa: existingSiswa.nama_siswa,
+        nis: existingSiswa.nis,
+        nisn: existingSiswa.nisn,
+      },
+    });
+  } catch (logErr) {
+    console.error('[deleteSiswaCommand] Failed to record activity log:', logErr);
   }
 
   return deletedSiswa as SiswaResponse;

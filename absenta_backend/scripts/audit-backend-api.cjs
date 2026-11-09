@@ -73,20 +73,26 @@ function resolveModuleContext(routeFilePath) {
     }
   }
 
-  // Also read services in the same module if available
+  // Also read services and command/query subfolders in the same module recursively
   const servicesDir = path.join(moduleDir, 'services');
   if (fs.existsSync(servicesDir)) {
-    const sFiles = fs.readdirSync(servicesDir);
-    sFiles.forEach(sf => {
-      const sfPath = path.join(servicesDir, sf);
-      if (fs.statSync(sfPath).isFile() && sf.endsWith('.ts')) {
-        if (!importedFiles.some(f => f.path === sfPath)) {
-          const fileContent = fs.readFileSync(sfPath, 'utf8');
-          importedFiles.push({ path: sfPath, lines: fileContent.split('\n').length, type: 'service' });
-          combinedContent += '\n' + fileContent;
+    const scanDir = (dir) => {
+      const items = fs.readdirSync(dir);
+      items.forEach(item => {
+        const fullPath = path.join(dir, item);
+        const stat = fs.statSync(fullPath);
+        if (stat.isDirectory()) {
+          scanDir(fullPath);
+        } else if (stat.isFile() && item.endsWith('.ts') && !item.includes('.spec.') && !item.includes('.test.')) {
+          if (!importedFiles.some(f => f.path === fullPath)) {
+            const fileContent = fs.readFileSync(fullPath, 'utf8');
+            importedFiles.push({ path: fullPath, lines: fileContent.split('\n').length, type: 'service' });
+            combinedContent += '\n' + fileContent;
+          }
         }
-      }
-    });
+      });
+    };
+    scanDir(servicesDir);
   }
 
   return { routeContent, combinedContent, importedFiles };
@@ -158,10 +164,10 @@ function auditRoute(routeFilePath) {
   const passRateLimit = hasRateLimit || !hasPublicExemption;
 
   // P9: Logging & Audit Trail Compliance
-  const hasLogging = /appLogger|logger\.(info|warn|error)|console\.(log|error)|auditLog/i.test(combinedContent);
-  const passLogging = hasLogging;
+  const hasStructuredLogging = /activityLogService|auditLogService|appLogger|logger\.(info|warn|error)|SystemEventLog|ActivityLog/i.test(combinedContent);
+  const passLogging = hasStructuredLogging || (!hasMutations && /console\.(log|error)/i.test(combinedContent));
   if (!passLogging) {
-    issues.push('⚠️ [P9 Audit Trail] Controller/service belum mencatat log audit (appLogger/pino).');
+    issues.push('⚠️ [P9 Audit Trail] Endpoint mutasi belum mencatat structured audit trail (activityLogService/auditLogService).');
   }
 
   // P10: Dynamic Tenant Timezone Resolution Guard

@@ -38,8 +38,9 @@ export class SiswaService {
     tenantId: string,
     org: any,
     payload: any,
+    userId?: string
   ): Promise<any> {
-    const res = await bulkResetSiswaPasswordCommand({ tenantId, org }, payload);
+    const res = await bulkResetSiswaPasswordCommand({ tenantId, org, userId }, payload);
     await cacheInvalidationService.invalidateSiswaCache(tenantId);
     return res;
   }
@@ -65,8 +66,9 @@ export class SiswaService {
       tanggal?: Date;
       alasan?: string;
     },
+    userId?: string
   ): Promise<any> {
-    const res = await bulkUpdateStatusCommand({ tenantId, org }, payload);
+    const res = await bulkUpdateStatusCommand({ tenantId, org, userId }, payload);
     await cacheInvalidationService.invalidateSiswaCache(tenantId);
     return res;
   }
@@ -75,8 +77,8 @@ export class SiswaService {
     return sendParentAccessCommand(siswaId, { tenantId, org, reqOrigin });
   }
 
-  async createSiswa(input: CreateSiswaInput, tenantId: string, org: any): Promise<SiswaResponse> {
-    const res = await createSiswaCommand(input, { tenantId, org });
+  async createSiswa(input: CreateSiswaInput, tenantId: string, org: any, userId?: string): Promise<SiswaResponse> {
+    const res = await createSiswaCommand(input, { tenantId, org, userId });
     await cacheInvalidationService.invalidateSiswaCache(tenantId, res.id);
     return res;
   }
@@ -87,14 +89,14 @@ export class SiswaService {
     return res;
   }
 
-  async deleteSiswa(siswaId: string, tenantId: string, org: any): Promise<SiswaResponse> {
-    const res = await deleteSiswaCommand(siswaId, { tenantId, org });
+  async deleteSiswa(siswaId: string, tenantId: string, org: any, userId?: string): Promise<SiswaResponse> {
+    const res = await deleteSiswaCommand(siswaId, { tenantId, org, userId });
     await cacheInvalidationService.invalidateSiswaCache(tenantId, siswaId);
     return res;
   }
 
-  async deleteAllSiswa(tenantId: string): Promise<{ count: number }> {
-    const res = await deleteAllSiswaCommand(tenantId);
+  async deleteAllSiswa(tenantId: string, userId?: string): Promise<{ count: number }> {
+    const res = await deleteAllSiswaCommand(tenantId, userId);
     await cacheInvalidationService.invalidateSiswaCache(tenantId);
     return res;
   }

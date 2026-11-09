@@ -1,6 +1,7 @@
 import { prisma } from '@/utils/prisma';
 import { DataScope } from '@/types/fastify';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
+import { activityLogService } from '@/modules/activity/services/activity-log.service';
 import { createGuruCommand } from './create-guru.command';
 import { updateGuruCommand } from './update-guru.command';
 import { CreateGuruInput, UpdateGuruInput } from '../guru.service';
@@ -145,6 +146,25 @@ export async function importGuruExcelCommand(
   }
 
   await cacheInvalidationService.invalidateAcademicCache(tenantId);
+
+  try {
+    activityLogService.logEvent({
+      event_type: 'ACADEMIC_GURU_IMPORTED',
+      tenant_id: tenantId,
+      user_id: scope.userId ?? null,
+      entity: 'Guru',
+      entity_id: tenantId,
+      metadata: {
+        total_rows: total,
+        total_imported: created + updated,
+        created,
+        updated,
+        skipped,
+      },
+    });
+  } catch (logErr) {
+    console.error('[importGuruExcelCommand] Failed to record activity log:', logErr);
+  }
 
   return {
     total,

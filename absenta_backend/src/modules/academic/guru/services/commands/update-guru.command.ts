@@ -3,6 +3,7 @@ import { applyDataScope } from '@/utils/applyDataScope';
 import { normalizePhone } from '@/utils/normalization';
 import { DataScope } from '@/types/fastify';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
+import { activityLogService } from '@/modules/activity/services/activity-log.service';
 import { removeLidMappingByPhone } from '@/modules/whatsapp/services/wa-chatbot-resolver.service';
 import { UpdateGuruInput, GuruResponse } from '../guru.service';
 import { PRISMA_GURU_USER_SELECT, enrichGuruWithUser, formatDateForStorage } from '../helpers/guru-mapper.helper';
@@ -112,6 +113,37 @@ export async function updateGuruCommand(
       User: PRISMA_GURU_USER_SELECT,
     },
   });
+
+  // Calculate changed fields for structured audit trail
+  const changedFields: string[] = [];
+  if (input.nip !== undefined && input.nip !== existingGuru.nip) changedFields.push('nip');
+  if (input.nama_guru !== undefined && input.nama_guru !== existingGuru.nama_guru) changedFields.push('nama_guru');
+  if (input.email !== undefined) changedFields.push('email');
+  if (input.no_hp !== undefined && input.no_hp !== existingGuru.no_hp) changedFields.push('no_hp');
+  if (input.jenis_ptk !== undefined && input.jenis_ptk !== existingGuru.jenis_ptk) changedFields.push('jenis_ptk');
+  if (input.status !== undefined) changedFields.push('status');
+  if (input.status_kepegawaian !== undefined && input.status_kepegawaian !== existingGuru.status_kepegawaian) changedFields.push('status_kepegawaian');
+  if (input.max_jp !== undefined && input.max_jp !== existingGuru.max_jp) changedFields.push('max_jp');
+  if (input.no_rfid !== undefined && input.no_rfid !== existingGuru.no_rfid) changedFields.push('no_rfid');
+  if (input.alamat !== undefined && input.alamat !== existingGuru.alamat) changedFields.push('alamat');
+
+  try {
+    activityLogService.logEvent({
+      event_type: 'ACADEMIC_GURU_UPDATED',
+      tenant_id: existingGuru.tenant_id,
+      user_id: scope.userId ?? null,
+      entity: 'Guru',
+      entity_id: guruId,
+      metadata: {
+        nama_guru: guru.nama_guru,
+        nip: guru.nip,
+        changed_fields: changedFields,
+        is_inline_edit: changedFields.length <= 2,
+      },
+    });
+  } catch (logErr) {
+    console.error('[updateGuruCommand] Failed to record activity log:', logErr);
+  }
 
   // Sync status back to user if provided
   if (input.status && guru.user_id) {

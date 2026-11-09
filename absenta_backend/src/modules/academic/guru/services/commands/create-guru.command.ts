@@ -3,6 +3,7 @@ import { normalizePhone } from '@/utils/normalization';
 import { userService } from '@/modules/user/services/user.service';
 import { DataScope } from '@/types/fastify';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
+import { activityLogService } from '@/modules/activity/services/activity-log.service';
 import { removeLidMappingByPhone } from '@/modules/whatsapp/services/wa-chatbot-resolver.service';
 import { CreateGuruInput, GuruResponse } from '../guru.service';
 import { PRISMA_GURU_USER_SELECT, enrichGuruWithUser, formatDateForStorage } from '../helpers/guru-mapper.helper';
@@ -112,6 +113,24 @@ export async function createGuruCommand(
   });
 
   await cacheInvalidationService.invalidateAcademicCache(tenantId);
+
+  try {
+    activityLogService.logEvent({
+      event_type: 'ACADEMIC_GURU_CREATED',
+      tenant_id: tenantId,
+      user_id: scope.userId ?? null,
+      entity: 'Guru',
+      entity_id: guru.id,
+      metadata: {
+        nama_guru: guru.nama_guru,
+        nip: guru.nip,
+        email: (guru as any).User?.email ?? null,
+        jenis_ptk: guru.jenis_ptk,
+      },
+    });
+  } catch (logErr) {
+    console.error('[createGuruCommand] Failed to record activity log:', logErr);
+  }
 
   return enrichGuruWithUser(guru) as GuruResponse;
 }

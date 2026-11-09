@@ -1,5 +1,6 @@
 import { prisma } from '@/utils/prisma';
 import bcrypt from 'bcryptjs';
+import { activityLogService } from '@/modules/activity/services/activity-log.service';
 
 export interface BulkResetGuruPasswordPayload {
   mode: 'NIP' | 'CUSTOM';
@@ -9,7 +10,7 @@ export interface BulkResetGuruPasswordPayload {
 }
 
 export async function bulkResetGuruPasswordCommand(
-  ctx: { tenantId: string; org: any },
+  ctx: { tenantId: string; org: any; userId?: string },
   payload: BulkResetGuruPasswordPayload
 ) {
   const { tenantId } = ctx;
@@ -160,6 +161,26 @@ export async function bulkResetGuruPasswordCommand(
   // Invalidate cache after bulk reset
   const { cacheInvalidationService } = await import('@/utils/cache-invalidation.service');
   await cacheInvalidationService.invalidateUserCache(tenantId);
+
+  try {
+    activityLogService.logEvent({
+      event_type: 'ACADEMIC_GURU_PASSWORD_RESET',
+      tenant_id: tenantId,
+      user_id: ctx.userId ?? null,
+      entity: 'Guru',
+      entity_id: tenantId,
+      metadata: {
+        mode,
+        target_scope: targetScope,
+        count: teachers.length,
+        updated,
+        created,
+        failed,
+      },
+    });
+  } catch (logErr) {
+    console.error('[bulkResetGuruPasswordCommand] Failed to record activity log:', logErr);
+  }
 
   return {
     success: true,

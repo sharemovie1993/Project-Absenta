@@ -2,6 +2,7 @@ import { prisma } from '@/utils/prisma';
 import { applyDataScope } from '@/utils/applyDataScope';
 import { DataScope } from '@/types/fastify';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
+import { activityLogService } from '@/modules/activity/services/activity-log.service';
 
 export async function deleteGuruCommand(guruId: string, scope: DataScope): Promise<void> {
   // Check if guru exists
@@ -68,4 +69,20 @@ export async function deleteGuruCommand(guruId: string, scope: DataScope): Promi
   });
 
   await cacheInvalidationService.invalidateAcademicCache(existingGuru.tenant_id);
+
+  try {
+    activityLogService.logEvent({
+      event_type: 'ACADEMIC_GURU_DELETED',
+      tenant_id: existingGuru.tenant_id,
+      user_id: scope.userId ?? null,
+      entity: 'Guru',
+      entity_id: guruId,
+      metadata: {
+        nama_guru: existingGuru.nama_guru,
+        nip: existingGuru.nip,
+      },
+    });
+  } catch (logErr) {
+    console.error('[deleteGuruCommand] Failed to record activity log:', logErr);
+  }
 }

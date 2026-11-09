@@ -1,8 +1,9 @@
 import { siswaDb } from '../repositories/siswa.db';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
+import { activityLogService } from '@/modules/activity/services/activity-log.service';
 
 export async function bulkUpdateStatusCommand(
-  scope: { tenantId: string; org: any },
+  scope: { tenantId: string; org: any; userId?: string },
   payload: {
     siswaIds: string[];
     status: string;
@@ -122,6 +123,24 @@ export async function bulkUpdateStatusCommand(
 
   if (scope.tenantId) {
     await cacheInvalidationService.invalidateSiswaCache(scope.tenantId);
+  }
+
+  try {
+    activityLogService.logEvent({
+      event_type: 'ACADEMIC_SISWA_STATUS_MUTATED',
+      tenant_id: tenantId,
+      user_id: scope.userId ?? null,
+      entity: 'Siswa',
+      entity_id: tenantId,
+      metadata: {
+        target_status: status,
+        total_students: siswaIds.length,
+        tanggal: tanggal ? tanggal.toISOString() : null,
+        alasan: alasan || null,
+      },
+    });
+  } catch (logErr) {
+    console.error('[bulkUpdateStatusCommand] Failed to record activity log:', logErr);
   }
 
   return result;

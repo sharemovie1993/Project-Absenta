@@ -1,6 +1,7 @@
 import { userService } from '@/modules/user/services/user.service';
 import { parentAuthService } from '@/modules/parent-app/services/parent-auth.service';
 import { normalizePhone } from '@/utils/normalization';
+import { activityLogService } from '@/modules/activity/services/activity-log.service';
 import { siswaDb } from '../repositories/siswa.db';
 import type { CreateSiswaInput, SiswaResponse } from '../siswa.types';
 import { updateSiswaCommand } from './update-siswa.command';
@@ -8,7 +9,7 @@ import { createSiswaSchema } from '../siswa.schema';
 
 export async function createSiswaCommand(
   input: CreateSiswaInput,
-  scope: { tenantId: string; org: any }
+  scope: { tenantId: string; org: any; userId?: string }
 ): Promise<SiswaResponse> {
   const { tenantId, org } = scope;
   if (!tenantId) {
@@ -567,6 +568,26 @@ export async function createSiswaCommand(
     OrangTuaSiswa: undefined,
     _op: 'CREATED'
   };
+
+  try {
+    activityLogService.logEvent({
+      event_type: 'ACADEMIC_SISWA_CREATED',
+      tenant_id: tenantId,
+      user_id: scope.userId ?? null,
+      entity: 'Siswa',
+      entity_id: createdSiswaWithRelations?.id,
+      metadata: {
+        nama_siswa: createdSiswaWithRelations?.nama_siswa,
+        nis: createdSiswaWithRelations?.nis,
+        nisn: createdSiswaWithRelations?.nisn,
+        kelas_id: createdSiswaWithRelations?.kelas_id,
+        kelas_name: createdSiswaWithRelations?.Kelas?.nama_kelas || null,
+        status: createdSiswaWithRelations?.status,
+      },
+    });
+  } catch (logErr) {
+    console.error('[createSiswaCommand] Failed to record activity log:', logErr);
+  }
 
   return formattedSiswa as any;
 }

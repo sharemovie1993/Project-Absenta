@@ -23,7 +23,7 @@ export const siswaCrudController = {
         return reply.status(401).send({ success: false, message: 'Unauthorized: tenant_id not found' });
       }
 
-      const result = await siswaService.bulkResetPassword(tenantId, scope, payload);
+      const result = await siswaService.bulkResetPassword(tenantId, scope, payload, request.user?.id);
       return reply.send(result);
     } catch (error: any) {
       console.error('Error in bulkResetPassword siswa:', error);
@@ -115,7 +115,7 @@ async bulkUpdateStatus(request: any, reply: any) {
         alasan: rawBody.alasan || rawBody.keterangan,
       };
 
-      const result = await siswaService.bulkUpdateStatus(tenantId, scope, payload);
+      const result = await siswaService.bulkUpdateStatus(tenantId, scope, payload, request.user?.id);
 
       return reply.status(200).send({
         success: true,
@@ -168,7 +168,7 @@ async createSiswa(request: any, reply: any) {
         input.berat_badan = input.berat_badan === null || input.berat_badan === '' ? null : Number(input.berat_badan);
       }
 
-      const siswa = await siswaService.createSiswa(input, tenantId, scope);
+      const siswa = await siswaService.createSiswa(input, tenantId, scope, request.user?.id);
 
       return reply.status(201).send({
         success: true,
@@ -279,7 +279,7 @@ async deleteSiswa(request: any, reply: any) {
 
       // Permissions are handled by requireCapability middleware
       
-      await siswaService.deleteSiswa(id, tenantId, scope);
+      await siswaService.deleteSiswa(id, tenantId, scope, request.user?.id);
 
       return reply.status(200).send({
         success: true,
@@ -318,7 +318,7 @@ async deleteAll(request: any, reply: any) {
          return reply.status(400).send({ success: false, message: 'Tenant ID required' });
       }
 
-      const result = await siswaService.deleteAllSiswa(tenantId);
+      const result = await siswaService.deleteAllSiswa(tenantId, request.user?.id);
 
       return reply.status(200).send({
         success: true,

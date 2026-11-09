@@ -24,7 +24,7 @@ interface ApiResponse<T = any> {
 export class GuruController {
   async bulkResetPassword(request: any, reply: any): Promise<ApiResponse> {
     try {
-      const scope = request.dataScope;
+      const scope = { ...request.dataScope, userId: request.user?.id || request.dataScope?.userId };
       const tenantId = request.tenantId;
       const payload = request.body;
 
@@ -33,7 +33,7 @@ export class GuruController {
         return { success: false, message: 'Unauthorized: tenant_id tidak ditemukan.' };
       }
 
-      const result = await guruService.bulkResetPassword(tenantId, scope, payload);
+      const result = await guruService.bulkResetPassword(tenantId, scope, payload, request.user?.id);
       return reply.send(result);
     } catch (error: any) {
       console.error('Error in bulkResetPassword guru:', error);
@@ -177,7 +177,7 @@ export class GuruController {
 
   async createGuru(request: any, reply: any): Promise<ApiResponse> {
     try {
-      const scope = request.dataScope;
+      const scope = { ...request.dataScope, userId: request.user?.id || request.dataScope?.userId };
       const parsedBody = createGuruSchema.parse(request.body);
       const createGuruInput: CreateGuruInput = parsedBody;
 
@@ -210,7 +210,7 @@ export class GuruController {
 
   async updateGuru(request: any, reply: any): Promise<ApiResponse> {
     try {
-      const scope = request.dataScope;
+      const scope = { ...request.dataScope, userId: request.user?.id || request.dataScope?.userId };
       const { id } = request.params;
       const parsedBody = updateGuruSchema.parse(request.body);
 
@@ -283,7 +283,7 @@ export class GuruController {
 
   async deleteGuru(request: any, reply: any): Promise<ApiResponse> {
     try {
-      const scope = request.dataScope;
+      const scope = { ...request.dataScope, userId: request.user?.id || request.dataScope?.userId };
       const { id } = request.params;
 
       await guruService.deleteGuru(id, scope);
@@ -403,7 +403,7 @@ export class GuruController {
 
   async importFromExcel(request: any, reply: any): Promise<ApiResponse> {
     try {
-      const scope = request.dataScope;
+      const scope = { ...request.dataScope, userId: request.user?.id || request.dataScope?.userId };
       const parts = request.parts();
       let rows: any[] = [];
 

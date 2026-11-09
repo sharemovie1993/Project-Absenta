@@ -1,5 +1,6 @@
 import { prisma } from '@/utils/prisma';
 import { DocumentStorageService } from '../../../../document-center/services/document-storage.service';
+import { activityLogService } from '@/modules/activity/services/activity-log.service';
 import { MultipartFile } from '@fastify/multipart';
 
 const storage = new DocumentStorageService();
@@ -105,6 +106,26 @@ export async function completeSiswaExitCommand(params: {
 
     return { student: updatedStudent, document: doc };
   });
+
+  try {
+    activityLogService.logEvent({
+      event_type: 'ACADEMIC_SISWA_EXIT_COMPLETED',
+      tenant_id: tenantId,
+      user_id: actorUserId ?? null,
+      entity: 'Siswa',
+      entity_id: siswaId,
+      metadata: {
+        nama_siswa: student.nama_siswa,
+        nis: student.nis,
+        status,
+        alasan: alasan || null,
+        document_id: result.document?.id,
+        file_name: result.document?.file_original_name,
+      },
+    });
+  } catch (logErr) {
+    console.error('[completeSiswaExitCommand] Failed to record activity log:', logErr);
+  }
 
   return result;
 }

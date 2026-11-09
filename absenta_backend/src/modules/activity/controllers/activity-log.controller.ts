@@ -142,6 +142,88 @@ export class ActivityLogController {
             description = `Mengubah kelas siswa ${namaSiswa} dari kelas ${oldKelas} menjadi kelas ${newKelas}.`;
             break;
           }
+          case 'ACADEMIC_GURU_CREATED': {
+            const nama = meta.nama_guru || 'Guru';
+            const nip = meta.nip || '-';
+            description = `Menambahkan data pendidik baru: ${nama} (NIP: ${nip}).`;
+            break;
+          }
+          case 'ACADEMIC_GURU_UPDATED': {
+            const nama = meta.nama_guru || 'Guru';
+            const nip = meta.nip || '-';
+            const changed = Array.isArray(meta.changed_fields) && meta.changed_fields.length > 0
+              ? ` [Bidang diperbarui: ${meta.changed_fields.join(', ')}]`
+              : '';
+            description = `Memperbarui data guru ${nama} (NIP: ${nip})${changed}.`;
+            break;
+          }
+          case 'ACADEMIC_GURU_DELETED': {
+            const nama = meta.nama_guru || 'Guru';
+            const nip = meta.nip || '-';
+            description = `Menghapus data guru ${nama} (NIP: ${nip}) dari pangkalan data sekolah.`;
+            break;
+          }
+          case 'ACADEMIC_GURU_PASSWORD_RESET': {
+            const count = meta.count || 0;
+            const mode = meta.mode || 'NIP';
+            description = `Mereset kata sandi akun ${count} guru secara massal (Mode: ${mode}).`;
+            break;
+          }
+          case 'ACADEMIC_GURU_IMPORTED': {
+            const total = meta.total_imported || 0;
+            description = `Berhasil mengimpor ${total} data guru dari berkas spreadsheet Excel.`;
+            break;
+          }
+          case 'ACADEMIC_SISWA_CREATED': {
+            const nama = meta.nama_siswa || 'Siswa';
+            const nis = meta.nis || '-';
+            description = `Mendaftarkan siswa baru: ${nama} (NIS: ${nis}).`;
+            break;
+          }
+          case 'ACADEMIC_SISWA_UPDATED': {
+            const nama = meta.nama_siswa || 'Siswa';
+            const nis = meta.nis || '-';
+            const changed = Array.isArray(meta.changed_fields) && meta.changed_fields.length > 0
+              ? ` [Bidang diperbarui: ${meta.changed_fields.join(', ')}]`
+              : '';
+            description = `Memperbarui profil data siswa ${nama} (NIS: ${nis})${changed}.`;
+            break;
+          }
+          case 'ACADEMIC_SISWA_DELETED': {
+            const nama = meta.nama_siswa || 'Siswa';
+            const nis = meta.nis || '-';
+            description = `Menghapus data profil siswa ${nama} (NIS: ${nis}) dari sistem.`;
+            break;
+          }
+          case 'ACADEMIC_SISWA_BULK_DELETED': {
+            const total = meta.total_deleted || 0;
+            description = `Menghapus ${total} data siswa secara massal dari pangkalan data.`;
+            break;
+          }
+          case 'ACADEMIC_SISWA_STATUS_MUTATED': {
+            const total = meta.total_students || 0;
+            const targetStatus = meta.target_status || 'MUTASI';
+            const alasan = meta.alasan ? ` (Alasan: ${meta.alasan})` : '';
+            description = `Memutasikan status akademik ${total} siswa menjadi status ${targetStatus}${alasan}.`;
+            break;
+          }
+          case 'ACADEMIC_SISWA_EXIT_COMPLETED': {
+            const nama = meta.nama_siswa || 'Siswa';
+            const nis = meta.nis || '-';
+            const status = meta.status || 'KELUAR';
+            description = `Mengeksekusi mutasi keluar resmi siswa ${nama} (NIS: ${nis}) dengan status ${status} beserta unggah dokumen bukti Dapodik.`;
+            break;
+          }
+          case 'ACADEMIC_SISWA_PASSWORD_RESET': {
+            const count = meta.count || 0;
+            description = `Mereset kata sandi akun ${count} siswa secara massal.`;
+            break;
+          }
+          case 'ACADEMIC_SISWA_IMPORTED': {
+            const total = meta.total_imported || 0;
+            description = `Berhasil mengimpor ${total} data siswa dari spreadsheet Dapodik/Excel.`;
+            break;
+          }
           default:
             description = `Melakukan aksi ${log.action} pada entitas ${log.entity || 'sistem'}.`;
             break;

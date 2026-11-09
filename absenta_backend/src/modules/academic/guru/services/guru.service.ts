@@ -137,8 +137,8 @@ export interface PaginatedGuruResponse {
  * Provides a clean API interface for Guru domain operations, forwarding to modularized commands and queries.
  */
 export class GuruService {
-  async bulkResetPassword(tenantId: string, org: any, payload: any): Promise<any> {
-    const res = await bulkResetGuruPasswordCommand({ tenantId, org }, payload);
+  async bulkResetPassword(tenantId: string, org: any, payload: any, userId?: string): Promise<any> {
+    const res = await bulkResetGuruPasswordCommand({ tenantId, org, userId }, payload);
     await cacheInvalidationService.invalidateTenantCache(tenantId);
     return res;
   }

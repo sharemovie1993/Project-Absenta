@@ -1,5 +1,6 @@
 import { prisma } from '@/utils/prisma';
 import bcrypt from 'bcryptjs';
+import { activityLogService } from '@/modules/activity/services/activity-log.service';
 
 export interface BulkResetSiswaPasswordPayload {
   mode: 'NISN' | 'NIS' | 'CUSTOM';
@@ -10,7 +11,7 @@ export interface BulkResetSiswaPasswordPayload {
 }
 
 export async function bulkResetSiswaPasswordCommand(
-  ctx: { tenantId: string; org: any },
+  ctx: { tenantId: string; org: any; userId?: string },
   payload: BulkResetSiswaPasswordPayload
 ) {
   const { tenantId } = ctx;
@@ -162,6 +163,27 @@ export async function bulkResetSiswaPasswordCommand(
         }
       })
     );
+  }
+
+  try {
+    activityLogService.logEvent({
+      event_type: 'ACADEMIC_SISWA_PASSWORD_RESET',
+      tenant_id: tenantId,
+      user_id: ctx.userId ?? null,
+      entity: 'Siswa',
+      entity_id: tenantId,
+      metadata: {
+        mode,
+        target_scope: targetScope,
+        kelas_id: kelas_id || null,
+        count: students.length,
+        updated,
+        created,
+        failed,
+      },
+    });
+  } catch (logErr) {
+    console.error('[bulkResetSiswaPasswordCommand] Failed to record activity log:', logErr);
   }
 
   return {

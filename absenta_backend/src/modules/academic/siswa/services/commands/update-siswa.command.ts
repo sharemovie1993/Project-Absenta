@@ -699,5 +699,26 @@ export async function updateSiswaCommand(
     _op: hasChanges ? 'UPDATED' : 'SKIPPED'
   };
 
+  if (hasChanges) {
+    try {
+      const changedKeys = Object.keys(dataToUpdate);
+      activityLogService.logEvent({
+        event_type: 'ACADEMIC_SISWA_UPDATED',
+        tenant_id: tenantId,
+        user_id: userId ?? null,
+        entity: 'Siswa',
+        entity_id: siswaId,
+        metadata: {
+          nama_siswa: updatedSiswaWithRelations?.nama_siswa,
+          nis: updatedSiswaWithRelations?.nis,
+          changed_fields: changedKeys,
+          is_inline_edit: changedKeys.length <= 2,
+        },
+      });
+    } catch (logErr) {
+      console.error('[updateSiswaCommand] Failed to record activity log:', logErr);
+    }
+  }
+
   return formattedSiswa as any;
 }

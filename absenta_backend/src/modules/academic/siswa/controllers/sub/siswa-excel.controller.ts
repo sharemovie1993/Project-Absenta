@@ -503,7 +503,7 @@ async importFromExcel(request: any, reply: any) {
 
             // 5. Create Siswa
             input.skipQuotaCheck = true; // Skip per-row check, we checked bulk
-            const result: any = await siswaService.createSiswa(input, tenantId, scope);
+            const result: any = await siswaService.createSiswa(input, tenantId, scope, userId);
             
             // Check operation type from metadata
             if (result._op === 'CREATED') {
