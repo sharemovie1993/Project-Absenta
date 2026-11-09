@@ -38,6 +38,8 @@ interface CbtBankSoalReadinessPanelProps {
   bankList: CbtBankSoal[];
   activeTpId?: string;
   activeSemId?: string;
+  targetTingkat?: number[];
+  eventName?: string;
   onProceedToNextPhase?: () => void;
   onRefreshBankList?: () => void;
 }
@@ -47,6 +49,8 @@ export type ViewTabMode = 'BELUM' | 'SUDAH' | 'PAKET_MAPEL';
 export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps> = ({
   bankList,
   activeTpId,
+  targetTingkat,
+  eventName,
   onProceedToNextPhase,
   onRefreshBankList,
 }) => {
@@ -56,9 +60,20 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
   const { tingkatList } = useJenjang();
 
   const [activeTab, setActiveTab] = useState<ViewTabMode>('BELUM');
-  const [filterTingkat, setFilterTingkat] = useState<number | 'ALL'>('ALL');
+  const [filterTingkat, setFilterTingkat] = useState<number | 'ALL'>(() => {
+    if (targetTingkat && targetTingkat.length === 1) return targetTingkat[0];
+    return 'ALL';
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [nudgeTick, setNudgeTick] = useState<number>(Date.now());
+
+  useEffect(() => {
+    if (targetTingkat && targetTingkat.length === 1) {
+      setFilterTingkat(targetTingkat[0]);
+    } else {
+      setFilterTingkat('ALL');
+    }
+  }, [targetTingkat]);
 
   // Listen event update colek WA
   useEffect(() => {
@@ -159,6 +174,12 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
         if (!tNum) {
           tNum = rawTingkat === 'XI' ? 11 : rawTingkat === 'XII' ? 12 : 10;
         }
+
+        // Jika event ujian memiliki sasaran tingkat spesifik, lewati penugasan di luar tingkat sasaran!
+        if (targetTingkat && targetTingkat.length > 0 && !targetTingkat.includes(tNum)) {
+          return;
+        }
+
         const guruName = gm.Guru?.nama_guru || 'Guru Pengampu';
         const phone = gm.Guru?.no_hp || guruPhoneMap.get(gId) || '';
 
@@ -286,7 +307,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
         guruBelumSiap,
       },
     };
-  }, [rawGuruMapel, bankList, tenantId, guruPhoneMap, nudgeTick]);
+  }, [rawGuruMapel, bankList, tenantId, guruPhoneMap, nudgeTick, targetTingkat]);
 
   // ── 3. Filter & Default Sorting: Tingkat (10 -> 11 -> 12) -> Nama Mapel (A-Z) -> Nama Guru (A-Z) ──
   const guruBelumList = useMemo(() => {
@@ -441,7 +462,13 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
         totalGuruPenugasan={activeStats.totalGuruPenugasan}
         guruSudahSiap={activeStats.guruSudahSiap}
         guruBelumSiap={activeStats.guruBelumSiap}
-        scopeLabel={filterTingkat === 'ALL' ? undefined : `Tingkat ${formatTingkatRomawi(filterTingkat)}`}
+        scopeLabel={
+          filterTingkat === 'ALL'
+            ? targetTingkat && targetTingkat.length > 0
+              ? `${eventName || 'Event'} • Kelas ${targetTingkat.join(', ')}`
+              : undefined
+            : `Tingkat ${formatTingkatRomawi(filterTingkat)}`
+        }
       />
 
       {/* ── 2. Kontrol Navigasi Utama: Tab 3 Jawaban Panitia + Filter ── */}
@@ -565,7 +592,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
           >
             Semua Tingkat
           </button>
-          {tingkatList.map((t) => (
+          {(targetTingkat && targetTingkat.length > 0 ? tingkatList.filter((t) => targetTingkat.includes(t)) : tingkatList).map((t) => (
             <button
               key={t}
               type="button"

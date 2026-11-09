@@ -407,6 +407,8 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
                 bankList={rawBankList}
                 activeTpId={activeTp?.id}
                 activeSemId={activeSemester?.id}
+                targetTingkat={effectiveTargetTingkat}
+                eventName={effectiveEventName}
                 onProceedToNextPhase={() => setActiveTab('fase_2_ruang')}
                 onRefreshBankList={() => refetchBankSoal()}
               />
@@ -432,6 +434,8 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
             onUpdateRoomMappings={setRoomMappings}
             tenantId={tenantId}
             eventName={effectiveEventName}
+            activeTpName={activeTp?.nama}
+            semester={activeSemester?.nama}
             onProceedToNextPhase={() => setActiveTab('fase_3_jadwal')}
           />
         )}

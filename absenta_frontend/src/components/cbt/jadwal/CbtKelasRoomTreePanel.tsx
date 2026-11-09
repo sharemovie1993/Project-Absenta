@@ -34,6 +34,8 @@ interface CbtKelasRoomTreePanelProps {
   onUpdateRoomMappings: (mappings: KelasRoomMapping[]) => void;
   tenantId?: string;
   eventName?: string;
+  activeTpName?: string;
+  semester?: string;
   onProceedToNextPhase?: () => void;
 }
 
@@ -43,6 +45,8 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
   onUpdateRoomMappings,
   tenantId,
   eventName,
+  activeTpName,
+  semester,
   onProceedToNextPhase,
 }) => {
   const isMobile = useIsMobile(768);
@@ -586,6 +590,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
           roomMappings={roomMappings}
           selectedKelasId={targetKelasIdForKartu}
           eventName={eventName}
+          activeTpName={activeTpName}
         />
       )}
 
