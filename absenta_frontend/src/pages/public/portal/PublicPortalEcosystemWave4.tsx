@@ -14,6 +14,7 @@ import {
   Search,
 } from 'lucide-react';
 import { PublicWave4Ecosystem } from '../../../api/public-portal.api';
+import { InteractiveDenahCanvas } from '../../../components/spasial/InteractiveDenahCanvas';
 
 interface PublicPortalEcosystemWave4Props {
   data: PublicWave4Ecosystem | null;
@@ -53,18 +54,6 @@ export const PublicPortalEcosystemWave4: React.FC<PublicPortalEcosystemWave4Prop
 
   const pimpinan = orgList.filter((o) => o.jabatan_kode === 'KEPALA_SEKOLAH');
   const wakasekAndOther = orgList.filter((o) => o.jabatan_kode !== 'KEPALA_SEKOLAH');
-
-  const getRoomColor = (kat: string, idx: number) => {
-    const k = (kat || '').toUpperCase();
-    if (k.includes('LAB')) return '#7c3aed';
-    if (k.includes('WORKSHOP') || k.includes('BENGKEL')) return '#dc2626';
-    if (k.includes('SERVICE') || k.includes('PTSP')) return '#0284c7';
-    if (k.includes('OFFICE')) return '#4f46e5';
-    if (k.includes('LIBRARY')) return '#2563eb';
-    if (k.includes('COMMERCE')) return '#f59e0b';
-    const palette = ['#0284c7', '#4f46e5', '#0d9488', '#7c3aed', '#059669', '#d97706'];
-    return palette[idx % palette.length];
-  };
 
   return (
     <section id="ekosistem" className="py-16 bg-slate-50 border-t border-slate-200/80">
@@ -214,7 +203,7 @@ export const PublicPortalEcosystemWave4: React.FC<PublicPortalEcosystemWave4Prop
             </div>
 
             {activeMap && (
-              <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
+              <div className="bg-white rounded-3xl border border-slate-200/90 shadow-lg overflow-hidden">
                 <div className="bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <h3 className="font-bold text-base sm:text-lg flex items-center gap-2">
@@ -222,55 +211,52 @@ export const PublicPortalEcosystemWave4: React.FC<PublicPortalEcosystemWave4Prop
                       {activeMap.nama_denah}
                     </h3>
                     <p className="text-xs text-emerald-200/90 mt-0.5">
-                      {activeMap.gedung} — Lantai {activeMap.lantai} ({activeMap.elements.length} Titik Ruangan Terdata)
+                      {activeMap.gedung} — Lantai {activeMap.lantai} ({activeMap.elements.filter((e: any) => e?.id !== '__MAP_GUIDE_CONFIG__').length} Titik Ruangan Terdata • Mode Interaktif Satelit & Kanvas)
                     </p>
                   </div>
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-semibold">
                     <Sparkles className="w-3.5 h-3.5" />
-                    Denah Spasial Terintegrasi Sarpras
+                    Kanvas Spasial Interaktif (Read-Only)
                   </span>
                 </div>
 
-                {/* Grid Blueprint Interaktif */}
-                <div className="p-6 bg-slate-900/5 relative">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {activeMap.elements.map((room, rIdx) => {
-                      const roomColor = getRoomColor(room.label_sub || room.kategori, rIdx);
-                      return (
-                        <div
-                          key={room.id || rIdx}
-                          className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-sm hover:shadow-md transition-all relative overflow-hidden group"
-                        >
-                          <div
-                            className="w-1.5 h-full absolute left-0 top-0"
-                            style={{ backgroundColor: roomColor }}
-                          />
-                          <div className="pl-2">
-                            <div className="flex items-center justify-between gap-2 mb-1.5">
-                              <span
-                                className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-white"
-                                style={{ backgroundColor: roomColor }}
-                              >
-                                {room.kategori}
-                              </span>
-                              {room.kapasitas && (
-                                <span className="text-[11px] font-semibold text-slate-500">
-                                  Kapasitas: {room.kapasitas} Org
-                                </span>
-                              )}
-                            </div>
-                            <h4 className="font-bold text-slate-900 text-sm leading-snug">
-                              {room.label_utama}
-                            </h4>
-                            <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
-                              <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                              <span>{room.label_sub}</span>
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                {/* Kanvas Spasial Internal Asli (InteractiveDenahCanvas) dalam Mode Publik Read-Only */}
+                <div className="h-[640px] w-full relative bg-slate-900">
+                  <InteractiveDenahCanvas
+                    key={activeMap.id}
+                    denah={
+                      {
+                        id: activeMap.id,
+                        nama_denah: activeMap.nama_denah,
+                        tipe: (activeMap.tipe as any) || 'MASTER_SARPRAS',
+                        gedung: activeMap.gedung,
+                        lantai: activeMap.lantai || 1,
+                        canvas_width: activeMap.canvas_width || 2400,
+                        canvas_height: activeMap.canvas_height || 1800,
+                        grid_size: activeMap.grid_size || 20,
+                        elements: activeMap.elements as any,
+                        is_active: true,
+                      }
+                    }
+                    denahList={maps.map((m) => ({
+                      id: m.id,
+                      nama_denah: m.nama_denah,
+                      tipe: (m.tipe as any) || 'MASTER_SARPRAS',
+                      gedung: m.gedung,
+                      lantai: m.lantai || 1,
+                      canvas_width: m.canvas_width || 2400,
+                      canvas_height: m.canvas_height || 1800,
+                      grid_size: m.grid_size || 20,
+                      elements: m.elements as any,
+                      is_active: true,
+                    }))}
+                    onSelectDenah={(selected) => {
+                      const idx = maps.findIndex((m) => m.id === selected.id);
+                      if (idx >= 0) setSelectedMapIdx(idx);
+                    }}
+                    isReadOnly={true}
+                    eventName={schoolName}
+                  />
                 </div>
               </div>
             )}

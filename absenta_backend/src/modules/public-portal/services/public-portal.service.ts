@@ -1233,7 +1233,7 @@ export class PublicPortalService {
    * Gelombang 4 (Final): Struktur Organisasi, Denah Spasial, E-Library Modul, & Katalog Koperasi
    */
   public async getWave4Ecosystem(tenantId: string): Promise<PublicWave4Ecosystem> {
-    const cacheKey = `pub:wave4_ecosystem_v3:${tenantId}`;
+    const cacheKey = `pub:wave4_ecosystem_v4:${tenantId}`;
     const cached = await this.getFromCache<PublicWave4Ecosystem>(cacheKey);
     if (cached) return cached;
 
@@ -1359,7 +1359,7 @@ export class PublicPortalService {
       });
     }
 
-    // 2. Build Spatial Campus Map
+    // 2. Build Spatial Campus Map (Preserving full InteractiveDenahCanvas node coordinates & map guide metadata)
     const spatialMaps: PublicWave4Ecosystem['spatial_maps'] = denahRaw.map((d) => {
       let rawElements: any[] = [];
       if (Array.isArray(d.elements)) {
@@ -1368,15 +1368,32 @@ export class PublicPortalService {
       return {
         id: d.id,
         nama_denah: d.nama_denah,
+        tipe: d.tipe || 'MASTER_SARPRAS',
         gedung: d.gedung || 'Gedung Utama Akademik & Vokasi',
         lantai: d.lantai || 1,
-        elements: rawElements.map((el: any, i: number) => ({
-          id: el.id || `el-${i}`,
-          label_utama: el.label_utama || el.label || el.name || `Ruang ${i + 1}`,
-          label_sub: el.label_sub || el.zone || el.type || 'Zona Pembelajaran',
-          kategori: el.kategori || el.type || 'RUANGAN',
-          kapasitas: el.kapasitas || el.capacity || 36,
-        })),
+        canvas_width: d.canvas_width || 2400,
+        canvas_height: d.canvas_height || 1800,
+        grid_size: d.grid_size || 20,
+        is_active: d.is_active !== false,
+        elements: rawElements.map((el: any, i: number) => {
+          if (el?.id === '__MAP_GUIDE_CONFIG__') return el;
+          const col = i % 4;
+          const row = Math.floor(i / 4);
+          return {
+            ...el,
+            id: el.id || `el-${i}`,
+            x: typeof el.x === 'number' ? el.x : 160 + col * 220,
+            y: typeof el.y === 'number' ? el.y : 140 + row * 140,
+            width: typeof el.width === 'number' ? el.width : 180,
+            height: typeof el.height === 'number' ? el.height : 95,
+            rotation: typeof el.rotation === 'number' ? el.rotation : 0,
+            label_utama: el.label_utama || el.label || el.name || `Ruang ${i + 1}`,
+            label_sub: el.label_sub || el.zone || el.type || 'Zona Pembelajaran',
+            kategori_ruang: el.kategori_ruang || el.kategori || 'RUANG_UJIAN',
+            kategori: el.kategori || el.kategori_ruang || el.type || 'RUANGAN',
+            kapasitas: el.kapasitas || el.capacity || 36,
+          };
+        }),
       };
     });
 

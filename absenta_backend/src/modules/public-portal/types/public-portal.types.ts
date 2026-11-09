@@ -339,15 +339,14 @@ export interface PublicOrgMember {
 export interface PublicSpatialMap {
   id: string;
   nama_denah: string;
+  tipe?: string;
   gedung: string;
   lantai: number;
-  elements: Array<{
-    id: string;
-    label_utama: string;
-    label_sub: string;
-    kategori: string;
-    kapasitas?: number;
-  }>;
+  canvas_width?: number;
+  canvas_height?: number;
+  grid_size?: number;
+  is_active?: boolean;
+  elements: Array<any>;
 }
 
 export interface PublicELibraryModule {
