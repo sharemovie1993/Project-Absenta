@@ -29,7 +29,6 @@ import {
   getNudgeHistory,
   recordNudge,
 } from './cbtMgmpHelper';
-import { CbtReadinessStatsBar } from './CbtReadinessStatsBar';
 import { CbtReadinessTeacherTable } from './CbtReadinessTeacherTable';
 import { CbtReadinessPaketTable } from './CbtReadinessPaketTable';
 import toast from 'react-hot-toast';
@@ -453,25 +452,8 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
   };
 
   return (
-    <div className="space-y-4">
-      {/* ── 1. Hero Barometer Teori vs Realisasi (Adaptif Filter Tingkat) ── */}
-      <CbtReadinessStatsBar
-        totalTeoriPaket={activeStats.totalTeoriPaket}
-        paketSudahSiap={activeStats.paketSudahSiap}
-        paketBelumSiap={activeStats.paketBelumSiap}
-        totalGuruPenugasan={activeStats.totalGuruPenugasan}
-        guruSudahSiap={activeStats.guruSudahSiap}
-        guruBelumSiap={activeStats.guruBelumSiap}
-        scopeLabel={
-          filterTingkat === 'ALL'
-            ? targetTingkat && targetTingkat.length > 0
-              ? `${eventName || 'Event'} • Kelas ${targetTingkat.join(', ')}`
-              : undefined
-            : `Tingkat ${formatTingkatRomawi(filterTingkat)}`
-        }
-      />
-
-      {/* ── 2. Unified Master Filter & Action Toolbar (Compact 1-Container) ── */}
+    <div className="space-y-3">
+      {/* ── Unified Master Filter & Action Toolbar (Compact 1-Container) ── */}
       <div className="p-2 sm:p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
           {/* Left: Tab 3 Jawaban Panitia */}

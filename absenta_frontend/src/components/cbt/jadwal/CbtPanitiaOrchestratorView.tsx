@@ -45,9 +45,6 @@ import { CbtTimetableMatrixPanel } from './CbtTimetableMatrixPanel';
 import { CbtPengawasMatrixPanel } from './CbtPengawasMatrixPanel';
 import { CbtPanitiaLiveCommandPanel } from './CbtPanitiaLiveCommandPanel';
 
-const CbtBankSoalView = lazy(() =>
-  import('@/components/cbt/bank-soal/CbtBankSoalView').then((m) => ({ default: m.CbtBankSoalView }))
-);
 const CbtJadwalView = lazy(() =>
   import('./CbtJadwalView').then((m) => ({ default: m.CbtJadwalView }))
 );
@@ -90,7 +87,6 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
   }, [activeEvent, localTargetTingkat]);
 
   const [activeTab, setActiveTab] = useState<CbtPanitiaPhase>('fase_1_soal');
-  const [subModeFase1, setSubModeFase1] = useState<'readiness' | 'manage'>('readiness');
   const [subModeFase3, setSubModeFase3] = useState<'matrix' | 'table'>('matrix');
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
@@ -319,65 +315,15 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
       {/* ── Render Panel Fase Aktif ── */}
       <div className="transition-opacity duration-200">
         {activeTab === 'fase_1_soal' && (
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between px-1">
-              <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                <CheckCircle2 size={14} className="text-indigo-600" />
-                <span>Audit &amp; Kesiapan Bank Soal</span>
-              </span>
-              <div className="flex items-center gap-0.5 p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setSubModeFase1('readiness')}
-                  className={cn(
-                    'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
-                    subModeFase1 === 'readiness'
-                      ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-2xs'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                  )}
-                >
-                  <CheckCircle2 size={12} />
-                  <span>Audit Kesiapan</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSubModeFase1('manage')}
-                  className={cn(
-                    'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
-                    subModeFase1 === 'manage'
-                      ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-2xs'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                  )}
-                >
-                  <BookOpen size={12} />
-                  <span>Kelola Butir Soal</span>
-                </button>
-              </div>
-            </div>
-
-            {subModeFase1 === 'readiness' ? (
-              <CbtBankSoalReadinessPanel
-                bankList={rawBankList}
-                activeTpId={activeTp?.id}
-                activeSemId={activeSemester?.id}
-                targetTingkat={effectiveTargetTingkat}
-                eventName={effectiveEventName}
-                onProceedToNextPhase={() => setActiveTab('fase_2_ruang')}
-                onRefreshBankList={() => refetchBankSoal()}
-              />
-            ) : (
-              <Suspense
-                fallback={
-                  <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800">
-                    <Loader className="animate-spin mx-auto text-violet-600 mb-2" size={24} />
-                    <p className="text-xs text-slate-500">Memuat Modul Kelola Bank Soal...</p>
-                  </div>
-                }
-              >
-                <CbtBankSoalView hideLayout={true} roleContext="KURIKULUM" />
-              </Suspense>
-            )}
-          </div>
+          <CbtBankSoalReadinessPanel
+            bankList={rawBankList}
+            activeTpId={activeTp?.id}
+            activeSemId={activeSemester?.id}
+            targetTingkat={effectiveTargetTingkat}
+            eventName={effectiveEventName}
+            onProceedToNextPhase={() => setActiveTab('fase_2_ruang')}
+            onRefreshBankList={() => refetchBankSoal()}
+          />
         )}
 
         {activeTab === 'fase_2_ruang' && (
