@@ -52,6 +52,7 @@ interface CbtPengawasMatrixPanelProps {
   jadwalList: CbtJadwalUjian[];
   guruList: any[];
   isLoadingJadwal: boolean;
+  refetchJadwal?: () => void;
   onProceedToNextPhase?: () => void;
   eventName?: string;
   targetTingkat?: number[];
@@ -63,6 +64,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
   jadwalList,
   guruList,
   isLoadingJadwal,
+  refetchJadwal,
   onProceedToNextPhase,
   eventName,
   targetTingkat,
@@ -550,6 +552,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
       setPlottingDrafts(resetDrafts);
       toast.success('Seluruh hasil ploting pengawas & proktor berhasil dikosongkan!');
       await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false, refetchType: 'all' });
+      refetchJadwal?.();
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message || 'Gagal mengosongkan ploting pengawas');
@@ -600,6 +603,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
     onSuccess: async (res) => {
       toast.success(`Berhasil menyimpan ploting ${res?.updated_count || dirtyPlottingItems.length} jadwal ujian!`);
       await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false, refetchType: 'all' });
+      refetchJadwal?.();
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message || 'Gagal menyimpan ploting pengawas massal');

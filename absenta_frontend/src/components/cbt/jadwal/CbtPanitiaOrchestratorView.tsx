@@ -463,6 +463,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
           eventName={effectiveEventName}
           targetTingkat={effectiveTargetTingkat}
           activeEvent={activeEvent}
+          refetchJadwal={refetchJadwal}
           onProceedToNextPhase={() => setActiveTab('fase_5_monitor')}
         />
       )}
