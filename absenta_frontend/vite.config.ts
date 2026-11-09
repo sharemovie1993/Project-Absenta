@@ -36,13 +36,47 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 2000,
       rollupOptions: {
         output: {
-          manualChunks: {
-            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-            'vendor-framer': ['framer-motion'],
-            'vendor-query': ['@tanstack/react-query'],
-            'vendor-date': ['date-fns'],
-            'vendor-ui-libs': ['clsx', 'tailwind-merge', 'react-hot-toast'],
-            'vendor-utils': ['axios', 'zod'],
+          manualChunks(id) {
+            const normalizedId = id.replace(/\\/g, '/');
+            if (normalizedId.includes('node_modules/')) {
+              if (
+                normalizedId.includes('/react-dom/') ||
+                normalizedId.includes('/react/') ||
+                normalizedId.includes('/scheduler/') ||
+                normalizedId.includes('/react-router/') ||
+                normalizedId.includes('/react-router-dom/') ||
+                normalizedId.includes('/@remix-run/')
+              ) {
+                return 'vendor-react';
+              }
+              if (normalizedId.includes('socket.io') || normalizedId.includes('engine.io')) {
+                return 'vendor-socket';
+              }
+              if (normalizedId.includes('framer-motion')) {
+                return 'vendor-framer';
+              }
+              if (normalizedId.includes('@tanstack/react-query')) {
+                return 'vendor-query';
+              }
+              if (normalizedId.includes('date-fns') || normalizedId.includes('dayjs')) {
+                return 'vendor-date';
+              }
+              if (normalizedId.includes('recharts') || normalizedId.includes('victory') || normalizedId.includes('/d3-')) {
+                return 'vendor-charts';
+              }
+              if (normalizedId.includes('lucide-react') || normalizedId.includes('@heroicons')) {
+                return 'vendor-icons';
+              }
+              if (normalizedId.includes('/zod/')) {
+                return 'vendor-zod';
+              }
+              if (normalizedId.includes('/axios/')) {
+                return 'vendor-axios';
+              }
+              if (normalizedId.includes('clsx') || normalizedId.includes('tailwind-merge') || normalizedId.includes('react-hot-toast')) {
+                return 'vendor-ui-libs';
+              }
+            }
           }
         }
       },

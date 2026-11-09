@@ -22,10 +22,10 @@ if (cssRegex.test(html)) {
   console.log('ℹ️ [optimize-dist-html] No matching blocking CSS links found.');
 }
 
-// 2. Remove heavy non-critical modulepreloads from initial HTML document (time, framer, utils)
+// 2. Remove heavy non-critical modulepreloads from initial HTML document (charts, zod, socket, framer, utils, icons)
 const preloadCountBefore = (html.match(/<link rel="modulepreload"/g) || []).length;
 html = html.replace(
-  /\s*<link rel="modulepreload" crossorigin href="\/assets\/(time|vendor-framer|vendor-utils)-[^"]+\.js">/g,
+  /\s*<link rel="modulepreload" crossorigin href="\/assets\/(time|vendor-framer|vendor-utils|vendor-charts|vendor-zod|vendor-socket|vendor-icons)-[^"]+\.js">/g,
   ''
 );
 const preloadCountAfter = (html.match(/<link rel="modulepreload"/g) || []).length;

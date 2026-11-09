@@ -39,6 +39,47 @@ const GerbangDashboard = lazy(() => import("../../components/dashboard/roles/Ger
 const KepalaSekolahDashboard = lazy(() => import("../../components/dashboard/roles/KepalaSekolahDashboard").then(module => ({ default: module.KepalaSekolahDashboard })));
 const OrtuDashboard = lazy(() => import("../../apps/parent/pages/ParentDashboard"));
 
+function LazyAttendanceChart({ data }: { data: ChartData | null }) {
+  const [shouldRender, setShouldRender] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') {
+      setShouldRender(true);
+      return;
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setShouldRender(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: '250px' });
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={containerRef} className="min-h-[350px]">
+      {shouldRender ? (
+        <Suspense fallback={<div className="h-[350px] flex items-center justify-center"><Loader /></div>}>
+          <AttendanceChart 
+            data={data}
+            title="Tren Kehadiran Bulanan"
+            height={350}
+          />
+        </Suspense>
+      ) : (
+        <div className="h-[350px] flex items-center justify-center bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700/60 text-slate-400 text-sm">
+          Memuat grafik kehadiran...
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardOverview() {
   // ----------------------------------------------------------------------
   // 1. Hooks & State Declarations (MUST BE TOP LEVEL)
@@ -191,15 +232,9 @@ export default function DashboardOverview() {
             />
           </div>
 
-          {/* Attendance Chart */}
+          {/* Attendance Chart (Lazy In-View to eliminate CategoricalChart evaluation penalty) */}
           <div className="mb-8">
-            <Suspense fallback={<div className="h-[350px] flex items-center justify-center"><Loader /></div>}>
-              <AttendanceChart 
-                data={chartData}
-                title="Tren Kehadiran Bulanan"
-                height={350}
-              />
-            </Suspense>
+            <LazyAttendanceChart data={chartData} />
           </div>
 
           {/* Detailed Statistics */}
