@@ -468,6 +468,31 @@ export class AscImporterService {
         }
       }
 
+      // 3.5. Safe Re-import Guard:
+      // (a) Bersihkan sesi presensi template otomatis yang berstatus MENDATANG di semester ini agar nanti dibuat ulang sesuai jadwal baru.
+      await tx.sesiAbsensi.deleteMany({
+        where: {
+          tenant_id: tenantId,
+          tahun_pelajaran_id: input.tahun_pelajaran_id,
+          semester_id: input.semester_id,
+          status: 'MENDATANG',
+        },
+      });
+
+      // (b) Lepaskan relasi foreign key jadwal_kbm_id pada sesi yang sudah terisi/berlangsung (di-set null)
+      // agar catatan riwayat presensi siswa & jurnal guru tetap 100% utuh dan tidak crash terkena FK RESTRICT.
+      await tx.sesiAbsensi.updateMany({
+        where: {
+          tenant_id: tenantId,
+          tahun_pelajaran_id: input.tahun_pelajaran_id,
+          semester_id: input.semester_id,
+          jadwal_kbm_id: { not: null },
+        },
+        data: {
+          jadwal_kbm_id: null,
+        },
+      });
+
       // 4. Overwrite Mode: Delete existing JadwalKBM & JadwalKontrakKbm for selected TP & Semester
       await tx.jadwalKBM.deleteMany({
         where: {
