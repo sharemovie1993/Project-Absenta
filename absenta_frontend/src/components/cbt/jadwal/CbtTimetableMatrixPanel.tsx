@@ -11,6 +11,7 @@ import {
   AlertCircle,
   HelpCircle,
   RotateCcw,
+  ArrowRight,
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
