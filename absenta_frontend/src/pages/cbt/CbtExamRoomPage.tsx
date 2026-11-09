@@ -5,6 +5,7 @@ import {
   Badge,
   Loader,
   Modal,
+  DigitalSignatureField,
 } from '@/components/ui';
 import {
   ShieldAlert,
@@ -43,6 +44,7 @@ export default function CbtExamRoomPage() {
 
   // Exam Active Session States
   const [jadwalId, setJadwalId] = useState('');
+  const [signature, setSignature] = useState<string | null>(null);
   const [soalList, setSoalList] = useState<CbtSoal[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answersMap, setAnswersMap] = useState<Record<string, { jawaban: string; isRagu: boolean }>>({});
@@ -95,6 +97,11 @@ export default function CbtExamRoomPage() {
 
   // 2. Mulai Masuk Ruang Ujian & Kunci Fullscreen
   const handleStartExam = async () => {
+    if (!signature) {
+      toast.error('Harap bubuhkan tanda tangan kehadiran & pakta integritas terlebih dahulu');
+      return;
+    }
+
     try {
       setLoadingVerify(true);
 
@@ -110,6 +117,9 @@ export default function CbtExamRoomPage() {
           userAgent: navigator.userAgent,
           screenWidth: window.innerWidth,
           screenHeight: window.innerHeight,
+          tanda_tangan: signature,
+          waktu_ttd: new Date().toISOString(),
+          pakta_integritas: true,
         },
       });
 
@@ -488,6 +498,20 @@ export default function CbtExamRoomPage() {
               </p>
             </div>
 
+            {/* Tanda Tangan Kehadiran & Pakta Integritas (Reusable DigitalSignatureField) */}
+            <div className="space-y-1.5 pt-0.5">
+              <DigitalSignatureField
+                label="Tanda Tangan Kehadiran & Pakta Integritas"
+                penName={user?.siswa_profile?.nama_lengkap || user?.full_name || 'Peserta Ujian'}
+                value={signature}
+                onChange={setSignature}
+                className="w-full"
+              />
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 text-center leading-tight">
+                Dengan menandatangani, Anda menyatakan hadir secara sah dan mematuhi tata tertib ujian CBT.
+              </p>
+            </div>
+
             {/* Tombol Aksi Sederhana (Cukup "Mulai" Bebas Teks Bertumpuk) */}
             <div className="grid grid-cols-2 gap-3 pt-1">
               <Button
@@ -502,8 +526,8 @@ export default function CbtExamRoomPage() {
                 type="button"
                 variant="primary"
                 onClick={handleStartExam}
-                disabled={loadingVerify}
-                className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md text-sm transition-all"
+                disabled={loadingVerify || !signature}
+                className="h-11 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-md text-sm transition-all"
               >
                 {loadingVerify ? 'Memuat...' : 'Mulai'}
               </Button>

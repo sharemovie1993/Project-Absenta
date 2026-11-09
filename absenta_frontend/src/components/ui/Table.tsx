@@ -391,12 +391,12 @@ export function Table({
                   />
                 </th>
               )}
-              {columns.map((column) => {
+              {columns.map((column, colIdx) => {
                 const isSorted = internalSortBy === column.key;
                 const isAsc = internalSortOrder === 'asc';
                 return (
                   <th
-                    key={column.key}
+                    key={column.key || `th-col-${colIdx}`}
                     scope="col"
                     onClick={() => column.sortable && handleSort(column.key)}
                     aria-sort={isSorted ? (isAsc ? 'ascending' : 'descending') : undefined}
@@ -484,9 +484,9 @@ export function Table({
                         />
                       </td>
                     )}
-                    {columns.map((column) => (
+                    {columns.map((column, colIdx) => (
                       <td
-                        key={column.key}
+                        key={column.key || `td-col-${rowIndex}-${colIdx}`}
                         className={cn(
                           compact ? 'px-3 py-2 text-[12px]' : 'px-4 sm:px-5 py-3 text-xs',
                           'font-medium text-gray-700 dark:text-gray-200 transition-colors',

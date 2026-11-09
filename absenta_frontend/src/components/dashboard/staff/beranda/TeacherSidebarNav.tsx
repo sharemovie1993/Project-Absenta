@@ -79,16 +79,14 @@ export const TeacherSidebarNav: React.FC<TeacherSidebarNavProps> = React.memo(({
       label: 'CBT',
       icon: Laptop,
     },
-    ...(isPengawasCbt ? [
-      {
-        id: 'pengawas_cbt' as const,
-        label: 'Pengawas',
-        icon: Eye,
-        badgeCount: pengawasCbtActiveCount > 0 ? pengawasCbtActiveCount : undefined,
-        badgeVariant: 'emerald' as const,
-        temporaryStyle: 'cbt_radar' as const,
-      }
-    ] : []),
+    {
+      id: 'pengawas_cbt' as const,
+      label: 'Pengawas',
+      icon: Eye,
+      badgeCount: pengawasCbtActiveCount > 0 ? pengawasCbtActiveCount : undefined,
+      badgeVariant: 'emerald' as const,
+      temporaryStyle: pengawasCbtActiveCount > 0 ? ('cbt_radar' as const) : undefined,
+    },
     {
       id: 'nilai',
       label: 'Nilai',

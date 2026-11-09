@@ -18,6 +18,7 @@ import {
   UserX,
   ExternalLink,
   Info,
+  FileText,
 } from 'lucide-react';
 import useConfirm from '@/hooks/useConfirm';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -33,6 +34,7 @@ import { detectNodeTingkat, TINGKAT_STYLES } from '@/components/spasial/denahTin
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import { CbtBeritaAcaraPrintModal } from './CbtBeritaAcaraPrintModal';
+import { CbtDaftarHadirPrintModal } from './CbtDaftarHadirPrintModal';
 import { CbtAutoPlotConfigModal, type AutoPlotConfigOptions } from './CbtAutoPlotConfigModal';
 import { CbtDenahModal } from './CbtDenahModal';
 import { executeAutoPlotSupervisors } from './cbtAutoPlotEngine';
@@ -70,6 +72,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
 
   // State Modal Berita Acara & Auto Plot
   const [selectedJadwalForPrint, setSelectedJadwalForPrint] = useState<CbtJadwalUjian | null>(null);
+  const [selectedJadwalForDaftarHadir, setSelectedJadwalForDaftarHadir] = useState<CbtJadwalUjian | null>(null);
   const [isAutoPlotModalOpen, setIsAutoPlotModalOpen] = useState(false);
   const [showUnassignedGuruModal, setShowUnassignedGuruModal] = useState(false);
 
@@ -1018,6 +1021,14 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
                           >
                             <Printer size={14} />
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedJadwalForDaftarHadir(row)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 transition-colors cursor-pointer"
+                            title="Pratinjau &amp; Cetak Daftar Hadir Peserta Ujian (CBT)"
+                          >
+                            <FileText size={14} />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1061,6 +1072,15 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
           isOpen={Boolean(selectedJadwalForPrint)}
           onClose={() => setSelectedJadwalForPrint(null)}
           jadwal={selectedJadwalForPrint}
+        />
+      )}
+
+      {/* ── MODAL CETAK DAFTAR HADIR RUANG (DIGITAL SIGNATURES) ── */}
+      {selectedJadwalForDaftarHadir && (
+        <CbtDaftarHadirPrintModal
+          isOpen={Boolean(selectedJadwalForDaftarHadir)}
+          onClose={() => setSelectedJadwalForDaftarHadir(null)}
+          jadwal={selectedJadwalForDaftarHadir}
         />
       )}
 

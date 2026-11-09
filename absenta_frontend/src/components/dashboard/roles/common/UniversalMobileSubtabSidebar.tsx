@@ -422,12 +422,12 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
 
                       {/* Tab Items in Group */}
                       <div className="space-y-0.5">
-                        {group.items.map((tab) => {
+                        {group.items.map((tab, idx) => {
                           const Icon = tab.icon;
                           const isActive = activeTab === tab.id;
                           return (
                             <button
-                              key={tab.id ? `tab-${tab.id}` : `tab-idx-${idx}`}
+                              key={tab.id ? `tab-${tab.id}` : `tab-idx-${gIdx}-${idx}`}
                               type="button"
                               disabled={tab.disabled}
                               onClick={() => handleSelect(tab.id, tab.disabled)}

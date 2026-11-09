@@ -162,18 +162,16 @@ export const BottomNavigation: React.FC = React.memo(() => {
           { id: 'jurnal', label: 'Jurnal Mengajar Guru', shortLabel: 'Jurnal', icon: FileText, category: 'operasional', targetPath: '/kurikulum/jurnal' },
           { id: 'perangkat', label: 'Perangkat Ajar Saya', shortLabel: 'Perangkat', icon: FolderOpen, category: 'operasional', targetPath: '/dashboard?tab=ringkasan&subtab=perangkat' },
           { id: 'cbt', label: 'Bank Soal CBT Online', shortLabel: 'CBT', icon: Laptop, category: 'operasional', targetPath: '/dashboard?tab=ringkasan&subtab=cbt' },
-          ...(isPengawasCbt ? [
-            {
-              id: 'pengawas_cbt',
-              label: 'Pengawas Ujian CBT',
-              shortLabel: 'Pengawas CBT',
-              icon: Eye,
-              badge: pengawasCbtActiveCount > 0 ? pengawasCbtActiveCount : undefined,
-              badgeColor: 'bg-emerald-500 text-white',
-              category: 'operasional',
-              targetPath: '/dashboard?tab=ringkasan&subtab=pengawas_cbt',
-            }
-          ] : []),
+          {
+            id: 'pengawas_cbt',
+            label: 'Pengawas Ujian CBT',
+            shortLabel: 'Pengawas CBT',
+            icon: Eye,
+            badge: pengawasCbtActiveCount > 0 ? pengawasCbtActiveCount : undefined,
+            badgeColor: 'bg-emerald-500 text-white',
+            category: 'operasional',
+            targetPath: '/dashboard?tab=ringkasan&subtab=pengawas_cbt',
+          },
           { id: 'nilai', label: 'Buku Nilai Guru', shortLabel: 'Nilai', icon: GraduationCap, category: 'operasional', targetPath: '/rapor/input-nilai' },
           { id: 'tugas', label: 'Pusat Tugas & Peringatan', shortLabel: 'Tugas', icon: CheckSquare, category: 'operasional', targetPath: '/dashboard?tab=action_hub' },
         ];

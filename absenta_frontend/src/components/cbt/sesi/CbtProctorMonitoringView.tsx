@@ -21,11 +21,13 @@ import {
   Printer,
   MapPin,
   Clock,
+  FileText,
 } from 'lucide-react';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtPesertaUjian } from '@/types/cbt.types';
 import { CbtTransferNilaiModal } from '../jadwal/CbtTransferNilaiModal';
 import { CbtBeritaAcaraPrintModal } from '../jadwal/CbtBeritaAcaraPrintModal';
+import { CbtDaftarHadirPrintModal } from '../jadwal/CbtDaftarHadirPrintModal';
 import { CbtDenahModal } from '../jadwal/CbtDenahModal';
 import useConfirm from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
@@ -53,6 +55,7 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [isBeritaAcaraOpen, setIsBeritaAcaraOpen] = useState(false);
+  const [isDaftarHadirOpen, setIsDaftarHadirOpen] = useState(false);
   const [isDenahModalOpen, setIsDenahModalOpen] = useState(false);
   const [copiedToken, setCopiedToken] = useState(false);
 
@@ -591,6 +594,19 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
               <span>Berita Acara</span>
             </Button>
 
+            {/* Cetak Lembar Daftar Hadir (Digital Signatures) */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsDaftarHadirOpen(true)}
+              className="text-xs h-8 px-3 font-bold border-emerald-200 dark:border-emerald-800/80 text-emerald-700 dark:text-emerald-300 bg-emerald-50/70 dark:bg-emerald-950/40 hover:bg-emerald-100/80 transition-all shadow-2xs"
+              title="Cetak Lembar Daftar Hadir Siswa dengan Tanda Tangan Digital"
+            >
+              <FileText size={13} className="mr-1.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Daftar Hadir</span>
+            </Button>
+
             {/* Buka Denah Ruang Spasial Kampus */}
             <Button
               type="button"
@@ -803,6 +819,15 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
         <CbtBeritaAcaraPrintModal
           isOpen={isBeritaAcaraOpen}
           onClose={() => setIsBeritaAcaraOpen(false)}
+          jadwal={activeJadwal}
+        />
+      )}
+
+      {/* Modal Cetak Lembar Daftar Hadir Siswa */}
+      {isDaftarHadirOpen && activeJadwal && (
+        <CbtDaftarHadirPrintModal
+          isOpen={isDaftarHadirOpen}
+          onClose={() => setIsDaftarHadirOpen(false)}
           jadwal={activeJadwal}
         />
       )}

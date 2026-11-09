@@ -463,16 +463,14 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
       badge: (actionHubData.summary?.total || 0) > 0 ? actionHubData.summary?.total : undefined,
       onClick: () => handleSubTabChange('tugas'),
     },
-    ...(isPengawasCbt ? [
-      {
-        id: 'pengawas_cbt',
-        label: 'Pengawas CBT',
-        icon: Eye,
-        iconColorClass: 'text-emerald-600 dark:text-emerald-400',
-        badge: pengawasCbtActiveCount > 0 ? pengawasCbtActiveCount : undefined,
-        onClick: () => handleSubTabChange('pengawas_cbt'),
-      }
-    ] : []),
+    {
+      id: 'pengawas_cbt',
+      label: 'Pengawas CBT',
+      icon: Eye,
+      iconColorClass: 'text-emerald-600 dark:text-emerald-400',
+      badge: pengawasCbtActiveCount > 0 ? pengawasCbtActiveCount : undefined,
+      onClick: () => handleSubTabChange('pengawas_cbt'),
+    },
     ...(isPengujiSidang ? [
       {
         id: 'sidang_guru',
@@ -534,17 +532,15 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
       icon: Laptop,
       category: 'pembelajaran',
     },
-    ...(isPengawasCbt ? [
-      {
-        id: 'pengawas_cbt',
-        label: 'Pengawas',
-        shortLabel: 'Pengawas',
-        icon: Eye,
-        badge: pengawasCbtActiveCount > 0 ? pengawasCbtActiveCount : undefined,
-        badgeColor: 'bg-emerald-500 text-white',
-        category: 'pembelajaran',
-      }
-    ] : []),
+    {
+      id: 'pengawas_cbt',
+      label: 'Pengawas',
+      shortLabel: 'Pengawas',
+      icon: Eye,
+      badge: pengawasCbtActiveCount > 0 ? pengawasCbtActiveCount : undefined,
+      badgeColor: 'bg-emerald-500 text-white',
+      category: 'pembelajaran',
+    },
     {
       id: 'nilai',
       label: 'Nilai',
@@ -913,7 +909,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
             )}
 
             {/* SUB-TAB 6A: MEJA PENGAWAS & PROKTOR UJIAN CBT (FOKUS FUNGSI - ZERO NOISE) */}
-            {activeSubTab === 'pengawas_cbt' && isPengawasCbt && (
+            {activeSubTab === 'pengawas_cbt' && (
               <div className="space-y-4 pb-20 sm:pb-8">
                 <Suspense
                   fallback={

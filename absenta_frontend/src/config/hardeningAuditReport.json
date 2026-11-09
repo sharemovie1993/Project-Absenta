@@ -2870,7 +2870,7 @@
     "zodValidationGuard": false,
     "standardTabSwitcher": true,
     "layoutFlowConsistency": true,
-    "dateFormatTimezoneGuard": true,
+    "dateFormatTimezoneGuard": false,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": false,
