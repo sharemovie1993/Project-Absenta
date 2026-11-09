@@ -16,7 +16,9 @@ export type DocumentSignatureLayout =
   | 'triangle_rapor'
   | 'triangle_2tier'
   | 'tri_party_row'
-  | 'tri_party_coop';
+  | 'tri_party_coop'
+  | 'dual_cbt_pengawas'
+  | 'triangle_cbt';
 
 export interface UniversalDocumentSignaturesProps extends UseDocumentSignersParams {
   layout: DocumentSignatureLayout;
@@ -454,6 +456,96 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
           align: 'center',
           widthClass: 'w-full',
         })}
+      </div>
+    );
+  }
+
+  // ── PRESET 10: Dual CBT Pengawas (Kepala Sekolah Kiri & Titimangsa + Pengawas Ruang Kanan) ──
+  if (layout === 'dual_cbt_pengawas') {
+    const baseLeft = signerLeft || {
+      ...signers.kepsek,
+      roleTitle: notesOrApprovalLabel || 'Mengetahui,\nKepala Sekolah',
+    };
+    const baseRight = signerRight || signers.pengawasUjian;
+    const leftPerson = { ...baseLeft, ...overrideSignerLeft };
+    const rightPerson = { ...baseRight, ...overrideSignerRight };
+    const rightDate =
+      overrideSignerRight?.topDate !== undefined
+        ? overrideSignerRight.topDate
+        : showTitimangsa
+        ? signers.titimangsa
+        : undefined;
+
+    return (
+      <div className={cn(containerStyle, 'flex items-start justify-between pt-2')}>
+        {/* Sisi Kiri: Mengetahui Kepala Sekolah */}
+        {renderSignerBox(leftPerson, {
+          headerPrefix: overrideSignerLeft?.headerPrefix,
+          align: 'left',
+          widthClass: 'w-[75mm]',
+        })}
+
+        {/* Sisi Kanan: Titimangsa + Pengawas Ruang Ujian */}
+        {renderSignerBox(rightPerson, {
+          headerPrefix: overrideSignerRight?.headerPrefix,
+          topDate: rightDate,
+          align: 'left',
+          widthClass: 'w-[75mm]',
+        })}
+      </div>
+    );
+  }
+
+  // ── PRESET 11: Triangle CBT (Proktor/Pengawas II Kiri, Titimangsa + Pengawas I Kanan, Kepsek Tengah Bawah) ──
+  if (layout === 'triangle_cbt') {
+    const defaultLeftSigner = signers.proktorUjian.isAssigned
+      ? signers.proktorUjian
+      : signers.pengawas2Ujian;
+    const baseLeft = signerLeft || defaultLeftSigner;
+    const baseRight = signerRight || signers.pengawasUjian;
+    const baseBottom = signerBottom || signerCenter || signers.kepsek;
+
+    const leftPerson = { ...baseLeft, ...overrideSignerLeft };
+    const rightPerson = { ...baseRight, ...overrideSignerRight };
+    const bottomPerson = { ...baseBottom, ...(overrideSignerCenter || overrideSignerBottom) };
+
+    const rightDate =
+      overrideSignerRight?.topDate !== undefined
+        ? overrideSignerRight.topDate
+        : showTitimangsa
+        ? signers.titimangsa
+        : undefined;
+
+    return (
+      <div className={cn(containerStyle, 'space-y-4 pt-2')}>
+        {/* Baris 1: Proktor / Pengawas II di Kiri & Titimangsa + Pengawas I di Kanan */}
+        <div className="flex items-start justify-between w-full">
+          {renderSignerBox(leftPerson, {
+            headerPrefix: overrideSignerLeft?.headerPrefix,
+            align: 'left',
+            widthClass: 'w-[75mm]',
+          })}
+
+          {renderSignerBox(rightPerson, {
+            headerPrefix: overrideSignerRight?.headerPrefix,
+            topDate: rightDate,
+            align: 'left',
+            widthClass: 'w-[75mm]',
+          })}
+        </div>
+
+        {/* Baris 2: Mengetahui / Menyetujui Kepala Sekolah di Posisi Tengah Bawah */}
+        <div className="flex flex-col items-center justify-center text-center w-full pt-1">
+          {renderSignerBox(bottomPerson, {
+            headerPrefix:
+              overrideSignerCenter?.headerPrefix ||
+              overrideSignerBottom?.headerPrefix ||
+              notesOrApprovalLabel ||
+              'Mengetahui,\nKepala Sekolah',
+            align: 'center',
+            widthClass: 'w-[85mm]',
+          })}
+        </div>
       </div>
     );
   }

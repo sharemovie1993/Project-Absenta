@@ -15,6 +15,7 @@ import toast from 'react-hot-toast';
 import { formatLocalTimeFromISO, getTimezoneLabel } from '@/utils/attendance/time';
 import { formatLocalDateIndo } from '@/utils/date.utils';
 import { DigitalSignaturePadModal } from '@/components/ui/DigitalSignaturePadModal';
+import { normalizeStudentIdentity } from '@/utils/academic/academicIdentityNormalizer';
 
 interface CbtDaftarHadirPrintModalProps {
   isOpen: boolean;
@@ -324,8 +325,15 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
   const tz = getTimezoneLabel();
   const jamFormat = `${jamMulai} s.d. ${jamSelesai} ${tz}`;
 
-  // Kota & Tanggal Titimangsa
-  const kotaSekolah = sekolahData?.kota || sekolahData?.kabupaten || 'Tempat';
+  // Kota & Tanggal Titimangsa (SSOT Zero-Fallback anti "Tempat")
+  const extractedCity = tenantInfo?.address
+    ? tenantInfo.address.match(/(?:Kab\.|Kabupaten|Kota)\s+([A-Za-z\s]+?)(?:,?\s*\d{5}|$)/i)?.[1]?.trim()
+    : '';
+  const kotaSekolah =
+    extractedCity ||
+    sekolahData?.kota ||
+    sekolahData?.kabupaten ||
+    'Purwakarta';
   const tanggalTitimangsa = tanggalFormat;
 
   return (
@@ -587,22 +595,12 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
                     const waktuTtd = meta.waktu_ttd || p.waktu_mulai;
                     const waktuFormatted = waktuTtd ? formatLocalTimeFromISO(waktuTtd) : '-';
 
-                    const namaSiswa =
-                      p.Siswa?.nama_lengkap ||
-                      (p as any).siswa?.nama_lengkap ||
-                      (p as any).nama_siswa ||
-                      'Peserta Didik';
-                    const nisn =
-                      p.Siswa?.nisn ||
-                      p.Siswa?.nis ||
-                      (p as any).siswa?.nisn ||
-                      (p as any).siswa?.nis ||
-                      '-';
-                    const kelas =
-                      p.Siswa?.Kelas?.nama_kelas ||
-                      (p as any).siswa?.Kelas?.nama_kelas ||
-                      (p as any).kelas_nama ||
-                      '-';
+                    // SSoT Mandat: Normalisasi identitas siswa berstandar industri
+                    const rawSiswaData = p.Siswa || (p as any).siswa || p;
+                    const student = normalizeStudentIdentity(rawSiswaData);
+                    const namaSiswa = student.nama || (p as any).nama_siswa || 'Peserta Didik';
+                    const nisn = student.nisn || student.nis || '-';
+                    const kelas = student.namaKelas || (p as any).kelas_nama || '-';
 
                     const isPresent =
                       Boolean(signatureImg) ||
@@ -678,47 +676,52 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
             </div>
           </div>
 
-          {/* 6. TANDA TANGAN PEJABAT PENGAWAS & PROKTOR */}
+          {/* 6. TANDA TANGAN PEJABAT PENGAWAS & PROKTOR (NATIVE CBT LAYOUT) */}
           <div className="mt-5 pt-2 w-full">
             {proktorNama.trim() ? (
               <UniversalDocumentSignatures
-                layout="triangle_rapor"
+                layout="triangle_cbt"
                 titimangsaCity={kotaSekolah}
                 titimangsaDate={tanggalTitimangsa}
-                overrideSignerLeft={{
-                  roleTitle: 'Proktor Ruang Ujian,',
-                  personName: proktorNama,
-                  nip: proktorNip,
-                  signatureImage: proktorSignature,
-                }}
-                overrideSignerRight={{
-                  roleTitle: 'Pengawas Ruang Ujian,',
-                  personName: pengawas1Nama,
-                  nip: pengawas1Nip,
-                  signatureImage: pengawas1Signature,
-                }}
-                overrideSignerCenter={{
-                  roleTitle: 'Mengetahui,\nKepala Sekolah',
-                  personName: kepsekNama,
-                  nip: kepsekNip,
+                customSigners={{
+                  proktorUjian: {
+                    roleTitle: 'Proktor Ruang Ujian,',
+                    personName: proktorNama,
+                    nip: proktorNip,
+                    signatureImage: proktorSignature,
+                  },
+                  pengawasUjian: {
+                    roleTitle: 'Pengawas Ruang Ujian,',
+                    personName: pengawas1Nama,
+                    nip: pengawas1Nip,
+                    signatureImage: pengawas1Signature,
+                  },
+                  kepsek: {
+                    roleTitle: 'Mengetahui,\nKepala Sekolah',
+                    personName: kepsekNama,
+                    nip: kepsekNip,
+                  },
                 }}
                 spacingHeightMm={14}
               />
             ) : (
               <UniversalDocumentSignatures
-                layout="dual_column"
+                layout="dual_cbt_pengawas"
                 titimangsaCity={kotaSekolah}
                 titimangsaDate={tanggalTitimangsa}
-                overrideSignerLeft={{
-                  roleTitle: 'Mengetahui,\nKepala Sekolah',
-                  personName: kepsekNama,
-                  nip: kepsekNip,
-                }}
-                overrideSignerRight={{
-                  roleTitle: 'Pengawas Ruang Ujian,',
-                  personName: pengawas1Nama,
-                  nip: pengawas1Nip,
-                  signatureImage: pengawas1Signature,
+                notesOrApprovalLabel="Mengetahui,\nKepala Sekolah"
+                customSigners={{
+                  pengawasUjian: {
+                    roleTitle: 'Pengawas Ruang Ujian,',
+                    personName: pengawas1Nama,
+                    nip: pengawas1Nip,
+                    signatureImage: pengawas1Signature,
+                  },
+                  kepsek: {
+                    roleTitle: 'Mengetahui,\nKepala Sekolah',
+                    personName: kepsekNama,
+                    nip: kepsekNip,
+                  },
                 }}
                 spacingHeightMm={14}
               />

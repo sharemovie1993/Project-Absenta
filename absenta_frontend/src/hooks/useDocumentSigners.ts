@@ -52,6 +52,9 @@ export interface UseDocumentSignersParams {
     tuSarpras?: Partial<SignerPerson>;
     petugasGerbang?: Partial<SignerPerson>;
     petugasKelas?: Partial<SignerPerson>;
+    pengawasUjian?: Partial<SignerPerson>;
+    pengawas2Ujian?: Partial<SignerPerson>;
+    proktorUjian?: Partial<SignerPerson>;
   };
 }
 
@@ -84,6 +87,9 @@ export interface DocumentSignersResult {
   tuSarpras: SignerPerson;
   petugasGerbang: SignerPerson;
   petugasKelas: SignerPerson;
+  pengawasUjian: SignerPerson;
+  pengawas2Ujian: SignerPerson;
+  proktorUjian: SignerPerson;
   parent: SignerPerson;
   dudi: SignerPerson;
   isLoading: boolean;
@@ -193,11 +199,30 @@ export const useDocumentSigners = (params: UseDocumentSignersParams = {}): Docum
   }, [sekolahRes]);
 
   return useMemo<DocumentSignersResult>(() => {
+    // ── Helper: Clean & Validate Titimangsa City ──
+    const cleanTitimangsaCity = (val?: string | null): string => {
+      if (!val || typeof val !== 'string') return '';
+      const trimmed = val.trim();
+      if (/^(tempat|-|null|undefined)$/i.test(trimmed)) return '';
+      return trimmed;
+    };
+
+    const extractCityFromText = (text?: string | null): string => {
+      if (!text || typeof text !== 'string') return '';
+      const match = text.match(/(?:Kab\.|Kabupaten|Kota)\s+([A-Za-z\s]+?)(?:,?\s*\d{5}|$)/i);
+      if (match && match[1]) {
+        return match[1].trim();
+      }
+      return '';
+    };
+
     // ── A. Resolve Titimangsa (City & Date) ──
     const city =
-      titimangsaCity ||
-      raporSettings?.tempat_terbit ||
-      sekolah?.kota ||
+      cleanTitimangsaCity(titimangsaCity) ||
+      cleanTitimangsaCity(raporSettings?.tempat_terbit) ||
+      cleanTitimangsaCity(sekolah?.kota) ||
+      cleanTitimangsaCity(sekolah?.kabupaten) ||
+      extractCityFromText(sekolah?.alamat) ||
       'Purwakarta';
 
     const rawDate =
@@ -444,6 +469,63 @@ export const useDocumentSigners = (params: UseDocumentSignersParams = {}): Docum
       isAssigned: Boolean(customSigners?.dudi?.personName),
     };
 
+    // ── U. Pengawas Ruang Ujian & Proktor CBT ──
+    const pengawasAssigns = getAssignmentsForCode(['PENGAWAS_UJIAN', 'PENGAWAS_CBT', 'PENGAWAS']);
+    const pengawasAssign = resolveLeaderAssignment(pengawasAssigns);
+    const pengawasUjian: SignerPerson = customSigners?.pengawasUjian?.personName
+      ? {
+          roleTitle: customSigners.pengawasUjian.roleTitle || 'Pengawas Ruang Ujian,',
+          personName: customSigners.pengawasUjian.personName,
+          nip: cleanNipValue(customSigners.pengawasUjian.nip),
+          isAssigned: true,
+          signatureImage: customSigners.pengawasUjian.signatureImage,
+        }
+      : pengawasAssign
+      ? mapAssignToSigner(pengawasAssign, 'Pengawas Ruang Ujian,', customSigners?.pengawasUjian)
+      : {
+          roleTitle: customSigners?.pengawasUjian?.roleTitle || 'Pengawas Ruang Ujian,',
+          personName: '................................',
+          nip: '',
+          isAssigned: false,
+          signatureImage: customSigners?.pengawasUjian?.signatureImage,
+        };
+
+    const proktorAssigns = getAssignmentsForCode(['PROKTOR_UJIAN', 'PROKTOR_CBT', 'PROKTOR', 'TEKNISI_CBT']);
+    const proktorAssign = resolveLeaderAssignment(proktorAssigns);
+    const proktorUjian: SignerPerson = customSigners?.proktorUjian?.personName
+      ? {
+          roleTitle: customSigners.proktorUjian.roleTitle || 'Proktor Ruang Ujian,',
+          personName: customSigners.proktorUjian.personName,
+          nip: cleanNipValue(customSigners.proktorUjian.nip),
+          isAssigned: true,
+          signatureImage: customSigners.proktorUjian.signatureImage,
+        }
+      : proktorAssign
+      ? mapAssignToSigner(proktorAssign, 'Proktor Ruang Ujian,', customSigners?.proktorUjian)
+      : {
+          roleTitle: customSigners?.proktorUjian?.roleTitle || 'Proktor Ruang Ujian,',
+          personName: '................................',
+          nip: '',
+          isAssigned: false,
+          signatureImage: customSigners?.proktorUjian?.signatureImage,
+        };
+
+    const pengawas2Ujian: SignerPerson = customSigners?.pengawas2Ujian?.personName
+      ? {
+          roleTitle: customSigners.pengawas2Ujian.roleTitle || 'Pengawas II / Proktor Ruang,',
+          personName: customSigners.pengawas2Ujian.personName,
+          nip: cleanNipValue(customSigners.pengawas2Ujian.nip),
+          isAssigned: true,
+          signatureImage: customSigners.pengawas2Ujian.signatureImage,
+        }
+      : {
+          roleTitle: customSigners?.pengawas2Ujian?.roleTitle || 'Pengawas II / Proktor Ruang,',
+          personName: '................................',
+          nip: '',
+          isAssigned: false,
+          signatureImage: customSigners?.pengawas2Ujian?.signatureImage,
+        };
+
     // ── Dynamic SSOT Resolver by Position Code ──
     const getByPositionCode = (
       codes: string | string[],
@@ -501,6 +583,9 @@ export const useDocumentSigners = (params: UseDocumentSignersParams = {}): Docum
       tuSarpras,
       petugasGerbang,
       petugasKelas,
+      pengawasUjian,
+      pengawas2Ujian,
+      proktorUjian,
       parent,
       dudi,
       isLoading: isLoadingStruktur || isLoadingRaporSettings || isLoadingSekolah,

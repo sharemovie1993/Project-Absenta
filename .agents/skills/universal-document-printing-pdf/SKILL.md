@@ -64,18 +64,21 @@ Komponen dan hook tanda tangan resmi siap pakai (Plug-and-Play) yang terhubung l
   - Kesiswaan & Bimbingan: Wali Kelas (`signers.walas`), Koordinator BK (`signers.koordinatorBk`), Pembina Eskul (`signers.pembinaEskul`), Ketua Pembina Taruna (`signers.pembinaTaruna`), Ketua BKK (`signers.bkk`).
   - Koperasi Sekolah: Ketua Koperasi (`signers.ketuaKoperasi`), Bendahara (`signers.bendaharaKoperasi`), Sekretaris (`signers.sekretarisKoperasi`), Pengawas (`signers.pengawasKoperasi`), Pengelola Toko (`signers.manajerTokoKoperasi`).
   - Pihak Eksternal & Operasional: Orang Tua/Wali (`signers.parent`), Pembimbing DUDI (`signers.dudi`), Petugas Gerbang (`signers.petugasGerbang`), Petugas Kelas (`signers.petugasKelas`).
+  - Asesmen & Ujian CBT: Pengawas Ruang Ujian (`signers.pengawasUjian`), Pengawas II (`signers.pengawas2Ujian`), Proktor Ruang Ujian (`signers.proktorUjian`).
   - Resolver Dinamis: `signers.getByPositionCode(kode, options)` untuk kode posisi kustom lainnya.
 
-- **Dukungan 9 Pola Tata Letak Standar (`layout`)**:
+- **Dukungan 11 Pola Tata Letak Standar (`layout`)**:
   1. `single_kepsek`: Kepala Sekolah saja di sisi kanan bawah (Biodata Siswa, SK, SKL).
   2. `dual_walas_kepsek`: Wali Kelas di kiri, Titimangsa + Kepsek di kanan sejajar (Rapor Semester, Rapor P5, Transkrip).
   3. `dual_unit_kepsek`: Kaprog / Waka di kiri, Titimangsa + Kepsek di kanan (Kalender Akademik, KBM, Berita Acara).
   4. `dual_tu_kepsek`: Staf TU / Bendahara Keuangan di kiri, Titimangsa + Kepala TU / Kepsek di kanan (Kwitansi SPP, Surat Keterangan).
-  5. `dual_custom`: Fleksibel untuk dua penandatangan bebas role tanpa keterikatan nama wali kelas.
-  6. `triangle_rapor`: Orang Tua di kiri & Walas di kanan sejajar simetris, Mengetahui Kepala Sekolah di tengah bawah (Pengesahan Rapor Capaian & Rapor PKL).
-  7. `triangle_2tier`: Format Tata Naskah Dinas Resmi 2-Tier (Verifikator/Waka Sarpras di kiri, Pembuat/Kaprog di kanan, Mengetahui / Menyetujui Kepala Sekolah di tengah bawah).
-  8. `tri_party_row`: Mitra DUDI, Penguji/Kaprog, dan Kepsek dalam 3 kolom horizontal (Sertifikat UKK & PKL).
-  9. `tri_party_coop`: Pihak Pertama (Ketua Koperasi), Pihak Kedua (Peminjam/Anggota), dan Mengetahui Pembina/Kepsek (Surat Perjanjian Pinjaman & Dokumen Koperasi).
+  5. `dual_custom` / `dual_column`: Fleksibel untuk dua penandatangan bebas role tanpa keterikatan nama wali kelas.
+  6. `dual_cbt_pengawas`: Standar Ujian/CBT (Mengetahui Kepala Sekolah di kiri, Titimangsa + Pengawas Ruang Ujian [dengan TTD digital] di kanan).
+  7. `triangle_cbt`: Format Ujian 2 Pengawas / Proktor (Proktor / Pengawas II di kiri, Titimangsa + Pengawas I di kanan, Mengetahui Kepala Sekolah di tengah bawah).
+  8. `triangle_rapor`: Orang Tua di kiri & Walas di kanan sejajar simetris, Mengetahui Kepala Sekolah di tengah bawah (Pengesahan Rapor Capaian & Rapor PKL).
+  9. `triangle_2tier`: Format Tata Naskah Dinas Resmi 2-Tier (Verifikator/Waka Sarpras di kiri, Pembuat/Kaprog di kanan, Mengetahui / Menyetujui Kepala Sekolah di tengah bawah).
+  10. `tri_party_row`: Mitra DUDI, Penguji/Kaprog, dan Kepsek dalam 3 kolom horizontal (Sertifikat UKK & PKL).
+  11. `tri_party_coop`: Pihak Pertama (Ketua Koperasi), Pihak Kedua (Peminjam/Anggota), dan Mengetahui Pembina/Kepsek (Surat Perjanjian Pinjaman & Dokumen Koperasi).
 
 - **Zero Fallback & Zero Leakage**: Mencegah teks cacat seperti `NIP. -` untuk non-PNS/swasta, otomatis menyelaraskan perataan garis dan tanggal titimangsa resmi slot tahun ajaran.
 

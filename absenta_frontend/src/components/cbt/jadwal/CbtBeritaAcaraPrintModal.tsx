@@ -615,48 +615,52 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
             sebenarnya dan penuh rasa tanggung jawab untuk dapat dipergunakan sebagaimana mestinya.
           </p>
 
-          {/* 6. STANDAR TANDA TANGAN (ADAPTIF: 1 PENGAWAS KELAS VS 2 PENGAWAS/PROKTOR) */}
-          {/* 6. STANDAR TANDA TANGAN MENGGUNAKAN UNIVERSAL SIGNATURE ENGINE */}
+          {/* 6. STANDAR TANDA TANGAN MENGGUNAKAN UNIVERSAL SIGNATURE ENGINE (NATIVE CBT LAYOUT) */}
           <div className="mt-6 pt-2 w-full">
             {pengawas2Nama.trim() ? (
               <UniversalDocumentSignatures
-                layout="triangle_rapor"
+                layout="triangle_cbt"
                 titimangsaCity={kotaSekolah}
                 titimangsaDate={tanggalTitimangsa}
-                overrideSignerLeft={{
-                  roleTitle: 'Pengawas I / Ruang Ujian,',
-                  personName: pengawas1Nama,
-                  nip: pengawas1Nip,
-                  signatureImage: pengawas1Signature,
-                }}
-                overrideSignerRight={{
-                  roleTitle: 'Pengawas II / Proktor Ruang,',
-                  personName: pengawas2Nama,
-                  nip: pengawas2Nip,
-                  signatureImage: pengawas2Signature,
-                }}
-                overrideSignerCenter={{
-                  roleTitle: 'Mengetahui / Menyetujui,\nKepala Sekolah',
-                  personName: kepsekNama,
-                  nip: kepsekNip,
+                customSigners={{
+                  pengawas2Ujian: {
+                    roleTitle: 'Pengawas II / Proktor Ruang,',
+                    personName: pengawas2Nama,
+                    nip: pengawas2Nip,
+                    signatureImage: pengawas2Signature,
+                  },
+                  pengawasUjian: {
+                    roleTitle: 'Pengawas I / Ruang Ujian,',
+                    personName: pengawas1Nama,
+                    nip: pengawas1Nip,
+                    signatureImage: pengawas1Signature,
+                  },
+                  kepsek: {
+                    roleTitle: 'Mengetahui / Menyetujui,\nKepala Sekolah',
+                    personName: kepsekNama,
+                    nip: kepsekNip,
+                  },
                 }}
                 spacingHeightMm={16}
               />
             ) : (
               <UniversalDocumentSignatures
-                layout="dual_unit_kepsek"
+                layout="dual_cbt_pengawas"
                 titimangsaCity={kotaSekolah}
                 titimangsaDate={tanggalTitimangsa}
-                overrideSignerLeft={{
-                  roleTitle: 'Mengetahui / Menyetujui,\nKepala Sekolah',
-                  personName: kepsekNama,
-                  nip: kepsekNip,
-                }}
-                overrideSignerRight={{
-                  roleTitle: 'Pengawas Ruang Ujian,',
-                  personName: pengawas1Nama,
-                  nip: pengawas1Nip,
-                  signatureImage: pengawas1Signature,
+                notesOrApprovalLabel="Mengetahui / Menyetujui,\nKepala Sekolah"
+                customSigners={{
+                  pengawasUjian: {
+                    roleTitle: 'Pengawas Ruang Ujian,',
+                    personName: pengawas1Nama,
+                    nip: pengawas1Nip,
+                    signatureImage: pengawas1Signature,
+                  },
+                  kepsek: {
+                    roleTitle: 'Mengetahui / Menyetujui,\nKepala Sekolah',
+                    personName: kepsekNama,
+                    nip: kepsekNip,
+                  },
                 }}
                 spacingHeightMm={16}
               />
