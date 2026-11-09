@@ -17,6 +17,8 @@ import {
   Sparkles,
   HeartHandshake,
   FolderOpen,
+  Network,
+  FileSearch,
 } from 'lucide-react';
 import { PublicSchoolProfile } from '../../../api/public-portal.api';
 
@@ -26,6 +28,7 @@ interface PublicPortalNavbarProps {
   onOpenGraduationModal: () => void;
   onOpenGuestBookModal: () => void;
   onOpenAspirasiModal: () => void;
+  onOpenTicketTrackerModal: () => void;
   activeSection: string;
   onNavigate: (sectionId: string) => void;
 }
@@ -36,6 +39,7 @@ export const PublicPortalNavbar: React.FC<PublicPortalNavbarProps> = ({
   onOpenGraduationModal,
   onOpenGuestBookModal,
   onOpenAspirasiModal,
+  onOpenTicketTrackerModal,
   activeSection,
   onNavigate,
 }) => {
@@ -52,6 +56,7 @@ export const PublicPortalNavbar: React.FC<PublicPortalNavbarProps> = ({
     { id: 'kalender', label: 'Kalender & Ekskul', icon: Calendar },
     ...(isSmk ? [{ id: 'bkk', label: 'BKK, Alumni & TEFA', icon: Briefcase }] : []),
     { id: 'ppid', label: 'Jadwal & PPID', icon: FolderOpen },
+    { id: 'ekosistem', label: 'Ekosistem & Koperasi', icon: Network },
     { id: 'berita', label: 'Berita', icon: Newspaper },
     { id: 'guru', label: 'Guru', icon: Users },
     { id: 'fasilitas', label: 'Fasilitas', icon: Building2 },
@@ -102,6 +107,13 @@ export const PublicPortalNavbar: React.FC<PublicPortalNavbarProps> = ({
           >
             <HeartHandshake className="w-3.5 h-3.5 text-purple-400" />
             <span>Kotak Aspirasi & SRA</span>
+          </button>
+          <button
+            onClick={onOpenTicketTrackerModal}
+            className="hidden sm:flex items-center gap-1 text-sky-300 hover:text-white transition-colors font-medium"
+          >
+            <FileSearch className="w-3.5 h-3.5 text-sky-400" />
+            <span>Lacak Tiket Layanan</span>
           </button>
           <button
             onClick={onOpenVerifyModal}
@@ -258,6 +270,16 @@ export const PublicPortalNavbar: React.FC<PublicPortalNavbarProps> = ({
             >
               <HeartHandshake className="w-4 h-4 text-purple-600" />
               Kotak Aspirasi & Pengaduan SRA
+            </button>
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onOpenTicketTrackerModal();
+              }}
+              className="w-full py-2.5 px-3 bg-sky-50 text-sky-800 border border-sky-200 font-semibold text-xs rounded-lg flex items-center justify-center gap-2"
+            >
+              <FileSearch className="w-4 h-4 text-sky-600" />
+              Lacak Status Tiket Layanan (PTSP / SRA)
             </button>
             <button
               onClick={() => {

@@ -15,6 +15,7 @@ import {
   PublicCurriculumAndP5,
   PublicScheduleOverview,
   PublicPpidDocument,
+  PublicWave4Ecosystem,
 } from '../../../api/public-portal.api';
 
 import { PublicPortalNavbar } from './PublicPortalNavbar';
@@ -26,6 +27,7 @@ import { PublicPortalCurriculumP5 } from './PublicPortalCurriculumP5';
 import { PublicPortalCalendarEkskul } from './PublicPortalCalendarEkskul';
 import { PublicPortalHubinBkk } from './PublicPortalHubinBkk';
 import { PublicPortalSchedulePpid } from './PublicPortalSchedulePpid';
+import { PublicPortalEcosystemWave4 } from './PublicPortalEcosystemWave4';
 import { PublicPortalArticles } from './PublicPortalArticles';
 import { PublicPortalStaff } from './PublicPortalStaff';
 import { PublicPortalFacilities } from './PublicPortalFacilities';
@@ -34,6 +36,7 @@ import { PublicPortalVerifyModal } from './PublicPortalVerifyModal';
 import { PublicPortalGraduationModal } from './PublicPortalGraduationModal';
 import { PublicPortalGuestBookModal } from './PublicPortalGuestBookModal';
 import { PublicPortalAspirasiModal } from './PublicPortalAspirasiModal';
+import { PublicPortalTicketTrackerModal } from './PublicPortalTicketTrackerModal';
 
 export const PublicPortalPage: React.FC = () => {
   const { tenantSlug } = useParams<{ tenantSlug: string }>();
@@ -62,6 +65,7 @@ export const PublicPortalPage: React.FC = () => {
   const [curriculumP5, setCurriculumP5] = useState<PublicCurriculumAndP5 | null>(null);
   const [classSchedule, setClassSchedule] = useState<PublicScheduleOverview | null>(null);
   const [ppidDocs, setPpidDocs] = useState<PublicPpidDocument[]>([]);
+  const [ecosystemWave4, setEcosystemWave4] = useState<PublicWave4Ecosystem | null>(null);
   const [programs, setPrograms] = useState<PublicProgram[]>([]);
   const [staff, setStaff] = useState<PublicStaffMember[]>([]);
   const [achievements, setAchievements] = useState<PublicAchievement[]>([]);
@@ -75,6 +79,7 @@ export const PublicPortalPage: React.FC = () => {
   const [graduationModalOpen, setGraduationModalOpen] = useState(false);
   const [guestBookModalOpen, setGuestBookModalOpen] = useState(false);
   const [aspirasiModalOpen, setAspirasiModalOpen] = useState(false);
+  const [ticketTrackerModalOpen, setTicketTrackerModalOpen] = useState(false);
 
   useEffect(() => {
     if (!resolvedSlug) return;
@@ -88,6 +93,7 @@ export const PublicPortalPage: React.FC = () => {
       publicPortalApi.getCurriculumAndP5(resolvedSlug).catch(() => ({ success: false, data: null as any })),
       publicPortalApi.getClassSchedule(resolvedSlug).catch(() => ({ success: false, data: null as any })),
       publicPortalApi.getPublicDocuments(resolvedSlug).catch(() => ({ success: false, data: [] as any })),
+      publicPortalApi.getEcosystem(resolvedSlug).catch(() => ({ success: false, data: null as any })),
       publicPortalApi.getPrograms(resolvedSlug),
       publicPortalApi.getStaff(resolvedSlug),
       publicPortalApi.getAchievements(resolvedSlug, 6),
@@ -95,7 +101,7 @@ export const PublicPortalPage: React.FC = () => {
       publicPortalApi.getFacilities(resolvedSlug),
       publicPortalApi.getArticles(resolvedSlug, { limit: 6 }),
     ])
-      .then(([profRes, pulseRes, calRes, curRes, schRes, docRes, progRes, staffRes, achRes, hubinRes, facRes, artRes]) => {
+      .then(([profRes, pulseRes, calRes, curRes, schRes, docRes, ecoRes, progRes, staffRes, achRes, hubinRes, facRes, artRes]) => {
         if (profRes.success && profRes.data) {
           setProfile(profRes.data);
           document.title = `${profRes.data.nama} - Portal Resmi Sekolah`;
@@ -105,6 +111,7 @@ export const PublicPortalPage: React.FC = () => {
         if (curRes.success && curRes.data) setCurriculumP5(curRes.data);
         if (schRes.success && schRes.data) setClassSchedule(schRes.data);
         if (docRes.success && docRes.data) setPpidDocs(docRes.data);
+        if (ecoRes.success && ecoRes.data) setEcosystemWave4(ecoRes.data);
         if (progRes.success) setPrograms(progRes.data || []);
         if (staffRes.success) setStaff(staffRes.data || []);
         if (achRes.success) setAchievements(achRes.data || []);
@@ -184,6 +191,7 @@ export const PublicPortalPage: React.FC = () => {
         onOpenGraduationModal={() => setGraduationModalOpen(true)}
         onOpenGuestBookModal={() => setGuestBookModalOpen(true)}
         onOpenAspirasiModal={() => setAspirasiModalOpen(true)}
+        onOpenTicketTrackerModal={() => setTicketTrackerModalOpen(true)}
         activeSection={activeSection}
         onNavigate={handleNavigate}
       />
@@ -228,7 +236,10 @@ export const PublicPortalPage: React.FC = () => {
         tenantSlug={resolvedSlug}
       />
 
-      {/* 10. Articles & News */}
+      {/* 10. Ekosistem Gelombang 4: Struktur Organisasi, Denah Spasial, E-Library OER & Koperasi Sekolah */}
+      <PublicPortalEcosystemWave4 data={ecosystemWave4} schoolName={profile.nama} />
+
+      {/* 11. Articles & News */}
       <PublicPortalArticles
         articles={articles}
         achievements={achievements}
@@ -274,6 +285,13 @@ export const PublicPortalPage: React.FC = () => {
         isOpen={aspirasiModalOpen}
         onClose={() => setAspirasiModalOpen(false)}
         tenantSlug={resolvedSlug}
+        schoolName={profile.nama}
+      />
+
+      <PublicPortalTicketTrackerModal
+        isOpen={ticketTrackerModalOpen}
+        onClose={() => setTicketTrackerModalOpen(false)}
+        slug={resolvedSlug}
         schoolName={profile.nama}
       />
     </div>

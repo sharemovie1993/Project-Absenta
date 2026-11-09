@@ -338,12 +338,12 @@ export interface PublicAspirasiTicket {
 
 export interface PublicOrgMember {
   id: string;
-  jabatan: string;
-  kategori_jabatan: 'PIMPINAN' | 'WAKASEK' | 'KAPROG' | 'KOORDINATOR' | 'WALAS';
+  jabatan_kode: string;
+  jabatan_nama: string;
   nama_pejabat: string;
   nip: string | null;
   foto: string | null;
-  unit_kerja: string | null;
+  unit_label: string | null;
   urutan: number;
 }
 
@@ -351,50 +351,47 @@ export interface PublicSpatialMap {
   id: string;
   nama_denah: string;
   gedung: string;
-  lantai: string;
-  canvas_width: number;
-  canvas_height: number;
-  rooms: Array<{
+  lantai: number;
+  elements: Array<{
     id: string;
-    label: string;
-    type: string;
-    capacity: number | null;
-    color: string;
-    zone: string;
+    label_utama: string;
+    label_sub: string;
+    kategori: string;
+    kapasitas?: number;
   }>;
 }
 
 export interface PublicELibraryModule {
   id: string;
   judul: string;
-  mata_pelajaran: string;
-  tingkat: number;
-  fase: string;
-  kategori: string;
-  ringkasan: string;
-  penulis: string;
-  alokasi_jp: number;
-  tags: string[];
-  file_url: string | null;
+  jenis: string;
+  nama_mapel: string;
+  nama_guru: string;
+  fase_tingkat: string;
+  total_jp: number;
+  deskripsi: string;
+  file_url: string;
 }
 
 export interface PublicCoopProduct {
   id: string;
   kode: string;
-  nama_produk: string;
+  nama: string;
   kategori: string;
   harga: number;
   satuan: string;
-  stok_status: 'TERSEDIA' | 'TERBATAS' | 'PRE_ORDER';
+  stok_status: string;
   deskripsi: string | null;
-  image_url: string | null;
 }
 
 export interface PublicWave4Ecosystem {
-  org_structure: PublicOrgMember[];
+  organization: PublicOrgMember[];
   spatial_maps: PublicSpatialMap[];
-  elibrary_modules: PublicELibraryModule[];
-  coop_catalog: PublicCoopProduct[];
+  elibrary: PublicELibraryModule[];
+  koperasi: {
+    categories: string[];
+    products: PublicCoopProduct[];
+  };
 }
 
 export interface PublicTicketTrackResult {
