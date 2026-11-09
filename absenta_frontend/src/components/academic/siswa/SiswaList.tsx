@@ -385,9 +385,13 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
 
   const queryClient = useQueryClient();
   const invalidateSiswaCache = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+    queryClient.invalidateQueries({ queryKey: ['academic-identity-siswa'] });
     queryClient.invalidateQueries({ queryKey: ['siswa-options-list'] });
     queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
     queryClient.invalidateQueries({ queryKey: ['classmates-roster-list'] });
+    queryClient.invalidateQueries({ queryKey: ['users'] });
+    queryClient.invalidateQueries({ queryKey: ['admin-overview-stats'] });
   }, [queryClient]);
   const navigate = useNavigate();
   const location = useLocation();
@@ -665,14 +669,14 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       setResetModalOpen(false);
       setNewPassword('');
       setConfirmPassword('');
-      queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+      invalidateSiswaCache();
       refetch();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Terjadi kesalahan saat memperbarui kredensial');
     } finally {
       setResettingPassword(false);
     }
-  }, [selectedSiswaForReset, emailForReset, newPassword, confirmPassword, queryClient, refetch]);
+  }, [selectedSiswaForReset, emailForReset, newPassword, confirmPassword, invalidateSiswaCache, refetch]);
 
   // Reset selected class if it does not belong to the selected tingkat
   useEffect(() => {
@@ -800,7 +804,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       setSelectedIds(new Set()); 
       setIsMutationModalOpen(false); 
       setIsGraduationModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+      invalidateSiswaCache();
       refetch();
       onRefresh?.();
     } catch (e: any) {
@@ -809,7 +813,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
     } finally {
       setExecuting(false);
     }
-  }, [mutationDate, mutationReason, mutationStatus, selectedIds, queryClient, refetch, onRefresh]);
+  }, [mutationDate, mutationReason, mutationStatus, selectedIds, invalidateSiswaCache, refetch, onRefresh]);
 
 
   // Format status badge
@@ -847,7 +851,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                 const res = await updateSiswa(siswa.id, { nama_siswa: newVal.trim() });
                 if (res.success) {
                   toast.success(`Nama siswa berhasil diperbarui menjadi ${newVal.trim()}`);
-                  queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+                  invalidateSiswaCache();
                   refetch();
                   onRefresh?.();
                 } else {
@@ -876,7 +880,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                 const res = await updateSiswa(siswa.id, { email: cleanEmail || undefined });
                 if (res.success) {
                   toast.success(`Email ${siswa.nama_siswa} berhasil diperbarui`);
-                  queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+                  invalidateSiswaCache();
                   refetch();
                   onRefresh?.();
                 } else {
@@ -904,7 +908,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
             const res = await updateSiswa(siswa.id, { nis: newVal || null });
             if (res.success) {
               toast.success(`NIS ${siswa.nama_siswa} berhasil diperbarui`);
-              queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+              invalidateSiswaCache();
               refetch();
               onRefresh?.();
             } else {
@@ -929,7 +933,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
             const res = await updateSiswa(siswa.id, { nisn: newVal || null });
             if (res.success) {
               toast.success(`NISN ${siswa.nama_siswa} berhasil diperbarui`);
-              queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+              invalidateSiswaCache();
               refetch();
               onRefresh?.();
             } else {
@@ -976,10 +980,10 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
           inputClassName="w-36 text-xs font-mono font-bold"
           onSave={async (newVal) => {
             const cleanRfid = newVal ? newVal.trim() : null;
-            const res = await updateSiswa(siswa.id, { no_rfid: cleanRfid || undefined });
+            const res = await updateSiswa(siswa.id, { no_rfid: cleanRfid });
             if (res.success) {
               toast.success(`No. RFID ${siswa.nama_siswa} berhasil diperbarui`);
-              queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+              invalidateSiswaCache();
               refetch();
               onRefresh?.();
             } else {
@@ -1070,7 +1074,19 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         </div>
       )
     },
-  ].filter(Boolean) as any, [canManage, canView, canSendAccess, onEdit, onView, handleDelete, handleSendParentAccess, onHistory]);
+  ].filter(Boolean) as any, [
+    canManage, 
+    canView, 
+    canSendAccess, 
+    onEdit, 
+    onView, 
+    handleDelete, 
+    handleSendParentAccess, 
+    onHistory,
+    invalidateSiswaCache,
+    refetch,
+    onRefresh
+  ]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedIds.size === 0) return;
@@ -1107,7 +1123,6 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       const next = new Set<string>(selectedIds);
       (succeeded || []).forEach(id => next.delete(id));
       setSelectedIds(next);
-      queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
       refetch();
     } catch (err: any) {
       const msg = err?.message || 'Terjadi kesalahan saat bulk delete';
@@ -1116,7 +1131,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       setBulkDeleting(false);
       confirm.setLoading(false);
     }
-  }, [selectedIds, siswas, confirm, queryClient, refetch]);
+  }, [selectedIds, siswas, confirm, invalidateSiswaCache, refetch]);
 
   const renderSiswaMobileCard = useCallback((siswa: Siswa) => (
     <div 
@@ -2365,6 +2380,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         isOpen={isNisWizardOpen}
         onClose={() => setIsNisWizardOpen(false)}
         onSuccess={() => {
+          invalidateSiswaCache();
           refetch();
         }}
       />
@@ -2375,6 +2391,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         defaultMode="SISWA"
         onClose={() => setIsRfidPairingOpen(false)}
         onSuccess={() => {
+          invalidateSiswaCache();
           refetch();
         }}
       />
@@ -2385,6 +2402,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         defaultMode="SISWA"
         onClose={() => setIsPhotoStudioOpen(false)}
         onSuccess={() => {
+          invalidateSiswaCache();
           refetch();
         }}
       />
@@ -2465,7 +2483,10 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         onClose={() => setIsWaNormalizeOpen(false)}
         targetType="siswa"
         onRunNormalization={normalizeSiswaWaPhones}
-        onSuccessRefresh={() => refetch()}
+        onSuccessRefresh={() => {
+          invalidateSiswaCache();
+          refetch();
+        }}
       />
 
       <SiswaBulkPasswordModal
@@ -2474,7 +2495,10 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         selectedSiswaIds={Array.from(selectedIds)}
         selectedKelasId={filterKelas}
         kelasOptions={kelasList.map(k => ({ label: `${k.nama_kelas} (Tingkat ${k.tingkat})`, value: k.id }))}
-        onSuccess={() => refetch()}
+        onSuccess={() => {
+          invalidateSiswaCache();
+          refetch();
+        }}
       />
 
       {/* ── Modal Token & Link Magic Login Orang Tua ── */}

@@ -235,10 +235,14 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
   }, [pageInput, totalPages, handlePageChange]);
 
   const invalidateGuruCache = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: guruQueryKeys.all });
+    queryClient.invalidateQueries({ queryKey: ['academic-identity-guru'] });
     queryClient.invalidateQueries({ queryKey: ['guru-options-list'] });
     queryClient.invalidateQueries({ queryKey: ['wali-kelas-options-list'] });
     queryClient.invalidateQueries({ queryKey: ['teacher-discipline-leaderboard-modal'] });
     queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['users'] });
+    queryClient.invalidateQueries({ queryKey: ['admin-overview-stats'] });
   }, [queryClient]);
 
   // Handle delete
@@ -441,7 +445,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
             const res = await updateGuru(guru.id, { nip: newVal || null });
             if (res.success) {
               toast.success(`NIP ${guru.nama_guru} berhasil diperbarui`);
-              queryClient.invalidateQueries({ queryKey: guruQueryKeys.all });
+              invalidateGuruCache();
               refetch();
               onRefresh?.();
             } else {
@@ -466,7 +470,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
             const res = await updateGuru(guru.id, { no_hp: newVal || null });
             if (res.success) {
               toast.success(`No. HP ${guru.nama_guru} berhasil diperbarui`);
-              queryClient.invalidateQueries({ queryKey: guruQueryKeys.all });
+              invalidateGuruCache();
               refetch();
               onRefresh?.();
             } else {
@@ -619,7 +623,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       const next = new Set<string>(selectedIds);
       succeeded.forEach(id => next.delete(id));
       setSelectedIds(next);
-      queryClient.invalidateQueries({ queryKey: guruQueryKeys.all });
+      invalidateGuruCache();
       refetch();
       onRefresh?.();
     } catch (err: any) {
@@ -629,7 +633,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       setBulkDeleting(false);
       confirm.setLoading(false);
     }
-  }, [selectedIds, gurus, queryClient, refetch, confirm, onRefresh]);
+  }, [selectedIds, gurus, invalidateGuruCache, queryClient, refetch, confirm, onRefresh]);
 
   const renderMobileCard = useCallback((guru: Guru) => (
     <div 
@@ -1192,7 +1196,10 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
         isOpen={isRfidPairingOpen}
         defaultMode="GURU"
         onClose={() => setIsRfidPairingOpen(false)}
-        onSuccess={() => fetchGurus(currentPage, debouncedSearchTerm)}
+        onSuccess={() => {
+          invalidateGuruCache();
+          fetchGurus(currentPage, debouncedSearchTerm);
+        }}
       />
 
       {/* Modal Express Photo Studio */}
@@ -1200,7 +1207,10 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
         isOpen={isPhotoStudioOpen}
         defaultMode="GURU"
         onClose={() => setIsPhotoStudioOpen(false)}
-        onSuccess={() => fetchGurus(currentPage, debouncedSearchTerm)}
+        onSuccess={() => {
+          invalidateGuruCache();
+          fetchGurus(currentPage, debouncedSearchTerm);
+        }}
       />
 
       <ToolsModal
@@ -1222,14 +1232,20 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
         onClose={() => setIsWaNormalizeOpen(false)}
         targetType="guru"
         onRunNormalization={normalizeGuruWaPhones}
-        onSuccessRefresh={() => fetchGurus(currentPage, debouncedSearchTerm)}
+        onSuccessRefresh={() => {
+          invalidateGuruCache();
+          fetchGurus(currentPage, debouncedSearchTerm);
+        }}
       />
 
       <GuruBulkPasswordModal
         isOpen={isBulkPasswordOpen}
         onClose={() => setIsBulkPasswordOpen(false)}
         selectedGuruIds={Array.from(selectedIds)}
-        onSuccess={() => fetchGurus(currentPage, debouncedSearchTerm)}
+        onSuccess={() => {
+          invalidateGuruCache();
+          fetchGurus(currentPage, debouncedSearchTerm);
+        }}
       />
     </div>
   );
