@@ -15,6 +15,8 @@ import {
   Calendar,
   BookUser,
   Sparkles,
+  HeartHandshake,
+  FolderOpen,
 } from 'lucide-react';
 import { PublicSchoolProfile } from '../../../api/public-portal.api';
 
@@ -23,6 +25,7 @@ interface PublicPortalNavbarProps {
   onOpenVerifyModal: () => void;
   onOpenGraduationModal: () => void;
   onOpenGuestBookModal: () => void;
+  onOpenAspirasiModal: () => void;
   activeSection: string;
   onNavigate: (sectionId: string) => void;
 }
@@ -32,6 +35,7 @@ export const PublicPortalNavbar: React.FC<PublicPortalNavbarProps> = ({
   onOpenVerifyModal,
   onOpenGraduationModal,
   onOpenGuestBookModal,
+  onOpenAspirasiModal,
   activeSection,
   onNavigate,
 }) => {
@@ -44,12 +48,13 @@ export const PublicPortalNavbar: React.FC<PublicPortalNavbarProps> = ({
     { id: 'beranda', label: 'Beranda', icon: GraduationCap },
     { id: 'profil', label: 'Profil & Visi', icon: BookOpen },
     { id: 'program', label: isSmk ? 'Kompetensi Keahlian' : 'Program Akademik', icon: Award },
+    { id: 'kurikulum', label: 'Kurikulum & P5', icon: Sparkles },
     { id: 'kalender', label: 'Kalender & Ekskul', icon: Calendar },
     ...(isSmk ? [{ id: 'bkk', label: 'BKK, Alumni & TEFA', icon: Briefcase }] : []),
-    { id: 'berita', label: 'Berita & Info', icon: Newspaper },
-    { id: 'guru', label: 'Guru & Staf', icon: Users },
+    { id: 'ppid', label: 'Jadwal & PPID', icon: FolderOpen },
+    { id: 'berita', label: 'Berita', icon: Newspaper },
+    { id: 'guru', label: 'Guru', icon: Users },
     { id: 'fasilitas', label: 'Fasilitas', icon: Building2 },
-    { id: 'kontak', label: 'Kontak', icon: Phone },
   ];
 
   const handleNavClick = (id: string) => {
@@ -90,6 +95,13 @@ export const PublicPortalNavbar: React.FC<PublicPortalNavbarProps> = ({
           >
             <BookUser className="w-3.5 h-3.5 text-emerald-400" />
             <span>Buku Tamu PTSP</span>
+          </button>
+          <button
+            onClick={onOpenAspirasiModal}
+            className="hidden md:flex items-center gap-1 text-purple-300 hover:text-white transition-colors font-medium"
+          >
+            <HeartHandshake className="w-3.5 h-3.5 text-purple-400" />
+            <span>Kotak Aspirasi & SRA</span>
           </button>
           <button
             onClick={onOpenVerifyModal}
@@ -236,6 +248,16 @@ export const PublicPortalNavbar: React.FC<PublicPortalNavbarProps> = ({
             >
               <BookUser className="w-4 h-4 text-emerald-600" />
               Buku Tamu Digital & PTSP Online
+            </button>
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onOpenAspirasiModal();
+              }}
+              className="w-full py-2.5 px-3 bg-purple-50 text-purple-800 border border-purple-200 font-semibold text-xs rounded-lg flex items-center justify-center gap-2"
+            >
+              <HeartHandshake className="w-4 h-4 text-purple-600" />
+              Kotak Aspirasi & Pengaduan SRA
             </button>
             <button
               onClick={() => {

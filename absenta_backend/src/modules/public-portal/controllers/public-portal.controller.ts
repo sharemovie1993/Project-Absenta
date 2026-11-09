@@ -65,6 +65,58 @@ export class PublicPortalController {
     return reply.send({ success: true, data });
   }
 
+  public async getCurriculumAndP5(request: any, reply: any) {
+    const tenant = await this.getResolvedTenant(request, reply);
+    if (!tenant) return;
+
+    const data = await publicPortalService.getCurriculumAndP5(tenant.id);
+    return reply.send({ success: true, data });
+  }
+
+  public async getClassSchedule(request: any, reply: any) {
+    const tenant = await this.getResolvedTenant(request, reply);
+    if (!tenant) return;
+
+    const query = request.query || {};
+    const data = await publicPortalService.getPublicClassSchedule(tenant.id, query.kelas_id);
+    return reply.send({ success: true, data });
+  }
+
+  public async getPublicDocuments(request: any, reply: any) {
+    const tenant = await this.getResolvedTenant(request, reply);
+    if (!tenant) return;
+
+    const docs = await publicPortalService.getPublicDocuments(tenant.id);
+    return reply.send({ success: true, data: docs, count: docs.length });
+  }
+
+  public async submitAspirasi(request: any, reply: any) {
+    const tenant = await this.getResolvedTenant(request, reply);
+    if (!tenant) return;
+
+    const body = request.body || {};
+    if (!body.isi_laporan) {
+      return reply.status(400).send({
+        success: false,
+        message: 'Isi laporan atau aspirasi wajib diisi.',
+      });
+    }
+
+    const ticket = await publicPortalService.submitPublicAspirasi(tenant.id, {
+      nama_pengirim: body.nama_pengirim,
+      peran_pengirim: body.peran_pengirim,
+      kategori_aspirasi: body.kategori_aspirasi || 'SARAN_LAYANAN',
+      isi_laporan: body.isi_laporan,
+      is_anonim: body.is_anonim,
+    });
+
+    return reply.status(201).send({
+      success: true,
+      data: ticket,
+      message: 'Aspirasi / Laporan SRA berhasil dikirim.',
+    });
+  }
+
   public async getStaff(request: any, reply: any) {
     const tenant = await this.getResolvedTenant(request, reply);
     if (!tenant) return;

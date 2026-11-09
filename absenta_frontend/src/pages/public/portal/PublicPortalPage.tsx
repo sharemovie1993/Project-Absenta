@@ -12,6 +12,9 @@ import {
   PublicArticleSummary,
   PublicLivePulse,
   PublicCalendarAndEkskul,
+  PublicCurriculumAndP5,
+  PublicScheduleOverview,
+  PublicPpidDocument,
 } from '../../../api/public-portal.api';
 
 import { PublicPortalNavbar } from './PublicPortalNavbar';
@@ -19,8 +22,10 @@ import { PublicPortalHero } from './PublicPortalHero';
 import { PublicPortalLivePulse } from './PublicPortalLivePulse';
 import { PublicPortalHeadmaster } from './PublicPortalHeadmaster';
 import { PublicPortalPrograms } from './PublicPortalPrograms';
+import { PublicPortalCurriculumP5 } from './PublicPortalCurriculumP5';
 import { PublicPortalCalendarEkskul } from './PublicPortalCalendarEkskul';
 import { PublicPortalHubinBkk } from './PublicPortalHubinBkk';
+import { PublicPortalSchedulePpid } from './PublicPortalSchedulePpid';
 import { PublicPortalArticles } from './PublicPortalArticles';
 import { PublicPortalStaff } from './PublicPortalStaff';
 import { PublicPortalFacilities } from './PublicPortalFacilities';
@@ -28,6 +33,7 @@ import { PublicPortalFooter } from './PublicPortalFooter';
 import { PublicPortalVerifyModal } from './PublicPortalVerifyModal';
 import { PublicPortalGraduationModal } from './PublicPortalGraduationModal';
 import { PublicPortalGuestBookModal } from './PublicPortalGuestBookModal';
+import { PublicPortalAspirasiModal } from './PublicPortalAspirasiModal';
 
 export const PublicPortalPage: React.FC = () => {
   const { tenantSlug } = useParams<{ tenantSlug: string }>();
@@ -53,6 +59,9 @@ export const PublicPortalPage: React.FC = () => {
   const [profile, setProfile] = useState<PublicSchoolProfile | null>(null);
   const [livePulse, setLivePulse] = useState<PublicLivePulse | null>(null);
   const [calendarEkskul, setCalendarEkskul] = useState<PublicCalendarAndEkskul | null>(null);
+  const [curriculumP5, setCurriculumP5] = useState<PublicCurriculumAndP5 | null>(null);
+  const [classSchedule, setClassSchedule] = useState<PublicScheduleOverview | null>(null);
+  const [ppidDocs, setPpidDocs] = useState<PublicPpidDocument[]>([]);
   const [programs, setPrograms] = useState<PublicProgram[]>([]);
   const [staff, setStaff] = useState<PublicStaffMember[]>([]);
   const [achievements, setAchievements] = useState<PublicAchievement[]>([]);
@@ -65,6 +74,7 @@ export const PublicPortalPage: React.FC = () => {
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
   const [graduationModalOpen, setGraduationModalOpen] = useState(false);
   const [guestBookModalOpen, setGuestBookModalOpen] = useState(false);
+  const [aspirasiModalOpen, setAspirasiModalOpen] = useState(false);
 
   useEffect(() => {
     if (!resolvedSlug) return;
@@ -75,6 +85,9 @@ export const PublicPortalPage: React.FC = () => {
       publicPortalApi.getProfile(resolvedSlug),
       publicPortalApi.getLivePulse(resolvedSlug).catch(() => ({ success: false, data: null as any })),
       publicPortalApi.getCalendarAndEkskul(resolvedSlug).catch(() => ({ success: false, data: null as any })),
+      publicPortalApi.getCurriculumAndP5(resolvedSlug).catch(() => ({ success: false, data: null as any })),
+      publicPortalApi.getClassSchedule(resolvedSlug).catch(() => ({ success: false, data: null as any })),
+      publicPortalApi.getPublicDocuments(resolvedSlug).catch(() => ({ success: false, data: [] as any })),
       publicPortalApi.getPrograms(resolvedSlug),
       publicPortalApi.getStaff(resolvedSlug),
       publicPortalApi.getAchievements(resolvedSlug, 6),
@@ -82,13 +95,16 @@ export const PublicPortalPage: React.FC = () => {
       publicPortalApi.getFacilities(resolvedSlug),
       publicPortalApi.getArticles(resolvedSlug, { limit: 6 }),
     ])
-      .then(([profRes, pulseRes, calRes, progRes, staffRes, achRes, hubinRes, facRes, artRes]) => {
+      .then(([profRes, pulseRes, calRes, curRes, schRes, docRes, progRes, staffRes, achRes, hubinRes, facRes, artRes]) => {
         if (profRes.success && profRes.data) {
           setProfile(profRes.data);
           document.title = `${profRes.data.nama} - Portal Resmi Sekolah`;
         }
         if (pulseRes.success && pulseRes.data) setLivePulse(pulseRes.data);
         if (calRes.success && calRes.data) setCalendarEkskul(calRes.data);
+        if (curRes.success && curRes.data) setCurriculumP5(curRes.data);
+        if (schRes.success && schRes.data) setClassSchedule(schRes.data);
+        if (docRes.success && docRes.data) setPpidDocs(docRes.data);
         if (progRes.success) setPrograms(progRes.data || []);
         if (staffRes.success) setStaff(staffRes.data || []);
         if (achRes.success) setAchievements(achRes.data || []);
@@ -167,6 +183,7 @@ export const PublicPortalPage: React.FC = () => {
         onOpenVerifyModal={() => setVerifyModalOpen(true)}
         onOpenGraduationModal={() => setGraduationModalOpen(true)}
         onOpenGuestBookModal={() => setGuestBookModalOpen(true)}
+        onOpenAspirasiModal={() => setAspirasiModalOpen(true)}
         activeSection={activeSection}
         onNavigate={handleNavigate}
       />
@@ -189,10 +206,13 @@ export const PublicPortalPage: React.FC = () => {
       {/* 5. Programs / Jurusan */}
       {programs.length > 0 && <PublicPortalPrograms programs={programs} profile={profile} />}
 
-      {/* 6. Kalender Akademik & Ekstrakurikuler */}
+      {/* 6. Etalase Projek P5 & Struktur Kurikulum KOSP */}
+      <PublicPortalCurriculumP5 data={curriculumP5} />
+
+      {/* 7. Kalender Akademik & Ekstrakurikuler */}
       <PublicPortalCalendarEkskul data={calendarEkskul} schoolName={profile.nama} />
 
-      {/* 7. Hubin, BKK, Tracer Study BMW & TEFA (Khusus SMK) */}
+      {/* 8. Hubin, BKK, Tracer Study BMW, Sebaran PKL & TEFA (Khusus SMK) */}
       {profile.jenjang === 'SMK' && (
         <PublicPortalHubinBkk
           hubin={hubin}
@@ -201,7 +221,14 @@ export const PublicPortalPage: React.FC = () => {
         />
       )}
 
-      {/* 8. Articles & News */}
+      {/* 9. Portal Cek Jadwal Pelajaran Kelas & Pusat Unduhan Dokumen PPID */}
+      <PublicPortalSchedulePpid
+        initialSchedule={classSchedule}
+        ppidDocs={ppidDocs}
+        tenantSlug={resolvedSlug}
+      />
+
+      {/* 10. Articles & News */}
       <PublicPortalArticles
         articles={articles}
         achievements={achievements}
@@ -209,20 +236,20 @@ export const PublicPortalPage: React.FC = () => {
         onSelectArticle={handleSelectArticle}
       />
 
-      {/* 9. Staff & Teachers Directory */}
+      {/* 11. Staff & Teachers Directory */}
       {staff.length > 0 && <PublicPortalStaff staff={staff} />}
 
-      {/* 10. Facilities Showcase */}
+      {/* 12. Facilities Showcase */}
       {facilities.length > 0 && <PublicPortalFacilities facilities={facilities} />}
 
-      {/* 11. Footer */}
+      {/* 13. Footer */}
       <PublicPortalFooter
         profile={profile}
         onOpenVerifyModal={() => setVerifyModalOpen(true)}
         onNavigate={handleNavigate}
       />
 
-      {/* 12. Modals: Document Verification, Graduation Envelope, & Digital Guestbook */}
+      {/* 14. Interactive Modals */}
       <PublicPortalVerifyModal
         isOpen={verifyModalOpen}
         onClose={() => setVerifyModalOpen(false)}
@@ -239,6 +266,13 @@ export const PublicPortalPage: React.FC = () => {
       <PublicPortalGuestBookModal
         isOpen={guestBookModalOpen}
         onClose={() => setGuestBookModalOpen(false)}
+        tenantSlug={resolvedSlug}
+        schoolName={profile.nama}
+      />
+
+      <PublicPortalAspirasiModal
+        isOpen={aspirasiModalOpen}
+        onClose={() => setAspirasiModalOpen(false)}
         tenantSlug={resolvedSlug}
         schoolName={profile.nama}
       />

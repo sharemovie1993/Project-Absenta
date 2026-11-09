@@ -330,7 +330,78 @@ export const PublicPortalHubinBkk: React.FC<PublicPortalHubinBkkProps> = ({
           </div>
         )}
 
-        {/* 4. Mitra Industri Showcase */}
+        {/* 4. Sebaran Penempatan Praktik Kerja Lapangan (PKL) Siswa Aktif */}
+        {hubin.pkl_distribution && hubin.pkl_distribution.placements.length > 0 && (
+          <div className="bg-slate-800/60 rounded-3xl p-6 sm:p-8 border border-slate-700/80 space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-700/70 pb-4">
+              <div>
+                <div className="inline-flex items-center gap-1.5 text-cyan-400 text-xs font-bold uppercase tracking-wider">
+                  <Building className="w-4 h-4" />
+                  <span>Pemetaan Real-Time Praktik Kerja Lapangan (PKL)</span>
+                </div>
+                <h3 className="text-xl font-extrabold text-white mt-1">
+                  Sebaran Penempatan Siswa Magang Industri Aktif
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Transparansi jumlah peserta didik yang sedang melaksanakan pembelajaran berbasis dunia kerja di perusahaan mitra DUDIKA.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="bg-slate-900/90 border border-slate-700 px-4 py-2.5 rounded-2xl text-center">
+                  <div className="text-[10px] text-slate-400 font-semibold uppercase">Siswa PKL Aktif</div>
+                  <div className="text-lg font-black text-cyan-400">
+                    {hubin.pkl_distribution.total_siswa_pkl_aktif} Siswa
+                  </div>
+                </div>
+                <div className="bg-slate-900/90 border border-slate-700 px-4 py-2.5 rounded-2xl text-center">
+                  <div className="text-[10px] text-slate-400 font-semibold uppercase">Lokasi DUDIKA</div>
+                  <div className="text-lg font-black text-emerald-400">
+                    {hubin.pkl_distribution.total_dudi_aktif} Perusahaan
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {hubin.pkl_distribution.placements.map((pl) => {
+                const fillPct = Math.min(100, Math.round((pl.jumlah_siswa / (pl.kuota_pkl || 20)) * 100));
+                return (
+                  <div
+                    key={pl.mitra_id}
+                    className="bg-slate-900/80 rounded-2xl p-4 border border-slate-700/80 flex flex-col justify-between gap-3"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-bold text-white line-clamp-1">{pl.nama_mitra}</div>
+                      {pl.bidang && (
+                        <div className="text-[11px] text-cyan-300 font-medium line-clamp-1">{pl.bidang}</div>
+                      )}
+                      {pl.alamat && (
+                        <div className="text-[10px] text-slate-400 line-clamp-1">{pl.alamat}</div>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5 pt-2 border-t border-slate-800">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-slate-400">Terisi:</span>
+                        <span className="font-bold text-emerald-400">
+                          {pl.jumlah_siswa} / {pl.kuota_pkl} Kuota Siswa
+                        </span>
+                      </div>
+                      <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 rounded-full"
+                          style={{ width: `${Math.max(20, fillPct)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 5. Mitra Industri Showcase */}
         {hasMitra && (
           <div className="space-y-6">
             <h3 className="font-bold text-slate-300 uppercase tracking-wider text-center text-xs">

@@ -106,6 +106,20 @@ export interface PublicTracerStats {
   }>;
 }
 
+export interface PublicPklDistribution {
+  total_siswa_pkl_aktif: number;
+  total_dudi_aktif: number;
+  placements: Array<{
+    mitra_id: string;
+    nama_mitra: string;
+    bidang: string | null;
+    alamat: string | null;
+    kompetensi_keahlian: string | null;
+    jumlah_siswa: number;
+    kuota_pkl: number;
+  }>;
+}
+
 export interface PublicHubinData {
   mitra: Array<{
     id: string;
@@ -133,6 +147,7 @@ export interface PublicHubinData {
     mitra_nama: string | null;
   }>;
   tracer_study: PublicTracerStats;
+  pkl_distribution?: PublicPklDistribution;
 }
 
 export interface PublicFacility {
@@ -224,4 +239,86 @@ export interface PublicGuestBookTicket {
   pejabat_dituju: string;
   waktu_akses: string;
   kategori_buku: string;
+}
+
+// ── Gelombang 3: Kurikulum, P5, Jadwal KBM Publik, PPID Dokumen, & SRA Aspirasi ──
+
+export interface PublicCurriculumSubject {
+  id: string;
+  nama_mapel: string;
+  kode_mapel: string | null;
+  tingkat: number;
+  kelompok: string;
+  jp_per_minggu: number;
+  jurusan_id: string | null;
+  nama_jurusan: string | null;
+}
+
+export interface PublicP5ProjectItem {
+  id: string;
+  judul: string;
+  deskripsi: string | null;
+  tahun_ajaran: string;
+  semester: string;
+  jumlah_fasilitator: number;
+  dimensi_fokus: string[];
+}
+
+export interface PublicCurriculumAndP5 {
+  tahun_ajaran: string;
+  karakteristik_kosp: string | null;
+  subjects: PublicCurriculumSubject[];
+  p5_projects: PublicP5ProjectItem[];
+}
+
+export interface PublicClassScheduleSlot {
+  id: string;
+  hari: string;
+  slot_index: number;
+  jam_mulai: string;
+  jam_selesai: string;
+  nama_mapel: string;
+  nama_guru: string;
+  nama_ruangan: string | null;
+  jenis_kegiatan: string;
+}
+
+export interface PublicScheduleOverview {
+  tahun_ajaran: string;
+  semester: string;
+  classes: Array<{
+    id: string;
+    nama_kelas: string;
+    tingkat: number;
+    nama_jurusan: string | null;
+  }>;
+  rooms: Array<{
+    id: string;
+    nama_ruangan: string;
+    kode_ruangan: string | null;
+    jenis_ruangan: string;
+    kapasitas: number;
+  }>;
+  selected_class_id: string | null;
+  schedules: PublicClassScheduleSlot[];
+}
+
+export interface PublicPpidDocument {
+  id: string;
+  nomor_dokumen: string;
+  judul: string;
+  kategori: string;
+  ringkasan: string | null;
+  tanggal_publikasi: string;
+  file_url: string | null;
+  ukuran_info: string;
+}
+
+export interface PublicAspirasiTicket {
+  ticket_code: string;
+  kategori: string;
+  pengirim: string;
+  tanggal: string;
+  status: string;
+  pesan_konfirmasi: string;
 }
