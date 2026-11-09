@@ -542,6 +542,7 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
         initialJadwalId={selectedInspectJadwalId}
         onBack={() => setSelectedInspectJadwalId(null)}
         schedulesList={effectiveJadwalList}
+        isPanitiaView={true}
       />
     );
   }

@@ -85,6 +85,7 @@ interface CbtProctorMonitoringViewProps {
   onBack?: () => void;
   myPengawasData?: any[];
   schedulesList?: any[];
+  isPanitiaView?: boolean;
 }
 
 export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> = ({
@@ -93,6 +94,7 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   onBack,
   myPengawasData,
   schedulesList,
+  isPanitiaView = false,
 }) => {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -562,8 +564,22 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
               {activeJadwal?.setting_keamanan?.pengawas_1_nama && (
                 <>
                   <span>•</span>
-                  <span className="truncate max-w-[200px]">
-                    Pengawas: <strong className="text-slate-700 dark:text-slate-300 font-semibold">{activeJadwal.setting_keamanan.pengawas_1_nama}</strong>
+                  <span className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-slate-500">
+                      Pengawas: <strong className="text-slate-700 dark:text-slate-300 font-semibold">{activeJadwal.setting_keamanan.pengawas_1_nama}</strong>
+                    </span>
+                    {isPanitiaView && (
+                      pengawasSignature ? (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md text-[10px] font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                          <Check size={10} className="text-emerald-600" />
+                          <span>Sudah TTD</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-1.5 py-0.2 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                          <span>Belum TTD</span>
+                        </span>
+                      )
+                    )}
                   </span>
                 </>
               )}
@@ -737,21 +753,23 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
             </>
           )}
 
-          {/* 2. TTD Digital Pengawas */}
-          <button
-            type="button"
-            onClick={() => setIsSignModalOpen(true)}
-            className={cn(
-              'h-7 px-2.5 rounded-lg border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 active:scale-95',
-              pengawasSignature
-                ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300'
-                : 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300'
-            )}
-            title={pengawasSignature ? 'Tanda tangan pengawas tersimpan' : 'Tanda tangan digital pengawas'}
-          >
-            <PenTool size={12} />
-            <span>{pengawasSignature ? 'Sudah TTD' : 'TTD'}</span>
-          </button>
+          {/* 2. TTD Digital Pengawas (Hanya jika dibuka oleh Pengawas langsung, bukan di posko Panitia) */}
+          {!isPanitiaView && (
+            <button
+              type="button"
+              onClick={() => setIsSignModalOpen(true)}
+              className={cn(
+                'h-7 px-2.5 rounded-lg border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 active:scale-95',
+                pengawasSignature
+                  ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300'
+                  : 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300'
+              )}
+              title={pengawasSignature ? 'Tanda tangan pengawas tersimpan' : 'Tanda tangan digital pengawas'}
+            >
+              <PenTool size={12} />
+              <span>{pengawasSignature ? 'Sudah TTD' : 'TTD'}</span>
+            </button>
+          )}
 
           {/* 3. Daftar Hadir Siswa */}
           <button
