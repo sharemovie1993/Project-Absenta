@@ -24,6 +24,7 @@ interface StrukturMobileCardTreeProps {
   data: TopologyNodeData | TopologyNodeData[];
   onAction?: (node: TopologyNodeData, actionType?: string, element?: HTMLElement | null) => void;
   editingId?: string | null;
+  isReadOnly?: boolean;
 }
 
 const getRoleIcon = (roleCode?: string, type?: string) => {
@@ -54,13 +55,15 @@ interface MobileCardNodeProps {
   depth?: number;
   onAction?: (node: TopologyNodeData, actionType?: string, element?: HTMLElement | null) => void;
   editingId?: string | null;
+  isReadOnly?: boolean;
 }
 
 const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({ 
   node, 
   depth = 0, 
   onAction,
-  editingId 
+  editingId,
+  isReadOnly = false
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const cardRef = React.useRef<HTMLDivElement>(null);
@@ -93,6 +96,7 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
 
   const handleCardClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isReadOnly) return;
     if (!isCategory && onAction) {
       onAction(node, 'EDIT', cardRef.current);
     }
@@ -128,6 +132,7 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
             depth={depth} 
             onAction={onAction}
             editingId={editingId}
+            isReadOnly={isReadOnly}
           />
         ))}
       </div>
@@ -189,11 +194,12 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
                     depth={depth + 1} 
                     onAction={onAction}
                     editingId={editingId}
+                    isReadOnly={isReadOnly}
                   />
                 ))}
 
                 {/* Tombol Tambah Anggota / Staf khusus di bawah daftar personil bidang */}
-                {isDirectUnit && (
+                {!isReadOnly && isDirectUnit && (
                   <div className="pl-3.5 sm:pl-5 ml-2.5 sm:ml-4 pt-1">
                     <button
                       onClick={handleAddMember}
@@ -292,16 +298,17 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
           {/* Avatar & Identitas Guru */}
           <div 
             onClick={handleCardClick}
-            className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer group"
+            className={cn("flex items-center gap-3 min-w-0 flex-1", !isReadOnly && "cursor-pointer group")}
           >
             {/* Avatar Thumbnail */}
             <div className={cn(
-              "w-11 h-11 rounded-2xl flex items-center justify-center font-black text-sm shrink-0 shadow-xs border transition-transform group-hover:scale-105",
+              "w-11 h-11 rounded-2xl flex items-center justify-center font-black text-sm shrink-0 shadow-xs border transition-transform",
+              !isReadOnly && "group-hover:scale-105",
               isUnassigned 
-                ? "bg-amber-100 dark:bg-amber-900/50 border-amber-300 text-amber-600 dark:text-amber-400" 
+                ? (isReadOnly ? "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400" : "bg-amber-100 dark:bg-amber-900/50 border-amber-300 text-amber-600 dark:text-amber-400")
                 : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
             )}>
-              {isUnassigned ? (
+              {isUnassigned && !isReadOnly ? (
                 <Plus className="w-5 h-5 stroke-[2.5]" />
               ) : (
                 <User className="w-5 h-5 stroke-[2]" />
@@ -313,53 +320,55 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
               <h3 className={cn(
                 "text-sm font-extrabold truncate leading-tight transition-colors",
                 isUnassigned 
-                  ? "text-amber-800 dark:text-amber-400" 
-                  : "text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400"
+                  ? (isReadOnly ? "text-slate-400 dark:text-slate-500 italic" : "text-amber-800 dark:text-amber-400")
+                  : cn("text-slate-900 dark:text-white", !isReadOnly && "group-hover:text-indigo-600 dark:group-hover:text-indigo-400")
               )}>
                 {isUnassigned ? 'Belum Ditugaskan' : node.subLabel}
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5 font-medium">
-                {isUnassigned ? 'Ketuk untuk memilih guru' : (node.data?.details || 'Personil Terdaftar')}
+                {isUnassigned ? (isReadOnly ? 'Jabatan belum terisi' : 'Ketuk untuk memilih guru') : (node.data?.details || 'Personil Terdaftar')}
               </p>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            {isUnassigned ? (
-              <button
-                onClick={handleCardClick}
-                className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                <span>Tugaskan</span>
-              </button>
-            ) : (
-              <>
+          {!isReadOnly && (
+            <div className="flex items-center gap-1.5 shrink-0">
+              {isUnassigned ? (
                 <button
                   onClick={handleCardClick}
-                  title="Ganti Personil"
-                  className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-all active:scale-90"
+                  className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
                 >
-                  <Pencil className="w-3.5 h-3.5" />
+                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                  <span>Tugaskan</span>
                 </button>
-                {node.data?.realMemberId && (
+              ) : (
+                <>
                   <button
-                    onClick={handleDeleteMember}
-                    title="Kosongkan Jabatan"
-                    className="p-2 bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900 text-rose-600 dark:text-rose-400 rounded-xl transition-all active:scale-90"
+                    onClick={handleCardClick}
+                    title="Ganti Personil"
+                    className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-all active:scale-90"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Pencil className="w-3.5 h-3.5" />
                   </button>
-                )}
-              </>
-            )}
-          </div>
+                  {node.data?.realMemberId && (
+                    <button
+                      onClick={handleDeleteMember}
+                      title="Kosongkan Jabatan"
+                      className="p-2 bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900 text-rose-600 dark:text-rose-400 rounded-xl transition-all active:scale-90"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
       </motion.div>
 
       {/* Render Subordinate Children or Multi-member Add Action */}
-      {(hasChildren || isCoordinatorCard) && (
+      {(hasChildren || (!isReadOnly && isCoordinatorCard)) && (
         <AnimatePresence>
           {isExpanded && (
             <motion.div
@@ -375,11 +384,12 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
                   depth={depth + 1} 
                   onAction={onAction}
                   editingId={editingId}
+                  isReadOnly={isReadOnly}
                 />
               ))}
 
               {/* Tombol Tambah Anggota TEPAT 1 KALI di bawah Koordinator / Posisi Utama */}
-              {isCoordinatorCard && (
+              {!isReadOnly && isCoordinatorCard && (
                 <div className="pl-3.5 sm:pl-5 ml-2.5 sm:ml-4 pt-1">
                   <button
                     onClick={handleAddMember}
@@ -400,6 +410,7 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
   return (
     prev.editingId === next.editingId &&
     prev.depth === next.depth &&
+    prev.isReadOnly === next.isReadOnly &&
     prev.node === next.node
   );
 });
@@ -407,7 +418,8 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
 export const StrukturMobileCardTree: React.FC<StrukturMobileCardTreeProps> = React.memo(({ 
   data, 
   onAction,
-  editingId 
+  editingId,
+  isReadOnly = false
 }) => {
   const nodes = useMemo(() => Array.isArray(data) ? data : [data], [data]);
 
@@ -428,6 +440,7 @@ export const StrukturMobileCardTree: React.FC<StrukturMobileCardTreeProps> = Rea
           depth={0} 
           onAction={onAction}
           editingId={editingId}
+          isReadOnly={isReadOnly}
         />
       ))}
     </div>

@@ -59,4 +59,8 @@ export type StrukturDiagramProps = {
   activeTab?: string;
   onNodeClick?: (id: string) => void;
   refreshKey?: number;
+  isReadOnly?: boolean;
+  initialTreeData?: GroupedStruktur;
+  initialJurusans?: Record<string, string>;
+  jenjangOverride?: string;
 };

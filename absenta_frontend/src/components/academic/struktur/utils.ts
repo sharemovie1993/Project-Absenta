@@ -19,6 +19,10 @@ export interface TransformManagementOptions {
    * Digunakan untuk sub-tab Dashboard Role (Kurikulum, Kesiswaan, Hubin, dll).
    */
   horizontalSubSlots?: boolean;
+  /**
+   * Jika true (mode publik/read-only), slot sub-bidang yang belum diisi tidak akan dirender sebagai kotak kosong.
+   */
+  hideEmptySubSlots?: boolean;
 }
 
 /**
@@ -145,7 +149,7 @@ export const transformManagementToTree = (
                   isSlot: true,
                 }
               });
-            } else {
+            } else if (!options.hideEmptySubSlots) {
               // SLOT KOSONG: Siap diklik langsung untuk penugasan (+ Klik Isi Slot)
               subSlots.push({
                 id: `slot-empty-${kode}-${n.id}-${subFlag.flag}`,
@@ -221,25 +225,42 @@ export const transformManagementToTree = (
         } else {
           // Fallback jalur non-flags
           const hasExplicitLeader = members.some((m: any) => m.is_leader === true);
-          members.forEach((m: any, idx: number) => {
-            const isBoss = m.is_leader === true || (!hasExplicitLeader && idx === 0);
-            const rawLabel = m.custom_title || (isKoordinatorTu ? (isBoss ? 'Koordinator TU' : 'Staf TU') : (isBoss ? `WAKA ${area}` : `STAF ${area}`));
+          if (members.length === 0 && options.hideEmptySubSlots) {
             memberSlots.push({
-              id: isBoss ? `boss-${kode}-${n.id}-${m.id}` : `staff-${kode}-${n.id}-${m.id}`,
-              label: shortenPosition(rawLabel),
-              subLabel: m.name,
+              id: `slot-empty-leader-${kode}-${n.id}`,
+              label: shortenPosition(isKoordinatorTu ? 'Koordinator TU' : `Koordinator ${area}`),
+              subLabel: 'Belum Ditugaskan',
               type: 'STRUCT' as any,
               data: {
                 roleCode: kode,
-                realMemberId: m.id,
                 realStrukturId: n.id,
                 unit_id: n.unit_id,
-                isLeader: isBoss,
-                assignmentFlag: m.assignment_flag,
-                customTitle: m.custom_title,
+                isLeader: true,
+                isUnassigned: true,
+                isSlot: true,
               }
             });
-          });
+          } else {
+            members.forEach((m: any, idx: number) => {
+              const isBoss = m.is_leader === true || (!hasExplicitLeader && idx === 0);
+              const rawLabel = m.custom_title || (isKoordinatorTu ? (isBoss ? 'Koordinator TU' : 'Staf TU') : (isBoss ? `WAKA ${area}` : `STAF ${area}`));
+              memberSlots.push({
+                id: isBoss ? `boss-${kode}-${n.id}-${m.id}` : `staff-${kode}-${n.id}-${m.id}`,
+                label: shortenPosition(rawLabel),
+                subLabel: m.name,
+                type: 'STRUCT' as any,
+                data: {
+                  roleCode: kode,
+                  realMemberId: m.id,
+                  realStrukturId: n.id,
+                  unit_id: n.unit_id,
+                  isLeader: isBoss,
+                  assignmentFlag: m.assignment_flag,
+                  customTitle: m.custom_title,
+                }
+              });
+            });
+          }
         }
 
         if (flags.length === 0) {

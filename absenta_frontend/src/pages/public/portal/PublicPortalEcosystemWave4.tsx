@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Network,
   MapPin,
@@ -12,9 +12,32 @@ import {
   Sparkles,
   Award,
   Search,
+  Crown,
+  Briefcase,
+  Wrench,
+  Laptop,
+  UserCheck,
+  HeartHandshake,
+  ShoppingCart,
+  Medal,
 } from 'lucide-react';
 import { PublicWave4Ecosystem } from '../../../api/public-portal.api';
 import { InteractiveDenahCanvas } from '../../../components/spasial/InteractiveDenahCanvas';
+import { StrukturDiagram } from '../../../components/academic/struktur/StrukturDiagram';
+import { TabSwitcher } from '../../../components/ui/TabSwitcher';
+
+const PUBLIC_STRUKTUR_TABS = [
+  { id: 'PIMPINAN', label: 'Pimpinan', icon: Crown, codes: ['KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU_KEPALA', 'BKK'] },
+  { id: 'TATA_USAHA', label: 'Tata Usaha', icon: Building2, codes: ['TU_PERSURATAN', 'TU_KEUANGAN', 'TU_KEPEGAWAIAN', 'TU_SARPRAS'] },
+  { id: 'KAPROG', label: 'Kaprog', icon: Briefcase, codes: ['KAPROG'] },
+  { id: 'KABENG', label: 'Kabeng', icon: Wrench, codes: ['KABENG'] },
+  { id: 'TOOLMAN', label: 'Toolman', icon: Laptop, codes: ['TOOLMAN'] },
+  { id: 'WALI_KELAS', label: 'Wali Kelas', icon: UserCheck, codes: ['WALIKELAS'] },
+  { id: 'PEMBINA_ESKUL', label: 'Pembina Eskul', icon: Sparkles, codes: ['PEMBINA_ESKUL'] },
+  { id: 'BP_BK', label: 'BP/BK', icon: HeartHandshake, codes: ['BPBK'] },
+  { id: 'KOPERASI', label: 'Koperasi', icon: ShoppingCart, codes: ['KETUA_KOPERASI', 'BENDAHARA_KOPERASI', 'SEKRETARIS_KOPERASI', 'MANAJER_TOKO_KOPERASI', 'PENGAWAS_KOPERASI'] },
+  { id: 'KETARUNAAN', label: 'Ketarunaan', icon: Medal, codes: ['KEPALA_SEKOLAH', 'KESISWAAN', 'KETUA_PEMBINA_TARUNA', 'PEMBINA_ESKUL'] },
+];
 
 interface PublicPortalEcosystemWave4Props {
   data: PublicWave4Ecosystem | null;
@@ -28,10 +51,40 @@ export const PublicPortalEcosystemWave4: React.FC<PublicPortalEcosystemWave4Prop
   const [selectedMapIdx, setSelectedMapIdx] = useState(0);
   const [selectedCoopCat, setSelectedCoopCat] = useState<string>('ALL');
   const [librarySearch, setLibrarySearch] = useState('');
+  const [activeOrgTab, setActiveOrgTab] = useState<string>('PIMPINAN');
+
+  const rawJenjang = useMemo(() => (data?.organization_jenjang || 'SMK').toUpperCase(), [data?.organization_jenjang]);
+
+  const visibleOrgTabs = useMemo(() => {
+    return PUBLIC_STRUKTUR_TABS.filter((tab) => {
+      if (['KAPROG', 'KABENG', 'TOOLMAN'].includes(tab.id) && !['SMK', 'MAK'].includes(rawJenjang)) {
+        return false;
+      }
+      if (tab.id === 'BP_BK' && ['SD', 'MI'].includes(rawJenjang)) {
+        return false;
+      }
+      return true;
+    });
+  }, [rawJenjang]);
+
+  const activeOrgTabCodes = useMemo(() => {
+    const found = visibleOrgTabs.find((t) => t.id === activeOrgTab);
+    return found ? found.codes : PUBLIC_STRUKTUR_TABS[0].codes;
+  }, [activeOrgTab, visibleOrgTabs]);
+
+  const orgTabOptions = useMemo(() => {
+    return visibleOrgTabs.map((t) => ({
+      id: t.id,
+      label: t.label,
+      icon: t.icon,
+    }));
+  }, [visibleOrgTabs]);
 
   if (!data) return null;
 
   const orgList = data.organization || [];
+  const orgTree = data.organization_tree || {};
+  const hasOrgTree = Object.keys(orgTree).length > 0;
   const maps = data.spatial_maps || [];
   const modules = data.elibrary || [];
   const products = data.koperasi?.products || [];
@@ -59,9 +112,9 @@ export const PublicPortalEcosystemWave4: React.FC<PublicPortalEcosystemWave4Prop
     <section id="ekosistem" className="py-16 bg-slate-50 border-t border-slate-200/80">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         {/* ── BAGIAN 1: STRUKTUR ORGANISASI & TATA KELOLA MANAJEMEN SEKOLAH ── */}
-        {orgList.length > 0 && (
+        {(hasOrgTree || orgList.length > 0) && (
           <div>
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold mb-3">
                   <Network className="w-3.5 h-3.5" />
@@ -71,95 +124,119 @@ export const PublicPortalEcosystemWave4: React.FC<PublicPortalEcosystemWave4Prop
                   Struktur Organisasi & Manajemen Sekolah
                 </h2>
                 <p className="text-slate-600 text-sm sm:text-base mt-1">
-                  Sinergi kepemimpinan kepala sekolah, wakil kepala sekolah, kepala program keahlian, dan tata usaha {schoolName}.
+                  Bagan topologi kepemimpinan kepala sekolah, wakil kepala sekolah, tata usaha, kepala program keahlian, dan wali kelas {schoolName}.
                 </p>
               </div>
             </div>
 
-            {/* Bagan Hirarki Visual */}
-            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-8">
-              {/* Pucuk Pimpinan (Kepala Sekolah) */}
-              {pimpinan.length > 0 && (
-                <div className="flex flex-col items-center mb-8">
-                  {pimpinan.map((leader) => (
-                    <div
-                      key={leader.id}
-                      className="relative max-w-md w-full bg-gradient-to-br from-indigo-900 via-slate-900 to-blue-950 text-white rounded-2xl p-5 shadow-lg border border-indigo-500/30 flex items-center gap-4"
-                    >
-                      <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0 overflow-hidden">
-                        {leader.foto ? (
-                          <img src={leader.foto} alt={leader.nama_pejabat} className="w-full h-full object-cover" />
-                        ) : (
-                          <Award className="w-8 h-8 text-amber-300" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-400/20 text-amber-300 border border-amber-400/30 mb-1">
-                          {leader.jabatan_nama}
-                        </span>
-                        <h3 className="text-base sm:text-lg font-bold text-white truncate">
-                          {leader.nama_pejabat}
-                        </h3>
-                        {leader.nip && (
-                          <p className="text-xs text-indigo-200/90 font-mono mt-0.5">NIP. {leader.nip}</p>
-                        )}
-                        <p className="text-[11px] text-slate-300 mt-1">{leader.unit_label}</p>
-                      </div>
-                    </div>
-                  ))}
-                  {/* Garis Penghubung Hirarki */}
-                  <div className="w-0.5 h-8 bg-indigo-200"></div>
-                  <div className="w-3/4 h-0.5 bg-indigo-200 hidden md:block"></div>
+            {hasOrgTree ? (
+              <div className="space-y-4">
+                {/* Tab Switcher Divisi Struktur Organisasi */}
+                <div className="flex items-center justify-between gap-3 bg-white p-3 sm:p-4 rounded-3xl border border-slate-200/90 shadow-xs overflow-x-auto no-scrollbar">
+                  <TabSwitcher
+                    options={orgTabOptions}
+                    activeTab={activeOrgTab}
+                    onChange={setActiveOrgTab}
+                  />
                 </div>
-              )}
 
-              {/* Jajaran Wakasek, KTU, Kaprog & Koordinator */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {wakasekAndOther.map((member) => {
-                  const badgeColor =
-                    member.jabatan_kode.includes('WAKASEK') || member.jabatan_nama.toLowerCase().includes('wakasek')
-                      ? 'bg-blue-50 text-blue-700 border-blue-200'
-                      : member.jabatan_kode.includes('KAPROG') || member.jabatan_nama.toLowerCase().includes('kaprog')
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                      : 'bg-purple-50 text-purple-700 border-purple-200';
-
-                  return (
-                    <div
-                      key={member.id}
-                      className="group rounded-2xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:shadow-md hover:border-indigo-300 transition-all p-4 flex flex-col justify-between"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between gap-2 mb-2.5">
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${badgeColor}`}
-                          >
-                            {member.jabatan_kode}
-                          </span>
-                          <Users className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                {/* Kanvas Bagan Topologi Interaktif (Read-Only) */}
+                <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200/90 shadow-sm overflow-x-auto">
+                  <StrukturDiagram
+                    activeTab={activeOrgTab}
+                    activeCodes={activeOrgTabCodes}
+                    refreshKey={0}
+                    isReadOnly={true}
+                    initialTreeData={orgTree}
+                    initialJurusans={data.organization_jurusans}
+                    jenjangOverride={data.organization_jenjang}
+                  />
+                </div>
+              </div>
+            ) : (
+              /* Fallback Kartu Hirarki Visual */
+              <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-8">
+                {/* Pucuk Pimpinan (Kepala Sekolah) */}
+                {pimpinan.length > 0 && (
+                  <div className="flex flex-col items-center mb-8">
+                    {pimpinan.map((leader) => (
+                      <div
+                        key={leader.id}
+                        className="relative max-w-md w-full bg-gradient-to-br from-indigo-900 via-slate-900 to-blue-950 text-white rounded-2xl p-5 shadow-lg border border-indigo-500/30 flex items-center gap-4"
+                      >
+                        <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0 overflow-hidden">
+                          {leader.foto ? (
+                            <img src={leader.foto} alt={leader.nama_pejabat} className="w-full h-full object-cover" />
+                          ) : (
+                            <Award className="w-8 h-8 text-amber-300" />
+                          )}
                         </div>
-                        <h4 className="font-bold text-slate-900 text-sm leading-snug line-clamp-2">
-                          {member.jabatan_nama}
-                        </h4>
-                        <p className="text-xs font-semibold text-indigo-700 mt-2">
-                          {member.nama_pejabat}
-                        </p>
-                        {member.nip && (
-                          <p className="text-[11px] text-slate-500 font-mono mt-0.5">
-                            NIP: {member.nip}
+                        <div className="min-w-0 flex-1">
+                          <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-400/20 text-amber-300 border border-amber-400/30 mb-1">
+                            {leader.jabatan_nama}
+                          </span>
+                          <h3 className="text-base sm:text-lg font-bold text-white truncate">
+                            {leader.nama_pejabat}
+                          </h3>
+                          {leader.nip && (
+                            <p className="text-xs text-indigo-200/90 font-mono mt-0.5">NIP. {leader.nip}</p>
+                          )}
+                          <p className="text-[11px] text-slate-300 mt-1">{leader.unit_label}</p>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="w-0.5 h-8 bg-indigo-200"></div>
+                    <div className="w-3/4 h-0.5 bg-indigo-200 hidden md:block"></div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {wakasekAndOther.map((member) => {
+                    const badgeColor =
+                      member.jabatan_kode.includes('WAKASEK') || member.jabatan_nama.toLowerCase().includes('wakasek')
+                        ? 'bg-blue-50 text-blue-700 border-blue-200'
+                        : member.jabatan_kode.includes('KAPROG') || member.jabatan_nama.toLowerCase().includes('kaprog')
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-purple-50 text-purple-700 border-purple-200';
+
+                    return (
+                      <div
+                        key={member.id}
+                        className="group rounded-2xl border border-slate-200/80 bg-slate-50/60 hover:bg-white hover:shadow-md hover:border-indigo-300 transition-all p-4 flex flex-col justify-between"
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-2.5">
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${badgeColor}`}
+                            >
+                              {member.jabatan_kode}
+                            </span>
+                            <Users className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                          </div>
+                          <h4 className="font-bold text-slate-900 text-sm leading-snug line-clamp-2">
+                            {member.jabatan_nama}
+                          </h4>
+                          <p className="text-xs font-semibold text-indigo-700 mt-2">
+                            {member.nama_pejabat}
                           </p>
+                          {member.nip && (
+                            <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                              NIP: {member.nip}
+                            </p>
+                          )}
+                        </div>
+                        {member.unit_label && (
+                          <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center gap-1.5 text-[11px] text-slate-500">
+                            <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span className="truncate">{member.unit_label}</span>
+                          </div>
                         )}
                       </div>
-                      {member.unit_label && (
-                        <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center gap-1.5 text-[11px] text-slate-500">
-                          <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="truncate">{member.unit_label}</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 

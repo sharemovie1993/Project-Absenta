@@ -12,18 +12,20 @@ interface TopologyTreeProps {
   onAction?: (node: TopologyNodeData, actionType?: string, element?: HTMLElement | null) => void;
   editingId?: string | null;
   isVerticalLayout?: boolean;
+  isReadOnly?: boolean;
 }
 
 export const TopologyTree = React.memo<TopologyTreeProps>(({ 
   data, 
   onAction,
   editingId,
-  isVerticalLayout = false
+  isVerticalLayout = false,
+  isReadOnly = false
 }) => {
   if (data.type === 'ROOT' && data.children) {
     return (
       <div className="w-full overflow-x-auto overflow-y-hidden bg-slate-50/50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 shadow-inner custom-scrollbar">
-        <div className="inline-block min-w-full p-20">
+        <div className={cn("inline-block min-w-full", isReadOnly ? "p-6 sm:p-10" : "p-20")}>
           <div className="relative flex flex-col items-center">
             <div className="flex gap-24 justify-center pt-0">
               {(data.children || []).map((child, idx) => (
@@ -47,6 +49,7 @@ export const TopologyTree = React.memo<TopologyTreeProps>(({
                     onAction={onAction}
                     editingId={editingId}
                     isVerticalLayout={isVerticalLayout}
+                    isReadOnly={isReadOnly}
                   />
                 </div>
               ))}
@@ -67,6 +70,7 @@ export const TopologyTree = React.memo<TopologyTreeProps>(({
           onAction={onAction}
           editingId={editingId}
           isVerticalLayout={isVerticalLayout}
+          isReadOnly={isReadOnly}
         />
       </div>
     </div>
@@ -74,6 +78,7 @@ export const TopologyTree = React.memo<TopologyTreeProps>(({
 }, (prev, next) => {
   return prev.editingId === next.editingId &&
          prev.isVerticalLayout === next.isVerticalLayout &&
+         prev.isReadOnly === next.isReadOnly &&
          prev.data === next.data;
 });
 
@@ -84,6 +89,7 @@ interface TreeNodeProps {
   onAction?: (node: TopologyNodeData, actionType?: string, element?: HTMLElement | null) => void;
   editingId?: string | null;
   isVerticalLayout?: boolean;
+  isReadOnly?: boolean;
 }
 
 const getNodeStyles = (type: TopologyNodeData['type']) => {
@@ -108,21 +114,23 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
   isLast, 
   onAction,
   editingId,
-  isVerticalLayout 
+  isVerticalLayout,
+  isReadOnly = false
 }) => {
   const nodeRef = React.useRef<HTMLDivElement>(null);
   const isEditing = node.id === editingId;
   const hasChildren = node.children && node.children.length > 0;
   const isUnassigned = node.data?.isUnassigned || node.subLabel === 'Belum diisi' || node.id?.startsWith('unassigned-');
   const isStructuralNode = node.type === 'STRUCT' || node.type === 'ROOT' || node.type === 'GROUP' || node.type === 'LEADER' || node.type === 'CATEGORY';
-  const isActionable = (node.type === 'MEMBER' || node.type === 'STRUCT' || isUnassigned) && node.type !== 'CATEGORY';
+  const isActionable = !isReadOnly && (node.type === 'MEMBER' || node.type === 'STRUCT' || isUnassigned) && node.type !== 'CATEGORY';
 
   const handleToggle = React.useCallback((e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation();
+    if (isReadOnly) return;
     if (isActionable || hasChildren) {
       if (onAction) onAction(node, 'EDIT', nodeRef.current);
     }
-  }, [node, isActionable, hasChildren, onAction]);
+  }, [node, isActionable, hasChildren, onAction, isReadOnly]);
 
   const handleKeyDown = React.useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -172,9 +180,10 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
             isStructuralNode ? (node.type === 'CATEGORY' ? "min-h-[70px]" : "min-h-[64px]") : "min-h-[52px]",
             node.type !== 'MEMBER' && !shouldBeVertical ? "min-w-[220px] max-w-[280px]" : "w-full min-w-[220px]",
             getNodeStyles(node.type),
-            isUnassigned && cn("border-blue-500 dark:border-blue-400 bg-white dark:bg-slate-900", cfg.shadows.ambient, cfg.animations.pulse),
-            (isActionable || hasChildren) ? "cursor-pointer" : "cursor-default opacity-95",
-            (isActionable || hasChildren) && "hover:shadow-md active:scale-[0.99]",
+            isUnassigned && (isReadOnly
+              ? "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+              : cn("border-blue-500 dark:border-blue-400 bg-white dark:bg-slate-900", cfg.shadows.ambient, cfg.animations.pulse)),
+            !isReadOnly && (isActionable || hasChildren) ? "cursor-pointer hover:shadow-md active:scale-[0.99]" : "cursor-default opacity-95",
             isEditing && cfg.shadows.editing,
             node.type === 'CATEGORY' ? "border-none shadow-none" : ""
           )}
@@ -198,7 +207,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
           )}
 
           {/* Remove Member Button - Now OUTSIDE the clipping path */}
-          {!isUnassigned && 
+          {!isReadOnly && !isUnassigned && 
            (node.type === 'STRUCT' || node.type === 'MEMBER') && (
             <button
               onClick={(e) => {
@@ -225,7 +234,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
               className="w-full h-full"
             >
               {isUnassigned ? (
-                <UnassignedNode node={node} isUnassigned={true} />
+                <UnassignedNode node={node} isUnassigned={true} isReadOnly={isReadOnly} />
               ) : (
                 <div className="flex items-center w-full h-full px-0">
                   <div className="flex flex-col flex-grow min-w-0 h-full">
@@ -246,14 +255,14 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
         </motion.div>
 
         {/* Smart Magnetic Connectors */}
-        {(hasChildren || (
+        {(hasChildren || (!isReadOnly && ((
           ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU_KEPALA', 'TU', 'BKK'].includes(node.data?.roleCode) && 
           node.type === 'CATEGORY'
         ) || (
           ['BPBK', 'GERBANG'].includes(node.data?.roleCode) && 
           node.type === 'STRUCT' &&
           node.data?.isCoordinator === true
-        )) && isExpanded && (
+        )))) && isExpanded && (
           <div className="relative w-full flex flex-col items-center">
             {/* Parent vertical stem (The Magnet Stem) */}
             <div className={cn("relative w-[2px] h-12", connectorColor)}>
@@ -285,6 +294,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
                       <div className={cn(
                         "flex-1", 
                         (idx === (node.children || []).length - 1 && (
+                        isReadOnly ||
                         !(node.data?.roleCode?.includes('WAKIL') || 
                           ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU_KEPALA', 'TU', 'BKK', 'BPBK', 'GERBANG', 'KETUA_PEMBINA_TARUNA'].includes(node.data?.roleCode)
                         ) || isEditing
@@ -304,12 +314,13 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
                     onAction={onAction}
                     editingId={editingId}
                     isVerticalLayout={!isForceHorizontal && (isVerticalLayout || shouldBeVertical)}
+                    isReadOnly={isReadOnly}
                   />
                 </div>
               ))}
 
               {/* Add Button for both Vertical and Horizontal */}
-              {(
+              {!isReadOnly && (
                 node.data?.roleCode?.includes('WAKIL') || 
                 ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU_KEPALA', 'TU', 'BKK', 'BPBK', 'GERBANG', 'KETUA_PEMBINA_TARUNA'].includes(node.data?.roleCode)
               ) && !isEditing && (
@@ -387,6 +398,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
 }, (prev, next) => {
   return prev.editingId === next.editingId &&
          prev.isVerticalLayout === next.isVerticalLayout &&
+         prev.isReadOnly === next.isReadOnly &&
          prev.node === next.node;
 });
 

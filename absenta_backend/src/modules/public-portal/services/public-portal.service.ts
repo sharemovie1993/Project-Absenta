@@ -1,5 +1,6 @@
 import { prisma } from '@/utils/prisma';
 import { getRedisConnection } from '@/infra/redis/redisClient';
+import { StrukturOrganisasiService } from '@/modules/academic/struktur-organisasi/services/struktur-organisasi.service';
 import {
   PublicSchoolProfile,
   PublicStaffMember,
@@ -1233,9 +1234,11 @@ export class PublicPortalService {
    * Gelombang 4 (Final): Struktur Organisasi, Denah Spasial, E-Library Modul, & Katalog Koperasi
    */
   public async getWave4Ecosystem(tenantId: string): Promise<PublicWave4Ecosystem> {
-    const cacheKey = `pub:wave4_ecosystem_v4:${tenantId}`;
+    const cacheKey = `pub:wave4_ecosystem_v5:${tenantId}`;
     const cached = await this.getFromCache<PublicWave4Ecosystem>(cacheKey);
     if (cached) return cached;
+
+    const strukturService = new StrukturOrganisasiService();
 
     const [
       sekolahRaw,
@@ -1246,6 +1249,8 @@ export class PublicPortalService {
       presetBahanRaw,
       coopCatRaw,
       coopProdRaw,
+      orgTreeRaw,
+      jurusansRaw,
     ] = await Promise.all([
       prisma.sekolah.findFirst({ where: { tenant_id: tenantId } }).catch(() => null),
       prisma.organizationalAssignment.findMany({
@@ -1296,7 +1301,17 @@ export class PublicPortalService {
         orderBy: { name: 'asc' },
         take: 12,
       }).catch(() => []),
+      strukturService.getTree(tenantId).catch(() => ({})),
+      prisma.jurusan.findMany({
+        where: { tenant_id: tenantId },
+        select: { id: true, nama: true, singkatan: true, kode: true },
+      }).catch(() => []),
     ]);
+
+    const organizationJurusans: Record<string, string> = {};
+    for (const j of jurusansRaw) {
+      organizationJurusans[j.id] = j.singkatan || j.kode || j.nama;
+    }
 
     // 1. Build Structural Organization Chart from Real Database Assignments
     const orgList: PublicWave4Ecosystem['organization'] = [];
@@ -1444,6 +1459,9 @@ export class PublicPortalService {
 
     const result: PublicWave4Ecosystem = {
       organization: orgList,
+      organization_tree: orgTreeRaw,
+      organization_jurusans: organizationJurusans,
+      organization_jenjang: sekolahRaw?.jenjang || 'SMK',
       spatial_maps: spatialMaps,
       elibrary,
       koperasi: {

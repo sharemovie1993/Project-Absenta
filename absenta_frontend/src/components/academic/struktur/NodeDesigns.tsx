@@ -48,6 +48,7 @@ interface NodeDesignProps {
   node: any;
   isUnassigned: boolean;
   isActionable?: boolean;
+  isReadOnly?: boolean;
 }
 
 /**
@@ -177,7 +178,7 @@ export const MemberNode = React.memo<NodeDesignProps>(({ node, isActionable }) =
 /**
  * UnassignedNode: Placeholder for empty positions.
  */
-export const UnassignedNode = React.memo<NodeDesignProps>(({ node }) => {
+export const UnassignedNode = React.memo<NodeDesignProps>(({ node, isReadOnly }) => {
   const cfg = STRUKTUR_CONFIG.design.leadership;
   const tokens = STRUKTUR_CONFIG.design;
   const isLeader = node.data?.isLeader === true;
@@ -213,9 +214,9 @@ export const UnassignedNode = React.memo<NodeDesignProps>(({ node }) => {
   
   const icon = getRoleIcon(node.data?.roleCode, 14, "text-white/90 mr-1.5 flex-shrink-0");
   return (
-    <div className={cn("flex flex-col w-full h-full cursor-pointer group", cfg.minHeight)}>
+    <div className={cn("flex flex-col w-full h-full", !isReadOnly && "cursor-pointer group", cfg.minHeight)}>
       {/* Position Header - Themed based on hierarchy */}
-      <div className={cn(headerBg, "px-3 py-1 flex-1 flex items-center justify-center gap-1 transition-opacity group-hover:opacity-90")}>
+      <div className={cn(headerBg, "px-3 py-1 flex-1 flex items-center justify-center gap-1 transition-opacity", !isReadOnly && "group-hover:opacity-90")}>
         {isLeader && <Crown size={12} className="text-amber-300 drop-shadow flex-shrink-0 mr-0.5" />}
         {icon}
         <span className={cn(cfg.colors.textTop, "text-[9.5px] font-black uppercase tracking-wider block whitespace-normal break-words line-clamp-2 px-1 text-center leading-tight")}>
@@ -223,12 +224,24 @@ export const UnassignedNode = React.memo<NodeDesignProps>(({ node }) => {
         </span>
       </div>
       
-      {/* Occupant Area - White with pulse alert text */}
-      <div className={cn(cfg.colors.bottom, "px-3 flex-1 border-t border-dashed border-blue-200 dark:border-slate-700 w-full flex items-center justify-center bg-white dark:bg-slate-900 group-hover:bg-blue-50/50 dark:group-hover:bg-slate-800/80 transition-colors")}>
+      {/* Occupant Area */}
+      <div className={cn(
+        cfg.colors.bottom,
+        "px-3 flex-1 border-t w-full flex items-center justify-center bg-white dark:bg-slate-900 transition-colors",
+        isReadOnly
+          ? "border-slate-200 dark:border-slate-800"
+          : "border-dashed border-blue-200 dark:border-slate-700 group-hover:bg-blue-50/50 dark:group-hover:bg-slate-800/80"
+      )}>
         <div className="flex items-center gap-1.5">
-          <span className={cn(tokens.unassigned.colors.text, "text-[10px] font-black uppercase tracking-wider", tokens.animations.pulse)}>
-            + Klik Isi Slot
-          </span>
+          {isReadOnly ? (
+            <span className="text-[10px] font-semibold italic text-slate-400 dark:text-slate-500">
+              Belum Ditugaskan
+            </span>
+          ) : (
+            <span className={cn(tokens.unassigned.colors.text, "text-[10px] font-black uppercase tracking-wider", tokens.animations.pulse)}>
+              + Klik Isi Slot
+            </span>
+          )}
         </div>
       </div>
     </div>

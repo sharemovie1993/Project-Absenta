@@ -374,6 +374,9 @@ export interface PublicCoopProduct {
 
 export interface PublicWave4Ecosystem {
   organization: PublicOrgMember[];
+  organization_tree?: Record<string, any[]>;
+  organization_jurusans?: Record<string, string>;
+  organization_jenjang?: string;
   spatial_maps: PublicSpatialMap[];
   elibrary: PublicELibraryModule[];
   koperasi: {

@@ -29,7 +29,11 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
   activeCodes = [], 
   activeTab, 
   onNodeClick, 
-  refreshKey 
+  refreshKey,
+  isReadOnly = false,
+  initialTreeData,
+  initialJurusans,
+  jenjangOverride
 }) => {
   const queryClient = useQueryClient();
   const [editingNode, setEditingNode] = useState<{ node: TopologyNodeData; element: HTMLElement | null } | null>(null);
@@ -51,7 +55,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
   const { confirm } = useConfirm();
   const { jenjang, tingkatList } = useJenjang();
 
-  const rawJenjang = useMemo(() => (jenjang || 'SMA').toUpperCase(), [jenjang]);
+  const rawJenjang = useMemo(() => (jenjangOverride || jenjang || 'SMA').toUpperCase(), [jenjangOverride, jenjang]);
 
   const group1Codes = useMemo(() => {
     if (['SD', 'MI'].includes(rawJenjang)) return [];
@@ -69,21 +73,24 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
     return ['SARPRAS', 'TU_KEPALA', 'BKK'];
   }, [rawJenjang]);
 
-  // Queries
+  // Queries (skipped when initialTreeData / initialJurusans are provided in public read-only mode)
   const { data: treeRes, isLoading: isTreeLoading } = useQuery({
     queryKey: ['strukturTree', refreshKey, internalRefreshKey],
     queryFn: getStrukturTree,
+    enabled: !initialTreeData && !isReadOnly,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   const { data: jurRes } = useQuery({
     queryKey: ['jurusans'],
     queryFn: () => getJurusanList(),
+    enabled: !initialJurusans && !isReadOnly,
     staleTime: 30 * 60 * 1000, // 30 minutes
   });
 
-  const data = useMemo(() => treeRes?.data || {}, [treeRes]);
+  const data = useMemo(() => initialTreeData || treeRes?.data || {}, [initialTreeData, treeRes]);
   const jurusans = useMemo(() => {
+    if (initialJurusans) return initialJurusans;
     const jurMap: Record<string, string> = {};
     if (jurRes?.data) {
       (jurRes.data || []).forEach(j => {
@@ -91,7 +98,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
       });
     }
     return jurMap;
-  }, [jurRes]);
+  }, [initialJurusans, jurRes]);
 
   // Mutations
   const assignMutation = useMutation({
@@ -160,8 +167,8 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
     if (!data || Object.keys(data).length === 0) return map;
 
     const kepalaSekolahTree = transformDataToTree(['KEPALA_SEKOLAH'], data, jurusans, tingkatList);
-    const managementTree1 = transformManagementToTree(group1Codes, data, jurusans);
-    const managementTree2 = transformManagementToTree(group2Codes, data, jurusans);
+    const managementTree1 = transformManagementToTree(group1Codes, data, jurusans, { hideEmptySubSlots: isReadOnly });
+    const managementTree2 = transformManagementToTree(group2Codes, data, jurusans, { hideEmptySubSlots: isReadOnly });
     
     if (kepalaSekolahTree) {
       map['G1_TOP'] = {
@@ -191,25 +198,25 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
     }
     
     return map;
-  }, [data, jurusans, group1Codes, group2Codes, tingkatList]);
+  }, [data, jurusans, group1Codes, group2Codes, tingkatList, isReadOnly]);
 
   const currentTreeData1 = useMemo(() => {
     if (!data || Object.keys(data).length === 0 || activeTab !== 'PIMPINAN') return null;
 
     const kepalaSekolahTree = transformDataToTree(['KEPALA_SEKOLAH'], data, jurusans, tingkatList);
-    const managementTree1 = transformManagementToTree(group1Codes, data, jurusans);
+    const managementTree1 = transformManagementToTree(group1Codes, data, jurusans, { hideEmptySubSlots: isReadOnly });
     
     if (!kepalaSekolahTree) return null;
     return {
       ...kepalaSekolahTree,
       children: managementTree1?.children || []
     };
-  }, [data, jurusans, activeTab, group1Codes, tingkatList]);
+  }, [data, jurusans, activeTab, group1Codes, tingkatList, isReadOnly]);
 
   const currentTreeData2 = useMemo(() => {
     if (!data || Object.keys(data).length === 0 || activeTab !== 'PIMPINAN') return null;
 
-    const managementTree2 = transformManagementToTree(group2Codes, data, jurusans);
+    const managementTree2 = transformManagementToTree(group2Codes, data, jurusans, { hideEmptySubSlots: isReadOnly });
     if (!managementTree2) return null;
     return {
       id: 'PIMPINAN_GRP2_ROOT',
@@ -217,7 +224,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
       type: 'ROOT' as any,
       children: managementTree2.children || []
     };
-  }, [data, jurusans, activeTab, group2Codes]);
+  }, [data, jurusans, activeTab, group2Codes, isReadOnly]);
 
   const currentTreeData = useMemo(() => {
     if (!data || Object.keys(data).length === 0) return null;
@@ -239,6 +246,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
   }, [data, jurusans, activeCodes, activeTab, tingkatList]);
 
   const handleNodeAction = useCallback(async (node: TopologyNodeData | null | undefined, actionType: string = 'EDIT', element: HTMLElement | null = null) => {
+    if (isReadOnly) return;
     if (!node) {
       setEditingNode(null);
       return;
@@ -282,7 +290,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
     if (node.type === 'MEMBER' || node.type === 'STRUCT' || node.data?.isUnassigned) {
       setEditingNode({ node, element });
     }
-  }, [confirm, removeMutation]);
+  }, [confirm, removeMutation, isReadOnly]);
 
   const renderTreeOrCards = useCallback((treeData: TopologyNodeData, keyPrefix = '') => {
     if (!treeData) return null;
@@ -293,7 +301,8 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
           <StrukturMobileCardTree 
             data={treeData} 
             editingId={editingNode?.node.id}
-            onAction={handleNodeAction}
+            onAction={isReadOnly ? undefined : handleNodeAction}
+            isReadOnly={isReadOnly}
           />
         </TreeErrorBoundary>
       );
@@ -304,11 +313,12 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
         <TopologyTree 
           data={treeData} 
           editingId={editingNode?.node.id}
-          onAction={handleNodeAction}
+          onAction={isReadOnly ? undefined : handleNodeAction}
+          isReadOnly={isReadOnly}
         />
       </TreeErrorBoundary>
     );
-  }, [isMobile, editingNode?.node.id, handleNodeAction]);
+  }, [isMobile, editingNode?.node.id, handleNodeAction, isReadOnly]);
 
   const renderedGroups = useMemo(() => {
     return GROUP_CONFIG.map(group => {
@@ -377,13 +387,13 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
     );
   }, [stableTreeDataMap, renderTreeOrCards]);
 
-  if (isTreeLoading) return <TreeSkeleton />;
+  if (isTreeLoading && !initialTreeData) return <TreeSkeleton />;
   if (Object.keys(data).length === 0) return <div className="text-center p-8 text-gray-500">Tidak ada data struktur organisasi.</div>;
 
   const isTabularDiagram = activeTab && activeCodes && activeCodes.length > 0;
 
   return (
-    <div className="space-y-8 pb-20 min-h-screen" onClick={() => setEditingNode(null)} role="tree">
+    <div className={cn("space-y-8", !isReadOnly && "pb-20 min-h-screen")} onClick={() => !isReadOnly && setEditingNode(null)} role="tree">
       {isTabularDiagram ? (
         activeTab === 'PIMPINAN' ? (
           <div className="flex flex-col gap-4 sm:gap-12">
