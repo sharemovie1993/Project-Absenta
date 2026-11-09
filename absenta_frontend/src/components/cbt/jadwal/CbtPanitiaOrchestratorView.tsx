@@ -340,8 +340,8 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
 
   return (
     <div className="space-y-3 w-full max-w-full min-w-0">
-      {/* ── Satukan Flight Deck + Toolbar ke dalam 1 Ruang Utuh pada Fase 1 ── */}
-      {activeTab === 'fase_1_soal' ? (
+      {/* ── Satukan Flight Deck + Toolbar ke dalam 1 Ruang Utuh pada Fase 1 & 2 ── */}
+      {activeTab === 'fase_1_soal' && (
         <CbtBankSoalReadinessPanel
           topFlightDeck={flightDeckNode}
           bankList={rawBankList}
@@ -352,25 +352,29 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
           onProceedToNextPhase={() => setActiveTab('fase_2_ruang')}
           onRefreshBankList={() => refetchBankSoal()}
         />
-      ) : (
+      )}
+
+      {activeTab === 'fase_2_ruang' && (
+        <CbtKelasRoomTreePanel
+          topFlightDeck={flightDeckNode}
+          kelasList={scopedKelasList}
+          roomMappings={roomMappings}
+          onUpdateRoomMappings={setRoomMappings}
+          tenantId={tenantId}
+          eventName={effectiveEventName}
+          activeTpName={activeTp?.nama}
+          semester={activeSemester?.nama}
+          onProceedToNextPhase={() => setActiveTab('fase_3_jadwal')}
+        />
+      )}
+
+      {activeTab !== 'fase_1_soal' && activeTab !== 'fase_2_ruang' && (
         <>
           <div className="rounded-2xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs border border-slate-200/90 dark:border-slate-800 overflow-hidden">
             {flightDeckNode}
           </div>
 
           <div className="transition-opacity duration-200">
-            {activeTab === 'fase_2_ruang' && (
-              <CbtKelasRoomTreePanel
-                kelasList={scopedKelasList}
-                roomMappings={roomMappings}
-                onUpdateRoomMappings={setRoomMappings}
-                tenantId={tenantId}
-                eventName={effectiveEventName}
-                activeTpName={activeTp?.nama}
-                semester={activeSemester?.nama}
-                onProceedToNextPhase={() => setActiveTab('fase_3_jadwal')}
-              />
-            )}
 
         {activeTab === 'fase_3_jadwal' && (
           <div className="space-y-2.5">

@@ -29,6 +29,7 @@ import { CbtKartuUjianPrintModal } from './CbtKartuUjianPrintModal';
 import { CbtDenahModal } from './CbtDenahModal';
 
 interface CbtKelasRoomTreePanelProps {
+  topFlightDeck?: React.ReactNode;
   kelasList: any[];
   roomMappings: KelasRoomMapping[];
   onUpdateRoomMappings: (mappings: KelasRoomMapping[]) => void;
@@ -40,6 +41,7 @@ interface CbtKelasRoomTreePanelProps {
 }
 
 export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
+  topFlightDeck,
   kelasList,
   roomMappings,
   onUpdateRoomMappings,
@@ -166,177 +168,155 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
   };
 
   return (
-    <Card className="p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl shadow-2xs space-y-4 w-full max-w-full min-w-0">
-      {/* ── 1. Overview & Action Toolbar ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
-              <DoorOpen size={18} />
+    <div className="space-y-3 w-full max-w-full min-w-0">
+      {/* ── 1 RUANG SEAMLESS FLIGHT DECK + TOOLBAR ── */}
+      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs divide-y divide-slate-100 dark:divide-slate-800/80 overflow-hidden">
+        {topFlightDeck}
+
+        {/* ── Single-Row Unified Master Filter & Action Toolbar (1 Ruang, Label Ringkas Maks 2 Kata) ── */}
+        <div className="p-2 sm:p-2.5 bg-slate-50/50 dark:bg-slate-800/30 flex flex-col xl:flex-row xl:items-center justify-between gap-2">
+          {/* Left: Search Box + Tingkat Chips (Label Maks 2 Kata) */}
+          <div className="flex items-center gap-2 flex-wrap xl:flex-nowrap">
+            {/* Search */}
+            <div className="relative w-full sm:w-48 lg:w-56 shrink-0">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari rombel/ruang..."
+                aria-label="Cari rombel atau ruang"
+                className="w-full pl-8 pr-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 shadow-2xs"
+              />
+            </div>
+
+            {/* Tingkat Filter Chips */}
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar shrink-0">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-0.5">Tingkat:</span>
+              <button
+                type="button"
+                onClick={() => setFilterTingkat('ALL')}
+                className={cn(
+                  'px-2 py-0.5 text-[11px] font-bold rounded-md border transition-all cursor-pointer whitespace-nowrap',
+                  filterTingkat === 'ALL'
+                    ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900 shadow-2xs'
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                )}
+              >
+                Semua ({roomMappings.length})
+              </button>
+              {tingkatList.map((t) => {
+                const count = roomMappings.filter((m) => m.tingkat === t).length;
+                const isSelected = filterTingkat === t;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setFilterTingkat(t)}
+                    className={cn(
+                      'px-2 py-0.5 text-[11px] font-bold rounded-md border transition-all cursor-pointer whitespace-nowrap',
+                      isSelected
+                        ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900 shadow-2xs'
+                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                    )}
+                  >
+                    Kelas {t} ({count})
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Counter Badge */}
+            <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60 shrink-0">
+              <CheckCircle2 size={11} />
+              <span>{mappedCount}/{totalClasses} Terpetakan</span>
             </span>
-            <h4 className="text-sm font-black text-slate-900 dark:text-slate-100">
-              Ploting Ruang Ujian
-            </h4>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Atur penempatan kode ruang fisik untuk setiap rombel.
-          </p>
-        </div>
 
-        {/* Stats Strip */}
-        <div className="flex items-center gap-2 flex-wrap text-xs">
-          <Badge variant="outline" className="px-2.5 py-1 font-bold border-indigo-200 bg-indigo-50 text-indigo-700">
-            <School size={13} className="mr-1" />
-            <span>{totalClasses} Rombel</span>
-          </Badge>
-          <Badge variant="outline" className="px-2.5 py-1 font-bold border-emerald-200 bg-emerald-50 text-emerald-700">
-            <CheckCircle2 size={13} className="mr-1" />
-            <span>{mappedCount}/{totalClasses} Ruang Terpetakan</span>
-          </Badge>
-        </div>
-      </div>
+          {/* Right: Format + Action Buttons */}
+          <div className="flex items-center gap-1.5 flex-wrap xl:flex-nowrap justify-between xl:justify-end shrink-0">
+            {/* Format Selector */}
+            <div className="flex items-center gap-1 shrink-0">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Format:</span>
+              {['R.', 'Ruang '].map((pf) => (
+                <button
+                  key={pf}
+                  type="button"
+                  onClick={() => setRoomPrefix(pf)}
+                  className={cn(
+                    'px-1.5 py-0.5 text-[11px] font-bold rounded-md border transition-all cursor-pointer whitespace-nowrap',
+                    roomPrefix === pf
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                  )}
+                >
+                  {pf}xx
+                </button>
+              ))}
+            </div>
 
-      {/* ── 2. Action Controls & Prefix Config ── */}
-      <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">
-            Format:
-          </span>
-          <div className="flex items-center gap-1">
-            {['R.', 'Ruang ', 'R-LAB-'].map((pf) => (
-              <button
-                key={pf}
+            {/* Action Buttons: Auto, Simpan, Label, Denah, Lanjut */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAutoPlottingRooms}
+              className="text-xs h-7 px-2 font-bold text-indigo-700 border-indigo-300 bg-white hover:bg-indigo-50 cursor-pointer shadow-2xs shrink-0"
+              title="Plot otomatis urutan slot R.01 s/d R.n"
+            >
+              <Wand2 size={11} className="mr-1 text-indigo-600" />
+              <span>Auto Plot</span>
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleSaveToStorage}
+              className="text-xs h-7 px-2 font-bold text-slate-700 dark:text-slate-200 border-slate-300 bg-white hover:bg-slate-100 cursor-pointer shadow-2xs shrink-0"
+              title="Simpan ploting ruang"
+            >
+              <Save size={11} className="mr-1 text-slate-600" />
+              <span>Simpan</span>
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handlePrintAllLabels}
+              className="text-xs h-7 px-2 font-bold text-emerald-700 border-emerald-300 bg-emerald-50/70 hover:bg-emerald-100 cursor-pointer shadow-2xs shrink-0"
+              title="Cetak label ruang ujian seluruh rombel"
+            >
+              <Printer size={11} className="mr-1" />
+              <span>Cetak Label</span>
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsDenahModalOpen(true)}
+              className="text-xs h-7 px-2 font-bold text-indigo-700 border-indigo-300 bg-indigo-50/70 hover:bg-indigo-100 cursor-pointer shadow-2xs shrink-0"
+              title="Buka denah interaktif lokasi ujian dan kampus"
+            >
+              <Map size={11} className="mr-1 text-indigo-600" />
+              <span>Denah</span>
+            </Button>
+
+            {onProceedToNextPhase && (
+              <Button
                 type="button"
-                onClick={() => setRoomPrefix(pf)}
-                className={cn(
-                  'px-2 py-0.5 text-xs font-bold rounded-md border transition-all cursor-pointer',
-                  roomPrefix === pf
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
-                )}
+                variant="primary"
+                size="sm"
+                onClick={onProceedToNextPhase}
+                className="text-xs h-7 px-2.5 font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs cursor-pointer flex items-center gap-1 shrink-0"
               >
-                {pf}xx
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleAutoPlottingRooms}
-            className="text-xs h-8 px-3 font-bold text-indigo-700 border-indigo-300 bg-white dark:bg-slate-900 hover:bg-indigo-50 cursor-pointer"
-            title="Generate otomatis urutan slot R.01 s/d R.n sesuai urutan kelas"
-          >
-            <Wand2 size={13} className="mr-1.5 text-indigo-600" />
-            <span>Plot Otomatis</span>
-          </Button>
-
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={handleSaveToStorage}
-            className="text-xs h-8 px-3.5 font-bold bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-2xs"
-            title="Simpan ploting ruang"
-          >
-            <Save size={13} className="mr-1.5" />
-            <span>Simpan</span>
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handlePrintAllLabels}
-            className="text-xs h-8 px-3 font-bold text-emerald-700 border-emerald-300 bg-emerald-50/70 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300 cursor-pointer"
-            title="Cetak label ruang ujian seluruh rombel (A4 Landscape)"
-          >
-            <Printer size={13} className="mr-1.5" />
-            <span>Cetak Label</span>
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setIsDenahModalOpen(true)}
-            className="text-xs h-8 px-3 font-bold text-indigo-700 border-indigo-300 bg-indigo-50/70 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:border-indigo-800 dark:text-indigo-300 cursor-pointer shadow-2xs"
-            title="Buka denah interaktif lokasi ujian dan kampus"
-          >
-            <Map size={13} className="mr-1.5 text-indigo-600" />
-            <span>Denah Ujian</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* ── 3. Toolbar Pencarian & Filter Tingkat ── */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="relative w-full sm:w-72">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari rombel, slot ruang (R.01), atau jurusan..."
-            aria-label="Cari rombel atau ruang"
-            className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
-          />
-        </div>
-
-        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-          <button
-            type="button"
-            onClick={() => setFilterTingkat('ALL')}
-            className={cn(
-              'px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer whitespace-nowrap',
-              filterTingkat === 'ALL'
-                ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900'
-                : 'bg-white dark:bg-slate-900 text-slate-600 border-slate-200 dark:border-slate-800'
+                <span>Lanjut</span>
+                <ArrowRight size={11} />
+              </Button>
             )}
-          >
-            Semua Tingkat ({roomMappings.length})
-          </button>
-          {tingkatList.map((t) => {
-            const count = roomMappings.filter((m) => m.tingkat === t).length;
-            const isSelected = filterTingkat === t;
-            const activeBg =
-              t === 10
-                ? 'bg-sky-600 text-white border-sky-600 shadow-2xs'
-                : t === 11
-                ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
-                : t === 12
-                ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
-                : 'bg-purple-600 text-white border-purple-600 shadow-2xs';
-
-            const dotColor =
-              t === 10
-                ? 'bg-sky-400'
-                : t === 11
-                ? 'bg-emerald-400'
-                : t === 12
-                ? 'bg-amber-400'
-                : 'bg-purple-400';
-
-            return (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setFilterTingkat(t)}
-                className={cn(
-                  'px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5',
-                  isSelected
-                    ? activeBg
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300'
-                )}
-              >
-                <span className={cn('w-2 h-2 rounded-full', isSelected ? 'bg-white' : dotColor)} />
-                <span>Tingkat {formatTingkatRomawi(t)} ({count})</span>
-              </button>
-            );
-          })}
+          </div>
         </div>
       </div>
 
@@ -547,23 +527,6 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
       )}
 
       {/* ── 5. Footer Navigasi Antar-Fase ── */}
-      {onProceedToNextPhase && (
-        <div className="pt-4 border-t border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <p className="text-xs text-slate-500">
-            Pastikan seluruh kode slot ruang (R.01 s/d R.n) sudah sesuai sebelum masuk ke penjadwalan.
-          </p>
-          <Button
-            type="button"
-            variant="primary"
-            onClick={onProceedToNextPhase}
-            className="flex items-center gap-2 cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white shrink-0 text-xs px-4 py-2 shadow-2xs"
-          >
-            <span>Lanjut ke Fase 3: Matriks Hari &amp; Sesi</span>
-            <ArrowRight size={14} />
-          </Button>
-        </div>
-      )}
-
       {/* ── 6. Modal Printout Label Ruang (Universal Document Printing) ── */}
       {isPrintModalOpen && (
         <CbtLabelRuangPrintModal
@@ -604,6 +567,6 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
           isReadOnly={false}
         />
       )}
-    </Card>
+    </div>
   );
 };
