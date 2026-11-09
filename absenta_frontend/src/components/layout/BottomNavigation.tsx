@@ -10,11 +10,13 @@ import {
   FileText, 
   FolderOpen, 
   Laptop, 
-  CheckSquare 
+  CheckSquare,
+  Eye,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils';
 import { useBottomNavTabs } from './bottom-nav/useBottomNavTabs';
+import { useMyPengawasCbt } from '@/hooks/useMyPengawasCbt';
 import { BottomNavTabItem } from './bottom-nav/BottomNavTabItem';
 import { MobileAccountSheet } from './bottom-nav/MobileAccountSheet';
 import { BottomNavNotchBackground } from './bottom-nav/BottomNavNotchBackground';
@@ -60,6 +62,9 @@ export const BottomNavigation: React.FC = React.memo(() => {
     setPillar,
     shouldHideNav,
   } = useBottomNavTabs();
+
+  // 🔍 Deteksi Status Penugasan Pengawas CBT (SSOT useMyPengawasCbt)
+  const { isPengawasCbt, pengawasCbtActiveCount } = useMyPengawasCbt();
 
   const isSidebarOpen = useMobileSubtabSidebarStore((state) => state.isOpen);
   const registeredScopes = useMobileSubtabSidebarStore((state) => state.registeredScopes);
@@ -152,13 +157,25 @@ export const BottomNavigation: React.FC = React.memo(() => {
       // Untuk Layer 1 Guru/Portal: Tambahkan juga pintasan KBM operasional agar komprehensif
       if (activeEcosystem === 'portal') {
         const kbmOps: UniversalSubtabItem[] = [
-          { id: 'kbm_jadwal', label: 'Jadwal Mengajar', shortLabel: 'KBM', icon: Clock, category: 'operasional', targetPath: '/dashboard?tab=jadwal' },
-          { id: 'kbm_presensi', label: 'Presensi KBM Harian', shortLabel: 'Presensi', icon: CheckCircle2, category: 'operasional', targetPath: '/dashboard?tab=manual_presensi' },
-          { id: 'kbm_jurnal', label: 'Jurnal Mengajar Guru', shortLabel: 'Jurnal', icon: FileText, category: 'operasional', targetPath: '/kurikulum/jurnal' },
-          { id: 'kbm_perangkat', label: 'Perangkat Ajar Saya', shortLabel: 'Perangkat', icon: FolderOpen, category: 'operasional', targetPath: '/dashboard?tab=ringkasan&subtab=perangkat' },
-          { id: 'kbm_cbt', label: 'Bank Soal CBT Online', shortLabel: 'CBT', icon: Laptop, category: 'operasional', targetPath: '/dashboard?tab=ringkasan&subtab=cbt' },
-          { id: 'kbm_nilai', label: 'Buku Nilai Guru', shortLabel: 'Nilai', icon: GraduationCap, category: 'operasional', targetPath: '/rapor/input-nilai' },
-          { id: 'kbm_tugas', label: 'Pusat Tugas & Peringatan', shortLabel: 'Tugas', icon: CheckSquare, category: 'operasional', targetPath: '/dashboard?tab=action_hub' },
+          { id: 'jadwal', label: 'Jadwal Mengajar', shortLabel: 'KBM', icon: Clock, category: 'operasional', targetPath: '/dashboard?tab=jadwal' },
+          { id: 'manual_presensi', label: 'Presensi KBM Harian', shortLabel: 'Presensi', icon: CheckCircle2, category: 'operasional', targetPath: '/dashboard?tab=manual_presensi' },
+          { id: 'jurnal', label: 'Jurnal Mengajar Guru', shortLabel: 'Jurnal', icon: FileText, category: 'operasional', targetPath: '/kurikulum/jurnal' },
+          { id: 'perangkat', label: 'Perangkat Ajar Saya', shortLabel: 'Perangkat', icon: FolderOpen, category: 'operasional', targetPath: '/dashboard?tab=ringkasan&subtab=perangkat' },
+          { id: 'cbt', label: 'Bank Soal CBT Online', shortLabel: 'CBT', icon: Laptop, category: 'operasional', targetPath: '/dashboard?tab=ringkasan&subtab=cbt' },
+          ...(isPengawasCbt ? [
+            {
+              id: 'pengawas_cbt',
+              label: 'Pengawas Ujian CBT',
+              shortLabel: 'Pengawas CBT',
+              icon: Eye,
+              badge: pengawasCbtActiveCount > 0 ? pengawasCbtActiveCount : undefined,
+              badgeColor: 'bg-emerald-500 text-white',
+              category: 'operasional',
+              targetPath: '/dashboard?tab=ringkasan&subtab=pengawas_cbt',
+            }
+          ] : []),
+          { id: 'nilai', label: 'Buku Nilai Guru', shortLabel: 'Nilai', icon: GraduationCap, category: 'operasional', targetPath: '/rapor/input-nilai' },
+          { id: 'tugas', label: 'Pusat Tugas & Peringatan', shortLabel: 'Tugas', icon: CheckSquare, category: 'operasional', targetPath: '/dashboard?tab=action_hub' },
         ];
         kbmOps.forEach((op) => {
           if (!seen.has(op.id)) {
@@ -188,6 +205,22 @@ export const BottomNavigation: React.FC = React.memo(() => {
         });
       }
     });
+
+    // Selalu pastikan akses Pengawas CBT tersedia di drawer jika user terdaftar sebagai pengawas
+    if (isPengawasCbt && !seen.has('pengawas_cbt')) {
+      seen.add('pengawas_cbt');
+      list.push({
+        id: 'pengawas_cbt',
+        label: 'Pengawas Ujian CBT',
+        shortLabel: 'Pengawas CBT',
+        icon: Eye,
+        badge: pengawasCbtActiveCount > 0 ? pengawasCbtActiveCount : undefined,
+        badgeColor: 'bg-emerald-500 text-white',
+        category: (activeEcosystem === 'tu' ? 'persuratan' : 'operasional') as any,
+        targetPath: '/dashboard?tab=ringkasan&subtab=pengawas_cbt',
+      });
+    }
+
     return list;
   }, [activeTabsList, activeEcosystem]);
 
@@ -332,7 +365,18 @@ export const BottomNavigation: React.FC = React.memo(() => {
           isFallback={true}
           tabs={fallbackDrawerTabs}
           categories={fallbackCategories}
-          activeTab={currentSubtab || (activeEcosystem === 'kaprog' ? 'beranda' : 'ringkasan')}
+          activeTab={
+            currentSubtab ||
+            (currentTab === 'action_hub'
+              ? 'tugas'
+              : currentTab === 'jadwal'
+              ? 'jadwal'
+              : currentTab === 'manual_presensi'
+              ? 'manual_presensi'
+              : activeEcosystem === 'kaprog'
+              ? 'beranda'
+              : 'ringkasan')
+          }
           onSelectTab={handleSelectFallbackTab}
         />
       )}

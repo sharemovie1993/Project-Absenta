@@ -43,6 +43,7 @@ import { BebanMengajarWidget } from '../widgets/BebanMengajarWidget';
 import { PengajuanIzinGuruModal } from '../profil/PengajuanIzinGuruModal';
 import { useTenant } from '../../../../hooks/useTenant';
 import { toLocalDate, formatLocalTimeFromISO } from '../../../../utils/attendance/time';
+import { useMyPengawasCbt } from '@/hooks/useMyPengawasCbt';
 import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 import { useMobileAccountSheetStore } from '@/store/mobileAccountSheetStore';
 import { safeArr } from '@/components/kurikulum/dashboard/DashboardComponents';
@@ -246,36 +247,8 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
     }).length;
   }, [mySidangData]);
 
-  // ── Query Adaptif: Guru Sebagai Pengawas Ruang / Proktor Ujian CBT ──
-  const { data: myPengawasCbtData } = useQuery({
-    queryKey: ['my-pengawas-cbt-schedules', effectiveGuruId],
-    queryFn: async () => {
-      if (!effectiveGuruId) return [];
-      const res = await cbtApi.getJadwalList({ limit: 50, guru_id: effectiveGuruId }).catch(() => null);
-      const list = res?.items || [];
-      return list.filter((item) => {
-        const cfg = item.setting_keamanan;
-        // KETAT: Sub-tab Pengawas Ujian CBT HANYA muncul jika guru BENAR-BENAR terdaftar di ploting pengawas/proktor
-        return Boolean(
-          cfg &&
-            (cfg.pengawas_1_id === effectiveGuruId ||
-              cfg.pengawas_2_id === effectiveGuruId ||
-              cfg.proktor_id === effectiveGuruId)
-        );
-      });
-    },
-    enabled: Boolean(effectiveGuruId) && isActualTeachingStaff,
-    staleTime: 30 * 1000,
-  });
-
-  const isPengawasCbt = (myPengawasCbtData?.length ?? 0) > 0;
-  const pengawasCbtActiveCount = useMemo(() => {
-    if (!myPengawasCbtData) return 0;
-    const activeOrDraft = myPengawasCbtData.filter(
-      (j) => j.status === 'ACTIVE' || j.status === 'DRAFT' || j.status === 'PAUSED'
-    ).length;
-    return activeOrDraft > 0 ? activeOrDraft : myPengawasCbtData.length;
-  }, [myPengawasCbtData]);
+  // ── Query Adaptif: Guru Sebagai Pengawas Ruang / Proktor Ujian CBT (SSOT useMyPengawasCbt) ──
+  const { isPengawasCbt, pengawasCbtActiveCount, myPengawasCbtData } = useMyPengawasCbt();
 
   const validSubTabs: TeacherSubTabId[] = useMemo(() => [
     'agenda',
