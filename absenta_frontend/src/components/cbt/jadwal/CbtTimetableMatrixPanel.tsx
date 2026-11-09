@@ -297,6 +297,9 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
       if (!bankId) return;
       const parts = key.split('_');
       const tingkat = Number(parts[2]);
+      if (targetTingkat && targetTingkat.length > 0 && !targetTingkat.includes(tingkat)) {
+        return;
+      }
       const rombelCount = generationMode === 'per_tingkat' ? 1 : (groupedRoomsByTingkat.get(tingkat)?.length || 0);
 
       const isPublished = (publishedSessionsByBankId.get(bankId)?.length || 0) > 0;
@@ -308,7 +311,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
     });
 
     return { newGeneratedCount: newCount, alreadyPublishedCount: publishedCount };
-  }, [matrix, generationMode, groupedRoomsByTingkat, publishedSessionsByBankId]);
+  }, [matrix, generationMode, groupedRoomsByTingkat, publishedSessionsByBankId, targetTingkat]);
 
   const estimatedGeneratedCount = useMemo(() => {
     return newGeneratedCount + alreadyPublishedCount;
@@ -336,6 +339,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
         tokenRefreshInterval: activeEvent?.token_refresh_interval ?? 15,
         strictBrowserGuard: activeEvent?.strict_browser_guard ?? true,
         eventId: activeEvent?.id,
+        targetTingkat,
       });
 
       if (payloads.length === 0) {

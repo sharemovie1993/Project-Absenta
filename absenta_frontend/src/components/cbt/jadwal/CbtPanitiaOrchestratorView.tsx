@@ -400,6 +400,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
                 isLoadingJadwal={isLoadingJadwal}
                 eventName={effectiveEventName}
                 targetTingkat={effectiveTargetTingkat}
+                activeEvent={activeEvent}
                 onProceedToNextPhase={() => setActiveTab('fase_5_monitor')}
               />
             )}

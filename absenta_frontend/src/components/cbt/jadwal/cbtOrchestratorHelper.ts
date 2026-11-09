@@ -224,6 +224,7 @@ export interface BuildMassScheduleParams {
   tokenRefreshInterval?: number;
   strictBrowserGuard?: boolean;
   eventId?: string;
+  targetTingkat?: number[];
 }
 
 export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[] {
@@ -240,6 +241,7 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
     tokenRefreshInterval = 15,
     strictBrowserGuard = true,
     eventId,
+    targetTingkat,
   } = params;
 
   const bankMap = new Map(bankList.map((b) => [b.id, b]));
@@ -259,6 +261,11 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
     day.sessions.forEach((session) => {
       // Loop seluruh tingkat yang tersedia di roomMappings
       Array.from(groupedRoomsByTingkat.keys()).forEach((tingkat) => {
+        // Kepatuhan Regulasi Event: Abaikan tingkat di luar sasaran event aktif
+        if (targetTingkat && targetTingkat.length > 0 && !targetTingkat.includes(tingkat)) {
+          return;
+        }
+
         const matrixKey = `${day.day_index}_${session.session_index}_${tingkat}`;
         const bankSoalId = matrix[matrixKey];
         if (!bankSoalId) return;

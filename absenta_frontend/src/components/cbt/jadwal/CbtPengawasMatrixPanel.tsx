@@ -23,7 +23,7 @@ import {
 import useConfirm from '@/hooks/useConfirm';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
-import type { CbtJadwalUjian } from '@/types/cbt.types';
+import type { CbtJadwalUjian, CbtEventItem } from '@/types/cbt.types';
 import {
   formatLocalTimeFromISO,
   getTimezone,
@@ -54,6 +54,7 @@ interface CbtPengawasMatrixPanelProps {
   onProceedToNextPhase?: () => void;
   eventName?: string;
   targetTingkat?: number[];
+  activeEvent?: CbtEventItem | null;
 }
 
 export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
@@ -63,6 +64,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
   onProceedToNextPhase,
   eventName,
   targetTingkat,
+  activeEvent,
 }) => {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -256,11 +258,43 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
     return codeA.localeCompare(codeB);
   };
 
+  // ── KEPATUHAN EVENT PANITIA & SASARAN TINGKAT ──
+  const effectiveJadwalList = useMemo(() => {
+    return (jadwalList || []).filter((j) => {
+      // 1. Jika event_id tertera, harus cocok dengan activeEvent
+      if (activeEvent?.id && j.setting_keamanan?.event_id) {
+        if (j.setting_keamanan.event_id !== activeEvent.id) return false;
+      }
+      // 2. Kepatuhan Target Tingkat Event
+      if (targetTingkat && targetTingkat.length > 0) {
+        const info = parseRoomAndClass(j);
+        if (!targetTingkat.includes(info.tingkat)) return false;
+      }
+      return true;
+    });
+  }, [jadwalList, activeEvent?.id, targetTingkat, parseRoomAndClass]);
+
+  // Pilihan Tab Filter Tingkat Dinamis Sesuai Target Event (Menghilangkan Kelas di Luar Sasaran)
+  const tingkatFilterOptions = useMemo(() => {
+    const options: Array<{ val: 'ALL' | 10 | 11 | 12 | 13; label: string }> = [
+      { val: 'ALL', label: 'Semua' },
+    ];
+    const romanMap: Record<number, string> = { 10: 'X', 11: 'XI', 12: 'XII', 13: 'XIII' };
+    const effectiveTingkats = (targetTingkat && targetTingkat.length > 0)
+      ? [...targetTingkat].sort((a, b) => a - b)
+      : [10, 11, 12];
+
+    effectiveTingkats.forEach((tk) => {
+      options.push({ val: tk as any, label: romanMap[tk] || String(tk) });
+    });
+    return options;
+  }, [targetTingkat]);
+
   // ── 3. DETEKSI BENTROK JAM PENGAWAS (CONFLICT GUARD) ──
   const conflictJadwalIds = useMemo(() => {
     const conflicts = new Set<string>();
-    for (let i = 0; i < jadwalList.length; i++) {
-      const a = jadwalList[i];
+    for (let i = 0; i < effectiveJadwalList.length; i++) {
+      const a = effectiveJadwalList[i];
       const draftA = plottingDrafts[a.id];
       const pA = draftA?.pengawas_1_id;
       if (!pA) continue;
@@ -268,8 +302,8 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
       const startA = new Date(a.tanggal_mulai).getTime();
       const endA = new Date(a.tanggal_selesai).getTime();
 
-      for (let k = i + 1; k < jadwalList.length; k++) {
-        const b = jadwalList[k];
+      for (let k = i + 1; k < effectiveJadwalList.length; k++) {
+        const b = effectiveJadwalList[k];
         const draftB = plottingDrafts[b.id];
         const pB = draftB?.pengawas_1_id;
         if (!pB || pA !== pB) continue;
@@ -284,7 +318,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
       }
     }
     return conflicts;
-  }, [jadwalList, plottingDrafts]);
+  }, [effectiveJadwalList, plottingDrafts]);
 
   // ── 4. ANALITIK BEBAN KERJA GURU (WORKLOAD RADAR) ──
   const workloadStats = useMemo(() => {
@@ -293,7 +327,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
       guruSessionCount[g.id] = 0;
     });
 
-    jadwalList.forEach((j) => {
+    effectiveJadwalList.forEach((j) => {
       const draft = plottingDrafts[j.id];
       const p1 = draft?.pengawas_1_id || j.setting_keamanan?.pengawas_1_id;
       if (p1 && guruSessionCount[p1] !== undefined) {
@@ -313,7 +347,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
       }
     });
 
-    const totalPlottedSessions = jadwalList.filter((j) => {
+    const totalPlottedSessions = effectiveJadwalList.filter((j) => {
       const draft = plottingDrafts[j.id];
       return !!(draft?.pengawas_1_id || j.setting_keamanan?.pengawas_1_id);
     }).length;
@@ -323,17 +357,17 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
       assignedCount: assignedTeachers.length,
       unassignedTeachers,
       totalPlottedSessions,
-      totalSesi: jadwalList.length,
-      isFullyPlotted: totalPlottedSessions === jadwalList.length && jadwalList.length > 0,
+      totalSesi: effectiveJadwalList.length,
+      isFullyPlotted: totalPlottedSessions === effectiveJadwalList.length && effectiveJadwalList.length > 0,
     };
-  }, [guruList, jadwalList, plottingDrafts]);
+  }, [guruList, effectiveJadwalList, plottingDrafts]);
 
   // ── 5. LIST HARI & SESI DINAMIS (TIMELINE LENS) ──
   const { availableDays, availableSessions } = useMemo(() => {
     const dayMap = new Map<string, string>();
     const sessionMap = new Map<string, string>();
 
-    jadwalList.forEach((j) => {
+    effectiveJadwalList.forEach((j) => {
       const dKey = j.tanggal_mulai ? j.tanggal_mulai.split('T')[0] : '';
       if (dKey && !dayMap.has(dKey)) {
         dayMap.set(dKey, formatLocalDateIndo(j.tanggal_mulai));
@@ -354,11 +388,11 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
     const sessions = Array.from(sessionMap.entries()).map(([k, label]) => ({ key: k, label }));
 
     return { availableDays: days, availableSessions: sessions };
-  }, [jadwalList]);
+  }, [effectiveJadwalList]);
 
   // ── 6. FILTER & SORT HIERARKIS TABEL ──
   const sortedAndFilteredJadwal = useMemo(() => {
-    const filtered = jadwalList.filter((j) => {
+    const filtered = effectiveJadwalList.filter((j) => {
       const draft = plottingDrafts[j.id];
       const info = parseRoomAndClass(j, draft?.ruang_ujian);
       const isConflict = conflictJadwalIds.has(j.id);
@@ -419,7 +453,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
       return compareRoomCodes(infoA.roomCode, infoB.roomCode);
     });
   }, [
-    jadwalList,
+    effectiveJadwalList,
     plottingDrafts,
     conflictJadwalIds,
     statusFilter,
@@ -791,15 +825,10 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
               ))}
             </div>
 
-            {/* Tingkat Filter */}
+            {/* Tingkat Filter Dinamis Sesuai Target Event */}
             <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0">
               <span className="text-[10px] font-bold text-slate-400 uppercase px-1.5">TK:</span>
-              {[
-                { val: 'ALL', label: 'Semua' },
-                { val: 10, label: 'X' },
-                { val: 11, label: 'XI' },
-                { val: 12, label: 'XII' },
-              ].map((tk) => (
+              {tingkatFilterOptions.map((tk) => (
                 <button
                   key={String(tk.val)}
                   type="button"
