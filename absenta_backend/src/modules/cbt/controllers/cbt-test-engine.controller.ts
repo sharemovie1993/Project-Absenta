@@ -58,7 +58,12 @@ export class CbtTestEngineController {
       if (error instanceof z.ZodError) {
         return sendError(reply, 400, error.errors.map((e) => e.message).join(', '));
       }
-      return sendError(reply, 400, error.message || 'Token tidak valid');
+      return reply.status(error.statusCode || 400).send({
+        success: false,
+        message: error.message || 'Token tidak valid',
+        code: error.code || 'TOKEN_INVALID',
+        details: error.details || null,
+      });
     }
   }
 
@@ -82,7 +87,12 @@ export class CbtTestEngineController {
       if (error instanceof z.ZodError) {
         return sendError(reply, 400, error.errors.map((e) => e.message).join(', '));
       }
-      return sendError(reply, 400, error.message || 'Gagal memulai sesi ujian');
+      return reply.status(error.statusCode || 400).send({
+        success: false,
+        message: error.message || 'Gagal memulai sesi ujian',
+        code: error.code || 'SESSION_START_FAILED',
+        details: error.details || null,
+      });
     }
   }
 

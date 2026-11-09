@@ -12,6 +12,9 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
+  AlertCircle,
+  Sparkles,
+  Users,
   ArrowLeft,
   ArrowRight,
   Maximize2,
@@ -30,6 +33,7 @@ import { CbtOptionsRenderer } from '@/components/cbt/common/CbtOptionsRenderer';
 import { UniversalStudentIdentity } from '@/components/common/UniversalStudentIdentity';
 import { ErrorBoundary as InfraErrorBoundary } from '@/components/common/ErrorBoundary';
 import { useAuthStore } from '@/store/authStore';
+import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 export default function CbtExamRoomPage() {
@@ -41,6 +45,12 @@ export default function CbtExamRoomPage() {
   const [tokenInput, setTokenInput] = useState('');
   const [examOverview, setExamOverview] = useState<any>(null);
   const [loadingVerify, setLoadingVerify] = useState(false);
+  const [errorDiagnosis, setErrorDiagnosis] = useState<{
+    code: string;
+    message: string;
+    hint?: string;
+    details?: any;
+  } | null>(null);
 
   // Exam Active Session States
   const [jadwalId, setJadwalId] = useState('');
@@ -84,12 +94,23 @@ export default function CbtExamRoomPage() {
 
     try {
       setLoadingVerify(true);
+      setErrorDiagnosis(null);
       const res = await cbtApi.verifyToken(tokenInput.trim().toUpperCase());
       setExamOverview(res);
       setJadwalId(res.jadwal_id);
       setStep('CONFIRMATION');
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Token ujian tidak valid atau sesi belum dimulai');
+      const data = err.response?.data;
+      const msg = data?.message || 'Token ujian tidak valid atau sesi belum dimulai';
+      const code = data?.code || 'TOKEN_INVALID';
+      const hint = data?.details?.hint;
+      setErrorDiagnosis({
+        code,
+        message: msg,
+        hint,
+        details: data?.details,
+      });
+      toast.error(msg, { duration: 5000 });
     } finally {
       setLoadingVerify(false);
     }
@@ -390,7 +411,10 @@ export default function CbtExamRoomPage() {
                   type="text"
                   maxLength={6}
                   value={tokenInput}
-                  onChange={(e) => setTokenInput(e.target.value.toUpperCase())}
+                  onChange={(e) => {
+                    setTokenInput(e.target.value.toUpperCase());
+                    if (errorDiagnosis) setErrorDiagnosis(null);
+                  }}
                   placeholder="TOKEN"
                   className="w-full text-center tracking-[0.35em] font-mono text-2xl font-bold py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-indigo-600 dark:text-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase placeholder:text-slate-400 dark:placeholder:text-slate-600 shadow-2xs"
                   aria-label="Input Token Ujian CBT"
@@ -403,11 +427,73 @@ export default function CbtExamRoomPage() {
                 type="submit"
                 variant="primary"
                 disabled={loadingVerify || tokenInput.length < 4}
-                className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 font-bold text-sm text-white rounded-xl shadow-md transition-all"
+                className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 font-bold text-sm text-white rounded-xl shadow-md transition-all cursor-pointer"
               >
                 {loadingVerify ? 'Memeriksa Token...' : 'Verifikasi Token'}
               </Button>
             </form>
+
+            {/* Structured Real-Time Diagnostic Box */}
+            {errorDiagnosis && (
+              <div
+                className={cn(
+                  'text-left p-3.5 rounded-xl border space-y-2 text-xs transition-all animate-in fade-in zoom-in-95',
+                  errorDiagnosis.code === 'SESSION_DRAFT'
+                    ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/60 text-amber-900 dark:text-amber-200'
+                    : errorDiagnosis.code === 'WRONG_CLASS'
+                      ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-700/60 text-purple-900 dark:text-purple-200'
+                      : errorDiagnosis.code === 'REMEDIAL_RESTRICTED'
+                        ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700/60 text-indigo-900 dark:text-indigo-200'
+                        : errorDiagnosis.code === 'ALREADY_FINISHED'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700/60 text-emerald-900 dark:text-emerald-200'
+                          : errorDiagnosis.code === 'SESSION_PAUSED'
+                            ? 'bg-yellow-50 dark:bg-yellow-950/40 border-yellow-300 dark:border-yellow-700/60 text-yellow-900 dark:text-yellow-200'
+                            : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-700/60 text-rose-900 dark:text-rose-200'
+                )}
+              >
+                <div className="flex items-start gap-2.5">
+                  <div className="shrink-0 mt-0.5">
+                    {errorDiagnosis.code === 'SESSION_DRAFT' ? (
+                      <Clock size={16} className="text-amber-600 dark:text-amber-400" />
+                    ) : errorDiagnosis.code === 'WRONG_CLASS' ? (
+                      <Users size={16} className="text-purple-600 dark:text-purple-400" />
+                    ) : errorDiagnosis.code === 'REMEDIAL_RESTRICTED' ? (
+                      <Sparkles size={16} className="text-indigo-600 dark:text-indigo-400" />
+                    ) : errorDiagnosis.code === 'ALREADY_FINISHED' ? (
+                      <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400" />
+                    ) : (
+                      <AlertCircle size={16} className="text-rose-600 dark:text-rose-400" />
+                    )}
+                  </div>
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <div className="font-black text-xs uppercase tracking-wide">
+                      {errorDiagnosis.code === 'SESSION_DRAFT'
+                        ? 'Sesi Ujian Masih DRAFT'
+                        : errorDiagnosis.code === 'WRONG_CLASS'
+                          ? 'Salah Masuk Ruang / Kelas'
+                          : errorDiagnosis.code === 'REMEDIAL_RESTRICTED'
+                            ? 'Sesi Khusus Remedial'
+                            : errorDiagnosis.code === 'ALREADY_FINISHED'
+                              ? 'Ujian Sudah Diserahkan'
+                              : errorDiagnosis.code === 'SESSION_PAUSED'
+                                ? 'Sesi Sedang Dijeda'
+                                : errorDiagnosis.code === 'TOKEN_NOT_FOUND'
+                                  ? 'Token Tidak Ditemukan'
+                                  : 'Akses Ujian Ditolak'}
+                    </div>
+                    <p className="leading-relaxed font-medium text-[11px] sm:text-xs">
+                      {errorDiagnosis.message}
+                    </p>
+                    {errorDiagnosis.hint && (
+                      <div className="pt-1.5 border-t border-current/15 text-[11px] font-bold flex items-start gap-1">
+                        <span className="shrink-0">💡 Solusi:</span>
+                        <span>{errorDiagnosis.hint}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="pt-1 text-[11px] text-slate-400 dark:text-slate-500 flex items-center justify-center gap-1.5">
               <ShieldAlert size={14} className="text-amber-500" />

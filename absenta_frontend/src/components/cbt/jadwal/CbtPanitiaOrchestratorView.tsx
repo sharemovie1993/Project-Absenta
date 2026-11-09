@@ -481,6 +481,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
           isLoadingJadwal={isLoadingJadwal}
           refetchJadwal={refetchJadwal}
           guruList={guruList}
+          kelasList={scopedKelasList}
           activeEvent={activeEvent}
           targetTingkat={effectiveTargetTingkat}
           onBackToPengawas={() => setActiveTab('fase_4_pengawas')}

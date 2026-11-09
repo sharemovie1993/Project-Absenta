@@ -23,10 +23,12 @@ import {
   FileText,
   PenTool,
   DoorOpen,
+  Sparkles,
 } from 'lucide-react';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtPesertaUjian } from '@/types/cbt.types';
 import { CbtTransferNilaiModal } from '../jadwal/CbtTransferNilaiModal';
+import { CbtRemedialModal } from '../jadwal/CbtRemedialModal';
 import { CbtBeritaAcaraPrintModal } from '../jadwal/CbtBeritaAcaraPrintModal';
 import { CbtDaftarHadirPrintModal } from '../jadwal/CbtDaftarHadirPrintModal';
 import { CbtDenahModal } from '../jadwal/CbtDenahModal';
@@ -90,6 +92,7 @@ interface CbtProctorMonitoringViewProps {
   myPengawasData?: any[];
   schedulesList?: any[];
   isPanitiaView?: boolean;
+  kelasList?: any[];
 }
 
 export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> = ({
@@ -99,6 +102,7 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   myPengawasData,
   schedulesList,
   isPanitiaView = false,
+  kelasList = [],
 }) => {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -107,6 +111,7 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [isRemedialModalOpen, setIsRemedialModalOpen] = useState(false);
   const [isBeritaAcaraOpen, setIsBeritaAcaraOpen] = useState(false);
   const [isDaftarHadirOpen, setIsDaftarHadirOpen] = useState(false);
   const [isDenahModalOpen, setIsDenahModalOpen] = useState(false);
@@ -175,8 +180,15 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
     refetchInterval: 10000,
   });
 
+  const kelasMap = useMemo(() => {
+    return new Map((kelasList || []).map((k: any) => [k.id, k.nama_kelas || k.nama]));
+  }, [kelasList]);
+
   const activeRombel =
-    activeInfo.rombel || (pesertaList?.[0] as CbtPesertaUjian)?.Siswa?.Kelas?.nama_kelas || '';
+    activeInfo.rombel ||
+    (activeJadwal?.target_kelas_ids?.[0] ? kelasMap.get(activeJadwal.target_kelas_ids[0]) : '') ||
+    (pesertaList?.[0] as CbtPesertaUjian)?.Siswa?.Kelas?.nama_kelas ||
+    '';
 
   // Resolusi Kode Ruang & Label Sorotan untuk Denah Pengawas
   const activeRoomCode = useMemo(() => {
@@ -201,12 +213,23 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
     return 'Ruang Ujian';
   }, [activeRoomCode]);
 
-  // Mutasi Reset Login Siswa
+  // Mutasi Reset / Retake Login Siswa
   const resetMutation = useMutation({
-    mutationFn: ({ jadwalId, siswaId }: { jadwalId: string; siswaId: string }) =>
-      cbtApi.resetPeserta(jadwalId, siswaId),
-    onSuccess: async () => {
-      toast.success('Sesi login siswa di-reset. Siswa dapat login kembali.');
+    mutationFn: ({
+      jadwalId,
+      siswaId,
+      mode,
+    }: {
+      jadwalId: string;
+      siswaId: string;
+      mode?: 'reconnect' | 'retake';
+    }) => cbtApi.resetPeserta(jadwalId, siswaId, mode),
+    onSuccess: async (_data, variables) => {
+      if (variables.mode === 'retake') {
+        toast.success('Ujian siswa berhasil di-reset dari nol. Siswa dapat mengulang tes.');
+      } else {
+        toast.success('Sesi login siswa di-reset. Siswa dapat login kembali.');
+      }
       await queryClient.invalidateQueries({
         queryKey: cbtQueryKeys.pesertaList(selectedJadwalId),
         exact: false,
@@ -329,7 +352,20 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
       style: 'warning',
     });
     if (isConfirmed) {
-      resetMutation.mutate({ jadwalId: selectedJadwalId, siswaId: peserta.siswa_id });
+      resetMutation.mutate({ jadwalId: selectedJadwalId, siswaId: peserta.siswa_id, mode: 'reconnect' });
+    }
+  };
+
+  const handleRetake = async (peserta: CbtPesertaUjian) => {
+    const isConfirmed = await confirm({
+      title: 'Ujian Ulang Siswa (Retake)?',
+      message: `Mulai ulang tes untuk "${peserta.Siswa?.nama_lengkap || 'Siswa'}"? Seluruh jawaban dan skor sebelumnya akan dibersihkan agar siswa dapat mengulang ujian secara penuh dari awal.`,
+      confirmText: 'Ulangi Tes dari Nol',
+      cancelText: 'Batal',
+      style: 'danger',
+    });
+    if (isConfirmed) {
+      resetMutation.mutate({ jadwalId: selectedJadwalId, siswaId: peserta.siswa_id, mode: 'retake' });
     }
   };
 
@@ -485,17 +521,30 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
       key: 'aksi',
       title: 'Aksi',
       label: 'Aksi',
-      className: 'min-w-[90px] text-right',
+      className: 'min-w-[130px] text-right',
       render: (_val: unknown, row: CbtPesertaUjian) => (
-        <button
-          type="button"
-          onClick={() => handleReset(row)}
-          className="text-[11px] h-7 px-2.5 rounded-lg border border-amber-300 text-amber-800 bg-amber-50/70 hover:bg-amber-100 font-bold transition-all cursor-pointer inline-flex items-center gap-1 active:scale-95"
-          title="Reset Sesi Login Siswa"
-        >
-          <RotateCcw size={12} />
-          <span>Reset</span>
-        </button>
+        <div className="inline-flex items-center gap-1 justify-end">
+          {row.status === 'FINISHED' && (
+            <button
+              type="button"
+              onClick={() => handleRetake(row)}
+              className="text-[11px] h-7 px-2 rounded-lg border border-rose-300 text-rose-700 bg-rose-50/70 hover:bg-rose-100 font-bold transition-all cursor-pointer inline-flex items-center gap-1 active:scale-95"
+              title="Ulangi ujian dari awal (Retake)"
+            >
+              <RotateCcw size={11} />
+              <span>Ulang</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => handleReset(row)}
+            className="text-[11px] h-7 px-2.5 rounded-lg border border-amber-300 text-amber-800 bg-amber-50/70 hover:bg-amber-100 font-bold transition-all cursor-pointer inline-flex items-center gap-1 active:scale-95"
+            title="Reset Sesi Login (Perangkat mati/koneksi terputus)"
+          >
+            <RotateCw size={11} />
+            <span>Reset</span>
+          </button>
+        </div>
       ),
     },
   ];
@@ -821,6 +870,19 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
             </button>
           )}
 
+          {/* 7. Sesi Remedial Terarah CBT */}
+          {activeJadwal && (
+            <button
+              type="button"
+              onClick={() => setIsRemedialModalOpen(true)}
+              className="h-7 px-2.5 rounded-lg border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100/80 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shrink-0"
+              title="Terbitkan Sesi Ujian Remedial CBT Khusus Siswa Belum Tuntas"
+            >
+              <Sparkles size={12} className="text-amber-600" />
+              <span>Remedial</span>
+            </button>
+          )}
+
           {/* 7. Segarkan Data */}
           <button
             type="button"
@@ -892,15 +954,28 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => handleReset(p)}
-                  className="text-[11px] h-7 px-2 shrink-0 border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 font-bold rounded-lg cursor-pointer flex items-center gap-1"
-                  title="Reset Sesi Siswa"
-                >
-                  <RotateCcw size={12} />
-                  <span>Reset</span>
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  {p.status === 'FINISHED' && (
+                    <button
+                      type="button"
+                      onClick={() => handleRetake(p)}
+                      className="text-[11px] h-7 px-2 border border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100 font-bold rounded-lg cursor-pointer flex items-center gap-1"
+                      title="Ulangi ujian dari awal (Retake)"
+                    >
+                      <RotateCcw size={11} />
+                      <span>Ulang</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleReset(p)}
+                    className="text-[11px] h-7 px-2 border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 font-bold rounded-lg cursor-pointer flex items-center gap-1"
+                    title="Reset Sesi Login"
+                  >
+                    <RotateCw size={11} />
+                    <span>Reset</span>
+                  </button>
+                </div>
               </div>
             );
           })
@@ -968,6 +1043,16 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
           penName={activeJadwal.setting_keamanan?.pengawas_1_nama || 'Pengawas Ruang'}
           initialSignature={pengawasSignature}
           onSave={(sig) => updatePengawasSignatureMutation.mutate(sig)}
+        />
+      )}
+
+      {/* Modal Remedial Terarah CBT */}
+      {isRemedialModalOpen && activeJadwal && (
+        <CbtRemedialModal
+          isOpen={isRemedialModalOpen}
+          onClose={() => setIsRemedialModalOpen(false)}
+          jadwal={activeJadwal}
+          pesertaList={pesertaList}
         />
       )}
     </div>

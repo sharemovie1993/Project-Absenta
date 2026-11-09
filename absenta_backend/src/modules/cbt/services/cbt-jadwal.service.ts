@@ -604,7 +604,7 @@ export class CbtJadwalService {
   /**
    * Reset Sesi Peserta (Jika terjadi mati listrik, kendala laptop rusak, dsb.)
    */
-  static async resetPeserta(tenantId: string, jadwalId: string, siswaId: string) {
+  static async resetPeserta(tenantId: string, jadwalId: string, siswaId: string, mode?: 'reconnect' | 'retake') {
     const peserta = await prisma.cbtPesertaUjian.findFirst({
       where: { tenant_id: tenantId, jadwal_ujian_id: jadwalId, siswa_id: siswaId },
     });
@@ -617,6 +617,23 @@ export class CbtJadwalService {
     if (redis) {
       // Hapus session lock di Redis agar siswa bisa login kembali
       await redis.del(`cbt:${tenantId}:session:${siswaId}`).catch(() => null);
+    }
+
+    if (mode === 'retake') {
+      return prisma.cbtPesertaUjian.update({
+        where: { id: peserta.id },
+        data: {
+          status: 'STANDBY',
+          status_sinkron: 'IDLE',
+          waktu_mulai: null,
+          waktu_selesai: null,
+          jawaban_json: [],
+          jumlah_benar: 0,
+          jumlah_salah: 0,
+          nilai_akhir: 0,
+          log_pelanggaran_json: [],
+        },
+      });
     }
 
     return prisma.cbtPesertaUjian.update({

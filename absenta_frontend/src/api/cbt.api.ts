@@ -224,8 +224,8 @@ export const cbtApi = {
     return res.data?.data as CbtPesertaUjian[];
   },
 
-  resetPeserta: async (jadwalId: string, siswaId: string) => {
-    const res = await api.post(`/cbt/jadwal/${jadwalId}/peserta/${siswaId}/reset`);
+  resetPeserta: async (jadwalId: string, siswaId: string, mode?: 'reconnect' | 'retake') => {
+    const res = await api.post(`/cbt/jadwal/${jadwalId}/peserta/${siswaId}/reset`, { mode });
     return res.data?.data;
   },
 

@@ -253,21 +253,73 @@ export class CbtTestEngineService {
   }
 
   /**
-   * Verifikasi token ujian sebelum siswa masuk
+   * Helper format waktu jam:menit WIB untuk pesan error presisi
+   */
+  private static formatJamIndo(d: Date | string): string {
+    try {
+      return new Intl.DateTimeFormat('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Asia/Jakarta',
+        hour12: false,
+      }).format(new Date(d)).replace('.', ':');
+    } catch {
+      return '';
+    }
+  }
+
+  /**
+   * Helper format tanggal Indonesia untuk pesan error presisi
+   */
+  private static formatTanggalIndo(d: Date | string): string {
+    try {
+      return new Intl.DateTimeFormat('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        timeZone: 'Asia/Jakarta',
+      }).format(new Date(d));
+    } catch {
+      return '';
+    }
+  }
+
+  /**
+   * Verifikasi token ujian sebelum siswa masuk dengan diagnosis presisi & spesifik
    */
   static async verifyToken(tenantId: string, tokenUjian: string, siswaId: string) {
-    const redis = getRedisConnection();
-    let cachedJadwalId: string | null = null;
+    const cleanToken = (tokenUjian || '').trim().toUpperCase();
 
-    if (redis) {
-      cachedJadwalId = await redis.get(`cbt:${tenantId}:token:${tokenUjian}`).catch(() => null);
+    // 1. Ambil data profil siswa dan rombel kelasnya terlebih dahulu
+    const siswa = await prisma.siswa.findFirst({
+      where: { id: siswaId, tenant_id: tenantId },
+      select: {
+        id: true,
+        nama_siswa: true,
+        nis: true,
+        kelas_id: true,
+        Kelas: { select: { id: true, nama_kelas: true } },
+      },
+    });
+
+    if (!siswa) {
+      const err: any = new Error('Data profil siswa tidak ditemukan atau belum terdaftar.');
+      err.statusCode = 404;
+      err.code = 'STUDENT_NOT_FOUND';
+      throw err;
     }
 
-    // Ambil jadwal ujian
+    const redis = getRedisConnection();
+    let cachedJadwalId: string | null = null;
+    if (redis) {
+      cachedJadwalId = await redis.get(`cbt:${tenantId}:token:${cleanToken}`).catch(() => null);
+    }
+
+    // 2. Cari jadwal berdasarkan token ujian (tanpa filter status dahulu agar bisa mendiagnosa spesifik)
     const jadwal = await prisma.cbtJadwalUjian.findFirst({
       where: cachedJadwalId
-        ? { id: cachedJadwalId, tenant_id: tenantId, status: { in: ['ACTIVE', 'PAUSED'] } }
-        : { tenant_id: tenantId, token_ujian: tokenUjian, status: { in: ['ACTIVE', 'PAUSED'] } },
+        ? { id: cachedJadwalId, tenant_id: tenantId }
+        : { tenant_id: tenantId, token_ujian: cleanToken },
       include: {
         BankSoal: {
           select: {
@@ -283,27 +335,204 @@ export class CbtTestEngineService {
       },
     });
 
+    // ── DIAGNOSIS 1: TOKEN TIDAK DITEMUKAN DI SISTEM ──
     if (!jadwal) {
-      throw new Error('Token ujian tidak valid atau sesi ujian belum diaktifkan oleh pengawas.');
+      let classContext = '';
+      if (siswa.kelas_id) {
+        const activeSchedulesForClass = await prisma.cbtJadwalUjian.findMany({
+          where: {
+            tenant_id: tenantId,
+            target_kelas_ids: { array_contains: [siswa.kelas_id] },
+            status: { in: ['ACTIVE', 'DRAFT', 'PAUSED'] },
+          },
+          include: {
+            BankSoal: {
+              include: {
+                Mapel: true,
+              },
+            },
+          },
+          orderBy: { tanggal_mulai: 'desc' },
+          take: 2,
+        });
+
+        if (activeSchedulesForClass.length > 0) {
+          const infoList = activeSchedulesForClass.map((s: any) => {
+            const mapel = s.BankSoal?.Mapel?.nama_mapel || s.nama_sesi;
+            const ruang = (s.setting_keamanan as any)?.ruang_ujian || 'Ruang Ujian';
+            const statusLabel = s.status === 'ACTIVE' ? 'Aktif' : s.status === 'DRAFT' ? 'DRAFT' : 'Dijeda';
+            return `"${mapel}" (${statusLabel} di ${ruang})`;
+          });
+          classContext = ` Untuk kelas Anda (${siswa.Kelas?.nama_kelas || 'Kelas'}), saat ini terdaftar sesi ${infoList.join(' dan ')}.`;
+        }
+      }
+
+      const err: any = new Error(
+        `Token "${cleanToken}" tidak terdaftar di sistem.${classContext} Mohon periksa kembali kombinasi 6 karakter token pada layar/papan tulis pengawas (waspadai kemiripan angka 0 dengan huruf O, atau angka 1 dengan huruf I).`
+      );
+      err.statusCode = 404;
+      err.code = 'TOKEN_NOT_FOUND';
+      err.details = {
+        token: cleanToken,
+        siswa_kelas: siswa.Kelas?.nama_kelas,
+        hint: 'Minta token resmi yang sedang ditampilkan pengawas di depan ruang ujian Anda.',
+      };
+      throw err;
     }
 
+    const mapelName =
+      jadwal.BankSoal?.Mapel?.nama_mapel ||
+      jadwal.BankSoal?.judul ||
+      jadwal.nama_sesi ||
+      'Mata Pelajaran';
+    const ruangName = (jadwal.setting_keamanan as any)?.ruang_ujian || 'Ruang CBT';
+
+    // ── DIAGNOSIS 2: SESI MASIH DRAFT (BELUM DIAKTIFKAN OLEH PENGAWAS) ──
+    if (jadwal.status === 'DRAFT') {
+      const err: any = new Error(
+        `Sesi ujian "${mapelName}" (${ruangName}) belum diaktifkan oleh pengawas (Status: DRAFT). Mohon beri tahu pengawas di ruang Anda untuk menekan tombol hijau "Aktifkan" pada layar pengawas.`
+      );
+      err.statusCode = 400;
+      err.code = 'SESSION_DRAFT';
+      err.details = {
+        token: cleanToken,
+        mapel: mapelName,
+        ruang: ruangName,
+        status: 'DRAFT',
+        hint: 'Pengawas ruang harus menekan tombol "Aktifkan" di Meja Pengawas agar peserta dapat mulai masuk.',
+      };
+      throw err;
+    }
+
+    // ── DIAGNOSIS 3: SESI SEDANG DIJEDA OLEH PENGAWAS ──
     if (jadwal.status === 'PAUSED') {
-      throw new Error('Sesi ujian sedang dijeda oleh proctor/pengawas.');
+      const err: any = new Error(
+        `Sesi ujian "${mapelName}" (${ruangName}) sedang dijeda sementara oleh pengawas. Mohon tunggu hingga pengawas melanjutkan (resume) sesi ujian.`
+      );
+      err.statusCode = 400;
+      err.code = 'SESSION_PAUSED';
+      err.details = {
+        token: cleanToken,
+        mapel: mapelName,
+        ruang: ruangName,
+        status: 'PAUSED',
+        hint: 'Pengawas sedang menjeda ujian untuk instruksi atau perbaikan teknis.',
+      };
+      throw err;
     }
 
-    // Validasi apakah kelas siswa masuk dalam target_kelas_ids
-    const siswa = await prisma.siswa.findFirst({
-      where: { id: siswaId, tenant_id: tenantId },
-      select: { id: true, nama_siswa: true, kelas_id: true },
-    });
-
-    if (!siswa) {
-      throw new Error('Data siswa tidak ditemukan.');
+    // ── DIAGNOSIS 4: SESI SUDAH RESMI DITUTUP / SELESAI ──
+    if (jadwal.status === 'COMPLETED') {
+      const err: any = new Error(
+        `Sesi ujian "${mapelName}" (${ruangName}) telah resmi selesai/ditutup. Siswa tidak dapat masuk lagi ke sesi ini.`
+      );
+      err.statusCode = 400;
+      err.code = 'SESSION_COMPLETED';
+      err.details = {
+        token: cleanToken,
+        mapel: mapelName,
+        ruang: ruangName,
+        status: 'COMPLETED',
+        hint: 'Jika Anda terlambat atau memerlukan jadwal susulan, silakan melapor ke Panitia CBT.',
+      };
+      throw err;
     }
 
+    // ── DIAGNOSIS 5: VALIDASI KELAS TARGET (SALAH MASUK KELAS/RUANG) ──
     const targetKelas = (jadwal.target_kelas_ids as string[]) || [];
     if (siswa.kelas_id && targetKelas.length > 0 && !targetKelas.includes(siswa.kelas_id)) {
-      throw new Error('Ujian ini tidak ditujukan untuk kelas Anda.');
+      const targetClasses = await prisma.kelas.findMany({
+        where: { id: { in: targetKelas } },
+        select: { nama_kelas: true },
+      });
+      const targetNames = targetClasses.map((k) => k.nama_kelas).join(', ') || 'kelas lain';
+      const siswaKelas = siswa.Kelas?.nama_kelas || 'kelas Anda';
+      const err: any = new Error(
+        `Token ini milik sesi "${mapelName}" khusus untuk kelas [${targetNames}]. Anda terdaftar di kelas [${siswaKelas}]. Silakan gunakan token sesuai ruang kelas Anda.`
+      );
+      err.statusCode = 403;
+      err.code = 'WRONG_CLASS';
+      err.details = {
+        token: cleanToken,
+        mapel: mapelName,
+        target_kelas: targetNames,
+        siswa_kelas: siswaKelas,
+        hint: `Anda salah memasukkan token dari ruang kelas ${targetNames}. Minta token untuk kelas ${siswaKelas} ke pengawas Anda.`,
+      };
+      throw err;
+    }
+
+    // ── DIAGNOSIS 6: VALIDASI SESI REMEDIAL / TARGET SISWA KHUSUS ──
+    const targetSiswa = (jadwal.setting_keamanan as any)?.target_siswa_ids;
+    if (Array.isArray(targetSiswa) && targetSiswa.length > 0 && !targetSiswa.includes(siswaId)) {
+      const err: any = new Error(
+        `Sesi ujian "${mapelName}" ini dikhususkan bagi siswa terdaftar remedial/perbaikan. Akun Anda (${siswa.nama_siswa}) tidak terdaftar dalam kuota remedial sesi ini.`
+      );
+      err.statusCode = 403;
+      err.code = 'REMEDIAL_RESTRICTED';
+      err.details = {
+        token: cleanToken,
+        mapel: mapelName,
+        nama_siswa: siswa.nama_siswa,
+        hint: 'Hubungi guru mata pelajaran jika nilai Anda sebelumnya di bawah KKTP namun belum terdata di sesi remedial ini.',
+      };
+      throw err;
+    }
+
+    // ── DIAGNOSIS 7: VALIDASI JENDELA WAKTU PELAKSANAAN (EXPIRED) ──
+    const now = new Date();
+    const tanggalSelesai = new Date(jadwal.tanggal_selesai);
+    if (now.getTime() > tanggalSelesai.getTime()) {
+      const jamSelesaiStr = CbtTestEngineService.formatJamIndo(tanggalSelesai);
+      const tglSelesaiStr = CbtTestEngineService.formatTanggalIndo(tanggalSelesai);
+      const err: any = new Error(
+        `Waktu pelaksanaan sesi ujian "${mapelName}" telah berakhir (${tglSelesaiStr}, pukul ${jamSelesaiStr} WIB). Pintu masuk telah ditutup.`
+      );
+      err.statusCode = 400;
+      err.code = 'SCHEDULE_EXPIRED';
+      err.details = {
+        mapel: mapelName,
+        tanggal_selesai: jadwal.tanggal_selesai,
+        hint: 'Sesi ujian telah melewati batas waktu pengerjaan. Silakan temui Panitia CBT untuk jadwal susulan.',
+      };
+      throw err;
+    }
+
+    // ── DIAGNOSIS 8: VALIDASI SISWA SUDAH FINISHED ATAU DISQUALIFIED ──
+    const existingPeserta = await prisma.cbtPesertaUjian.findFirst({
+      where: {
+        tenant_id: tenantId,
+        jadwal_ujian_id: jadwal.id,
+        siswa_id: siswaId,
+      },
+    });
+
+    if (existingPeserta && existingPeserta.status === 'FINISHED') {
+      const err: any = new Error(
+        `Anda sudah menyelesaikan ujian "${mapelName}" ini dengan nilai akhir ${Number(existingPeserta.nilai_akhir).toFixed(1)}. Siswa tidak dapat mengulang ujian yang telah diserahkan.`
+      );
+      err.statusCode = 400;
+      err.code = 'ALREADY_FINISHED';
+      err.details = {
+        mapel: mapelName,
+        nilai_akhir: existingPeserta.nilai_akhir,
+        waktu_selesai: existingPeserta.waktu_selesai,
+        hint: 'Jika Anda memerlukan remedial atau ujian ulang, pengawas ruang dapat mengklik tombol "Ulang" (Retake) di Meja Pengawas.',
+      };
+      throw err;
+    }
+
+    if (existingPeserta && existingPeserta.status === 'DISQUALIFIED') {
+      const err: any = new Error(
+        `Sesi ujian Anda untuk mata pelajaran "${mapelName}" telah didiskualifikasi oleh pengawas karena pelanggaran tata tertib.`
+      );
+      err.statusCode = 403;
+      err.code = 'DISQUALIFIED';
+      err.details = {
+        mapel: mapelName,
+        hint: 'Silakan melapor langsung ke panitia ujian CBT di ruang panitia.',
+      };
+      throw err;
     }
 
     // Resolusi Guru Pengampu Kelas Siswa untuk Bank Soal Bersama MGMP
@@ -325,32 +554,15 @@ export class CbtTestEngineService {
       }
     }
 
-    // Cek apakah siswa sudah pernah mengerjakan dan berstatus FINISHED
-    const existingPeserta = await prisma.cbtPesertaUjian.findFirst({
-      where: {
-        tenant_id: tenantId,
-        jadwal_ujian_id: jadwal.id,
-        siswa_id: siswaId,
-      },
-    });
-
-    if (existingPeserta && existingPeserta.status === 'FINISHED') {
-      throw new Error('Anda sudah menyelesaikan ujian ini. Tidak dapat mengulang kembali.');
-    }
-
-    if (existingPeserta && existingPeserta.status === 'DISQUALIFIED') {
-      throw new Error('Sesi ujian Anda telah didiskualifikasi oleh pengawas.');
-    }
-
     return {
       valid: true,
       jadwal_id: jadwal.id,
       nama_sesi: jadwal.nama_sesi,
-      mapel: jadwal.BankSoal.Mapel.nama_mapel,
-      judul_bank: jadwal.BankSoal.judul,
+      mapel: mapelName,
+      judul_bank: jadwal.BankSoal?.judul || mapelName,
       guru: resolvedGuru,
       durasi_menit: jadwal.durasi_menit,
-      total_soal: jadwal.BankSoal.jumlah_soal,
+      total_soal: jadwal.BankSoal?.jumlah_soal || 0,
       existing_status: existingPeserta ? existingPeserta.status : 'STANDBY',
     };
   }
@@ -366,19 +578,62 @@ export class CbtTestEngineService {
     tokenMasuk: string,
     metadataPerangkat?: any
   ) {
+    const cleanToken = (tokenMasuk || '').trim().toUpperCase();
+
     const jadwal = await prisma.cbtJadwalUjian.findFirst({
-      where: { id: jadwalId, tenant_id: tenantId, status: 'ACTIVE' },
+      where: { id: jadwalId, tenant_id: tenantId },
       include: {
         BankSoal: true,
       },
     });
 
     if (!jadwal) {
-      throw new Error('Jadwal ujian tidak ditemukan atau sedang tidak aktif.');
+      const err: any = new Error('Jadwal ujian tidak ditemukan di sistem.');
+      err.statusCode = 404;
+      err.code = 'SCHEDULE_NOT_FOUND';
+      throw err;
     }
 
-    if (jadwal.token_ujian !== tokenMasuk) {
-      throw new Error('Token masuk tidak sesuai dengan token jadwal saat ini.');
+    const mapelName = (jadwal.BankSoal as any)?.judul || jadwal.nama_sesi;
+
+    if (jadwal.status === 'DRAFT') {
+      const err: any = new Error(
+        `Sesi ujian "${mapelName}" belum diaktifkan oleh pengawas (Status: DRAFT). Silakan minta pengawas menekan tombol "Aktifkan".`
+      );
+      err.statusCode = 400;
+      err.code = 'SESSION_DRAFT';
+      throw err;
+    }
+
+    if (jadwal.status === 'PAUSED') {
+      const err: any = new Error(`Sesi ujian "${mapelName}" sedang dijeda sementara oleh pengawas.`);
+      err.statusCode = 400;
+      err.code = 'SESSION_PAUSED';
+      throw err;
+    }
+
+    if (jadwal.status === 'COMPLETED') {
+      const err: any = new Error(`Sesi ujian "${mapelName}" telah resmi selesai/ditutup.`);
+      err.statusCode = 400;
+      err.code = 'SESSION_COMPLETED';
+      throw err;
+    }
+
+    if (jadwal.token_ujian !== cleanToken) {
+      const err: any = new Error(
+        'Token ujian telah diperbarui/dirotasi oleh sistem. Masukkan token aktif terbaru dari pengawas.'
+      );
+      err.statusCode = 400;
+      err.code = 'TOKEN_ROTATED';
+      throw err;
+    }
+
+    const targetSiswa = (jadwal.setting_keamanan as any)?.target_siswa_ids;
+    if (Array.isArray(targetSiswa) && targetSiswa.length > 0 && !targetSiswa.includes(siswaId)) {
+      const err: any = new Error('Sesi ujian remedial ini khusus untuk siswa yang terdaftar perbaikan.');
+      err.statusCode = 403;
+      err.code = 'REMEDIAL_RESTRICTED';
+      throw err;
     }
 
     const now = new Date();

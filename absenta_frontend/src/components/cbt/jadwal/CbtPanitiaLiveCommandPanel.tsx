@@ -41,6 +41,7 @@ interface CbtPanitiaLiveCommandPanelProps {
   isLoadingJadwal: boolean;
   refetchJadwal: () => void;
   guruList?: any[];
+  kelasList?: any[];
   onBackToPengawas?: () => void;
   activeEvent?: CbtEventItem | null;
   targetTingkat?: number[];
@@ -53,6 +54,8 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
   jadwalList = [],
   isLoadingJadwal,
   refetchJadwal,
+  guruList = [],
+  kelasList = [],
   activeEvent,
   targetTingkat,
 }) => {
@@ -106,6 +109,11 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
     const secs = secondsLeft % 60;
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   }, [secondsLeft]);
+
+  // Peta Nama Kelas dari Master Rombel
+  const kelasMap = useMemo(() => {
+    return new Map((kelasList || []).map((k: any) => [k.id, k.nama_kelas || k.nama]));
+  }, [kelasList]);
 
   // Mutasi Aktivasi Tunggal
   const activateMutation = useMutation({
@@ -176,6 +184,12 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
 
     if (!roomCode) {
       roomCode = j.setting_keamanan?.ruang_ujian_nama || j.nama_sesi || 'R.XX';
+    }
+
+    // Fallback presisi dari relasi target_kelas_ids jika rombel belum terdeteksi dari nama_sesi
+    if (rombel === '-' && j.target_kelas_ids && j.target_kelas_ids.length > 0) {
+      const matched = kelasMap.get(j.target_kelas_ids[0]);
+      if (matched) rombel = matched;
     }
 
     // Ekstraksi Tingkat
@@ -547,6 +561,7 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
         onBack={() => setSelectedInspectJadwalId(null)}
         schedulesList={effectiveJadwalList}
         isPanitiaView={true}
+        kelasList={kelasList}
       />
     );
   }

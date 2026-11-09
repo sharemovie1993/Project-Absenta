@@ -125,8 +125,12 @@ export class CbtJadwalController {
     try {
       const { tenant_id } = req.user!;
       const { id, siswaId } = req.params;
-      const result = await CbtJadwalService.resetPeserta(tenant_id, id, siswaId);
-      return sendResponse(reply, 200, true, 'Sesi peserta berhasil di-reset untuk login ulang', result);
+      const mode = req.body?.mode; // 'reconnect' | 'retake'
+      const result = await CbtJadwalService.resetPeserta(tenant_id, id, siswaId, mode);
+      const msg = mode === 'retake'
+        ? 'Ujian siswa berhasil di-reset total dari nol untuk remedial/retake'
+        : 'Sesi peserta berhasil di-reset untuk login ulang';
+      return sendResponse(reply, 200, true, msg, result);
     } catch (error: any) {
       return sendError(reply, 400, error.message || 'Gagal me-reset peserta ujian');
     }
