@@ -9,7 +9,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CbtBankSoal } from '@/types/cbt.types';
+import type { CbtBankSoal, CbtEventItem } from '@/types/cbt.types';
 import type { GuruMapel } from '@/types/academic';
 import { cbtQueryKeys } from '@/api/cbt.api';
 import { useJenjang } from '@/hooks/useJenjang';
@@ -40,6 +40,7 @@ interface CbtBankSoalReadinessPanelProps {
   activeSemId?: string;
   targetTingkat?: number[];
   eventName?: string;
+  activeEvent?: CbtEventItem | null;
   onProceedToNextPhase?: () => void;
   onRefreshBankList?: () => void;
 }
@@ -52,6 +53,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
   activeTpId,
   targetTingkat,
   eventName,
+  activeEvent,
   onProceedToNextPhase,
   onRefreshBankList,
 }) => {

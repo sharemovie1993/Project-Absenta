@@ -345,6 +345,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
           activeSemId={activeSemester?.id}
           targetTingkat={effectiveTargetTingkat}
           eventName={effectiveEventName}
+          activeEvent={activeEvent}
           onProceedToNextPhase={() => setActiveTab('fase_2_ruang')}
           onRefreshBankList={() => refetchBankSoal()}
         />
