@@ -8,11 +8,14 @@ import type {
   CbtStudentExamItem,
   CbtTransferNilaiPayload,
   CbtTransferNilaiResponse,
+  CbtEventItem,
+  CbtTpEventsSummary,
 } from '../types/cbt.types';
 
 // ─── Query Key Factory ──────────────────────────────────────────────────────
 export const cbtQueryKeys = {
   all: ['cbt'] as const,
+  eventsSummary: () => [...cbtQueryKeys.all, 'events-summary'] as const,
   bankSoal: (params?: Record<string, any>) =>
     params !== undefined
       ? ([...cbtQueryKeys.all, 'bank-soal', params] as const)
@@ -317,5 +320,32 @@ export const cbtApi = {
       jumlah_benar?: number;
       jumlah_salah?: number;
     };
+  },
+
+  // ==========================================
+  // 5. CBT EVENT SETTINGS & HIERARCHY
+  // ==========================================
+  getEventsSummary: async () => {
+    const res = await api.get('/cbt/settings/events');
+    return res.data?.data as {
+      summary: CbtTpEventsSummary[];
+      active_event: CbtEventItem | null;
+      total_events: number;
+    };
+  },
+
+  upsertEvent: async (payload: Partial<CbtEventItem>) => {
+    const res = await api.post('/cbt/settings/events', payload);
+    return res.data?.data as CbtEventItem;
+  },
+
+  setActiveEvent: async (eventId: string) => {
+    const res = await api.post('/cbt/settings/events/set-active', { event_id: eventId });
+    return res.data?.data as CbtEventItem;
+  },
+
+  deleteEvent: async (eventId: string) => {
+    const res = await api.delete(`/cbt/settings/events/${eventId}`);
+    return res.data;
   },
 };

@@ -17,6 +17,8 @@ export async function publicPortalRoutes(fastify: any) {
   fastify.get('/:tenantSlug/curriculum-p5', { config: publicConfig }, publicPortalController.getCurriculumAndP5.bind(publicPortalController));
   fastify.get('/:tenantSlug/class-schedule', { config: publicConfig }, publicPortalController.getClassSchedule.bind(publicPortalController));
   fastify.get('/:tenantSlug/ppid-docs', { config: publicConfig }, publicPortalController.getPublicDocuments.bind(publicPortalController));
+  fastify.get('/:tenantSlug/ecosystem', { config: publicConfig }, publicPortalController.getWave4Ecosystem.bind(publicPortalController));
+  fastify.get('/:tenantSlug/track-ticket/:code', { config: publicConfig }, publicPortalController.trackTicket.bind(publicPortalController));
   fastify.get('/:tenantSlug/staff', { config: publicConfig }, publicPortalController.getStaff.bind(publicPortalController));
   fastify.get('/:tenantSlug/programs', { config: publicConfig }, publicPortalController.getPrograms.bind(publicPortalController));
   fastify.get('/:tenantSlug/achievements', { config: publicConfig }, publicPortalController.getAchievements.bind(publicPortalController));
@@ -36,6 +38,8 @@ export async function publicPortalRoutes(fastify: any) {
   fastify.get('/curriculum-p5', { config: publicConfig }, publicPortalController.getCurriculumAndP5.bind(publicPortalController));
   fastify.get('/class-schedule', { config: publicConfig }, publicPortalController.getClassSchedule.bind(publicPortalController));
   fastify.get('/ppid-docs', { config: publicConfig }, publicPortalController.getPublicDocuments.bind(publicPortalController));
+  fastify.get('/ecosystem', { config: publicConfig }, publicPortalController.getWave4Ecosystem.bind(publicPortalController));
+  fastify.get('/track-ticket/:code', { config: publicConfig }, publicPortalController.trackTicket.bind(publicPortalController));
   fastify.get('/staff', { config: publicConfig }, publicPortalController.getStaff.bind(publicPortalController));
   fastify.get('/programs', { config: publicConfig }, publicPortalController.getPrograms.bind(publicPortalController));
   fastify.get('/achievements', { config: publicConfig }, publicPortalController.getAchievements.bind(publicPortalController));

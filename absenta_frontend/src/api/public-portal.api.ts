@@ -336,11 +336,100 @@ export interface PublicAspirasiTicket {
   pesan_konfirmasi: string;
 }
 
+export interface PublicOrgMember {
+  id: string;
+  jabatan: string;
+  kategori_jabatan: 'PIMPINAN' | 'WAKASEK' | 'KAPROG' | 'KOORDINATOR' | 'WALAS';
+  nama_pejabat: string;
+  nip: string | null;
+  foto: string | null;
+  unit_kerja: string | null;
+  urutan: number;
+}
+
+export interface PublicSpatialMap {
+  id: string;
+  nama_denah: string;
+  gedung: string;
+  lantai: string;
+  canvas_width: number;
+  canvas_height: number;
+  rooms: Array<{
+    id: string;
+    label: string;
+    type: string;
+    capacity: number | null;
+    color: string;
+    zone: string;
+  }>;
+}
+
+export interface PublicELibraryModule {
+  id: string;
+  judul: string;
+  mata_pelajaran: string;
+  tingkat: number;
+  fase: string;
+  kategori: string;
+  ringkasan: string;
+  penulis: string;
+  alokasi_jp: number;
+  tags: string[];
+  file_url: string | null;
+}
+
+export interface PublicCoopProduct {
+  id: string;
+  kode: string;
+  nama_produk: string;
+  kategori: string;
+  harga: number;
+  satuan: string;
+  stok_status: 'TERSEDIA' | 'TERBATAS' | 'PRE_ORDER';
+  deskripsi: string | null;
+  image_url: string | null;
+}
+
+export interface PublicWave4Ecosystem {
+  org_structure: PublicOrgMember[];
+  spatial_maps: PublicSpatialMap[];
+  elibrary_modules: PublicELibraryModule[];
+  coop_catalog: PublicCoopProduct[];
+}
+
+export interface PublicTicketTrackResult {
+  found: boolean;
+  ticket_code: string;
+  jenis_layanan: string;
+  nama_pemohon: string;
+  unit_tujuan: string;
+  tanggal_pengajuan: string;
+  status_terkini: string;
+  tahapan: Array<{
+    label: string;
+    waktu: string;
+    selesai: boolean;
+  }>;
+  catatan_tindak_lanjut: string;
+}
+
 export const publicPortalApi = {
   getProfile: (slug: string) =>
     standardApiCall<{ success: boolean; data: PublicSchoolProfile }>(
       () => axiosInstance.get(`/public/portal/${slug}/profile`),
       'publicPortalApi.getProfile'
+    ),
+
+  getEcosystem: (slug: string) =>
+    standardApiCall<{ success: boolean; data: PublicWave4Ecosystem }>(
+      () => axiosInstance.get(`/public/portal/${slug}/ecosystem`),
+      'publicPortalApi.getEcosystem'
+    ),
+
+  trackTicket: (slug: string, code: string) =>
+    standardApiCall<{ success: boolean; data: PublicTicketTrackResult }>(
+      () => axiosInstance.get(`/public/portal/${slug}/track-ticket/${encodeURIComponent(code)}`),
+      'publicPortalApi.trackTicket'
     ),
 
   getLivePulse: (slug: string) =>

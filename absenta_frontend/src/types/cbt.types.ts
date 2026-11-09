@@ -212,3 +212,27 @@ export interface CbtTransferNilaiResponse {
   tahun_pelajaran_id: string;
   semester_id: string;
 }
+
+export interface CbtEventItem {
+  id: string;
+  tahun_pelajaran_id: string;
+  nama_event: string;
+  kode_event: string;
+  semester: 'GANJIL' | 'GENAP';
+  target_tingkat: number[];
+  keterangan?: string;
+  lock_teacher_scheduling: boolean;
+  token_refresh_interval?: number;
+  strict_browser_guard: boolean;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CbtTpEventsSummary {
+  tahun_pelajaran_id: string;
+  tahun_ajaran: string;
+  is_active_tp: boolean;
+  events: CbtEventItem[];
+}
+

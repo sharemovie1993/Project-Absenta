@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/authStore';
+import type { CbtEventItem } from '@/types/cbt.types';
 
 export type CbtOperationMode = 'MANDIRI' | 'ORKESTRASI';
 
 export interface CbtModeConfig {
   mode: CbtOperationMode;
   eventName: string; // Misal: "Penilaian Akhir Semester (PAS) Ganjil"
+  eventId?: string;
+  targetTingkat?: number[]; // Misal [10, 11, 12] atau [12]
   lockTeacherScheduling: boolean;
   activeSince: string;
   updatedBy?: string;
@@ -21,6 +24,7 @@ export function getDefaultCbtModeConfig(): CbtModeConfig {
   return {
     mode: 'ORKESTRASI',
     eventName: 'Penilaian Akhir Semester (PAS) Ganjil',
+    targetTingkat: [10, 11, 12],
     lockTeacherScheduling: true,
     activeSince: new Date().toISOString(),
   };
@@ -33,7 +37,12 @@ export function loadCbtModeConfig(tenantId?: string): CbtModeConfig {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && (parsed.mode === 'MANDIRI' || parsed.mode === 'ORKESTRASI')) {
-        return parsed;
+        return {
+          ...parsed,
+          targetTingkat: Array.isArray(parsed.targetTingkat) && parsed.targetTingkat.length > 0
+            ? parsed.targetTingkat
+            : [10, 11, 12],
+        };
       }
     }
   } catch (err) {
@@ -53,7 +62,7 @@ export function saveCbtModeConfig(config: CbtModeConfig, tenantId?: string): voi
 }
 
 /**
- * Custom Hook untuk Sinkronisasi Real-time Mode Operasional CBT
+ * Custom Hook untuk Sinkronisasi Real-time Mode Operasional CBT & Active Event
  */
 export function useCbtOperationMode() {
   const { user } = useAuthStore();
@@ -102,13 +111,36 @@ export function useCbtOperationMode() {
     [config, tenantId, user]
   );
 
+  const updateActiveEvent = useCallback(
+    (event: CbtEventItem) => {
+      const updated: CbtModeConfig = {
+        ...config,
+        mode: 'ORKESTRASI',
+        eventId: event.id,
+        eventName: event.nama_event,
+        targetTingkat: Array.isArray(event.target_tingkat) && event.target_tingkat.length > 0
+          ? event.target_tingkat
+          : [10, 11, 12],
+        lockTeacherScheduling: event.lock_teacher_scheduling ?? true,
+        activeSince: new Date().toISOString(),
+        updatedBy: user?.nama || user?.name || 'Panitia',
+      };
+      saveCbtModeConfig(updated, tenantId);
+      setConfig(updated);
+    },
+    [config, tenantId, user]
+  );
+
   return {
     config,
     mode: config.mode,
     eventName: config.eventName,
+    eventId: config.eventId,
+    targetTingkat: config.targetTingkat || [10, 11, 12],
     isOrkestrasi: config.mode === 'ORKESTRASI',
     isMandiri: config.mode === 'MANDIRI',
     lockTeacherScheduling: config.lockTeacherScheduling,
     updateMode,
+    updateActiveEvent,
   };
 }

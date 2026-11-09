@@ -59,11 +59,32 @@ export type CbtPanitiaPhase =
   | 'fase_4_pengawas'
   | 'fase_5_monitor';
 
-export const CbtPanitiaOrchestratorView: React.FC = () => {
+export interface CbtPanitiaOrchestratorViewProps {
+  onOpenSettings?: () => void;
+}
+
+export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProps> = ({
+  onOpenSettings,
+}) => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const tenantId = user?.tenant_id;
-  const { mode, eventName, isOrkestrasi, isMandiri, updateMode } = useCbtOperationMode();
+  const { mode, eventName, isOrkestrasi, isMandiri, targetTingkat: localTargetTingkat, updateMode } = useCbtOperationMode();
+
+  // Query Konfigurasi Event Aktif dari Database Tenant
+  const { data: eventsData } = useQuery({
+    queryKey: cbtQueryKeys.eventsSummary(),
+    queryFn: () => cbtApi.getEventsSummary(),
+  });
+  const activeEvent = eventsData?.active_event;
+
+  const effectiveEventName = activeEvent?.nama_event || eventName;
+  const effectiveTargetTingkat = useMemo(() => {
+    if (activeEvent?.target_tingkat && activeEvent.target_tingkat.length > 0) {
+      return activeEvent.target_tingkat;
+    }
+    return localTargetTingkat || [10, 11, 12];
+  }, [activeEvent, localTargetTingkat]);
 
   const [activeTab, setActiveTab] = useState<CbtPanitiaPhase>('fase_1_soal');
   const [subModeFase1, setSubModeFase1] = useState<'readiness' | 'manage'>('readiness');
@@ -74,19 +95,24 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
   const { activeYear: activeTp } = useTahunPelajaranOptions();
   const { activeSemester } = useSemesterOptions();
 
-  // Filter kelas aktif saja
-  const activeKelasList = useMemo(() => {
-    return kelasList.filter((k) => k.is_active !== false && String(k.status || '').toUpperCase() !== 'NONAKTIF');
-  }, [kelasList]);
+  // Filter kelas aktif sesuai sasaran tingkat event ujian yang sedang aktif
+  const scopedKelasList = useMemo(() => {
+    const active = kelasList.filter((k) => k.is_active !== false && String(k.status || '').toUpperCase() !== 'NONAKTIF');
+    if (!effectiveTargetTingkat || effectiveTargetTingkat.length === 0) return active;
+    return active.filter((k) => effectiveTargetTingkat.includes(Number(k.tingkat)));
+  }, [kelasList, effectiveTargetTingkat]);
 
   // ── 1. State Ploting Ruang ke Kelas (Kelas-Centrik R.01 - R.n) ──
   const [roomMappings, setRoomMappings] = useState<KelasRoomMapping[]>([]);
 
   useEffect(() => {
-    if (!activeKelasList.length) return;
+    if (!scopedKelasList.length) {
+      setRoomMappings([]);
+      return;
+    }
     const persisted = loadPersistedRoomMappings(tenantId);
     if (persisted) {
-      const generated = generateClassRoomMappings(activeKelasList);
+      const generated = generateClassRoomMappings(scopedKelasList);
       const merged = generated.map((item) => {
         const saved = persisted[item.kelas_id];
         if (saved) {
@@ -100,9 +126,9 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
       });
       setRoomMappings(merged);
     } else {
-      setRoomMappings(generateClassRoomMappings(activeKelasList));
+      setRoomMappings(generateClassRoomMappings(scopedKelasList));
     }
-  }, [activeKelasList, tenantId]);
+  }, [scopedKelasList, tenantId]);
 
   // ── 2. Fetch Bank Soal (Kapasitas Penuh 500 & StaleTime Guard) ──
   const { data: bankRes, refetch: refetchBankSoal } = useQuery({
@@ -136,7 +162,7 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
   const stats = useMemo(() => {
     const totalBank = rawBankList.length;
     const bankSiap = readyBankList.length;
-    const totalKelas = activeKelasList.length;
+    const totalKelas = scopedKelasList.length;
     const ruangMapped = roomMappings.length;
     const totalJadwal = jadwalList.length;
     const pengawasAssigned = jadwalList.filter(
@@ -160,7 +186,7 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
       isJadwalReady,
       isPengawasReady,
     };
-  }, [rawBankList, readyBankList, activeKelasList, roomMappings, jadwalList]);
+  }, [rawBankList, readyBankList, scopedKelasList, roomMappings, jadwalList]);
 
   // Definisi 5 Fase Operasional Panitia
   const phases: Array<{
@@ -221,12 +247,26 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
             </h2>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto text-xs">
-            {isOrkestrasi && eventName && (
+          <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto text-xs flex-wrap">
+            {isOrkestrasi && effectiveEventName && (
               <span className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-700/60 text-indigo-700 dark:text-indigo-200 text-xs font-semibold flex items-center gap-1.5">
                 <Lock size={12} className="text-indigo-500 dark:text-indigo-400" />
-                <span>{eventName}</span>
+                <span>{effectiveEventName}</span>
+                <span className="ml-1 px-1.5 py-0.2 rounded bg-indigo-200/70 dark:bg-indigo-800 text-[10px] font-black text-indigo-900 dark:text-indigo-100">
+                  Tingkat {effectiveTargetTingkat.join(', ')} ({scopedKelasList.length} Rombel)
+                </span>
               </span>
+            )}
+            {onOpenSettings && (
+              <button
+                type="button"
+                onClick={onOpenSettings}
+                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                title="Kelola Hirarki & Konfigurasi Event CBT"
+              >
+                <SlidersHorizontal size={13} className="text-indigo-600 dark:text-indigo-400" />
+                <span>Pengaturan Event</span>
+              </button>
             )}
             <span className="bg-slate-100 dark:bg-white/5 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 text-xs font-semibold">
               {activeTp?.nama || 'TP Aktif'} • {activeSemester?.nama || 'Semester'}
@@ -387,11 +427,11 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
 
         {activeTab === 'fase_2_ruang' && (
           <CbtKelasRoomTreePanel
-            kelasList={activeKelasList}
+            kelasList={scopedKelasList}
             roomMappings={roomMappings}
             onUpdateRoomMappings={setRoomMappings}
             tenantId={tenantId}
-            eventName={eventName}
+            eventName={effectiveEventName}
             onProceedToNextPhase={() => setActiveTab('fase_3_jadwal')}
           />
         )}

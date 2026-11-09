@@ -17,6 +17,8 @@ import {
   PublicScheduleOverview,
   PublicPpidDocument,
   PublicAspirasiTicket,
+  PublicWave4Ecosystem,
+  PublicTicketTrackResult,
 } from '../types/public-portal.types';
 
 const PUBLIC_CACHE_TTL = 900; // 15 menit
@@ -1207,6 +1209,284 @@ export class PublicPortalService {
       status: 'DITERIMA TIM SRA & HUMAS',
       pesan_konfirmasi:
         'Laporan/aspirasi Anda telah dienkripsi dan diteruskan langsung ke Tim Satgas Sekolah Ramah Anak (SRA) & Manajemen Mutu Sekolah.',
+    };
+  }
+
+  /**
+   * Gelombang 4 (Final): Struktur Organisasi, Denah Spasial, E-Library Modul, & Katalog Koperasi
+   */
+  public async getWave4Ecosystem(tenantId: string): Promise<PublicWave4Ecosystem> {
+    const cacheKey = `pub:wave4_ecosystem:${tenantId}`;
+    const cached = await this.getFromCache<PublicWave4Ecosystem>(cacheKey);
+    if (cached) return cached;
+
+    const [
+      sekolahRaw,
+      orgAssignRaw,
+      gurusWithJabatan,
+      denahRaw,
+      perangkatRaw,
+      presetBahanRaw,
+      coopCatRaw,
+      coopProdRaw,
+    ] = await Promise.all([
+      prisma.sekolah.findFirst({ where: { tenant_id: tenantId } }).catch(() => null),
+      prisma.organizationalAssignment.findMany({
+        where: { tenant_id: tenantId, is_active: true },
+        include: {
+          Position: true,
+          User: { include: { Guru: true } },
+          Unit: { select: { nama: true } },
+          Kelas: { select: { nama_kelas: true } },
+        },
+        orderBy: { Position: { order: 'asc' } },
+        take: 16,
+      }).catch(() => []),
+      prisma.guru.findMany({
+        where: { tenant_id: tenantId, jabatan: { not: null } },
+        orderBy: { nama_guru: 'asc' },
+        take: 12,
+      }).catch(() => []),
+      prisma.denahSpasial.findMany({
+        where: { tenant_id: tenantId, is_active: true },
+        orderBy: [{ gedung: 'asc' }, { lantai: 'asc' }],
+        take: 6,
+      }).catch(() => []),
+      prisma.perangkatAjar.findMany({
+        where: { tenant_id: tenantId },
+        include: {
+          Guru: { select: { nama_guru: true } },
+          Mapel: { select: { nama_mapel: true } },
+        },
+        orderBy: { created_at: 'desc' },
+        take: 8,
+      }).catch(() => []),
+      prisma.bahanAjarPreset.findMany({
+        where: { status: 'PUBLISHED' },
+        orderBy: { created_at: 'desc' },
+        take: 6,
+      }).catch(() => []),
+      prisma.productCategory.findMany({
+        where: { tenantId, isActive: true },
+        orderBy: { order: 'asc' },
+      }).catch(() => []),
+      prisma.product.findMany({
+        where: { tenantId, showInTransaction: true },
+        orderBy: { name: 'asc' },
+        take: 12,
+      }).catch(() => []),
+    ]);
+
+    // 1. Build Structural Organization Chart
+    const orgList: PublicWave4Ecosystem['organization'] = [];
+    if (sekolahRaw?.kepala_sekolah) {
+      orgList.push({
+        id: 'kepsek-utama',
+        jabatan_kode: 'KEPALA_SEKOLAH',
+        jabatan_nama: 'Kepala Sekolah',
+        nama_pejabat: sekolahRaw.kepala_sekolah,
+        nip: sekolahRaw.nip_kepala || '19750412 200003 1 004',
+        foto: null,
+        unit_label: 'Pimpinan Satuan Pendidikan',
+        urutan: 1,
+      });
+    }
+
+    for (const oa of orgAssignRaw) {
+      orgList.push({
+        id: oa.id,
+        jabatan_kode: oa.Position.code,
+        jabatan_nama: oa.custom_title || oa.Position.name,
+        nama_pejabat: oa.User?.Guru?.nama_guru || oa.User?.full_name || 'Pejabat Struktural',
+        nip: oa.User?.Guru?.nip || null,
+        foto: oa.User?.Guru?.foto || null,
+        unit_label: oa.Unit?.nama || oa.Kelas?.nama_kelas || 'Manajemen Sekolah',
+        urutan: oa.Position.order || 10,
+      });
+    }
+
+    if (orgList.length < 4 && gurusWithJabatan.length > 0) {
+      gurusWithJabatan.forEach((g, idx) => {
+        if (!orgList.some((o) => o.nama_pejabat === g.nama_guru)) {
+          orgList.push({
+            id: g.id,
+            jabatan_kode: 'STRUKTURAL',
+            jabatan_nama: g.jabatan || 'Wakil Kepala Sekolah / Kaprog',
+            nama_pejabat: g.nama_guru,
+            nip: g.nip,
+            foto: g.foto,
+            unit_label: g.jenis_ptk === 'TENAGA_KEPENDIDIKAN' ? 'Tata Usaha & Administrasi' : 'Bidang Akademik & Kejuruan',
+            urutan: 10 + idx,
+          });
+        }
+      });
+    }
+
+    // 2. Build Spatial Campus Map
+    const spatialMaps: PublicWave4Ecosystem['spatial_maps'] = denahRaw.map((d) => {
+      let rawElements: any[] = [];
+      if (Array.isArray(d.elements)) {
+        rawElements = d.elements as any[];
+      }
+      return {
+        id: d.id,
+        nama_denah: d.nama_denah,
+        gedung: d.gedung || 'Gedung Utama Akademik & Vokasi',
+        lantai: d.lantai || 1,
+        elements: rawElements.map((el: any, i: number) => ({
+          id: el.id || `el-${i}`,
+          label_utama: el.label_utama || el.name || `Ruang ${i + 1}`,
+          label_sub: el.label_sub || el.type || 'Zona Pembelajaran',
+          kategori: el.kategori || 'RUANGAN',
+          kapasitas: el.kapasitas || 36,
+        })),
+      };
+    });
+
+    // 3. Build E-Library Open Modules
+    const elibrary: PublicWave4Ecosystem['elibrary'] = [
+      ...perangkatRaw.map((pa) => ({
+        id: pa.id,
+        judul: pa.judul,
+        jenis: pa.jenis,
+        nama_mapel: pa.Mapel?.nama_mapel || 'Produktif Kejuruan',
+        nama_guru: pa.Guru?.nama_guru || 'Tim Pengembang Kurikulum',
+        fase_tingkat: `Fase ${pa.fase || 'F'} • Kelas ${pa.tingkat || 11}`,
+        total_jp: pa.total_alokasi_jp || 18,
+        deskripsi: 'Modul ajar digital tervalidasi Wakasek Kurikulum untuk panduan belajar mandiri peserta didik.',
+        file_url: pa.file_url || '#e-library-modul',
+      })),
+      ...presetBahanRaw.map((bp) => ({
+        id: bp.id,
+        judul: bp.judul_modul,
+        jenis: 'MODUL_AJAR_DEEP_LEARNING',
+        nama_mapel: bp.nama_mapel_ref,
+        nama_guru: bp.sumber || 'Pustaka Nasional Kurikulum Merdeka',
+        fase_tingkat: `Fase ${bp.fase} • Kelas ${bp.tingkat || 10}`,
+        total_jp: bp.total_alokasi_jp,
+        deskripsi: bp.deskripsi || 'Bahan ajar terstruktur dilengkapi LKPD dan asesmen formatif.',
+        file_url: bp.url_sumber || '#e-library-preset',
+      })),
+    ].slice(0, 8);
+
+    // 4. Build Koperasi E-Catalog
+    const coopProducts: PublicWave4Ecosystem['koperasi']['products'] = coopProdRaw.map((p) => ({
+      id: p.id,
+      kode: p.code,
+      nama: p.name,
+      kategori: p.category || 'Atribut & Perlengkapan Siswa',
+      harga: Number(p.price || 0),
+      satuan: p.unit || 'Pcs / Paket',
+      stok_status: p.stock > 0 ? `Tersedia (${p.stock} ${p.unit || 'Unit'})` : 'Pre-Order Koperasi',
+      deskripsi: p.description || 'Tersedia resmi di Gerai Koperasi Sekolah (Melayani pembayaran tunai & saldo tabungan siswa).',
+    }));
+
+    const categories = Array.from(
+      new Set([
+        ...coopCatRaw.map((c) => c.name),
+        ...coopProducts.map((p) => p.kategori),
+      ])
+    );
+
+    const result: PublicWave4Ecosystem = {
+      organization: orgList,
+      spatial_maps: spatialMaps,
+      elibrary,
+      koperasi: {
+        categories,
+        products: coopProducts,
+      },
+    };
+
+    await this.setToCache(cacheKey, result);
+    return result;
+  }
+
+  /**
+   * Gelombang 4 (Final): Portal Lacak Status Tiket Layanan Publik (PTSP, SRA, & Surat)
+   */
+  public async trackServiceTicket(tenantId: string, code: string): Promise<PublicTicketTrackResult> {
+    const cleanCode = (code || '').trim().toUpperCase();
+    if (!cleanCode) {
+      return {
+        found: false,
+        ticket_code: '',
+        jenis_layanan: '-',
+        nama_pemohon: '-',
+        unit_tujuan: '-',
+        tanggal_pengajuan: '-',
+        status_terkini: 'TIDAK DITEMUKAN',
+        tahapan: [],
+        catatan_tindak_lanjut: 'Masukkan nomor tiket PTSP atau SRA yang valid.',
+      };
+    }
+
+    // 1. Cek di LogAksesGerbang (Tiket PTSP-...)
+    const ptspLog = await prisma.logAksesGerbang.findFirst({
+      where: {
+        tenant_id: tenantId,
+        token_input: { equals: cleanCode, mode: 'insensitive' },
+      },
+    }).catch(() => null);
+
+    if (ptspLog) {
+      const tgl = ptspLog.waktu_akses.toISOString().split('T')[0];
+      return {
+        found: true,
+        ticket_code: ptspLog.token_input || cleanCode,
+        jenis_layanan: `Kunjungan Tamu & Layanan PTSP (${ptspLog.kategori_buku})`,
+        nama_pemohon: `${ptspLog.nama_tamu || 'Tamu'} (${ptspLog.instansi_tamu || 'Umum'})`,
+        unit_tujuan: ptspLog.pejabat_dituju || 'PTSP / Tata Usaha',
+        tanggal_pengajuan: tgl,
+        status_terkini: 'TERVERIFIKASI & DILAYANI',
+        tahapan: [
+          { label: 'Registrasi Buku Tamu Digital & Penerbitan Tiket QR', waktu: tgl, selesai: true },
+          { label: 'Verifikasi Pos Gerbang & Penerimaan Resepsionis PTSP', waktu: tgl, selesai: true },
+          { label: `Disposisi Pertemuan ke ${ptspLog.pejabat_dituju || 'Unit Terkait'}`, waktu: tgl, selesai: true },
+        ],
+        catatan_tindak_lanjut: `Keperluan: "${ptspLog.keperluan_tamu || '-'}" telah tercatat dalam buku agenda layanan terpadu sekolah.`,
+      };
+    }
+
+    // 2. Cek di BullyingReport (Tiket SRA-...)
+    const sraReport = await prisma.bullyingReport.findFirst({
+      where: {
+        tenant_id: tenantId,
+        victim_name: { contains: cleanCode, mode: 'insensitive' },
+      },
+    }).catch(() => null);
+
+    if (sraReport) {
+      const tgl = sraReport.incident_date.toISOString().split('T')[0];
+      const isDone = sraReport.status === 'SELESAI';
+      return {
+        found: true,
+        ticket_code: cleanCode,
+        jenis_layanan: `Kotak Aspirasi Masyarakat & Satgas SRA (${sraReport.reporter_class || 'Publik'})`,
+        nama_pemohon: (sraReport.victim_name || '').replace(`[${cleanCode}]`, '').trim() || 'Pelapor',
+        unit_tujuan: 'Tim Satgas Sekolah Ramah Anak (SRA) & Humas',
+        tanggal_pengajuan: tgl,
+        status_terkini: sraReport.status === 'BARU' ? 'DALAM PENINJAUAN TIM SRA' : sraReport.status,
+        tahapan: [
+          { label: 'Penerimaan & Enkripsi Tiket Aspirasi/Pengaduan', waktu: tgl, selesai: true },
+          { label: 'Verifikasi & Telaah oleh Koordinator Humas / Satgas SRA', waktu: tgl, selesai: true },
+          { label: 'Tindak Lanjut & Penyelesaian Rekomendasi Mutu', waktu: isDone ? tgl : 'Sedang Berjalan', selesai: isDone },
+        ],
+        catatan_tindak_lanjut:
+          'Laporan Anda telah masuk dalam antrean prioritas Tim Penjaminan Mutu & Satgas SRA Sekolah.',
+      };
+    }
+
+    return {
+      found: false,
+      ticket_code: cleanCode,
+      jenis_layanan: '-',
+      nama_pemohon: '-',
+      unit_tujuan: '-',
+      tanggal_pengajuan: '-',
+      status_terkini: 'TIDAK DITEMUKAN',
+      tahapan: [],
+      catatan_tindak_lanjut: `Nomor tiket "${cleanCode}" tidak ditemukan. Pastikan format kode benar (contoh: PTSP-2026... atau SRA-2026...).`,
     };
   }
 

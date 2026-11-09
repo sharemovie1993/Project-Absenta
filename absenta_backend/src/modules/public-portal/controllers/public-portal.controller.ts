@@ -90,6 +90,25 @@ export class PublicPortalController {
     return reply.send({ success: true, data: docs, count: docs.length });
   }
 
+  public async getWave4Ecosystem(request: any, reply: any) {
+    const tenant = await this.getResolvedTenant(request, reply);
+    if (!tenant) return;
+
+    const data = await publicPortalService.getWave4Ecosystem(tenant.id);
+    return reply.send({ success: true, data });
+  }
+
+  public async trackTicket(request: any, reply: any) {
+    const tenant = await this.getResolvedTenant(request, reply);
+    if (!tenant) return;
+
+    const params = request.params || {};
+    const query = request.query || {};
+    const code = params.code || query.code || '';
+    const result = await publicPortalService.trackServiceTicket(tenant.id, code);
+    return reply.send({ success: true, data: result });
+  }
+
   public async submitAspirasi(request: any, reply: any) {
     const tenant = await this.getResolvedTenant(request, reply);
     if (!tenant) return;

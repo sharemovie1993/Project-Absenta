@@ -322,3 +322,80 @@ export interface PublicAspirasiTicket {
   status: string;
   pesan_konfirmasi: string;
 }
+
+// ── Gelombang 4 (Final): Struktur Organisasi, Denah Spasial, E-Library, Koperasi, & Lacak Tiket ──
+
+export interface PublicOrgMember {
+  id: string;
+  jabatan_kode: string;
+  jabatan_nama: string;
+  nama_pejabat: string;
+  nip: string | null;
+  foto: string | null;
+  unit_label: string | null;
+  urutan: number;
+}
+
+export interface PublicSpatialMap {
+  id: string;
+  nama_denah: string;
+  gedung: string;
+  lantai: number;
+  elements: Array<{
+    id: string;
+    label_utama: string;
+    label_sub: string;
+    kategori: string;
+    kapasitas?: number;
+  }>;
+}
+
+export interface PublicELibraryModule {
+  id: string;
+  judul: string;
+  jenis: string;
+  nama_mapel: string;
+  nama_guru: string;
+  fase_tingkat: string;
+  total_jp: number;
+  deskripsi: string;
+  file_url: string;
+}
+
+export interface PublicCoopProduct {
+  id: string;
+  kode: string;
+  nama: string;
+  kategori: string;
+  harga: number;
+  satuan: string;
+  stok_status: string;
+  deskripsi: string | null;
+}
+
+export interface PublicWave4Ecosystem {
+  organization: PublicOrgMember[];
+  spatial_maps: PublicSpatialMap[];
+  elibrary: PublicELibraryModule[];
+  koperasi: {
+    categories: string[];
+    products: PublicCoopProduct[];
+  };
+}
+
+export interface PublicTicketTrackResult {
+  found: boolean;
+  ticket_code: string;
+  jenis_layanan: string;
+  nama_pemohon: string;
+  unit_tujuan: string;
+  tanggal_pengajuan: string;
+  status_terkini: string;
+  tahapan: Array<{
+    label: string;
+    waktu: string;
+    selesai: boolean;
+  }>;
+  catatan_tindak_lanjut: string;
+}
+

@@ -1,6 +1,7 @@
 import { CbtBankSoalController } from '../controllers/cbt-bank-soal.controller';
 import { CbtJadwalController } from '../controllers/cbt-jadwal.controller';
 import { CbtTestEngineController } from '../controllers/cbt-test-engine.controller';
+import { CbtSettingsController } from '../controllers/cbt-settings.controller';
 import { DenahSpasialController } from '../../sarpras/controllers/denah-spasial.controller';
 import { requireCapability } from '../../../middlewares/requireCapability';
 import { determineDataScope } from '@/middlewares/dataScope';
@@ -181,4 +182,23 @@ export async function cbtRoutes(fastify: any) {
   fastify.post('/denah/:id/clone', {
     preHandler: [requireCapability(['cbt.jadwal.manage', 'sarpras.denah.manage', 'cbt.denah.manage'], cbtGuruExempt), determineDataScope()],
   }, DenahSpasialController.clone);
+
+  // ==========================================
+  // 6. CBT EVENT SETTINGS & HIERARCHY ROUTES
+  // ==========================================
+  fastify.get('/settings/events', {
+    preHandler: [requireCapability('cbt.jadwal.view', cbtGuruExempt), determineDataScope()],
+  }, CbtSettingsController.getEventsSummary);
+
+  fastify.post('/settings/events', {
+    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+  }, CbtSettingsController.upsertEvent);
+
+  fastify.post('/settings/events/set-active', {
+    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+  }, CbtSettingsController.setActiveEvent);
+
+  fastify.delete('/settings/events/:id', {
+    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+  }, CbtSettingsController.deleteEvent);
 }
