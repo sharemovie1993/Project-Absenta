@@ -199,6 +199,11 @@ export const cbtApi = {
     return res.data?.data as CbtJadwalUjian;
   },
 
+  deleteJadwal: async (id: string) => {
+    const res = await api.delete(`/cbt/jadwal/${id}`);
+    return res.data?.data as { id: string; message: string };
+  },
+
   regenerateToken: async (id: string) => {
     const res = await api.post(`/cbt/jadwal/${id}/regenerate-token`);
     return res.data?.data as { token_ujian: string };

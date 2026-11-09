@@ -367,6 +367,34 @@ export class CbtJadwalService {
   }
 
   /**
+   * Menghapus Jadwal Ujian / Sesi CBT beserta relasi peserta secara permanen
+   */
+  static async delete(tenantId: string, id: string) {
+    const jadwal = await prisma.cbtJadwalUjian.findFirst({
+      where: { id, tenant_id: tenantId },
+    });
+
+    if (!jadwal) {
+      throw new Error('Jadwal ujian tidak ditemukan');
+    }
+
+    const redis = getRedisConnection();
+    if (redis) {
+      await redis.del(`cbt:${tenantId}:bundle:${jadwal.id}`).catch(() => null);
+      if (jadwal.token_ujian) {
+        await redis.del(`cbt:${tenantId}:token:${jadwal.token_ujian}`).catch(() => null);
+      }
+    }
+
+    // Cascade delete relasi peserta otomatis
+    await prisma.cbtJadwalUjian.delete({
+      where: { id },
+    });
+
+    return { id, message: 'Jadwal ujian berhasil dihapus permanen' };
+  }
+
+  /**
    * Auto-Transfer Nilai 1 Siswa secara Real-Time saat siswa menyelesaikan ujian (Submit Final)
    */
   static async autoTransferSingleStudentIfEnabled(

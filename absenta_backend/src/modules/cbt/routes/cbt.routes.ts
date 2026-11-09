@@ -100,6 +100,10 @@ export async function cbtRoutes(fastify: any) {
     preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
   }, CbtJadwalController.update);
 
+  fastify.delete('/jadwal/:id', {
+    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+  }, CbtJadwalController.delete);
+
   fastify.post('/jadwal/:id/regenerate-token', {
     preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
   }, CbtJadwalController.regenerateToken);

@@ -151,12 +151,24 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => cbtApi.updateJadwal(id, { status: 'ARCHIVED' }),
+    mutationFn: (id: string) => cbtApi.deleteJadwal(id),
     onSuccess: async () => {
-      toast.success('Jadwal ujian diarsipkan');
-      await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.jadwal(), exact: false, refetchType: 'all' });
+      toast.success('Jadwal ujian berhasil dihapus');
+      await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false, refetchType: 'all' });
     },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal menghapus jadwal'),
   });
+
+  const handleDeleteJadwal = async (jdw: CbtJadwalUjian) => {
+    const isConfirmed = await confirm({
+      title: 'Hapus Jadwal Ujian?',
+      message: `Jadwal "${jdw.nama_sesi}" beserta seluruh data peserta akan dihapus secara permanen. Lanjutkan?`,
+      confirmText: 'Ya, Hapus Permanen',
+      cancelText: 'Batal',
+      style: 'danger',
+    });
+    if (isConfirmed) deleteMutation.mutate(jdw.id);
+  };
 
   const handleActivate = async (jdw: CbtJadwalUjian) => {
     const isConfirmed = await confirm({
@@ -530,19 +542,32 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
               </Button>
 
               {canEditSchedule && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedJadwal(row);
-                    setIsFormModalOpen(true);
-                  }}
-                  className="text-xs h-7 px-1.5 text-slate-500 hover:text-slate-800"
-                  title="Edit Jadwal"
-                >
-                  <Edit2 size={12} />
-                </Button>
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedJadwal(row);
+                      setIsFormModalOpen(true);
+                    }}
+                    className="text-xs h-7 px-1.5 text-slate-500 hover:text-slate-800"
+                    title="Edit Jadwal"
+                  >
+                    <Edit2 size={12} />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteJadwal(row)}
+                    disabled={deleteMutation.isPending}
+                    className="text-xs h-7 px-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                    title="Hapus Jadwal Ujian"
+                  >
+                    <Trash2 size={12} />
+                  </Button>
+                </>
               )}
             </div>
           );

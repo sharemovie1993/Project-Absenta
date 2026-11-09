@@ -24,6 +24,7 @@ import {
   PenTool,
   DoorOpen,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtPesertaUjian } from '@/types/cbt.types';
@@ -275,6 +276,35 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal membuat ulang token'),
   });
+
+  const deleteSessionMutation = useMutation({
+    mutationFn: (id: string) => cbtApi.deleteJadwal(id),
+    onSuccess: async () => {
+      toast.success('Sesi ujian berhasil dihapus permanen');
+      await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false, refetchType: 'all' });
+      const remaining = sortedSchedules.filter((j) => j.id !== activeJadwal?.id);
+      if (remaining.length > 0) {
+        setSelectedJadwalId(remaining[0].id);
+      } else {
+        onBack?.();
+      }
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal menghapus sesi ujian'),
+  });
+
+  const handleDeleteSession = async () => {
+    if (!activeJadwal) return;
+    const isConfirmed = await confirm({
+      title: 'Hapus Sesi Ujian?',
+      message: `PERINGATAN: Sesi "${activeJadwal.nama_sesi}" beserta seluruh data peserta (${totalPeserta} siswa) dan hasil jawaban akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.`,
+      confirmText: 'Ya, Hapus Permanen',
+      cancelText: 'Batal',
+      style: 'danger',
+    });
+    if (isConfirmed) {
+      deleteSessionMutation.mutate(activeJadwal.id);
+    }
+  };
 
   const pengawasSignature = activeJadwal?.setting_keamanan?.tanda_tangan_pengawas_1;
   const waktuTtdPengawas = activeJadwal?.setting_keamanan?.waktu_ttd_pengawas_1;
@@ -992,6 +1022,20 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
             <RotateCw size={12} className={isLoading ? 'animate-spin text-emerald-600' : ''} />
             <span className="hidden lg:inline text-[11px] font-medium">Segarkan</span>
           </button>
+
+          {/* 8. Hapus Sesi Ujian */}
+          {activeJadwal && (
+            <button
+              type="button"
+              onClick={handleDeleteSession}
+              disabled={deleteSessionMutation.isPending}
+              className="h-7 px-2.5 rounded-lg border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-400 bg-rose-50/60 dark:bg-rose-950/40 hover:bg-rose-100/80 transition-colors cursor-pointer flex items-center gap-1 text-xs shrink-0"
+              title="Hapus Sesi Ujian Ini Permanen"
+            >
+              <Trash2 size={12} className={deleteSessionMutation.isPending ? 'animate-spin' : ''} />
+              <span className="text-[11px] font-bold">Hapus Sesi</span>
+            </button>
+          )}
         </div>
       </div>
 

@@ -210,4 +210,15 @@ export class CbtJadwalController {
       return sendError(reply, 400, error.message || 'Gagal membuat jadwal ujian massal');
     }
   }
+
+  static async delete(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { id } = req.params;
+      const result = await CbtJadwalService.delete(tenant_id, id);
+      return sendResponse(reply, 200, true, 'Jadwal ujian berhasil dihapus', result);
+    } catch (error: any) {
+      return sendError(reply, 400, error.message || 'Gagal menghapus jadwal ujian');
+    }
+  }
 }
