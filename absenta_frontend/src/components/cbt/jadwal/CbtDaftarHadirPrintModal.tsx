@@ -6,7 +6,7 @@ import {
   PrintHeader,
   usePrintHeaderData,
 } from '@/components/ui';
-import { SlidersHorizontal, UserCheck, RotateCcw, CheckCircle2, PenTool } from 'lucide-react';
+import { SlidersHorizontal, UserCheck, RotateCcw } from 'lucide-react';
 import type { CbtJadwalUjian, CbtPesertaUjian } from '@/types/cbt.types';
 import { useQuery } from '@tanstack/react-query';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
@@ -130,34 +130,123 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
     };
   }, [sortedPeserta]);
 
-  // Handler Print Browser
+  // Handler Print Browser (@media print)
   const handlePrint = () => {
     window.print();
   };
 
-  // Handler Export PDF True WYSIWYG
-  const handleExportPdf = async () => {
-    if (!sheetContainerRef.current) return;
+  // Handler Export PDF True WYSIWYG Berstandar Industri (5-Langkah Protokol Baku Anti-Kerning Collapse)
+  const handleDownloadPdf = async () => {
+    if (!jadwal) return;
+
+    // ── LANGKAH 1: Ambil container canvas preview & simpan zoom asli ──
+    const deskCanvas = document.getElementById('print-desk-canvas-area');
+    const prevZoom = deskCanvas ? deskCanvas.style.zoom : '';
+
+    const toastId = toast.loading('Menyiapkan dokumen PDF Daftar Hadir CBT (True WYSIWYG)...');
     try {
       setIsExportingPdf(true);
-      toast.loading('Menyiapkan file PDF Daftar Hadir CBT...', { id: 'pdf-cbt-hadir' });
 
-      const html2pdfModule = await import('html2pdf.js');
-      const html2pdf = html2pdfModule.default || html2pdfModule;
+      // ── LANGKAH 2: Matikan zoom DOM riil & paksa reflow sinkron ──
+      if (deskCanvas) {
+        deskCanvas.style.zoom = '1';
+        deskCanvas.style.transform = 'none';
+        void deskCanvas.offsetHeight; // Trigger synchronous reflow
+      }
 
-      const opt = {
-        margin: [8, 8, 8, 8],
-        filename: `Daftar_Hadir_CBT_${(jadwal?.nama_sesi || 'Ujian').replace(/[^a-zA-Z0-9]/g, '_')}_${jadwal?.token_ujian || ''}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      };
+      // ── LANGKAH 3: Tunggu rasterisasi font & beri jeda settle repaint tick ──
+      if (document.fonts?.ready) {
+        await document.fonts.ready;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 120));
 
-      await html2pdf().from(sheetContainerRef.current).set(opt).save();
-      toast.success('Daftar Hadir CBT berhasil diekspor ke PDF!', { id: 'pdf-cbt-hadir' });
+      const sheetElements = document.querySelectorAll<HTMLElement>('.print-sheet');
+      if (!sheetElements || sheetElements.length === 0) {
+        toast.error('Lembar dokumen tidak ditemukan', { id: toastId });
+        return;
+      }
+
+      const html2canvas = (await import('html2canvas-pro')).default;
+      const { jsPDF } = await import('jspdf');
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true, // Stream compression aktif
+      });
+
+      const pdfWidth = 210;
+      const pdfHeight = 297;
+
+      for (let i = 0; i < sheetElements.length; i++) {
+        if (i > 0) {
+          pdf.addPage('a4', 'portrait');
+        }
+
+        const sheetElement = sheetElements[i];
+
+        // ── LANGKAH 4: Render canvas dengan onclone sanitizer ──
+        const canvas = await html2canvas(sheetElement, {
+          scale: 2.0, // Skala 2.0 (~200 DPI Retina)
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          onclone: (clonedDoc) => {
+            // Netralkan desk canvas pada DOM kloningan
+            const clonedDesk = clonedDoc.getElementById('print-desk-canvas-area');
+            if (clonedDesk) {
+              clonedDesk.style.zoom = '1';
+              clonedDesk.style.transform = 'none';
+            }
+            // Netralkan seluruh sheet kloningan: hilangkan border, shadow, dan paksa letterSpacing normal
+            const clonedSheets = clonedDoc.querySelectorAll<HTMLElement>('.print-sheet');
+            clonedSheets.forEach((s) => {
+              s.style.zoom = '1';
+              s.style.transform = 'none';
+              s.style.letterSpacing = 'normal';
+              s.style.fontVariantLigatures = 'none';
+              s.style.border = 'none';
+              s.style.boxShadow = 'none';
+              s.style.outline = 'none';
+            });
+          },
+        });
+
+        // ── LANGKAH 5: Preservasi Rasio Aspek (Anti-Gepeng & Anti-Bloat) ──
+        const imgData = canvas.toDataURL('image/jpeg', 0.88);
+        const canvasRatio = canvas.height / canvas.width;
+        const imgHeight = pdfWidth * canvasRatio;
+
+        if (imgHeight <= pdfHeight + 1) {
+          pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, imgHeight, undefined, 'FAST');
+        } else {
+          let heightLeft = imgHeight;
+          let position = 0;
+          pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+          heightLeft -= pdfHeight;
+
+          while (heightLeft > 0) {
+            position -= pdfHeight;
+            pdf.addPage('a4', 'portrait');
+            pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+            heightLeft -= pdfHeight;
+          }
+        }
+      }
+
+      const cleanSession = (jadwal.nama_sesi || 'SESI_CBT').replace(/[^a-zA-Z0-9]/g, '_');
+      pdf.save(`DAFTAR_HADIR_CBT_${cleanSession}_${jadwal.token_ujian}.pdf`);
+      toast.success('Daftar Hadir CBT berhasil diunduh (True WYSIWYG)', { id: toastId });
     } catch (err: any) {
-      toast.error('Gagal mengekspor PDF: ' + (err.message || 'Error tidak terduga'), { id: 'pdf-cbt-hadir' });
+      console.error('[PDF Export Error]:', err);
+      toast.error(err.message || 'Gagal mengekspor PDF, silakan gunakan tombol Cetak Dokumen', { id: toastId });
     } finally {
+      // Selalu kembalikan zoom desk ke posisi semula
+      if (deskCanvas) {
+        deskCanvas.style.zoom = prevZoom;
+      }
       setIsExportingPdf(false);
     }
   };
@@ -181,22 +270,31 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
       onClose={onClose}
       title="Pratinjau Daftar Hadir Peserta Ujian (CBT)"
       subtitle={`${jadwal.nama_sesi} • Token: ${jadwal.token_ujian}`}
+      orientation="portrait"
+      allowOrientationToggle={false}
+      allowLogoToggles={true}
+      showLogoDaerah={showLogoDaerah}
+      showLogoSekolah={showLogoSekolah}
+      onToggleLogoDaerah={setShowLogoDaerah}
+      onToggleLogoSekolah={setShowLogoSekolah}
       onPrint={handlePrint}
-      onExportPdf={handleExportPdf}
-      isExportingPdf={isExportingPdf}
-      customAction={
+      onDownloadPdf={handleDownloadPdf}
+      downloadPdfText={isExportingPdf ? 'Memproses PDF...' : 'Unduh PDF'}
+      printButtonText="Cetak"
+      size="5xl"
+      extraActions={
         <button
           type="button"
-          onClick={() => setShowTtdConfig(!showTtdConfig)}
+          onClick={() => setShowTtdConfig((prev) => !prev)}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
             showTtdConfig
-              ? 'bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300'
+              ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
               : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200'
           }`}
           title="Atur Pejabat Penandatangan & Ruang"
         >
           <SlidersHorizontal size={14} />
-          <span>Pengaturan Form</span>
+          <span>{showTtdConfig ? 'Tutup Pengaturan Form' : 'Pengaturan Form & TTD'}</span>
         </button>
       }
     >
@@ -275,28 +373,6 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
               />
             </div>
           </div>
-
-          {/* Toggle Logo Kop */}
-          <div className="flex items-center gap-4 pt-1 text-[11px]">
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showLogoDaerah}
-                onChange={(e) => setShowLogoDaerah(e.target.checked)}
-                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span className="text-slate-700 dark:text-slate-300">Tampilkan Logo Dinas/Daerah</span>
-            </label>
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showLogoSekolah}
-                onChange={(e) => setShowLogoSekolah(e.target.checked)}
-                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span className="text-slate-700 dark:text-slate-300">Tampilkan Logo Sekolah</span>
-            </label>
-          </div>
         </div>
       )}
 
@@ -306,7 +382,8 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
           ref={sheetContainerRef}
           paperSize="A4"
           orientation="portrait"
-          className="shadow-xl mx-auto"
+          style={{ letterSpacing: 'normal' }}
+          className="shadow-xl mx-auto print-sheet"
         >
           {/* 1. KOP SURAT RESMI */}
           <PrintHeader
