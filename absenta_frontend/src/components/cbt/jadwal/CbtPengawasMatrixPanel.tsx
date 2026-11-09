@@ -11,7 +11,10 @@ import {
   Printer,
   FileCheck2,
   ArrowRight,
+  RotateCcw,
+  Trash2,
 } from 'lucide-react';
+import useConfirm from '@/hooks/useConfirm';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtJadwalUjian } from '@/types/cbt.types';
@@ -200,6 +203,21 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
     return conflicts;
   }, [jadwalList, plottingDrafts]);
 
+  const confirm = useConfirm();
+
+  // Total Sesi yang Sudah Terplot Pengawas atau Proktor
+  const totalPlottedCount = useMemo(() => {
+    return jadwalList.filter((j) => {
+      const draft = plottingDrafts[j.id];
+      return !!(
+        draft?.pengawas_1_id ||
+        j.setting_keamanan?.pengawas_1_id ||
+        draft?.proktor_id ||
+        j.setting_keamanan?.proktor_id
+      );
+    }).length;
+  }, [jadwalList, plottingDrafts]);
+
   // Anti-Conflict Auto-Distribute (Prioritize Pendidik Only; TU can be chosen manually)
   const handleAutoDistributeSupervisors = () => {
     const autoCandidates = pendidikList.length > 0 ? pendidikList : guruList;
@@ -251,6 +269,13 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
       assignedCount++;
     });
 
+    if (assignedCount === 0) {
+      toast('Seluruh sesi ujian sudah memiliki pengawas. Gunakan tombol "Kosongkan Ploting" jika ingin membagi ulang dari awal.', {
+        icon: 'ℹ️',
+      });
+      return;
+    }
+
     setPlottingDrafts(nextDrafts);
     toast.success(
       `Berhasil mendistribusikan ${assignedCount} sesi/ruang ke Guru Pendidik! (Staf TU tetap dapat dipilih secara manual)`
@@ -260,6 +285,67 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
   const dirtyPlottingItems = useMemo(() => {
     return Object.values(plottingDrafts).filter((d) => d.dirty);
   }, [plottingDrafts]);
+
+  // Clear All Plotted Supervisors & Proctors Mutation
+  const clearPlottingMutation = useMutation({
+    mutationFn: async () => {
+      const payload = jadwalList.map((d) => {
+        const curr = plottingDrafts[d.id];
+        return {
+          jadwal_id: d.id,
+          ruang_ujian: (curr?.ruang_ujian || d.setting_keamanan?.ruang_ujian || '').trim(),
+          pengawas_1_id: '',
+          pengawas_1_nama: '',
+          pengawas_1_nip: '',
+          proktor_id: '',
+          proktor_nama: '',
+          proktor_nip: '',
+          pengawas_2_id: '',
+          pengawas_2_nama: '',
+          pengawas_2_nip: '',
+        };
+      });
+      return cbtApi.bulkUpdatePlotting(payload);
+    },
+    onSuccess: async () => {
+      const resetDrafts: Record<string, PlottingDraftRow> = {};
+      jadwalList.forEach((j) => {
+        const curr = plottingDrafts[j.id];
+        resetDrafts[j.id] = {
+          jadwal_id: j.id,
+          ruang_ujian: curr?.ruang_ujian || j.setting_keamanan?.ruang_ujian || '',
+          pengawas_1_id: '',
+          proktor_id: '',
+          dirty: false,
+        };
+      });
+      setPlottingDrafts(resetDrafts);
+      toast.success('Seluruh hasil ploting pengawas & proktor berhasil dikosongkan!');
+      await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false, refetchType: 'all' });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Gagal mengosongkan ploting pengawas');
+    },
+  });
+
+  const handleConfirmClearAllPlotting = async () => {
+    if (totalPlottedCount === 0 && dirtyPlottingItems.length === 0) {
+      toast('Belum ada hasil ploting yang terisi untuk dikosongkan.', { icon: 'ℹ️' });
+      return;
+    }
+
+    const isConfirmed = await confirm({
+      title: 'Kosongkan Hasil Ploting Pengawas?',
+      message: `Tindakan ini akan menghapus penugasan Pengawas Ruang dan Proktor pada seluruh ${jadwalList.length} sesi ujian. Anda dapat melakukan ploting ulang kembali setelahnya.`,
+      confirmText: 'Ya, Kosongkan Ploting',
+      cancelText: 'Batal',
+      style: 'danger',
+    });
+
+    if (isConfirmed) {
+      clearPlottingMutation.mutate();
+    }
+  };
 
   const bulkPlottingMutation = useMutation({
     mutationFn: async () => {
@@ -354,6 +440,19 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
             type="button"
             variant="outline"
             size="sm"
+            disabled={totalPlottedCount === 0 || clearPlottingMutation.isPending}
+            onClick={handleConfirmClearAllPlotting}
+            className="text-xs h-9 px-3 font-bold text-rose-600 border-rose-200 bg-rose-50/50 hover:bg-rose-100 hover:border-rose-300 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 cursor-pointer disabled:opacity-40"
+            title="Kosongkan seluruh pengawas & proktor yang sudah terplot"
+          >
+            <RotateCcw size={14} className={cn("mr-1.5", clearPlottingMutation.isPending && "animate-spin")} />
+            <span>{clearPlottingMutation.isPending ? 'Mengosongkan...' : 'Kosongkan Ploting'}</span>
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
             onClick={handleAutoDistributeSupervisors}
             className="text-xs h-9 px-3 font-bold text-indigo-600 border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100"
             title="Plot otomatis memprioritaskan Guru Pendidik tanpa bentrok jam. Kelompok Tenaga Kependidikan/TU tetap dapat dipilih secara manual."
@@ -390,7 +489,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
               <th className="p-3 min-w-[140px]">Ruang Ujian</th>
               <th className="p-3 min-w-[230px]">Pengawas Ruang 1 (Wajib)</th>
               <th className="p-3 min-w-[220px]">Proktor / Pengawas 2</th>
-              <th className="p-3 w-14 text-center">Cetak</th>
+              <th className="p-3 w-20 text-center">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200/70 dark:divide-slate-800">
@@ -484,6 +583,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
                         onChange={(val) => handleUpdatePlotRow(row.id, 'pengawas_1_id', val)}
                         placeholder="Pilih Pengawas Ruang..."
                         aria-label={`Pengawas ruang untuk ${row.nama_sesi}`}
+                        clearable={true}
                       />
                       {isConflict && (
                         <p className="text-[10px] font-bold text-rose-600 mt-1 flex items-center gap-1">
@@ -500,19 +600,36 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
                         onChange={(val) => handleUpdatePlotRow(row.id, 'proktor_id', val)}
                         placeholder="Opsional (Tanpa Proktor)..."
                         aria-label={`Proktor untuk ${row.nama_sesi}`}
+                        clearable={true}
                       />
                     </td>
 
                     <td className="p-3 align-top text-center">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedJadwalForPrint(row)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 transition-colors cursor-pointer"
-                        title="Pratinjau & Cetak Berita Acara Ruang Ujian"
-                        aria-label="Cetak Berita Acara Ruang"
-                      >
-                        <Printer size={15} />
-                      </button>
+                      <div className="flex items-center justify-center gap-1">
+                        {(draft.pengawas_1_id || draft.proktor_id) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleUpdatePlotRow(row.id, 'pengawas_1_id', '');
+                              handleUpdatePlotRow(row.id, 'proktor_id', '');
+                            }}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
+                            title="Kosongkan pengawas untuk sesi ini"
+                            aria-label={`Kosongkan pengawas ${row.nama_sesi}`}
+                          >
+                            <RotateCcw size={14} />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedJadwalForPrint(row)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 transition-colors cursor-pointer"
+                          title="Pratinjau & Cetak Berita Acara Ruang Ujian"
+                          aria-label="Cetak Berita Acara Ruang"
+                        >
+                          <Printer size={15} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

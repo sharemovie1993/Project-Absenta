@@ -139,7 +139,9 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
     const totalKelas = activeKelasList.length;
     const ruangMapped = roomMappings.length;
     const totalJadwal = jadwalList.length;
-    const pengawasAssigned = jadwalList.filter((j) => !!j.pengawas_guru_id).length;
+    const pengawasAssigned = jadwalList.filter(
+      (j) => !!(j.setting_keamanan?.pengawas_1_id || j.pengawas_guru_id)
+    ).length;
 
     const isSoalReady = totalBank > 0 && bankSiap === totalBank;
     const isRuangReady = totalKelas > 0 && ruangMapped >= totalKelas;
