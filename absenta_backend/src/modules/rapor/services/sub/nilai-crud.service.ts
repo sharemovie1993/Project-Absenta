@@ -3,6 +3,7 @@ import { getTenantTimezone } from '@/utils/timezone.utils';
 import { appLogger } from '@/utils/app-logger';
 import { prisma } from '@/utils/prisma';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
+import { activityLogService } from '@/modules/activity/services/activity-log.service';
 import { cacheService } from '@/utils/cache.service';
 import { CACHE_TTL } from '@/constants/cache-keys';
 
@@ -134,7 +135,8 @@ export class NilaiCrudService {
       sesi_absensi_id?: string | null;
       kelas_id?: string | null;
       siswa_akademik_id?: string | null;
-    }
+    },
+    userId?: string
   ) {
     await this.assertTahunPelajaranAktif(tenantId, data.tahun_pelajaran_id, data.semester_id);
 
@@ -208,6 +210,32 @@ export class NilaiCrudService {
 
     // Invalidate leger cache — nilai berubah, leger harus direcalculate
     void cacheInvalidationService.invalidateRaporCache(tenantId);
+
+    try {
+      const [siswa, mapel] = await Promise.all([
+        prisma.siswa.findUnique({ where: { id: data.siswa_id }, select: { nama_siswa: true, nis: true } }),
+        prisma.mapel.findUnique({ where: { id: data.mapel_id }, select: { nama_mapel: true } }),
+      ]);
+      activityLogService.logEvent({
+        event_type: 'ACADEMIC_NILAI_UPDATED',
+        tenant_id: tenantId,
+        user_id: userId ?? null,
+        entity: 'NilaiSiswa',
+        entity_id: result.id,
+        metadata: {
+          siswa_id: data.siswa_id,
+          nama_siswa: siswa?.nama_siswa,
+          nis: siswa?.nis,
+          mapel_id: data.mapel_id,
+          mapel_name: mapel?.nama_mapel,
+          nilai: data.nilai,
+          catatan_deskripsi: data.catatan_deskripsi,
+        },
+      });
+    } catch (logErr) {
+      console.error('[upsertNilai] Failed to log activity:', logErr);
+    }
+
     return result;
   }
 
@@ -225,7 +253,8 @@ export class NilaiCrudService {
         nilai: number;
         catatan_deskripsi?: string | null;
       }>;
-    }
+    },
+    userId?: string
   ) {
     await this.assertTahunPelajaranAktif(tenantId, data.tahun_pelajaran_id, data.semester_id);
 
@@ -300,6 +329,30 @@ export class NilaiCrudService {
 
     // Invalidate leger cache — batch nilai berubah, leger harus direcalculate
     void cacheInvalidationService.invalidateRaporCache(tenantId);
+
+    try {
+      const [kelas, mapel] = await Promise.all([
+        prisma.kelas.findUnique({ where: { id: data.kelas_id }, select: { nama_kelas: true } }),
+        prisma.mapel.findUnique({ where: { id: data.mapel_id }, select: { nama_mapel: true } }),
+      ]);
+      activityLogService.logEvent({
+        event_type: 'ACADEMIC_NILAI_BULK_SAVED',
+        tenant_id: tenantId,
+        user_id: userId ?? null,
+        entity: 'NilaiSiswa',
+        entity_id: data.kelas_id,
+        metadata: {
+          kelas_id: data.kelas_id,
+          kelas_name: kelas?.nama_kelas,
+          mapel_id: data.mapel_id,
+          mapel_name: mapel?.nama_mapel,
+          total_siswa: data.scores.length,
+        },
+      });
+    } catch (logErr) {
+      console.error('[upsertBulkNilai] Failed to log activity:', logErr);
+    }
+
     return results;
   }
 
@@ -327,7 +380,8 @@ export class NilaiCrudService {
         nilai_rapor_final?: number | null;
         nilai?: number | null;
       }>;
-    }
+    },
+    userId?: string
   ) {
     await this.assertTahunPelajaranAktif(tenantId, data.tahun_pelajaran_id, data.semester_id);
 
@@ -467,6 +521,31 @@ export class NilaiCrudService {
 
     // Invalidate leger cache
     void cacheInvalidationService.invalidateRaporCache(tenantId);
+
+    try {
+      const [kelas, mapel] = await Promise.all([
+        prisma.kelas.findUnique({ where: { id: data.kelas_id }, select: { nama_kelas: true } }),
+        prisma.mapel.findUnique({ where: { id: data.mapel_id }, select: { nama_mapel: true } }),
+      ]);
+      activityLogService.logEvent({
+        event_type: 'ACADEMIC_NILAI_BATCH_SAVED',
+        tenant_id: tenantId,
+        user_id: userId ?? null,
+        entity: 'NilaiSiswa',
+        entity_id: data.kelas_id,
+        metadata: {
+          kelas_id: data.kelas_id,
+          kelas_name: kelas?.nama_kelas,
+          mapel_id: data.mapel_id,
+          mapel_name: mapel?.nama_mapel,
+          total_siswa: data.scores.length,
+          active_sumber_nilai: activeSumberNilai,
+        },
+      });
+    } catch (logErr) {
+      console.error('[upsertBatchSumatifNilai] Failed to log activity:', logErr);
+    }
+
     return results;
   }
 

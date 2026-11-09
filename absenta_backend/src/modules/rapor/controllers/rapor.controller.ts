@@ -10,7 +10,7 @@ export class RaporController {
       const { tenant_id } = req.user!;
       const parsed = raporSiswaUpsertSchema.parse(req.body);
 
-      const result = await RaporService.upsertRapor(tenant_id, parsed);
+      const result = await RaporService.upsertRapor(tenant_id, parsed, req.user?.id);
       return sendResponse(reply, 201, true, 'Data catatan/kehadiran rapor berhasil disimpan', result);
     } catch (error) {
       appLogger.error({ err: error }, 'Rapor controller error');

@@ -3,6 +3,7 @@ import { getTenantTimezone } from '@/utils/timezone.utils';
 import { appLogger } from '@/utils/app-logger';
 import { prisma } from '@/utils/prisma';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
+import { activityLogService } from '@/modules/activity/services/activity-log.service';
 import { NilaiCrudService } from './nilai-crud.service';
 
 export class NilaiExcelService {
@@ -230,7 +231,8 @@ export class NilaiExcelService {
       jenis_nilai_id?: string | null;
       sesi_absensi_id?: string | null;
       mode?: string;
-    }
+    },
+    userId?: string
   ) {
     const XLSX = require('xlsx');
     const { smartReadSheet } = require('../../../utils/excel-import.utils');
@@ -473,6 +475,31 @@ export class NilaiExcelService {
 
       // Invalidate leger cache — nilai hasil impor berubah, leger harus direcalculate
       void cacheInvalidationService.invalidateRaporCache(tenantId);
+
+      try {
+        const [kelas, mapel] = await Promise.all([
+          prisma.kelas.findUnique({ where: { id: metadata.kelas_id }, select: { nama_kelas: true } }),
+          prisma.mapel.findUnique({ where: { id: metadata.mapel_id }, select: { nama_mapel: true } }),
+        ]);
+        activityLogService.logEvent({
+          event_type: 'ACADEMIC_NILAI_IMPORTED',
+          tenant_id: tenantId,
+          user_id: userId ?? null,
+          entity: 'NilaiSiswa',
+          entity_id: metadata.kelas_id,
+          metadata: {
+            kelas_id: metadata.kelas_id,
+            kelas_name: kelas?.nama_kelas,
+            mapel_id: metadata.mapel_id,
+            mapel_name: mapel?.nama_mapel,
+            success_count: operations.length,
+            skipped_count: skippedRows.length,
+            mode: metadata.mode,
+          },
+        });
+      } catch (logErr) {
+        console.error('[importNilaiExcel] Failed to log activity:', logErr);
+      }
     }
 
     return {
@@ -488,7 +515,8 @@ export class NilaiExcelService {
       mapel_id: string;
       jenis_nilai_id?: string;
       mode?: string;
-    }
+    },
+    userId?: string
   ) {
     const XLSXStyle = require('xlsx-js-style');
 

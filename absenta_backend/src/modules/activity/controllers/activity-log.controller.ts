@@ -224,6 +224,51 @@ export class ActivityLogController {
             description = `Berhasil mengimpor ${total} data siswa dari spreadsheet Dapodik/Excel.`;
             break;
           }
+          case 'ACADEMIC_NILAI_BATCH_SAVED': {
+            const kls = meta.kelas_name || 'Kelas';
+            const mpl = meta.mapel_name || 'Mata Pelajaran';
+            const count = meta.total_siswa || 0;
+            description = `Menyimpan dan mengalkulasi batch nilai sumatif kelas ${kls} untuk mata pelajaran ${mpl} (${count} siswa).`;
+            break;
+          }
+          case 'ACADEMIC_NILAI_BULK_SAVED': {
+            const kls = meta.kelas_name || 'Kelas';
+            const mpl = meta.mapel_name || 'Mata Pelajaran';
+            const count = meta.total_siswa || 0;
+            description = `Menyimpan rekapitulasi nilai massal kelas ${kls} untuk mata pelajaran ${mpl} (${count} siswa).`;
+            break;
+          }
+          case 'ACADEMIC_NILAI_UPDATED': {
+            const nama = meta.nama_siswa || 'Siswa';
+            const mpl = meta.mapel_name || 'Mata Pelajaran';
+            const n = meta.nilai !== undefined ? ` (Nilai: ${meta.nilai})` : '';
+            description = `Memperbarui data nilai siswa ${nama} pada mata pelajaran ${mpl}${n}.`;
+            break;
+          }
+          case 'ACADEMIC_NILAI_REMEDIAL_SAVED': {
+            const nama = meta.nama_siswa || 'Siswa';
+            const mpl = meta.mapel_name || 'Mata Pelajaran';
+            const skor = meta.nilai_baru !== undefined ? meta.nilai_baru : '-';
+            const cttn = meta.catatan ? ` [Catatan: ${meta.catatan}]` : '';
+            description = `Menyimpan koreksi nilai remedial siswa ${nama} pada mata pelajaran ${mpl} menjadi ${skor}${cttn}.`;
+            break;
+          }
+          case 'ACADEMIC_NILAI_IMPORTED': {
+            const kls = meta.kelas_name || 'Kelas';
+            const mpl = meta.mapel_name || 'Mata Pelajaran';
+            const count = meta.success_count || 0;
+            description = `Mengimpor ${count} data nilai siswa kelas ${kls} mata pelajaran ${mpl} dari berkas spreadsheet Excel.`;
+            break;
+          }
+          case 'ACADEMIC_RAPOR_CATATAN_SAVED': {
+            const nama = meta.nama_siswa || 'Siswa';
+            const s = meta.sakit ?? 0;
+            const i = meta.izin ?? 0;
+            const a = meta.alpa ?? 0;
+            const trans = meta.keputusan ? ` [Keputusan: ${meta.keputusan}]` : '';
+            description = `Menyimpan catatan wali kelas & kehadiran rapor siswa ${nama} (Sakit: ${s}, Izin: ${i}, Alpa: ${a})${trans}.`;
+            break;
+          }
           default:
             description = `Melakukan aksi ${log.action} pada entitas ${log.entity || 'sistem'}.`;
             break;

@@ -2,6 +2,7 @@
 import { prisma } from '@/utils/prisma';
 import { appLogger } from '@/utils/app-logger';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
+import { activityLogService } from '@/modules/activity/services/activity-log.service';
 
 export class NilaiRemedialService {
   /**
@@ -511,6 +512,31 @@ export class NilaiRemedialService {
     // Invalidate Cache Rapor
     void cacheInvalidationService.invalidateRaporCache(tenantId);
     appLogger.info({ tenantId, siswaId: data.siswa_id, finalRaporScore }, 'Rincian nilai remedial sumatif berhasil disimpan');
+
+    try {
+      const [siswa, mapel] = await Promise.all([
+        prisma.siswa.findUnique({ where: { id: data.siswa_id }, select: { nama_siswa: true, nis: true } }),
+        prisma.mapel.findUnique({ where: { id: data.mapel_id }, select: { nama_mapel: true } }),
+      ]);
+      activityLogService.logEvent({
+        event_type: 'ACADEMIC_NILAI_REMEDIAL_SAVED',
+        tenant_id: tenantId,
+        user_id: user?.id ?? null,
+        entity: 'NilaiSiswa',
+        entity_id: updated.id,
+        metadata: {
+          siswa_id: data.siswa_id,
+          nama_siswa: siswa?.nama_siswa,
+          nis: siswa?.nis,
+          mapel_id: data.mapel_id,
+          mapel_name: mapel?.nama_mapel,
+          nilai_baru: finalRaporScore,
+          catatan: catatan,
+        },
+      });
+    } catch (logErr) {
+      console.error('[submitRemedialSingle] Failed to log activity:', logErr);
+    }
 
     return updated;
   }

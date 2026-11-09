@@ -103,7 +103,7 @@ export class NilaiController {
       const { tenant_id } = req.user!;
       const parsed = nilaiSiswaUpsertSchema.parse(req.body);
 
-      const result = await NilaiService.upsertNilai(tenant_id, parsed);
+      const result = await NilaiService.upsertNilai(tenant_id, parsed, req.user?.id);
       return sendResponse(reply, 200, true, 'Nilai saved successfully', result);
     } catch (error) {
       appLogger.error({ err: error }, 'Rapor controller error');
@@ -123,7 +123,7 @@ export class NilaiController {
       const { tenant_id } = req.user!;
       const parsed = bulkNilaiSiswaSchema.parse(req.body);
 
-      const result = await NilaiService.upsertBulkNilai(tenant_id, parsed);
+      const result = await NilaiService.upsertBulkNilai(tenant_id, parsed, req.user?.id);
       return sendResponse(reply, 200, true, `${result.length} nilai saved successfully`, result);
     } catch (error) {
       appLogger.error({ err: error }, 'Rapor controller error');
@@ -156,7 +156,7 @@ export class NilaiController {
         tahun_pelajaran_id,
         semester_id,
         scores,
-      });
+      }, req.user?.id);
 
       return sendResponse(reply, 200, true, 'Batch nilai sumatif berhasil disimpan & dikalkulasi', result);
     } catch (error: any) {
@@ -257,7 +257,7 @@ export class NilaiController {
         jenis_nilai_id: jenis_nilai_id || null,
         sesi_absensi_id: sesi_absensi_id || null,
         mode
-      });
+      }, req.user?.id);
 
       return sendResponse(
         reply,

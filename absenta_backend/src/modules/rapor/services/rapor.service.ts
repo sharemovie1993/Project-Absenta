@@ -1,6 +1,7 @@
 import { prisma } from '../../../utils/prisma';
 import { cacheService } from '../../../utils/cache.service';
 import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
+import { activityLogService } from '@/modules/activity/services/activity-log.service';
 import { CACHE_KEYS, CACHE_TTL } from '../../../constants/cache-keys';
 import { nilaiMatrixService } from './sub/nilai-matrix.service';
 
@@ -18,7 +19,8 @@ export class RaporService {
       catatan_wali?: string | null;
       keputusan_transisi?: string | null;
       catatan_kokurikuler?: string | null;
-    }
+    },
+    userId?: string
   ) {
     const result = await prisma.raporSiswa.upsert({
       where: {
@@ -59,6 +61,30 @@ export class RaporService {
 
     // Invalidate leger cache for this class
     void cacheInvalidationService.invalidateRaporCache(tenantId);
+
+    try {
+      const siswa = await prisma.siswa.findUnique({ where: { id: data.siswa_id }, select: { nama_siswa: true, nis: true } });
+      activityLogService.logEvent({
+        event_type: 'ACADEMIC_RAPOR_CATATAN_SAVED',
+        tenant_id: tenantId,
+        user_id: userId ?? null,
+        entity: 'RaporSiswa',
+        entity_id: result.id,
+        metadata: {
+          siswa_id: data.siswa_id,
+          nama_siswa: siswa?.nama_siswa,
+          nis: siswa?.nis,
+          kelas_id: data.kelas_id,
+          sakit: data.sakit ?? 0,
+          izin: data.izin ?? 0,
+          alpa: data.alpa ?? 0,
+          keputusan: data.keputusan_transisi ?? null,
+        },
+      });
+    } catch (logErr) {
+      console.error('[upsertRapor] Failed to log activity:', logErr);
+    }
+
     return result;
   }
 
