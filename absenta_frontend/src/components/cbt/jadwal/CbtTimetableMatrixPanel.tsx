@@ -404,36 +404,6 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
               </div>
             )}
 
-            {/* Mode Rangkaian */}
-            <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold shrink-0">
-              <button
-                type="button"
-                onClick={() => setGenerationMode('per_rombel_ruang')}
-                className={cn(
-                  'px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer',
-                  generationMode === 'per_rombel_ruang'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-2xs'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                )}
-                title="Ploting per ruang fisik (R.01 s/d R.n)"
-              >
-                Per Ruang
-              </button>
-              <button
-                type="button"
-                onClick={() => setGenerationMode('per_tingkat')}
-                className={cn(
-                  'px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer',
-                  generationMode === 'per_tingkat'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-2xs'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                )}
-                title="1 Jadwal massal terpadu per tingkat"
-              >
-                Terpadu
-              </button>
-            </div>
-
             {/* Autosave Status */}
             {lastSavedTime && (
               <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200/80 dark:border-emerald-800/60 shrink-0">
