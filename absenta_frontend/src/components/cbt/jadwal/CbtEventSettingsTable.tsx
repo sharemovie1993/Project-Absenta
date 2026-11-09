@@ -32,10 +32,12 @@ import toast from 'react-hot-toast';
 
 export interface CbtEventSettingsTableProps {
   onSelectEventForOrchestrator?: (event: CbtEventItem) => void;
+  isInsideModal?: boolean;
 }
 
 export const CbtEventSettingsTable: React.FC<CbtEventSettingsTableProps> = ({
   onSelectEventForOrchestrator,
+  isInsideModal = false,
 }) => {
   const queryClient = useQueryClient();
   const { updateActiveEvent } = useCbtOperationMode();

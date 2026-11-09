@@ -139,6 +139,7 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
+      zIndex={70}
       title={
         <div className="flex items-center gap-2.5">
           <span className="p-2 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800">

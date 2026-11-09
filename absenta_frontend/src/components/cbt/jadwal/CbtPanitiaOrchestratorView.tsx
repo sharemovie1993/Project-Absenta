@@ -29,6 +29,7 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
+import { Modal } from '@/components/ui';
 import type { CbtJadwalUjian, CbtBankSoal } from '@/types/cbt.types';
 import { getVirtualDate } from '@/utils/attendance/time';
 import { cn } from '@/lib/utils';
@@ -50,6 +51,9 @@ const CbtBankSoalView = lazy(() =>
 );
 const CbtJadwalView = lazy(() =>
   import('./CbtJadwalView').then((m) => ({ default: m.CbtJadwalView }))
+);
+const CbtEventSettingsTable = lazy(() =>
+  import('./CbtEventSettingsTable').then((m) => ({ default: m.CbtEventSettingsTable }))
 );
 
 export type CbtPanitiaPhase =
@@ -89,6 +93,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
   const [activeTab, setActiveTab] = useState<CbtPanitiaPhase>('fase_1_soal');
   const [subModeFase1, setSubModeFase1] = useState<'readiness' | 'manage'>('readiness');
   const [subModeFase3, setSubModeFase3] = useState<'matrix' | 'table'>('matrix');
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   const { rawList: guruList = [] } = useGuruOptions({ jenisPtk: 'ALL' });
   const { rawList: kelasList = [] } = useKelasOptions();
@@ -241,13 +246,19 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
               Meja Kerja Panitia
             </h2>
             {isOrkestrasi && effectiveEventName && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-700/60 text-indigo-700 dark:text-indigo-200 text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setIsSettingsModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100/80 dark:bg-indigo-950/80 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-700/60 text-indigo-700 dark:text-indigo-200 text-xs font-bold cursor-pointer transition-colors shadow-2xs group"
+                title="Klik untuk memilih atau mengubah konfigurasi event ujian CBT"
+              >
                 <Lock size={11} className="text-indigo-500 shrink-0" />
                 <span className="truncate max-w-[200px] sm:max-w-xs">{effectiveEventName}</span>
                 <span className="px-1.5 py-0.2 rounded-md bg-indigo-200/80 dark:bg-indigo-800 text-[10px] font-black text-indigo-900 dark:text-indigo-100">
                   Tingkat {effectiveTargetTingkat.join(', ')} • {scopedKelasList.length} Rombel
                 </span>
-              </span>
+                <SlidersHorizontal size={11} className="text-indigo-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors shrink-0" />
+              </button>
             )}
           </div>
 
@@ -284,17 +295,18 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
               </button>
             </div>
 
-            {onOpenSettings && (
-              <button
-                type="button"
-                onClick={onOpenSettings}
-                className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors"
-                title="Buka Hirarki & Pengaturan Event CBT"
-              >
-                <SlidersHorizontal size={13} className="text-indigo-600 dark:text-indigo-400" />
-                <span className="hidden sm:inline">Pengaturan</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                setIsSettingsModalOpen(true);
+                onOpenSettings?.();
+              }}
+              className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors"
+              title="Buka Hirarki & Pengaturan Event CBT"
+            >
+              <SlidersHorizontal size={13} className="text-indigo-600 dark:text-indigo-400" />
+              <span className="hidden sm:inline">Pengaturan</span>
+            </button>
 
             <span className="hidden md:inline-block text-[11px] font-semibold text-slate-500 dark:text-slate-400 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800">
               {activeTp?.nama || 'TP Aktif'}
@@ -514,6 +526,46 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
           />
         )}
       </div>
+
+      {/* ── Modal Pengaturan Event Ujian CBT (Hirarki TP & Semester) ── */}
+      <Modal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        size="6xl"
+        title={
+          <div className="flex items-center gap-2.5">
+            <span className="p-2 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400 border border-indigo-200/80 dark:border-indigo-800 shrink-0">
+              <TableProperties size={18} />
+            </span>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                Pengaturan Event Ujian CBT
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Kelola struktur hierarki Tahun Pelajaran & Sub-Event Ujian (PSAJ, ASAS/PAS, ASTS, dll.)
+              </p>
+            </div>
+          </div>
+        }
+      >
+        <div className="p-4 sm:p-5 max-h-[82vh] overflow-y-auto">
+          <Suspense
+            fallback={
+              <div className="p-12 text-center text-xs text-slate-500 flex flex-col items-center justify-center gap-2">
+                <Loader className="w-5 h-5 animate-spin text-indigo-600" />
+                <span>Memuat Tabel Pengaturan Event...</span>
+              </div>
+            }
+          >
+            <CbtEventSettingsTable
+              isInsideModal
+              onSelectEventForOrchestrator={() => {
+                setIsSettingsModalOpen(false);
+              }}
+            />
+          </Suspense>
+        </div>
+      </Modal>
     </div>
   );
 };
