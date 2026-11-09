@@ -1,6 +1,8 @@
-import type { CbtBankSoal } from '@/types/cbt.types';
+import type { CbtBankSoal, CbtJadwalUjian } from '@/types/cbt.types';
 import { localDateTimeInputToISO } from '@/utils/attendance/time';
 import { resolveBankTingkatNumber } from './cbtJadwalHelper';
+import { getAllMgmpSharedMap } from './cbtMgmpHelper';
+import { detectNodeTingkat } from '@/components/spasial/denahTingkatHelper';
 
 // ==========================================
 // 1. DATA STRUCTURES & INTERFACES
@@ -472,4 +474,369 @@ export function reconstructMatrixFromExistingSchedules(
   });
 
   return reconstructed;
+}
+
+// ==========================================
+// 6. SHARED PARSER & FILTER HELPERS
+// ==========================================
+
+export function parseScheduleRoomAndClass(j: CbtJadwalUjian, overrideRoom?: string) {
+  const rawRoom = (overrideRoom || j.setting_keamanan?.ruang_ujian || '').trim();
+  const namaSesi = j.nama_sesi || '';
+
+  let rombel = '-';
+  let roomCode = rawRoom;
+
+  const match = namaSesi.match(/\((.*?)\)/);
+  if (match) {
+    const inner = match[1];
+    const parts = inner.split(' - ');
+    if (parts.length >= 2) {
+      rombel = parts[0].trim();
+      if (!roomCode) roomCode = parts[1].trim();
+    } else {
+      rombel = inner.trim();
+    }
+  }
+
+  if (!roomCode) {
+    roomCode = j.setting_keamanan?.ruang_ujian_nama || j.nama_sesi || 'R.XX';
+  }
+
+  const detectedTingkat =
+    detectNodeTingkat({
+      label_sub: rombel,
+      label_utama: roomCode,
+      catatan: j.BankSoal?.tingkat,
+    }) || 10;
+
+  return {
+    roomCode,
+    rombel,
+    tingkat: detectedTingkat,
+  };
+}
+
+export function filterEffectiveJadwalList(
+  jadwalList: CbtJadwalUjian[],
+  activeEventId?: string,
+  targetTingkat?: number[]
+): CbtJadwalUjian[] {
+  return (jadwalList || []).filter((j) => {
+    if (activeEventId && j.setting_keamanan?.event_id) {
+      if (j.setting_keamanan.event_id !== activeEventId) return false;
+    }
+    if (targetTingkat && targetTingkat.length > 0) {
+      const info = parseScheduleRoomAndClass(j);
+      if (!targetTingkat.includes(info.tingkat)) return false;
+    }
+    return true;
+  });
+}
+
+export function detectSupervisorConflicts(jadwalList: CbtJadwalUjian[]): Set<string> {
+  const conflicts = new Set<string>();
+  for (let i = 0; i < jadwalList.length; i++) {
+    const a = jadwalList[i];
+    const pA = a.setting_keamanan?.pengawas_1_id || (a as any).pengawas_guru_id;
+    if (!pA) continue;
+    const startA = new Date(a.tanggal_mulai).getTime();
+    const endA = new Date(a.tanggal_selesai).getTime();
+
+    for (let k = i + 1; k < jadwalList.length; k++) {
+      const b = jadwalList[k];
+      const pB = b.setting_keamanan?.pengawas_1_id || (b as any).pengawas_guru_id;
+      if (!pB || pA !== pB) continue;
+
+      const startB = new Date(b.tanggal_mulai).getTime();
+      const endB = new Date(b.tanggal_selesai).getTime();
+
+      if (startA < endB && startB < endA) {
+        conflicts.add(a.id);
+        conflicts.add(b.id);
+      }
+    }
+  }
+  return conflicts;
+}
+
+// ==========================================
+// 7. STEP READINESS ENGINE (KETUNTASAN OPERASIONAL)
+// ==========================================
+
+export type CbtPanitiaPhase =
+  | 'fase_1_soal'
+  | 'fase_2_ruang'
+  | 'fase_3_jadwal'
+  | 'fase_4_pengawas'
+  | 'fase_5_monitor';
+
+export interface PhaseReadinessResult {
+  id: CbtPanitiaPhase;
+  title: string;
+  isDone: boolean;
+  scorePercent: number; // 0 - 100
+  badgeLabel: string;   // max 2 words e.g. "5 Siap", "20 Rombel", "20 Sesi", "Aman", "Live"
+  detailText: string;   // detailed tooltip
+  statusColor: 'emerald' | 'amber' | 'indigo' | 'slate' | 'rose';
+  hasWarning?: boolean;
+}
+
+export function evaluateStep1Soal(params: {
+  rawGuruMapel?: any[];
+  bankList: CbtBankSoal[];
+  targetTingkat?: number[];
+  tenantId?: string;
+}): PhaseReadinessResult {
+  const { rawGuruMapel = [], bankList = [], targetTingkat, tenantId = 'default' } = params;
+
+  if (rawGuruMapel.length > 0) {
+    const directBankMap = new Map<string, CbtBankSoal>();
+    const masterBanksByMapelTingkat = new Map<string, CbtBankSoal>();
+
+    bankList.forEach((b) => {
+      const tNum = resolveBankTingkatNumber(b) || 10;
+      const gId = b.guru_id;
+      const mId = b.mapel_id;
+      const count = b.jumlah_soal || b._count?.Soal || 0;
+
+      if (gId && mId) {
+        directBankMap.set(`${gId}_${mId}_${tNum}`, b);
+      }
+
+      const mtKey = `${mId}_${tNum}`;
+      const existing = masterBanksByMapelTingkat.get(mtKey);
+      const isShared = Boolean(b.is_shared || b.status === 'PUBLISHED');
+
+      if (
+        !existing ||
+        (isShared && !(existing.is_shared || existing.status === 'PUBLISHED')) ||
+        count > (existing.jumlah_soal || existing._count?.Soal || 0)
+      ) {
+        masterBanksByMapelTingkat.set(mtKey, b);
+      }
+    });
+
+    const mapelPaketMap = new Map<string, { isReady: boolean; soalCount: number }>();
+
+    rawGuruMapel.forEach((gm: any) => {
+      const gId = gm.guru_id;
+      const mId = gm.mapel_id;
+      if (!gId || !mId) return;
+
+      const mapelName = gm.Mapel?.nama_mapel || '';
+      const lowerName = mapelName.toLowerCase();
+      if (
+        lowerName.includes('bimbingan') ||
+        lowerName.includes('konseling') ||
+        lowerName.includes('bp/bk') ||
+        lowerName.includes('bk')
+      ) {
+        return;
+      }
+
+      const rawTingkat = gm.Kelas?.tingkat || gm.Mapel?.tingkat;
+      let tNum = Number(rawTingkat);
+      if (!tNum && gm.Kelas?.nama_kelas) {
+        const match = gm.Kelas.nama_kelas.match(/\b(X|XI|XII|10|11|12)\b/i);
+        if (match) {
+          const roman = match[1].toUpperCase();
+          tNum = roman === 'XI' || roman === '11' ? 11 : roman === 'XII' || roman === '12' ? 12 : 10;
+        }
+      }
+      if (!tNum) tNum = 10;
+
+      if (targetTingkat && targetTingkat.length > 0 && !targetTingkat.includes(tNum)) {
+        return;
+      }
+
+      const mtKey = `${mId}_${tNum}`;
+      if (!mapelPaketMap.has(mtKey)) {
+        const masterBank = masterBanksByMapelTingkat.get(mtKey);
+        const hasReadyMaster = Boolean(masterBank && (masterBank.jumlah_soal || masterBank._count?.Soal || 0) > 0);
+        mapelPaketMap.set(mtKey, {
+          isReady: hasReadyMaster,
+          soalCount: masterBank ? masterBank.jumlah_soal || masterBank._count?.Soal || 0 : 0,
+        });
+      }
+    });
+
+    const paketList = Array.from(mapelPaketMap.values());
+    const totalPaket = paketList.length;
+    const readyPaket = paketList.filter((p) => p.isReady).length;
+    const isDone = totalPaket > 0 && readyPaket >= totalPaket;
+    const score = totalPaket > 0 ? Math.round((readyPaket / totalPaket) * 100) : 0;
+
+    return {
+      id: 'fase_1_soal',
+      title: 'Soal',
+      isDone,
+      scorePercent: score,
+      badgeLabel: isDone ? `${readyPaket} Siap` : `${readyPaket}/${totalPaket} Siap`,
+      detailText: isDone
+        ? `✓ Seluruh ${readyPaket} Paket Mapel Ujian Siap Digunakan`
+        : `⚠️ ${totalPaket - readyPaket} dari ${totalPaket} Paket Mapel Belum Terisi Soal`,
+      statusColor: isDone ? 'emerald' : totalPaket > 0 ? 'amber' : 'slate',
+    };
+  }
+
+  const scopedBanks = bankList.filter((b) => {
+    if (!targetTingkat || targetTingkat.length === 0) return true;
+    const num = resolveBankTingkatNumber(b);
+    return num !== undefined ? targetTingkat.includes(num) : true;
+  });
+
+  const readyBanks = scopedBanks.filter((b) => (b.jumlah_soal || b._count?.Soal || 0) > 0);
+  const total = scopedBanks.length;
+  const ready = readyBanks.length;
+  const isDone = total > 0 && ready >= total;
+  const score = total > 0 ? Math.round((ready / total) * 100) : 0;
+
+  return {
+    id: 'fase_1_soal',
+    title: 'Soal',
+    isDone,
+    scorePercent: score,
+    badgeLabel: isDone ? `${ready} Siap` : `${ready}/${total} Siap`,
+    detailText: isDone
+      ? `✓ Seluruh ${ready} Bank Soal Siap Digunakan`
+      : `⚠️ ${total - ready} Bank Soal Belum Memiliki Butir Soal`,
+    statusColor: isDone ? 'emerald' : total > 0 ? 'amber' : 'slate',
+  };
+}
+
+export function evaluateStep2Ruang(params: {
+  scopedKelasList: any[];
+  roomMappings: KelasRoomMapping[];
+}): PhaseReadinessResult {
+  const { scopedKelasList, roomMappings } = params;
+  const totalKelas = scopedKelasList.length;
+  const mappedKelas = roomMappings.filter(
+    (m) => scopedKelasList.some((k) => k.id === m.kelas_id) && !!(m.slot_ruang && m.slot_ruang.trim())
+  ).length;
+
+  const isDone = totalKelas > 0 && mappedKelas >= totalKelas;
+  const score = totalKelas > 0 ? Math.round((mappedKelas / totalKelas) * 100) : 0;
+
+  return {
+    id: 'fase_2_ruang',
+    title: 'Ruang',
+    isDone,
+    scorePercent: score,
+    badgeLabel: isDone ? `${mappedKelas} Rombel` : `${mappedKelas}/${totalKelas} Rombel`,
+    detailText: isDone
+      ? `✓ Seluruh ${mappedKelas} Rombel Terpetakan ke Ruang Ujian`
+      : `⚠️ ${totalKelas - mappedKelas} Rombel Belum Memiliki Alokasi Ruang`,
+    statusColor: isDone ? 'emerald' : totalKelas > 0 ? 'amber' : 'slate',
+  };
+}
+
+export function evaluateStep3Jadwal(params: {
+  effectiveJadwalList: CbtJadwalUjian[];
+}): PhaseReadinessResult {
+  const { effectiveJadwalList } = params;
+  const count = effectiveJadwalList.length;
+  const isDone = count > 0;
+
+  return {
+    id: 'fase_3_jadwal',
+    title: 'Jadwal',
+    isDone,
+    scorePercent: isDone ? 100 : 0,
+    badgeLabel: isDone ? `${count} Sesi` : 'Belum Terbit',
+    detailText: isDone
+      ? `✓ ${count} Sesi Ujian Resmi Terbit di Database`
+      : '⚠️ Jadwal Ujian Belum Diterbitkan ke Database',
+    statusColor: isDone ? 'emerald' : 'slate',
+  };
+}
+
+export function evaluateStep4Pengawas(params: {
+  effectiveJadwalList: CbtJadwalUjian[];
+  conflictJadwalIds?: Set<string>;
+}): PhaseReadinessResult {
+  const { effectiveJadwalList, conflictJadwalIds } = params;
+  const totalSesi = effectiveJadwalList.length;
+  const plottedSesi = effectiveJadwalList.filter(
+    (j) => !!(j.setting_keamanan?.pengawas_1_id || (j as any).pengawas_guru_id)
+  ).length;
+
+  const conflicts = conflictJadwalIds ?? detectSupervisorConflicts(effectiveJadwalList);
+  const conflictCount = conflicts.size;
+  const hasWarning = conflictCount > 0;
+  const isDone = totalSesi > 0 && plottedSesi === totalSesi && conflictCount === 0;
+  const score = totalSesi > 0 ? Math.round((plottedSesi / totalSesi) * 100) : 0;
+
+  let badgeLabel = `${plottedSesi}/${totalSesi} Terplot`;
+  let detailText = `⚠️ ${totalSesi - plottedSesi} Sesi Ujian Belum Ada Pengawas`;
+  let statusColor: 'emerald' | 'amber' | 'rose' | 'slate' = 'amber';
+
+  if (hasWarning) {
+    badgeLabel = `${conflictCount} Bentrok`;
+    detailText = `⚠️ Terdeteksi ${conflictCount} Penugasan Pengawas Bentrok Jam`;
+    statusColor = 'rose';
+  } else if (isDone) {
+    badgeLabel = '100% Aman';
+    detailText = `✓ Seluruh ${plottedSesi} Sesi Terplot Pengawas & Bebas Bentrok`;
+    statusColor = 'emerald';
+  } else if (totalSesi === 0) {
+    badgeLabel = '0 Sesi';
+    detailText = 'Belum Ada Jadwal Sesi Ujian untuk Diplot Pengawas';
+    statusColor = 'slate';
+  }
+
+  return {
+    id: 'fase_4_pengawas',
+    title: 'Pengawas',
+    isDone,
+    scorePercent: score,
+    badgeLabel,
+    detailText,
+    statusColor,
+    hasWarning,
+  };
+}
+
+export function evaluateStep5Monitoring(params: {
+  effectiveJadwalList: CbtJadwalUjian[];
+}): PhaseReadinessResult {
+  const { effectiveJadwalList } = params;
+  const totalSesi = effectiveJadwalList.length;
+  const activeCount = effectiveJadwalList.filter((j) => j.status === 'ACTIVE').length;
+  const draftCount = effectiveJadwalList.filter((j) => j.status === 'DRAFT').length;
+  const completedCount = effectiveJadwalList.filter(
+    (j) => j.status === 'COMPLETED' || (j.status as string) === 'FINISHED'
+  ).length;
+
+  const isDone = totalSesi > 0 && completedCount === totalSesi;
+  const isRunning = activeCount > 0;
+  const score = totalSesi > 0 ? Math.round((completedCount / totalSesi) * 100) : 0;
+
+  let badgeLabel = 'Standby';
+  let detailText = 'Menunggu Pelaksanaan Ujian';
+  let statusColor: 'emerald' | 'indigo' | 'slate' = 'slate';
+
+  if (isDone) {
+    badgeLabel = 'Selesai';
+    detailText = `✓ Seluruh ${totalSesi} Ruang Selesai Melaksanakan Ujian`;
+    statusColor = 'emerald';
+  } else if (isRunning) {
+    badgeLabel = `${activeCount} Live`;
+    detailText = `● ${activeCount} Ruang Sedang Aktif Ujian Berlangsung`;
+    statusColor = 'emerald';
+  } else if (draftCount > 0) {
+    badgeLabel = `${draftCount} Siap`;
+    detailText = `${draftCount} Ruang Siap Diaktifkan Serentak`;
+    statusColor = 'indigo';
+  }
+
+  return {
+    id: 'fase_5_monitor',
+    title: 'Monitoring',
+    isDone,
+    scorePercent: score,
+    badgeLabel,
+    detailText,
+    statusColor,
+  };
 }

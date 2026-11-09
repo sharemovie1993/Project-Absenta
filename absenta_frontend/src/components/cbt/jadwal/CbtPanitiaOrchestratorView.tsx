@@ -34,10 +34,19 @@ import { getVirtualDate } from '@/utils/attendance/time';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import { useCbtOperationMode } from '../cbtModeHelper';
+import { listGuruMapel } from '@/api/kurikulum/guru-mapel.api';
 import {
   KelasRoomMapping,
   generateClassRoomMappings,
   loadPersistedRoomMappings,
+  filterEffectiveJadwalList,
+  evaluateStep1Soal,
+  evaluateStep2Ruang,
+  evaluateStep3Jadwal,
+  evaluateStep4Pengawas,
+  evaluateStep5Monitoring,
+  PhaseReadinessResult,
+  CbtPanitiaPhase,
 } from './cbtOrchestratorHelper';
 import { CbtBankSoalReadinessPanel } from './CbtBankSoalReadinessPanel';
 import { CbtKelasRoomTreePanel } from './CbtKelasRoomTreePanel';
@@ -146,6 +155,15 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
 
   const jadwalList: CbtJadwalUjian[] = jadwalRes?.items || [];
 
+  // ── 4. Fetch SK Penugasan Guru Mapel untuk Audit Kesiapan Soal ──
+  const { data: guruMapelRes } = useQuery({
+    queryKey: ['guru-mapel-readiness', activeTp?.id],
+    queryFn: () => listGuruMapel({ tahun_pelajaran_id: activeTp?.id }),
+    enabled: !!activeTp?.id,
+    staleTime: 60 * 1000,
+  });
+  const rawGuruMapel = guruMapelRes?.data || [];
+
   const defaultTodayStr = useMemo(() => {
     const now = getVirtualDate();
     const y = now.getFullYear();
@@ -154,71 +172,81 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
     return `${y}-${m}-${d}`;
   }, []);
 
-  // ── Metrik Kesiapan Ujian (Exam Readiness Metrics) ──
-  const stats = useMemo(() => {
-    const totalBank = rawBankList.length;
-    const bankSiap = readyBankList.length;
-    const totalKelas = scopedKelasList.length;
-    const ruangMapped = roomMappings.length;
-    const totalJadwal = jadwalList.length;
-    const pengawasAssigned = jadwalList.filter(
-      (j) => !!(j.setting_keamanan?.pengawas_1_id || j.pengawas_guru_id)
-    ).length;
+  // Jadwal yang strictly patuh pada active event & target tingkat
+  const effectiveJadwalList = useMemo(() => {
+    return filterEffectiveJadwalList(jadwalList, activeEvent?.id, effectiveTargetTingkat);
+  }, [jadwalList, activeEvent?.id, effectiveTargetTingkat]);
 
-    const isSoalReady = totalBank > 0 && bankSiap === totalBank;
-    const isRuangReady = totalKelas > 0 && ruangMapped >= totalKelas;
-    const isJadwalReady = totalJadwal > 0;
-    const isPengawasReady = totalJadwal > 0 && pengawasAssigned === totalJadwal;
+  // ── ENGINE KETUNTASAN TIAP FASE MEJA KERJA PANITIA ──
+  const readinessStep1 = useMemo(() => {
+    return evaluateStep1Soal({
+      rawGuruMapel,
+      bankList: rawBankList,
+      targetTingkat: effectiveTargetTingkat,
+      tenantId,
+    });
+  }, [rawGuruMapel, rawBankList, effectiveTargetTingkat, tenantId]);
 
-    return {
-      totalBank,
-      bankSiap,
-      totalKelas,
-      ruangMapped,
-      totalJadwal,
-      pengawasAssigned,
-      isSoalReady,
-      isRuangReady,
-      isJadwalReady,
-      isPengawasReady,
-    };
-  }, [rawBankList, readyBankList, scopedKelasList, roomMappings, jadwalList]);
+  const readinessStep2 = useMemo(() => {
+    return evaluateStep2Ruang({
+      scopedKelasList,
+      roomMappings,
+    });
+  }, [scopedKelasList, roomMappings]);
 
-  // Definisi 5 Fase Operasional Panitia (Label Ringkas 1 Kata Sesuai Konsep Garis Stepper)
+  const readinessStep3 = useMemo(() => {
+    return evaluateStep3Jadwal({
+      effectiveJadwalList,
+    });
+  }, [effectiveJadwalList]);
+
+  const readinessStep4 = useMemo(() => {
+    return evaluateStep4Pengawas({
+      effectiveJadwalList,
+    });
+  }, [effectiveJadwalList]);
+
+  const readinessStep5 = useMemo(() => {
+    return evaluateStep5Monitoring({
+      effectiveJadwalList,
+    });
+  }, [effectiveJadwalList]);
+
+  // Definisi 5 Fase Operasional Panitia
   const phases: Array<{
     id: CbtPanitiaPhase;
     title: string;
-    isDone: boolean;
+    readiness: PhaseReadinessResult;
     icon: React.ElementType;
   }> = [
     {
       id: 'fase_1_soal',
       title: 'Soal',
-      isDone: stats.isSoalReady,
+      readiness: readinessStep1,
       icon: BookOpen,
     },
     {
       id: 'fase_2_ruang',
       title: 'Ruang',
-      isDone: stats.isRuangReady,
+      readiness: readinessStep2,
       icon: DoorOpen,
     },
     {
       id: 'fase_3_jadwal',
       title: 'Jadwal',
-      isDone: stats.isJadwalReady,
+      readiness: readinessStep3,
       icon: Calendar,
     },
     {
       id: 'fase_4_pengawas',
       title: 'Pengawas',
-      isDone: stats.isPengawasReady,
+      readiness: readinessStep4,
       icon: Users,
     },
     {
       id: 'fase_5_monitor',
       title: 'Monitoring',
-      isDone: false,
+      readiness: readinessStep5,
       icon: Activity,
     },
   ];
@@ -289,6 +317,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
               const Icon = phase.icon;
               const isActive = activeTab === phase.id;
               const isPassed = idx < activeIndex;
+              const rd = phase.readiness;
 
               return (
                 <button
@@ -296,35 +325,74 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
                   type="button"
                   onClick={() => setActiveTab(phase.id)}
                   className="group flex flex-col items-center focus:outline-hidden cursor-pointer"
-                  title={`Fase ${idx + 1}: ${phase.title}`}
+                  title={rd.detailText}
                 >
-                  {/* Circle Node */}
-                  <div
-                    className={cn(
-                      'w-8.5 h-8.5 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-200 shadow-2xs',
-                      isActive
-                        ? 'bg-indigo-600 text-white ring-4 ring-indigo-100 dark:ring-indigo-950/80 scale-105'
-                        : isPassed
-                          ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                          : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 group-hover:bg-slate-300 dark:group-hover:bg-slate-600'
-                    )}
-                  >
-                    <Icon size={16} className="transition-transform group-hover:scale-110" />
+                  {/* Circle Node with micro check / warning badge */}
+                  <div className="relative">
+                    <div
+                      className={cn(
+                        'w-8.5 h-8.5 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-200 shadow-2xs',
+                        isActive
+                          ? 'bg-indigo-600 text-white ring-4 ring-indigo-100 dark:ring-indigo-950/80 scale-105'
+                          : rd.isDone
+                            ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/20'
+                            : isPassed
+                              ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                              : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 group-hover:bg-slate-300 dark:group-hover:bg-slate-600'
+                      )}
+                    >
+                      <Icon size={16} className="transition-transform group-hover:scale-110" />
+                    </div>
+
+                    {/* Micro completion or warning badge at top-right */}
+                    {rd.isDone ? (
+                      <span
+                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-xs border-2 border-white dark:border-slate-900 animate-in zoom-in-75"
+                        title="Tuntas"
+                      >
+                        <Check size={9} strokeWidth={3} />
+                      </span>
+                    ) : rd.hasWarning ? (
+                      <span
+                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center shadow-xs border-2 border-white dark:border-slate-900 animate-in zoom-in-75"
+                        title="Ada Bentrok/Kendala"
+                      >
+                        <AlertCircle size={9} strokeWidth={3} />
+                      </span>
+                    ) : null}
                   </div>
 
-                  {/* Label Below Node */}
-                  <span
-                    className={cn(
-                      'mt-1.5 text-[11px] sm:text-xs transition-colors whitespace-nowrap text-center leading-tight',
-                      isActive
-                        ? 'font-bold text-indigo-600 dark:text-indigo-400'
-                        : isPassed
-                          ? 'font-bold text-slate-700 dark:text-slate-300'
-                          : 'font-semibold text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300'
-                    )}
-                  >
-                    {phase.title}
-                  </span>
+                  {/* Label & Dynamic Readiness Subtitle */}
+                  <div className="mt-1 flex flex-col items-center leading-tight">
+                    <span
+                      className={cn(
+                        'text-[11px] sm:text-xs transition-colors whitespace-nowrap text-center font-bold',
+                        isActive
+                          ? 'text-indigo-600 dark:text-indigo-400 font-black'
+                          : rd.isDone
+                            ? 'text-emerald-700 dark:text-emerald-400'
+                            : isPassed
+                              ? 'font-bold text-slate-700 dark:text-slate-300'
+                              : 'font-semibold text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300'
+                      )}
+                    >
+                      {phase.title}
+                    </span>
+                    <span
+                      className={cn(
+                        'text-[9px] sm:text-[10px] px-1.5 py-0.2 rounded-md font-bold mt-0.5 whitespace-nowrap transition-all',
+                        rd.isDone
+                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800'
+                          : rd.hasWarning
+                            ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800'
+                            : isActive
+                              ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800'
+                              : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                      )}
+                    >
+                      {rd.badgeLabel}
+                    </span>
+                  </div>
                 </button>
               );
             })}
