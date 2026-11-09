@@ -102,6 +102,23 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
   });
   const rawGuruMapel = guruMapelRes?.data || [];
 
+  // Mapel options yang benar-benar aktif diajarkan oleh guru di sekolah/event ini (Bebas dari mapel dummy ghost)
+  const activeCurriculumMapelOptions = useMemo(() => {
+    const map = new Map<string, { value: string; label: string; raw?: any }>();
+    rawGuruMapel.forEach((gm: GuruMapel) => {
+      if (gm.mapel_id && gm.Mapel?.nama_mapel) {
+        if (!map.has(gm.mapel_id)) {
+          map.set(gm.mapel_id, {
+            value: gm.mapel_id,
+            label: `${gm.Mapel.nama_mapel}${gm.Mapel.kode_mapel ? ` (${gm.Mapel.kode_mapel})` : ''}`,
+            raw: gm.Mapel,
+          });
+        }
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [rawGuruMapel]);
+
   const { rawList: allGurus = [] } = useGuruOptions({ jenisPtk: 'ALL' });
   const guruPhoneMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -676,6 +693,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
           eventName={eventName}
           targetTingkat={targetTingkat}
           roleContext="KURIKULUM"
+          customMapelOptions={activeCurriculumMapelOptions}
           onSuccess={() => {
             setIsFormModalOpen(false);
             setDefaultMapelForCreate(undefined);

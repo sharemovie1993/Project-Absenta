@@ -41,6 +41,7 @@ interface CbtBankSoalFormModalProps {
   activeEvent?: CbtEventItem | null;
   eventName?: string;
   targetTingkat?: number[];
+  customMapelOptions?: Array<{ value: string; label: string; raw?: any }>;
 }
 
 export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
@@ -55,6 +56,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   activeEvent,
   eventName,
   targetTingkat,
+  customMapelOptions,
 }) => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
@@ -201,6 +203,9 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   }, [teacherAssignedMapels?.data, mapelOptions]);
 
   const activeMapelOptions = useMemo(() => {
+    if (customMapelOptions && customMapelOptions.length > 0) {
+      return customMapelOptions;
+    }
     if (scope === 'TERPUSAT_MASSAL' || showAllMapels || assignedMapels.length === 0) {
       return mapelOptions;
     }
@@ -210,7 +215,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       if (canonical) base = [canonical, ...base];
     }
     return base;
-  }, [scope, showAllMapels, assignedMapels, mapelOptions, mapelId]);
+  }, [customMapelOptions, scope, showAllMapels, assignedMapels, mapelOptions, mapelId]);
 
   // Sinkronisasi otomatis judul & kode bank pada mode massal
   const triggerAutoFillMassal = (targetMapelId: string, targetTingkat: string, targetKegiatanKey: string) => {
