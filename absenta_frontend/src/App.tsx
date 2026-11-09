@@ -87,7 +87,6 @@ const TrialEmailSequencePage = lazy(() => import('./pages/notifications/TrialEma
 const WhatsAppHealthPage = lazy(() => import('./pages/notifications/WhatsAppHealthPage'));
 const WhatsAppChatLogPage = lazy(() => import('./pages/notifications/WhatsAppChatLogPage'));
 const WhatsAppOnboardingPage = lazy(() => import('./pages/notifications/WhatsAppOnboardingPage').then(m => ({ default: m.WhatsAppOnboardingPage })));
-const AcademicDashboard = lazy(() => import('./pages/academic/AcademicDashboard'));
 const AcademicTransitionPage = lazy(() => import('./pages/academic/transition/AcademicTransitionPage'));
 const AcademicPlenoPage = lazy(() => import('./pages/academic/pleno/AcademicPlenoPage'));
 const CetakBerkasPage = lazy(() => import('./pages/academic/CetakBerkasPage').then(m => ({ default: m.CetakBerkasPage })));
@@ -551,11 +550,7 @@ function App() {
                     <Route path="/cancelled" element={<CancelledPage />} />
                     
                     {/* Academic Routes */}
-                    <Route path="/academic" element={
-                      <ProtectedRoute requiredCapability="academic.students.view.list">
-                        <AcademicDashboard />
-                      </ProtectedRoute>
-                    } />
+                    <Route path="/academic" element={<Navigate to="/dashboard?tab=admin" replace />} />
                     <Route path="/academic/guru" element={
                       <ProtectedRoute requiredCapability="academic.teachers.view.list">
                         <GuruPage />

@@ -46,6 +46,7 @@ import {
   UserCheck,
   ClipboardCheck,
   Scale,
+  Database,
   LucideIcon
 } from 'lucide-react';
 import { getKaprogMobileChildren } from '@/components/dashboard/roles/kaprog/kaprogNavigation.config';
@@ -1455,11 +1456,11 @@ export function getAdminTabs(teacherDashboards: MobileBottomSubItem[]): MobileBo
     },
     {
       id: 'admin_academic',
-      label: 'Data Master Akademik',
+      label: 'Data Master Siswa',
       shortLabel: 'Master',
-      icon: ShieldCheck,
-      targetPath: '/academic',
-      isActive: (p) => p.startsWith('/academic'),
+      icon: Database,
+      targetPath: '/dashboard?tab=admin&subtab=siswa',
+      isActive: (p, t, s) => (p === '/dashboard' || p === '/dashboard/') && t === 'admin' && s === 'siswa',
     },
     {
       id: 'admin_menu',

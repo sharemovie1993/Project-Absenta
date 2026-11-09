@@ -70,7 +70,6 @@ const TahunPelajaranPage = lazy(() => import('@/pages/academic/TahunPelajaranPag
 const UserPage = lazy(() => import('@/pages/users/UsersPage'));
 const StrukturOrganisasiPage = lazy(() => import('@/pages/academic/struktur-organisasi/StrukturOrganisasiPage').then((m) => ({ default: m.StrukturOrganisasiPage || m.default })));
 const StaffActivityLogPage = lazy(() => import('@/pages/academic/StaffActivityLogPage').then((m) => ({ default: m.StaffActivityLogPage })));
-const AcademicDashboard = lazy(() => import('@/pages/academic/AcademicDashboard'));
 const SemesterPage = lazy(() => import('@/pages/academic/SemesterPage').then((m) => ({ default: m.SemesterPage })));
 const DocumentCenterPage = lazy(() => import('@/pages/documents/DocumentCenterPage'));
 const MemberDocsPage = lazy(() => import('@/pages/documents/MemberDocsPage'));
@@ -104,7 +103,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
 
   const validTabs: AdminTabId[] = [
     'ringkasan',
-    'academic_dashboard',
     'audit',
     'tahun_pelajaran',
     'semester',
@@ -230,13 +228,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
         shortLabel: 'Ringkasan',
         category: 'kontrol',
         icon: LayoutDashboard,
-      },
-      {
-        id: 'academic_dashboard',
-        label: 'Dashboard Akademik',
-        shortLabel: 'Akademik',
-        category: 'kontrol',
-        icon: LayoutGrid,
       },
       {
         id: 'audit',
@@ -704,26 +695,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
                 semNama={semNama}
                 onNavigateSubtab={handleTabSelect}
               />
-            </div>
-          )}
-
-          {/* TAB: DASHBOARD AKADEMIK */}
-          {visitedTabs.has('academic_dashboard') && (
-            <div
-              role="tabpanel"
-              aria-hidden={activeTab !== 'academic_dashboard'}
-              className={cn('w-full min-w-0', activeTab === 'academic_dashboard' ? 'block' : 'hidden')}
-            >
-              <Suspense
-                fallback={
-                  <div className="py-20 flex flex-col items-center justify-center gap-3">
-                    <Loader size="md" />
-                    <span className="text-xs text-slate-500 font-medium">Memuat Dashboard Akademik...</span>
-                  </div>
-                }
-              >
-                <AcademicDashboard />
-              </Suspense>
             </div>
           )}
 
