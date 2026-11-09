@@ -53,23 +53,37 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
 
   const queryClient = useQueryClient();
 
+  // Ambil data jadwal ter-update dari backend agar tanda tangan pengawas langsung tersinkron
+  const { data: freshJadwal } = useQuery<CbtJadwalUjian>({
+    queryKey: cbtQueryKeys.jadwalDetail(jadwal?.id || ''),
+    queryFn: () => (jadwal?.id ? cbtApi.getJadwalById(jadwal.id) : Promise.resolve(null as any)),
+    enabled: Boolean(isOpen && jadwal?.id),
+  });
+
+  const currentJadwal = freshJadwal || jadwal;
+
   const updateSignatureMutation = useMutation({
     mutationFn: async (base64Signature: string) => {
-      if (!jadwal?.id) return;
-      const currentSetting = jadwal.setting_keamanan || {};
+      if (!currentJadwal?.id) return;
+      const rawSetting = currentJadwal.setting_keamanan || {};
+      const currentSetting = typeof rawSetting === 'string' ? JSON.parse(rawSetting) : rawSetting;
       const updatedSetting = {
         ...currentSetting,
         tanda_tangan_pengawas_1: base64Signature,
         waktu_ttd_pengawas_1: new Date().toISOString(),
       };
-      return cbtApi.updateJadwal(jadwal.id, {
+      return cbtApi.updateJadwal(currentJadwal.id, {
         setting_keamanan: updatedSetting,
       });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Tanda tangan digital pengawas berhasil disimpan');
       setIsSignModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all });
+      await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all });
+      await queryClient.invalidateQueries({ queryKey: ['my-pengawas-cbt-schedules'] });
+      if (currentJadwal?.id) {
+        await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.jadwalDetail(currentJadwal.id) });
+      }
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message || err.message || 'Gagal menyimpan tanda tangan pengawas');
@@ -78,20 +92,21 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
 
   // Ambil data peserta sesi untuk tabel kehadiran & tanda tangan digital
   const { data: pesertaList = [], isLoading: loadingPeserta } = useQuery<CbtPesertaUjian[]>({
-    queryKey: cbtQueryKeys.pesertaList(jadwal?.id || ''),
-    queryFn: () => (jadwal?.id ? cbtApi.getPesertaList(jadwal.id) : Promise.resolve([])),
-    enabled: Boolean(isOpen && jadwal?.id),
+    queryKey: cbtQueryKeys.pesertaList(currentJadwal?.id || ''),
+    queryFn: () => (currentJadwal?.id ? cbtApi.getPesertaList(currentJadwal.id) : Promise.resolve([])),
+    enabled: Boolean(isOpen && currentJadwal?.id),
   });
 
   const populateDefaultSigners = () => {
-    const cfg = jadwal?.setting_keamanan;
+    const rawCfg = currentJadwal?.setting_keamanan;
+    const cfg = typeof rawCfg === 'string' ? JSON.parse(rawCfg) : rawCfg;
     const defaultGuruNama =
       cfg?.pengawas_1_nama ||
-      jadwal?.BankSoal?.Guru?.nama_guru ||
+      currentJadwal?.BankSoal?.Guru?.nama_guru ||
       '';
     const defaultGuruNip =
       cfg?.pengawas_1_nip ||
-      (jadwal?.BankSoal?.Guru as any)?.nip ||
+      (currentJadwal?.BankSoal?.Guru as any)?.nip ||
       '-';
     const defaultProktorNama =
       cfg?.proktor_nama ||
@@ -126,10 +141,10 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
   };
 
   useEffect(() => {
-    if (isOpen && jadwal) {
+    if (isOpen && currentJadwal) {
       populateDefaultSigners();
     }
-  }, [isOpen, jadwal]);
+  }, [isOpen, currentJadwal, currentJadwal?.setting_keamanan]);
 
   // Urutkan peserta berdasarkan NISN / Nama Siswa
   const sortedPeserta = useMemo(() => {
@@ -218,6 +233,18 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
 
         const sheetElement = sheetElements[i];
 
+        // Pastikan seluruh image (TTD siswa, kop, & TTD pengawas) sudah ter-load tuntas
+        const imgs = Array.from(sheetElement.querySelectorAll('img'));
+        await Promise.all(
+          imgs.map((img) => {
+            if (img.complete) return Promise.resolve();
+            return new Promise((resolve) => {
+              img.onload = resolve;
+              img.onerror = resolve;
+            });
+          })
+        );
+
         // ── LANGKAH 4: Render canvas dengan onclone sanitizer ──
         const canvas = await html2canvas(sheetElement, {
           scale: 2.0, // Skala 2.0 (~200 DPI Retina)
@@ -242,6 +269,11 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
               s.style.border = 'none';
               s.style.boxShadow = 'none';
               s.style.outline = 'none';
+            });
+            // Bersihkan CSS filter pada seluruh gambar di kloningan agar tidak diblokir html2canvas
+            const clonedImgs = clonedDoc.querySelectorAll('img');
+            clonedImgs.forEach((img) => {
+              img.style.filter = 'none';
             });
           },
         });
@@ -268,8 +300,8 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
         }
       }
 
-      const cleanSession = (jadwal.nama_sesi || 'SESI_CBT').replace(/[^a-zA-Z0-9]/g, '_');
-      pdf.save(`DAFTAR_HADIR_CBT_${cleanSession}_${jadwal.token_ujian}.pdf`);
+      const cleanSession = (currentJadwal?.nama_sesi || 'SESI_CBT').replace(/[^a-zA-Z0-9]/g, '_');
+      pdf.save(`DAFTAR_HADIR_CBT_${cleanSession}_${currentJadwal?.token_ujian || ''}.pdf`);
       toast.success('Daftar Hadir CBT berhasil diunduh (True WYSIWYG)', { id: toastId });
     } catch (err: any) {
       console.error('[PDF Export Error]:', err);
@@ -283,12 +315,12 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
     }
   };
 
-  if (!jadwal) return null;
+  if (!currentJadwal) return null;
 
   // Format tanggal & jam
-  const tanggalFormat = formatLocalDateIndo(jadwal.tanggal_mulai);
-  const jamMulai = formatLocalTimeFromISO(jadwal.tanggal_mulai);
-  const jamSelesai = formatLocalTimeFromISO(jadwal.tanggal_selesai);
+  const tanggalFormat = formatLocalDateIndo(currentJadwal.tanggal_mulai);
+  const jamMulai = formatLocalTimeFromISO(currentJadwal.tanggal_mulai);
+  const jamSelesai = formatLocalTimeFromISO(currentJadwal.tanggal_selesai);
   const tz = getTimezoneLabel();
   const jamFormat = `${jamMulai} s.d. ${jamSelesai} ${tz}`;
 
@@ -301,7 +333,7 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
       isOpen={isOpen}
       onClose={onClose}
       title="Pratinjau Daftar Hadir Peserta Ujian (CBT)"
-      subtitle={`${jadwal.nama_sesi} • Token: ${jadwal.token_ujian}`}
+      subtitle={`${currentJadwal.nama_sesi} • Token: ${currentJadwal.token_ujian}`}
       orientation="portrait"
       allowOrientationToggle={false}
       allowLogoToggles={true}
@@ -478,7 +510,7 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
               Daftar Hadir Peserta Asesmen / Ujian Berbasis Komputer (CBT)
             </h2>
             <p className="text-[11px] font-bold text-black uppercase mt-0.5">
-              Tahun Ajaran {jadwal.TahunPelajaran?.tahun || '2026/2027'} • Semester {jadwal.Semester?.nama || 'Ganjil'}
+              Tahun Ajaran {currentJadwal.TahunPelajaran?.tahun || '2026/2027'} • Semester {currentJadwal.Semester?.nama || 'Ganjil'}
             </p>
           </div>
 
@@ -488,8 +520,8 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
               <span className="w-28 font-semibold shrink-0">Mata Pelajaran</span>
               <span className="mr-1.5">:</span>
               <span className="font-bold">
-                {jadwal.BankSoal?.Mapel?.nama_mapel || jadwal.BankSoal?.judul || 'Mata Pelajaran Umum'}{' '}
-                {jadwal.BankSoal?.tingkat ? `(Tingkat ${jadwal.BankSoal.tingkat})` : ''}
+                {currentJadwal.BankSoal?.Mapel?.nama_mapel || currentJadwal.BankSoal?.judul || 'Mata Pelajaran Umum'}{' '}
+                {currentJadwal.BankSoal?.tingkat ? `(Tingkat ${currentJadwal.BankSoal.tingkat})` : ''}
               </span>
             </div>
             <div className="flex">
@@ -500,13 +532,13 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
             <div className="flex">
               <span className="w-28 font-semibold shrink-0">Nama Sesi Ujian</span>
               <span className="mr-1.5">:</span>
-              <span>{jadwal.nama_sesi}</span>
+              <span>{currentJadwal.nama_sesi}</span>
             </div>
             <div className="flex">
               <span className="w-28 font-semibold shrink-0">Waktu / Alokasi</span>
               <span className="mr-1.5">:</span>
               <span>
-                {jamFormat} ({jadwal.durasi_menit} Menit)
+                {jamFormat} ({currentJadwal.durasi_menit} Menit)
               </span>
             </div>
             <div className="flex">
@@ -517,7 +549,7 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
             <div className="flex">
               <span className="w-28 font-semibold shrink-0">Token Masuk Sesi</span>
               <span className="mr-1.5">:</span>
-              <span className="font-mono font-black tracking-widest">{jadwal.token_ujian}</span>
+              <span className="font-mono font-black tracking-widest">{currentJadwal.token_ujian}</span>
             </div>
           </div>
 
@@ -611,7 +643,7 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
                               <img
                                 src={signatureImg}
                                 alt={`TTD ${namaSiswa}`}
-                                className="h-7 max-w-[85px] object-contain filter contrast-125"
+                                className="h-7 max-w-[85px] object-contain"
                               />
                             </div>
                           ) : (
@@ -700,7 +732,7 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
         isOpen={isSignModalOpen}
         onClose={() => setIsSignModalOpen(false)}
         title="Tanda Tangan Digital Pengawas Ujian"
-        subtitle={`Sesi: ${jadwal.nama_sesi || 'Ujian CBT'} • Ruang: ${ruangUjian}`}
+        subtitle={`Sesi: ${currentJadwal.nama_sesi || 'Ujian CBT'} • Ruang: ${ruangUjian}`}
         penName={pengawas1Nama || 'Pengawas Ruang'}
         initialSignature={pengawas1Signature}
         onSave={(sig) => {

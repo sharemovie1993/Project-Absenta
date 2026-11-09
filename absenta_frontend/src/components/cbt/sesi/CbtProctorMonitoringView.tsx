@@ -88,9 +88,17 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
     }
   }, [availableSchedules, selectedJadwalId]);
 
+  // Query detail jadwal aktif secara reaktif untuk menjamin data setting_keamanan & TTD selalu teranyar
+  const { data: activeJadwalDetail } = useQuery({
+    queryKey: cbtQueryKeys.jadwalDetail(selectedJadwalId),
+    queryFn: () => (selectedJadwalId ? cbtApi.getJadwalById(selectedJadwalId) : Promise.resolve(null)),
+    enabled: Boolean(selectedJadwalId),
+  });
+
   const activeJadwal = useMemo(() => {
+    if (activeJadwalDetail) return activeJadwalDetail;
     return availableSchedules.find((j) => j.id === selectedJadwalId) || availableSchedules[0];
-  }, [availableSchedules, selectedJadwalId]);
+  }, [availableSchedules, selectedJadwalId, activeJadwalDetail]);
 
   // Fetch live peserta dengan interval 10 detik
   const { data: pesertaList = [], isLoading, refetch } = useQuery({
@@ -180,7 +188,8 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   const updatePengawasSignatureMutation = useMutation({
     mutationFn: async (base64Signature: string) => {
       if (!activeJadwal?.id) throw new Error('Jadwal tidak ditemukan');
-      const currentSetting = activeJadwal.setting_keamanan || {};
+      const rawSetting = activeJadwal.setting_keamanan || {};
+      const currentSetting = typeof rawSetting === 'string' ? JSON.parse(rawSetting) : rawSetting;
       const updatedSetting = {
         ...currentSetting,
         tanda_tangan_pengawas_1: base64Signature,
@@ -194,6 +203,10 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
       toast.success('Tanda tangan digital pengawas berhasil disimpan');
       setIsSignModalOpen(false);
       await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false, refetchType: 'all' });
+      await queryClient.invalidateQueries({ queryKey: ['my-pengawas-cbt-schedules'], exact: false, refetchType: 'all' });
+      if (activeJadwal?.id) {
+        await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.jadwalDetail(activeJadwal.id) });
+      }
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message || err.message || 'Gagal menyimpan tanda tangan pengawas');

@@ -55,23 +55,37 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
 
   const queryClient = useQueryClient();
 
+  // Ambil data jadwal ter-update dari backend agar tanda tangan pengawas langsung tersinkron
+  const { data: freshJadwal } = useQuery<CbtJadwalUjian>({
+    queryKey: cbtQueryKeys.jadwalDetail(jadwal?.id || ''),
+    queryFn: () => (jadwal?.id ? cbtApi.getJadwalById(jadwal.id) : Promise.resolve(null as any)),
+    enabled: Boolean(isOpen && jadwal?.id),
+  });
+
+  const currentJadwal = freshJadwal || jadwal;
+
   const updateSignatureMutation = useMutation({
     mutationFn: async (base64Signature: string) => {
-      if (!jadwal?.id) return;
-      const currentSetting = jadwal.setting_keamanan || {};
+      if (!currentJadwal?.id) return;
+      const rawSetting = currentJadwal.setting_keamanan || {};
+      const currentSetting = typeof rawSetting === 'string' ? JSON.parse(rawSetting) : rawSetting;
       const updatedSetting = {
         ...currentSetting,
         tanda_tangan_pengawas_1: base64Signature,
         waktu_ttd_pengawas_1: new Date().toISOString(),
       };
-      return cbtApi.updateJadwal(jadwal.id, {
+      return cbtApi.updateJadwal(currentJadwal.id, {
         setting_keamanan: updatedSetting,
       });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Tanda tangan digital pengawas berhasil disimpan');
       setIsSignModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all });
+      await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all });
+      await queryClient.invalidateQueries({ queryKey: ['my-pengawas-cbt-schedules'] });
+      if (currentJadwal?.id) {
+        await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.jadwalDetail(currentJadwal.id) });
+      }
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message || err.message || 'Gagal menyimpan tanda tangan pengawas');
@@ -80,20 +94,21 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
 
   // Ambil data peserta sesi untuk rekap kehadiran otomatis di Berita Acara
   const { data: pesertaList = [] } = useQuery({
-    queryKey: cbtQueryKeys.pesertaList(jadwal?.id || ''),
-    queryFn: () => (jadwal?.id ? cbtApi.getPesertaList(jadwal.id) : Promise.resolve([])),
-    enabled: Boolean(isOpen && jadwal?.id),
+    queryKey: cbtQueryKeys.pesertaList(currentJadwal?.id || ''),
+    queryFn: () => (currentJadwal?.id ? cbtApi.getPesertaList(currentJadwal.id) : Promise.resolve([])),
+    enabled: Boolean(isOpen && currentJadwal?.id),
   });
 
   const populateDefaultSigners = () => {
-    const cfg = jadwal?.setting_keamanan;
+    const rawCfg = currentJadwal?.setting_keamanan;
+    const cfg = typeof rawCfg === 'string' ? JSON.parse(rawCfg) : rawCfg;
     const defaultGuruNama =
       cfg?.pengawas_1_nama ||
-      jadwal?.BankSoal?.Guru?.nama_guru ||
+      currentJadwal?.BankSoal?.Guru?.nama_guru ||
       '';
     const defaultGuruNip =
       cfg?.pengawas_1_nip ||
-      (jadwal?.BankSoal?.Guru as any)?.nip ||
+      (currentJadwal?.BankSoal?.Guru as any)?.nip ||
       '-';
     const defaultProktorNama =
       cfg?.proktor_nama ||
@@ -128,16 +143,16 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
   };
 
   useEffect(() => {
-    if (isOpen && jadwal) {
+    if (isOpen && currentJadwal) {
       populateDefaultSigners();
     }
-  }, [isOpen, jadwal?.id, sekolahData?.kepala_sekolah]);
+  }, [isOpen, currentJadwal, currentJadwal?.setting_keamanan]);
 
-  if (!jadwal) return null;
+  if (!currentJadwal) return null;
 
   const activeTz = getTimezone();
   const tzLabel = getTimezoneLabel(activeTz);
-  const tglMulai = new Date(jadwal.tanggal_mulai);
+  const tglMulai = new Date(currentJadwal.tanggal_mulai);
   const tanggalFormat = tglMulai.toLocaleDateString('id-ID', {
     weekday: 'long',
     day: '2-digit',
@@ -152,15 +167,15 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
     timeZone: activeTz,
   });
 
-  const jamMulai = formatLocalTimeFromISO(jadwal.tanggal_mulai);
-  const jamSelesai = formatLocalTimeFromISO(jadwal.tanggal_selesai);
+  const jamMulai = formatLocalTimeFromISO(currentJadwal.tanggal_mulai);
+  const jamSelesai = formatLocalTimeFromISO(currentJadwal.tanggal_selesai);
   const jamFormat =
     jamMulai && jamSelesai
       ? `${jamMulai} s.d. ${jamSelesai} ${tzLabel}`
       : `${tglMulai.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: activeTz })} ${tzLabel} s.d. Selesai`;
 
   const kotaSekolah = sekolahData?.kota || sekolahData?.kabupaten || 'Purwakarta';
-  const totalPeserta = pesertaList.length || jadwal._count?.Peserta || 0;
+  const totalPeserta = pesertaList.length || currentJadwal._count?.Peserta || 0;
   const totalSelesai = pesertaList.filter((p) => p.status === 'FINISHED').length;
   const totalSedangUjian = pesertaList.filter((p) => p.status === 'IN_PROGRESS').length;
   const totalDiskualifikasi = pesertaList.filter((p) => p.status === 'DISQUALIFIED').length;
@@ -198,6 +213,18 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
       }
       await new Promise((resolve) => setTimeout(resolve, 120));
 
+      // Pastikan seluruh image (kop surat & TTD pengawas) sudah ter-load sempurna
+      const imgs = Array.from(sheetElement.querySelectorAll('img'));
+      await Promise.all(
+        imgs.map((img) => {
+          if (img.complete) return Promise.resolve();
+          return new Promise((resolve) => {
+            img.onload = resolve;
+            img.onerror = resolve;
+          });
+        })
+      );
+
       const html2canvas = (await import('html2canvas-pro')).default;
       const { jsPDF } = await import('jspdf');
 
@@ -223,6 +250,10 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
             s.style.border = 'none';
             s.style.boxShadow = 'none';
             s.style.outline = 'none';
+          });
+          const clonedImgs = clonedDoc.querySelectorAll('img');
+          clonedImgs.forEach((img) => {
+            img.style.filter = 'none';
           });
         },
       });
@@ -258,8 +289,8 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
         }
       }
 
-      const cleanSession = (jadwal.nama_sesi || 'SESI_CBT').replace(/[^a-zA-Z0-9]/g, '_');
-      pdf.save(`BERITA_ACARA_CBT_${cleanSession}_${jadwal.token_ujian}.pdf`);
+      const cleanSession = (currentJadwal.nama_sesi || 'SESI_CBT').replace(/[^a-zA-Z0-9]/g, '_');
+      pdf.save(`BERITA_ACARA_CBT_${cleanSession}_${currentJadwal.token_ujian}.pdf`);
       toast.success('PDF Berita Acara CBT berhasil diunduh (True WYSIWYG)', { id: toastId });
     } catch (err: any) {
       console.error('[CBT Berita Acara PDF Error]', err);
@@ -281,10 +312,10 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-muted-foreground font-medium">Sesi:</span>
           <span className="text-xs font-bold text-foreground bg-primary/10 text-primary px-2.5 py-0.5 rounded-md">
-            {jadwal.nama_sesi}
+            {currentJadwal.nama_sesi}
           </span>
           <span className="text-[11px] text-muted-foreground hidden sm:inline">
-            • Mapel: {jadwal.BankSoal?.Mapel?.nama_mapel || '-'} • Token: {jadwal.token_ujian}
+            • Mapel: {currentJadwal.BankSoal?.Mapel?.nama_mapel || '-'} • Token: {currentJadwal.token_ujian}
           </span>
         </div>
       }
@@ -488,7 +519,7 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
           orientation="portrait"
           pageNumber={1}
           totalPages={1}
-          footerText={`Berita Acara Pelaksanaan CBT — ${jadwal.nama_sesi} (${jadwal.token_ujian})`}
+          footerText={`Berita Acara Pelaksanaan CBT — ${currentJadwal.nama_sesi} (${currentJadwal.token_ujian})`}
         >
           {/* 1. KOP SURAT RESMI DINAS & SEKOLAH */}
           <PrintHeader
@@ -504,7 +535,7 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
               BERITA ACARA PELAKSANAAN ASESMEN BERBASIS KOMPUTER (CBT)
             </h3>
             <p className="text-[11px] font-semibold text-slate-700">
-              Nomor: BA-CBT/{tglMulai.getFullYear()}/{jadwal.token_ujian}
+              Nomor: BA-CBT/{tglMulai.getFullYear()}/{currentJadwal.token_ujian}
             </p>
           </div>
 
@@ -522,34 +553,34 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
               <tr className="border-b border-slate-300">
                 <td className="w-8 p-1.5 text-center font-bold bg-slate-100 border-r border-slate-300">1.</td>
                 <td className="w-52 p-1.5 font-semibold bg-slate-50 border-r border-slate-300">Nama Sesi Ujian</td>
-                <td className="p-1.5 font-bold">{jadwal.nama_sesi}</td>
+                <td className="p-1.5 font-bold">{currentJadwal.nama_sesi}</td>
               </tr>
               <tr className="border-b border-slate-300">
                 <td className="p-1.5 text-center font-bold bg-slate-100 border-r border-slate-300">2.</td>
                 <td className="p-1.5 font-semibold bg-slate-50 border-r border-slate-300">Mata Pelajaran</td>
                 <td className="p-1.5 font-semibold">
-                  {jadwal.BankSoal?.Mapel?.nama_mapel || '-'}{' '}
-                  {jadwal.BankSoal?.tingkat ? `(Tingkat ${jadwal.BankSoal.tingkat})` : ''}
+                  {currentJadwal.BankSoal?.Mapel?.nama_mapel || '-'}{' '}
+                  {currentJadwal.BankSoal?.tingkat ? `(Tingkat ${currentJadwal.BankSoal.tingkat})` : ''}
                 </td>
               </tr>
               <tr className="border-b border-slate-300">
                 <td className="p-1.5 text-center font-bold bg-slate-100 border-r border-slate-300">3.</td>
                 <td className="p-1.5 font-semibold bg-slate-50 border-r border-slate-300">Kode Paket Bank Soal</td>
                 <td className="p-1.5 font-mono font-bold">
-                  {jadwal.BankSoal?.kode_bank || '-'} ({jadwal.BankSoal?.jumlah_soal || 0} Butir Soal)
+                  {currentJadwal.BankSoal?.kode_bank || '-'} ({currentJadwal.BankSoal?.jumlah_soal || 0} Butir Soal)
                 </td>
               </tr>
               <tr className="border-b border-slate-300">
                 <td className="p-1.5 text-center font-bold bg-slate-100 border-r border-slate-300">4.</td>
                 <td className="p-1.5 font-semibold bg-slate-50 border-r border-slate-300">Waktu & Durasi Pengerjaan</td>
                 <td className="p-1.5">
-                  {jamFormat} (Alokasi: <strong>{jadwal.durasi_menit} Menit</strong>)
+                  {jamFormat} (Alokasi: <strong>{currentJadwal.durasi_menit} Menit</strong>)
                 </td>
               </tr>
               <tr className="border-b border-slate-300">
                 <td className="p-1.5 text-center font-bold bg-slate-100 border-r border-slate-300">5.</td>
                 <td className="p-1.5 font-semibold bg-slate-50 border-r border-slate-300">Token Masuk Sesi</td>
-                <td className="p-1.5 font-mono font-black tracking-widest">{jadwal.token_ujian}</td>
+                <td className="p-1.5 font-mono font-black tracking-widest">{currentJadwal.token_ujian}</td>
               </tr>
               <tr className="border-b border-slate-300">
                 <td className="p-1.5 text-center font-bold bg-slate-100 border-r border-slate-300">6.</td>
@@ -639,7 +670,7 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
         isOpen={isSignModalOpen}
         onClose={() => setIsSignModalOpen(false)}
         title="Tanda Tangan Digital Pengawas Ujian"
-        subtitle={`Sesi: ${jadwal.nama_sesi || 'Ujian CBT'} • Ruang: ${ruangUjian}`}
+        subtitle={`Sesi: ${currentJadwal.nama_sesi || 'Ujian CBT'} • Ruang: ${ruangUjian}`}
         penName={pengawas1Nama || 'Pengawas Ruang'}
         initialSignature={pengawas1Signature}
         onSave={(sig) => {

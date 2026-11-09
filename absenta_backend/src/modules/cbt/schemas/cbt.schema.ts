@@ -134,13 +134,19 @@ export const settingKeamananSchema = z.object({
   pengawas_1_id: z.string().nullable().optional(),
   pengawas_1_nama: z.string().max(150).nullable().optional(),
   pengawas_1_nip: z.string().max(60).nullable().optional(),
+  tanda_tangan_pengawas_1: z.string().nullable().optional(),
+  waktu_ttd_pengawas_1: z.string().nullable().optional(),
   pengawas_2_id: z.string().nullable().optional(),
   pengawas_2_nama: z.string().max(150).nullable().optional(),
   pengawas_2_nip: z.string().max(60).nullable().optional(),
+  tanda_tangan_pengawas_2: z.string().nullable().optional(),
+  waktu_ttd_pengawas_2: z.string().nullable().optional(),
   proktor_id: z.string().nullable().optional(),
   proktor_nama: z.string().max(150).nullable().optional(),
   proktor_nip: z.string().max(60).nullable().optional(),
-}).partial();
+  tanda_tangan_proktor: z.string().nullable().optional(),
+  waktu_ttd_proktor: z.string().nullable().optional(),
+}).passthrough().partial();
 
 const jadwalUjianBaseSchema = z.object({
   bank_soal_id: z.string().uuid('ID Bank Soal tidak valid'),

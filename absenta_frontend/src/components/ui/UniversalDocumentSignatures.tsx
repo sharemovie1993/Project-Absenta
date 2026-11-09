@@ -127,7 +127,7 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
             <img
               src={person.signatureImage}
               alt={`TTD ${person.personName}`}
-              className="max-h-[95%] max-w-[55mm] object-contain filter contrast-125 select-none"
+              className="max-h-[95%] max-w-[55mm] object-contain select-none"
             />
           ) : null}
         </div>
