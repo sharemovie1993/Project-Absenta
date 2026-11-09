@@ -7,9 +7,14 @@ export default defineCronJob({
   schedule: '* * * * *', // Setiap 1 menit
   async run() {
     try {
+      const now = new Date();
       const activeTunnels = await prisma.easyTunnel.findMany({
         where: {
-          status: 'active'
+          status: 'active',
+          OR: [
+            { expires_at: null },
+            { expires_at: { gt: now } }
+          ]
         }
       });
 

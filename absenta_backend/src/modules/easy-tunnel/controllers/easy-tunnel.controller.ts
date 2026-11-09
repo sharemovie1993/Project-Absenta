@@ -119,7 +119,7 @@ export const easyTunnelController = {
   async getTunnelTelemetry(request: any, reply: any) {
     try {
       const { id } = request.params;
-      const data = await EasyTunnelService.getTunnelTelemetry(id);
+      const data = await EasyTunnelService.getTunnelTelemetry(id, getEffectiveTenantId(request));
       return reply.send({ success: true, data });
     } catch (err: any) {
       console.error('[EasyTunnel] getTunnelTelemetry error:', err);
@@ -158,7 +158,10 @@ export const easyTunnelController = {
   async forceRelease(request: any, reply: any) {
     try {
       const { license_key } = request.body || {};
-      const result = await EasyTunnelService.forceRelease(license_key);
+      if (!license_key) {
+        return reply.status(400).send({ success: false, message: 'license_key wajib diisi.' });
+      }
+      const result = await EasyTunnelService.forceRelease(license_key, getEffectiveTenantId(request));
       return reply.send({ success: true, message: 'Lisensi berhasil di-release.', data: result });
     } catch (err: any) {
       console.error('[EasyTunnel] forceRelease error:', err);
@@ -386,7 +389,9 @@ export const easyTunnelController = {
         }
       }
 
-      const isSuper = isSystemSuperAdmin(request.user);
+      const role = request.user?.roleName || request.user?.role?.name;
+      const tid = request.user?.tenantId || request.user?.tenant_id || request.tenantId;
+      const isSuper = isSystemSuperAdmin(role, tid);
       const searchSlugs = new Set<string>();
 
       if (!isSuper && request.tenantId && request.tenantId !== 'system') {

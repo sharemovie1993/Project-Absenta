@@ -167,18 +167,18 @@ export class EasyTunnelService {
       orderBy: { created_at: 'desc' }
     });
 
-    const enriched = [];
-    for (const t of tunnels) {
-      // Jalankan sync port
-      const synced = await this.syncTunnelPort(t);
-      const wgStatus = synced.slug
-        ? WireguardManager.getStatus(synced.slug)
-        : { status: 'not_configured' as const };
-      enriched.push({
-        ...synced,
-        wg_status: wgStatus
-      });
-    }
+    const enriched = await Promise.all(
+      tunnels.map(async (t) => {
+        const synced = await this.syncTunnelPort(t);
+        const wgStatus = synced.slug
+          ? WireguardManager.getStatus(synced.slug)
+          : { status: 'not_configured' as const };
+        return {
+          ...synced,
+          wg_status: wgStatus
+        };
+      })
+    );
 
     return enriched;
   }
@@ -383,7 +383,15 @@ export class EasyTunnelService {
     });
   }
 
-  static async forceRelease(licenseKey: string): Promise<any> {
+  static async forceRelease(licenseKey: string, tenantId?: string): Promise<any> {
+    if (tenantId) {
+      const tunnel = await prisma.easyTunnel.findFirst({
+        where: { license_key: licenseKey }
+      });
+      if (tunnel) {
+        await this.verifyTunnelTenant(tunnel.slug, tenantId);
+      }
+    }
     return await releaseLicense(licenseKey);
   }
 
@@ -500,11 +508,12 @@ export class EasyTunnelService {
     return { message: 'Custom domain berhasil dihapus.' };
   }
 
-  static async getTunnelTelemetry(tunnelId: string): Promise<any> {
+  static async getTunnelTelemetry(tunnelId: string, tenantId?: string): Promise<any> {
     const tunnel = await prisma.easyTunnel.findUnique({
       where: { id: tunnelId }
     });
     if (!tunnel) throw new Error('Terowongan tidak ditemukan.');
+    await this.verifyTunnelTenant(tunnel.slug, tenantId);
 
     const { getStatsForSlug } = require('../../../middlewares/accessSourceMiddleware');
     const liveStats = getStatsForSlug(tunnel.slug);

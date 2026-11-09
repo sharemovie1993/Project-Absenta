@@ -3,9 +3,9 @@ import { easyTunnelController } from '../controllers/easy-tunnel.controller';
 import { determineDataScope } from '@/middlewares/dataScope';
 
 export async function easyTunnelRoutes(fastify: any) {
-  // Semua endpoint ini diamankan dengan hak akses pembaruan konfigurasi sistem
+  // Semua endpoint ini diamankan dengan hak akses pembaruan konfigurasi sistem atau profil institusi sekolah
   const opts = {
-    preHandler: [requireCapability('core.system.config.update'), determineDataScope()]
+    preHandler: [requireCapability(['core.system.config.update', 'core.sekolah.update.profile']), determineDataScope()]
   };
 
   // Tunnels CRUD
