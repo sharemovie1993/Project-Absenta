@@ -249,14 +249,11 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
               <button
                 type="button"
                 onClick={() => setIsSettingsModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100/80 dark:bg-indigo-950/80 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-700/60 text-indigo-700 dark:text-indigo-200 text-xs font-bold cursor-pointer transition-colors shadow-2xs group"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100/80 dark:bg-indigo-950/80 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-700/60 text-indigo-700 dark:text-indigo-200 text-xs font-bold cursor-pointer transition-colors shadow-2xs group"
                 title="Klik untuk memilih atau mengubah konfigurasi event ujian CBT"
               >
-                <Lock size={11} className="text-indigo-500 shrink-0" />
-                <span className="truncate max-w-[200px] sm:max-w-xs">{effectiveEventName}</span>
-                <span className="px-1.5 py-0.2 rounded-md bg-indigo-200/80 dark:bg-indigo-800 text-[10px] font-black text-indigo-900 dark:text-indigo-100">
-                  Tingkat {effectiveTargetTingkat.join(', ')} • {scopedKelasList.length} Rombel
-                </span>
+                <Lock size={12} className="text-indigo-500 shrink-0" />
+                <span className="truncate max-w-xs sm:max-w-md font-bold">{effectiveEventName}</span>
                 <SlidersHorizontal size={11} className="text-indigo-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors shrink-0" />
               </button>
             )}
