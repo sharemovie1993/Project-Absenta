@@ -248,17 +248,16 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
               <button
                 type="button"
                 onClick={() => setIsSettingsModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100/80 dark:bg-indigo-950/80 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-700/60 text-indigo-700 dark:text-indigo-200 text-xs font-bold cursor-pointer transition-colors shadow-2xs group"
-                title="Klik untuk memilih atau mengubah konfigurasi event ujian CBT"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100/80 dark:bg-indigo-950/80 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-700/60 text-indigo-700 dark:text-indigo-200 text-xs font-bold cursor-pointer transition-colors shadow-2xs"
+                title="Event CBT Aktif (Klik untuk Pengaturan)"
               >
                 <Lock size={12} className="text-indigo-500 shrink-0" />
                 <span className="truncate max-w-xs sm:max-w-md font-bold">{effectiveEventName}</span>
-                <SlidersHorizontal size={11} className="text-indigo-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors shrink-0" />
               </button>
             )}
           </div>
 
-          {/* Right: Quick Settings & Active TP */}
+          {/* Right: Quick Settings */}
           <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto text-xs">
             <button
               type="button"
@@ -266,16 +265,12 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
                 setIsSettingsModalOpen(true);
                 onOpenSettings?.();
               }}
-              className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors"
-              title="Buka Hirarki & Pengaturan Event CBT"
+              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+              title="Buka Pengaturan Event CBT"
             >
               <SlidersHorizontal size={13} className="text-indigo-600 dark:text-indigo-400" />
-              <span className="hidden sm:inline">Pengaturan</span>
+              <span>Pengaturan</span>
             </button>
-
-            <span className="hidden md:inline-block text-[11px] font-semibold text-slate-500 dark:text-slate-400 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800">
-              {activeTp?.nama || 'TP Aktif'}
-            </span>
           </div>
         </div>
 
@@ -492,24 +487,19 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
         )}
       </div>
 
-      {/* ── Modal Pengaturan Event Ujian CBT (Hirarki TP & Semester) ── */}
+      {/* ── Modal Pengaturan Event Ujian CBT ── */}
       <Modal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
         size="6xl"
         title={
-          <div className="flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400 border border-indigo-200/80 dark:border-indigo-800 shrink-0">
-              <TableProperties size={18} />
+          <div className="flex items-center gap-2">
+            <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400 border border-indigo-200/80 dark:border-indigo-800 shrink-0">
+              <TableProperties size={16} />
             </span>
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Pengaturan Event Ujian CBT
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Kelola struktur hierarki Tahun Pelajaran & Sub-Event Ujian (PSAJ, ASAS/PAS, ASTS, dll.)
-              </p>
-            </div>
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+              Pengaturan Event Ujian CBT
+            </h3>
           </div>
         }
       >

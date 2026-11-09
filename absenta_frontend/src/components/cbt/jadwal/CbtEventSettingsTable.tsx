@@ -151,42 +151,28 @@ export const CbtEventSettingsTable: React.FC<CbtEventSettingsTableProps> = ({
   };
 
   return (
-    <div className="space-y-4 w-full">
-      {/* ── Summary & Control Strip ── */}
-      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <span className="p-2 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800 shrink-0">
-            <TableIcon size={18} />
-          </span>
-          <div>
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
-              Tabel Pengaturan Event CBT & Konteks Akademik
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Hierarki Tahun Pelajaran membawahi sub-event asesmen (PSAJ, ASAS/PAS, ASTS/PTS, ANBK)
-            </p>
+    <div className="space-y-3 w-full">
+      {/* ── Top Toolbar ── */}
+      <div className="flex items-center justify-between gap-3 pb-1">
+        {activeEvent ? (
+          <div className="px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center gap-1.5 shadow-2xs">
+            <Sparkles size={12} className="text-emerald-600 dark:text-emerald-400" />
+            <span>
+              Aktif: <strong>{activeEvent.nama_event}</strong> ({activeEvent.kode_event})
+            </span>
           </div>
-        </div>
+        ) : (
+          <div className="text-xs text-slate-500 font-semibold">Daftar Event Ujian CBT</div>
+        )}
 
-        <div className="flex items-center gap-2">
-          {activeEvent && (
-            <div className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center gap-1.5 shadow-2xs">
-              <Sparkles size={13} className="text-emerald-600 dark:text-emerald-400" />
-              <span>
-                Aktif: <strong>{activeEvent.kode_event}</strong> (
-                {calculateEstimatedRombel(activeEvent.target_tingkat)} Rombel)
-              </span>
-            </div>
-          )}
-          <Button
-            size="sm"
-            onClick={() => handleCreateNew()}
-            className="text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 cursor-pointer"
-          >
-            <Plus size={14} />
-            <span>Tambah Event Ujian</span>
-          </Button>
-        </div>
+        <Button
+          size="sm"
+          onClick={() => handleCreateNew()}
+          className="text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 cursor-pointer shadow-xs"
+        >
+          <Plus size={14} />
+          <span>Tambah Event</span>
+        </Button>
       </div>
 
       {/* ── Hierarchical Grouped Tables ── */}
@@ -228,35 +214,33 @@ export const CbtEventSettingsTable: React.FC<CbtEventSettingsTableProps> = ({
                       : 'bg-white dark:bg-slate-900 border-transparent hover:bg-slate-50/70 dark:hover:bg-slate-800/40'
                   )}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2.5">
                     <span className="p-1 rounded-lg text-slate-400 dark:text-slate-500">
-                      {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                      {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     </span>
-                    <div className="flex items-center gap-2">
-                      <Calendar size={16} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                        Tahun Pelajaran: {tpSummary.tahun_ajaran}
-                      </h4>
-                      {tpSummary.is_active_tp && (
-                        <span className="px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[10px] font-bold">
-                          Aktif Berjalan ★
-                        </span>
-                      )}
-                    </div>
+                    <Calendar size={15} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                    <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                      TP {tpSummary.tahun_ajaran}
+                    </h4>
+                    {tpSummary.is_active_tp && (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold">
+                        Aktif
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold hidden sm:inline">
-                      {events.length} Sub-Pengaturan Event
+                      {events.length} Event
                     </span>
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => handleCreateNew(tpSummary.tahun_pelajaran_id)}
-                      className="h-8 px-2.5 text-xs text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 flex items-center gap-1 font-bold"
+                      className="h-7 px-2 text-xs text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 flex items-center gap-1 font-bold"
                     >
-                      <Plus size={13} />
-                      <span>Tambah Event</span>
+                      <Plus size={12} />
+                      <span>Tambah</span>
                     </Button>
                   </div>
                 </div>
@@ -279,13 +263,13 @@ export const CbtEventSettingsTable: React.FC<CbtEventSettingsTableProps> = ({
                       <table className="w-full text-xs">
                         <thead>
                           <tr className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px]">
-                            <th className="text-left px-4 py-3 min-w-[240px]">Nama Event &amp; Kode</th>
-                            <th className="text-center px-3 py-3 w-28">Semester</th>
-                            <th className="text-left px-3 py-3 min-w-[180px]">Sasaran Tingkat</th>
-                            <th className="text-center px-3 py-3 w-28">Estimasi Rombel</th>
-                            <th className="text-left px-3 py-3 min-w-[200px]">Kebijakan Keamanan</th>
-                            <th className="text-center px-3 py-3 w-36">Status</th>
-                            <th className="text-center px-4 py-3 w-36">Aksi</th>
+                            <th className="text-left px-4 py-2.5 min-w-[200px]">Nama Event</th>
+                            <th className="text-center px-3 py-2.5 w-24">Semester</th>
+                            <th className="text-left px-3 py-2.5 min-w-[120px]">Tingkat</th>
+                            <th className="text-center px-3 py-2.5 w-20">Rombel</th>
+                            <th className="text-left px-3 py-2.5 w-28">Keamanan</th>
+                            <th className="text-center px-3 py-2.5 w-24">Status</th>
+                            <th className="text-center px-4 py-2.5 w-32">Aksi</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -304,14 +288,15 @@ export const CbtEventSettingsTable: React.FC<CbtEventSettingsTableProps> = ({
                                 )}
                               >
                                 {/* Kolom 1: Nama Event & Kode */}
-                                <td className="px-4 py-3.5">
-                                  <div className="space-y-0.5">
-                                    <div className="flex items-center gap-1.5">
-                                      <p className="font-bold text-slate-900 dark:text-white text-xs">
-                                        {event.nama_event}
-                                      </p>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-slate-500 dark:text-slate-400">
+                                <td className="px-4 py-3">
+                                  <div className="space-y-1">
+                                    <p
+                                      className="font-bold text-slate-900 dark:text-white text-xs"
+                                      title={event.keterangan || undefined}
+                                    >
+                                      {event.nama_event}
+                                    </p>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
                                       <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.2 rounded border border-indigo-200/60 dark:border-indigo-800/60 text-[10px]">
                                         {event.kode_event}
                                       </span>
@@ -324,17 +309,12 @@ export const CbtEventSettingsTable: React.FC<CbtEventSettingsTableProps> = ({
                                           Ujian Massal
                                         </span>
                                       )}
-                                      {event.keterangan && (
-                                        <span className="truncate max-w-[240px]" title={event.keterangan}>
-                                          {event.keterangan}
-                                        </span>
-                                      )}
                                     </div>
                                   </div>
                                 </td>
 
                                 {/* Kolom 2: Semester */}
-                                <td className="px-3 py-3.5 text-center">
+                                <td className="px-3 py-3 text-center">
                                   <span
                                     className={cn(
                                       'px-2 py-0.5 rounded-md text-[10px] font-bold uppercase',
@@ -348,64 +328,60 @@ export const CbtEventSettingsTable: React.FC<CbtEventSettingsTableProps> = ({
                                 </td>
 
                                 {/* Kolom 3: Sasaran Tingkat */}
-                                <td className="px-3 py-3.5">
+                                <td className="px-3 py-3">
                                   <div className="flex flex-wrap items-center gap-1">
                                     {event.target_tingkat && event.target_tingkat.length > 0 ? (
                                       event.target_tingkat.map((t) => (
                                         <span
                                           key={t}
-                                          className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[10px] font-bold"
+                                          className="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[10px] font-bold"
                                         >
-                                          Kelas {t}
+                                          {t}
                                         </span>
                                       ))
                                     ) : (
-                                      <span className="text-slate-400 italic text-[10px]">Semua Tingkat</span>
+                                      <span className="text-slate-400 text-[10px]">Semua</span>
                                     )}
                                   </div>
                                 </td>
 
                                 {/* Kolom 4: Estimasi Rombel */}
-                                <td className="px-3 py-3.5 text-center">
-                                  <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold text-xs">
-                                    {rombelCount} Rombel
+                                <td className="px-3 py-3 text-center">
+                                  <span className="font-bold text-xs text-slate-800 dark:text-slate-200">
+                                    {rombelCount}
                                   </span>
                                 </td>
 
                                 {/* Kolom 5: Kebijakan Keamanan */}
-                                <td className="px-3 py-3.5">
-                                  <div className="space-y-1 text-[10px]">
-                                    <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 font-medium">
-                                      <Lock size={12} className={event.lock_teacher_scheduling ? 'text-indigo-600' : 'text-slate-400'} />
-                                      <span>
-                                        Jadwal Guru: <strong>{event.lock_teacher_scheduling ? 'Terkunci' : 'Bebas'}</strong>
+                                <td className="px-3 py-3">
+                                  <div className="flex flex-col gap-0.5 text-[10px] text-slate-600 dark:text-slate-400">
+                                    <span className="flex items-center gap-1">
+                                      <Lock size={11} className={event.lock_teacher_scheduling ? 'text-indigo-600' : 'text-slate-400'} />
+                                      {event.lock_teacher_scheduling ? 'Kunci' : 'Bebas'}
+                                    </span>
+                                    {Boolean(event.token_refresh_interval) && (
+                                      <span className="flex items-center gap-1 text-slate-500">
+                                        <Clock size={11} className="text-amber-500" />
+                                        {event.token_refresh_interval}m
                                       </span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                                      <Clock size={12} className="text-amber-500" />
-                                      <span>
-                                        Token: {event.token_refresh_interval ? `${event.token_refresh_interval}m auto` : 'Manual'}
-                                      </span>
-                                    </div>
+                                    )}
                                   </div>
                                 </td>
 
                                 {/* Kolom 6: Status */}
-                                <td className="px-3 py-3.5 text-center">
+                                <td className="px-3 py-3 text-center">
                                   {isCurrentlyActive ? (
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300 text-[10px] font-black uppercase tracking-tight shadow-xs animate-pulse">
-                                      <CheckCircle2 size={12} />
-                                      Aktif di Meja Kerja
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">
+                                      <Check size={11} />
+                                      Aktif
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 text-[10px] font-bold">
-                                      Siap Digunakan
-                                    </span>
+                                    <span className="text-slate-400 text-xs font-semibold">-</span>
                                   )}
                                 </td>
 
                                 {/* Kolom 7: Aksi */}
-                                <td className="px-4 py-3.5 text-center">
+                                <td className="px-4 py-3 text-center">
                                   <div className="flex items-center justify-center gap-1">
                                     {!isCurrentlyActive && (
                                       <Button
