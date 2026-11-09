@@ -188,7 +188,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
     };
   }, [rawBankList, readyBankList, scopedKelasList, roomMappings, jadwalList]);
 
-  // Definisi 5 Fase Operasional Panitia
+  // Definisi 5 Fase Operasional Panitia (Label Ringkas 1 Kata Sesuai Konsep Garis Stepper)
   const phases: Array<{
     id: CbtPanitiaPhase;
     title: string;
@@ -197,37 +197,41 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
   }> = [
     {
       id: 'fase_1_soal',
-      title: '1. Kesiapan Soal',
+      title: 'Soal',
       isDone: stats.isSoalReady,
       icon: BookOpen,
     },
     {
       id: 'fase_2_ruang',
-      title: '2. Ruang Ujian',
+      title: 'Ruang',
       isDone: stats.isRuangReady,
       icon: DoorOpen,
     },
     {
       id: 'fase_3_jadwal',
-      title: '3. Hari & Sesi',
+      title: 'Jadwal',
       isDone: stats.isJadwalReady,
       icon: Calendar,
     },
     {
       id: 'fase_4_pengawas',
-      title: '4. Pengawas',
+      title: 'Pengawas',
       isDone: stats.isPengawasReady,
       icon: Users,
     },
     {
       id: 'fase_5_monitor',
-      title: '5. Monitoring',
+      title: 'Monitoring',
       isDone: false,
       icon: Activity,
     },
   ];
 
-  // Definisi Node Flight Deck (Header + Stepper) untuk disatukan dalam 1 ruang
+  // Hitung index aktif & persentase garis progress horizontal
+  const activeIndex = Math.max(0, phases.findIndex((p) => p.id === activeTab));
+  const fillPercent = activeIndex === 4 ? 100 : activeIndex * 20 + 10;
+
+  // Definisi Node Flight Deck (Header + Stepper Garis Lingkaran) untuk disatukan dalam 1 ruang
   const flightDeckNode = (
     <div className="p-3 sm:p-3.5 space-y-2.5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
@@ -269,45 +273,67 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
         </div>
       </div>
 
-      {/* ── Stepper 5 Fase (Fokus Murni Judul Step) ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800/80">
-        {phases.map((phase) => {
-          const Icon = phase.icon;
-          const isActive = activeTab === phase.id;
+      {/* ── Stepper Garis Lingkaran Horizontal (Sesuai Konsep Desain) ── */}
+      <div className="pt-2 pb-1 border-t border-slate-100 dark:border-slate-800/80">
+        <div className="relative pt-1 pb-1">
+          {/* Horizontal Track Line Container */}
+          <div className="absolute top-[17px] sm:top-[19px] left-6 right-6 sm:left-10 sm:right-10 h-1 sm:h-1.5 bg-slate-200 dark:bg-slate-700/80 rounded-full z-0 overflow-hidden">
+            {/* Active Progress Fill Line */}
+            <div
+              className="h-full bg-indigo-600 dark:bg-indigo-500 rounded-full transition-all duration-300 ease-in-out"
+              style={{
+                width: `${fillPercent}%`,
+              }}
+            />
+          </div>
 
-          return (
-            <button
-              key={phase.id}
-              type="button"
-              onClick={() => setActiveTab(phase.id)}
-              className={cn(
-                'px-3 py-2 rounded-xl text-center transition-all duration-150 cursor-pointer flex items-center justify-center gap-2 border',
-                isActive
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs dark:bg-white dark:text-slate-900 dark:border-white'
-                  : 'bg-slate-50/70 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/60'
-              )}
-            >
-              <span
-                className={cn(
-                  'w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-xs',
-                  isActive
-                    ? 'bg-white/20 text-white dark:bg-indigo-600 dark:text-white'
-                    : 'bg-slate-200/80 dark:bg-white/10 text-slate-600 dark:text-indigo-300'
-                )}
-              >
-                <Icon size={13} />
-              </span>
-              <span
-                className={cn(
-                  'text-xs font-bold whitespace-nowrap leading-tight',
-                  isActive ? 'text-white dark:text-slate-900' : 'text-slate-900 dark:text-white'
-                )}
-              >
-                {phase.title}
-              </span>
-            </button>
-          );
-        })}
+          {/* Circles and Labels Grid */}
+          <div className="grid grid-cols-5 relative z-10">
+            {phases.map((phase, idx) => {
+              const Icon = phase.icon;
+              const isActive = activeTab === phase.id;
+              const isPassed = idx < activeIndex;
+
+              return (
+                <button
+                  key={phase.id}
+                  type="button"
+                  onClick={() => setActiveTab(phase.id)}
+                  className="group flex flex-col items-center focus:outline-hidden cursor-pointer"
+                  title={`Fase ${idx + 1}: ${phase.title}`}
+                >
+                  {/* Circle Node */}
+                  <div
+                    className={cn(
+                      'w-8.5 h-8.5 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-200 shadow-2xs',
+                      isActive
+                        ? 'bg-indigo-600 text-white ring-4 ring-indigo-100 dark:ring-indigo-950/80 scale-105'
+                        : isPassed
+                          ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                          : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 group-hover:bg-slate-300 dark:group-hover:bg-slate-600'
+                    )}
+                  >
+                    <Icon size={16} className="transition-transform group-hover:scale-110" />
+                  </div>
+
+                  {/* Label Below Node */}
+                  <span
+                    className={cn(
+                      'mt-1.5 text-[11px] sm:text-xs transition-colors whitespace-nowrap text-center leading-tight',
+                      isActive
+                        ? 'font-bold text-indigo-600 dark:text-indigo-400'
+                        : isPassed
+                          ? 'font-bold text-slate-700 dark:text-slate-300'
+                          : 'font-semibold text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300'
+                    )}
+                  >
+                    {phase.title}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );
