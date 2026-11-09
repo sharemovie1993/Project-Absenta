@@ -575,19 +575,19 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* ── 1. RADAR BEBAN MENGAWAS GURU & STATUS OPERASIONAL ── */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-slate-900 border border-slate-800 text-white shadow-xl space-y-4">
+      {/* ── 1. RADAR BEBAN MENGAWAS GURU & STATUS OPERASIONAL (THEME-AWARE) ── */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-900 dark:text-white shadow-xs space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+              <span className="p-1.5 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30">
                 <Users size={18} />
               </span>
-              <h3 className="text-base sm:text-lg font-black tracking-tight">
+              <h3 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">
                 Meja Kerja Ploting Pengawas &amp; Proktor Ujian
               </h3>
             </div>
-            <p className="text-xs text-slate-400 font-medium">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
               Alokasikan pengawas ruang berurutan R.01–R.n per sesi ujian. Dilengkapi deteksi bentrok jam dan aturan silang SOP.
             </p>
           </div>
@@ -601,7 +601,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
                 size="sm"
                 disabled={clearPlottingMutation.isPending}
                 onClick={handleConfirmClearAllPlotting}
-                className="text-xs h-9 px-3 font-bold text-rose-300 border-rose-800 bg-rose-950/40 hover:bg-rose-900/60 cursor-pointer"
+                className="text-xs h-9 px-3 font-bold text-rose-600 border-rose-200 bg-rose-50 hover:bg-rose-100 dark:text-rose-300 dark:border-rose-800 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 cursor-pointer"
                 title="Kosongkan seluruh penugasan pengawas"
               >
                 <RotateCcw size={13} className={cn('mr-1.5', clearPlottingMutation.isPending && 'animate-spin')} />
@@ -614,10 +614,10 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
               variant="outline"
               size="sm"
               onClick={handleOpenAutoPlotModal}
-              className="text-xs h-9 px-3.5 font-bold text-indigo-300 border-indigo-700 bg-indigo-950/60 hover:bg-indigo-900/60 cursor-pointer shadow-xs"
+              className="text-xs h-9 px-3.5 font-bold text-indigo-700 border-indigo-200 bg-indigo-50 hover:bg-indigo-100 dark:text-indigo-300 dark:border-indigo-700 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 cursor-pointer shadow-2xs"
               title="Distribusi otomatis pengawas menggunakan SOP silang sekolah"
             >
-              <Wand2 size={14} className="mr-1.5 text-indigo-400" />
+              <Wand2 size={14} className="mr-1.5 text-indigo-600 dark:text-indigo-400" />
               <span>Plot Otomatis Guru (SOP Silang)</span>
             </Button>
 
@@ -627,7 +627,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
               size="sm"
               disabled={dirtyPlottingItems.length === 0 || bulkPlottingMutation.isPending}
               onClick={() => bulkPlottingMutation.mutate()}
-              className="text-xs h-9 px-4 font-black bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-md cursor-pointer disabled:opacity-40"
+              className="text-xs h-9 px-4 font-black bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs cursor-pointer disabled:opacity-40"
             >
               <Save size={14} className="mr-1.5" />
               <span>
@@ -639,62 +639,62 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
           </div>
         </div>
 
-        {/* ── METRIK BEBAN PENGAWAS (HIGH-DENSITY STRIP) ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-slate-800/80">
-          <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/80">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+        {/* ── METRIK BEBAN PENGAWAS (THEME-AWARE HIGH-DENSITY STRIP) ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
               Total Sesi Ujian
             </span>
-            <div className="text-xl font-black text-white mt-0.5 flex items-baseline gap-1.5">
+            <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5 flex items-baseline gap-1.5">
               <span>{workloadStats.totalSesi}</span>
               <span className="text-xs text-slate-400 font-normal">Sesi</span>
             </div>
-            <div className="text-[11px] text-slate-400 font-medium mt-1">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1">
               {workloadStats.totalPlottedSessions} Sesi sudah terplot
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/80">
-            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block flex items-center gap-1">
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block flex items-center gap-1">
               <UserCheck size={12} />
               <span>Guru Bertugas</span>
             </span>
-            <div className="text-xl font-black text-emerald-400 mt-0.5 flex items-baseline gap-1.5">
+            <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-baseline gap-1.5">
               <span>{workloadStats.assignedCount}</span>
               <span className="text-xs text-slate-400 font-normal">Guru</span>
             </div>
-            <div className="text-[11px] text-slate-400 font-medium mt-1">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1">
               Aktif dalam jadwal pengawasan
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/80">
-            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block flex items-center gap-1">
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider block flex items-center gap-1">
               <UserX size={12} />
               <span>Beban 0 (Belum Bertugas)</span>
             </span>
-            <div className="text-xl font-black text-amber-400 mt-0.5 flex items-baseline gap-1.5">
+            <div className="text-xl font-black text-amber-600 dark:text-amber-400 mt-0.5 flex items-baseline gap-1.5">
               <span>{workloadStats.unassignedTeachers.length}</span>
               <span className="text-xs text-slate-400 font-normal">Guru</span>
             </div>
             <button
               type="button"
               onClick={() => setShowUnassignedGuruModal(true)}
-              className="text-[11px] text-indigo-400 hover:text-indigo-300 font-bold underline cursor-pointer mt-1 block"
+              className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-bold underline cursor-pointer mt-1 block"
             >
               Lihat daftar guru siap tugas →
             </button>
           </div>
 
-          <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/80">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block flex items-center gap-1">
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block flex items-center gap-1">
               {conflictJadwalIds.size > 0 ? (
-                <span className="text-rose-400 flex items-center gap-1 font-bold">
+                <span className="text-rose-600 dark:text-rose-400 flex items-center gap-1 font-bold">
                   <AlertTriangle size={12} />
                   <span>Sesi Bentrok Jam!</span>
                 </span>
               ) : (
-                <span className="text-emerald-400 flex items-center gap-1">
+                <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                   <CheckCircle2 size={12} />
                   <span>Jadwal Pengawas Aman</span>
                 </span>
@@ -703,13 +703,13 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
             <div
               className={cn(
                 'text-xl font-black mt-0.5 flex items-baseline gap-1.5',
-                conflictJadwalIds.size > 0 ? 'text-rose-400' : 'text-white'
+                conflictJadwalIds.size > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'
               )}
             >
               <span>{conflictJadwalIds.size}</span>
               <span className="text-xs text-slate-400 font-normal">Sesi</span>
             </div>
-            <div className="text-[11px] text-slate-400 font-medium mt-1">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1">
               {conflictJadwalIds.size > 0 ? 'Guru sama di jam yang sama' : '0 Konflik penugasan'}
             </div>
           </div>

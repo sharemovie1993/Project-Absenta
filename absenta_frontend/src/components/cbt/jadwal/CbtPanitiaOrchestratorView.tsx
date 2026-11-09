@@ -209,44 +209,46 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
 
   return (
     <div className="space-y-4 w-full max-w-full min-w-0">
-      {/* ── Header Meja Kerja Panitia CBT (Sleek & Focused) ── */}
-      <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900 dark:bg-slate-950 text-white shadow-xs border border-slate-800">
+      {/* ── Header Meja Kerja Panitia CBT (Theme-Aware: Clean White in Light Mode, Sleek Slate in Dark Mode) ── */}
+      <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200/90 dark:border-slate-800">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <span className="p-1.5 rounded-lg bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 shrink-0">
+            <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-600/30 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-500/30 shrink-0">
               <Layers size={17} />
             </span>
-            <h2 className="text-sm sm:text-base font-bold tracking-tight text-white">
+            <h2 className="text-sm sm:text-base font-bold tracking-tight text-slate-900 dark:text-white">
               Meja Kerja Panitia CBT
             </h2>
           </div>
 
           <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto text-xs">
             {isOrkestrasi && eventName && (
-              <span className="px-2.5 py-1 rounded-lg bg-indigo-950/80 border border-indigo-700/60 text-indigo-200 text-xs font-semibold flex items-center gap-1.5">
-                <Lock size={12} className="text-indigo-400" />
+              <span className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-700/60 text-indigo-700 dark:text-indigo-200 text-xs font-semibold flex items-center gap-1.5">
+                <Lock size={12} className="text-indigo-500 dark:text-indigo-400" />
                 <span>{eventName}</span>
               </span>
             )}
-            <span className="bg-white/5 px-2.5 py-1 rounded-lg border border-white/10 text-slate-300 text-xs font-semibold">
+            <span className="bg-slate-100 dark:bg-white/5 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 text-xs font-semibold">
               {activeTp?.nama || 'TP Aktif'} • {activeSemester?.nama || 'Semester'}
             </span>
           </div>
         </div>
 
         {/* Mode Operasional Controller Strip */}
-        <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between gap-2.5 text-xs">
+        <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2.5 text-xs">
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
               Mode:
             </span>
-            <div className="flex items-center gap-1 p-0.5 rounded-xl bg-slate-800/90 border border-slate-700/80">
+            <div className="flex items-center gap-1 p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80">
               <button
                 type="button"
                 onClick={() => updateMode('ORKESTRASI')}
                 className={cn(
                   'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
-                  isOrkestrasi ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                  isOrkestrasi
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 )}
               >
                 <Sparkles size={12} />
@@ -257,7 +259,9 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
                 onClick={() => updateMode('MANDIRI')}
                 className={cn(
                   'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
-                  isMandiri ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                  isMandiri
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 )}
               >
                 <UserCheck size={12} />
@@ -267,8 +271,8 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
           </div>
         </div>
 
-        {/* ── Pipeline Stepper 5 Fase (Sleek & Noise-Free) ── */}
-        <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 pt-2.5 border-t border-slate-800/80">
+        {/* ── Pipeline Stepper 5 Fase (Theme-Aware: Active Indigo in Light, White in Dark) ── */}
+        <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-800/80">
           {phases.map((phase) => {
             const Icon = phase.icon;
             const isActive = activeTab === phase.id;
@@ -281,8 +285,8 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
                 className={cn(
                   'p-2.5 rounded-xl text-left transition-all duration-200 cursor-pointer flex items-center justify-between gap-2 border',
                   isActive
-                    ? 'bg-white text-slate-900 border-white shadow-sm'
-                    : 'bg-white/5 hover:bg-white/10 text-white border-white/10 hover:border-white/20'
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs dark:bg-white dark:text-slate-900 dark:border-white'
+                    : 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/60 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/60'
                 )}
               >
                 <div className="flex items-center gap-2 min-w-0">
@@ -290,17 +294,29 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
                     className={cn(
                       'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs',
                       isActive
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-white/10 text-indigo-300'
+                        ? 'bg-white/20 text-white dark:bg-indigo-600 dark:text-white'
+                        : 'bg-slate-200/80 dark:bg-white/10 text-slate-600 dark:text-indigo-300'
                     )}
                   >
                     <Icon size={14} />
                   </span>
                   <div className="min-w-0">
-                    <p className={cn('text-xs font-bold truncate leading-tight', isActive ? 'text-slate-900' : 'text-white')}>
+                    <p
+                      className={cn(
+                        'text-xs font-bold truncate leading-tight',
+                        isActive ? 'text-white dark:text-slate-900' : 'text-slate-900 dark:text-white'
+                      )}
+                    >
                       {phase.title}
                     </p>
-                    <p className={cn('text-[10px] font-semibold truncate', isActive ? 'text-indigo-600' : 'text-slate-400')}>
+                    <p
+                      className={cn(
+                        'text-[10px] font-semibold truncate',
+                        isActive
+                          ? 'text-indigo-100 dark:text-indigo-600'
+                          : 'text-slate-500 dark:text-slate-400'
+                      )}
+                    >
                       {phase.stat}
                     </p>
                   </div>

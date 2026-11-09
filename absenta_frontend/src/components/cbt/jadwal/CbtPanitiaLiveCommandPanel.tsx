@@ -529,19 +529,19 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
 
   return (
     <div className="space-y-4">
-      {/* ── 1. MASTER COMMAND CENTER BAR: KONTROL OPERASIONAL PANITIA CBT ── */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-slate-900 border border-slate-800 text-white shadow-xl space-y-4">
+      {/* ── 1. MASTER COMMAND CENTER BAR: KONTROL OPERASIONAL PANITIA CBT (THEME-AWARE) ── */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-900 dark:text-white shadow-xs space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              <span className="p-1.5 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30">
                 <Activity size={18} className="animate-pulse" />
               </span>
-              <h3 className="text-base sm:text-lg font-black tracking-tight">
+              <h3 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">
                 Pusat Komando &amp; Radar Live Ujian (Hari H)
               </h3>
             </div>
-            <p className="text-xs text-slate-400 font-medium">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
               Tabel monitoring serentak seluruh ruangan ujian, kontrol aktivasi per sesi, dan sebaran analitik live.
             </p>
           </div>
@@ -553,7 +553,7 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
                 type="button"
                 onClick={() => handleBatchActivate()}
                 disabled={isBatchActivating}
-                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-lg shadow-emerald-600/30 flex items-center gap-2 transition-all cursor-pointer active:scale-95"
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-xs flex items-center gap-2 transition-all cursor-pointer active:scale-95"
                 title="Aktifkan seluruh sesi yang masih DRAFT secara serentak"
               >
                 <Play size={14} className="fill-white" />
@@ -564,77 +564,77 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
             <button
               type="button"
               onClick={() => handleOpenRoomDenah('', 'Radar Denah Kampus CBT')}
-              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-indigo-300 hover:text-white border border-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-indigo-700 dark:text-indigo-300 border border-slate-200 dark:border-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
               title="Buka Denah Spasial Kampus"
             >
-              <DoorOpen size={14} className="text-indigo-400" />
+              <DoorOpen size={14} className="text-indigo-600 dark:text-indigo-400" />
               <span>Denah Spasial</span>
             </button>
 
             <button
               type="button"
               onClick={() => refetchJadwal()}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors border border-slate-700 cursor-pointer"
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 transition-colors border border-slate-200 dark:border-slate-700 cursor-pointer"
               title="Segarkan data radar"
             >
-              <RotateCw size={15} className={isLoadingJadwal ? 'animate-spin text-emerald-400' : ''} />
+              <RotateCw size={15} className={isLoadingJadwal ? 'animate-spin text-emerald-600' : ''} />
             </button>
           </div>
         </div>
 
-        {/* ── METRIK RINGKAS 4 KOTAK ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-slate-800/80">
-          <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/80">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+        {/* ── METRIK RINGKAS 4 KOTAK (THEME-AWARE) ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
               Total Ruang Ujian
             </span>
-            <div className="text-xl font-black text-white mt-0.5 flex items-baseline gap-1.5">
+            <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5 flex items-baseline gap-1.5">
               <span>{summary.totalRuang}</span>
               <span className="text-xs text-slate-400 font-normal">Ruang</span>
             </div>
-            <div className="text-[11px] text-slate-400 font-medium mt-1 flex items-center gap-1.5">
-              <span className="text-emerald-400 font-bold">{summary.active} Aktif</span>
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1 flex items-center gap-1.5">
+              <span className="text-emerald-600 dark:text-emerald-400 font-bold">{summary.active} Aktif</span>
               <span>•</span>
-              <span className="text-amber-400 font-bold">{summary.draft} Draft</span>
+              <span className="text-amber-600 dark:text-amber-400 font-bold">{summary.draft} Draft</span>
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/80">
-            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
               Sesi Sedang Live
             </span>
-            <div className="text-xl font-black text-emerald-400 mt-0.5 flex items-baseline gap-1.5">
+            <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-baseline gap-1.5">
               <span>{summary.active}</span>
               <span className="text-xs text-slate-400 font-normal">Ruangan</span>
             </div>
-            <div className="text-[11px] text-slate-400 font-medium mt-1">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1">
               Siswa sedang aktif ujian
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/80">
-            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">
               Menunggu Dimulai
             </span>
-            <div className="text-xl font-black text-amber-400 mt-0.5 flex items-baseline gap-1.5">
+            <div className="text-xl font-black text-amber-600 dark:text-amber-400 mt-0.5 flex items-baseline gap-1.5">
               <span>{summary.draft}</span>
               <span className="text-xs text-slate-400 font-normal">Ruangan</span>
             </div>
-            <div className="text-[11px] text-slate-400 font-medium mt-1">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1">
               {summary.draft > 0 ? 'Siap diaktifkan serentak' : 'Semua sudah dimulai'}
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/80">
-            <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block">
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block">
               Total Peserta
             </span>
-            <div className="text-xl font-black text-white mt-0.5 flex items-baseline gap-1.5">
+            <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5 flex items-baseline gap-1.5">
               <span>{summary.totalPeserta}</span>
               <span className="text-xs text-slate-400 font-normal">Siswa</span>
             </div>
-            <div className="text-[11px] text-slate-400 font-medium mt-1">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1">
               {summary.completed} Ruangan selesai
             </div>
           </div>

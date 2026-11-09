@@ -386,6 +386,17 @@ export class CbtTestEngineService {
           data: {
             status: 'IN_PROGRESS',
             sisa_waktu_detik: sisaWaktu,
+            ...(metadataPerangkat ? { metadata_perangkat: metadataPerangkat } : {}),
+          },
+        });
+      } else {
+        peserta = await prisma.cbtPesertaUjian.update({
+          where: { id: peserta.id },
+          data: {
+            status: 'IN_PROGRESS',
+            waktu_mulai: now,
+            sisa_waktu_detik: durasiTotalDetik,
+            ...(metadataPerangkat ? { metadata_perangkat: metadataPerangkat } : {}),
           },
         });
       }
