@@ -227,117 +227,124 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
     },
   ];
 
-  return (
-    <div className="space-y-4 w-full max-w-full min-w-0">
-      {/* ── Header Meja Kerja Panitia CBT (Streamlined Single-Bar Flight Deck) ── */}
-      <div className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs border border-slate-200/90 dark:border-slate-800 space-y-2.5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          {/* Left: Event Scope Badge (Integrated) */}
-          <div className="flex items-center gap-2 min-w-0 flex-wrap">
-            <span className="p-1.5 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-600/30 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-500/30 shrink-0">
-              <Layers size={16} />
-            </span>
-            <h2 className="text-sm font-black tracking-tight text-slate-900 dark:text-white shrink-0">
-              Meja Kerja Panitia
-            </h2>
-            {effectiveEventName && (
-              <button
-                type="button"
-                onClick={() => setIsSettingsModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100/80 dark:bg-indigo-950/80 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-700/60 text-indigo-700 dark:text-indigo-200 text-xs font-bold cursor-pointer transition-colors shadow-2xs"
-                title="Event CBT Aktif (Klik untuk Pengaturan)"
-              >
-                <Lock size={12} className="text-indigo-500 shrink-0" />
-                <span className="truncate max-w-xs sm:max-w-md font-bold">{effectiveEventName}</span>
-              </button>
-            )}
-          </div>
-
-          {/* Right: Quick Settings */}
-          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto text-xs">
+  // Definisi Node Flight Deck (Header + Stepper) untuk disatukan dalam 1 ruang
+  const flightDeckNode = (
+    <div className="p-3 sm:p-3.5 space-y-2.5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        {/* Left: Event Scope Badge (Integrated) */}
+        <div className="flex items-center gap-2 min-w-0 flex-wrap">
+          <span className="p-1.5 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-600/30 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-500/30 shrink-0">
+            <Layers size={16} />
+          </span>
+          <h2 className="text-sm font-black tracking-tight text-slate-900 dark:text-white shrink-0">
+            Meja Kerja Panitia
+          </h2>
+          {effectiveEventName && (
             <button
               type="button"
-              onClick={() => {
-                setIsSettingsModalOpen(true);
-                onOpenSettings?.();
-              }}
-              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
-              title="Buka Pengaturan Event CBT"
+              onClick={() => setIsSettingsModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100/80 dark:bg-indigo-950/80 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-700/60 text-indigo-700 dark:text-indigo-200 text-xs font-bold cursor-pointer transition-colors shadow-2xs"
+              title="Event CBT Aktif (Klik untuk Pengaturan)"
             >
-              <SlidersHorizontal size={13} className="text-indigo-600 dark:text-indigo-400" />
-              <span>Pengaturan</span>
+              <Lock size={12} className="text-indigo-500 shrink-0" />
+              <span className="truncate max-w-xs sm:max-w-md font-bold">{effectiveEventName}</span>
             </button>
-          </div>
+          )}
         </div>
 
-        {/* ── Stepper 5 Fase (Fokus Murni Judul Step) ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800/80">
-          {phases.map((phase) => {
-            const Icon = phase.icon;
-            const isActive = activeTab === phase.id;
-
-            return (
-              <button
-                key={phase.id}
-                type="button"
-                onClick={() => setActiveTab(phase.id)}
-                className={cn(
-                  'px-3 py-2 rounded-xl text-center transition-all duration-150 cursor-pointer flex items-center justify-center gap-2 border',
-                  isActive
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs dark:bg-white dark:text-slate-900 dark:border-white'
-                    : 'bg-slate-50/70 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/60'
-                )}
-              >
-                <span
-                  className={cn(
-                    'w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-xs',
-                    isActive
-                      ? 'bg-white/20 text-white dark:bg-indigo-600 dark:text-white'
-                      : 'bg-slate-200/80 dark:bg-white/10 text-slate-600 dark:text-indigo-300'
-                  )}
-                >
-                  <Icon size={13} />
-                </span>
-                <span
-                  className={cn(
-                    'text-xs font-bold whitespace-nowrap leading-tight',
-                    isActive ? 'text-white dark:text-slate-900' : 'text-slate-900 dark:text-white'
-                  )}
-                >
-                  {phase.title}
-                </span>
-              </button>
-            );
-          })}
+        {/* Right: Quick Settings */}
+        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto text-xs">
+          <button
+            type="button"
+            onClick={() => {
+              setIsSettingsModalOpen(true);
+              onOpenSettings?.();
+            }}
+            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+            title="Buka Pengaturan Event CBT"
+          >
+            <SlidersHorizontal size={13} className="text-indigo-600 dark:text-indigo-400" />
+            <span>Pengaturan</span>
+          </button>
         </div>
       </div>
 
-      {/* ── Render Panel Fase Aktif ── */}
-      <div className="transition-opacity duration-200">
-        {activeTab === 'fase_1_soal' && (
-          <CbtBankSoalReadinessPanel
-            bankList={rawBankList}
-            activeTpId={activeTp?.id}
-            activeSemId={activeSemester?.id}
-            targetTingkat={effectiveTargetTingkat}
-            eventName={effectiveEventName}
-            onProceedToNextPhase={() => setActiveTab('fase_2_ruang')}
-            onRefreshBankList={() => refetchBankSoal()}
-          />
-        )}
+      {/* ── Stepper 5 Fase (Fokus Murni Judul Step) ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+        {phases.map((phase) => {
+          const Icon = phase.icon;
+          const isActive = activeTab === phase.id;
 
-        {activeTab === 'fase_2_ruang' && (
-          <CbtKelasRoomTreePanel
-            kelasList={scopedKelasList}
-            roomMappings={roomMappings}
-            onUpdateRoomMappings={setRoomMappings}
-            tenantId={tenantId}
-            eventName={effectiveEventName}
-            activeTpName={activeTp?.nama}
-            semester={activeSemester?.nama}
-            onProceedToNextPhase={() => setActiveTab('fase_3_jadwal')}
-          />
-        )}
+          return (
+            <button
+              key={phase.id}
+              type="button"
+              onClick={() => setActiveTab(phase.id)}
+              className={cn(
+                'px-3 py-2 rounded-xl text-center transition-all duration-150 cursor-pointer flex items-center justify-center gap-2 border',
+                isActive
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs dark:bg-white dark:text-slate-900 dark:border-white'
+                  : 'bg-slate-50/70 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/60'
+              )}
+            >
+              <span
+                className={cn(
+                  'w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-xs',
+                  isActive
+                    ? 'bg-white/20 text-white dark:bg-indigo-600 dark:text-white'
+                    : 'bg-slate-200/80 dark:bg-white/10 text-slate-600 dark:text-indigo-300'
+                )}
+              >
+                <Icon size={13} />
+              </span>
+              <span
+                className={cn(
+                  'text-xs font-bold whitespace-nowrap leading-tight',
+                  isActive ? 'text-white dark:text-slate-900' : 'text-slate-900 dark:text-white'
+                )}
+              >
+                {phase.title}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-3 w-full max-w-full min-w-0">
+      {/* ── Satukan Flight Deck + Toolbar ke dalam 1 Ruang Utuh pada Fase 1 ── */}
+      {activeTab === 'fase_1_soal' ? (
+        <CbtBankSoalReadinessPanel
+          topFlightDeck={flightDeckNode}
+          bankList={rawBankList}
+          activeTpId={activeTp?.id}
+          activeSemId={activeSemester?.id}
+          targetTingkat={effectiveTargetTingkat}
+          eventName={effectiveEventName}
+          onProceedToNextPhase={() => setActiveTab('fase_2_ruang')}
+          onRefreshBankList={() => refetchBankSoal()}
+        />
+      ) : (
+        <>
+          <div className="rounded-2xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs border border-slate-200/90 dark:border-slate-800 overflow-hidden">
+            {flightDeckNode}
+          </div>
+
+          <div className="transition-opacity duration-200">
+            {activeTab === 'fase_2_ruang' && (
+              <CbtKelasRoomTreePanel
+                kelasList={scopedKelasList}
+                roomMappings={roomMappings}
+                onUpdateRoomMappings={setRoomMappings}
+                tenantId={tenantId}
+                eventName={effectiveEventName}
+                activeTpName={activeTp?.nama}
+                semester={activeSemester?.nama}
+                onProceedToNextPhase={() => setActiveTab('fase_3_jadwal')}
+              />
+            )}
 
         {activeTab === 'fase_3_jadwal' && (
           <div className="space-y-2.5">
@@ -432,6 +439,8 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
           />
         )}
       </div>
+    </>
+  )}
 
       {/* ── Modal Pengaturan Event Ujian CBT ── */}
       <Modal
