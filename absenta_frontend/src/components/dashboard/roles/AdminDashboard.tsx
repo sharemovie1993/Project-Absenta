@@ -443,7 +443,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100 truncate">
-                  Dashboard Administrator
+                  <span className="sm:hidden">Admin</span>
+                  <span className="hidden sm:inline">Dashboard Administrator</span>
                 </h1>
                 <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium truncate hidden sm:inline">
                   &bull; {tpTahun ? `TP ${tpTahun}` : ''} {semNama}
