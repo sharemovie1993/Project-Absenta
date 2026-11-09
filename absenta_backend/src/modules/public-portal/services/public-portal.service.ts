@@ -142,14 +142,31 @@ export class PublicPortalService {
 
     const sekolah = tenant.sekolah[0] || null;
 
-    // Aggregated stats
-    const [totalSiswa, totalGuru, totalJurusan, totalMitra, totalFasilitas] = await Promise.all([
+    // Aggregated stats & Real Kepala Sekolah from OrganizationalAssignment
+    const [totalSiswa, totalGuru, totalJurusan, totalMitra, totalFasilitas, kepsekAssign] = await Promise.all([
       prisma.siswa.count({ where: { tenant_id: tenantId, status: 'AKTIF' } }).catch(() => 0),
       prisma.guru.count({ where: { tenant_id: tenantId } }).catch(() => 0),
       prisma.jurusan.count({ where: { tenant_id: tenantId } }).catch(() => 0),
       prisma.mitraIndustri.count({ where: { tenant_id: tenantId, mou_status: 'AKTIF' } }).catch(() => 0),
       prisma.sarprasLocation.count({ where: { tenant_id: tenantId, deleted_at: null } }).catch(() => 0),
+      prisma.organizationalAssignment.findFirst({
+        where: { tenant_id: tenantId, is_active: true, Position: { code: 'KEPALA_SEKOLAH' } },
+        include: { User: { include: { Guru: true } } },
+      }).catch(() => null),
     ]);
+
+    const realKepsekName =
+      kepsekAssign?.User?.Guru?.nama_guru ||
+      kepsekAssign?.User?.full_name ||
+      sekolah?.kepala_sekolah ||
+      null;
+    const realKepsekNip =
+      kepsekAssign?.User?.Guru?.nip ||
+      sekolah?.nip_kepala ||
+      null;
+    const realKepsekFoto =
+      kepsekAssign?.User?.Guru?.foto ||
+      null;
 
     // Parse configs into dynamic web CMS object
     const configMap = new Map<string, string>();
@@ -195,8 +212,8 @@ export class PublicPortalService {
       telepon: sekolah?.telepon || null,
       email: sekolah?.email || null,
       website: sekolah?.website || null,
-      kepala_sekolah: sekolah?.kepala_sekolah || null,
-      nip_kepala: sekolah?.nip_kepala || null,
+      kepala_sekolah: realKepsekName,
+      nip_kepala: realKepsekNip,
       logo_url: sekolah?.logo_url || tenant.logo_url || null,
       tahun_berdiri: sekolah?.tahun_berdiri || null,
       subdomain: tenant.subdomain,
@@ -214,7 +231,7 @@ export class PublicPortalService {
         hero_subtitle: configMap.get('web_hero_subtitle') || 'Mewujudkan Generasi Unggul, Berkarakter, dan Berdaya Saing Global.',
         hero_images: heroImages.length > 0 ? heroImages : [sekolah?.logo_url || 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=1600&q=80'],
         sambutan_kepsek: configMap.get('web_sambutan_kepsek') || null,
-        foto_kepsek: configMap.get('web_foto_kepsek') || null,
+        foto_kepsek: configMap.get('web_foto_kepsek') || realKepsekFoto || null,
         visi: configMap.get('web_visi') || 'Menjadi lembaga pendidikan terdepan dalam prestasi, inovasi teknologi, dan budi pekerti luhur.',
         misi: misiList.length > 0 ? misiList : [
           'Menyelenggarakan proses pembelajaran berkualitas berbasis teknologi dan nilai karakter.',
@@ -1216,7 +1233,7 @@ export class PublicPortalService {
    * Gelombang 4 (Final): Struktur Organisasi, Denah Spasial, E-Library Modul, & Katalog Koperasi
    */
   public async getWave4Ecosystem(tenantId: string): Promise<PublicWave4Ecosystem> {
-    const cacheKey = `pub:wave4_ecosystem_v2:${tenantId}`;
+    const cacheKey = `pub:wave4_ecosystem_v3:${tenantId}`;
     const cached = await this.getFromCache<PublicWave4Ecosystem>(cacheKey);
     if (cached) return cached;
 
@@ -1232,15 +1249,19 @@ export class PublicPortalService {
     ] = await Promise.all([
       prisma.sekolah.findFirst({ where: { tenant_id: tenantId } }).catch(() => null),
       prisma.organizationalAssignment.findMany({
-        where: { tenant_id: tenantId, is_active: true },
+        where: {
+          tenant_id: tenantId,
+          is_active: true,
+          Position: { order: { lte: 23 } },
+        },
         include: {
           Position: true,
           User: { include: { Guru: true } },
           Unit: { select: { nama: true } },
           Kelas: { select: { nama_kelas: true } },
         },
-        orderBy: { Position: { order: 'asc' } },
-        take: 16,
+        orderBy: [{ Position: { order: 'asc' } }, { is_leader: 'desc' }],
+        take: 25,
       }).catch(() => []),
       prisma.guru.findMany({
         where: { tenant_id: tenantId, jabatan: { not: null } },
@@ -1277,39 +1298,57 @@ export class PublicPortalService {
       }).catch(() => []),
     ]);
 
-    // 1. Build Structural Organization Chart
+    // 1. Build Structural Organization Chart from Real Database Assignments
     const orgList: PublicWave4Ecosystem['organization'] = [];
-    orgList.push({
-      id: 'kepsek-utama',
-      jabatan_kode: 'KEPALA_SEKOLAH',
-      jabatan_nama: 'Kepala Sekolah',
-      nama_pejabat: sekolahRaw?.kepala_sekolah || 'Dr. H. Budi Santoso, M.Pd.',
-      nip: sekolahRaw?.nip_kepala || '19750412 200003 1 004',
-      foto: null,
-      unit_label: 'Pimpinan Tertinggi Satuan Pendidikan',
-      urutan: 1,
-    });
+    const seenPejabatPos = new Set<string>();
 
     for (const oa of orgAssignRaw) {
+      const namaPejabat = oa.User?.Guru?.nama_guru || oa.User?.full_name || 'Pejabat Struktural';
+      const jabatanNama =
+        oa.Position.code === 'KAPROG' && oa.Unit?.nama
+          ? `Kaprog ${oa.Unit.nama}`
+          : oa.custom_title || oa.Position.name;
+      const dedupKey = `${oa.Position.code}:${namaPejabat}:${oa.Unit?.nama || ''}`;
+      if (seenPejabatPos.has(dedupKey)) continue;
+      seenPejabatPos.add(dedupKey);
+
       orgList.push({
         id: oa.id,
         jabatan_kode: oa.Position.code,
-        jabatan_nama: oa.custom_title || oa.Position.name,
-        nama_pejabat: oa.User?.Guru?.nama_guru || oa.User?.full_name || 'Pejabat Struktural',
+        jabatan_nama: jabatanNama,
+        nama_pejabat: namaPejabat,
         nip: oa.User?.Guru?.nip || null,
         foto: oa.User?.Guru?.foto || null,
-        unit_label: oa.Unit?.nama || oa.Kelas?.nama_kelas || 'Manajemen Sekolah',
+        unit_label:
+          oa.Position.code === 'KEPALA_SEKOLAH'
+            ? 'Pimpinan Tertinggi Satuan Pendidikan'
+            : oa.Unit?.nama || oa.Kelas?.nama_kelas || 'Manajemen Struktural Sekolah',
         urutan: oa.Position.order || 10,
       });
     }
 
-    if (orgList.length < 4 && gurusWithJabatan.length > 0) {
+    // Jika belum ada KEPALA_SEKOLAH di OrganizationalAssignment namun ada di tabel Sekolah
+    if (!orgList.some((o) => o.jabatan_kode === 'KEPALA_SEKOLAH') && sekolahRaw?.kepala_sekolah) {
+      orgList.unshift({
+        id: 'kepsek-utama',
+        jabatan_kode: 'KEPALA_SEKOLAH',
+        jabatan_nama: 'Kepala Sekolah',
+        nama_pejabat: sekolahRaw.kepala_sekolah,
+        nip: sekolahRaw.nip_kepala || null,
+        foto: null,
+        unit_label: 'Pimpinan Tertinggi Satuan Pendidikan',
+        urutan: 1,
+      });
+    }
+
+    // Fallback ke Guru yang memiliki field jabatan struktural jika OrganizationalAssignment belum diisi
+    if (orgList.length < 2 && gurusWithJabatan.length > 0) {
       gurusWithJabatan.forEach((g, idx) => {
         if (!orgList.some((o) => o.nama_pejabat === g.nama_guru)) {
           orgList.push({
             id: g.id,
             jabatan_kode: 'STRUKTURAL',
-            jabatan_nama: g.jabatan || 'Wakil Kepala Sekolah / Kaprog',
+            jabatan_nama: g.jabatan || 'Pejabat Struktural',
             nama_pejabat: g.nama_guru,
             nip: g.nip,
             foto: g.foto,
@@ -1318,72 +1357,6 @@ export class PublicPortalService {
           });
         }
       });
-    }
-
-    if (orgList.length < 4) {
-      const defaultOfficials = [
-        {
-          id: 'wakasek-kurikulum',
-          jabatan_kode: 'WAKASEK',
-          jabatan_nama: 'Wakasek Bidang Kurikulum & Akademik',
-          nama_pejabat: 'Drs. Hendra Wijaya, M.T.',
-          nip: '19780814 200501 1 008',
-          foto: null,
-          unit_label: 'Manajemen Akademik & KOSP',
-          urutan: 2,
-        },
-        {
-          id: 'wakasek-hubin',
-          jabatan_kode: 'WAKASEK',
-          jabatan_nama: 'Wakasek Bidang Hubungan Industri (Hubin) & BKK',
-          nama_pejabat: 'Ir. Rina Kartika, M.Eng.',
-          nip: '19801122 200604 2 011',
-          foto: null,
-          unit_label: 'Kemitraan DUDIKA, PKL & BKK',
-          urutan: 3,
-        },
-        {
-          id: 'wakasek-kesiswaan',
-          jabatan_kode: 'WAKASEK',
-          jabatan_nama: 'Wakasek Bidang Kesiswaan & Karakter',
-          nama_pejabat: 'Ahmad Fauzi, S.Pd., M.M.',
-          nip: '19820309 200801 1 005',
-          foto: null,
-          unit_label: 'Pembinaan Prestasi, OSIS & Satgas SRA',
-          urutan: 4,
-        },
-        {
-          id: 'wakasek-sarpras',
-          jabatan_kode: 'WAKASEK',
-          jabatan_nama: 'Wakasek Bidang Sarana Prasarana & K3LH',
-          nama_pejabat: 'Dedi Kurniawan, S.T., M.Pd.',
-          nip: '19810719 200902 1 003',
-          foto: null,
-          unit_label: 'Manajemen Aset, Bengkel & K3LH',
-          urutan: 5,
-        },
-        {
-          id: 'ktu-sekolah',
-          jabatan_kode: 'KTU',
-          jabatan_nama: 'Kepala Subbagian Tata Usaha (KTU)',
-          nama_pejabat: 'Hj. Siti Nurhalimah, S.AP., M.Si.',
-          nip: '19790525 200312 2 006',
-          foto: null,
-          unit_label: 'Layanan Administrasi & PTSP',
-          urutan: 6,
-        },
-        {
-          id: 'kaprog-utama',
-          jabatan_kode: 'KAPROG',
-          jabatan_nama: 'Ketua Konsentrasi Keahlian & Teaching Factory',
-          nama_pejabat: 'Lukman Hakim, S.Kom., M.T.',
-          nip: '19850910 201101 1 009',
-          foto: null,
-          unit_label: 'Program Keahlian & Sertifikasi LSP-P1',
-          urutan: 7,
-        },
-      ];
-      orgList.push(...defaultOfficials);
     }
 
     // 2. Build Spatial Campus Map
