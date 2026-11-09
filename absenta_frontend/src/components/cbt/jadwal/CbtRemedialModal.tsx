@@ -80,6 +80,7 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
   const [endDateInput, setEndDateInput] = useState<string>('');
   const [customToken, setCustomToken] = useState<string>('');
   const [scorePolicy, setScorePolicy] = useState<RemedialScorePolicy>('max_kktp');
+  const [isTokenless, setIsTokenless] = useState<boolean>(true);
 
   // Generator Token 6 Karakter Acak (misal: RM8K2X)
   const generateRemedialToken = () => {
@@ -179,6 +180,13 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
         throw new Error('Bank soal untuk remedial wajib ditentukan');
       }
 
+      const activeBank = availableBanks.find((b) => b.id === activeBankId) || jadwal.BankSoal;
+      const guruMapelId = activeBank?.guru_id || jadwal.BankSoal?.guru_id || null;
+      const guruMapelNama =
+        (activeBank as any)?.Guru?.nama_guru || (jadwal.BankSoal as any)?.Guru?.nama_guru || 'Guru Mata Pelajaran';
+      const guruMapelNip =
+        (activeBank as any)?.Guru?.nip || (jadwal.BankSoal as any)?.Guru?.nip || '';
+
       const startIso = localDateTimeInputToISO(startDateInput);
       const endIso = localDateTimeInputToISO(endDateInput);
 
@@ -191,8 +199,9 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
         tanggal_mulai: startIso,
         tanggal_selesai: endIso,
         durasi_menit: Number(durasiMenit) || 60,
-        toleransi_terlambat_menit: 15,
+        toleransi_terlambat_menit: 10080, // Fleksibel 7 hari untuk remedial asinkron
         target_kelas_ids: jadwal.target_kelas_ids || [],
+        status: 'ACTIVE' as const,
         setting_keamanan: {
           ...(jadwal.setting_keamanan || {}),
           is_remedial: true,
@@ -200,8 +209,16 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
           kktp_threshold: kktpThreshold,
           remedial_policy: scorePolicy,
           target_siswa_ids: selectedSiswaIds,
+          tokenless: isTokenless,
           ruang_ujian: 'Ruang Remedial',
-          ruang_ujian_nama: 'Ruang Remedial CBT',
+          ruang_ujian_nama: 'Ruang Remedial / Mandiri',
+          pengawas_1_id: guruMapelId,
+          pengawas_1_nama: guruMapelNama,
+          pengawas_1_nip: guruMapelNip,
+          pengawas_2_id: null,
+          pengawas_2_nama: null,
+          proktor_id: null,
+          proktor_nama: null,
           shuffle_questions: true,
           shuffle_options: true,
         },
@@ -210,8 +227,9 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
       return cbtApi.createJadwal(payload);
     },
     onSuccess: async (res) => {
+      const modeText = isTokenless ? 'Bebas Token (Langsung Masuk)' : `Token: ${res.token_ujian}`;
       toast.success(
-        `Sesi Remedial berhasil diterbitkan! Token: ${res.token_ujian} (${selectedSiswaIds.length} Siswa)`,
+        `Sesi Remedial aktif! ${modeText} untuk ${selectedSiswaIds.length} Siswa`,
         { duration: 5000 }
       );
       await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false, refetchType: 'all' });
@@ -480,30 +498,60 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
               />
             </div>
 
-            {/* Token Ujian */}
+            {/* Mode Masuk Siswa: Bebas Token vs Input Token */}
             <div className="space-y-1">
-              <label htmlFor="remedial-token-input" className="text-[11px] font-bold text-slate-500 flex items-center justify-between">
-                <span>Token Siswa Remedial</span>
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-slate-500">
+                  Mode Masuk Siswa
+                </label>
                 <button
                   type="button"
-                  onClick={() => setCustomToken(generateRemedialToken())}
-                  className="text-[10px] text-indigo-600 hover:underline flex items-center gap-1 cursor-pointer"
+                  onClick={() => setIsTokenless(!isTokenless)}
+                  className="text-[10px] text-indigo-600 font-bold hover:underline cursor-pointer flex items-center gap-1"
                 >
-                  <RotateCw size={10} />
-                  <span>Acak Token</span>
+                  {isTokenless ? 'Ganti ke Input Token' : 'Aktifkan Bebas Token'}
                 </button>
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  id="remedial-token-input"
-                  type="text"
-                  maxLength={6}
-                  value={customToken}
-                  onChange={(e) => setCustomToken(e.target.value.toUpperCase())}
-                  required
-                  className="w-full px-3 py-1.5 text-xs font-mono font-black tracking-widest text-emerald-700 dark:text-emerald-300 rounded-xl border border-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/40 text-center uppercase focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
               </div>
+
+              {isTokenless ? (
+                <div className="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1">
+                      <Sparkles size={12} className="text-emerald-600" />
+                      <span>Bebas Token (1-Klik Masuk)</span>
+                    </span>
+                    <p className="text-[10px] text-emerald-700/80 dark:text-emerald-400">
+                      Siswa terdaftar langsung klik tombol remedial di akunnya tanpa perlu token.
+                    </p>
+                  </div>
+                  <Badge variant="success" className="text-[9px] shrink-0 font-bold">
+                    REKOMENDASI
+                  </Badge>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[10px] text-slate-400">
+                    <span>Token 6 Digit</span>
+                    <button
+                      type="button"
+                      onClick={() => setCustomToken(generateRemedialToken())}
+                      className="text-indigo-600 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <RotateCw size={10} />
+                      <span>Acak Token</span>
+                    </button>
+                  </div>
+                  <input
+                    id="remedial-token-input"
+                    type="text"
+                    maxLength={6}
+                    value={customToken}
+                    onChange={(e) => setCustomToken(e.target.value.toUpperCase())}
+                    required
+                    className="w-full px-3 py-1.5 text-xs font-mono font-black tracking-widest text-emerald-700 dark:text-emerald-300 rounded-xl border border-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/40 text-center uppercase focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Waktu Mulai & Selesai */}

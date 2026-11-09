@@ -178,6 +178,9 @@ export interface CbtStudentExamItem {
   tanggal_selesai: string;
   durasi_menit: number;
   status_jadwal: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'ARCHIVED';
+  is_remedial?: boolean;
+  is_tokenless?: boolean;
+  token_ujian?: string | null;
   nama_sesi_waktu?: string | null;
   ruang_ujian?: string | null;
   ruang_ujian_nama?: string | null;

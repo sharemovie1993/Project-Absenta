@@ -153,103 +153,118 @@ export class CbtTestEngineService {
       }
     }
 
-    return jadwalList.map((j) => {
-      const peserta = j.Peserta[0];
-      const showResult = (j.setting_keamanan as any)?.show_result_instant ?? true;
-      const isFinished = peserta?.status === 'FINISHED';
-      const jawabanArr = Array.isArray(peserta?.jawaban_json) ? (peserta.jawaban_json as any[]) : [];
-      const jumlahTerjawab = jawabanArr.filter((ans) => ans && String(ans.jawaban_siswa || '').trim() !== '').length;
-      const pelanggaranArr = Array.isArray(peserta?.log_pelanggaran_json) ? (peserta.log_pelanggaran_json as any[]) : [];
-
-      let durasiPengerjaanMenit: number | null = null;
-      if (peserta?.waktu_mulai && peserta?.waktu_selesai) {
-        const diffMs = new Date(peserta.waktu_selesai).getTime() - new Date(peserta.waktu_mulai).getTime();
-        if (diffMs >= 0) {
-          durasiPengerjaanMenit = Math.max(1, Math.round(diffMs / 60000));
+    return jadwalList
+      .filter((j) => {
+        const sec = (j.setting_keamanan as any) || {};
+        // Sesi remedial hanya tampil di dashboard siswa yang memang terdaftar di target_siswa_ids
+        if (sec.is_remedial && Array.isArray(sec.target_siswa_ids) && !sec.target_siswa_ids.includes(siswaId)) {
+          return false;
         }
-      }
+        return true;
+      })
+      .map((j) => {
+        const peserta = j.Peserta[0];
+        const showResult = (j.setting_keamanan as any)?.show_result_instant ?? true;
+        const isFinished = peserta?.status === 'FINISHED';
+        const jawabanArr = Array.isArray(peserta?.jawaban_json) ? (peserta.jawaban_json as any[]) : [];
+        const jumlahTerjawab = jawabanArr.filter((ans) => ans && String(ans.jawaban_siswa || '').trim() !== '').length;
+        const pelanggaranArr = Array.isArray(peserta?.log_pelanggaran_json) ? (peserta.log_pelanggaran_json as any[]) : [];
 
-      // Resolusi Presisi Ruang Fisik Siswa (100% Akurat, Zero Fallback, Eliminasi Total 'Multi-Ruang')
-      const sec = (j.setting_keamanan as any) || {};
-      const roomMappings = sec.room_mappings || sec.kelas_room_map || {};
-      const studentRoom = siswa.kelas_id ? roomMappings[siswa.kelas_id] : null;
+        let durasiPengerjaanMenit: number | null = null;
+        if (peserta?.waktu_mulai && peserta?.waktu_selesai) {
+          const diffMs = new Date(peserta.waktu_selesai).getTime() - new Date(peserta.waktu_mulai).getTime();
+          if (diffMs >= 0) {
+            durasiPengerjaanMenit = Math.max(1, Math.round(diffMs / 60000));
+          }
+        }
 
-      let resolvedSlotRuang: string | null = null;
-      let resolvedNamaRuang: string | null = null;
+        // Resolusi Presisi Ruang Fisik Siswa (100% Akurat, Zero Fallback, Eliminasi Total 'Multi-Ruang')
+        const sec = (j.setting_keamanan as any) || {};
+        const roomMappings = sec.room_mappings || sec.kelas_room_map || {};
+        const studentRoom = siswa.kelas_id ? roomMappings[siswa.kelas_id] : null;
 
-      // Prioritas 1: Mapping eksplisit per kelas dalam konfigurasi jadwal
-      if (studentRoom?.slot_ruang) {
-        resolvedSlotRuang = studentRoom.slot_ruang;
-        resolvedNamaRuang = studentRoom.nama_ruang || studentRoom.slot_ruang;
-      }
-      // Prioritas 2: Ruang spesifik non-multi yang sudah terekam di jadwal (misal 'R.05' atau 'Lab Komputer 1')
-      else if (sec.ruang_ujian && !String(sec.ruang_ujian).toLowerCase().includes('multi') && String(sec.ruang_ujian).toLowerCase() !== 'ruang kelas') {
-        resolvedSlotRuang = sec.ruang_ujian;
-        resolvedNamaRuang = sec.ruang_ujian_nama || sec.ruang_ujian;
-      }
-      // Prioritas 3: Deteksi langsung dari Denah Spasial Kampus (Master Sarpras & Event Ujian)
-      else if (siswa.kelas_id && denahRoomByKelasId.has(siswa.kelas_id)) {
-        const dRoom = denahRoomByKelasId.get(siswa.kelas_id)!;
-        resolvedSlotRuang = dRoom.slot_ruang;
-        resolvedNamaRuang = dRoom.nama_ruang;
-      } else if (siswa.Kelas?.nama_kelas && denahRoomByKelasName.has(siswa.Kelas.nama_kelas.trim().toLowerCase())) {
-        const dRoom = denahRoomByKelasName.get(siswa.Kelas.nama_kelas.trim().toLowerCase())!;
-        resolvedSlotRuang = dRoom.slot_ruang;
-        resolvedNamaRuang = dRoom.nama_ruang;
-      }
-      // Prioritas 4: Penomoran ruang deterministik standar industri (R.01, R.02, dst berdasar daftar kelas)
-      else if (siswa.kelas_id && standardClassRoomMap.has(siswa.kelas_id)) {
-        const sRoom = standardClassRoomMap.get(siswa.kelas_id)!;
-        resolvedSlotRuang = sRoom.slot_ruang;
-        resolvedNamaRuang = sRoom.nama_ruang;
-      }
-      // Prioritas 5: Ruang R.01
-      else {
-        resolvedSlotRuang = 'R.01';
-        resolvedNamaRuang = 'Ruang 01';
-      }
+        let resolvedSlotRuang: string | null = null;
+        let resolvedNamaRuang: string | null = null;
 
-      // Resolusi Guru Pengampu Kelas: Siswa melihat guru kelasnya sendiri, bukan pembuat bank soal MGMP
-      const targetMapelId = j.BankSoal?.mapel_id || (j.BankSoal?.Mapel as any)?.id;
-      const classSubjectTeacher = targetMapelId ? classTeacherByMapelId.get(targetMapelId) : null;
-      const resolvedGuru = classSubjectTeacher || j.BankSoal?.Guru?.nama_guru || null;
+        // Prioritas 1: Mapping eksplisit per kelas dalam konfigurasi jadwal
+        if (studentRoom?.slot_ruang) {
+          resolvedSlotRuang = studentRoom.slot_ruang;
+          resolvedNamaRuang = studentRoom.nama_ruang || studentRoom.slot_ruang;
+        }
+        // Prioritas 2: Ruang spesifik non-multi yang sudah terekam di jadwal (misal 'R.05' atau 'Lab Komputer 1')
+        else if (sec.ruang_ujian && !String(sec.ruang_ujian).toLowerCase().includes('multi') && String(sec.ruang_ujian).toLowerCase() !== 'ruang kelas') {
+          resolvedSlotRuang = sec.ruang_ujian;
+          resolvedNamaRuang = sec.ruang_ujian_nama || sec.ruang_ujian;
+        }
+        // Prioritas 3: Deteksi langsung dari Denah Spasial Kampus (Master Sarpras & Event Ujian)
+        else if (siswa.kelas_id && denahRoomByKelasId.has(siswa.kelas_id)) {
+          const dRoom = denahRoomByKelasId.get(siswa.kelas_id)!;
+          resolvedSlotRuang = dRoom.slot_ruang;
+          resolvedNamaRuang = dRoom.nama_ruang;
+        } else if (siswa.Kelas?.nama_kelas && denahRoomByKelasName.has(siswa.Kelas.nama_kelas.trim().toLowerCase())) {
+          const dRoom = denahRoomByKelasName.get(siswa.Kelas.nama_kelas.trim().toLowerCase())!;
+          resolvedSlotRuang = dRoom.slot_ruang;
+          resolvedNamaRuang = dRoom.nama_ruang;
+        }
+        // Prioritas 4: Penomoran ruang deterministik standar industri (R.01, R.02, dst berdasar daftar kelas)
+        else if (siswa.kelas_id && standardClassRoomMap.has(siswa.kelas_id)) {
+          const sRoom = standardClassRoomMap.get(siswa.kelas_id)!;
+          resolvedSlotRuang = sRoom.slot_ruang;
+          resolvedNamaRuang = sRoom.nama_ruang;
+        }
+        // Prioritas 5: Ruang R.01
+        else {
+          resolvedSlotRuang = 'R.01';
+          resolvedNamaRuang = 'Ruang 01';
+        }
 
-      return {
-        id: j.id,
-        nama_sesi: j.nama_sesi,
-        mapel: j.BankSoal?.Mapel?.nama_mapel || '-',
-        kode_mapel: j.BankSoal?.Mapel?.kode_mapel || null,
-        kode_bank: j.BankSoal?.kode_bank || null,
-        judul_bank: j.BankSoal?.judul || '-',
-        tingkat: j.BankSoal?.tingkat || null,
-        tahun_ajaran: j.TahunPelajaran?.tahun || null,
-        semester: j.Semester?.nama_semester || null,
-        guru: resolvedGuru,
-        total_soal: j.BankSoal?.jumlah_soal || 0,
-        tanggal_mulai: j.tanggal_mulai,
-        tanggal_selesai: j.tanggal_selesai,
-        durasi_menit: j.durasi_menit,
-        status_jadwal: j.status,
-        nama_sesi_waktu: sec?.nama_sesi_waktu || null,
-        ruang_ujian: resolvedSlotRuang,
-        ruang_ujian_nama: resolvedNamaRuang,
-        kelas_siswa: siswa.Kelas?.nama_kelas || null,
-        status_peserta: peserta?.status || 'BELUM_MULAI',
-        waktu_mulai: peserta?.waktu_mulai || null,
-        waktu_selesai: peserta?.waktu_selesai || null,
-        durasi_pengerjaan_menit: durasiPengerjaanMenit,
-        jumlah_terjawab: jumlahTerjawab,
-        pelanggaran_count: pelanggaranArr.length,
-        hasil:
-          isFinished && (showResult || j.status === 'COMPLETED')
-            ? {
-                nilai_akhir: Number(peserta?.nilai_akhir ?? 0),
-                jumlah_benar: peserta?.jumlah_benar ?? 0,
-                jumlah_salah: peserta?.jumlah_salah ?? 0,
-              }
-            : null,
-      };
-    });
+        // Resolusi Guru Pengampu Kelas: Siswa melihat guru kelasnya sendiri, bukan pembuat bank soal MGMP
+        const targetMapelId = j.BankSoal?.mapel_id || (j.BankSoal?.Mapel as any)?.id;
+        const classSubjectTeacher = targetMapelId ? classTeacherByMapelId.get(targetMapelId) : null;
+        const resolvedGuru = classSubjectTeacher || j.BankSoal?.Guru?.nama_guru || null;
+
+        const isRemedial = Boolean(sec.is_remedial);
+        const isTokenless = isRemedial && sec.tokenless !== false;
+
+        return {
+          id: j.id,
+          nama_sesi: j.nama_sesi,
+          mapel: j.BankSoal?.Mapel?.nama_mapel || '-',
+          kode_mapel: j.BankSoal?.Mapel?.kode_mapel || null,
+          kode_bank: j.BankSoal?.kode_bank || null,
+          judul_bank: j.BankSoal?.judul || '-',
+          tingkat: j.BankSoal?.tingkat || null,
+          tahun_ajaran: j.TahunPelajaran?.tahun || null,
+          semester: j.Semester?.nama_semester || null,
+          guru: resolvedGuru,
+          total_soal: j.BankSoal?.jumlah_soal || 0,
+          tanggal_mulai: j.tanggal_mulai,
+          tanggal_selesai: j.tanggal_selesai,
+          durasi_menit: j.durasi_menit,
+          status_jadwal: j.status,
+          nama_sesi_waktu: sec?.nama_sesi_waktu || null,
+          ruang_ujian: resolvedSlotRuang,
+          ruang_ujian_nama: resolvedNamaRuang,
+          kelas_siswa: siswa.Kelas?.nama_kelas || null,
+          status_peserta: peserta?.status || 'BELUM_MULAI',
+          waktu_mulai: peserta?.waktu_mulai || null,
+          waktu_selesai: peserta?.waktu_selesai || null,
+          durasi_pengerjaan_menit: durasiPengerjaanMenit,
+          jumlah_terjawab: jumlahTerjawab,
+          pelanggaran_count: pelanggaranArr.length,
+          is_remedial: isRemedial,
+          is_tokenless: isTokenless,
+          token_ujian: isTokenless ? (j as any).token_ujian : null,
+          hasil:
+            isFinished && (showResult || j.status === 'COMPLETED')
+              ? {
+                  nilai_akhir: Number(peserta?.nilai_akhir ?? 0),
+                  jumlah_benar: peserta?.jumlah_benar ?? 0,
+                  jumlah_salah: peserta?.jumlah_salah ?? 0,
+                }
+              : null,
+        };
+      });
   }
 
   /**
@@ -287,7 +302,7 @@ export class CbtTestEngineService {
   /**
    * Verifikasi token ujian sebelum siswa masuk dengan diagnosis presisi & spesifik
    */
-  static async verifyToken(tenantId: string, tokenUjian: string, siswaId: string) {
+  static async verifyToken(tenantId: string, tokenUjian: string, siswaId: string, jadwalId?: string) {
     const cleanToken = (tokenUjian || '').trim().toUpperCase();
 
     // 1. Ambil data profil siswa dan rombel kelasnya terlebih dahulu
@@ -311,29 +326,49 @@ export class CbtTestEngineService {
 
     const redis = getRedisConnection();
     let cachedJadwalId: string | null = null;
-    if (redis) {
+    if (redis && cleanToken !== 'TOKENLESS') {
       cachedJadwalId = await redis.get(`cbt:${tenantId}:token:${cleanToken}`).catch(() => null);
     }
 
-    // 2. Cari jadwal berdasarkan token ujian (tanpa filter status dahulu agar bisa mendiagnosa spesifik)
-    const jadwal = await prisma.cbtJadwalUjian.findFirst({
-      where: cachedJadwalId
-        ? { id: cachedJadwalId, tenant_id: tenantId }
-        : { tenant_id: tenantId, token_ujian: cleanToken },
-      include: {
-        BankSoal: {
-          select: {
-            id: true,
-            mapel_id: true,
-            judul: true,
-            jumlah_soal: true,
-            alokasi_menit: true,
-            Mapel: { select: { id: true, nama_mapel: true } },
-            Guru: { select: { id: true, nama_guru: true } },
+    // 2. Cari jadwal berdasarkan jadwalId (jika 1-klik remedial) atau token ujian
+    let jadwal = null;
+    if (jadwalId) {
+      jadwal = await prisma.cbtJadwalUjian.findFirst({
+        where: { id: jadwalId, tenant_id: tenantId },
+        include: {
+          BankSoal: {
+            select: {
+              id: true,
+              mapel_id: true,
+              judul: true,
+              jumlah_soal: true,
+              alokasi_menit: true,
+              Mapel: { select: { id: true, nama_mapel: true } },
+              Guru: { select: { id: true, nama_guru: true } },
+            },
           },
         },
-      },
-    });
+      });
+    } else {
+      jadwal = await prisma.cbtJadwalUjian.findFirst({
+        where: cachedJadwalId
+          ? { id: cachedJadwalId, tenant_id: tenantId }
+          : { tenant_id: tenantId, token_ujian: cleanToken },
+        include: {
+          BankSoal: {
+            select: {
+              id: true,
+              mapel_id: true,
+              judul: true,
+              jumlah_soal: true,
+              alokasi_menit: true,
+              Mapel: { select: { id: true, nama_mapel: true } },
+              Guru: { select: { id: true, nama_guru: true } },
+            },
+          },
+        },
+      });
+    }
 
     // ── DIAGNOSIS 1: TOKEN TIDAK DITEMUKAN DI SISTEM ──
     if (!jadwal) {
@@ -387,8 +422,10 @@ export class CbtTestEngineService {
       'Mata Pelajaran';
     const ruangName = (jadwal.setting_keamanan as any)?.ruang_ujian || 'Ruang CBT';
 
+    const isRemedial = Boolean((jadwal.setting_keamanan as any)?.is_remedial);
+
     // ── DIAGNOSIS 2: SESI MASIH DRAFT (BELUM DIAKTIFKAN OLEH PENGAWAS) ──
-    if (jadwal.status === 'DRAFT') {
+    if (!isRemedial && jadwal.status === 'DRAFT') {
       const err: any = new Error(
         `Sesi ujian "${mapelName}" (${ruangName}) belum diaktifkan oleh pengawas (Status: DRAFT). Mohon beri tahu pengawas di ruang Anda untuk menekan tombol hijau "Aktifkan" pada layar pengawas.`
       );
@@ -527,7 +564,7 @@ export class CbtTestEngineService {
     const isEarlyAccessAllowed = Boolean((jadwal.setting_keamanan as any)?.allow_early_start);
 
     // 8A. Belum Jam Ujian (Lebih dari 15 menit sebelum tanggal_mulai)
-    if (!isEarlyAccessAllowed && now.getTime() < (tanggalMulai.getTime() - EARLY_ACCESS_BUFFER_MS)) {
+    if (!isRemedial && !isEarlyAccessAllowed && now.getTime() < (tanggalMulai.getTime() - EARLY_ACCESS_BUFFER_MS)) {
       const jamMulaiStr = CbtTestEngineService.formatJamIndo(tanggalMulai);
       const tglMulaiStr = CbtTestEngineService.formatTanggalIndo(tanggalMulai);
       const err: any = new Error(
@@ -562,7 +599,7 @@ export class CbtTestEngineService {
 
     // 8C. Validasi Toleransi Keterlambatan (Hanya untuk siswa yang baru akan mulai, bukan yang reconnect)
     const isNewParticipant = !existingPeserta || !existingPeserta.waktu_mulai;
-    if (isNewParticipant && toleransiMenit > 0) {
+    if (!isRemedial && isNewParticipant && toleransiMenit > 0) {
       const batasTerlambatMs = tanggalMulai.getTime() + (toleransiMenit * 60 * 1000);
       const dispensasiList = (jadwal.setting_keamanan as any)?.dispensasi_terlambat_siswa_ids || [];
       const hasDispensation = Array.isArray(dispensasiList) && dispensasiList.includes(siswaId);
@@ -648,8 +685,10 @@ export class CbtTestEngineService {
     }
 
     const mapelName = (jadwal.BankSoal as any)?.judul || jadwal.nama_sesi;
+    const isRemedial = Boolean((jadwal.setting_keamanan as any)?.is_remedial);
+    const isTokenless = isRemedial && (jadwal.setting_keamanan as any)?.tokenless !== false;
 
-    if (jadwal.status === 'DRAFT') {
+    if (!isRemedial && jadwal.status === 'DRAFT') {
       const err: any = new Error(
         `Sesi ujian "${mapelName}" belum diaktifkan oleh pengawas (Status: DRAFT). Silakan minta pengawas menekan tombol "Aktifkan".`
       );
@@ -672,7 +711,7 @@ export class CbtTestEngineService {
       throw err;
     }
 
-    if (jadwal.token_ujian !== cleanToken) {
+    if (!isTokenless && jadwal.token_ujian !== cleanToken) {
       const err: any = new Error(
         'Token ujian telah diperbarui/dirotasi oleh sistem. Masukkan token aktif terbaru dari pengawas.'
       );

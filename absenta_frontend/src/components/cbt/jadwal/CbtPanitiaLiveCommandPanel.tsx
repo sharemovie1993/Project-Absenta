@@ -223,6 +223,8 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
   // ── KEPATUHAN EVENT PANITIA & SASARAN TINGKAT ──
   const effectiveJadwalList = useMemo(() => {
     return (jadwalList || []).filter((j) => {
+      // 0. Sesi remedial dikelola mandiri oleh Guru Mapel, bukan ruang bilik reguler panitia
+      if ((j.setting_keamanan as any)?.is_remedial) return false;
       // 1. Jika event_id tertera di setting_keamanan, harus cocok dengan activeEvent
       if (activeEvent?.id && j.setting_keamanan?.event_id) {
         if (j.setting_keamanan.event_id !== activeEvent.id) return false;

@@ -2864,7 +2864,7 @@
     "premiumFeatureGate": null,
     "godFileGuard": false,
     "hardcodedConfig": true,
-    "analyticsCardGuard": true,
+    "analyticsCardGuard": false,
     "importExportGuard": true,
     "standardPdfPrint": true,
     "zodValidationGuard": false,

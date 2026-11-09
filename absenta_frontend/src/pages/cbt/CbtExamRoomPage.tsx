@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Card,
   Button,
@@ -83,6 +84,48 @@ export default function CbtExamRoomPage() {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  // Remedial 1-Click Access for whitelisted students
+  const { data: myExams = [] } = useQuery({
+    queryKey: ['cbt-my-exams-remedial'],
+    queryFn: () => cbtApi.getMyExams(),
+    enabled: step === 'TOKEN_GATE',
+    refetchInterval: 15000,
+  });
+
+  const activeRemedial = useMemo(() => {
+    return (myExams || []).find(
+      (e) => Boolean(e.is_remedial) && e.status_peserta !== 'FINISHED'
+    );
+  }, [myExams]);
+
+  const handleStartDirectRemedial = async (remedial: typeof activeRemedial) => {
+    if (!remedial) return;
+    try {
+      setLoadingVerify(true);
+      setErrorDiagnosis(null);
+      const token = remedial.token_ujian || 'TOKENLESS';
+      setTokenInput(token);
+      const res = await cbtApi.verifyToken(token, remedial.id);
+      setExamOverview(res);
+      setJadwalId(res.jadwal_id);
+      setStep('CONFIRMATION');
+    } catch (err: any) {
+      const data = err.response?.data;
+      const msg = data?.message || 'Gagal masuk sesi remedial';
+      const code = data?.code || 'REMEDIAL_ENTRY_FAILED';
+      const hint = data?.details?.hint;
+      setErrorDiagnosis({
+        code,
+        message: msg,
+        hint,
+        details: data?.details,
+      });
+      toast.error(msg, { duration: 5000 });
+    } finally {
+      setLoadingVerify(false);
+    }
+  };
 
   // 1. Verifikasi Token Ujian
   const handleVerifyToken = async (e: React.FormEvent) => {
@@ -405,6 +448,46 @@ export default function CbtExamRoomPage() {
               </p>
             </div>
 
+            {/* 1-Click Remedial Entry Card (Bebas Token) */}
+            {activeRemedial && (
+              <div className="text-left p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-800/60 bg-gradient-to-br from-indigo-50/80 to-purple-50/50 dark:from-indigo-950/40 dark:to-purple-950/30 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-indigo-700 dark:text-indigo-300 font-bold text-xs">
+                    <Sparkles size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                    <span>Sesi Remedial Terbuka</span>
+                  </div>
+                  <Badge variant="success" className="text-[10px] px-2 py-0.5">
+                    Bebas Token
+                  </Badge>
+                </div>
+                <div className="space-y-0.5">
+                  <div className="font-bold text-sm text-slate-900 dark:text-white">
+                    {activeRemedial.mapel || activeRemedial.judul_bank}
+                  </div>
+                  <div className="text-xs text-slate-600 dark:text-slate-400">
+                    Guru: {activeRemedial.guru || 'Guru Mapel'} • {activeRemedial.total_soal} Soal ({activeRemedial.durasi_menit} Menit)
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => handleStartDirectRemedial(activeRemedial)}
+                  disabled={loadingVerify}
+                  className="w-full h-9 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Sparkles size={14} />
+                  <span>Mulai Remedial Sekarang (Tanpa Token)</span>
+                </Button>
+              </div>
+            )}
+
+            {activeRemedial && (
+              <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 text-[11px]">
+                <div className="flex-1 border-t border-slate-200 dark:border-slate-800" />
+                <span>atau ujian reguler</span>
+                <div className="flex-1 border-t border-slate-200 dark:border-slate-800" />
+              </div>
+            )}
+
             <form onSubmit={handleVerifyToken} className="space-y-4">
               <div>
                 <input
@@ -527,7 +610,7 @@ export default function CbtExamRoomPage() {
             <div className="text-center space-y-1.5 pb-2 border-b border-slate-100 dark:border-slate-800/80">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
                 <CheckCircle2 size={13} className="stroke-[2.5]" />
-                <span>Token Valid</span>
+                <span>{tokenInput === 'TOKENLESS' ? 'Remedial Terverifikasi' : 'Token Valid'}</span>
               </div>
               <div className="space-y-0.5">
                 <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">

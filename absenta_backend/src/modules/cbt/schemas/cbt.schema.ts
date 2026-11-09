@@ -204,12 +204,22 @@ export const queryJadwalUjianSchema = z.object({
 
 // Siswa Engine Schemas
 export const verifyExamTokenSchema = z.object({
-  token_ujian: z.string().min(4).max(10, 'Token harus 4-10 karakter').transform((v) => v.toUpperCase().trim()),
+  token_ujian: z
+    .string()
+    .max(10, 'Token maksimal 10 karakter')
+    .optional()
+    .default('TOKENLESS')
+    .transform((v) => (v ? v.toUpperCase().trim() : 'TOKENLESS')),
+  jadwal_id: z.string().uuid().optional(),
 });
 
 export const startExamSessionSchema = z.object({
   jadwal_ujian_id: z.string().uuid(),
-  token_masuk: z.string().min(4).max(10).transform((v) => v.toUpperCase().trim()),
+  token_masuk: z
+    .string()
+    .optional()
+    .default('TOKENLESS')
+    .transform((v) => (v ? v.toUpperCase().trim() : 'TOKENLESS')),
   metadata_perangkat: z.record(z.any()).optional(),
 });
 

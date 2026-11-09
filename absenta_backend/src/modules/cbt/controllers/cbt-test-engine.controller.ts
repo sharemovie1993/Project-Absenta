@@ -52,7 +52,12 @@ export class CbtTestEngineController {
       const { tenant_id } = req.user!;
       const siswaId = await CbtTestEngineController.resolveSiswaId(req);
       const parsed = verifyExamTokenSchema.parse(req.body);
-      const result = await CbtTestEngineService.verifyToken(tenant_id, parsed.token_ujian, siswaId);
+      const result = await CbtTestEngineService.verifyToken(
+        tenant_id,
+        parsed.token_ujian,
+        siswaId,
+        parsed.jadwal_id
+      );
       return sendResponse(reply, 200, true, 'Token ujian valid', result);
     } catch (error: any) {
       if (error instanceof z.ZodError) {

@@ -527,6 +527,9 @@ export function filterEffectiveJadwalList(
   targetTingkat?: number[]
 ): CbtJadwalUjian[] {
   return (jadwalList || []).filter((j) => {
+    // 0. Sesi remedial dikelola mandiri oleh Guru Mapel, bukan ruang bilik reguler panitia
+    if ((j.setting_keamanan as any)?.is_remedial) return false;
+
     if (activeEventId && j.setting_keamanan?.event_id) {
       if (j.setting_keamanan.event_id !== activeEventId) return false;
     }

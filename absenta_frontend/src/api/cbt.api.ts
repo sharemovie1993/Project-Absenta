@@ -247,8 +247,11 @@ export const cbtApi = {
     return (res.data?.data || []) as CbtStudentExamItem[];
   },
 
-  verifyToken: async (tokenUjian: string) => {
-    const res = await api.post('/cbt/engine/verify-token', { token_ujian: tokenUjian });
+  verifyToken: async (tokenUjian: string, jadwalId?: string) => {
+    const res = await api.post('/cbt/engine/verify-token', {
+      token_ujian: tokenUjian,
+      ...(jadwalId ? { jadwal_id: jadwalId } : {}),
+    });
     return res.data?.data as {
       valid: boolean;
       jadwal_id: string;
