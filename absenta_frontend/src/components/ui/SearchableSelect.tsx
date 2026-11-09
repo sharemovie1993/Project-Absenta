@@ -7,6 +7,11 @@ import { useDebounce } from '@/hooks/useDebounce';
 export interface SearchableSelectOption {
   label: string;
   value: string;
+  isGroupHeader?: boolean;
+  statusDotClass?: string;
+  rightBadge?: string;
+  rightBadgeClass?: string;
+  disabled?: boolean;
   [key: string]: any;
 }
 
@@ -121,9 +126,17 @@ export function SearchableSelect({
     if (isOpen && isExactMatch) return safeOptions;
 
     const query = searchQuery.toLowerCase();
-    return safeOptions.filter((opt) =>
-      getSafeLabel(opt).toLowerCase().includes(query)
-    );
+    return safeOptions.filter((opt, index, arr) => {
+      if (opt.isGroupHeader) {
+        for (let i = index + 1; i < arr.length; i++) {
+          if (arr[i].isGroupHeader) break;
+          if (getSafeLabel(arr[i]).toLowerCase().includes(query)) return true;
+        }
+        return false;
+      }
+
+      return getSafeLabel(opt).toLowerCase().includes(query);
+    });
   }, [safeOptions, searchQuery, activeSearch, isOpen, selectedOption, selectedLabel]);
 
   // Click outside & Escape key to auto-close dropdown
@@ -275,7 +288,18 @@ export function SearchableSelect({
               {emptyMessage}
             </div>
           ) : (
-              !isLoading && filteredOptions.map((option, idx) => (
+              !isLoading && filteredOptions.map((option, idx) => {
+                if (option.isGroupHeader) {
+                  return (
+                    <div
+                      key={`header-${option.value || idx}`}
+                      className="px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-100/90 dark:bg-slate-800/90 sticky top-0 rounded-md my-1 z-10 select-none flex items-center justify-between"
+                    >
+                      <span>{option.label}</span>
+                    </div>
+                  );
+                }
+                return (
               <div
                 key={option.value || idx}
                 onClick={(e) => {
@@ -311,7 +335,8 @@ export function SearchableSelect({
                   )}
                 </div>
               </div>
-            ))
+                );
+              })
           )}
         </div>,
         document.body

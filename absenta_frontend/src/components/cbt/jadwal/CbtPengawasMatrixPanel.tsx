@@ -52,15 +52,75 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
 
   const guruMap = useMemo(() => new Map((guruList || []).map((g) => [g.id, g])), [guruList]);
 
-  const pengawasSelectOptions = useMemo(() => {
-    return [
-      { value: '', label: '— Belum Diploting —' },
-      ...(guruList || []).map((g) => ({
-        value: g.id,
-        label: `${g.nama_guru}${g.nip ? ` (NIP. ${g.nip})` : ''}`,
-      })),
-    ];
+  // Pisahkan kelompok Pendidik (Guru) vs Tenaga Kependidikan (TU/Staf)
+  const { pendidikList, tenagaKependidikanList } = useMemo(() => {
+    const pendidik: any[] = [];
+    const tu: any[] = [];
+
+    (guruList || []).forEach((g) => {
+      const ptk = (g.jenis_ptk || '').toUpperCase().trim();
+      if (
+        ptk === 'TENAGA_KEPENDIDIKAN' ||
+        ptk === 'TU' ||
+        ptk === 'TATA_USAHA' ||
+        ptk === 'STAFF' ||
+        ptk === 'STAF'
+      ) {
+        tu.push(g);
+      } else {
+        pendidik.push(g);
+      }
+    });
+
+    return { pendidikList: pendidik, tenagaKependidikanList: tu };
   }, [guruList]);
+
+  // List Pengawas Dikelompokkan (Optgroup: Pendidik vs Tenaga Kependidikan)
+  const pengawasSelectOptions = useMemo(() => {
+    const options: any[] = [
+      { value: '', label: '— Belum Diploting —' },
+    ];
+
+    if (pendidikList.length > 0) {
+      options.push({
+        value: '__HEADER_PENDIDIK__',
+        label: `🎓 GURU PENDIDIK (${pendidikList.length})`,
+        isGroupHeader: true,
+        disabled: true,
+      });
+
+      pendidikList.forEach((g) => {
+        options.push({
+          value: g.id,
+          label: `${g.nama_guru}${g.nip ? ` (NIP. ${g.nip})` : ''}`,
+          rightBadge: 'PENDIDIK',
+          rightBadgeClass: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800',
+          statusDotClass: 'bg-indigo-500',
+        });
+      });
+    }
+
+    if (tenagaKependidikanList.length > 0) {
+      options.push({
+        value: '__HEADER_TU__',
+        label: `🏢 TENAGA KEPENDIDIKAN / TU (${tenagaKependidikanList.length})`,
+        isGroupHeader: true,
+        disabled: true,
+      });
+
+      tenagaKependidikanList.forEach((g) => {
+        options.push({
+          value: g.id,
+          label: `${g.nama_guru}${g.nip ? ` (NIP. ${g.nip})` : ''}`,
+          rightBadge: 'STAF TU',
+          rightBadgeClass: 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800',
+          statusDotClass: 'bg-amber-500',
+        });
+      });
+    }
+
+    return options;
+  }, [pendidikList, tenagaKependidikanList]);
 
   // Local draft state for Plotting
   const [plottingDrafts, setPlottingDrafts] = useState<Record<string, PlottingDraftRow>>({});
@@ -140,10 +200,11 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
     return conflicts;
   }, [jadwalList, plottingDrafts]);
 
-  // Anti-Conflict Auto-Distribute
+  // Anti-Conflict Auto-Distribute (Prioritize Pendidik Only; TU can be chosen manually)
   const handleAutoDistributeSupervisors = () => {
-    if (!guruList.length) {
-      toast.error('Data guru belum tersedia untuk distribusi otomatis');
+    const autoCandidates = pendidikList.length > 0 ? pendidikList : guruList;
+    if (!autoCandidates.length) {
+      toast.error('Data guru pendidik belum tersedia untuk distribusi otomatis');
       return;
     }
 
@@ -162,8 +223,8 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
       const endJ = new Date(jadwal.tanggal_selesai).getTime();
       let chosenGuruId = curr.pengawas_1_id;
 
-      for (let attempt = 0; attempt < guruList.length; attempt++) {
-        const candidate = guruList[(teacherCursor + attempt) % guruList.length];
+      for (let attempt = 0; attempt < autoCandidates.length; attempt++) {
+        const candidate = autoCandidates[(teacherCursor + attempt) % autoCandidates.length];
         const isBusy = jadwalList.some((other) => {
           if (other.id === jadwal.id) return false;
           const otherDraft = nextDrafts[other.id];
@@ -177,7 +238,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
 
         if (!isBusy) {
           chosenGuruId = candidate.id;
-          teacherCursor = (teacherCursor + attempt + 1) % guruList.length;
+          teacherCursor = (teacherCursor + attempt + 1) % autoCandidates.length;
           break;
         }
       }
@@ -191,7 +252,9 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
     });
 
     setPlottingDrafts(nextDrafts);
-    toast.success(`Berhasil mendistribusikan pengawas otomatis pada ${assignedCount} sesi/ruang ujian!`);
+    toast.success(
+      `Berhasil mendistribusikan ${assignedCount} sesi/ruang ke Guru Pendidik! (Staf TU tetap dapat dipilih secara manual)`
+    );
   };
 
   const dirtyPlottingItems = useMemo(() => {
@@ -293,10 +356,10 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
             size="sm"
             onClick={handleAutoDistributeSupervisors}
             className="text-xs h-9 px-3 font-bold text-indigo-600 border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100"
-            title="Bagi otomatis guru pengawas ke jadwal/ruang yang masih kosong tanpa bentrok jam"
+            title="Plot otomatis memprioritaskan Guru Pendidik tanpa bentrok jam. Kelompok Tenaga Kependidikan/TU tetap dapat dipilih secara manual."
           >
             <Wand2 size={14} className="mr-1.5" />
-            <span>Plot Otomatis (Anti-Bentrok)</span>
+            <span>Plot Otomatis Guru (Anti-Bentrok)</span>
           </Button>
 
           <Button
