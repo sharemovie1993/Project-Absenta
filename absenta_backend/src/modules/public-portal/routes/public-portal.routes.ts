@@ -12,6 +12,8 @@ export async function publicPortalRoutes(fastify: any) {
 
   // ── Routes dengan parameter explicit :tenantSlug ──
   fastify.get('/:tenantSlug/profile', { config: publicConfig }, publicPortalController.getProfile.bind(publicPortalController));
+  fastify.get('/:tenantSlug/live-pulse', { config: publicConfig }, publicPortalController.getLivePulse.bind(publicPortalController));
+  fastify.get('/:tenantSlug/calendar-ekskul', { config: publicConfig }, publicPortalController.getCalendarAndEkskul.bind(publicPortalController));
   fastify.get('/:tenantSlug/staff', { config: publicConfig }, publicPortalController.getStaff.bind(publicPortalController));
   fastify.get('/:tenantSlug/programs', { config: publicConfig }, publicPortalController.getPrograms.bind(publicPortalController));
   fastify.get('/:tenantSlug/achievements', { config: publicConfig }, publicPortalController.getAchievements.bind(publicPortalController));
@@ -20,9 +22,13 @@ export async function publicPortalRoutes(fastify: any) {
   fastify.get('/:tenantSlug/articles', { config: publicConfig }, publicPortalController.getArticles.bind(publicPortalController));
   fastify.get('/:tenantSlug/articles/:slug', { config: publicConfig }, publicPortalController.getArticleDetail.bind(publicPortalController));
   fastify.get('/:tenantSlug/verify/:docType/:code', { config: publicConfig }, publicPortalController.verifyDocument.bind(publicPortalController));
+  fastify.post('/:tenantSlug/graduation-check', { config: publicConfig }, publicPortalController.checkGraduation.bind(publicPortalController));
+  fastify.post('/:tenantSlug/guestbook', { config: publicConfig }, publicPortalController.submitGuestBook.bind(publicPortalController));
 
   // ── Routes berbasis Host / Domain Header (Resolusi Otomatis Subdomain / Custom Domain) ──
   fastify.get('/profile', { config: publicConfig }, publicPortalController.getProfile.bind(publicPortalController));
+  fastify.get('/live-pulse', { config: publicConfig }, publicPortalController.getLivePulse.bind(publicPortalController));
+  fastify.get('/calendar-ekskul', { config: publicConfig }, publicPortalController.getCalendarAndEkskul.bind(publicPortalController));
   fastify.get('/staff', { config: publicConfig }, publicPortalController.getStaff.bind(publicPortalController));
   fastify.get('/programs', { config: publicConfig }, publicPortalController.getPrograms.bind(publicPortalController));
   fastify.get('/achievements', { config: publicConfig }, publicPortalController.getAchievements.bind(publicPortalController));
@@ -31,6 +37,8 @@ export async function publicPortalRoutes(fastify: any) {
   fastify.get('/articles', { config: publicConfig }, publicPortalController.getArticles.bind(publicPortalController));
   fastify.get('/articles/:slug', { config: publicConfig }, publicPortalController.getArticleDetail.bind(publicPortalController));
   fastify.get('/verify/:docType/:code', { config: publicConfig }, publicPortalController.verifyDocument.bind(publicPortalController));
+  fastify.post('/graduation-check', { config: publicConfig }, publicPortalController.checkGraduation.bind(publicPortalController));
+  fastify.post('/guestbook', { config: publicConfig }, publicPortalController.submitGuestBook.bind(publicPortalController));
 
   // ── CMS Management Endpoints (Admin / Humas) ──
   fastify.post('/manage/config', publicPortalController.saveConfig.bind(publicPortalController));

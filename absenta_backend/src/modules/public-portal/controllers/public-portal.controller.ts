@@ -49,6 +49,22 @@ export class PublicPortalController {
     return reply.send({ success: true, data: profile });
   }
 
+  public async getLivePulse(request: any, reply: any) {
+    const tenant = await this.getResolvedTenant(request, reply);
+    if (!tenant) return;
+
+    const pulse = await publicPortalService.getLivePulse(tenant.id);
+    return reply.send({ success: true, data: pulse });
+  }
+
+  public async getCalendarAndEkskul(request: any, reply: any) {
+    const tenant = await this.getResolvedTenant(request, reply);
+    if (!tenant) return;
+
+    const data = await publicPortalService.getCalendarAndEkskul(tenant.id);
+    return reply.send({ success: true, data });
+  }
+
   public async getStaff(request: any, reply: any) {
     const tenant = await this.getResolvedTenant(request, reply);
     if (!tenant) return;
@@ -140,6 +156,37 @@ export class PublicPortalController {
     }
 
     return reply.send({ success: true, data: result });
+  }
+
+  public async checkGraduation(request: any, reply: any) {
+    const tenant = await this.getResolvedTenant(request, reply);
+    if (!tenant) return;
+
+    const body = request.body || {};
+    const queryNumber = body.nisn || body.nis || body.nomor || '';
+    const result = await publicPortalService.checkGraduationStatus(tenant.id, queryNumber);
+
+    return reply.send({ success: true, data: result });
+  }
+
+  public async submitGuestBook(request: any, reply: any) {
+    const tenant = await this.getResolvedTenant(request, reply);
+    if (!tenant) return;
+
+    const body = request.body || {};
+    if (!body.nama_tamu || !body.keperluan_tamu) {
+      return reply.status(400).send({
+        success: false,
+        message: 'Nama tamu dan keperluan kunjungan wajib diisi.',
+      });
+    }
+
+    const ticket = await publicPortalService.submitGuestBook(tenant.id, body);
+    return reply.status(201).send({
+      success: true,
+      data: ticket,
+      message: 'Registrasi kunjungan Buku Tamu Digital berhasil dicatat.',
+    });
   }
 
   // ── CMS Management Methods (Internal Admin / Humas) ──

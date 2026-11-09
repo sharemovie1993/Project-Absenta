@@ -26,8 +26,10 @@ export interface UniversalStudentIdentityProps {
   mode?: 'screen' | 'print';
   variant?: StudentIdentityVariant;
   className?: string;
-  subtitle?: string;
+  subtitle?: React.ReactNode;
   showPhoto?: boolean;
+  nameSlot?: React.ReactNode;
+  subtitleSlot?: React.ReactNode;
   photoSizeMm?: { width: number; height: number }; // default 3x4: 28x36 mm
   fields?: Array<
     | 'nama'
@@ -55,6 +57,8 @@ export const UniversalStudentIdentity: React.FC<UniversalStudentIdentityProps> =
   className,
   subtitle,
   showPhoto = true,
+  nameSlot,
+  subtitleSlot,
   photoSizeMm = { width: 28, height: 36 },
   fields,
 }) => {
@@ -292,12 +296,16 @@ export const UniversalStudentIdentity: React.FC<UniversalStudentIdentityProps> =
       <div className={cn('inline-flex items-center gap-2 px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs', className)}>
         {renderPhoto()}
         <div className="flex flex-col min-w-0">
-          <span className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
-            {identity.nama}
-          </span>
-          <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-            {subtitle || `${identity.nis} • ${identity.namaKelas}`}
-          </span>
+          {nameSlot || (
+            <span className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
+              {identity.nama}
+            </span>
+          )}
+          {subtitleSlot || (
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+              {subtitle || `${identity.nis} • ${identity.namaKelas}`}
+            </span>
+          )}
         </div>
       </div>
     );
@@ -427,16 +435,20 @@ export const UniversalStudentIdentity: React.FC<UniversalStudentIdentityProps> =
       {renderPhoto()}
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
-            {identity.nama}
-          </h4>
+          {nameSlot || (
+            <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
+              {identity.nama}
+            </h4>
+          )}
           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
             {identity.namaKelas}
           </span>
         </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-          NIS: {identity.nis}{identity.jurusanNama && identity.jurusanNama !== '-' ? ` • ${identity.jurusanNama}` : ''}
-        </p>
+        {subtitleSlot || (
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+            {subtitle || `NIS: ${identity.nis}${identity.jurusanNama && identity.jurusanNama !== '-' ? ` • ${identity.jurusanNama}` : ''}`}
+          </p>
+        )}
         <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-500 dark:text-slate-400">
           <span className="inline-flex items-center gap-1">
             <Calendar size={12} className="text-slate-400" />

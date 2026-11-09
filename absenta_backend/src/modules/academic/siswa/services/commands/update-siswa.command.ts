@@ -237,7 +237,7 @@ export async function updateSiswaCommand(
   }
 
   // Sanitize data: don't overwrite with null/empty for important fields
-  const protectedFields = ['nama_siswa', 'jenis_kelamin', 'kelas_id', 'nis', 'nisn', 'nik', 'no_rfid'];
+  const protectedFields = ['nama_siswa', 'jenis_kelamin', 'kelas_id', 'nis', 'nisn', 'nik'];
   protectedFields.forEach(field => {
     // Allow null for kelas_id if status is CALON
     if (field === 'kelas_id' && dataToUpdate.status === 'CALON' && dataToUpdate[field] === null) {
@@ -247,6 +247,25 @@ export async function updateSiswaCommand(
        delete dataToUpdate[field];
     }
   });
+
+  // Izinkan pengosongan No. RFID secara fleksibel (reset kartu tap siswa)
+  if (dataToUpdate.no_rfid === '' || dataToUpdate.no_rfid === null) {
+    dataToUpdate.no_rfid = null;
+  } else if (dataToUpdate.no_rfid !== undefined) {
+    dataToUpdate.no_rfid = String(dataToUpdate.no_rfid).trim();
+    // Validasi duplikasi RFID di tenant yang sama
+    const existingRfid = await siswaDb.siswa.findFirst({
+      where: {
+        tenant_id: tenantId,
+        no_rfid: dataToUpdate.no_rfid,
+        id: { not: existingSiswa.id },
+      },
+      select: { id: true, nama_siswa: true },
+    });
+    if (existingRfid) {
+      throw new Error(`Nomor RFID '${dataToUpdate.no_rfid}' sudah digunakan oleh siswa ${existingRfid.nama_siswa}`);
+    }
+  }
 
   // Check if any field actually changed before calling DB update
   let hasChanges = false;

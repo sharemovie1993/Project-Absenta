@@ -830,7 +830,62 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
           data={siswa}
           variant="chip"
           showPhoto
-          subtitle={siswa.User?.email || (siswa.nis ? `NIS: ${siswa.nis}` : '-')}
+          nameSlot={
+            <QuickEditCell
+              value={siswa.nama_siswa}
+              placeholder="Nama Siswa Kosong"
+              canEdit={canManage}
+              isMonospace={false}
+              inputClassName="w-56 font-bold text-xs"
+              textClassName="font-bold text-xs text-slate-900 dark:text-slate-100"
+              className="p-0 -ml-1 hover:bg-slate-100/70 dark:hover:bg-slate-800/50"
+              onSave={async (newVal) => {
+                if (!newVal || newVal.trim() === '') {
+                  toast.error('Nama siswa tidak boleh kosong');
+                  throw new Error('Nama siswa tidak boleh kosong');
+                }
+                const res = await updateSiswa(siswa.id, { nama_siswa: newVal.trim() });
+                if (res.success) {
+                  toast.success(`Nama siswa berhasil diperbarui menjadi ${newVal.trim()}`);
+                  queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+                  refetch();
+                  onRefresh?.();
+                } else {
+                  toast.error(res.message || 'Gagal memperbarui nama siswa');
+                  throw new Error(res.message);
+                }
+              }}
+            />
+          }
+          subtitleSlot={
+            <QuickEditCell
+              value={siswa.User?.email || ''}
+              placeholder="Tambah Email"
+              type="email"
+              canEdit={canManage}
+              isMonospace={false}
+              inputClassName="w-56 text-[11px]"
+              textClassName="text-[10px] text-slate-500 dark:text-slate-400"
+              className="p-0 -ml-1 hover:bg-slate-100/70 dark:hover:bg-slate-800/50"
+              onSave={async (newVal) => {
+                const cleanEmail = newVal ? newVal.trim().toLowerCase() : '';
+                if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+                  toast.error('Format email tidak valid (harus sesuai format nama@domain.com)');
+                  throw new Error('Format email tidak valid');
+                }
+                const res = await updateSiswa(siswa.id, { email: cleanEmail || undefined });
+                if (res.success) {
+                  toast.success(`Email ${siswa.nama_siswa} berhasil diperbarui`);
+                  queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+                  refetch();
+                  onRefresh?.();
+                } else {
+                  toast.error(res.message || 'Gagal memperbarui email');
+                  throw new Error(res.message);
+                }
+              }}
+            />
+          }
           className="bg-transparent border-0 shadow-none p-0"
         />
       )
@@ -911,7 +966,29 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
     {
       key: 'no_rfid',
       label: 'No. RFID',
-      render: (value: string) => value || '-'
+      sortable: true,
+      render: (value: string | null | undefined, siswa: Siswa) => (
+        <QuickEditCell
+          value={value}
+          placeholder="Tanpa RFID"
+          canEdit={canManage}
+          isMonospace={true}
+          inputClassName="w-36 text-xs font-mono font-bold"
+          onSave={async (newVal) => {
+            const cleanRfid = newVal ? newVal.trim() : null;
+            const res = await updateSiswa(siswa.id, { no_rfid: cleanRfid || undefined });
+            if (res.success) {
+              toast.success(`No. RFID ${siswa.nama_siswa} berhasil diperbarui`);
+              queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+              refetch();
+              onRefresh?.();
+            } else {
+              toast.error(res.message || 'Gagal memperbarui No. RFID');
+              throw new Error(res.message);
+            }
+          }}
+        />
+      )
     },
     { 
       key: 'actions', 

@@ -116,6 +116,7 @@ export interface Siswa {
   alasan_keluar?: string;
   status: 'AKTIF' | 'TIDAK_AKTIF' | 'LULUS' | 'PINDAH' | 'KELUAR';
   no_rfid?: string;
+  email?: string;
   foto?: string;
   created_at: Date;
   updated_at: Date;
