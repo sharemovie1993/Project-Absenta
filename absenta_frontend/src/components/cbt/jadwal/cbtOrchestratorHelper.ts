@@ -487,15 +487,19 @@ export function parseScheduleRoomAndClass(j: CbtJadwalUjian, overrideRoom?: stri
   let rombel = '-';
   let roomCode = rawRoom;
 
-  const match = namaSesi.match(/\((.*?)\)/);
-  if (match) {
-    const inner = match[1];
+  // Ambil kurung TERAKHIR agar tidak salah membaca singkatan event seperti (ASAS)/(PSAS)
+  const allMatches = Array.from(namaSesi.matchAll(/\(([^()]+)\)/g));
+  if (allMatches.length > 0) {
+    const inner = allMatches[allMatches.length - 1][1];
     const parts = inner.split(' - ');
     if (parts.length >= 2) {
       rombel = parts[0].trim();
       if (!roomCode) roomCode = parts[1].trim();
     } else {
-      rombel = inner.trim();
+      const cleaned = inner.trim();
+      if (!['ASAS', 'PSAS', 'PSTS', 'SAS', 'SAT', 'STS'].includes(cleaned.toUpperCase())) {
+        rombel = cleaned;
+      }
     }
   }
 

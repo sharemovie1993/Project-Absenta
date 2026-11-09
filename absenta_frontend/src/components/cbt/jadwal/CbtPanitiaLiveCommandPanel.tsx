@@ -157,16 +157,20 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
     let rombel = '-';
     let roomCode = rawRoom;
 
-    // Pola nama sesi: "PSAS Ganjil - Mapel (X PHT 2 - R.06)" atau "(X PHT 2)"
-    const match = namaSesi.match(/\((.*?)\)/);
-    if (match) {
-      const inner = match[1];
+    // Pola nama sesi: "Event (ASAS) - Mapel (X PHT 2 - R.06)" atau "(X PHT 2)"
+    // Ambil kurung TERAKHIR agar tidak salah membaca singkatan event seperti (ASAS)/(PSAS)
+    const allMatches = Array.from(namaSesi.matchAll(/\(([^()]+)\)/g));
+    if (allMatches.length > 0) {
+      const inner = allMatches[allMatches.length - 1][1];
       const parts = inner.split(' - ');
       if (parts.length >= 2) {
         rombel = parts[0].trim();
         if (!roomCode) roomCode = parts[1].trim();
       } else {
-        rombel = inner.trim();
+        const cleaned = inner.trim();
+        if (!['ASAS', 'PSAS', 'PSTS', 'SAS', 'SAT', 'STS'].includes(cleaned.toUpperCase())) {
+          rombel = cleaned;
+        }
       }
     }
 
