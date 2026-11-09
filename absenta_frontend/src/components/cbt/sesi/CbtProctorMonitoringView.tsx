@@ -26,6 +26,7 @@ import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtPesertaUjian } from '@/types/cbt.types';
 import { CbtTransferNilaiModal } from '../jadwal/CbtTransferNilaiModal';
 import { CbtBeritaAcaraPrintModal } from '../jadwal/CbtBeritaAcaraPrintModal';
+import { CbtDenahModal } from '../jadwal/CbtDenahModal';
 import useConfirm from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
@@ -52,6 +53,7 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [isBeritaAcaraOpen, setIsBeritaAcaraOpen] = useState(false);
+  const [isDenahModalOpen, setIsDenahModalOpen] = useState(false);
   const [copiedToken, setCopiedToken] = useState(false);
 
   // Sync bila initialJadwalId berubah dari luar
@@ -83,6 +85,27 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   const activeJadwal = useMemo(() => {
     return availableSchedules.find((j) => j.id === selectedJadwalId) || availableSchedules[0];
   }, [availableSchedules, selectedJadwalId]);
+
+  // Resolusi Kode Ruang & Label Sorotan untuk Denah Pengawas
+  const activeRoomCode = useMemo(() => {
+    const raw = activeJadwal?.setting_keamanan?.ruang_ujian?.trim();
+    if (raw && !raw.toLowerCase().includes('multi') && raw.toLowerCase() !== 'ruang kelas') {
+      return raw;
+    }
+    // Fallback: periksa nama rombel pertama peserta ujian jika ada
+    const firstPeserta = (pesertaList as CbtPesertaUjian[])?.[0];
+    if (firstPeserta?.Siswa?.Kelas?.nama_kelas) {
+      return firstPeserta.Siswa.Kelas.nama_kelas;
+    }
+    return raw || null;
+  }, [activeJadwal, pesertaList]);
+
+  const activeRoomLabel = useMemo(() => {
+    if (activeRoomCode) {
+      return `Ruang Pengawasan: ${activeRoomCode}`;
+    }
+    return 'Ruang Pengawasan Ujian';
+  }, [activeRoomCode]);
 
   // Fetch live peserta dengan interval 10 detik
   const { data: pesertaList = [], isLoading, refetch } = useQuery({
@@ -433,10 +456,15 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
               {activeJadwal?.setting_keamanan?.ruang_ujian && (
                 <>
                   <span>•</span>
-                  <span className="inline-flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300">
-                    <MapPin size={11} className="text-emerald-500" />
-                    {activeJadwal.setting_keamanan.ruang_ujian}
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsDenahModalOpen(true)}
+                    className="inline-flex items-center gap-1 font-bold text-emerald-700 dark:text-emerald-300 hover:text-indigo-600 dark:hover:text-indigo-400 bg-emerald-50/80 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200/70 dark:border-emerald-800/70 transition-colors cursor-pointer group"
+                    title="Buka Denah Spasial Lokasi Ruang Ujian"
+                  >
+                    <MapPin size={11} className="text-emerald-600 group-hover:text-indigo-600 transition-colors" />
+                    <span className="underline decoration-dotted">{activeJadwal.setting_keamanan.ruang_ujian}</span>
+                  </button>
                 </>
               )}
               {jamMulai && jamSelesai && (
@@ -547,6 +575,19 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
             >
               <Printer size={13} className="mr-1.5 text-slate-500" />
               <span>Berita Acara</span>
+            </Button>
+
+            {/* Buka Denah Ruang Spasial Kampus */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsDenahModalOpen(true)}
+              className="text-xs h-8 px-3 font-bold text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 bg-indigo-50/70 dark:bg-indigo-950/40 hover:bg-indigo-100/80 transition-all shadow-2xs"
+              title="Buka Denah Spasial Kampus & Sorot Ruang Ujian"
+            >
+              <MapPin size={13} className="mr-1.5 text-indigo-600 dark:text-indigo-400" />
+              <span>Denah Ruang</span>
             </Button>
 
             {/* Transfer Rapor jika owner */}
@@ -749,6 +790,18 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
           isOpen={isBeritaAcaraOpen}
           onClose={() => setIsBeritaAcaraOpen(false)}
           jadwal={activeJadwal}
+        />
+      )}
+
+      {/* Modal Denah Spasial Kampus (Interaktif Read-Only untuk Pengawas) */}
+      {isDenahModalOpen && (
+        <CbtDenahModal
+          isOpen={isDenahModalOpen}
+          onClose={() => setIsDenahModalOpen(false)}
+          eventName={activeJadwal?.nama_sesi || 'Ujian CBT'}
+          highlightRoomCode={activeRoomCode}
+          highlightLabel={activeRoomLabel}
+          isReadOnly={true}
         />
       )}
     </div>
