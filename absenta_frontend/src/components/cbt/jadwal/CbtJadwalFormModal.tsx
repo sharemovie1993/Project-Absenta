@@ -33,6 +33,7 @@ import {
   filterTeacherClasses,
   filterValidTargetKelasIds,
 } from './cbtJadwalHelper';
+import { loadPersistedRoomMappings } from './cbtOrchestratorHelper';
 
 interface CbtJadwalFormModalProps {
   isOpen: boolean;
@@ -382,7 +383,19 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
       setIsSubmitting(true);
       const defaultAutoRuang = selectedCount > 1
         ? 'Multi-Ruang Kelas'
-        : (firstSelectedClass ? `Kelas ${firstSelectedClass.nama_kelas}` : 'Ruang Kelas');
+        : (firstSelectedClass ? `Kelas ${firstSelectedClass.nama_kelas}` : 'Ruang Ujian');
+
+      // Bangun peta ruang fisik per rombel siswa (kelas_room_map) agar siswa selalu mendapatkan ruang fisik presisi
+      const persistedRooms = loadPersistedRoomMappings(user?.tenant_id);
+      const kelasRoomMap: Record<string, { slot_ruang: string; nama_ruang: string }> = {};
+      validTargetKelasIds.forEach((kId) => {
+        const p = persistedRooms?.[kId];
+        const kObj = targetKelasList.find((c) => c.id === kId);
+        kelasRoomMap[kId] = {
+          slot_ruang: p?.slot_ruang || kObj?.nama_kelas || 'Ruang Ujian',
+          nama_ruang: p?.nama_ruang || (kObj ? `Kelas ${kObj.nama_kelas}` : 'Ruang Ujian'),
+        };
+      });
 
       const finalPengawasId = (selectedCount > 1 && !isTeacherMode)
         ? null
@@ -410,6 +423,8 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
           auto_transfer_rapor: autoTransferRapor,
           target_rapor_slot: autoTransferRapor ? targetRaporSlot : null,
           created_by_guru_id: teacherGuruId || null,
+          kelas_room_map: kelasRoomMap,
+          room_mappings: kelasRoomMap,
           ruang_ujian: ruangUjian.trim() || defaultAutoRuang,
           pengawas_1_id: finalPengawasId,
           pengawas_1_nama: finalPengawasObj?.nama_guru || null,

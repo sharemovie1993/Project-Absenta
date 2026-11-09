@@ -461,13 +461,17 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
       const nodeSub = clean(node.label_sub);
       const nodeCat = clean(node.catatan);
 
-      return (
-        nodeMain === target ||
-        nodeCat === target ||
-        nodeMain.includes(target) ||
-        target.includes(nodeMain) ||
-        nodeSub.includes(target)
-      );
+      // Prioritas 1: Pencocokan persis (Exact Match)
+      if (nodeMain === target || nodeCat === target) return true;
+
+      // Normalisasi kode R.01 vs R.1 (e.g. r01 -> r1)
+      const norm = (s: string) => s.replace(/^r0*/, 'r');
+      if (norm(nodeMain) === norm(target)) return true;
+
+      // Pencocokan label sub (misal nama kelas)
+      if (nodeSub && (nodeSub === target || norm(nodeSub) === norm(target))) return true;
+
+      return false;
     },
     []
   );

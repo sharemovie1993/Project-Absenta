@@ -465,25 +465,6 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
                           transformOrigin: 'center center',
                         }}
                       >
-                        {/* Tag Tingkat Cetak: TK. X / TK. XI / TK. XII */}
-                        {tingkatPrintStyle && (
-                          <div
-                            style={{
-                              fontSize: `${Math.max(6, Math.round(effectiveH * 0.16))}px`,
-                              backgroundColor: tingkatPrintStyle.badge,
-                              color: tingkatPrintStyle.badgeText,
-                              padding: '0px 3px',
-                              borderRadius: '2px',
-                              fontWeight: 900,
-                              lineHeight: 1.1,
-                              marginBottom: '1px',
-                              textTransform: 'uppercase',
-                            }}
-                          >
-                            TK. {detectedTingkat === 10 ? 'X' : detectedTingkat === 11 ? 'XI' : detectedTingkat === 12 ? 'XII' : detectedTingkat}
-                          </div>
-                        )}
-
                         {/* Nomor Ruang: R.01 (Bongsor, Bebas Truncate Ellipsis) */}
                         <div
                           className="font-black font-sans tracking-tight leading-none whitespace-nowrap overflow-hidden select-none"

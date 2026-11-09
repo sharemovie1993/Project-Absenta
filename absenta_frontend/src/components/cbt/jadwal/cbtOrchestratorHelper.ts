@@ -298,7 +298,18 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
             });
           });
         } else {
-          // OPSI B: 1 Jadwal Terpadu per Tingkat
+          // OPSI B: 1 Jadwal Terpadu per Tingkat (Disertai Peta Ruang Fisik per Rombel Siswa)
+          const kelasRoomMap: Record<string, { slot_ruang: string; nama_ruang: string }> = {};
+          classesInTingkat.forEach((cls) => {
+            const rMapping = roomMapByKelasId.get(cls.kelas_id);
+            if (rMapping) {
+              kelasRoomMap[cls.kelas_id] = {
+                slot_ruang: rMapping.slot_ruang,
+                nama_ruang: rMapping.nama_ruang,
+              };
+            }
+          });
+
           payloads.push({
             bank_soal_id: bank.id,
             tahun_pelajaran_id: activeTpId,
@@ -317,6 +328,8 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
               shuffle_options: true,
               show_result_instant: false,
               auto_transfer_rapor: false,
+              kelas_room_map: kelasRoomMap,
+              room_mappings: kelasRoomMap,
               ruang_ujian: 'Multi-Ruang Kelas',
               nama_sesi_waktu: session.nama_sesi,
             },

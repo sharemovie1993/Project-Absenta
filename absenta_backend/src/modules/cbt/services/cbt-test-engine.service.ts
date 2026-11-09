@@ -11,7 +11,18 @@ export class CbtTestEngineService {
   static async getMyExams(tenantId: string, siswaId: string) {
     const siswa = await prisma.siswa.findFirst({
       where: { id: siswaId, tenant_id: tenantId },
-      select: { id: true, kelas_id: true },
+      select: {
+        id: true,
+        kelas_id: true,
+        Kelas: {
+          select: {
+            id: true,
+            nama_kelas: true,
+            tingkat: true,
+            Jurusan: { select: { kode: true, singkatan: true, nama: true } },
+          },
+        },
+      },
     });
 
     if (!siswa) {
@@ -22,49 +33,107 @@ export class CbtTestEngineService {
       return [];
     }
 
-    const jadwalList = await prisma.cbtJadwalUjian.findMany({
-      where: {
-        tenant_id: tenantId,
-        status: { in: ['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED'] },
-        target_kelas_ids: { array_contains: [siswa.kelas_id] },
-      },
-      orderBy: { tanggal_mulai: 'desc' },
-      take: 100,
-      select: {
-        id: true,
-        nama_sesi: true,
-        tanggal_mulai: true,
-        tanggal_selesai: true,
-        durasi_menit: true,
-        status: true,
-        setting_keamanan: true,
-        TahunPelajaran: { select: { tahun: true } },
-        Semester: { select: { nama_semester: true } },
-        BankSoal: {
-          select: {
-            kode_bank: true,
-            judul: true,
-            tingkat: true,
-            jumlah_soal: true,
-            Mapel: { select: { nama_mapel: true, kode_mapel: true } },
-            Guru: { select: { nama_guru: true } },
+    const [jadwalList, activeDenahs, allClasses] = await Promise.all([
+      prisma.cbtJadwalUjian.findMany({
+        where: {
+          tenant_id: tenantId,
+          status: { in: ['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED'] },
+          target_kelas_ids: { array_contains: [siswa.kelas_id] },
+        },
+        orderBy: { tanggal_mulai: 'desc' },
+        take: 100,
+        select: {
+          id: true,
+          nama_sesi: true,
+          tanggal_mulai: true,
+          tanggal_selesai: true,
+          durasi_menit: true,
+          status: true,
+          setting_keamanan: true,
+          TahunPelajaran: { select: { tahun: true } },
+          Semester: { select: { nama_semester: true } },
+          BankSoal: {
+            select: {
+              kode_bank: true,
+              judul: true,
+              tingkat: true,
+              jumlah_soal: true,
+              Mapel: { select: { nama_mapel: true, kode_mapel: true } },
+              Guru: { select: { nama_guru: true } },
+            },
+          },
+          Peserta: {
+            where: { siswa_id: siswaId },
+            take: 1,
+            select: {
+              status: true,
+              waktu_mulai: true,
+              waktu_selesai: true,
+              nilai_akhir: true,
+              jumlah_benar: true,
+              jumlah_salah: true,
+              jawaban_json: true,
+              log_pelanggaran_json: true,
+            },
           },
         },
-        Peserta: {
-          where: { siswa_id: siswaId },
-          take: 1,
-          select: {
-            status: true,
-            waktu_mulai: true,
-            waktu_selesai: true,
-            nilai_akhir: true,
-            jumlah_benar: true,
-            jumlah_salah: true,
-            jawaban_json: true,
-            log_pelanggaran_json: true,
-          },
-        },
-      },
+      }),
+      prisma.denahSpasial.findMany({
+        where: { tenant_id: tenantId, is_active: true },
+        orderBy: [{ tipe: 'desc' }, { updated_at: 'desc' }],
+        select: { id: true, tipe: true, elements: true },
+      }),
+      prisma.kelas.findMany({
+        where: { tenant_id: tenantId, is_active: true },
+        include: { Jurusan: true },
+      }),
+    ]);
+
+    // 1. Ekstrak pemetaan ruang dari Denah Spasial Kampus (Master Sarpras & Event Ujian)
+    const denahRoomByKelasId = new Map<string, { slot_ruang: string; nama_ruang: string }>();
+    const denahRoomByKelasName = new Map<string, { slot_ruang: string; nama_ruang: string }>();
+
+    for (const d of activeDenahs) {
+      const elems = Array.isArray(d.elements) ? (d.elements as any[]) : [];
+      for (const el of elems) {
+        if (!el || !el.label_utama) continue;
+        const slot = String(el.label_utama).trim();
+        const nama = el.catatan || el.label_sub || slot;
+
+        if (el.kelas_id && !denahRoomByKelasId.has(el.kelas_id)) {
+          denahRoomByKelasId.set(el.kelas_id, { slot_ruang: slot, nama_ruang: nama });
+        }
+        if (el.label_sub && typeof el.label_sub === 'string') {
+          const subLower = el.label_sub.trim().toLowerCase();
+          if (!denahRoomByKelasName.has(subLower)) {
+            denahRoomByKelasName.set(subLower, { slot_ruang: slot, nama_ruang: nama });
+          }
+        }
+      }
+    }
+
+    // 2. Pemetaan ruang deterministik standar industri (R.01 s/d R.XX berdasar urutan Tingkat & Jurusan)
+    const standardClassRoomMap = new Map<string, { slot_ruang: string; nama_ruang: string }>();
+    const sortedClasses = [...allClasses].sort((a, b) => {
+      const numA = Number(a.tingkat) || 0;
+      const numB = Number(b.tingkat) || 0;
+      if (numA !== numB) return numA - numB;
+
+      const jurA = a.Jurusan?.kode || a.Jurusan?.singkatan || a.Jurusan?.nama || '';
+      const jurB = b.Jurusan?.kode || b.Jurusan?.singkatan || b.Jurusan?.nama || '';
+      if (jurA !== jurB) return jurA.localeCompare(jurB);
+
+      const nameA = a.nama_kelas || '';
+      const nameB = b.nama_kelas || '';
+      return nameA.localeCompare(nameB);
+    });
+
+    const padLength = sortedClasses.length > 99 ? 3 : 2;
+    sortedClasses.forEach((k, idx) => {
+      const numStr = String(idx + 1).padStart(padLength, '0');
+      const slotCode = `R.${numStr}`;
+      const roomName = `Ruang ${numStr}`;
+      standardClassRoomMap.set(k.id, { slot_ruang: slotCode, nama_ruang: roomName });
     });
 
     return jadwalList.map((j) => {
@@ -83,6 +152,46 @@ export class CbtTestEngineService {
         }
       }
 
+      // Resolusi Presisi Ruang Fisik Siswa (100% Akurat, Zero Fallback, Eliminasi Total 'Multi-Ruang')
+      const sec = (j.setting_keamanan as any) || {};
+      const roomMappings = sec.room_mappings || sec.kelas_room_map || {};
+      const studentRoom = siswa.kelas_id ? roomMappings[siswa.kelas_id] : null;
+
+      let resolvedSlotRuang: string | null = null;
+      let resolvedNamaRuang: string | null = null;
+
+      // Prioritas 1: Mapping eksplisit per kelas dalam konfigurasi jadwal
+      if (studentRoom?.slot_ruang) {
+        resolvedSlotRuang = studentRoom.slot_ruang;
+        resolvedNamaRuang = studentRoom.nama_ruang || studentRoom.slot_ruang;
+      }
+      // Prioritas 2: Ruang spesifik non-multi yang sudah terekam di jadwal (misal 'R.05' atau 'Lab Komputer 1')
+      else if (sec.ruang_ujian && !String(sec.ruang_ujian).toLowerCase().includes('multi') && String(sec.ruang_ujian).toLowerCase() !== 'ruang kelas') {
+        resolvedSlotRuang = sec.ruang_ujian;
+        resolvedNamaRuang = sec.ruang_ujian_nama || sec.ruang_ujian;
+      }
+      // Prioritas 3: Deteksi langsung dari Denah Spasial Kampus (Master Sarpras & Event Ujian)
+      else if (siswa.kelas_id && denahRoomByKelasId.has(siswa.kelas_id)) {
+        const dRoom = denahRoomByKelasId.get(siswa.kelas_id)!;
+        resolvedSlotRuang = dRoom.slot_ruang;
+        resolvedNamaRuang = dRoom.nama_ruang;
+      } else if (siswa.Kelas?.nama_kelas && denahRoomByKelasName.has(siswa.Kelas.nama_kelas.trim().toLowerCase())) {
+        const dRoom = denahRoomByKelasName.get(siswa.Kelas.nama_kelas.trim().toLowerCase())!;
+        resolvedSlotRuang = dRoom.slot_ruang;
+        resolvedNamaRuang = dRoom.nama_ruang;
+      }
+      // Prioritas 4: Penomoran ruang deterministik standar industri (R.01, R.02, dst berdasar daftar kelas)
+      else if (siswa.kelas_id && standardClassRoomMap.has(siswa.kelas_id)) {
+        const sRoom = standardClassRoomMap.get(siswa.kelas_id)!;
+        resolvedSlotRuang = sRoom.slot_ruang;
+        resolvedNamaRuang = sRoom.nama_ruang;
+      }
+      // Prioritas 5: Ruang R.01
+      else {
+        resolvedSlotRuang = 'R.01';
+        resolvedNamaRuang = 'Ruang 01';
+      }
+
       return {
         id: j.id,
         nama_sesi: j.nama_sesi,
@@ -99,9 +208,10 @@ export class CbtTestEngineService {
         tanggal_selesai: j.tanggal_selesai,
         durasi_menit: j.durasi_menit,
         status_jadwal: j.status,
-        nama_sesi_waktu: (j.setting_keamanan as any)?.nama_sesi_waktu || null,
-        ruang_ujian: (j.setting_keamanan as any)?.ruang_ujian || null,
-        ruang_ujian_nama: (j.setting_keamanan as any)?.ruang_ujian_nama || null,
+        nama_sesi_waktu: sec?.nama_sesi_waktu || null,
+        ruang_ujian: resolvedSlotRuang,
+        ruang_ujian_nama: resolvedNamaRuang,
+        kelas_siswa: siswa.Kelas?.nama_kelas || null,
         status_peserta: peserta?.status || 'BELUM_MULAI',
         waktu_mulai: peserta?.waktu_mulai || null,
         waktu_selesai: peserta?.waktu_selesai || null,

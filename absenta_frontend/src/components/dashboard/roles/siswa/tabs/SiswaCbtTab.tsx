@@ -1,6 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useAuthStore } from '@/store/authStore';
+import { loadPersistedRoomMappings } from '@/components/cbt/jadwal/cbtOrchestratorHelper';
 import {
   PlayCircle,
   RotateCcw,
@@ -230,6 +232,75 @@ const getStatusMeta = (item: CbtStudentExamItem): StatusMeta => {
 
 export const SiswaCbtTab: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const tenantId = user?.tenant_id || 'default';
+  const studentProfile = user?.siswa_profile || (user as any)?.siswa || null;
+  const studentKelasName =
+    studentProfile?.Kelas?.nama_kelas ||
+    studentProfile?.kelas?.nama_kelas ||
+    (user as any)?.kelas_nama ||
+    (user as any)?.nama_kelas ||
+    '';
+  const studentKelasId = studentProfile?.kelas_id || (user as any)?.kelas_id || '';
+
+  const persistedRooms = useMemo(() => loadPersistedRoomMappings(tenantId), [tenantId]);
+
+  const resolveRoomInfo = useCallback(
+    (item: CbtStudentExamItem) => {
+      const rawSlot = item.ruang_ujian?.trim();
+      const rawNama = item.ruang_ujian_nama?.trim();
+
+      const isMulti =
+        !rawSlot ||
+        rawSlot.toLowerCase().includes('multi') ||
+        rawSlot.toLowerCase() === 'ruang kelas' ||
+        Boolean(rawNama && rawNama.toLowerCase().includes('multi'));
+
+      // 1. Jika ruang_ujian pada jadwal adalah kode ruang spesifik (misal: R.12, R.01, dsb)
+      if (!isMulti && (rawSlot || rawNama)) {
+        const slot = rawSlot || rawNama!;
+        return {
+          code: slot,
+          display: slot,
+        };
+      }
+
+      // 2. Cek apakah ada mapping spesifik di room_mappings / kelas_room_map / persistedRooms
+      const itemMap = (item as any)?.room_mappings || (item as any)?.kelas_room_map;
+      if (studentKelasId && itemMap?.[studentKelasId]?.slot_ruang) {
+        const slot = itemMap[studentKelasId].slot_ruang;
+        return {
+          code: slot,
+          display: slot,
+        };
+      }
+
+      if (studentKelasId && persistedRooms?.[studentKelasId]) {
+        const p = persistedRooms[studentKelasId];
+        const slot = p.slot_ruang || p.nama_ruang;
+        return {
+          code: slot,
+          display: slot,
+        };
+      }
+
+      // 3. Jika belum diplot khusus, gunakan nama kelas siswa
+      if (studentKelasName) {
+        return {
+          code: studentKelasName,
+          display: studentKelasName,
+        };
+      }
+
+      // 4. Fallback aman
+      return {
+        code: 'R.01',
+        display: 'R.01',
+      };
+    },
+    [studentKelasId, studentKelasName, persistedRooms]
+  );
+
   const [filter, setFilter] = useState<FilterKey>('aktif');
   const [selectedDetailItem, setSelectedDetailItem] = useState<CbtStudentExamItem | null>(null);
   const [denahModalOpen, setDenahModalOpen] = useState(false);
@@ -239,9 +310,9 @@ export const SiswaCbtTab: React.FC = () => {
   const didAutoSelectTab = useRef(false);
 
   const handleOpenDenah = (item: CbtStudentExamItem) => {
-    const roomCode = item.ruang_ujian || item.ruang_ujian_nama || 'Ruang Kelas';
-    setDenahHighlightRoom(roomCode);
-    setDenahHighlightLabel(`Ruang Anda: ${roomCode}`);
+    const roomInfo = resolveRoomInfo(item);
+    setDenahHighlightRoom(roomInfo.code);
+    setDenahHighlightLabel(`Ruang Anda: ${roomInfo.display}`);
     setDenahEventName(item.nama_sesi || 'Ujian CBT');
     setDenahModalOpen(true);
   };
@@ -556,7 +627,7 @@ export const SiswaCbtTab: React.FC = () => {
                           title="Klik untuk membuka denah posisi ruangan ujian"
                         >
                           <DoorOpen size={13} className="text-violet-600 dark:text-violet-400 shrink-0 group-hover:scale-110 transition-transform" />
-                          <span>Ruang: {item.ruang_ujian_nama || item.ruang_ujian || 'Ruang Kelas'}</span>
+                          <span>Ruang: {resolveRoomInfo(item).display}</span>
                           <MapPin size={11} className="text-violet-500 animate-pulse ml-0.5" />
                         </button>
                       </div>
@@ -628,18 +699,16 @@ export const SiswaCbtTab: React.FC = () => {
                           <span>{isResume ? 'SEDANG DIKERJAKAN' : isPaused ? 'DIJEDA PENGAWAS' : 'UJIAN DIBUKA'}</span>
                         </span>
 
-                        {(item.ruang_ujian || item.ruang_ujian_nama) && (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenDenah(item)}
-                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold text-[10px] border border-indigo-200/80 dark:border-indigo-800 transition-all cursor-pointer active:scale-95 group"
-                            title="Buka Denah Ruangan Ujian"
-                          >
-                            <DoorOpen size={11} className="text-indigo-600 dark:text-indigo-400 shrink-0 group-hover:scale-110 transition-transform" />
-                            <span>Ruang: {item.ruang_ujian_nama || item.ruang_ujian}</span>
-                            <MapPin size={10} className="text-indigo-500 animate-pulse ml-0.5" />
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDenah(item)}
+                          className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold text-[10px] border border-indigo-200/80 dark:border-indigo-800 transition-all cursor-pointer active:scale-95 group"
+                          title="Buka Denah Ruangan Ujian"
+                        >
+                          <DoorOpen size={11} className="text-indigo-600 dark:text-indigo-400 shrink-0 group-hover:scale-110 transition-transform" />
+                          <span>Ruang: {resolveRoomInfo(item).display}</span>
+                          <MapPin size={10} className="text-indigo-500 animate-pulse ml-0.5" />
+                        </button>
                       </div>
 
                       {item.nama_sesi && item.nama_sesi !== subjectName && (
@@ -720,18 +789,16 @@ export const SiswaCbtTab: React.FC = () => {
                         {meta.label}
                       </span>
 
-                      {(item.ruang_ujian || item.ruang_ujian_nama) && (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenDenah(item)}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold text-[10px] border border-indigo-200/80 dark:border-indigo-800 cursor-pointer transition-all active:scale-95 group"
-                          title="Buka Denah Ruangan Ujian"
-                        >
-                          <DoorOpen size={11} className="text-indigo-600 dark:text-indigo-400 shrink-0 group-hover:scale-110 transition-transform" />
-                          <span>Ruang: {item.ruang_ujian_nama || item.ruang_ujian}</span>
-                          <MapPin size={10} className="text-indigo-500 animate-pulse ml-0.5" />
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDenah(item)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold text-[10px] border border-indigo-200/80 dark:border-indigo-800 cursor-pointer transition-all active:scale-95 group"
+                        title="Buka Denah Ruangan Ujian"
+                      >
+                        <DoorOpen size={11} className="text-indigo-600 dark:text-indigo-400 shrink-0 group-hover:scale-110 transition-transform" />
+                        <span>Ruang: {resolveRoomInfo(item).display}</span>
+                        <MapPin size={10} className="text-indigo-500 animate-pulse ml-0.5" />
+                      </button>
                     </div>
 
                     {/* Nama Mata Pelajaran */}
@@ -923,7 +990,7 @@ export const SiswaCbtTab: React.FC = () => {
                 <span className="text-[10px] font-semibold text-slate-400 block">Ruang Ujian</span>
                 <div className="flex items-center justify-between gap-1 flex-wrap">
                   <span className="font-bold text-violet-700 dark:text-violet-300 text-xs">
-                    {selectedDetailItem.ruang_ujian_nama || selectedDetailItem.ruang_ujian || 'Ruang Kelas'}
+                    {resolveRoomInfo(selectedDetailItem).display}
                   </span>
                   <button
                     type="button"
