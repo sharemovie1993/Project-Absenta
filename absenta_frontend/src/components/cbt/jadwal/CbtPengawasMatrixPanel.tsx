@@ -493,7 +493,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
       return;
     }
 
-    const result = executeAutoPlotSupervisors(jadwalList, plottingDrafts, candidates, config);
+    const result = executeAutoPlotSupervisors(effectiveJadwalList, plottingDrafts, candidates, config);
 
     if (result.assignedCount === 0) {
       toast('Tidak ada sesi yang diploting. Pastikan ada sesi ujian yang belum terplot atau pilih opsi "Kocok Ulang Seluruh Sesi".', {
@@ -1089,7 +1089,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
           isOpen={isAutoPlotModalOpen}
           onClose={() => setIsAutoPlotModalOpen(false)}
           onConfirm={handleApplyAutoPlot}
-          jadwalList={jadwalList}
+          jadwalList={effectiveJadwalList}
           pendidikCount={pendidikList.length || guruList.length}
           tenagaKependidikanCount={tenagaKependidikanList.length}
           alreadyPlottedCount={workloadStats.totalPlottedSessions}
