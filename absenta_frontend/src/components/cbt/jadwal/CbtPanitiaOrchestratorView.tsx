@@ -369,75 +369,74 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
         />
       )}
 
-      {activeTab !== 'fase_1_soal' && activeTab !== 'fase_2_ruang' && (
+      {activeTab === 'fase_3_jadwal' && (
+        subModeFase3 === 'matrix' ? (
+          <CbtTimetableMatrixPanel
+            topFlightDeck={flightDeckNode}
+            bankList={readyBankList}
+            roomMappings={roomMappings}
+            activeTpId={activeTp?.id}
+            activeSemId={activeSemester?.id}
+            defaultTodayStr={defaultTodayStr}
+            existingSchedules={jadwalList}
+            activeEvent={activeEvent}
+            eventName={effectiveEventName}
+            targetTingkat={effectiveTargetTingkat}
+            subMode={subModeFase3}
+            onChangeSubMode={setSubModeFase3}
+            onSuccessGenerate={() => {
+              refetchJadwal();
+              setActiveTab('fase_4_pengawas');
+            }}
+            onProceedToNextPhase={() => setActiveTab('fase_4_pengawas')}
+          />
+        ) : (
+          <div className="space-y-3 w-full">
+            <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs divide-y divide-slate-100 dark:divide-slate-800/80 overflow-hidden">
+              {flightDeckNode}
+              <div className="p-2 sm:p-2.5 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-between">
+                <div className="flex items-center gap-1 p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setSubModeFase3('matrix')}
+                    className="px-2.5 py-1 rounded-lg text-slate-500 hover:text-slate-800 cursor-pointer"
+                  >
+                    Matriks
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSubModeFase3('table')}
+                    className="px-2.5 py-1 rounded-lg bg-indigo-600 text-white shadow-2xs cursor-pointer"
+                  >
+                    Daftar Sesi
+                  </button>
+                </div>
+              </div>
+            </div>
+            <Suspense
+              fallback={
+                <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                  <Loader className="animate-spin mx-auto text-violet-600 mb-2" size={24} />
+                  <p className="text-xs text-slate-500">Memuat Daftar Jadwal Sesi...</p>
+                </div>
+              }
+            >
+              <CbtJadwalView
+                hideLayout={true}
+                onNavigateMonitor={() => setActiveTab('fase_5_monitor')}
+              />
+            </Suspense>
+          </div>
+        )
+      )}
+
+      {activeTab !== 'fase_1_soal' && activeTab !== 'fase_2_ruang' && activeTab !== 'fase_3_jadwal' && (
         <>
           <div className="rounded-2xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs border border-slate-200/90 dark:border-slate-800 overflow-hidden">
             {flightDeckNode}
           </div>
 
           <div className="transition-opacity duration-200">
-
-        {activeTab === 'fase_3_jadwal' && (
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between gap-2 px-1 flex-wrap">
-              <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles size={14} className="text-indigo-600" />
-                <span>Rangkaian Hari &amp; Sesi Ujian</span>
-              </span>
-              <div className="flex items-center gap-0.5 p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setSubModeFase3('matrix')}
-                  className={cn(
-                    'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
-                    subModeFase3 === 'matrix'
-                      ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-2xs'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                  )}
-                >
-                  <Sparkles size={12} />
-                  <span>Matriks Generator</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSubModeFase3('table')}
-                  className={cn(
-                    'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
-                    subModeFase3 === 'table'
-                      ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-2xs'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                  )}
-                >
-                  <TableProperties size={12} />
-                  <span>Daftar Sesi Terbit</span>
-                </button>
-              </div>
-            </div>
-
-            {subModeFase3 === 'matrix' ? (
-              <CbtTimetableMatrixPanel
-                bankList={readyBankList}
-                roomMappings={roomMappings}
-                activeTpId={activeTp?.id}
-                activeSemId={activeSemester?.id}
-                defaultTodayStr={defaultTodayStr}
-                existingSchedules={jadwalList}
-                activeEvent={activeEvent}
-                eventName={effectiveEventName}
-                targetTingkat={effectiveTargetTingkat}
-                onSuccessGenerate={() => {
-                  refetchJadwal();
-                  setActiveTab('fase_4_pengawas');
-                }}
-              />
-            ) : (
-              <Suspense
-                fallback={
-                  <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800">
-                    <Loader className="animate-spin mx-auto text-violet-600 mb-2" size={24} />
-                    <p className="text-xs text-slate-500">Memuat Daftar Jadwal Sesi...</p>
-                  </div>
-                }
               >
                 <CbtJadwalView
                   hideLayout={true}

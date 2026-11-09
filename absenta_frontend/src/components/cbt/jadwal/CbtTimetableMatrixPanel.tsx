@@ -34,6 +34,7 @@ import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 interface CbtTimetableMatrixPanelProps {
+  topFlightDeck?: React.ReactNode;
   bankList: CbtBankSoal[];
   roomMappings: KelasRoomMapping[];
   activeTpId?: string;
@@ -41,12 +42,61 @@ interface CbtTimetableMatrixPanelProps {
   defaultTodayStr: string;
   existingSchedules?: CbtJadwalUjian[];
   onSuccessGenerate?: () => void;
+  onProceedToNextPhase?: () => void;
   activeEvent?: CbtEventItem | null;
   eventName?: string;
   targetTingkat?: number[];
+  subMode?: 'matrix' | 'table';
+  onChangeSubMode?: (mode: 'matrix' | 'table') => void;
 }
 
+const getTingkatTheme = (tingkat: number) => {
+  switch (tingkat) {
+    case 10:
+      return {
+        badgeBg: 'bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300 border-sky-300 dark:border-sky-700',
+        headerBg: 'bg-sky-50/70 dark:bg-sky-950/30 border-r border-sky-100 dark:border-sky-900/40',
+        cellBg: 'bg-sky-50/20 dark:bg-sky-950/10 border-r border-sky-100/70 dark:border-sky-900/30',
+        selectBorder: 'border-sky-200 dark:border-sky-800 hover:border-sky-400',
+        activeSelect: 'bg-sky-50/90 text-sky-950 border-sky-400 dark:bg-sky-950/70 dark:text-sky-100 dark:border-sky-600',
+        dot: 'bg-sky-500',
+        rombelText: 'text-sky-700 dark:text-sky-300',
+      };
+    case 11:
+      return {
+        badgeBg: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700',
+        headerBg: 'bg-emerald-50/70 dark:bg-emerald-950/30 border-r border-emerald-100 dark:border-emerald-900/40',
+        cellBg: 'bg-emerald-50/20 dark:bg-emerald-950/10 border-r border-emerald-100/70 dark:border-emerald-900/30',
+        selectBorder: 'border-emerald-200 dark:border-emerald-800 hover:border-emerald-400',
+        activeSelect: 'bg-emerald-50/90 text-emerald-950 border-emerald-400 dark:bg-emerald-950/70 dark:text-emerald-100 dark:border-emerald-600',
+        dot: 'bg-emerald-500',
+        rombelText: 'text-emerald-700 dark:text-emerald-300',
+      };
+    case 12:
+      return {
+        badgeBg: 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300 dark:border-amber-700',
+        headerBg: 'bg-amber-50/70 dark:bg-amber-950/30 border-r border-amber-100 dark:border-amber-900/40',
+        cellBg: 'bg-amber-50/20 dark:bg-amber-950/10 border-r border-amber-100/70 dark:border-amber-900/30',
+        selectBorder: 'border-amber-200 dark:border-amber-800 hover:border-amber-400',
+        activeSelect: 'bg-amber-50/90 text-amber-950 border-amber-400 dark:bg-amber-950/70 dark:text-amber-100 dark:border-amber-600',
+        dot: 'bg-amber-500',
+        rombelText: 'text-amber-700 dark:text-amber-300',
+      };
+    default:
+      return {
+        badgeBg: 'bg-purple-100 text-purple-800 border-purple-300',
+        headerBg: 'bg-purple-50/70 border-r border-purple-100',
+        cellBg: 'bg-purple-50/20 border-r border-purple-100/70',
+        selectBorder: 'border-purple-200 hover:border-purple-400',
+        activeSelect: 'bg-purple-50 text-purple-950 border-purple-400',
+        dot: 'bg-purple-500',
+        rombelText: 'text-purple-700',
+      };
+  }
+};
+
 export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = ({
+  topFlightDeck,
   bankList,
   roomMappings,
   activeTpId,
@@ -54,9 +104,12 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
   defaultTodayStr,
   existingSchedules,
   onSuccessGenerate,
+  onProceedToNextPhase,
   activeEvent,
   eventName,
   targetTingkat,
+  subMode = 'matrix',
+  onChangeSubMode,
 }) => {
   const queryClient = useQueryClient();
   const { jenjang } = useJenjang();
@@ -310,119 +363,159 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
   });
 
   return (
-    <Card className="p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl shadow-2xs space-y-5">
-      {/* Header & Nomenklatur Selector */}
-      <div className="space-y-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h4 className="text-sm font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <Calendar size={18} className="text-indigo-600" />
-              <span>Matriks Ploting Mapel ke Hari &amp; Sesi Ujian Massal</span>
-            </h4>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Petakan mata pelajaran per sesi waktu untuk seluruh tingkat secara serentak (Senin: Sesi 1 PKN, Sesi 2 PAI, dll).
-            </p>
-          </div>
+    <div className="space-y-3 w-full max-w-full min-w-0">
+      {/* ── 1 RUANG SEAMLESS FLIGHT DECK + TOOLBAR ── */}
+      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs divide-y divide-slate-100 dark:divide-slate-800/80 overflow-hidden">
+        {topFlightDeck}
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Mode Rangkaian:</span>
-            <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs">
+        {/* ── Single-Row Unified Master Filter & Action Toolbar (1 Ruang, Zero Waste Vertical) ── */}
+        <div className="p-2 sm:p-2.5 bg-slate-50/50 dark:bg-slate-800/30 flex flex-col xl:flex-row xl:items-center justify-between gap-2">
+          {/* Left: Sub-mode Switcher + Mode Rangkaian + Autosave Status */}
+          <div className="flex items-center gap-2 flex-wrap xl:flex-nowrap">
+            {/* SubMode: Matriks vs Terbit */}
+            {onChangeSubMode && (
+              <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold shrink-0">
+                <button
+                  type="button"
+                  onClick={() => onChangeSubMode('matrix')}
+                  className={cn(
+                    'px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1',
+                    subMode === 'matrix'
+                      ? 'bg-indigo-600 text-white shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                  )}
+                >
+                  <Sparkles size={11} />
+                  <span>Matriks</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onChangeSubMode('table')}
+                  className={cn(
+                    'px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1',
+                    subMode === 'table'
+                      ? 'bg-indigo-600 text-white shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                  )}
+                >
+                  <span>Daftar Sesi</span>
+                </button>
+              </div>
+            )}
+
+            {/* Mode Rangkaian */}
+            <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold shrink-0">
               <button
                 type="button"
                 onClick={() => setGenerationMode('per_rombel_ruang')}
                 className={cn(
-                  'px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer',
+                  'px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer',
                   generationMode === 'per_rombel_ruang'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-700 shadow-2xs'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                 )}
-                title="Menghasilkan jadwal spesifik untuk setiap kelas dan slot ruang (R.01 s/d R.n) agar Berita Acara & Pengawas per ruang valid"
+                title="Ploting per ruang fisik (R.01 s/d R.n)"
               >
-                Per Rombel &amp; Ruang (R.01-R.n)
+                Per Ruang
               </button>
               <button
                 type="button"
                 onClick={() => setGenerationMode('per_tingkat')}
                 className={cn(
-                  'px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer',
+                  'px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer',
                   generationMode === 'per_tingkat'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-700 shadow-2xs'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                 )}
-                title="1 Jadwal Ujian Terpadu untuk seluruh rombel di tingkat tersebut"
+                title="1 Jadwal massal terpadu per tingkat"
               >
-                Per Tingkat Terpadu
+                Terpadu
               </button>
             </div>
-          </div>
-        </div>
 
-        {/* Nomenklatur Preset & Status Simpan */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mr-1">Event:</span>
-            {Array.from(
-              new Set([
-                ...(activeEvent?.nama_event ? [activeEvent.nama_event] : []),
-                'PSAS Ganjil',
-                'PSAT Genap',
-                'PSTS Ganjil',
-                'PSTS Genap',
-                'PSAJ (Kelulusan)',
-                'Asesmen Madrasah (AM)',
-                'UKK Teori Kejuruan',
-              ])
-            ).map((nom) => (
-              <button
-                key={nom}
-                type="button"
-                onClick={() => setEventPrefix(nom)}
-                className={cn(
-                  'px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer',
-                  eventPrefix === nom
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
-                    : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                )}
-              >
-                {nom}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
+            {/* Autosave Status */}
             {lastSavedTime && (
-              <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
-                <CheckCircle2 size={12} />
-                <span>Tersimpan Otomatis ({lastSavedTime})</span>
+              <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200/80 dark:border-emerald-800/60 shrink-0">
+                <CheckCircle2 size={11} />
+                <span>Tersimpan ({lastSavedTime})</span>
               </span>
             )}
+          </div>
+
+          {/* Right: Actions (Tambah Hari, Kosongkan, Terbitkan, Lanjut) */}
+          <div className="flex items-center gap-1.5 flex-wrap xl:flex-nowrap justify-between xl:justify-end shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAddDay}
+              className="text-xs h-7 px-2 font-bold text-indigo-700 border-indigo-300 bg-white hover:bg-indigo-50 cursor-pointer shadow-2xs shrink-0"
+              title="Tambah hari pelaksanaan ujian baru"
+            >
+              <Plus size={11} className="mr-1 text-indigo-600" />
+              <span>Tambah Hari</span>
+            </Button>
 
             {totalSlotsFilled > 0 && (
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={handleResetMatrix}
-                className="text-[11px] font-semibold text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 flex items-center gap-1 cursor-pointer transition-colors"
+                className="text-xs h-7 px-2 font-bold text-rose-600 border-rose-200 bg-white hover:bg-rose-50 cursor-pointer shadow-2xs shrink-0"
                 title="Kosongkan seluruh isian mata pelajaran di matriks"
               >
-                <RotateCcw size={11} />
+                <RotateCcw size={11} className="mr-1" />
                 <span>Kosongkan</span>
-              </button>
+              </Button>
+            )}
+
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => bulkCreateMutation.mutate()}
+              disabled={bulkCreateMutation.isPending || totalSlotsFilled === 0}
+              className={cn(
+                'text-xs h-7 px-2.5 font-bold text-white shadow-2xs cursor-pointer flex items-center gap-1 shrink-0',
+                totalSlotsFilled > 0
+                  ? 'bg-indigo-600 hover:bg-indigo-700'
+                  : 'bg-slate-300 cursor-not-allowed text-slate-500'
+              )}
+            >
+              <Sparkles size={11} />
+              <span>
+                {bulkCreateMutation.isPending ? 'Menerbitkan...' : `Terbitkan (${estimatedGeneratedCount})`}
+              </span>
+            </Button>
+
+            {onProceedToNextPhase && (
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={onProceedToNextPhase}
+                className="text-xs h-7 px-2.5 font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs cursor-pointer flex items-center gap-1 shrink-0"
+              >
+                <span>Lanjut</span>
+                <ArrowRight size={11} />
+              </Button>
             )}
           </div>
         </div>
       </div>
 
       {/* Grid Matriks Hari & Sesi */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         {days.map((day) => (
           <div
             key={day.day_index}
-            className="border border-slate-200/90 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-2xs"
+            className="border border-slate-200/90 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-slate-900 shadow-2xs"
           >
             {/* Header Hari */}
-            <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="px-3.5 py-2 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="font-bold bg-indigo-50 text-indigo-700 border-indigo-200 text-xs">
+                <Badge variant="outline" className="font-bold bg-indigo-50 text-indigo-700 border-indigo-200 text-xs py-0.5 px-2">
                   {day.nama_hari} (Hari {day.day_index})
                 </Badge>
                 <div className="flex items-center gap-1.5">
@@ -453,7 +546,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
               </div>
             </div>
 
-            {/* Matrix Table Sesi x Tingkat */}
+            {/* Matrix Table Sesi x Tingkat (Pembeda Blok Warna Per Tingkat) */}
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
@@ -464,15 +557,23 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                         (k) => k.endsWith(`_${tingkat}`) && Boolean(matrix[k])
                       ).length;
                       const totalBanks = banksByTingkat.get(tingkat)?.length || 0;
+                      const theme = getTingkatTheme(tingkat);
 
                       return (
-                        <th key={tingkat} className="p-3 min-w-[220px]">
-                          Tingkat {formatTingkatRomawi(tingkat)} (Kelas {tingkat})
-                          <div className="flex items-center gap-1.5 mt-0.5 text-[10px] normal-case font-semibold">
-                            <span className="text-indigo-600 dark:text-indigo-400">
+                        <th
+                          key={tingkat}
+                          className={cn('p-3 min-w-[220px] transition-colors', theme.headerBg)}
+                        >
+                          <div className="flex items-center justify-between gap-1.5">
+                            <span className={cn('px-2 py-0.5 rounded-md font-bold text-xs border shadow-2xs flex items-center gap-1.5', theme.badgeBg)}>
+                              <span className={cn('w-2 h-2 rounded-full', theme.dot)} />
+                              <span>Kelas {tingkat}</span>
+                            </span>
+                            <span className={cn('text-[11px] font-bold', theme.rombelText)}>
                               {groupedRoomsByTingkat.get(tingkat)?.length || 0} Rombel
                             </span>
-                            <span className="text-slate-300 dark:text-slate-600">&bull;</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-1 text-[10px] normal-case font-semibold">
                             <span
                               className={cn(
                                 slottedCount >= totalBanks && totalBanks > 0
@@ -491,16 +592,16 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {day.sessions.map((sess) => (
                     <tr key={sess.session_index} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                      <td className="p-3 align-top font-bold text-slate-900 dark:text-slate-100">
+                      <td className="p-3 align-top font-bold text-slate-900 dark:text-slate-100 bg-slate-50/30 dark:bg-slate-900/40">
                         <div className="flex items-center gap-1.5 text-indigo-700 dark:text-indigo-400">
                           <Clock size={13} />
                           <span>{sess.nama_sesi}</span>
                         </div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">
+                        <div className="text-[11px] text-slate-500 mt-0.5 font-medium">
                           {sess.jam_mulai} - {sess.jam_selesai}
                         </div>
                         <div className="text-[10px] text-slate-400 font-normal mt-0.5">
-                          Durasi: {sess.durasi_menit} Menit
+                          {sess.durasi_menit} Menit
                         </div>
                       </td>
 
@@ -508,6 +609,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                         const matrixKey = `${day.day_index}_${sess.session_index}_${tingkat}`;
                         const selectedBankId = matrix[matrixKey] || '';
                         const allBanksForTingkat = banksByTingkat.get(tingkat) || [];
+                        const theme = getTingkatTheme(tingkat);
 
                         // Filter: Jangan tampilkan bank soal yang sudah dimasukkan ke slot lain
                         const availableBanks = allBanksForTingkat.filter((b) => {
@@ -520,7 +622,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                           !selectedBankId && availableBanks.length === 0 && allBanksForTingkat.length > 0;
 
                         return (
-                          <td key={tingkat} className="p-2.5 align-top">
+                          <td key={tingkat} className={cn('p-2.5 align-top transition-colors', theme.cellBg)}>
                             <select
                               value={selectedBankId}
                               onChange={(e) =>
@@ -529,12 +631,12 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                               aria-label={`Bank Soal ${day.nama_hari} ${sess.nama_sesi} Tingkat ${tingkat}`}
                               disabled={isAllPlotted}
                               className={cn(
-                                'w-full px-2.5 py-1.5 text-xs rounded-xl border font-semibold transition-all cursor-pointer',
+                                'w-full px-2.5 py-1.5 text-xs rounded-xl border font-bold transition-all cursor-pointer shadow-2xs',
                                 selectedBankId
-                                  ? 'bg-indigo-50 text-indigo-900 border-indigo-300 dark:bg-indigo-950/40 dark:text-indigo-200 dark:border-indigo-700'
+                                  ? theme.activeSelect
                                   : isAllPlotted
                                   ? 'bg-slate-50 dark:bg-slate-800/50 text-slate-400 border-slate-200 dark:border-slate-800 cursor-not-allowed'
-                                  : 'bg-white dark:bg-slate-900 text-slate-600 border-slate-200 dark:border-slate-700'
+                                  : cn('bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300', theme.selectBorder)
                               )}
                             >
                               <option value="">
@@ -554,20 +656,15 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                               <div className="mt-1 flex items-center justify-between text-[10px]">
                                 {(publishedSessionsByBankId.get(selectedBankId)?.length || 0) > 0 ? (
                                   <>
-                                    <span className="text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
-                                      <CheckCircle2 size={11} /> Sudah Terbit ({publishedSessionsByBankId.get(selectedBankId)?.length} Ruang)
+                                    <span className="text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200/80">
+                                      <CheckCircle2 size={11} /> Terbit ({publishedSessionsByBankId.get(selectedBankId)?.length} Ruang)
                                     </span>
                                     <span className="text-emerald-600 dark:text-emerald-400 text-[9px] font-semibold">Idempoten ✓</span>
                                   </>
                                 ) : (
-                                  <>
-                                    <span className="text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1">
-                                      <Sparkles size={11} /> Siap Diterbitkan
-                                    </span>
-                                    <span className="text-slate-500 font-medium">
-                                      {groupedRoomsByTingkat.get(tingkat)?.length || 0} Ruang
-                                    </span>
-                                  </>
+                                  <span className="text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded border border-indigo-200/60">
+                                    Siap Terbit (Baru)
+                                  </span>
                                 )}
                               </div>
                             )}
@@ -650,6 +747,6 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
           )}
         </Button>
       </div>
-    </Card>
+    </div>
   );
 };
