@@ -1,4 +1,4 @@
-import React, { useRef, useState, useLayoutEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import type { EcosystemTheme, EcosystemType } from '@/config/bottomNavEcosystems.config';
 
 export interface BottomNavNotchBackgroundProps {
@@ -63,27 +63,22 @@ export const BottomNavNotchBackground: React.FC<BottomNavNotchBackgroundProps> =
   const [width, setWidth] = useState<number>(() => (typeof window !== 'undefined' ? window.innerWidth : 360));
   const [currentHeight, setCurrentHeight] = useState<number>(() => height);
 
-  useLayoutEffect(() => {
-    if (!containerRef.current) return;
-    const updateDimensions = () => {
-      if (containerRef.current) {
-        const measuredW = containerRef.current.clientWidth;
-        const measuredH = containerRef.current.clientHeight;
-        if (measuredW > 0) setWidth(measuredW);
-        if (measuredH > 0) setCurrentHeight(measuredH);
-      }
-    };
-    updateDimensions();
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
 
-    const resizeObserver = new ResizeObserver(() => {
-      updateDimensions();
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const measuredW = entry.contentRect.width;
+      const measuredH = entry.contentRect.height;
+      if (measuredW > 0) setWidth(measuredW);
+      if (measuredH > 0) setCurrentHeight(measuredH);
     });
-    resizeObserver.observe(containerRef.current);
+    resizeObserver.observe(el);
 
-    window.addEventListener('resize', updateDimensions);
     return () => {
       resizeObserver.disconnect();
-      window.removeEventListener('resize', updateDimensions);
     };
   }, []);
 

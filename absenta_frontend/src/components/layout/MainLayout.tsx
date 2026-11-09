@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
@@ -8,8 +8,7 @@ import { Topbar } from './Topbar';
 import { useAuthStore } from '@/store/authStore';
 import SubscriptionStateBanner from '@/components/common/SubscriptionStateBanner';
 import { useSmartMenu } from '@/hooks/useSmartMenu';
-import { iconForName } from '@/lib/iconForName';
-import { ChevronRight, HelpCircle } from 'lucide-react';
+import { HelpCircle } from 'lucide-react';
 // InstructionPanel is lazy loaded below
 import { InstructionProvider, useInstruction } from '@/contexts/InstructionContext';
 import { BottomNavigation } from './BottomNavigation';
@@ -88,8 +87,10 @@ function MainLayoutContent() {
   };
 
   const configQuery = useQuery({
-    queryKey: ['system-config','active'],
+    queryKey: ['system-config', 'active'],
     queryFn: fetchActiveSystemConfig,
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
   const systemConfig = configQuery.data || null;
 
@@ -105,15 +106,13 @@ function MainLayoutContent() {
     setShowInstruction(false);
   }, [instructionData]);
 
-  // Body Scroll Lock for Mobile Menu
+  // Body Scroll Lock for Mobile Menu (Only touch document.body.style when actually opened)
   useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
+    if (!isMobileMenuOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = prevOverflow;
     };
   }, [isMobileMenuOpen]);
 

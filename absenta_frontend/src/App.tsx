@@ -297,6 +297,55 @@ function App() {
     }
   }, []);
 
+  // ⚡ Parallel Route & Tab Chunk Preloading (Anti-Waterfall / Network Dependency Tree Flattening)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const path = window.location.pathname;
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+
+    if (path === '/' || path === '/dashboard' || path.startsWith('/dashboard/')) {
+      import('./components/dashboard/roles/UnifiedStaffDashboard');
+      if (tab === 'admin' || !tab) {
+        import('./components/dashboard/roles/AdminDashboard');
+        import('./components/charts/AttendanceChart');
+        import('./components/ui/SearchableSelect');
+      }
+      if (tab === 'ringkasan' || !tab) {
+        import('./components/dashboard/staff/tabs/StaffBerandaTab');
+      } else if (tab === 'kurikulum') {
+        import('./components/dashboard/roles/KurikulumDashboard');
+      } else if (tab === 'kesiswaan') {
+        import('./components/dashboard/roles/KesiswaanDashboard');
+      } else if (tab === 'binaan' || tab === 'walas') {
+        import('./components/dashboard/roles/WaliKelasDashboard');
+      } else if (tab === 'kaprog') {
+        import('./components/dashboard/roles/KaprogDashboard');
+      } else if (tab === 'sarpras') {
+        import('./components/dashboard/roles/SarprasDashboard');
+      } else if (tab === 'hubin') {
+        import('./components/dashboard/roles/HubinDashboard');
+      } else if (tab === 'bpbk') {
+        import('./components/dashboard/roles/BpbkDashboard');
+      } else if (tab === 'bkk') {
+        import('./components/dashboard/roles/BkkDashboard');
+      } else if (tab === 'koperasi') {
+        import('./components/dashboard/roles/KoperasiDashboard');
+      } else if (tab === 'tu' || tab === 'kepegawaian') {
+        import('./components/dashboard/roles/TataUsahaDashboard');
+        import('./components/dashboard/roles/KepegawaianDashboard');
+      } else if (tab === 'toolman') {
+        import('./components/dashboard/roles/ToolmanDashboard');
+      } else if (tab === 'ekskul') {
+        import('./components/dashboard/roles/EkskulDashboard');
+      } else if (tab === 'pembimbing_pkl') {
+        import('./components/dashboard/roles/PembimbingPklDashboard');
+      } else if (tab === 'satpam') {
+        import('./components/dashboard/roles/SatpamDashboard');
+      }
+    }
+  }, []);
+
   // Intercept quick_login_token & support_token query param for Quick Login from WhatsApp / Licensing Server
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -407,7 +456,11 @@ function App() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      loadActiveSystemConfig().catch((err) => {
+      queryClient.prefetchQuery({
+        queryKey: ['system-config', 'active'],
+        queryFn: loadActiveSystemConfig,
+        staleTime: 10 * 60 * 1000,
+      }).catch((err) => {
         console.warn('Failed to load active system config', err);
       });
     }

@@ -38,10 +38,6 @@ export default defineConfig(({ mode }) => {
       },
       chunkSizeWarningLimit: 2000,
       rollupOptions: {
-        input: {
-          main: path.resolve(__dirname, 'index.html'),
-          parent: path.resolve(__dirname, 'public/parent/index.html'),
-        },
         output: {
           manualChunks: {
             'vendor-react': ['react', 'react-dom', 'react-router-dom'],

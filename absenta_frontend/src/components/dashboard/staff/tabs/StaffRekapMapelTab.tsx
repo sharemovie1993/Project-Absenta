@@ -178,14 +178,20 @@ export const StaffRekapMapelTab: React.FC<StaffRekapMapelTabProps> = React.memo(
     }
   }, [mapelCards, mapelId, kelasId]);
 
-  // Listener Scroll & Resize untuk Shopee Dynamic Scroll Indicator
+  // Listener Scroll & Resize untuk Shopee Dynamic Scroll Indicator (Bebas Forced Reflow via ResizeObserver + rAF)
   useEffect(() => {
-    checkScrollable();
-    const timer = setTimeout(checkScrollable, 200);
-    window.addEventListener('resize', checkScrollable);
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    const rafId = requestAnimationFrame(checkScrollable);
+    const resizeObserver = new ResizeObserver(() => {
+      requestAnimationFrame(checkScrollable);
+    });
+    resizeObserver.observe(el);
+
     return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', checkScrollable);
+      cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
     };
   }, [checkScrollable, mapelCards.length]);
 

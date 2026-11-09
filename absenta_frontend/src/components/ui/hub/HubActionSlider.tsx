@@ -32,7 +32,7 @@ export const HubActionSlider: React.FC<HubActionSliderProps> = React.memo(({
   const [scrollProgress, setScrollProgress] = useState(0);
   const [canScroll, setCanScroll] = useState(false);
 
-  // Periksa apakah kontainer memiliki overflow scroll
+  // Periksa apakah kontainer memiliki overflow scroll (bebas Forced Reflow via ResizeObserver + rAF)
   const checkScrollable = useCallback(() => {
     const el = scrollContainerRef.current;
     if (el) {
@@ -46,9 +46,19 @@ export const HubActionSlider: React.FC<HubActionSliderProps> = React.memo(({
   }, []);
 
   useEffect(() => {
-    checkScrollable();
-    window.addEventListener('resize', checkScrollable);
-    return () => window.removeEventListener('resize', checkScrollable);
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    const rafId = requestAnimationFrame(checkScrollable);
+    const resizeObserver = new ResizeObserver(() => {
+      requestAnimationFrame(checkScrollable);
+    });
+    resizeObserver.observe(el);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
+    };
   }, [checkScrollable, items.length]);
 
   const handleScroll = () => {

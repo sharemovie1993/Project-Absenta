@@ -4,10 +4,13 @@ import { ThemeToggle } from '../ui/ThemeToggle';
 import { UserMenu } from './UserMenu';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
-import { TeacherLocatorModal } from '../shared/TeacherLocatorModal';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useQuery } from '@tanstack/react-query';
 import { fetchActiveSystemConfig } from '@/services/systemConfig';
+
+const TeacherLocatorModal = React.lazy(() =>
+  import('../shared/TeacherLocatorModal').then((m) => ({ default: m.TeacherLocatorModal }))
+);
 import { getSesiAbsensiList } from '../../api/attendanceGerbang.api';
 import { useAuthStore } from '@/store/authStore';
 import { isSystemSuperAdmin } from '@/utils/rbac';
@@ -37,7 +40,12 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
   const [sesiDetail, setSesiDetail] = useState<any | null>(null);
   const [sesiLoading, setSesiLoading] = useState<boolean>(false);
   const [logoError, setLogoError] = useState<boolean>(false);
-  const configQuery = useQuery({ queryKey: ['system-config','active'], queryFn: fetchActiveSystemConfig });
+  const configQuery = useQuery({
+    queryKey: ['system-config','active'],
+    queryFn: fetchActiveSystemConfig,
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
   const systemConfig = configQuery.data || null;
 
   // ⌨️ Global Shortcut for Teacher Locator (Ctrl + G or Cmd + G)
@@ -344,11 +352,15 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
           </div>
         </Modal>
 
-        {/* 🔍 Global Teacher Locator Modal */}
-        <TeacherLocatorModal
-          isOpen={locatorModalOpen}
-          onClose={() => setLocatorModalOpen(false)}
-        />
+        {/* 🔍 Global Teacher Locator Modal (Lazy-mounted on open) */}
+        {locatorModalOpen && (
+          <React.Suspense fallback={null}>
+            <TeacherLocatorModal
+              isOpen={locatorModalOpen}
+              onClose={() => setLocatorModalOpen(false)}
+            />
+          </React.Suspense>
+        )}
       </header>
 
       {/* ── 2. Mobile Shopee-Style Back Navigation Bar (< lg, Sub-halaman di luar dashboard utama) ── */}
