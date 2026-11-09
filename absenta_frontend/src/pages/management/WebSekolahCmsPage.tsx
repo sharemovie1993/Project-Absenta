@@ -38,10 +38,13 @@ export const WebSekolahCmsPage: React.FC = () => {
   const [visi, setVisi] = useState('');
   const [misi, setMisi] = useState('');
 
-  // Social & PPDB
+  // Social & PPDB & Layanan Publik
   const [ppdbActive, setPpdbActive] = useState(false);
   const [ppdbUrl, setPpdbUrl] = useState('');
   const [ppdbAnnouncement, setPpdbAnnouncement] = useState('');
+  const [graduationActive, setGraduationActive] = useState(true);
+  const [graduationDate, setGraduationDate] = useState('');
+  const [tefaWhatsapp, setTefaWhatsapp] = useState('6281214002500');
   const [instagram, setInstagram] = useState('');
   const [facebook, setFacebook] = useState('');
   const [youtube, setYoutube] = useState('');
@@ -81,6 +84,9 @@ export const WebSekolahCmsPage: React.FC = () => {
         setPpdbActive(cfg.ppdb_active || false);
         setPpdbUrl(cfg.ppdb_url || '');
         setPpdbAnnouncement(cfg.ppdb_announcement || '');
+        setGraduationActive(cfg.graduation_announce_active !== false);
+        setGraduationDate(cfg.graduation_announce_date || '');
+        setTefaWhatsapp(cfg.tefa_whatsapp || '6281214002500');
 
         const soc = cfg.social_links || {};
         setInstagram(soc.instagram || '');
@@ -128,6 +134,9 @@ export const WebSekolahCmsPage: React.FC = () => {
         web_ppdb_active: ppdbActive ? 'true' : 'false',
         web_ppdb_url: ppdbUrl,
         web_ppdb_announcement: ppdbAnnouncement,
+        web_graduation_announce_active: graduationActive ? 'true' : 'false',
+        web_graduation_announce_date: graduationDate,
+        web_tefa_whatsapp: tefaWhatsapp,
         web_social_links: {
           instagram,
           facebook,
@@ -442,6 +451,53 @@ export const WebSekolahCmsPage: React.FC = () => {
                   onChange={(e) => setPpdbAnnouncement(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800"
                 />
+              </div>
+            </div>
+
+            {/* Graduation Announcement & TEFA Settings */}
+            <div className="pt-4 border-t border-slate-100 space-y-4">
+              <div className="bg-blue-50 rounded-2xl p-4 border border-blue-200 flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-bold text-blue-900">
+                    Aktifkan Portal Cek Pengumuman Kelulusan Online (Amplop Digital)
+                  </h4>
+                  <p className="text-xs text-blue-700 mt-0.5">
+                    Siswa tingkat akhir dapat mengecek status kelulusan dan Nomor SKL menggunakan NISN di web publik.
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={graduationActive}
+                  onChange={(e) => setGraduationActive(e.target.checked)}
+                  className="w-6 h-6 rounded cursor-pointer text-blue-600"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">
+                    Jadwal Rilis Pengumuman Kelulusan (Opsional Countdown):
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={graduationDate}
+                    onChange={(e) => setGraduationDate(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">
+                    Nomor WhatsApp Unit Produksi TEFA & BKK (Format 628xxx):
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: 6281214002500"
+                    value={tefaWhatsapp}
+                    onChange={(e) => setTefaWhatsapp(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 font-mono"
+                  />
+                </div>
               </div>
             </div>
 

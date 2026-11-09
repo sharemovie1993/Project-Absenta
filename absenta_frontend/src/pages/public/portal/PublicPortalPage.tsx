@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Loader2, AlertCircle, Building2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 import {
   publicPortalApi,
   PublicSchoolProfile,
@@ -10,18 +10,24 @@ import {
   PublicHubinData,
   PublicFacility,
   PublicArticleSummary,
+  PublicLivePulse,
+  PublicCalendarAndEkskul,
 } from '../../../api/public-portal.api';
 
 import { PublicPortalNavbar } from './PublicPortalNavbar';
 import { PublicPortalHero } from './PublicPortalHero';
+import { PublicPortalLivePulse } from './PublicPortalLivePulse';
 import { PublicPortalHeadmaster } from './PublicPortalHeadmaster';
 import { PublicPortalPrograms } from './PublicPortalPrograms';
+import { PublicPortalCalendarEkskul } from './PublicPortalCalendarEkskul';
 import { PublicPortalHubinBkk } from './PublicPortalHubinBkk';
 import { PublicPortalArticles } from './PublicPortalArticles';
 import { PublicPortalStaff } from './PublicPortalStaff';
 import { PublicPortalFacilities } from './PublicPortalFacilities';
 import { PublicPortalFooter } from './PublicPortalFooter';
 import { PublicPortalVerifyModal } from './PublicPortalVerifyModal';
+import { PublicPortalGraduationModal } from './PublicPortalGraduationModal';
+import { PublicPortalGuestBookModal } from './PublicPortalGuestBookModal';
 
 export const PublicPortalPage: React.FC = () => {
   const { tenantSlug } = useParams<{ tenantSlug: string }>();
@@ -45,6 +51,8 @@ export const PublicPortalPage: React.FC = () => {
 
   // Aggregated Data State
   const [profile, setProfile] = useState<PublicSchoolProfile | null>(null);
+  const [livePulse, setLivePulse] = useState<PublicLivePulse | null>(null);
+  const [calendarEkskul, setCalendarEkskul] = useState<PublicCalendarAndEkskul | null>(null);
   const [programs, setPrograms] = useState<PublicProgram[]>([]);
   const [staff, setStaff] = useState<PublicStaffMember[]>([]);
   const [achievements, setAchievements] = useState<PublicAchievement[]>([]);
@@ -55,6 +63,8 @@ export const PublicPortalPage: React.FC = () => {
   // Navigation & Modal State
   const [activeSection, setActiveSection] = useState('beranda');
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
+  const [graduationModalOpen, setGraduationModalOpen] = useState(false);
+  const [guestBookModalOpen, setGuestBookModalOpen] = useState(false);
 
   useEffect(() => {
     if (!resolvedSlug) return;
@@ -63,6 +73,8 @@ export const PublicPortalPage: React.FC = () => {
 
     Promise.all([
       publicPortalApi.getProfile(resolvedSlug),
+      publicPortalApi.getLivePulse(resolvedSlug).catch(() => ({ success: false, data: null as any })),
+      publicPortalApi.getCalendarAndEkskul(resolvedSlug).catch(() => ({ success: false, data: null as any })),
       publicPortalApi.getPrograms(resolvedSlug),
       publicPortalApi.getStaff(resolvedSlug),
       publicPortalApi.getAchievements(resolvedSlug, 6),
@@ -70,11 +82,13 @@ export const PublicPortalPage: React.FC = () => {
       publicPortalApi.getFacilities(resolvedSlug),
       publicPortalApi.getArticles(resolvedSlug, { limit: 6 }),
     ])
-      .then(([profRes, progRes, staffRes, achRes, hubinRes, facRes, artRes]) => {
+      .then(([profRes, pulseRes, calRes, progRes, staffRes, achRes, hubinRes, facRes, artRes]) => {
         if (profRes.success && profRes.data) {
           setProfile(profRes.data);
           document.title = `${profRes.data.nama} - Portal Resmi Sekolah`;
         }
+        if (pulseRes.success && pulseRes.data) setLivePulse(pulseRes.data);
+        if (calRes.success && calRes.data) setCalendarEkskul(calRes.data);
         if (progRes.success) setPrograms(progRes.data || []);
         if (staffRes.success) setStaff(staffRes.data || []);
         if (achRes.success) setAchievements(achRes.data || []);
@@ -151,6 +165,8 @@ export const PublicPortalPage: React.FC = () => {
       <PublicPortalNavbar
         profile={profile}
         onOpenVerifyModal={() => setVerifyModalOpen(true)}
+        onOpenGraduationModal={() => setGraduationModalOpen(true)}
+        onOpenGuestBookModal={() => setGuestBookModalOpen(true)}
         activeSection={activeSection}
         onNavigate={handleNavigate}
       />
@@ -160,18 +176,32 @@ export const PublicPortalPage: React.FC = () => {
         profile={profile}
         onExploreClick={() => handleNavigate('profil')}
         onOpenVerifyModal={() => setVerifyModalOpen(true)}
+        onOpenGraduationModal={() => setGraduationModalOpen(true)}
+        onOpenGuestBookModal={() => setGuestBookModalOpen(true)}
       />
 
-      {/* 3. Headmaster Speech & Vision/Mission */}
+      {/* 3. Live Pulse Real-Time Transparency Strip */}
+      <PublicPortalLivePulse pulse={livePulse} />
+
+      {/* 4. Headmaster Speech & Vision/Mission */}
       <PublicPortalHeadmaster profile={profile} />
 
-      {/* 4. Programs / Jurusan */}
+      {/* 5. Programs / Jurusan */}
       {programs.length > 0 && <PublicPortalPrograms programs={programs} profile={profile} />}
 
-      {/* 5. Hubin, BKK & Industri (Khusus SMK) */}
-      {profile.jenjang === 'SMK' && <PublicPortalHubinBkk hubin={hubin} />}
+      {/* 6. Kalender Akademik & Ekstrakurikuler */}
+      <PublicPortalCalendarEkskul data={calendarEkskul} schoolName={profile.nama} />
 
-      {/* 6. Articles & News */}
+      {/* 7. Hubin, BKK, Tracer Study BMW & TEFA (Khusus SMK) */}
+      {profile.jenjang === 'SMK' && (
+        <PublicPortalHubinBkk
+          hubin={hubin}
+          tefaWhatsapp={profile.web_config?.tefa_whatsapp}
+          schoolName={profile.nama}
+        />
+      )}
+
+      {/* 8. Articles & News */}
       <PublicPortalArticles
         articles={articles}
         achievements={achievements}
@@ -179,24 +209,38 @@ export const PublicPortalPage: React.FC = () => {
         onSelectArticle={handleSelectArticle}
       />
 
-      {/* 7. Staff & Teachers Directory */}
+      {/* 9. Staff & Teachers Directory */}
       {staff.length > 0 && <PublicPortalStaff staff={staff} />}
 
-      {/* 8. Facilities Showcase */}
+      {/* 10. Facilities Showcase */}
       {facilities.length > 0 && <PublicPortalFacilities facilities={facilities} />}
 
-      {/* 9. Footer */}
+      {/* 11. Footer */}
       <PublicPortalFooter
         profile={profile}
         onOpenVerifyModal={() => setVerifyModalOpen(true)}
         onNavigate={handleNavigate}
       />
 
-      {/* 10. Document Verification Modal */}
+      {/* 12. Modals: Document Verification, Graduation Envelope, & Digital Guestbook */}
       <PublicPortalVerifyModal
         isOpen={verifyModalOpen}
         onClose={() => setVerifyModalOpen(false)}
         tenantSlug={resolvedSlug}
+      />
+
+      <PublicPortalGraduationModal
+        isOpen={graduationModalOpen}
+        onClose={() => setGraduationModalOpen(false)}
+        tenantSlug={resolvedSlug}
+        schoolName={profile.nama}
+      />
+
+      <PublicPortalGuestBookModal
+        isOpen={guestBookModalOpen}
+        onClose={() => setGuestBookModalOpen(false)}
+        tenantSlug={resolvedSlug}
+        schoolName={profile.nama}
       />
     </div>
   );

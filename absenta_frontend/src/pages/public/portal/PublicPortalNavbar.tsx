@@ -12,12 +12,17 @@ import {
   Menu,
   X,
   ExternalLink,
+  Calendar,
+  BookUser,
+  Sparkles,
 } from 'lucide-react';
 import { PublicSchoolProfile } from '../../../api/public-portal.api';
 
 interface PublicPortalNavbarProps {
   profile: PublicSchoolProfile;
   onOpenVerifyModal: () => void;
+  onOpenGraduationModal: () => void;
+  onOpenGuestBookModal: () => void;
   activeSection: string;
   onNavigate: (sectionId: string) => void;
 }
@@ -25,6 +30,8 @@ interface PublicPortalNavbarProps {
 export const PublicPortalNavbar: React.FC<PublicPortalNavbarProps> = ({
   profile,
   onOpenVerifyModal,
+  onOpenGraduationModal,
+  onOpenGuestBookModal,
   activeSection,
   onNavigate,
 }) => {
@@ -37,8 +44,9 @@ export const PublicPortalNavbar: React.FC<PublicPortalNavbarProps> = ({
     { id: 'beranda', label: 'Beranda', icon: GraduationCap },
     { id: 'profil', label: 'Profil & Visi', icon: BookOpen },
     { id: 'program', label: isSmk ? 'Kompetensi Keahlian' : 'Program Akademik', icon: Award },
+    { id: 'kalender', label: 'Kalender & Ekskul', icon: Calendar },
+    ...(isSmk ? [{ id: 'bkk', label: 'BKK, Alumni & TEFA', icon: Briefcase }] : []),
     { id: 'berita', label: 'Berita & Info', icon: Newspaper },
-    ...(isSmk ? [{ id: 'bkk', label: 'BKK & Industri', icon: Briefcase }] : []),
     { id: 'guru', label: 'Guru & Staf', icon: Users },
     { id: 'fasilitas', label: 'Fasilitas', icon: Building2 },
     { id: 'kontak', label: 'Kontak', icon: Phone },
@@ -67,20 +75,28 @@ export const PublicPortalNavbar: React.FC<PublicPortalNavbarProps> = ({
           )}
         </div>
         <div className="flex items-center gap-4">
-          {profile.web_config?.ppdb_active && (
-            <a
-              href={profile.web_config.ppdb_url || '#ppdb'}
+          {profile.web_config?.graduation_announce_active !== false && (
+            <button
+              onClick={onOpenGraduationModal}
               className="text-amber-300 hover:text-amber-200 font-semibold flex items-center gap-1 transition-colors"
             >
-              🚀 PPDB Dibuka!
-            </a>
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>Cek Kelulusan Online</span>
+            </button>
           )}
+          <button
+            onClick={onOpenGuestBookModal}
+            className="hidden md:flex items-center gap-1 text-emerald-300 hover:text-white transition-colors font-medium"
+          >
+            <BookUser className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Buku Tamu PTSP</span>
+          </button>
           <button
             onClick={onOpenVerifyModal}
             className="flex items-center gap-1 text-slate-300 hover:text-white transition-colors"
           >
             <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-            <span className="hidden sm:inline">Verifikasi Dokumen Kelulusan</span>
+            <span className="hidden sm:inline">Verifikasi Ijazah/SKL</span>
             <span className="sm:hidden">Verifikasi</span>
           </button>
         </div>
@@ -120,16 +136,16 @@ export const PublicPortalNavbar: React.FC<PublicPortalNavbarProps> = ({
         </div>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden lg:flex items-center gap-1">
+        <nav className="hidden xl:flex items-center gap-1">
           {navItems.map((item) => {
             const isActive = activeSection === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                className={`px-2.5 py-2 rounded-lg text-xs font-semibold transition-all ${
                   isActive
-                    ? 'text-blue-600 bg-blue-50/80 font-semibold'
+                    ? 'text-blue-600 bg-blue-50/80 font-bold'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
                 }`}
               >
@@ -140,28 +156,35 @@ export const PublicPortalNavbar: React.FC<PublicPortalNavbarProps> = ({
         </nav>
 
         {/* CTA Buttons */}
-        <div className="hidden sm:flex items-center gap-2.5">
+        <div className="hidden sm:flex items-center gap-2">
           <button
-            onClick={onOpenVerifyModal}
-            className="px-3.5 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center gap-1.5 border border-slate-200"
+            onClick={onOpenGuestBookModal}
+            className="px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors flex items-center gap-1.5 border border-emerald-200"
           >
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            Cek Ijazah / SKL
+            <BookUser className="w-3.5 h-3.5 text-emerald-600" />
+            <span>PTSP / Tamu</span>
+          </button>
+          <button
+            onClick={onOpenGraduationModal}
+            className="px-3 py-2 text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors flex items-center gap-1.5 border border-amber-200"
+          >
+            <GraduationCap className="w-3.5 h-3.5 text-amber-600" />
+            <span>Cek Kelulusan</span>
           </button>
           {profile.web_config?.ppdb_active && (
             <a
               href={profile.web_config.ppdb_url || '#ppdb'}
               style={{ backgroundColor: themeColor }}
-              className="px-4 py-2 text-xs font-semibold text-white rounded-lg shadow-sm hover:opacity-95 transition-all flex items-center gap-1.5"
+              className="px-3.5 py-2 text-xs font-semibold text-white rounded-lg shadow-sm hover:opacity-95 transition-all flex items-center gap-1.5"
             >
-              <span>Daftar PPDB</span>
+              <span>PPDB</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           )}
         </div>
 
         {/* Mobile Hamburger Toggle */}
-        <div className="lg:hidden flex items-center gap-2">
+        <div className="xl:hidden flex items-center gap-2">
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
@@ -174,7 +197,7 @@ export const PublicPortalNavbar: React.FC<PublicPortalNavbarProps> = ({
 
       {/* Mobile Dropdown Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-6 shadow-xl space-y-1 animate-in slide-in-from-top-2">
+        <div className="xl:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-6 shadow-xl space-y-1 animate-in slide-in-from-top-2">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeSection === item.id;
@@ -197,22 +220,33 @@ export const PublicPortalNavbar: React.FC<PublicPortalNavbarProps> = ({
             <button
               onClick={() => {
                 setMobileMenuOpen(false);
+                onOpenGraduationModal();
+              }}
+              className="w-full py-2.5 px-3 bg-amber-50 text-amber-800 border border-amber-200 font-semibold text-xs rounded-lg flex items-center justify-center gap-2"
+            >
+              <GraduationCap className="w-4 h-4 text-amber-600" />
+              Cek Pengumuman Kelulusan Online
+            </button>
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onOpenGuestBookModal();
+              }}
+              className="w-full py-2.5 px-3 bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold text-xs rounded-lg flex items-center justify-center gap-2"
+            >
+              <BookUser className="w-4 h-4 text-emerald-600" />
+              Buku Tamu Digital & PTSP Online
+            </button>
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
                 onOpenVerifyModal();
               }}
-              className="w-full py-2.5 px-3 bg-slate-100 text-slate-700 font-medium text-sm rounded-lg flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-3 bg-slate-100 text-slate-700 font-semibold text-xs rounded-lg flex items-center justify-center gap-2"
             >
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              Verifikasi Dokumen Kelulusan
+              <ShieldCheck className="w-4 h-4 text-blue-600" />
+              Verifikasi Dokumen Kelulusan (SKL/UKK)
             </button>
-            {profile.web_config?.ppdb_active && (
-              <a
-                href={profile.web_config.ppdb_url || '#ppdb'}
-                style={{ backgroundColor: themeColor }}
-                className="w-full py-2.5 px-3 text-white font-medium text-sm rounded-lg flex items-center justify-center gap-2 shadow-sm"
-              >
-                Daftar PPDB Online Sekarang
-              </a>
-            )}
           </div>
         </div>
       )}

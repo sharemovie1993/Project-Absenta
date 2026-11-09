@@ -48,6 +48,9 @@ export interface PublicSchoolProfile {
     ppdb_active: boolean;
     ppdb_url?: string;
     ppdb_announcement?: string;
+    graduation_announce_active: boolean;
+    graduation_announce_date?: string | null;
+    tefa_whatsapp?: string | null;
   };
 }
 
@@ -85,6 +88,25 @@ export interface PublicAchievement {
   nama_kelas: string | null;
 }
 
+export interface PublicTracerStats {
+  total_alumni: number;
+  bekerja_count: number;
+  kuliah_count: number;
+  wirausaha_count: number;
+  mencari_kerja_count: number;
+  bekerja_pct: number;
+  kuliah_pct: number;
+  wirausaha_pct: number;
+  serapan_total_pct: number;
+  highlight_destinations: Array<{
+    nama_alumni: string;
+    tahun_lulus: number;
+    status: string;
+    instansi: string;
+    posisi_atau_prodi: string;
+  }>;
+}
+
 export interface PublicHubinData {
   mitra: Array<{
     id: string;
@@ -108,7 +130,10 @@ export interface PublicHubinData {
     nama_proyek: string;
     deskripsi: string | null;
     status_proyek: string;
+    nilai_kontrak: number | null;
+    mitra_nama: string | null;
   }>;
+  tracer_study?: PublicTracerStats;
 }
 
 export interface PublicFacility {
@@ -150,11 +175,89 @@ export interface DocumentVerificationResult {
   tanggal_lulus?: string;
 }
 
+export interface PublicLivePulse {
+  tanggal: string;
+  tahun_ajaran: string;
+  semester: string;
+  indeks_kehadiran_siswa: number;
+  indeks_kehadiran_guru: number;
+  sesi_kbm_terlaksana_pct: number;
+  status_pembiasaan_pagi: string;
+  agenda_hari_ini: string;
+  total_rombel_aktif: number;
+}
+
+export interface PublicCalendarEvent {
+  id: string;
+  judul: string;
+  jenis: string;
+  tanggal_mulai: string;
+  tanggal_selesai: string;
+  keterangan: string | null;
+}
+
+export interface PublicEkskulItem {
+  id: string;
+  nama: string;
+  tipe: string;
+  jadwal_hari: string[];
+  waktu_mulai: string | null;
+  waktu_selesai: string | null;
+  jumlah_anggota: number;
+}
+
+export interface PublicCalendarAndEkskul {
+  tahun_ajaran: string;
+  calendar: PublicCalendarEvent[];
+  ekskul: PublicEkskulItem[];
+}
+
+export interface PublicGraduationResult {
+  found: boolean;
+  is_open: boolean;
+  release_date: string | null;
+  message?: string;
+  data?: {
+    nama_siswa: string;
+    nis: string;
+    nisn: string | null;
+    kelas: string | null;
+    jurusan: string | null;
+    nomor_skl: string;
+    status_kelulusan: string;
+    rata_rata_nilai: number;
+    tanggal_lulus: string;
+    catatan: string | null;
+  };
+}
+
+export interface PublicGuestBookTicket {
+  ticket_code: string;
+  nama_tamu: string;
+  instansi_tamu: string;
+  keperluan_tamu: string;
+  pejabat_dituju: string;
+  waktu_akses: string;
+  kategori_buku: string;
+}
+
 export const publicPortalApi = {
   getProfile: (slug: string) =>
     standardApiCall<{ success: boolean; data: PublicSchoolProfile }>(
       () => axiosInstance.get(`/public/portal/${slug}/profile`),
       'publicPortalApi.getProfile'
+    ),
+
+  getLivePulse: (slug: string) =>
+    standardApiCall<{ success: boolean; data: PublicLivePulse }>(
+      () => axiosInstance.get(`/public/portal/${slug}/live-pulse`),
+      'publicPortalApi.getLivePulse'
+    ),
+
+  getCalendarAndEkskul: (slug: string) =>
+    standardApiCall<{ success: boolean; data: PublicCalendarAndEkskul }>(
+      () => axiosInstance.get(`/public/portal/${slug}/calendar-ekskul`),
+      'publicPortalApi.getCalendarAndEkskul'
     ),
 
   getStaff: (slug: string, query?: { jenis_ptk?: string; search?: string }) =>
@@ -203,6 +306,31 @@ export const publicPortalApi = {
     standardApiCall<{ success: boolean; data: DocumentVerificationResult }>(
       () => axiosInstance.get(`/public/portal/${slug}/verify/${docType}/${encodeURIComponent(code)}`),
       'publicPortalApi.verifyDocument'
+    ),
+
+  checkGraduation: (slug: string, nisnOrNis: string) =>
+    standardApiCall<{ success: boolean; data: PublicGraduationResult }>(
+      () => axiosInstance.post(`/public/portal/${slug}/graduation-check`, { nisn: nisnOrNis }),
+      'publicPortalApi.checkGraduation'
+    ),
+
+  submitGuestBook: (
+    slug: string,
+    payload: {
+      nama_tamu: string;
+      instansi_tamu?: string;
+      keperluan_tamu: string;
+      kontak_tamu?: string;
+      pejabat_dituju?: string;
+      kategori_buku?: string;
+      jabatan_tamu?: string;
+      nomor_surat_tugas?: string;
+      pesan_kesan?: string;
+    }
+  ) =>
+    standardApiCall<{ success: boolean; data: PublicGuestBookTicket; message: string }>(
+      () => axiosInstance.post(`/public/portal/${slug}/guestbook`, payload),
+      'publicPortalApi.submitGuestBook'
     ),
 
   // ── CMS Management API (Admin & Humas) ──

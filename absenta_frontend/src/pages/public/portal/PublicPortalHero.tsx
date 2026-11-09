@@ -8,6 +8,7 @@ import {
   Sparkles,
   ArrowRight,
   ShieldCheck,
+  BookUser,
 } from 'lucide-react';
 import { PublicSchoolProfile } from '../../../api/public-portal.api';
 
@@ -15,12 +16,16 @@ interface PublicPortalHeroProps {
   profile: PublicSchoolProfile;
   onExploreClick: () => void;
   onOpenVerifyModal: () => void;
+  onOpenGraduationModal: () => void;
+  onOpenGuestBookModal: () => void;
 }
 
 export const PublicPortalHero: React.FC<PublicPortalHeroProps> = ({
   profile,
   onExploreClick,
   onOpenVerifyModal,
+  onOpenGraduationModal,
+  onOpenGuestBookModal,
 }) => {
   const isSmk = profile.jenjang === 'SMK';
   const heroImage =
@@ -100,21 +105,37 @@ export const PublicPortalHero: React.FC<PublicPortalHeroProps> = ({
           </p>
 
           {/* CTA Buttons */}
-          <div className="pt-4 flex flex-wrap items-center gap-3.5">
+          <div className="pt-4 flex flex-wrap items-center gap-3">
             <button
               onClick={onExploreClick}
-              className="px-6 py-3.5 rounded-xl font-semibold text-sm bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 transition-all flex items-center gap-2 group"
+              className="px-5 py-3.5 rounded-xl font-semibold text-xs sm:text-sm bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 transition-all flex items-center gap-2 group"
             >
               <span>Jelajahi Profil Sekolah</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
 
             <button
-              onClick={onOpenVerifyModal}
-              className="px-5 py-3.5 rounded-xl font-semibold text-sm bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm transition-all flex items-center gap-2"
+              onClick={onOpenGraduationModal}
+              className="px-5 py-3.5 rounded-xl font-semibold text-xs sm:text-sm bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2"
             >
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>Verifikasi Ijazah / SKL</span>
+              <GraduationCap className="w-4 h-4" />
+              <span>Amplop Pengumuman Kelulusan</span>
+            </button>
+
+            <button
+              onClick={onOpenGuestBookModal}
+              className="px-4 py-3.5 rounded-xl font-semibold text-xs sm:text-sm bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border border-emerald-400/30 backdrop-blur-sm transition-all flex items-center gap-2"
+            >
+              <BookUser className="w-4 h-4 text-emerald-400" />
+              <span>Buku Tamu PTSP</span>
+            </button>
+
+            <button
+              onClick={onOpenVerifyModal}
+              className="px-4 py-3.5 rounded-xl font-semibold text-xs sm:text-sm bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm transition-all flex items-center gap-2"
+            >
+              <ShieldCheck className="w-4 h-4 text-blue-400" />
+              <span>Verifikasi SKL / UKK</span>
             </button>
           </div>
         </div>
