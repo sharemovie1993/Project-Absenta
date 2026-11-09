@@ -21,6 +21,7 @@ import {
   Check,
   Loader2,
   LayoutGrid,
+  Sparkles,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import QRCode from 'qrcode';
@@ -183,6 +184,10 @@ const DEFAULT_WEEK_SCHEDULE: ExamDaySchedule[] = [
   },
 ];
 
+export type QrCodeSize = 'normal' | 'jumbo';
+export type QrPlacement = 'header' | 'photo_box';
+export type QrPayloadMode = 'url_short' | 'credentials_only';
+
 // ── Subkomponen Memoized Satuan Kartu Peserta Ujian TKA (Grid 2x3 & 2x2) ──
 interface ExamCardSingleItemProps {
   student: StudentExamCardData;
@@ -196,6 +201,9 @@ interface ExamCardSingleItemProps {
   showPassword: boolean;
   schedules: ExamDaySchedule[];
   gridMode: '6_per_page' | '4_per_page';
+  qrSize: QrCodeSize;
+  qrPlacement: QrPlacement;
+  qrPayloadMode: QrPayloadMode;
 }
 
 const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
@@ -210,6 +218,9 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
   showPassword,
   schedules,
   gridMode,
+  qrSize,
+  qrPlacement,
+  qrPayloadMode,
 }) => {
   const [qrUrl, setQrUrl] = useState<string>('');
 
@@ -225,7 +236,8 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
     });
   }, [student]);
 
-  // Generate QR Code secara asynchronous & terisolasi per-kartu (Level 'L' tercepat)
+  // Generate QR Code secara asynchronous & terisolasi per-kartu
+  // Khusus inkjet: pure black (#000000), margin 2, width 320px bitmap tajam tanpa dot bleeding
   useEffect(() => {
     if (!showQrCode) {
       setQrUrl('');
@@ -233,28 +245,22 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
     }
 
     let isMounted = true;
-    const quickPayload = {
-      u: student.username || student.nisn,
-      p: student.pin,
-      nisn: student.nisn,
-      room: student.slot_ruang,
-      name: student.nama_siswa,
-      cbt: true,
-    };
-    let encodedToken = '';
-    try {
-      encodedToken = btoa(unescape(encodeURIComponent(JSON.stringify(quickPayload))));
-    } catch {
-      encodedToken = btoa(JSON.stringify({ u: quickPayload.u, p: quickPayload.p }));
+    let payload = '';
+
+    if (qrPayloadMode === 'credentials_only') {
+      // 1. Format Ultra-Compact Version 1 (21x21 modules): Dot fisik terbesar, anti-luber tinta inkjet HVS
+      payload = `${student.username}:${student.pin}`;
+    } else {
+      // 2. Format Short URL Version 3 (29x29 modules): Cukup ~50 karakter, scan kamera HP bawaan langsung masuk
+      payload = `${window.location.origin}/login?u=${encodeURIComponent(student.username)}&p=${encodeURIComponent(student.pin)}`;
     }
-    const payload = `${window.location.origin}/login?cbtAuth=${encodeURIComponent(encodedToken)}&u=${encodeURIComponent(quickPayload.u)}`;
 
     QRCode.toDataURL(payload, {
-      errorCorrectionLevel: 'L',
-      margin: 1,
-      width: 80,
+      errorCorrectionLevel: 'M', // 15% error recovery tahan noda/goresan tinta printer
+      margin: 2, // 2-module quiet zone agar scanner cepat mengunci 3 kotak sudut
+      width: 320, // Resolusi bitmap 320px tajam tanpa pixelation saat print
       color: {
-        dark: '#0f172a',
+        dark: '#000000', // 100% Black mutlak (tanpa dithering tinta warna)
         light: '#ffffff',
       },
     })
@@ -268,7 +274,7 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
     return () => {
       isMounted = false;
     };
-  }, [student.username, student.pin, student.slot_ruang, showQrCode]);
+  }, [student.username, student.pin, showQrCode, qrPayloadMode]);
 
   const is6Grid = gridMode === '6_per_page';
 
@@ -282,12 +288,12 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
       {/* ── 1. Header Kartu: Logo di Kiri, Judul di Tengah, QR Code di Pojok Kanan Atas ── */}
       <div className="flex items-center justify-between gap-1.5 pb-1 border-b border-slate-800 shrink-0">
         {/* Logo Sekolah / Tut Wuri */}
-        <div className="w-8 shrink-0 flex items-center justify-center">
+        <div className={cn('shrink-0 flex items-center justify-center', is6Grid ? 'w-[12mm] h-[12mm]' : 'w-[15mm] h-[15mm]')}>
           {showLogoSekolah && (
             <img
               src={sekolahData?.logo_url || tenantInfo?.logo_url || '/logo.png'}
               alt="Logo"
-              className={cn('object-contain', is6Grid ? 'w-7 h-7' : 'w-8 h-8')}
+              className={cn('object-contain', is6Grid ? 'w-[11mm] h-[11mm]' : 'w-[14mm] h-[14mm]')}
               onError={(e) => {
                 (e.target as HTMLElement).style.display = 'none';
               }}
@@ -296,58 +302,59 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
         </div>
 
         {/* Judul Kartu TKA Pusmendik Model */}
-        <div className="flex-1 text-center min-w-0 px-1">
+        <div className="flex-1 text-center min-w-0 px-1 flex flex-col justify-center">
           <h4
             className={cn(
               'font-black uppercase tracking-wider text-slate-900 leading-tight truncate',
-              is6Grid ? 'text-[8px]' : 'text-[9.5px]'
+              is6Grid ? 'text-[8.5px]' : 'text-[10px]'
             )}
           >
             KARTU LOGIN
           </h4>
           <p
             className={cn(
-              'font-extrabold uppercase text-slate-800 leading-tight truncate mt-0.2',
-              is6Grid ? 'text-[7px]' : 'text-[8.5px]'
+              'font-extrabold uppercase text-slate-800 leading-tight truncate mt-0.5',
+              is6Grid ? 'text-[7.5px]' : 'text-[9px]'
             )}
           >
             {customEventName}
           </p>
           <p
             className={cn(
-              'font-bold text-slate-500 uppercase leading-none truncate mt-0.2',
-              is6Grid ? 'text-[6.5px]' : 'text-[7.5px]'
+              'font-bold text-slate-500 uppercase leading-none truncate mt-0.5',
+              is6Grid ? 'text-[7px]' : 'text-[8px]'
             )}
           >
             {activeTpName}
           </p>
         </div>
 
-        {/* QR Code Quick Login di Pojok Kanan Atas */}
-        <div className="w-8 shrink-0 flex items-center justify-end">
-          {showQrCode && (
-            qrUrl ? (
-              <img
-                src={qrUrl}
-                alt="QR"
-                className={cn(
-                  'border border-slate-200 rounded p-0.5 bg-white shrink-0',
-                  is6Grid ? 'w-7 h-7' : 'w-8 h-8'
-                )}
-                title="Pindai kamera untuk masuk otomatis tanpa ketik password"
-              />
-            ) : (
-              <div
-                className={cn(
-                  'border border-slate-200 rounded bg-slate-50 flex items-center justify-center shrink-0',
-                  is6Grid ? 'w-7 h-7' : 'w-8 h-8'
-                )}
-              >
-                <QrCodeIcon size={12} className="text-slate-300 animate-pulse" />
-              </div>
-            )
-          )}
-        </div>
+        {/* QR Code Quick Login di Pojok Kanan Atas (Aktif jika qrPlacement === 'header') */}
+        {qrPlacement === 'header' && (
+          <div
+            className={cn(
+              'shrink-0 flex items-center justify-end',
+              qrSize === 'jumbo'
+                ? (is6Grid ? 'w-[19.5mm] h-[19.5mm]' : 'w-[23mm] h-[23mm]')
+                : (is6Grid ? 'w-[16.5mm] h-[16.5mm]' : 'w-[20mm] h-[20mm]')
+            )}
+          >
+            {showQrCode && (
+              qrUrl ? (
+                <img
+                  src={qrUrl}
+                  alt="QR Quick Login"
+                  className="w-full h-full object-contain border border-slate-300 rounded-xs p-0.5 bg-white shrink-0 shadow-2xs"
+                  title={`Ukuran QR: ${qrSize === 'jumbo' ? '19.5mm (Jumbo Inkjet)' : '16.5mm (Standar)'} • Pindai untuk login instan`}
+                />
+              ) : (
+                <div className="w-full h-full border border-slate-200 rounded-xs bg-slate-50 flex items-center justify-center shrink-0">
+                  <QrCodeIcon size={14} className="text-slate-300 animate-pulse" />
+                </div>
+              )
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── 2. Badan Atas: Biodata & Kredensial Key-Value Rata Titik Dua (Persis TKA) ── */}
@@ -405,7 +412,34 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
       <div className="flex gap-1.5 pt-1 flex-1 min-h-0 items-start">
         {/* Pasfoto Resmi Siswa 3x4 */}
         <div className={cn('shrink-0 flex flex-col items-center justify-start', is6Grid ? 'w-[21mm]' : 'w-[24mm]')}>
-          {showFoto && normIdentity.fotoUrl ? (
+          {qrPlacement === 'photo_box' ? (
+            showQrCode && qrUrl ? (
+              <div className="flex flex-col items-center justify-center p-0.5">
+                <img
+                  src={qrUrl}
+                  alt="QR Quick Login"
+                  className={cn(
+                    'object-contain border-2 border-slate-900 rounded p-0.5 bg-white shadow-2xs',
+                    is6Grid ? 'w-[20.5mm] h-[20.5mm]' : 'w-[23.5mm] h-[23.5mm]'
+                  )}
+                  title="Pindai QR ini untuk login instan tanpa ketik password"
+                />
+                <span className="text-[5.5px] font-black uppercase text-indigo-700 mt-1 tracking-wider text-center">
+                  SCAN CEPAT CBT
+                </span>
+              </div>
+            ) : (
+              <div
+                className={cn(
+                  'border border-dashed border-slate-300 rounded bg-slate-50 flex flex-col items-center justify-center text-slate-400 p-0.5 text-center',
+                  is6Grid ? 'w-[20mm] h-[28mm]' : 'w-[23mm] h-[31mm]'
+                )}
+              >
+                <QrCodeIcon size={is6Grid ? 16 : 20} className="text-slate-300 mb-0.5" />
+                <span className="text-[5.5px] font-bold text-slate-400">QR KOSONG</span>
+              </div>
+            )
+          ) : showFoto && normIdentity.fotoUrl ? (
             <img
               src={normIdentity.fotoUrl}
               alt={normIdentity.nama}
@@ -414,6 +448,22 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
                 is6Grid ? 'w-[20mm] h-[28mm]' : 'w-[23mm] h-[31mm]'
               )}
             />
+          ) : !showFoto && showQrCode && qrUrl ? (
+            // Jika foto dimatikan, otomatis isi kotak foto dengan QR Code Jumbo (20.5mm)
+            <div className="flex flex-col items-center justify-center p-0.5">
+              <img
+                src={qrUrl}
+                alt="QR Quick Login"
+                className={cn(
+                  'object-contain border-2 border-slate-900 rounded p-0.5 bg-white shadow-2xs',
+                  is6Grid ? 'w-[20.5mm] h-[20.5mm]' : 'w-[23.5mm] h-[23.5mm]'
+                )}
+                title="Pindai QR ini untuk login instan tanpa ketik password"
+              />
+              <span className="text-[5.5px] font-black uppercase text-indigo-700 mt-1 tracking-wider text-center">
+                SCAN CEPAT CBT
+              </span>
+            </div>
           ) : (
             <div
               className={cn(
@@ -504,12 +554,15 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
     return roomMappings.find((r) => r.kelas_id === activeKelasId) || roomMappings[0];
   }, [roomMappings, activeKelasId]);
 
-  // ── 3. Visual & Security Toggles ──
+  // ── 3. Visual & Security Toggles & Inkjet Optimization ──
   const [showPassword, setShowPassword] = useState<boolean>(true);
   const [showFoto, setShowFoto] = useState<boolean>(true);
   const [showQrCode, setShowQrCode] = useState<boolean>(true);
   const [showLogoSekolah, setShowLogoSekolah] = useState<boolean>(true);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+  const [qrSize, setQrSize] = useState<QrCodeSize>('normal');
+  const [qrPlacement, setQrPlacement] = useState<QrPlacement>('header');
+  const [qrPayloadMode, setQrPayloadMode] = useState<QrPayloadMode>('url_short');
 
   // ── 4. Editable Text ──
   const [customEventName, setCustomEventName] = useState<string>(
@@ -885,6 +938,104 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
             <span>QR {showQrCode ? 'ON' : 'OFF'}</span>
           </button>
 
+          {showQrCode && (
+            <>
+              {/* Group 1: Ukuran QR Code (Inkjet Friendly) */}
+              <div className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-0.5 rounded-lg text-[11px]">
+                <span className="text-[10px] font-bold text-slate-400 pl-1.5 pr-0.5">QR:</span>
+                <button
+                  type="button"
+                  onClick={() => setQrSize('normal')}
+                  className={cn(
+                    'px-2 py-0.5 rounded font-bold transition-all cursor-pointer',
+                    qrSize === 'normal'
+                      ? 'bg-blue-600 text-white shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-900'
+                  )}
+                  title="Ukuran Standar TKA (16.5 mm x 16.5 mm)"
+                >
+                  17mm
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQrSize('jumbo')}
+                  className={cn(
+                    'px-2 py-0.5 rounded font-bold transition-all cursor-pointer flex items-center gap-1',
+                    qrSize === 'jumbo'
+                      ? 'bg-blue-600 text-white shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-900'
+                  )}
+                  title="Ukuran Jumbo Inkjet (19.5 mm x 19.5 mm) - Sangat direkomendasikan untuk printer inkjet & kertas HVS"
+                >
+                  <Sparkles size={10} />
+                  <span>20mm (Inkjet)</span>
+                </button>
+              </div>
+
+              {/* Group 2: Posisi QR Code */}
+              <div className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-0.5 rounded-lg text-[11px]">
+                <span className="text-[10px] font-bold text-slate-400 pl-1.5 pr-0.5">Posisi:</span>
+                <button
+                  type="button"
+                  onClick={() => setQrPlacement('header')}
+                  className={cn(
+                    'px-2 py-0.5 rounded font-bold transition-all cursor-pointer',
+                    qrPlacement === 'header'
+                      ? 'bg-indigo-600 text-white shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-900'
+                  )}
+                  title="Pojok Kanan Atas Header (Standar Pusmendik TKA)"
+                >
+                  Header
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQrPlacement('photo_box')}
+                  className={cn(
+                    'px-2 py-0.5 rounded font-bold transition-all cursor-pointer',
+                    qrPlacement === 'photo_box'
+                      ? 'bg-indigo-600 text-white shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-900'
+                  )}
+                  title="Gantikan Kotak Pasfoto (Ukuran Jumbo 21mm x 21mm)"
+                >
+                  Ganti Foto
+                </button>
+              </div>
+
+              {/* Group 3: Mode Dot Inkjet */}
+              <div className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-0.5 rounded-lg text-[11px]">
+                <span className="text-[10px] font-bold text-slate-400 pl-1.5 pr-0.5">Dot:</span>
+                <button
+                  type="button"
+                  onClick={() => setQrPayloadMode('url_short')}
+                  className={cn(
+                    'px-2 py-0.5 rounded font-bold transition-all cursor-pointer',
+                    qrPayloadMode === 'url_short'
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-900'
+                  )}
+                  title="URL Singkat: Scan langsung pakai Kamera HP bawaan (Version 3 Matrix, ~50 karakter)"
+                >
+                  URL HP
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQrPayloadMode('credentials_only')}
+                  className={cn(
+                    'px-2 py-0.5 rounded font-bold transition-all cursor-pointer',
+                    qrPayloadMode === 'credentials_only'
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-900'
+                  )}
+                  title="Kredensial Saja: Dot Kotak Raksasa Anti-Luber Inkjet (Version 1 Matrix 21x21, ~20 karakter)"
+                >
+                  Dot Raksasa
+                </button>
+              </div>
+            </>
+          )}
+
           {/* Toggle Foto Siswa */}
           <button
             type="button"
@@ -895,7 +1046,7 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:border-emerald-700 dark:text-emerald-300'
                 : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700'
             )}
-            title="Tampilkan foto siswa di kartu"
+            title="Tampilkan foto siswa di kartu (Jika OFF, otomatis diisi QR Code)"
           >
             <User size={12} />
             <span>Foto {showFoto ? 'ON' : 'OFF'}</span>
@@ -944,6 +1095,9 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
                       showPassword={showPassword}
                       schedules={classSchedules}
                       gridMode={gridMode}
+                      qrSize={qrSize}
+                      qrPlacement={qrPlacement}
+                      qrPayloadMode={qrPayloadMode}
                     />
                   ))}
                 </div>

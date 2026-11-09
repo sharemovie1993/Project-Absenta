@@ -84,6 +84,19 @@ export function extractAuthFromQrText(rawText: string): ScannedQrPayload {
     // Plain text payload
   }
 
+  // 3. Handle compact delimited format for inkjet printers (e.g., username:password or username|pin)
+  if (trimmed.includes(':') || trimmed.includes('|')) {
+    const delimiter = trimmed.includes(':') ? ':' : '|';
+    const parts = trimmed.split(delimiter);
+    if (parts.length === 2 && parts[0].trim() && parts[1].trim()) {
+      return {
+        identifier: parts[0].trim(),
+        password: parts[1].trim(),
+        isQuickLogin: true,
+      };
+    }
+  }
+
   return { identifier: trimmed };
 }
 
