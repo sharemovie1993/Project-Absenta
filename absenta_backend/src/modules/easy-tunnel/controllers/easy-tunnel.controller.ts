@@ -455,8 +455,9 @@ export const easyTunnelController = {
           if (Array.isArray(list)) {
             for (const lic of list) {
               if (lic.license_key && !seenKeys.has(lic.license_key)) {
-                // Hanya sertakan lisensi produk easy-tunnel
-                if (lic.product_id && lic.product_id !== 'easy-tunnel') continue;
+                // Hanya sertakan lisensi produk easy-tunnel atau bundle paket lengkap yang mencakup VPN
+                const isVpnSupported = lic.product_id === 'easy-tunnel' || lic.is_bundled || (lic as any).include_vpn || (lic.package_title && lic.package_title.toUpperCase().includes('LENGKAP'));
+                if (lic.product_id && !isVpnSupported) continue;
 
                 seenKeys.add(lic.license_key);
                 combinedLicenses.push({

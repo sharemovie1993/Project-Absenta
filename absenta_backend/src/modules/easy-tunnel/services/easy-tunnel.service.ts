@@ -45,6 +45,38 @@ export class EasyTunnelService {
   static async syncTunnelPort(tunnel: any): Promise<any> {
     if (!tunnel.license_key) return tunnel;
 
+    // Auto-heal: Jika tunnel terhubung ke lisensi usang tapi tenant punya langganan Paket Lengkap aktif,
+    // otomatis alihkan license_key ke kunci lisensi Paket Lengkap tersebut
+    if (tunnel.slug) {
+      try {
+        const tenant = await prisma.tenant.findFirst({
+          where: { subdomain: { equals: tunnel.slug, mode: 'insensitive' } },
+          include: {
+            subscriptions: {
+              where: { status: 'ACTIVE' }
+            }
+          }
+        });
+        if (tenant && tenant.subscriptions) {
+          const bundleSub = tenant.subscriptions.find((s: any) =>
+            s.service_code === 'PAKET_LENGKAP' ||
+            (s.plan_id && s.plan_id.toUpperCase().includes('LENGKAP'))
+          );
+          const bundleKey = bundleSub?.pricing_meta && (bundleSub.pricing_meta as any).license_key;
+          if (bundleKey && bundleKey !== tunnel.license_key) {
+            console.log(`[EasyTunnel-Sync] Mengalihkan lisensi tunnel "${tunnel.slug}" ke lisensi Paket Lengkap: ${bundleKey}`);
+            await prisma.easyTunnel.update({
+              where: { id: tunnel.id },
+              data: { license_key: bundleKey }
+            });
+            tunnel.license_key = bundleKey;
+          }
+        }
+      } catch (autoHealErr: any) {
+        console.warn('[EasyTunnel-Sync] Auto-heal check failed:', autoHealErr.message);
+      }
+    }
+
     try {
       const remoteInfo = await validateLicenseKey(tunnel.license_key);
 

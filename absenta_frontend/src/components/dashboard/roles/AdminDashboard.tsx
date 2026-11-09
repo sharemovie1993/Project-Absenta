@@ -22,6 +22,17 @@ import {
   Database,
   Lock,
   Clock,
+  LayoutGrid,
+  Briefcase,
+  UserCheck,
+  FileText,
+  Archive,
+  Activity,
+  Network,
+  MoveVertical,
+  ClipboardList,
+  Cpu,
+  Home,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -56,6 +67,13 @@ const TahunPelajaranPage = lazy(() => import('@/pages/academic/TahunPelajaranPag
 const UserPage = lazy(() => import('@/pages/users/UsersPage'));
 const StrukturOrganisasiPage = lazy(() => import('@/pages/academic/struktur-organisasi/StrukturOrganisasiPage').then((m) => ({ default: m.StrukturOrganisasiPage || m.default })));
 const StaffActivityLogPage = lazy(() => import('@/pages/academic/StaffActivityLogPage').then((m) => ({ default: m.StaffActivityLogPage })));
+const AcademicDashboard = lazy(() => import('@/pages/academic/AcademicDashboard'));
+const SemesterPage = lazy(() => import('@/pages/academic/SemesterPage').then((m) => ({ default: m.SemesterPage })));
+const DocumentCenterPage = lazy(() => import('@/pages/documents/DocumentCenterPage'));
+const MemberDocsPage = lazy(() => import('@/pages/documents/MemberDocsPage'));
+const JenisKegiatanMasterPage = lazy(() => import('@/pages/academic/JenisKegiatanMasterPage'));
+const AcademicTransitionPage = lazy(() => import('@/pages/academic/transition/AcademicTransitionPage').then((m) => ({ default: m.AcademicTransitionPage })));
+const RoleManagementPage = lazy(() => import('@/pages/management/RoleManagementPage').then((m) => ({ default: m.RoleManagementPage })));
 const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'));
 const CetakBerkasPage = lazy(() => import('@/pages/academic/CetakBerkasPage').then((m) => ({ default: m.CetakBerkasPage })));
 const TenantSettingsView = lazy(() => import('@/components/tenant/TenantSettingsView').then((m) => ({ default: m.TenantSettingsView })));
@@ -83,13 +101,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
 
   const validTabs: AdminTabId[] = [
     'ringkasan',
+    'academic_dashboard',
     'audit',
-    'siswa',
-    'guru',
-    'kelas',
-    'jurusan',
-    'mapel',
     'tahun_pelajaran',
+    'semester',
+    'jurusan',
+    'kelas',
+    'mapel',
+    'guru',
+    'siswa',
+    'dokumen',
+    'berkas_ptk',
+    'jenis_kegiatan',
+    'struktur_organisasi',
+    'kenaikan_kelas',
+    'cetak_berkas',
     'users',
     'roles',
     'sekolah',
@@ -203,91 +229,147 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
         icon: LayoutDashboard,
       },
       {
+        id: 'academic_dashboard',
+        label: 'Dashboard Akademik',
+        shortLabel: 'Akademik',
+        category: 'kontrol',
+        icon: LayoutGrid,
+      },
+      {
         id: 'audit',
-        label: 'Audit',
-        shortLabel: 'Audit',
+        label: 'Log Aktivitas',
+        shortLabel: 'Log',
         category: 'kontrol',
         icon: History,
       },
 
-      // ⚙️ KATEGORI 2: DATA MASTER SEKOLAH
+      // ⚙️ KATEGORI 2: DATA MASTER AKADEMIK (PERSIS MODUL AKADEMIK)
       {
-        id: 'siswa',
-        label: 'Siswa',
-        shortLabel: 'Siswa',
+        id: 'tahun_pelajaran',
+        label: 'Tahun Ajaran',
+        shortLabel: 'Tahun Ajaran',
         category: 'master',
-        icon: Users,
+        icon: Calendar,
       },
       {
-        id: 'guru',
-        label: 'Guru',
-        shortLabel: 'Guru',
+        id: 'semester',
+        label: 'Semester',
+        shortLabel: 'Semester',
         category: 'master',
-        icon: GraduationCap,
-      },
-      {
-        id: 'kelas',
-        label: 'Rombel',
-        shortLabel: 'Rombel',
-        category: 'master',
-        icon: Layers,
+        icon: Clock,
       },
       {
         id: 'jurusan',
         label: 'Jurusan',
         shortLabel: 'Jurusan',
         category: 'master',
-        icon: Building2,
+        icon: Briefcase,
+      },
+      {
+        id: 'kelas',
+        label: 'Daftar Kelas',
+        shortLabel: 'Kelas',
+        category: 'master',
+        icon: Users,
       },
       {
         id: 'mapel',
-        label: 'Mapel',
+        label: 'Mata Pelajaran',
         shortLabel: 'Mapel',
         category: 'master',
         icon: BookOpen,
       },
       {
-        id: 'tahun_pelajaran',
-        label: 'Semester',
-        shortLabel: 'Semester',
+        id: 'guru',
+        label: 'Guru & Staf',
+        shortLabel: 'Guru',
         category: 'master',
-        icon: Calendar,
+        icon: UserCheck,
+      },
+      {
+        id: 'siswa',
+        label: 'Data Siswa',
+        shortLabel: 'Siswa',
+        category: 'master',
+        icon: GraduationCap,
+      },
+      {
+        id: 'dokumen',
+        label: 'Dokumen',
+        shortLabel: 'Dokumen',
+        category: 'master',
+        icon: FileText,
+      },
+      {
+        id: 'berkas_ptk',
+        label: 'Berkas PTK',
+        shortLabel: 'Berkas',
+        category: 'master',
+        icon: Archive,
+      },
+      {
+        id: 'jenis_kegiatan',
+        label: 'Jenis Kegiatan',
+        shortLabel: 'Kegiatan',
+        category: 'master',
+        icon: Activity,
+      },
+      {
+        id: 'struktur_organisasi',
+        label: 'Struktur Organisasi',
+        shortLabel: 'Struktur',
+        category: 'master',
+        icon: Network,
+      },
+      {
+        id: 'kenaikan_kelas',
+        label: 'Kenaikan Kelas',
+        shortLabel: 'Kenaikan',
+        category: 'master',
+        icon: MoveVertical,
+      },
+      {
+        id: 'cetak_berkas',
+        label: 'Cetak Berkas',
+        shortLabel: 'Cetak',
+        category: 'master',
+        icon: ClipboardList,
       },
 
       // 🔒 KATEGORI 3: HAK AKSES & AKUN
       {
         id: 'users',
-        label: 'Akun',
+        label: 'Akun Pengguna',
         shortLabel: 'Akun',
         category: 'keamanan',
         icon: Key,
       },
       {
         id: 'roles',
-        label: 'Struktur',
-        shortLabel: 'Struktur',
+        label: 'Peran & Akses',
+        shortLabel: 'Peran',
         category: 'keamanan',
-        icon: Award,
+        icon: ShieldCheck,
       },
 
       // 🛠️ KATEGORI 4: SISTEM & DOKUMEN
       {
         id: 'sekolah',
-        label: 'Profil',
+        label: 'Profil Sekolah & Kop',
         shortLabel: 'Profil',
         category: 'sistem',
         icon: Printer,
       },
       {
         id: 'aturan_absensi',
-        label: 'Aturan',
+        label: 'Aturan Absensi',
         shortLabel: 'Aturan',
         category: 'sistem',
         icon: Clock,
       },
       {
         id: 'pengaturan',
-        label: 'Pengaturan',
+        label: 'Pengaturan Sistem',
         shortLabel: 'Pengaturan',
         category: 'sistem',
         icon: Settings,
@@ -424,6 +506,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
           activeTab={activeTab}
           onSelectTab={(tabId) => handleTabSelect(tabId as AdminTabId)}
           categories={categories}
+          footerExtra={
+            <button
+              type="button"
+              onClick={() => {
+                setIsMobileSidebarOpen(false);
+                navigate('/dashboard');
+              }}
+              className="w-full py-2.5 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center gap-2 text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-[0.98]"
+            >
+              <Home size={15} className="stroke-[2.2]" />
+              <span>Beranda Portal</span>
+            </button>
+          }
         />
       </div>
 
@@ -464,6 +559,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
 
           {/* Navigasi Menu Vertikal Terkelompok (Separation of Concerns ala Kurikulum & Kaprog) */}
           <nav className="p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2.5">
+            {/* Pintasan Cepat: Beranda Portal */}
+            <div className="space-y-0.5">
+              <button
+                type="button"
+                onClick={() => navigate('/dashboard')}
+                className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50/60 dark:hover:bg-indigo-950/40 transition-all cursor-pointer text-left"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Home className="w-4 h-4 text-slate-500 shrink-0" />
+                  <span className="truncate">Beranda Portal</span>
+                </div>
+                <ChevronRight size={13} className="text-slate-400 opacity-60 shrink-0" />
+              </button>
+            </div>
+
+            <div className="border-t border-slate-100 dark:border-slate-800/80 mx-1.5" />
+
             {categories.map((cat, idx) => {
               const catTabs = navTabs.filter((t) => t.category === cat.id);
               if (catTabs.length === 0) return null;
@@ -553,6 +665,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
             </div>
           )}
 
+          {/* TAB: DASHBOARD AKADEMIK */}
+          {visitedTabs.has('academic_dashboard') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'academic_dashboard'}
+              className={cn('w-full min-w-0', activeTab === 'academic_dashboard' ? 'block' : 'hidden')}
+            >
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Dashboard Akademik...</span>
+                  </div>
+                }
+              >
+                <AcademicDashboard />
+              </Suspense>
+            </div>
+          )}
+
           {/* TAB 2: AUDIT & LOG AKTIVITAS */}
           {visitedTabs.has('audit') && (
             <div
@@ -573,47 +705,67 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
             </div>
           )}
 
-          {/* TAB 3: DATA MASTER SISWA */}
-          {visitedTabs.has('siswa') && (
+          {/* TAB: TAHUN AJARAN */}
+          {visitedTabs.has('tahun_pelajaran') && (
             <div
               role="tabpanel"
-              aria-hidden={activeTab !== 'siswa'}
-              className={cn('w-full min-w-0', activeTab === 'siswa' ? 'block' : 'hidden')}
+              aria-hidden={activeTab !== 'tahun_pelajaran'}
+              className={cn('w-full min-w-0', activeTab === 'tahun_pelajaran' ? 'block' : 'hidden')}
             >
               <Suspense
                 fallback={
                   <div className="py-20 flex flex-col items-center justify-center gap-3">
                     <Loader size="md" />
-                    <span className="text-xs text-slate-500 font-medium">Memuat Master Siswa...</span>
+                    <span className="text-xs text-slate-500 font-medium">Memuat Tahun Ajaran...</span>
                   </div>
                 }
               >
-                <SiswaPage />
+                <TahunPelajaranPage />
               </Suspense>
             </div>
           )}
 
-          {/* TAB 4: DATA GURU & TENDIK */}
-          {visitedTabs.has('guru') && (
+          {/* TAB: SEMESTER */}
+          {visitedTabs.has('semester') && (
             <div
               role="tabpanel"
-              aria-hidden={activeTab !== 'guru'}
-              className={cn('w-full min-w-0', activeTab === 'guru' ? 'block' : 'hidden')}
+              aria-hidden={activeTab !== 'semester'}
+              className={cn('w-full min-w-0', activeTab === 'semester' ? 'block' : 'hidden')}
             >
               <Suspense
                 fallback={
                   <div className="py-20 flex flex-col items-center justify-center gap-3">
                     <Loader size="md" />
-                    <span className="text-xs text-slate-500 font-medium">Memuat Master Guru & Tendik...</span>
+                    <span className="text-xs text-slate-500 font-medium">Memuat Data Semester...</span>
                   </div>
                 }
               >
-                <GuruPage />
+                <SemesterPage />
               </Suspense>
             </div>
           )}
 
-          {/* TAB 5: ROMBEL & KELAS */}
+          {/* TAB: PROGRAM KEAHLIAN / JURUSAN */}
+          {visitedTabs.has('jurusan') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'jurusan'}
+              className={cn('w-full min-w-0', activeTab === 'jurusan' ? 'block' : 'hidden')}
+            >
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Program Keahlian / Jurusan...</span>
+                  </div>
+                }
+              >
+                <JurusanPage />
+              </Suspense>
+            </div>
+          )}
+
+          {/* TAB: DAFTAR KELAS & ROMBEL */}
           {visitedTabs.has('kelas') && (
             <div
               role="tabpanel"
@@ -633,27 +785,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
             </div>
           )}
 
-          {/* TAB 6: PROGRAM KEAHLIAN / JURUSAN */}
-          {visitedTabs.has('jurusan') && (
-            <div
-              role="tabpanel"
-              aria-hidden={activeTab !== 'jurusan'}
-              className={cn('w-full min-w-0', activeTab === 'jurusan' ? 'block' : 'hidden')}
-            >
-              <Suspense
-                fallback={
-                  <div className="py-20 flex flex-col items-center justify-center gap-3">
-                    <Loader size="md" />
-                    <span className="text-xs text-slate-500 font-medium">Memuat Program Keahlian...</span>
-                  </div>
-                }
-              >
-                <JurusanPage />
-              </Suspense>
-            </div>
-          )}
-
-          {/* TAB 7: MATA PELAJARAN */}
+          {/* TAB: MATA PELAJARAN */}
           {visitedTabs.has('mapel') && (
             <div
               role="tabpanel"
@@ -673,27 +805,167 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
             </div>
           )}
 
-          {/* TAB 8: TAHUN PELAJARAN */}
-          {visitedTabs.has('tahun_pelajaran') && (
+          {/* TAB: GURU & STAF */}
+          {visitedTabs.has('guru') && (
             <div
               role="tabpanel"
-              aria-hidden={activeTab !== 'tahun_pelajaran'}
-              className={cn('w-full min-w-0', activeTab === 'tahun_pelajaran' ? 'block' : 'hidden')}
+              aria-hidden={activeTab !== 'guru'}
+              className={cn('w-full min-w-0', activeTab === 'guru' ? 'block' : 'hidden')}
             >
               <Suspense
                 fallback={
                   <div className="py-20 flex flex-col items-center justify-center gap-3">
                     <Loader size="md" />
-                    <span className="text-xs text-slate-500 font-medium">Memuat Tahun Pelajaran & Semester...</span>
+                    <span className="text-xs text-slate-500 font-medium">Memuat Master Guru & Staf...</span>
                   </div>
                 }
               >
-                <TahunPelajaranPage />
+                <GuruPage />
               </Suspense>
             </div>
           )}
 
-          {/* TAB 9: AKUN PENGGUNA */}
+          {/* TAB: DATA SISWA */}
+          {visitedTabs.has('siswa') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'siswa'}
+              className={cn('w-full min-w-0', activeTab === 'siswa' ? 'block' : 'hidden')}
+            >
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Master Data Siswa...</span>
+                  </div>
+                }
+              >
+                <SiswaPage />
+              </Suspense>
+            </div>
+          )}
+
+          {/* TAB: DOKUMEN */}
+          {visitedTabs.has('dokumen') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'dokumen'}
+              className={cn('w-full min-w-0', activeTab === 'dokumen' ? 'block' : 'hidden')}
+            >
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Dokumen Sekolah...</span>
+                  </div>
+                }
+              >
+                <DocumentCenterPage />
+              </Suspense>
+            </div>
+          )}
+
+          {/* TAB: BERKAS PTK */}
+          {visitedTabs.has('berkas_ptk') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'berkas_ptk'}
+              className={cn('w-full min-w-0', activeTab === 'berkas_ptk' ? 'block' : 'hidden')}
+            >
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Berkas PTK...</span>
+                  </div>
+                }
+              >
+                <MemberDocsPage />
+              </Suspense>
+            </div>
+          )}
+
+          {/* TAB: JENIS KEGIATAN */}
+          {visitedTabs.has('jenis_kegiatan') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'jenis_kegiatan'}
+              className={cn('w-full min-w-0', activeTab === 'jenis_kegiatan' ? 'block' : 'hidden')}
+            >
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Jenis Kegiatan...</span>
+                  </div>
+                }
+              >
+                <JenisKegiatanMasterPage />
+              </Suspense>
+            </div>
+          )}
+
+          {/* TAB: STRUKTUR ORGANISASI */}
+          {visitedTabs.has('struktur_organisasi') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'struktur_organisasi'}
+              className={cn('w-full min-w-0', activeTab === 'struktur_organisasi' ? 'block' : 'hidden')}
+            >
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Struktur Organisasi...</span>
+                  </div>
+                }
+              >
+                <StrukturOrganisasiPage />
+              </Suspense>
+            </div>
+          )}
+
+          {/* TAB: KENAIKAN KELAS */}
+          {visitedTabs.has('kenaikan_kelas') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'kenaikan_kelas'}
+              className={cn('w-full min-w-0', activeTab === 'kenaikan_kelas' ? 'block' : 'hidden')}
+            >
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Kenaikan Kelas & Transisi...</span>
+                  </div>
+                }
+              >
+                <AcademicTransitionPage />
+              </Suspense>
+            </div>
+          )}
+
+          {/* TAB: CETAK BERKAS */}
+          {visitedTabs.has('cetak_berkas') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'cetak_berkas'}
+              className={cn('w-full min-w-0', activeTab === 'cetak_berkas' ? 'block' : 'hidden')}
+            >
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Cetak Berkas Akademik...</span>
+                  </div>
+                }
+              >
+                <CetakBerkasPage />
+              </Suspense>
+            </div>
+          )}
+
+          {/* TAB: AKUN PENGGUNA */}
           {visitedTabs.has('users') && (
             <div
               role="tabpanel"
@@ -713,7 +985,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
             </div>
           )}
 
-          {/* TAB 10: STRUKTUR ORGANISASI */}
+          {/* TAB: PERAN & HAK AKSES */}
           {visitedTabs.has('roles') && (
             <div
               role="tabpanel"
@@ -724,16 +996,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
                 fallback={
                   <div className="py-20 flex flex-col items-center justify-center gap-3">
                     <Loader size="md" />
-                    <span className="text-xs text-slate-500 font-medium">Memuat Struktur Organisasi...</span>
+                    <span className="text-xs text-slate-500 font-medium">Memuat Manajemen Peran & Hak Akses...</span>
                   </div>
                 }
               >
-                <StrukturOrganisasiPage />
+                <RoleManagementPage />
               </Suspense>
             </div>
           )}
 
-          {/* TAB 11: IDENTITAS SEKOLAH & KOP SURAT */}
+          {/* TAB: IDENTITAS SEKOLAH & KOP SURAT */}
           {visitedTabs.has('sekolah') && (
             <div
               role="tabpanel"
@@ -753,7 +1025,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
             </div>
           )}
 
-          {/* TAB 12: ATURAN JAM & PRESENSI SEKOLAH (SUBTAB KHUSUS) */}
+          {/* TAB: ATURAN JAM & PRESENSI SEKOLAH */}
           {visitedTabs.has('aturan_absensi') && (
             <div
               role="tabpanel"
@@ -773,7 +1045,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
             </div>
           )}
 
-          {/* TAB 13: PENGATURAN SISTEM */}
+          {/* TAB: PENGATURAN SISTEM */}
           {visitedTabs.has('pengaturan') && (
             <div
               role="tabpanel"

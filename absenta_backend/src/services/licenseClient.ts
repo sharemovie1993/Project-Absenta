@@ -365,6 +365,8 @@ export interface TenantProductLicense {
   local_port: number | null;
   app_name: string | null;
   wireguard_ip: string | null;
+  is_bundled?: boolean;
+  include_vpn?: number | boolean;
 }
 
 export interface QueryTenantProductsParams {
