@@ -581,7 +581,7 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
         {/* Baris Tombol Aksi Langsung */}
         <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Tombol Aktivasi Sesi */}
+            {/* 1. Tombol Aktivasi / Lanjutkan Sesi (Jika DRAFT atau PAUSED) */}
             {(activeJadwal?.status === 'DRAFT' || activeJadwal?.status === 'PAUSED') && (
               <Button
                 type="button"
@@ -596,60 +596,35 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
               </Button>
             )}
 
-            {/* Tombol Kontrol Saat Aktif */}
+            {/* 1. Tombol Jeda (Jika ACTIVE) */}
             {activeJadwal?.status === 'ACTIVE' && (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => pauseMutation.mutate(activeJadwal.id)}
-                  disabled={pauseMutation.isPending}
-                  className="text-xs h-8 px-2.5 text-amber-700 border-amber-300 bg-amber-50 hover:bg-amber-100 font-bold"
-                >
-                  <Pause size={13} className="mr-1" />
-                  <span>Jeda</span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCompleteSession}
-                  disabled={completeMutation.isPending}
-                  className="text-xs h-8 px-2.5 text-slate-700 border-slate-300 hover:bg-slate-100 font-bold"
-                >
-                  <CheckCircle size={13} className="mr-1" />
-                  <span>Selesaikan</span>
-                </Button>
-              </>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => pauseMutation.mutate(activeJadwal.id)}
+                disabled={pauseMutation.isPending}
+                className="text-xs h-8 px-2.5 text-amber-700 border-amber-300 bg-amber-50 hover:bg-amber-100 font-bold"
+              >
+                <Pause size={13} className="mr-1" />
+                <span>Jeda</span>
+              </Button>
             )}
 
-            {/* Cetak Berita Acara */}
+            {/* 2. Buka Denah Ruang Spasial Kampus */}
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setIsBeritaAcaraOpen(true)}
-              className="text-xs h-8 px-3 font-semibold border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+              onClick={() => setIsDenahModalOpen(true)}
+              className="text-xs h-8 px-3 font-bold text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 bg-indigo-50/70 dark:bg-indigo-950/40 hover:bg-indigo-100/80 transition-all shadow-2xs"
+              title="Buka Denah Spasial Kampus & Sorot Ruang Ujian"
             >
-              <Printer size={13} className="mr-1.5 text-slate-500" />
-              <span>Berita Acara</span>
+              <MapPin size={13} className="mr-1.5 text-indigo-600 dark:text-indigo-400" />
+              <span>Denah Ruang</span>
             </Button>
 
-            {/* Cetak Lembar Daftar Hadir (Digital Signatures) */}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsDaftarHadirOpen(true)}
-              className="text-xs h-8 px-3 font-bold border-emerald-200 dark:border-emerald-800/80 text-emerald-700 dark:text-emerald-300 bg-emerald-50/70 dark:bg-emerald-950/40 hover:bg-emerald-100/80 transition-all shadow-2xs cursor-pointer"
-              title="Cetak Lembar Daftar Hadir Siswa dengan Tanda Tangan Digital"
-            >
-              <FileText size={13} className="mr-1.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Daftar Hadir</span>
-            </Button>
-
-            {/* Tanda Tangan Digital Pengawas Sesi */}
+            {/* 3. Tanda Tangan Digital Pengawas Sesi */}
             <Button
               type="button"
               variant="outline"
@@ -671,17 +646,29 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
               <span>{pengawasSignature ? 'Sudah TTD ✓' : 'TTD Pengawas'}</span>
             </Button>
 
-            {/* Buka Denah Ruang Spasial Kampus */}
+            {/* 4. Cetak Lembar Daftar Hadir (Digital Signatures) */}
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setIsDenahModalOpen(true)}
-              className="text-xs h-8 px-3 font-bold text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 bg-indigo-50/70 dark:bg-indigo-950/40 hover:bg-indigo-100/80 transition-all shadow-2xs"
-              title="Buka Denah Spasial Kampus & Sorot Ruang Ujian"
+              onClick={() => setIsDaftarHadirOpen(true)}
+              className="text-xs h-8 px-3 font-bold border-emerald-200 dark:border-emerald-800/80 text-emerald-700 dark:text-emerald-300 bg-emerald-50/70 dark:bg-emerald-950/40 hover:bg-emerald-100/80 transition-all shadow-2xs cursor-pointer"
+              title="Cetak Lembar Daftar Hadir Siswa dengan Tanda Tangan Digital"
             >
-              <MapPin size={13} className="mr-1.5 text-indigo-600 dark:text-indigo-400" />
-              <span>Denah Ruang</span>
+              <FileText size={13} className="mr-1.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Daftar Hadir</span>
+            </Button>
+
+            {/* 5. Cetak Berita Acara */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsBeritaAcaraOpen(true)}
+              className="text-xs h-8 px-3 font-semibold border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              <Printer size={13} className="mr-1.5 text-slate-500" />
+              <span>Berita Acara</span>
             </Button>
 
             {/* Transfer Rapor jika owner */}
@@ -695,6 +682,21 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
               >
                 <ArrowRightLeft size={13} className="mr-1.5" />
                 <span>Transfer Nilai</span>
+              </Button>
+            )}
+
+            {/* 6. Tombol Selesaikan Sesi (Jika ACTIVE) */}
+            {activeJadwal?.status === 'ACTIVE' && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCompleteSession}
+                disabled={completeMutation.isPending}
+                className="text-xs h-8 px-2.5 text-slate-700 border-slate-300 hover:bg-slate-100 font-bold"
+              >
+                <CheckCircle size={13} className="mr-1" />
+                <span>Selesaikan</span>
               </Button>
             )}
           </div>
