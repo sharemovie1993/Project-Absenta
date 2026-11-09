@@ -386,35 +386,34 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
         />
       )}
 
-      {activeTab !== 'fase_1_soal' && activeTab !== 'fase_2_ruang' && activeTab !== 'fase_3_jadwal' && (
+      {activeTab === 'fase_4_pengawas' && (
+        <CbtPengawasMatrixPanel
+          topFlightDeck={flightDeckNode}
+          jadwalList={jadwalList}
+          guruList={guruList}
+          isLoadingJadwal={isLoadingJadwal}
+          eventName={effectiveEventName}
+          targetTingkat={effectiveTargetTingkat}
+          activeEvent={activeEvent}
+          onProceedToNextPhase={() => setActiveTab('fase_5_monitor')}
+        />
+      )}
+
+      {activeTab === 'fase_5_monitor' && (
         <>
           <div className="rounded-2xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs border border-slate-200/90 dark:border-slate-800 overflow-hidden">
             {flightDeckNode}
           </div>
 
           <div className="transition-opacity duration-200">
-            {activeTab === 'fase_4_pengawas' && (
-              <CbtPengawasMatrixPanel
-                jadwalList={jadwalList}
-                guruList={guruList}
-                isLoadingJadwal={isLoadingJadwal}
-                eventName={effectiveEventName}
-                targetTingkat={effectiveTargetTingkat}
-                activeEvent={activeEvent}
-                onProceedToNextPhase={() => setActiveTab('fase_5_monitor')}
-              />
-            )}
-
-            {activeTab === 'fase_5_monitor' && (
-              <CbtPanitiaLiveCommandPanel
-                jadwalList={jadwalList}
-                isLoadingJadwal={isLoadingJadwal}
-                refetchJadwal={refetchJadwal}
-                guruList={guruList}
-                activeEvent={activeEvent}
-                onBackToPengawas={() => setActiveTab('fase_4_pengawas')}
-              />
-            )}
+            <CbtPanitiaLiveCommandPanel
+              jadwalList={jadwalList}
+              isLoadingJadwal={isLoadingJadwal}
+              refetchJadwal={refetchJadwal}
+              guruList={guruList}
+              activeEvent={activeEvent}
+              onBackToPengawas={() => setActiveTab('fase_4_pengawas')}
+            />
           </div>
         </>
       )}

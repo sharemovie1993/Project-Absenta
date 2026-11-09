@@ -48,6 +48,7 @@ interface PlottingDraftRow {
 }
 
 interface CbtPengawasMatrixPanelProps {
+  topFlightDeck?: React.ReactNode;
   jadwalList: CbtJadwalUjian[];
   guruList: any[];
   isLoadingJadwal: boolean;
@@ -58,6 +59,7 @@ interface CbtPengawasMatrixPanelProps {
 }
 
 export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
+  topFlightDeck,
   jadwalList,
   guruList,
   isLoadingJadwal,
@@ -615,226 +617,99 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
   const tzLabel = getTimezoneLabel(tz);
 
   return (
-    <div className="space-y-4">
-      {/* ── 1. RADAR BEBAN MENGAWAS GURU & STATUS OPERASIONAL (THEME-AWARE) ── */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-900 dark:text-white shadow-xs space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30">
-                <Users size={18} />
-              </span>
-              <h3 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">
-                Meja Kerja Ploting Pengawas &amp; Proktor Ujian
-              </h3>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-              Alokasikan pengawas ruang berurutan R.01–R.n per sesi ujian. Dilengkapi deteksi bentrok jam dan aturan silang SOP.
-            </p>
-          </div>
+    <div className="space-y-3 w-full max-w-full min-w-0">
 
-          {/* Action Buttons Top Bar */}
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-            {workloadStats.totalPlottedSessions > 0 && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={clearPlottingMutation.isPending}
-                onClick={handleConfirmClearAllPlotting}
-                className="text-xs h-9 px-3 font-bold text-rose-600 border-rose-200 bg-rose-50 hover:bg-rose-100 dark:text-rose-300 dark:border-rose-800 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 cursor-pointer"
-                title="Kosongkan seluruh penugasan pengawas"
-              >
-                <RotateCcw size={13} className={cn('mr-1.5', clearPlottingMutation.isPending && 'animate-spin')} />
-                <span>Kosongkan Ploting</span>
-              </Button>
-            )}
+      {/* ── 1 RUANG SEAMLESS FLIGHT DECK + TOOLBAR ── */}
+      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs divide-y divide-slate-100 dark:divide-slate-800/80 overflow-hidden">
+        {topFlightDeck}
 
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleOpenAutoPlotModal}
-              className="text-xs h-9 px-3.5 font-bold text-indigo-700 border-indigo-200 bg-indigo-50 hover:bg-indigo-100 dark:text-indigo-300 dark:border-indigo-700 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 cursor-pointer shadow-2xs"
-              title="Distribusi otomatis pengawas menggunakan SOP silang sekolah"
-            >
-              <Wand2 size={14} className="mr-1.5 text-indigo-600 dark:text-indigo-400" />
-              <span>Plot Otomatis Guru (SOP Silang)</span>
-            </Button>
-
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              disabled={dirtyPlottingItems.length === 0 || bulkPlottingMutation.isPending}
-              onClick={() => bulkPlottingMutation.mutate()}
-              className="text-xs h-9 px-4 font-black bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs cursor-pointer disabled:opacity-40"
-            >
-              <Save size={14} className="mr-1.5" />
-              <span>
-                {bulkPlottingMutation.isPending
-                  ? 'Menyimpan...'
-                  : `Simpan Ploting (${dirtyPlottingItems.length})`}
-              </span>
-            </Button>
-          </div>
-        </div>
-
-        {/* ── METRIK BEBAN PENGAWAS (THEME-AWARE HIGH-DENSITY STRIP) ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/80">
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-              Total Sesi Ujian
-            </span>
-            <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5 flex items-baseline gap-1.5">
-              <span>{workloadStats.totalSesi}</span>
-              <span className="text-xs text-slate-400 font-normal">Sesi</span>
-            </div>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1">
-              {workloadStats.totalPlottedSessions} Sesi sudah terplot
-            </div>
-          </div>
-
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block flex items-center gap-1">
-              <UserCheck size={12} />
-              <span>Guru Bertugas</span>
-            </span>
-            <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-baseline gap-1.5">
-              <span>{workloadStats.assignedCount}</span>
-              <span className="text-xs text-slate-400 font-normal">Guru</span>
-            </div>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1">
-              Aktif dalam jadwal pengawasan
-            </div>
-          </div>
-
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider block flex items-center gap-1">
-              <UserX size={12} />
-              <span>Beban 0 (Belum Bertugas)</span>
-            </span>
-            <div className="text-xl font-black text-amber-600 dark:text-amber-400 mt-0.5 flex items-baseline gap-1.5">
-              <span>{workloadStats.unassignedTeachers.length}</span>
-              <span className="text-xs text-slate-400 font-normal">Guru</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowUnassignedGuruModal(true)}
-              className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-bold underline cursor-pointer mt-1 block"
-            >
-              Lihat daftar guru siap tugas →
-            </button>
-          </div>
-
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block flex items-center gap-1">
-              {conflictJadwalIds.size > 0 ? (
-                <span className="text-rose-600 dark:text-rose-400 flex items-center gap-1 font-bold">
-                  <AlertTriangle size={12} />
-                  <span>Sesi Bentrok Jam!</span>
-                </span>
-              ) : (
-                <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                  <CheckCircle2 size={12} />
-                  <span>Jadwal Pengawas Aman</span>
-                </span>
-              )}
-            </span>
-            <div
-              className={cn(
-                'text-xl font-black mt-0.5 flex items-baseline gap-1.5',
-                conflictJadwalIds.size > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'
-              )}
-            >
-              <span>{conflictJadwalIds.size}</span>
-              <span className="text-xs text-slate-400 font-normal">Sesi</span>
-            </div>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1">
-              {conflictJadwalIds.size > 0 ? 'Guru sama di jam yang sama' : '0 Konflik penugasan'}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── 2. DRIVEN-CENTRIC NAVIGATION & FILTER TOOLBAR ── */}
-      <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-        {/* Baris 1: Filter Hari (Timeline Switcher) */}
-        {availableDays.length > 0 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1 shrink-0 flex items-center gap-1">
-              <Calendar size={13} className="text-indigo-500" />
-              <span>Hari:</span>
-            </span>
-            <button
-              type="button"
-              onClick={() => setSelectedDayKey('ALL')}
-              className={cn(
-                'px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0',
-                selectedDayKey === 'ALL'
-                  ? 'bg-indigo-600 text-white shadow-2xs font-black'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              )}
-            >
-              Semua Hari ({availableDays.length})
-            </button>
-            {availableDays.map((d) => (
-              <button
-                key={d.key}
-                type="button"
-                onClick={() => setSelectedDayKey(d.key)}
-                className={cn(
-                  'px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0',
-                  selectedDayKey === d.key
-                    ? 'bg-indigo-600 text-white shadow-2xs font-black'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                )}
-              >
-                {d.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Baris 2: Sub-filter Sesi & Tingkat & Search */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2 flex-wrap flex-1">
-            {/* Status Filter */}
-            <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0">
-              {[
-                { key: 'ALL', label: `Semua (${workloadStats.totalSesi})` },
-                { key: 'UNPLOTTED', label: `⚠️ Belum Diplot (${workloadStats.totalSesi - workloadStats.totalPlottedSessions})` },
-                { key: 'PLOTTED', label: `✅ Sudah Diplot (${workloadStats.totalPlottedSessions})` },
-                ...(conflictJadwalIds.size > 0
-                  ? [{ key: 'CONFLICT', label: `🚨 Bentrok (${conflictJadwalIds.size})` }]
-                  : []),
-              ].map((st) => (
+        {/* ── Single-Row Unified Master Filter & Action Toolbar (1 Ruang, Zero Waste Vertical) ── */}
+        <div className="p-2 sm:p-2.5 bg-slate-50/50 dark:bg-slate-800/30 flex flex-col xl:flex-row xl:items-center justify-between gap-2">
+          {/* Left: Filters & Search */}
+          <div className="flex items-center gap-1.5 flex-wrap flex-1">
+            {/* Hari filter jika > 1 hari */}
+            {availableDays.length > 1 && (
+              <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg shrink-0">
                 <button
-                  key={st.key}
                   type="button"
-                  onClick={() => setStatusFilter(st.key as any)}
+                  onClick={() => setSelectedDayKey('ALL')}
                   className={cn(
-                    'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0',
-                    statusFilter === st.key
-                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                    'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer',
+                    selectedDayKey === 'ALL'
+                      ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs font-black'
                       : 'text-slate-500 hover:text-slate-900'
                   )}
                 >
-                  {st.label}
+                  Semua Hari
                 </button>
-              ))}
+                {availableDays.map((d) => (
+                  <button
+                    key={d.key}
+                    type="button"
+                    onClick={() => setSelectedDayKey(d.key)}
+                    className={cn(
+                      'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer',
+                      selectedDayKey === d.key
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs font-black'
+                        : 'text-slate-500 hover:text-slate-900'
+                    )}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Status Filter Tabs (Semua, Belum, Terplot) - Ringkas 1 Kata */}
+            <div className="flex items-center gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg shrink-0">
+              <button
+                type="button"
+                onClick={() => setStatusFilter('ALL')}
+                className={cn(
+                  'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer',
+                  statusFilter === 'ALL'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs font-black'
+                    : 'text-slate-500 hover:text-slate-900'
+                )}
+              >
+                Semua ({effectiveJadwalList.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('UNPLOTTED')}
+                className={cn(
+                  'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer',
+                  statusFilter === 'UNPLOTTED'
+                    ? 'bg-white dark:bg-slate-900 text-rose-600 shadow-2xs font-black'
+                    : 'text-slate-500 hover:text-slate-900'
+                )}
+              >
+                Belum ({effectiveJadwalList.length - workloadStats.totalPlottedSessions})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('PLOTTED')}
+                className={cn(
+                  'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer',
+                  statusFilter === 'PLOTTED'
+                    ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-2xs font-black'
+                    : 'text-slate-500 hover:text-slate-900'
+                )}
+              >
+                Terplot ({workloadStats.totalPlottedSessions})
+              </button>
             </div>
 
-            {/* Tingkat Filter Dinamis Sesuai Target Event */}
-            <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0">
-              <span className="text-[10px] font-bold text-slate-400 uppercase px-1.5">TK:</span>
+            {/* Tingkat Filter Dinamis */}
+            <div className="flex items-center gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg shrink-0">
+              <span className="text-[10px] font-bold text-slate-400 uppercase px-1">TK:</span>
               {tingkatFilterOptions.map((tk) => (
                 <button
                   key={String(tk.val)}
                   type="button"
                   onClick={() => setTingkatFilter(tk.val as any)}
                   className={cn(
-                    'px-2 py-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
+                    'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer',
                     tingkatFilter === tk.val
                       ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs font-black'
                       : 'text-slate-500 hover:text-slate-900'
@@ -845,33 +720,122 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
               ))}
             </div>
 
-            {/* Sesi Jam Filter */}
+            {/* Sesi Jam Filter jika > 1 */}
             {availableSessions.length > 1 && (
               <select
                 value={selectedSessionKey}
                 onChange={(e) => setSelectedSessionKey(e.target.value)}
-                className="text-xs font-semibold py-1 px-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                className="text-xs font-semibold py-1 px-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 shadow-2xs"
               >
-                <option value="ALL">Semua Sesi Jam</option>
+                <option value="ALL">Semua Sesi</option>
                 {availableSessions.map((s) => (
-                  <option key={s.key} value={s.key}>
-                    {s.label}
-                  </option>
+                  <option key={s.key} value={s.key}>{s.label}</option>
                 ))}
               </select>
             )}
+
+            {/* Search Input */}
+            <div className="relative w-full sm:w-40 lg:w-44 shrink-0">
+              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari ruang/guru..."
+                aria-label="Cari ruang atau nama guru"
+                className="w-full pl-7 pr-2 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 shadow-2xs"
+              />
+            </div>
           </div>
 
-          {/* Quick Search */}
-          <div className="relative w-full md:w-64">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari R.01, X PHT 2, nama guru..."
-              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 font-medium"
-            />
+          {/* Right: Actions & Quick Status */}
+          <div className="flex items-center gap-1.5 flex-wrap xl:flex-nowrap justify-between xl:justify-end shrink-0">
+            {/* Quick Badge Guru Siap */}
+            <button
+              type="button"
+              onClick={() => setShowUnassignedGuruModal(true)}
+              className="text-[11px] font-bold px-2 py-1 rounded-lg bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/80 dark:border-amber-800/60 hover:bg-amber-100 cursor-pointer flex items-center gap-1 shrink-0"
+              title="Lihat daftar guru yang belum mendapatkan penugasan pengawas"
+            >
+              <Users size={11} />
+              <span>{workloadStats.unassignedTeachers.length} Siap</span>
+            </button>
+
+            {/* Bentrok indicator */}
+            {conflictJadwalIds.size > 0 ? (
+              <span className="text-[11px] font-bold px-2 py-1 rounded-lg bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200/80 dark:border-rose-800/60 flex items-center gap-1 shrink-0">
+                <AlertTriangle size={11} />
+                <span>{conflictJadwalIds.size} Bentrok</span>
+              </span>
+            ) : (
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800/60 flex items-center gap-1 shrink-0">
+                <CheckCircle2 size={11} />
+                <span>Aman</span>
+              </span>
+            )}
+
+            {/* Kosongkan Button */}
+            {workloadStats.totalPlottedSessions > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={clearPlottingMutation.isPending}
+                onClick={handleConfirmClearAllPlotting}
+                className="text-xs h-7 px-2 font-bold text-rose-600 border-rose-200 bg-white hover:bg-rose-50 cursor-pointer shadow-2xs shrink-0"
+                title="Kosongkan seluruh penugasan pengawas"
+              >
+                <RotateCcw size={11} className={cn('mr-1', clearPlottingMutation.isPending && 'animate-spin')} />
+                <span>Kosongkan</span>
+              </Button>
+            )}
+
+            {/* Plot Otomatis Button */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleOpenAutoPlotModal}
+              className="text-xs h-7 px-2.5 font-bold text-indigo-700 border-indigo-200 bg-white hover:bg-indigo-50 dark:text-indigo-300 dark:border-indigo-700 dark:bg-slate-900 cursor-pointer shadow-2xs shrink-0"
+              title="Distribusi otomatis pengawas menggunakan SOP silang sekolah"
+            >
+              <Wand2 size={11} className="mr-1 text-indigo-600 dark:text-indigo-400" />
+              <span>Plot Otomatis</span>
+            </Button>
+
+            {/* Simpan Button */}
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              disabled={dirtyPlottingItems.length === 0 || bulkPlottingMutation.isPending}
+              onClick={() => bulkPlottingMutation.mutate()}
+              className={cn(
+                'text-xs h-7 px-2.5 font-bold text-white shadow-2xs cursor-pointer flex items-center gap-1 shrink-0',
+                dirtyPlottingItems.length > 0
+                  ? 'bg-indigo-600 hover:bg-indigo-700'
+                  : 'bg-slate-300 cursor-not-allowed text-slate-500'
+              )}
+            >
+              <Save size={11} />
+              <span>
+                {bulkPlottingMutation.isPending ? 'Menyimpan...' : `Simpan (${dirtyPlottingItems.length})`}
+              </span>
+            </Button>
+
+            {/* Lanjut Button */}
+            {onProceedToNextPhase && (
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={onProceedToNextPhase}
+                className="text-xs h-7 px-2.5 font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs cursor-pointer flex items-center gap-1 shrink-0"
+              >
+                <span>Lanjut</span>
+                <ArrowRight size={11} />
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -900,14 +864,14 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-800 text-[11px] font-black text-slate-500 uppercase tracking-wider">
-                  <th className="py-3 px-3 text-center w-12">No</th>
-                  <th className="py-3 px-3">Ruang Ujian</th>
-                  <th className="py-3 px-3">Tingkat &amp; Rombel</th>
-                  <th className="py-3 px-3">Mata Pelajaran &amp; Sesi</th>
-                  <th className="py-3 px-3">Waktu Pelaksanaan</th>
-                  <th className="py-3 px-3 min-w-[280px]">Pengawas Ruang 1 (Wajib)</th>
-                  <th className="py-3 px-3 min-w-[240px]">Proktor / Pengawas 2</th>
-                  <th className="py-3 px-3 text-center w-20">Aksi</th>
+                  <th className="py-2.5 px-3 text-center w-10">No</th>
+                  <th className="py-2.5 px-3">Ruang</th>
+                  <th className="py-2.5 px-3">Rombel</th>
+                  <th className="py-2.5 px-3">Mapel &amp; Sesi</th>
+                  <th className="py-2.5 px-3">Waktu</th>
+                  <th className="py-2.5 px-3 min-w-[260px]">Pengawas 1</th>
+                  <th className="py-2.5 px-3 min-w-[220px]">Pengawas 2 / Proktor</th>
+                  <th className="py-2.5 px-3 text-center w-16">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 font-medium">
