@@ -1,3 +1,5 @@
+import { getTimezone } from './attendance/time';
+
 /**
  * Standardized Date Utilities adhering to Absenta Hardening Pillar 29
  * (Date & Timezone Guard, Indonesian Locale, Zero NaN dates)
@@ -16,6 +18,7 @@ export const formatDate = (
       day: '2-digit',
       month: 'short',
       year: 'numeric',
+      timeZone: getTimezone(),
       ...options
     };
     
@@ -23,6 +26,12 @@ export const formatDate = (
   } catch {
     return '-';
   }
+};
+
+export const formatLocalDateIndo = (
+  date: string | number | Date | null | undefined
+): string => {
+  return formatDate(date, { weekday: 'short' });
 };
 
 export const formatDateTime = (
@@ -40,6 +49,7 @@ export const formatDateTime = (
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      timeZone: getTimezone(),
       ...options
     };
     
@@ -56,7 +66,11 @@ export const formatTime = (
   try {
     const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
     if (isNaN(d.getTime())) return '-';
-    return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: getTimezone(),
+    });
   } catch {
     return '-';
   }

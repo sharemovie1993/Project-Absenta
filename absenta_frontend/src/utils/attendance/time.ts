@@ -166,7 +166,9 @@ export const formatLocalDateIndo = (dateInput?: string | Date | null): string =>
   try {
     const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
     if (isNaN(d.getTime())) return '-';
+    const tz = getTimezone();
     return d.toLocaleDateString('id-ID', {
+      timeZone: tz,
       weekday: 'short',
       day: '2-digit',
       month: 'short',
