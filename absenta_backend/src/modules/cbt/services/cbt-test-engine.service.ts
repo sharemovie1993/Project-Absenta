@@ -1018,11 +1018,69 @@ export class CbtTestEngineService {
     }
 
     const totalSoal = soalList.length || 1;
-    const nilaiAkhir = Math.round((jumlahBenar / totalSoal) * 100 * 100) / 100;
+    const rawScore = Math.round((jumlahBenar / totalSoal) * 100 * 100) / 100;
+
+    // ── LOGIKA ENGINE KEPUTUSAN NILAI AKHIR (REMEDIAL VS REGULER) ──
+    const sec = (peserta.JadwalUjian.setting_keamanan as any) || {};
+    const isRemedial = Boolean(sec.is_remedial);
+    let nilaiAkhir = rawScore;
+    let remedialAudit: Record<string, any> | null = null;
+
+    if (isRemedial) {
+      const policy: 'max_kktp' | 'highest' | 'murni' = sec.remedial_policy || 'max_kktp';
+      const kktp = Number(sec.kktp_threshold) || 75;
+      const originalJadwalId = sec.parent_jadwal_id || sec.original_jadwal_id;
+
+      let initialScore: number | null = null;
+      if (originalJadwalId) {
+        const originalPeserta = await prisma.cbtPesertaUjian.findFirst({
+          where: { tenant_id: tenantId, jadwal_ujian_id: originalJadwalId, siswa_id: siswaId },
+          select: { nilai_akhir: true },
+        });
+        if (originalPeserta && originalPeserta.nilai_akhir !== null) {
+          initialScore = Number(originalPeserta.nilai_akhir);
+        }
+      }
+
+      if (policy === 'max_kktp') {
+        // Standar Regulasi: Jika nilai remedial melampaui KKTP, skor dipatok maksimal = batas KKTP
+        if (rawScore >= kktp) {
+          nilaiAkhir = kktp;
+        } else if (initialScore !== null) {
+          nilaiAkhir = Math.max(initialScore, rawScore);
+        } else {
+          nilaiAkhir = rawScore;
+        }
+      } else if (policy === 'highest') {
+        // Nilai Tertinggi: Mengambil skor terbaik antara sesi awal vs remedial
+        if (initialScore !== null) {
+          nilaiAkhir = Math.max(initialScore, rawScore);
+        } else {
+          nilaiAkhir = rawScore;
+        }
+      } else if (policy === 'murni') {
+        // Nilai Murni: Nilai remedial dicatat apa adanya
+        nilaiAkhir = rawScore;
+      }
+
+      remedialAudit = {
+        is_remedial: true,
+        policy,
+        kktp_threshold: kktp,
+        raw_remedial_score: rawScore,
+        initial_score: initialScore,
+        final_decided_score: nilaiAkhir,
+      };
+    }
 
     // Pertahankan status DISQUALIFIED jika siswa didiskualifikasi oleh engine anti-curang
     const isDisqualified = peserta.status === 'DISQUALIFIED';
     const finalStatus = isDisqualified ? 'DISQUALIFIED' : 'FINISHED';
+
+    const existingMeta = (peserta.metadata_perangkat as Record<string, any>) || {};
+    const updatedMeta = remedialAudit
+      ? { ...existingMeta, remedial_audit: remedialAudit }
+      : existingMeta;
 
     // Simpan hasil ke PostgreSQL (hanya 1 write query per siswa!)
     await prisma.cbtPesertaUjian.update({
@@ -1036,6 +1094,7 @@ export class CbtTestEngineService {
         jumlah_benar: jumlahBenar,
         jumlah_salah: jumlahSalah,
         nilai_akhir: isDisqualified ? new Prisma.Decimal(0) : new Prisma.Decimal(nilaiAkhir),
+        metadata_perangkat: updatedMeta,
         ...(payload.log_pelanggaran ? { log_pelanggaran_json: payload.log_pelanggaran } : {}),
       },
     });
@@ -1067,6 +1126,8 @@ export class CbtTestEngineService {
       ...(showInstant
         ? {
             nilai_akhir: nilaiAkhir,
+            nilai_murni: rawScore,
+            remedial_audit: remedialAudit,
             jumlah_benar: jumlahBenar,
             jumlah_salah: jumlahSalah,
           }
