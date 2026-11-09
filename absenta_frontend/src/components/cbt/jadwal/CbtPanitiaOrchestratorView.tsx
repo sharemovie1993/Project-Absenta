@@ -235,63 +235,43 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
 
   return (
     <div className="space-y-4 w-full max-w-full min-w-0">
-      {/* ── Header Meja Kerja Panitia CBT (Theme-Aware: Clean White in Light Mode, Sleek Slate in Dark Mode) ── */}
-      <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200/90 dark:border-slate-800">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-600/30 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-500/30 shrink-0">
-              <Layers size={17} />
+      {/* ── Header Meja Kerja Panitia CBT (Streamlined Single-Bar Flight Deck) ── */}
+      <div className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs border border-slate-200/90 dark:border-slate-800 space-y-2.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          {/* Left: Event Scope Badge (Integrated) */}
+          <div className="flex items-center gap-2 min-w-0 flex-wrap">
+            <span className="p-1.5 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-600/30 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-500/30 shrink-0">
+              <Layers size={16} />
             </span>
-            <h2 className="text-sm sm:text-base font-bold tracking-tight text-slate-900 dark:text-white">
-              Meja Kerja Panitia CBT
+            <h2 className="text-sm font-black tracking-tight text-slate-900 dark:text-white shrink-0">
+              Meja Kerja Panitia
             </h2>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto text-xs flex-wrap">
             {isOrkestrasi && effectiveEventName && (
-              <span className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-700/60 text-indigo-700 dark:text-indigo-200 text-xs font-semibold flex items-center gap-1.5">
-                <Lock size={12} className="text-indigo-500 dark:text-indigo-400" />
-                <span>{effectiveEventName}</span>
-                <span className="ml-1 px-1.5 py-0.2 rounded bg-indigo-200/70 dark:bg-indigo-800 text-[10px] font-black text-indigo-900 dark:text-indigo-100">
-                  Tingkat {effectiveTargetTingkat.join(', ')} ({scopedKelasList.length} Rombel)
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-700/60 text-indigo-700 dark:text-indigo-200 text-xs font-bold">
+                <Lock size={11} className="text-indigo-500 shrink-0" />
+                <span className="truncate max-w-[200px] sm:max-w-xs">{effectiveEventName}</span>
+                <span className="px-1.5 py-0.2 rounded-md bg-indigo-200/80 dark:bg-indigo-800 text-[10px] font-black text-indigo-900 dark:text-indigo-100">
+                  Tingkat {effectiveTargetTingkat.join(', ')} • {scopedKelasList.length} Rombel
                 </span>
               </span>
             )}
-            {onOpenSettings && (
-              <button
-                type="button"
-                onClick={onOpenSettings}
-                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
-                title="Kelola Hirarki & Konfigurasi Event CBT"
-              >
-                <SlidersHorizontal size={13} className="text-indigo-600 dark:text-indigo-400" />
-                <span>Pengaturan Event</span>
-              </button>
-            )}
-            <span className="bg-slate-100 dark:bg-white/5 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 text-xs font-semibold">
-              {activeTp?.nama || 'TP Aktif'} • {activeSemester?.nama || 'Semester'}
-            </span>
           </div>
-        </div>
 
-        {/* Mode Operasional Controller Strip */}
-        <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2.5 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-              Mode:
-            </span>
-            <div className="flex items-center gap-1 p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80">
+          {/* Right: Mode Switcher & Quick Settings */}
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto text-xs">
+            <div className="flex items-center gap-0.5 p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80">
               <button
                 type="button"
                 onClick={() => updateMode('ORKESTRASI')}
                 className={cn(
                   'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
                   isOrkestrasi
-                    ? 'bg-indigo-600 text-white shadow-xs'
+                    ? 'bg-indigo-600 text-white shadow-2xs'
                     : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 )}
+                title="Mode Ujian Massal Panitia Terpusat"
               >
-                <Sparkles size={12} />
+                <Sparkles size={11} />
                 <span>Ujian Massal</span>
               </button>
               <button
@@ -300,19 +280,36 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
                 className={cn(
                   'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
                   isMandiri
-                    ? 'bg-emerald-600 text-white shadow-xs'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
                     : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 )}
+                title="Mode KBM Mandiri Guru"
               >
-                <UserCheck size={12} />
+                <UserCheck size={11} />
                 <span>KBM Mandiri</span>
               </button>
             </div>
+
+            {onOpenSettings && (
+              <button
+                type="button"
+                onClick={onOpenSettings}
+                className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors"
+                title="Buka Hirarki & Pengaturan Event CBT"
+              >
+                <SlidersHorizontal size={13} className="text-indigo-600 dark:text-indigo-400" />
+                <span className="hidden sm:inline">Pengaturan</span>
+              </button>
+            )}
+
+            <span className="hidden md:inline-block text-[11px] font-semibold text-slate-500 dark:text-slate-400 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800">
+              {activeTp?.nama || 'TP Aktif'}
+            </span>
           </div>
         </div>
 
-        {/* ── Pipeline Stepper 5 Fase (Theme-Aware: Active Indigo in Light, White in Dark) ── */}
-        <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-800/80">
+        {/* ── Stepper 5 Fase (Compact Streamlined Ribbon) ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800/80">
           {phases.map((phase) => {
             const Icon = phase.icon;
             const isActive = activeTab === phase.id;
@@ -323,44 +320,42 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
                 type="button"
                 onClick={() => setActiveTab(phase.id)}
                 className={cn(
-                  'p-2.5 rounded-xl text-left transition-all duration-200 cursor-pointer flex items-center justify-between gap-2 border',
+                  'px-2.5 py-1.5 rounded-xl text-left transition-all duration-150 cursor-pointer flex items-center justify-between gap-1.5 border',
                   isActive
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs dark:bg-white dark:text-slate-900 dark:border-white'
-                    : 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/60 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/60'
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs dark:bg-white dark:text-slate-900 dark:border-white'
+                    : 'bg-slate-50/70 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/60'
                 )}
               >
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-1.5 min-w-0">
                   <span
                     className={cn(
-                      'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs',
+                      'w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-xs',
                       isActive
                         ? 'bg-white/20 text-white dark:bg-indigo-600 dark:text-white'
                         : 'bg-slate-200/80 dark:bg-white/10 text-slate-600 dark:text-indigo-300'
                     )}
                   >
-                    <Icon size={14} />
+                    <Icon size={12} />
                   </span>
-                  <div className="min-w-0">
-                    <p
-                      className={cn(
-                        'text-xs font-bold truncate leading-tight',
-                        isActive ? 'text-white dark:text-slate-900' : 'text-slate-900 dark:text-white'
-                      )}
-                    >
-                      {phase.title}
-                    </p>
-                    <p
-                      className={cn(
-                        'text-[10px] font-semibold truncate',
-                        isActive
-                          ? 'text-indigo-100 dark:text-indigo-600'
-                          : 'text-slate-500 dark:text-slate-400'
-                      )}
-                    >
-                      {phase.stat}
-                    </p>
-                  </div>
+                  <p
+                    className={cn(
+                      'text-xs font-bold truncate leading-tight',
+                      isActive ? 'text-white dark:text-slate-900' : 'text-slate-900 dark:text-white'
+                    )}
+                  >
+                    {phase.title}
+                  </p>
                 </div>
+                <span
+                  className={cn(
+                    'text-[10px] font-bold px-1.5 py-0.2 rounded-md shrink-0',
+                    isActive
+                      ? 'bg-white/25 text-white dark:bg-indigo-100 dark:text-indigo-900'
+                      : 'bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                  )}
+                >
+                  {phase.stat}
+                </span>
               </button>
             );
           })}
@@ -370,33 +365,37 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
       {/* ── Render Panel Fase Aktif ── */}
       <div className="transition-opacity duration-200">
         {activeTab === 'fase_1_soal' && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-end px-1">
-              <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 shrink-0">
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                <CheckCircle2 size={14} className="text-indigo-600" />
+                <span>Audit &amp; Kesiapan Bank Soal</span>
+              </span>
+              <div className="flex items-center gap-0.5 p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 shrink-0">
                 <button
                   type="button"
                   onClick={() => setSubModeFase1('readiness')}
                   className={cn(
-                    'px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                    'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
                     subModeFase1 === 'readiness'
                       ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-2xs'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   )}
                 >
-                  <CheckCircle2 size={13} />
-                  <span>Kesiapan Soal</span>
+                  <CheckCircle2 size={12} />
+                  <span>Audit Kesiapan</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setSubModeFase1('manage')}
                   className={cn(
-                    'px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                    'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
                     subModeFase1 === 'manage'
                       ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-2xs'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   )}
                 >
-                  <BookOpen size={13} />
+                  <BookOpen size={12} />
                   <span>Kelola Butir Soal</span>
                 </button>
               </div>
@@ -441,25 +440,25 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
         )}
 
         {activeTab === 'fase_3_jadwal' && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-3 px-1 flex-wrap">
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <SlidersHorizontal size={13} className="text-violet-600" />
-                <span>Pilih Tampilan Fase 3:</span>
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between gap-2 px-1 flex-wrap">
+              <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles size={14} className="text-indigo-600" />
+                <span>Rangkaian Hari &amp; Sesi Ujian</span>
               </span>
-              <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 shrink-0">
+              <div className="flex items-center gap-0.5 p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 shrink-0">
                 <button
                   type="button"
                   onClick={() => setSubModeFase3('matrix')}
                   className={cn(
                     'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
                     subModeFase3 === 'matrix'
-                      ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-2xs'
+                      ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-2xs'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   )}
                 >
-                  <Sparkles size={13} />
-                  <span>Matriks Hari &amp; Sesi (Generator Massal)</span>
+                  <Sparkles size={12} />
+                  <span>Matriks Generator</span>
                 </button>
                 <button
                   type="button"
@@ -467,12 +466,12 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
                   className={cn(
                     'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
                     subModeFase3 === 'table'
-                      ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-2xs'
+                      ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-2xs'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   )}
                 >
-                  <TableProperties size={13} />
-                  <span>Daftar Sesi Ujian (Tabel &amp; Card)</span>
+                  <TableProperties size={12} />
+                  <span>Daftar Sesi Terbit</span>
                 </button>
               </div>
             </div>

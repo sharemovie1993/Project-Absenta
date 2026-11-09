@@ -471,142 +471,146 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
         }
       />
 
-      {/* ── 2. Kontrol Navigasi Utama: Tab 3 Jawaban Panitia + Filter ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl overflow-x-auto no-scrollbar">
-          <button
-            type="button"
-            onClick={() => setActiveTab('BELUM')}
-            className={cn(
-              'px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
-              activeTab === 'BELUM'
-                ? 'bg-rose-600 text-white shadow-2xs'
-                : 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40'
-            )}
-          >
-            <AlertCircle size={13} />
-            <span>Guru Belum Siap ({activeStats.guruBelumSiap})</span>
-          </button>
+      {/* ── 2. Unified Master Filter & Action Toolbar (Compact 1-Container) ── */}
+      <div className="p-2 sm:p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+          {/* Left: Tab 3 Jawaban Panitia */}
+          <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-xl overflow-x-auto no-scrollbar shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveTab('BELUM')}
+              className={cn(
+                'px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
+                activeTab === 'BELUM'
+                  ? 'bg-rose-600 text-white shadow-2xs'
+                  : 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40'
+              )}
+            >
+              <AlertCircle size={12} />
+              <span>Guru Belum Siap ({activeStats.guruBelumSiap})</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('SUDAH')}
-            className={cn(
-              'px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
-              activeTab === 'SUDAH'
-                ? 'bg-emerald-600 text-white shadow-2xs'
-                : 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
-            )}
-          >
-            <CheckCircle2 size={13} />
-            <span>Guru Sudah Siap ({activeStats.guruSudahSiap})</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('SUDAH')}
+              className={cn(
+                'px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
+                activeTab === 'SUDAH'
+                  ? 'bg-emerald-600 text-white shadow-2xs'
+                  : 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+              )}
+            >
+              <CheckCircle2 size={12} />
+              <span>Guru Sudah Siap ({activeStats.guruSudahSiap})</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('PAKET_MAPEL')}
-            className={cn(
-              'px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
-              activeTab === 'PAKET_MAPEL'
-                ? 'bg-indigo-600 text-white shadow-2xs'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
-            )}
-          >
-            <BookOpen size={13} />
-            <span>Paket Mapel ({activeStats.totalTeoriPaket})</span>
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('PAKET_MAPEL')}
+              className={cn(
+                'px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
+                activeTab === 'PAKET_MAPEL'
+                  ? 'bg-indigo-600 text-white shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+              )}
+            >
+              <BookOpen size={12} />
+              <span>Paket Mapel ({activeStats.totalTeoriPaket})</span>
+            </button>
+          </div>
 
-        {/* Action Header */}
-        <div className="flex items-center gap-2 shrink-0">
-          {activeTab === 'BELUM' && (
+          {/* Right: Action Buttons */}
+          <div className="flex items-center gap-1.5 shrink-0 self-end lg:self-auto flex-wrap">
+            {activeTab === 'BELUM' && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCopyUncreatedTeachers}
+                className="text-xs h-8 px-2.5 font-bold border-rose-300 text-rose-700 bg-white hover:bg-rose-50 cursor-pointer"
+                title="Salin daftar guru yang belum ke WhatsApp"
+              >
+                <Copy size={12} className="mr-1" />
+                <span>Salin WA</span>
+              </Button>
+            )}
+
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={handleCopyUncreatedTeachers}
-              className="text-xs h-9 px-3 font-bold border-rose-300 text-rose-700 bg-white hover:bg-rose-50 cursor-pointer"
-              title="Salin daftar guru yang belum ke WhatsApp"
+              onClick={() => {
+                setSelectedBankToEdit(null);
+                setDefaultMapelForCreate(undefined);
+                setDefaultGuruForCreate(undefined);
+                setDefaultTingkatForCreate(undefined);
+                setIsFormModalOpen(true);
+              }}
+              className="text-xs h-8 px-2.5 font-bold border-indigo-300 text-indigo-700 bg-white hover:bg-indigo-50 cursor-pointer"
             >
-              <Copy size={13} className="mr-1" />
-              <span>Salin Daftar Belum</span>
+              <Plus size={13} className="mr-1" />
+              <span>+ Buat Bank</span>
             </Button>
-          )}
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setSelectedBankToEdit(null);
-              setDefaultMapelForCreate(undefined);
-              setDefaultGuruForCreate(undefined);
-              setDefaultTingkatForCreate(undefined);
-              setIsFormModalOpen(true);
-            }}
-            className="text-xs h-9 px-3 font-bold border-indigo-300 text-indigo-700 bg-white hover:bg-indigo-50 cursor-pointer"
-          >
-            <Plus size={14} className="mr-1" />
-            <span>Buat Bank Soal</span>
-          </Button>
-
-          {onProceedToNextPhase && (
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={onProceedToNextPhase}
-              className="text-xs h-9 px-4 font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs cursor-pointer"
-            >
-              <span>Lanjut ke Fase 2</span>
-              <ArrowRight size={14} className="ml-1" />
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* ── 3. Toolbar Pencarian & Filter Tingkat ── */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="relative w-full sm:w-64">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari nama guru atau mata pelajaran..."
-            aria-label="Cari bank soal atau guru"
-            className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
-          />
-        </div>
-
-        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-          <button
-            type="button"
-            onClick={() => setFilterTingkat('ALL')}
-            className={cn(
-              'px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer whitespace-nowrap',
-              filterTingkat === 'ALL'
-                ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900'
-                : 'bg-white dark:bg-slate-900 text-slate-600 border-slate-200 dark:border-slate-800'
+            {onProceedToNextPhase && (
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={onProceedToNextPhase}
+                className="text-xs h-8 px-3 font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs cursor-pointer"
+              >
+                <span>Fase 2: Ruang</span>
+                <ArrowRight size={13} className="ml-1" />
+              </Button>
             )}
-          >
-            Semua Tingkat
-          </button>
-          {(targetTingkat && targetTingkat.length > 0 ? tingkatList.filter((t) => targetTingkat.includes(t)) : tingkatList).map((t) => (
+          </div>
+        </div>
+
+        {/* Search Bar & Tingkat Filter Chips (Compact Sub-row) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1.5 border-t border-slate-100 dark:border-slate-800/80">
+          <div className="relative w-full sm:w-64">
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari nama guru atau mata pelajaran..."
+              aria-label="Cari bank soal atau guru"
+              className="w-full pl-8 pr-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-0.5">Tingkat:</span>
             <button
-              key={t}
               type="button"
-              onClick={() => setFilterTingkat(t)}
+              onClick={() => setFilterTingkat('ALL')}
               className={cn(
-                'px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer whitespace-nowrap',
-                filterTingkat === t
-                  ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900'
-                  : 'bg-white dark:bg-slate-900 text-slate-600 border-slate-200 dark:border-slate-800'
+                'px-2 py-0.5 text-[11px] font-bold rounded-md border transition-all cursor-pointer whitespace-nowrap',
+                filterTingkat === 'ALL'
+                  ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900 shadow-2xs'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
               )}
             >
-              Tingkat {formatTingkatRomawi(t)}
+              Semua
             </button>
-          ))}
+            {(targetTingkat && targetTingkat.length > 0 ? tingkatList.filter((t) => targetTingkat.includes(t)) : tingkatList).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setFilterTingkat(t)}
+                className={cn(
+                  'px-2 py-0.5 text-[11px] font-bold rounded-md border transition-all cursor-pointer whitespace-nowrap',
+                  filterTingkat === t
+                    ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900 shadow-2xs'
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                )}
+              >
+                Tingkat {formatTingkatRomawi(t)}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

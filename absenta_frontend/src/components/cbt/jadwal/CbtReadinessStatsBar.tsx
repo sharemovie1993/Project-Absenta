@@ -15,69 +15,73 @@ export const CbtReadinessStatsBar: React.FC<CbtReadinessStatsBarProps> = ({
   totalTeoriPaket,
   paketSudahSiap,
   paketBelumSiap,
-  scopeLabel,
 }) => {
   const percentPaket = totalTeoriPaket > 0 ? Math.round((paketSudahSiap / totalTeoriPaket) * 100) : 0;
   const percentBelum = 100 - percentPaket;
 
   return (
     <div
-      className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full max-w-full min-w-0"
+      className="p-2 sm:p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full max-w-full min-w-0"
       role="region"
       aria-label="Statistik Kesiapan Bank Soal"
     >
-      {/* 1. Total Kebutuhan Paket */}
-      <div className="p-3.5 sm:p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
-        <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Total Paket Soal {scopeLabel ? `(${scopeLabel})` : ''}
-          </span>
-          <div className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">
-            {totalTeoriPaket}
+      {/* 3 Metrik Inti Horizontal Compact */}
+      <div className="flex items-center gap-3 sm:gap-5 flex-wrap text-xs">
+        {/* Total Paket */}
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-100 dark:border-indigo-900/40 shrink-0">
+            <BookOpen size={13} />
+          </div>
+          <div>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block leading-tight">Total Paket</span>
+            <span className="text-sm font-black text-slate-900 dark:text-white leading-tight">{totalTeoriPaket} Paket</span>
           </div>
         </div>
-        <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-100 dark:border-indigo-900/40">
-          <BookOpen size={17} />
+
+        <div className="h-5 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block" />
+
+        {/* Sudah Siap */}
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-100 dark:border-emerald-900/40 shrink-0">
+            <CheckCircle2 size={13} />
+          </div>
+          <div>
+            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block leading-tight">Sudah Siap</span>
+            <div className="flex items-baseline gap-1.5 leading-tight">
+              <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{paketSudahSiap}</span>
+              <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300">({percentPaket}%)</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="h-5 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block" />
+
+        {/* Belum Siap */}
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center border border-rose-100 dark:border-rose-900/40 shrink-0">
+            <AlertCircle size={13} />
+          </div>
+          <div>
+            <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider block leading-tight">Belum Siap</span>
+            <div className="flex items-baseline gap-1.5 leading-tight">
+              <span className="text-sm font-black text-rose-600 dark:text-rose-400">{paketBelumSiap}</span>
+              <span className="text-[10px] font-bold text-rose-700 dark:text-rose-300">({percentBelum}%)</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* 2. Sudah Siap */}
-      <div className="p-3.5 sm:p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
-        <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-            Sudah Siap
-          </span>
-          <div className="flex items-baseline gap-2 mt-0.5">
-            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
-              {paketSudahSiap}
-            </span>
-            <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200/80 dark:border-emerald-800/60">
-              {percentPaket}%
-            </span>
-          </div>
+      {/* Progress Bar Visual Mini */}
+      <div className="w-full sm:w-44 flex flex-col gap-1 shrink-0">
+        <div className="flex items-center justify-between text-[10px] font-bold text-slate-500">
+          <span>Kesiapan Soal</span>
+          <span className={percentPaket === 100 ? 'text-emerald-600' : 'text-indigo-600'}>{percentPaket}%</span>
         </div>
-        <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-900/40">
-          <CheckCircle2 size={17} />
-        </div>
-      </div>
-
-      {/* 3. Belum Siap */}
-      <div className="p-3.5 sm:p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
-        <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">
-            Belum Siap
-          </span>
-          <div className="flex items-baseline gap-2 mt-0.5">
-            <span className="text-2xl font-black text-rose-600 dark:text-rose-400">
-              {paketBelumSiap}
-            </span>
-            <span className="text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-full border border-rose-200/80 dark:border-rose-800/60">
-              {percentBelum}%
-            </span>
-          </div>
-        </div>
-        <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 border border-rose-100 dark:border-rose-900/40">
-          <AlertCircle size={17} />
+        <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all duration-300"
+            style={{ width: `${percentPaket}%` }}
+          />
         </div>
       </div>
     </div>
