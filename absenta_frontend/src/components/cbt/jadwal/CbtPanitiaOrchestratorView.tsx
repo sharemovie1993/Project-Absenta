@@ -192,42 +192,36 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
   const phases: Array<{
     id: CbtPanitiaPhase;
     title: string;
-    stat: string;
     isDone: boolean;
     icon: React.ElementType;
   }> = [
     {
       id: 'fase_1_soal',
       title: '1. Kesiapan Soal',
-      stat: `${stats.bankSiap} Bank Siap`,
       isDone: stats.isSoalReady,
       icon: BookOpen,
     },
     {
       id: 'fase_2_ruang',
       title: '2. Ruang Ujian',
-      stat: `${stats.ruangMapped} Rombel`,
       isDone: stats.isRuangReady,
       icon: DoorOpen,
     },
     {
       id: 'fase_3_jadwal',
       title: '3. Hari & Sesi',
-      stat: `${stats.totalJadwal} Sesi`,
       isDone: stats.isJadwalReady,
       icon: Calendar,
     },
     {
       id: 'fase_4_pengawas',
       title: '4. Pengawas',
-      stat: `${stats.pengawasAssigned} Terplot`,
       isDone: stats.isPengawasReady,
       icon: Users,
     },
     {
       id: 'fase_5_monitor',
       title: '5. Monitoring',
-      stat: 'Hari H CBT',
       isDone: false,
       icon: Activity,
     },
@@ -308,7 +302,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
           </div>
         </div>
 
-        {/* ── Stepper 5 Fase (Compact Streamlined Ribbon) ── */}
+        {/* ── Stepper 5 Fase (Fokus Murni Judul Step) ── */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800/80">
           {phases.map((phase) => {
             const Icon = phase.icon;
@@ -320,41 +314,29 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
                 type="button"
                 onClick={() => setActiveTab(phase.id)}
                 className={cn(
-                  'px-2.5 py-1.5 rounded-xl text-left transition-all duration-150 cursor-pointer flex items-center justify-between gap-1.5 border',
+                  'px-3 py-2 rounded-xl text-center transition-all duration-150 cursor-pointer flex items-center justify-center gap-2 border',
                   isActive
                     ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs dark:bg-white dark:text-slate-900 dark:border-white'
                     : 'bg-slate-50/70 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/60'
                 )}
               >
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span
-                    className={cn(
-                      'w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-xs',
-                      isActive
-                        ? 'bg-white/20 text-white dark:bg-indigo-600 dark:text-white'
-                        : 'bg-slate-200/80 dark:bg-white/10 text-slate-600 dark:text-indigo-300'
-                    )}
-                  >
-                    <Icon size={12} />
-                  </span>
-                  <p
-                    className={cn(
-                      'text-xs font-bold truncate leading-tight',
-                      isActive ? 'text-white dark:text-slate-900' : 'text-slate-900 dark:text-white'
-                    )}
-                  >
-                    {phase.title}
-                  </p>
-                </div>
                 <span
                   className={cn(
-                    'text-[10px] font-bold px-1.5 py-0.2 rounded-md shrink-0',
+                    'w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-xs',
                     isActive
-                      ? 'bg-white/25 text-white dark:bg-indigo-100 dark:text-indigo-900'
-                      : 'bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                      ? 'bg-white/20 text-white dark:bg-indigo-600 dark:text-white'
+                      : 'bg-slate-200/80 dark:bg-white/10 text-slate-600 dark:text-indigo-300'
                   )}
                 >
-                  {phase.stat}
+                  <Icon size={13} />
+                </span>
+                <span
+                  className={cn(
+                    'text-xs font-bold whitespace-nowrap leading-tight',
+                    isActive ? 'text-white dark:text-slate-900' : 'text-slate-900 dark:text-white'
+                  )}
+                >
+                  {phase.title}
                 </span>
               </button>
             );
