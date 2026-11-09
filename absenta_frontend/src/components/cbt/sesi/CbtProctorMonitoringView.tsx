@@ -569,10 +569,21 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
         if (row.status !== 'FINISHED') {
           return <span className="text-slate-400 text-xs italic">-</span>;
         }
+        const isRemedial = (activeJadwal?.setting_keamanan as any)?.is_remedial;
+        const remedialAudit = (row.metadata_perangkat as any)?.remedial_audit;
+        const rawScore = remedialAudit?.raw_remedial_score;
+
         return (
-          <span className="font-black text-xs px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
-            {Number(row.nilai_akhir).toFixed(1)}
-          </span>
+          <div className="inline-flex flex-col items-center">
+            <span className="font-black text-xs px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+              {Number(row.nilai_akhir).toFixed(1)}
+            </span>
+            {isRemedial && rawScore !== undefined && Number(rawScore) !== Number(row.nilai_akhir) && (
+              <span className="text-[9px] text-slate-400 dark:text-slate-500 font-semibold mt-0.5 whitespace-nowrap">
+                (Murni: {Number(rawScore).toFixed(1)})
+              </span>
+            )}
+          </div>
         );
       },
     },
@@ -1051,6 +1062,12 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
                     {p.status === 'FINISHED' && p.nilai_akhir != null && (
                       <span className="font-black text-indigo-600 dark:text-indigo-400">
                         • {Number(p.nilai_akhir).toFixed(1)}
+                        {(p.metadata_perangkat as any)?.remedial_audit?.raw_remedial_score !== undefined &&
+                          Number((p.metadata_perangkat as any).remedial_audit.raw_remedial_score) !== Number(p.nilai_akhir) && (
+                            <span className="text-[10px] text-slate-400 font-normal ml-1">
+                              (Murni: {Number((p.metadata_perangkat as any).remedial_audit.raw_remedial_score).toFixed(1)})
+                            </span>
+                          )}
                       </span>
                     )}
                   </div>
