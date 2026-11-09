@@ -602,18 +602,22 @@ export class CbtTestEngineService {
     const totalSoal = soalList.length || 1;
     const nilaiAkhir = Math.round((jumlahBenar / totalSoal) * 100 * 100) / 100;
 
+    // Pertahankan status DISQUALIFIED jika siswa didiskualifikasi oleh engine anti-curang
+    const isDisqualified = peserta.status === 'DISQUALIFIED';
+    const finalStatus = isDisqualified ? 'DISQUALIFIED' : 'FINISHED';
+
     // Simpan hasil ke PostgreSQL (hanya 1 write query per siswa!)
     await prisma.cbtPesertaUjian.update({
       where: { id: peserta.id },
       data: {
-        status: 'FINISHED',
+        status: finalStatus,
         status_sinkron: 'SYNCED',
         waktu_selesai: new Date(),
         sisa_waktu_detik: 0,
         jawaban_json: payload.jawaban_final,
         jumlah_benar: jumlahBenar,
         jumlah_salah: jumlahSalah,
-        nilai_akhir: new Prisma.Decimal(nilaiAkhir),
+        nilai_akhir: isDisqualified ? new Prisma.Decimal(0) : new Prisma.Decimal(nilaiAkhir),
         ...(payload.log_pelanggaran ? { log_pelanggaran_json: payload.log_pelanggaran } : {}),
       },
     });

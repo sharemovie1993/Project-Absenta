@@ -221,7 +221,12 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   const totalPeserta = pesertaList.length;
   const inProgress = pesertaList.filter((p) => p.status === 'IN_PROGRESS').length;
   const finished = pesertaList.filter((p) => p.status === 'FINISHED').length;
-  const disqualified = pesertaList.filter((p) => p.status === 'DISQUALIFIED').length;
+  // Deteksi Seluruh Peserta yang Terindikasi Curang (Baik berstatus DISQUALIFIED maupun memiliki riwayat log pelanggaran)
+  const cheatingCount = pesertaList.filter(
+    (p) =>
+      p.status === 'DISQUALIFIED' ||
+      (Array.isArray(p.log_pelanggaran_json) && p.log_pelanggaran_json.length > 0)
+  ).length;
 
   const isOwnerOrAdmin =
     !guruId ||
@@ -230,7 +235,16 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
 
   const filteredItems = useMemo(() => {
     return pesertaList.filter((p) => {
-      if (statusFilter !== 'ALL' && p.status !== statusFilter) return false;
+      if (statusFilter !== 'ALL') {
+        if (statusFilter === 'DISQUALIFIED') {
+          const isCheating =
+            p.status === 'DISQUALIFIED' ||
+            (Array.isArray(p.log_pelanggaran_json) && p.log_pelanggaran_json.length > 0);
+          if (!isCheating) return false;
+        } else if (p.status !== statusFilter) {
+          return false;
+        }
+      }
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         const matchName = p.Siswa?.nama_lengkap?.toLowerCase().includes(q);
@@ -638,14 +652,14 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
         <div
           className={cn(
             'p-2 rounded-xl border shadow-2xs',
-            disqualified > 0
+            cheatingCount > 0
               ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 text-rose-700'
               : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 text-slate-500'
           )}
         >
           <div className="text-[10px] font-bold uppercase tracking-tight">Curang</div>
-          <div className={cn('text-sm sm:text-base font-black', disqualified > 0 ? 'text-rose-600' : '')}>
-            {disqualified}
+          <div className={cn('text-sm sm:text-base font-black', cheatingCount > 0 ? 'text-rose-600' : '')}>
+            {cheatingCount}
           </div>
         </div>
       </div>
@@ -657,10 +671,10 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
             { key: 'ALL', label: `Semua (${totalPeserta})` },
             { key: 'IN_PROGRESS', label: `Ujian (${inProgress})` },
             { key: 'FINISHED', label: `Selesai (${finished})` },
-            { key: 'DISQUALIFIED', label: `Curang (${disqualified})` },
-          ].map((st) => (
+            { key: 'DISQUALIFIED', label: `Curang (${cheatingCount})` },
+          ].map((st, idx) => (
             <button
-              key={st.key}
+              key={st.key || `st-${idx}`}
               type="button"
               onClick={() => setStatusFilter(st.key)}
               className={cn(
