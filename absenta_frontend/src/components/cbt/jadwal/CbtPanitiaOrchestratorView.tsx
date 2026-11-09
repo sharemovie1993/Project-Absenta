@@ -332,12 +332,16 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
                     <div
                       className={cn(
                         'w-8.5 h-8.5 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-200 shadow-2xs',
-                        isActive
-                          ? 'bg-indigo-600 text-white ring-4 ring-indigo-100 dark:ring-indigo-950/80 scale-105'
-                          : rd.isDone
-                            ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/20'
-                            : isPassed
-                              ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                        rd.isDone
+                          ? isActive
+                            ? 'bg-emerald-600 text-white ring-4 ring-emerald-200 dark:ring-emerald-900/60 scale-105 shadow-emerald-500/20'
+                            : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/20'
+                          : rd.hasWarning
+                            ? isActive
+                              ? 'bg-rose-600 text-white ring-4 ring-rose-200 dark:ring-rose-900/60 scale-105 shadow-rose-500/20'
+                              : 'bg-rose-600 text-white hover:bg-rose-700 shadow-rose-500/20'
+                            : isActive
+                              ? 'bg-indigo-600 text-white ring-4 ring-indigo-100 dark:ring-indigo-950/80 scale-105'
                               : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 group-hover:bg-slate-300 dark:group-hover:bg-slate-600'
                       )}
                     >
@@ -367,12 +371,14 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
                     <span
                       className={cn(
                         'text-[11px] sm:text-xs transition-colors whitespace-nowrap text-center font-bold',
-                        isActive
-                          ? 'text-indigo-600 dark:text-indigo-400 font-black'
-                          : rd.isDone
-                            ? 'text-emerald-700 dark:text-emerald-400'
-                            : isPassed
-                              ? 'font-bold text-slate-700 dark:text-slate-300'
+                        rd.isDone
+                          ? isActive
+                            ? 'text-emerald-700 dark:text-emerald-300 font-black'
+                            : 'text-emerald-700 dark:text-emerald-400 font-bold'
+                          : rd.hasWarning
+                            ? 'text-rose-600 dark:text-rose-400 font-black'
+                            : isActive
+                              ? 'text-indigo-600 dark:text-indigo-400 font-black'
                               : 'font-semibold text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300'
                       )}
                     >
