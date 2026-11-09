@@ -37,34 +37,53 @@ export class CbtJadwalService {
       andConditions.push({ bank_soal_id: query.bank_soal_id });
     }
     if (query.guru_id) {
+      // Dapatkan penugasan kelas dan mapel guru (GuruMapel) agar jadwal paralel MGMP yang menargetkan kelas binaan dapat dipantau
+      const assignedGuruMapel = await prisma.guruMapel.findMany({
+        where: { tenant_id: tenantId, guru_id: query.guru_id },
+        select: { mapel_id: true, kelas_id: true },
+      });
+
+      const orConditions: Prisma.CbtJadwalUjianWhereInput[] = [
+        { BankSoal: { guru_id: query.guru_id } },
+        {
+          setting_keamanan: {
+            path: ['created_by_guru_id'],
+            equals: query.guru_id,
+          },
+        },
+        {
+          setting_keamanan: {
+            path: ['pengawas_1_id'],
+            equals: query.guru_id,
+          },
+        },
+        {
+          setting_keamanan: {
+            path: ['pengawas_2_id'],
+            equals: query.guru_id,
+          },
+        },
+        {
+          setting_keamanan: {
+            path: ['proktor_id'],
+            equals: query.guru_id,
+          },
+        },
+      ];
+
+      if (assignedGuruMapel.length > 0) {
+        for (const gm of assignedGuruMapel) {
+          if (gm.mapel_id && gm.kelas_id) {
+            orConditions.push({
+              BankSoal: { mapel_id: gm.mapel_id },
+              target_kelas_ids: { array_contains: [gm.kelas_id] },
+            });
+          }
+        }
+      }
+
       andConditions.push({
-        OR: [
-          { BankSoal: { guru_id: query.guru_id } },
-          {
-            setting_keamanan: {
-              path: ['created_by_guru_id'],
-              equals: query.guru_id,
-            },
-          },
-          {
-            setting_keamanan: {
-              path: ['pengawas_1_id'],
-              equals: query.guru_id,
-            },
-          },
-          {
-            setting_keamanan: {
-              path: ['pengawas_2_id'],
-              equals: query.guru_id,
-            },
-          },
-          {
-            setting_keamanan: {
-              path: ['proktor_id'],
-              equals: query.guru_id,
-            },
-          },
-        ],
+        OR: orConditions,
       });
     }
     if (query.search) {

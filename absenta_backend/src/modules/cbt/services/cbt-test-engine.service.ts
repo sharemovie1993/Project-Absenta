@@ -33,7 +33,7 @@ export class CbtTestEngineService {
       return [];
     }
 
-    const [jadwalList, activeDenahs, allClasses] = await Promise.all([
+    const [jadwalList, activeDenahs, allClasses, classGuruMapels] = await Promise.all([
       prisma.cbtJadwalUjian.findMany({
         where: {
           tenant_id: tenantId,
@@ -54,12 +54,14 @@ export class CbtTestEngineService {
           Semester: { select: { nama_semester: true } },
           BankSoal: {
             select: {
+              id: true,
+              mapel_id: true,
               kode_bank: true,
               judul: true,
               tingkat: true,
               jumlah_soal: true,
-              Mapel: { select: { nama_mapel: true, kode_mapel: true } },
-              Guru: { select: { nama_guru: true } },
+              Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
+              Guru: { select: { id: true, nama_guru: true } },
             },
           },
           Peserta: {
@@ -86,6 +88,13 @@ export class CbtTestEngineService {
       prisma.kelas.findMany({
         where: { tenant_id: tenantId, is_active: true },
         include: { Jurusan: true },
+      }),
+      // SSOT Resolusi Guru Pengampu Kelas Siswa untuk Bank Soal Bersama MGMP
+      prisma.guruMapel.findMany({
+        where: { tenant_id: tenantId, kelas_id: siswa.kelas_id },
+        include: {
+          Guru: { select: { id: true, nama_guru: true } },
+        },
       }),
     ]);
 
@@ -135,6 +144,14 @@ export class CbtTestEngineService {
       const roomName = `Ruang ${numStr}`;
       standardClassRoomMap.set(k.id, { slot_ruang: slotCode, nama_ruang: roomName });
     });
+
+    // 3. Pemetaan Guru Mapel Kelas Siswa (Smart Class Teacher Resolution untuk Bank Soal MGMP)
+    const classTeacherByMapelId = new Map<string, string>();
+    for (const gm of classGuruMapels) {
+      if (gm.mapel_id && gm.Guru?.nama_guru) {
+        classTeacherByMapelId.set(gm.mapel_id, gm.Guru.nama_guru);
+      }
+    }
 
     return jadwalList.map((j) => {
       const peserta = j.Peserta[0];
@@ -192,6 +209,11 @@ export class CbtTestEngineService {
         resolvedNamaRuang = 'Ruang 01';
       }
 
+      // Resolusi Guru Pengampu Kelas: Siswa melihat guru kelasnya sendiri, bukan pembuat bank soal MGMP
+      const targetMapelId = j.BankSoal?.mapel_id || (j.BankSoal?.Mapel as any)?.id;
+      const classSubjectTeacher = targetMapelId ? classTeacherByMapelId.get(targetMapelId) : null;
+      const resolvedGuru = classSubjectTeacher || j.BankSoal?.Guru?.nama_guru || null;
+
       return {
         id: j.id,
         nama_sesi: j.nama_sesi,
@@ -202,7 +224,7 @@ export class CbtTestEngineService {
         tingkat: j.BankSoal?.tingkat || null,
         tahun_ajaran: j.TahunPelajaran?.tahun || null,
         semester: j.Semester?.nama_semester || null,
-        guru: j.BankSoal?.Guru?.nama_guru || null,
+        guru: resolvedGuru,
         total_soal: j.BankSoal?.jumlah_soal || 0,
         tanggal_mulai: j.tanggal_mulai,
         tanggal_selesai: j.tanggal_selesai,
@@ -250,10 +272,12 @@ export class CbtTestEngineService {
         BankSoal: {
           select: {
             id: true,
+            mapel_id: true,
             judul: true,
             jumlah_soal: true,
             alokasi_menit: true,
-            Mapel: { select: { nama_mapel: true } },
+            Mapel: { select: { id: true, nama_mapel: true } },
+            Guru: { select: { id: true, nama_guru: true } },
           },
         },
       },
@@ -282,6 +306,25 @@ export class CbtTestEngineService {
       throw new Error('Ujian ini tidak ditujukan untuk kelas Anda.');
     }
 
+    // Resolusi Guru Pengampu Kelas Siswa untuk Bank Soal Bersama MGMP
+    let resolvedGuru = jadwal.BankSoal?.Guru?.nama_guru || null;
+    const targetMapelId = jadwal.BankSoal?.mapel_id || (jadwal.BankSoal?.Mapel as any)?.id;
+    if (siswa.kelas_id && targetMapelId) {
+      const classGm = await prisma.guruMapel.findFirst({
+        where: {
+          tenant_id: tenantId,
+          kelas_id: siswa.kelas_id,
+          mapel_id: targetMapelId,
+        },
+        include: {
+          Guru: { select: { id: true, nama_guru: true } },
+        },
+      });
+      if (classGm?.Guru?.nama_guru) {
+        resolvedGuru = classGm.Guru.nama_guru;
+      }
+    }
+
     // Cek apakah siswa sudah pernah mengerjakan dan berstatus FINISHED
     const existingPeserta = await prisma.cbtPesertaUjian.findFirst({
       where: {
@@ -305,6 +348,7 @@ export class CbtTestEngineService {
       nama_sesi: jadwal.nama_sesi,
       mapel: jadwal.BankSoal.Mapel.nama_mapel,
       judul_bank: jadwal.BankSoal.judul,
+      guru: resolvedGuru,
       durasi_menit: jadwal.durasi_menit,
       total_soal: jadwal.BankSoal.jumlah_soal,
       existing_status: existingPeserta ? existingPeserta.status : 'STANDBY',

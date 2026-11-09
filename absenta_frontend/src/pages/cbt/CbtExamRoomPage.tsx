@@ -438,6 +438,11 @@ export default function CbtExamRoomPage() {
                     {cleanSesiSubtitle}
                   </p>
                 )}
+                {examOverview?.guru && (
+                  <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                    Guru Pengampu: <span className="font-bold text-slate-700 dark:text-slate-200">{examOverview.guru}</span>
+                  </p>
+                )}
               </div>
             </div>
 
