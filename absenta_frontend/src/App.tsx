@@ -54,6 +54,8 @@ const ServiceCenterPage = lazy(() => import('./pages/billing/ServiceCenterPage')
 const CatalogPage = lazy(() => import('./pages/billing/CatalogPage'));
 const RABCalculatorPage = lazy(() => import('./pages/billing/RABCalculatorPage').then(m => ({ default: m.RABCalculatorPage })));
 const SIPLaHAuditVerifyPage = lazy(() => import('./pages/public/SIPLaHAuditVerifyPage'));
+const PublicPortalPage = lazy(() => import('./pages/public/portal/PublicPortalPage'));
+const PublicArticleDetailPage = lazy(() => import('./pages/public/portal/PublicArticleDetailPage').then(m => ({ default: m.PublicArticleDetailPage })));
 const AttendanceOpsPage = lazy(() => import('./pages/attendance/ops/AttendanceOpsPage'));
 const MonitoringKbmPage = lazy(() => import('./pages/attendance/monitoring/MonitoringKbmPage'));
 // Removed GerbangPage import
@@ -124,6 +126,7 @@ const ComponentsDemo = lazy(() => import('./pages/ComponentsDemo'));
 const MenuManagementPage = lazy(() => import('./pages/management/MenuManagementPage'));
 const RoleManagementPage = lazy(() => import('./pages/management/RoleManagementPage'));
 const MenuAuditPage = lazy(() => import('./pages/management/MenuAuditPage'));
+const WebSekolahCmsPage = lazy(() => import('./pages/management/WebSekolahCmsPage'));
 const PlatformComplianceFollowUpPage = lazy(() => import('./pages/management/PlatformComplianceFollowUpPage'));
 const TripayHealthPage = lazy(() => import('./pages/billing/TripayHealthPage'));
 const TripaySimulatorPage = lazy(() => import('./pages/billing/TripaySimulatorPage'));
@@ -508,6 +511,14 @@ function App() {
                 <Route path="/surat-keluar/public-view/:token" element={<SuratKeluarPublicViewPage />} />
                 <Route path="/verify-email/status" element={<EmailVerificationStatusPage />} />
                 <Route path="/verify-email/status/:token" element={<EmailVerificationStatusPage />} />
+                
+                {/* Public School Web Portal (Multi-Tenant & Multi-Jenjang) */}
+                <Route path="/portal" element={<PublicPortalPage />} />
+                <Route path="/portal/:tenantSlug" element={<PublicPortalPage />} />
+                <Route path="/portal/:tenantSlug/berita/:articleSlug" element={<PublicArticleDetailPage />} />
+                <Route path="/p" element={<PublicPortalPage />} />
+                <Route path="/p/:tenantSlug" element={<PublicPortalPage />} />
+                <Route path="/p/:tenantSlug/berita/:articleSlug" element={<PublicArticleDetailPage />} />
                 
                 {/* Error Routes */}
                 <Route path="/403" element={<ForbiddenPage />} />
@@ -1639,6 +1650,11 @@ function App() {
                     <Route path="/management/menu-audit" element={
                       <ProtectedRoute requiredRole="SUPERADMIN" requiredCapability="core.menu.view.list">
                         <MenuAuditPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/management/web-sekolah" element={
+                      <ProtectedRoute>
+                        <WebSekolahCmsPage />
                       </ProtectedRoute>
                     } />
 

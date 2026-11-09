@@ -66,13 +66,25 @@ export class PublicPortalService {
     const cached = await this.getFromCache<{ id: string; subdomain: string | null; custom_domain: string | null }>(cacheKey);
     if (cached) return cached;
 
+    const orConditions: any[] = [
+      { subdomain: clean },
+      { custom_domain: clean },
+      { custom_domain: `${clean}.absenta.id` },
+      { id: clean },
+    ];
+
+    if (clean === 'demo') {
+      orConditions.push({ custom_domain: 'demo.absenta.id' });
+      orConditions.push({ subdomain: 'dev' });
+    }
+
+    if (clean === 'localhost' || clean === '127.0.0.1' || clean === 'portal' || clean === 'default') {
+      orConditions.push({ subdomain: 'smkn1pld' });
+    }
+
     const tenant = await prisma.tenant.findFirst({
       where: {
-        OR: [
-          { subdomain: clean },
-          { custom_domain: clean },
-          { id: clean },
-        ],
+        OR: orConditions,
         status: 'ACTIVE',
       },
       select: {
@@ -86,6 +98,17 @@ export class PublicPortalService {
       await this.setToCache(cacheKey, tenant, 3600); // cache 1 jam
       return tenant;
     }
+
+    // Fallback: Default to SMKN 1 Plered jika tidak ada yang cocok
+    const fallback = await prisma.tenant.findFirst({
+      where: { subdomain: 'smkn1pld', status: 'ACTIVE' },
+      select: { id: true, subdomain: true, custom_domain: true },
+    });
+    if (fallback) {
+      await this.setToCache(cacheKey, fallback, 3600);
+      return fallback;
+    }
+
     return null;
   }
 

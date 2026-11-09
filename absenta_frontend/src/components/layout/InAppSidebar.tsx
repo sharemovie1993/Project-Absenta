@@ -195,6 +195,17 @@ export function InAppSidebar({
           result.push(catalogItem);
         }
       }
+
+      const hasWebSekolah = result.some(r => r.path === '/management/web-sekolah');
+      if (!hasWebSekolah) {
+        result.push({
+          id: 'menu-web-sekolah',
+          label: 'Web Sekolah Publik',
+          path: '/management/web-sekolah',
+          icon: iconForName('Globe') || iconForName('Layout'),
+          isDivider: false,
+        });
+      }
     }
 
     // Pastikan menu backup tidak muncul di aplikasi Akademik

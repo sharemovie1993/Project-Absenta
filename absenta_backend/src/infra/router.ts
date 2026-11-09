@@ -137,6 +137,10 @@ export async function registerRoutes(fastify: any, prisma: any) {
         const { wilayahRoutes } = await import('../modules/wilayah/routes/wilayah.routes');
         await fastify.register(wilayahRoutes, { prefix: '/wilayah' });
 
+        // Public Portal Web Sekolah Konsumsi Publik (Multi-Tenant & Multi-Jenjang)
+        const { publicPortalRoutes } = await import('../modules/public-portal/routes/public-portal.routes');
+        await fastify.register(publicPortalRoutes, { prefix: '/public/portal' });
+
         // Public Kalender iCal Export (Sync for Google/Apple Calendar)
         fastify.get('/kurikulum/kalender/export', async (request: any, reply: any) => {
           const { KalenderAkademikController } = await import('../modules/kurikulum/controllers/kalender-akademik.controller');
