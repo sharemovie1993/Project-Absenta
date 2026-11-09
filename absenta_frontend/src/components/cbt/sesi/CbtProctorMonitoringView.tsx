@@ -86,7 +86,16 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
     return availableSchedules.find((j) => j.id === selectedJadwalId) || availableSchedules[0];
   }, [availableSchedules, selectedJadwalId]);
 
-  // Resolusi Kode Ruang & Label Sorotan untuk Denah Pengawas
+  // Fetch live peserta dengan interval 10 detik
+  const { data: pesertaList = [], isLoading, refetch } = useQuery({
+    queryKey: cbtQueryKeys.pesertaList(selectedJadwalId, { search: searchQuery }),
+    queryFn: () =>
+      selectedJadwalId ? cbtApi.getPesertaList(selectedJadwalId, { search: searchQuery }) : Promise.resolve([]),
+    enabled: Boolean(selectedJadwalId),
+    refetchInterval: 10000,
+  });
+
+  // Resolusi Kode Ruang & Label Sorotan untuk Denah Pengawas (Diletakkan setelah query pesertaList)
   const activeRoomCode = useMemo(() => {
     const raw = activeJadwal?.setting_keamanan?.ruang_ujian?.trim();
     if (raw && !raw.toLowerCase().includes('multi') && raw.toLowerCase() !== 'ruang kelas') {
@@ -106,15 +115,6 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
     }
     return 'Ruang Pengawasan Ujian';
   }, [activeRoomCode]);
-
-  // Fetch live peserta dengan interval 10 detik
-  const { data: pesertaList = [], isLoading, refetch } = useQuery({
-    queryKey: cbtQueryKeys.pesertaList(selectedJadwalId, { search: searchQuery }),
-    queryFn: () =>
-      selectedJadwalId ? cbtApi.getPesertaList(selectedJadwalId, { search: searchQuery }) : Promise.resolve([]),
-    enabled: Boolean(selectedJadwalId),
-    refetchInterval: 10000,
-  });
 
   // Mutasi Reset Login Siswa
   const resetMutation = useMutation({
@@ -382,11 +382,11 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
             <span className="text-[10px] font-black text-slate-400 shrink-0 uppercase tracking-wider mr-1">
               Sesi Ujian:
             </span>
-            {availableSchedules.map((j) => {
+            {availableSchedules.map((j, idx) => {
               const isSelected = j.id === (activeJadwal?.id || selectedJadwalId);
               return (
                 <button
-                  key={j.id}
+                  key={j.id || `sched-${idx}`}
                   type="button"
                   onClick={() => setSelectedJadwalId(j.id)}
                   className={cn(
@@ -700,7 +700,7 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
             Tidak ada peserta yang cocok dengan filter
           </div>
         ) : (
-          filteredItems.map((p) => {
+          filteredItems.map((p, idx) => {
             const jwbCount = Array.isArray(p.jawaban_json)
               ? p.jawaban_json.filter((j: any) => Boolean(j.jawaban_siswa)).length
               : 0;
@@ -708,7 +708,7 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
 
             return (
               <div
-                key={p.id}
+                key={p.id || p.siswa_id || `peserta-${idx}`}
                 className="p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs flex items-center justify-between gap-2.5"
               >
                 <div className="min-w-0 space-y-0.5">
