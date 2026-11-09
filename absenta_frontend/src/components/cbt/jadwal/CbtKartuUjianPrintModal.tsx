@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useMemo, memo } from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
@@ -19,6 +19,7 @@ import {
   EyeOff,
   Scissors,
   Check,
+  Loader2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import QRCode from 'qrcode';
@@ -27,7 +28,7 @@ import { siswaApi } from '@/api/academic.api';
 import { formatTingkatRomawi } from '../bank-soal/cbtAsesmenHelper';
 import { KelasRoomMapping } from './cbtOrchestratorHelper';
 import { formatDate } from '@/utils/date.utils';
-import { useJenjang } from '@/hooks/useJenjang';
+import { normalizeStudentIdentity } from '@/utils/academic/academicIdentityNormalizer';
 import { cn } from '@/lib/utils';
 
 export interface CbtKartuUjianPrintModalProps {
@@ -102,7 +103,6 @@ function generateSampleStudentsForClass(
     const nis = `${23 + (12 - cls.tingkat)}24${String(i).padStart(4, '0')}`;
     const nisn = `007${String(1000000 + i * 47).padStart(7, '0')}`;
     const noPeserta = `${prefixNo}-${String(i).padStart(3, '0')}`;
-    // Password PIN 6 angka
     const pin = String(100000 + ((i * 8492) % 900000));
 
     students.push({
@@ -125,6 +125,284 @@ function generateSampleStudentsForClass(
   return students;
 }
 
+// ── Subkomponen Memoized Satuan Kartu Peserta Ujian (Zero-Lag & Self-Contained QR) ──
+interface ExamCardSingleItemProps {
+  student: StudentExamCardData;
+  sekolahData: any;
+  tenantInfo: any;
+  customEventName: string;
+  activeTpName: string;
+  showLogoSekolah: boolean;
+  showFoto: boolean;
+  showQrCode: boolean;
+  showPassword: boolean;
+  showTtd: boolean;
+  signerName: string;
+  signerNip: string;
+  signerLabel: string;
+  titimangsaKota: string;
+  titimangsaTanggal: string;
+}
+
+const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
+  student,
+  sekolahData,
+  tenantInfo,
+  customEventName,
+  activeTpName,
+  showLogoSekolah,
+  showFoto,
+  showQrCode,
+  showPassword,
+  showTtd,
+  signerName,
+  signerNip,
+  signerLabel,
+  titimangsaKota,
+  titimangsaTanggal,
+}) => {
+  const [qrUrl, setQrUrl] = useState<string>('');
+
+  // SSoT Universal Academic Identity Normalizer
+  const normIdentity = useMemo(() => {
+    return normalizeStudentIdentity({
+      id: student.id,
+      nama: student.nama_siswa,
+      nis: student.nis,
+      nisn: student.nisn,
+      foto: student.foto,
+      Kelas: { nama_kelas: student.nama_kelas },
+    });
+  }, [student]);
+
+  // Generate QR Code secara asynchronous & terisolasi per-kartu (Level 'L' tercepat)
+  useEffect(() => {
+    if (!showQrCode) {
+      setQrUrl('');
+      return;
+    }
+
+    let isMounted = true;
+    const payload = `${window.location.origin}/cbt/login?user=${student.username}&token=${student.pin}&room=${student.slot_ruang}`;
+
+    QRCode.toDataURL(payload, {
+      errorCorrectionLevel: 'L',
+      margin: 1,
+      width: 90,
+      color: {
+        dark: '#0f172a',
+        light: '#ffffff',
+      },
+    })
+      .then((url) => {
+        if (isMounted) setQrUrl(url);
+      })
+      .catch((err) => {
+        console.warn('QR generation skipped', err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [student.username, student.pin, student.slot_ruang, showQrCode]);
+
+  return (
+    <div className="relative h-full flex flex-col justify-between border-2 border-slate-300 print:border-slate-400 rounded-xl p-3 bg-white text-slate-900 shadow-2xs print:shadow-none overflow-hidden select-text">
+      {/* ── 1. Header Mini Kop Kartu ── */}
+      <div className="flex items-center gap-2 pb-1.5 border-b-2 border-slate-800 shrink-0">
+        {showLogoSekolah && (
+          <img
+            src={sekolahData?.logo_url || tenantInfo?.logo_url || '/logo.png'}
+            alt="Logo"
+            className="w-9 h-9 object-contain shrink-0"
+            onError={(e) => {
+              (e.target as HTMLElement).style.display = 'none';
+            }}
+          />
+        )}
+        <div className="flex-1 text-center min-w-0">
+          <p className="text-[7.5px] uppercase font-bold tracking-wider text-slate-500 leading-none truncate">
+            {sekolahData?.nama_dinas || 'PEMERINTAH DAERAH PROVINSI JAWA BARAT'}
+          </p>
+          <h4 className="text-[10px] font-black uppercase text-slate-900 leading-tight tracking-tight truncate mt-0.5">
+            {sekolahData?.nama_sekolah || tenantInfo?.name || 'SMK NEGERI 1'}
+          </h4>
+          <div className="mt-0.5 flex items-center justify-center">
+            <span className="inline-block px-1.5 py-0.2 bg-indigo-50 text-indigo-900 text-[8px] font-black uppercase rounded tracking-wide border border-indigo-200/60">
+              KARTU PESERTA UJIAN CBT
+            </span>
+          </div>
+          <p className="text-[7px] font-bold text-slate-600 truncate mt-0.5 uppercase">
+            {customEventName} • {activeTpName}
+          </p>
+        </div>
+      </div>
+
+      {/* ── 2. Badan Kartu: Pasfoto 3x4 + QR di Kiri, Identitas & Kredensial di Kanan ── */}
+      <div className="grid grid-cols-12 gap-2 my-1.5 flex-1 items-start min-h-0">
+        {/* Sisi Kiri: Pasfoto Resmi 3x4 + QR Quick Login */}
+        <div className="col-span-4 flex flex-col items-center justify-start gap-1 shrink-0 pt-0.5">
+          {/* Pasfoto Resmi 3x4 (23mm x 31mm) */}
+          {showFoto ? (
+            normIdentity.fotoUrl ? (
+              <img
+                src={normIdentity.fotoUrl}
+                alt={normIdentity.nama}
+                className="w-[23mm] h-[31mm] object-cover rounded-xs border border-slate-300 shadow-2xs"
+              />
+            ) : (
+              <div className="w-[23mm] h-[31mm] border-2 border-dashed border-slate-300 rounded-xs bg-slate-50 flex flex-col items-center justify-center text-slate-400 p-1 text-center shrink-0">
+                <User size={18} className="text-slate-300 mb-0.5" />
+                <span className="text-[6.5px] font-black uppercase leading-tight text-slate-400">
+                  PASFOTO
+                  <br />
+                  3 × 4
+                </span>
+              </div>
+            )
+          ) : null}
+
+          {/* QR Code Quick Login */}
+          {showQrCode && (
+            <div className="flex flex-col items-center mt-0.5">
+              {qrUrl ? (
+                <img
+                  src={qrUrl}
+                  alt="QR Login"
+                  className="w-13 h-13 border border-slate-200 rounded p-0.5 bg-white"
+                />
+              ) : (
+                <div className="w-13 h-13 border border-slate-200 rounded bg-slate-50 flex items-center justify-center">
+                  <QrCodeIcon size={16} className="text-slate-300 animate-pulse" />
+                </div>
+              )}
+              <span className="text-[6.5px] font-bold text-slate-500 uppercase mt-0.5 tracking-tight text-center">
+                Scan Login CBT
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Sisi Kanan: Tabel Identitas & Box Kredensial Login */}
+        <div className="col-span-8 flex flex-col justify-between h-full gap-1 min-w-0">
+          {/* Identitas Siswa */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between pb-0.5 border-b border-slate-100">
+              <span className="text-slate-400 text-[7.5px] font-bold uppercase">No. Peserta</span>
+              <span className="font-mono font-black text-indigo-700 text-[8.5px] bg-indigo-50 px-1 py-0.2 rounded border border-indigo-200">
+                {student.no_peserta}
+              </span>
+            </div>
+
+            <div>
+              <span className="text-[7px] font-bold text-slate-400 uppercase block">Nama Peserta</span>
+              <span className="font-black text-slate-900 text-[9px] uppercase truncate block leading-tight">
+                {normIdentity.nama}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-1 text-[8px]">
+              <div>
+                <span className="text-[7px] font-bold text-slate-400 block uppercase">NIS / NISN</span>
+                <span className="font-bold text-slate-700 truncate block">
+                  {normIdentity.nis} / {normIdentity.nisn}
+                </span>
+              </div>
+              <div>
+                <span className="text-[7px] font-bold text-slate-400 block uppercase">Kelas / Rombel</span>
+                <span className="font-bold text-slate-700 truncate block">
+                  {student.nama_kelas}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-1 pt-0.5 border-t border-slate-100 text-[8px]">
+              <div>
+                <span className="text-[7px] font-bold text-slate-400 block uppercase">Ruang Ujian</span>
+                <span className="font-black text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded inline-block border border-emerald-200 text-[8px]">
+                  {student.slot_ruang}
+                </span>
+              </div>
+              <div>
+                <span className="text-[7px] font-bold text-slate-400 block uppercase">Sesi Ujian</span>
+                <span className="font-bold text-slate-700 truncate block text-[7.5px]">
+                  {student.sesi_ujian}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Box Kredensial Login CBT */}
+          <div className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 space-y-0.5 mt-auto">
+            <div className="flex items-center justify-between text-[7px] font-bold text-slate-500 uppercase border-b border-slate-200 pb-0.5">
+              <span className="flex items-center gap-1 text-slate-700">
+                <KeyRound size={9} className="text-indigo-600" />
+                Kredensial Login Siswa
+              </span>
+              <span className="text-emerald-700 font-black text-[6.5px]">RESMI CBT</span>
+            </div>
+            <div className="grid grid-cols-2 gap-1 text-[8px] pt-0.5">
+              <div>
+                <span className="text-slate-400 block text-[6.5px] uppercase">Username:</span>
+                <span className="font-mono font-bold text-slate-800 truncate block text-[8px]">
+                  {student.username}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[6.5px] uppercase">Password / PIN:</span>
+                <span className="font-mono font-black text-indigo-700 tracking-wider text-[8px]">
+                  {showPassword ? student.pin : '••••••'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 3. Footer Kartu: Tata Tertib di Kiri, Titimangsa & TTD di Kanan ── */}
+      <div className="pt-1.5 border-t border-slate-200 grid grid-cols-2 gap-1.5 items-end shrink-0 text-[7px]">
+        {/* Tata Tertib Singkat */}
+        <div className="text-slate-500 space-y-0.5 pr-0.5">
+          <p className="font-bold text-slate-600 text-[6.5px] uppercase">Tata Tertib Peserta:</p>
+          <p className="leading-tight">1. Kartu wajib dibawa saat sesi ujian.</p>
+          <p className="leading-tight">2. Jaga kerahasiaan Username &amp; PIN.</p>
+          <p className="leading-tight">3. Hadir di ruang 15 menit sebelum mulai.</p>
+        </div>
+
+        {/* Titimangsa & Tanda Tangan */}
+        <div className="text-center flex flex-col items-center pl-1">
+          <p className="text-slate-500 text-[6.5px]">
+            {titimangsaKota}, {titimangsaTanggal}
+          </p>
+          <p className="font-bold text-slate-700 text-[7px]">
+            {signerLabel}
+          </p>
+
+          {/* Box Stempel & TTD Resmi */}
+          <div className="h-7 w-full flex items-center justify-center relative my-0.5">
+            {showTtd && (
+              <div className="w-8 h-8 border-2 border-indigo-500/25 rounded-full flex items-center justify-center text-indigo-500/35 text-[5px] font-black uppercase transform -rotate-12 select-none">
+                CAP CBT
+              </div>
+            )}
+          </div>
+
+          <p className="font-black text-slate-900 underline text-[7.5px] leading-tight truncate w-full">
+            {signerName}
+          </p>
+          {signerNip && (
+            <p className="text-slate-500 text-[6px] truncate w-full">
+              NIP. {signerNip}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+ExamCardSingleItem.displayName = 'ExamCardSingleItem';
+
 export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = ({
   isOpen,
   onClose,
@@ -135,15 +413,31 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
   activeTpName = 'TP 2026/2027',
 }) => {
   const sheetContainerRef = useRef<HTMLDivElement>(null);
-  const { jenjang } = useJenjang();
 
-  // ── 1. Filter States ──
-  const [filterKelasId, setFilterKelasId] = useState<string>(selectedKelasId || 'ALL');
-  const [filterTingkat, setFilterTingkat] = useState<number | 'ALL'>('ALL');
-  const [filterRuang, setFilterRuang] = useState<string>('ALL');
+  // ── 1. Target Kelas Fokus (Wajib Terikat ke 1 Rombel Spesifik untuk Cegah Freeze) ──
+  // Default awal ke selectedKelasId atau kelas pertama di roomMappings (Anti 'ALL' yang memuat 400+ kartu)
+  const initialClassId = useMemo(() => {
+    return selectedKelasId || roomMappings[0]?.kelas_id || '';
+  }, [selectedKelasId, roomMappings]);
+
+  const [activeKelasId, setActiveKelasId] = useState<string>(initialClassId);
+
+  // Sync state saat selectedKelasId berubah dari baris tabel luar
+  useEffect(() => {
+    if (selectedKelasId) {
+      setActiveKelasId(selectedKelasId);
+    } else if (!activeKelasId && roomMappings.length > 0) {
+      setActiveKelasId(roomMappings[0].kelas_id);
+    }
+  }, [selectedKelasId, roomMappings]);
+
+  // Rombel aktif yang sedang diproses kartu ujiannya
+  const currentClassMapping = useMemo(() => {
+    return roomMappings.find((r) => r.kelas_id === activeKelasId) || roomMappings[0];
+  }, [roomMappings, activeKelasId]);
 
   // ── 2. Card Visual & Security Toggles ──
-  const [showPassword, setShowPassword] = useState<boolean>(true); // True: Teks PIN terlihat, False: '••••••'
+  const [showPassword, setShowPassword] = useState<boolean>(true);
   const [showFoto, setShowFoto] = useState<boolean>(true);
   const [showQrCode, setShowQrCode] = useState<boolean>(true);
   const [showTtd, setShowTtd] = useState<boolean>(true);
@@ -162,152 +456,64 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
   const { tenantInfo, rawSekolah } = usePrintHeaderData();
   const sekolahData = (rawSekolah || {}) as any;
 
-  // Sync props when opening
-  useEffect(() => {
-    if (selectedKelasId) {
-      setFilterKelasId(selectedKelasId);
-    } else {
-      setFilterKelasId('ALL');
-    }
-  }, [selectedKelasId, isOpen]);
-
   useEffect(() => {
     if (eventName) {
       setCustomEventName(eventName);
     }
   }, [eventName]);
 
-  // Map of kelas_id to roomMapping for fast O(1) lookup
-  const roomMapByKelasId = useMemo(() => {
-    const map = new Map<string, KelasRoomMapping>();
-    roomMappings.forEach((rm) => map.set(rm.kelas_id, rm));
-    return map;
-  }, [roomMappings]);
-
-  // Target classes filtered
-  const targetClasses = useMemo(() => {
-    let list = roomMappings;
-    if (filterKelasId !== 'ALL') {
-      list = list.filter((r) => r.kelas_id === filterKelasId);
-    }
-    if (filterTingkat !== 'ALL') {
-      list = list.filter((r) => r.tingkat === filterTingkat);
-    }
-    if (filterRuang !== 'ALL') {
-      list = list.filter((r) => r.slot_ruang === filterRuang);
-    }
-    return list;
-  }, [roomMappings, filterKelasId, filterTingkat, filterRuang]);
-
-  // ── 4. Query Real Students from Database ──
+  // ── 4. Query Siswa Terfokus 1 Kelas (Cepat & Ringan < 36 Siswa) ──
   const { data: realStudentsRes, isLoading: isLoadingSiswa } = useQuery({
-    queryKey: ['cbt-print-students', filterKelasId, targetClasses.map((c) => c.kelas_id).join(',')],
+    queryKey: ['cbt-print-students-class', activeKelasId],
     queryFn: async () => {
-      // If single class selected, fetch directly
-      if (filterKelasId !== 'ALL') {
-        const res = await siswaApi.getAll({ kelas_id: filterKelasId, limit: 100, status: 'AKTIF' });
-        return res?.data || [];
-      }
-      // If multiple, fetch up to 300 students
-      const res = await siswaApi.getAll({ limit: 300, status: 'AKTIF' });
+      if (!activeKelasId) return [];
+      const res = await siswaApi.getAll({ kelas_id: activeKelasId, limit: 50, status: 'AKTIF' });
       return res?.data || [];
     },
-    enabled: isOpen && targetClasses.length > 0,
+    enabled: isOpen && Boolean(activeKelasId),
     staleTime: 60 * 1000,
   });
 
   const realStudents = realStudentsRes || [];
 
-  // ── 5. Assemble Final Student Cards Data (Real + Fallback Sample) ──
+  // ── 5. Assemble Final Student Cards Data (Hanya 1 Kelas: 28-36 Siswa = 7-9 Lembar A4) ──
   const studentCardsList = useMemo<StudentExamCardData[]>(() => {
-    if (targetClasses.length === 0) return [];
+    if (!currentClassMapping) return [];
 
-    const result: StudentExamCardData[] = [];
+    if (realStudents.length > 0) {
+      const tingkatStr = currentClassMapping.tingkat === 10 ? 'X' : currentClassMapping.tingkat === 11 ? 'XI' : 'XII';
+      const cleanClassName = currentClassMapping.nama_kelas.replace(/\s+/g, '');
 
-    targetClasses.forEach((cls) => {
-      // Find matching real students for this class
-      const matchedReal = realStudents.filter(
-        (s) => s.kelas_id === cls.kelas_id || s.Kelas?.id === cls.kelas_id
-      );
+      return realStudents.map((s, idx) => {
+        const noPeserta = `26-${tingkatStr}-${cleanClassName}-${String(idx + 1).padStart(3, '0')}`;
+        const username = s.User?.username || s.nisn || s.nis || `user_${s.id.slice(0, 5)}`;
+        const pin = s.nisn && s.nisn.length >= 6 ? s.nisn.slice(-6) : String(849200 + ((idx * 17) % 999));
 
-      if (matchedReal.length > 0) {
-        // Map real students into exam card format
-        matchedReal.forEach((s, idx) => {
-          const tingkatStr = cls.tingkat === 10 ? 'X' : cls.tingkat === 11 ? 'XI' : 'XII';
-          const cleanClassName = cls.nama_kelas.replace(/\s+/g, '');
-          const noPeserta = `26-${tingkatStr}-${cleanClassName}-${String(idx + 1).padStart(3, '0')}`;
-          const username = s.User?.username || s.nisn || s.nis || `user_${s.id.slice(0, 5)}`;
-          // Default PIN: 6-digit number derived from NISN or random pin
-          const pin = s.nisn && s.nisn.length >= 6 ? s.nisn.slice(-6) : String(849200 + ((idx * 17) % 999));
+        return {
+          id: s.id,
+          nama_siswa: s.nama_siswa || (s as any).nama || 'Siswa CBT',
+          nis: s.nis || '-',
+          nisn: s.nisn || '-',
+          kelas_id: currentClassMapping.kelas_id,
+          nama_kelas: currentClassMapping.nama_kelas,
+          tingkat: currentClassMapping.tingkat,
+          jurusan: currentClassMapping.jurusan || 'Kejuruan',
+          slot_ruang: currentClassMapping.slot_ruang || 'R.01',
+          nama_ruang: currentClassMapping.nama_ruang || 'Ruang CBT',
+          sesi_ujian: 'Sesi 1 (07.30 - 09.30 WIB)',
+          no_peserta: noPeserta,
+          username,
+          pin,
+          foto: s.foto,
+        };
+      });
+    }
 
-          result.push({
-            id: s.id,
-            nama_siswa: s.nama_siswa || (s as any).nama || 'Siswa CBT',
-            nis: s.nis || '-',
-            nisn: s.nisn || '-',
-            kelas_id: cls.kelas_id,
-            nama_kelas: cls.nama_kelas,
-            tingkat: cls.tingkat,
-            jurusan: cls.jurusan || 'Kejuruan',
-            slot_ruang: cls.slot_ruang || 'R.01',
-            nama_ruang: cls.nama_ruang || 'Ruang CBT',
-            sesi_ujian: 'Sesi 1 (07.30 - 09.30 WIB)',
-            no_peserta: noPeserta,
-            username,
-            pin,
-            foto: s.foto,
-          });
-        });
-      } else {
-        // Fallback realistic sample students so preview is never empty
-        const samples = generateSampleStudentsForClass(cls, filterKelasId === 'ALL' ? 12 : 28);
-        result.push(...samples);
-      }
-    });
+    // Fallback realistis khusus 1 rombel ini
+    return generateSampleStudentsForClass(currentClassMapping, 28);
+  }, [currentClassMapping, realStudents]);
 
-    return result;
-  }, [targetClasses, realStudents, filterKelasId]);
-
-  // ── 6. Pre-generate QR Codes Map ──
-  const [qrMap, setQrMap] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    if (!isOpen || !showQrCode || studentCardsList.length === 0) return;
-
-    let isMounted = true;
-    const generateAllQrs = async () => {
-      const newMap: Record<string, string> = {};
-      // Generate for each student
-      for (const st of studentCardsList) {
-        try {
-          const loginPayload = `${window.location.origin}/cbt/login?user=${st.username}&token=${st.pin}&room=${st.slot_ruang}`;
-          const dataUrl = await QRCode.toDataURL(loginPayload, {
-            errorCorrectionLevel: 'M',
-            margin: 1,
-            width: 120,
-            color: {
-              dark: '#0f172a',
-              light: '#ffffff',
-            },
-          });
-          newMap[st.id] = dataUrl;
-        } catch (err) {
-          console.warn('[QR Code Generation Error]', err);
-        }
-      }
-      if (isMounted) {
-        setQrMap(newMap);
-      }
-    };
-
-    generateAllQrs();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [isOpen, showQrCode, studentCardsList]);
-
-  // Chunk students into pages of 4 (Grid 2x2 per A4 sheet)
+  // Chunk siswa menjadi potongan 4 kartu per lembar A4 (Grid 2x2)
   const studentChunks = useMemo(() => {
     return chunkArray(studentCardsList, 4);
   }, [studentCardsList]);
@@ -322,32 +528,45 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
     sekolahData?.nip_kepala_sekolah ||
     '197111022008011001';
 
+  const signerName = signerRole === 'kepsek' ? kepsekNama : customKetuaPanitia;
+  const signerNip = signerRole === 'kepsek' ? kepsekNip : customNipPanitia;
+  const signerLabel = signerRole === 'kepsek' ? 'Kepala Sekolah,' : 'Ketua Panitia CBT,';
+
   const titimangsaKota = sekolahData?.kabupaten || tenantInfo?.address?.split(',')[0] || 'Kota';
   const titimangsaTanggal = formatDate(new Date(), { weekday: undefined });
 
-  // ── 7. Print Handler (Browser True WYSIWYG) ──
+  // ── 6. Print Handler (Browser True WYSIWYG) ──
   const handleBrowserPrint = () => {
     window.print();
   };
 
-  // ── 8. PDF Export Handler (html2canvas-pro + jsPDF) ──
+  // ── 7. PDF Export Handler (Kepatuhan Penuh Protokol Baku 5-Langkah Universal Document Printing) ──
   const handleDownloadPdf = async () => {
-    const container = sheetContainerRef.current;
-    if (!container) {
-      toast.error('Lembar dokumen belum siap untuk diekspor');
-      return;
-    }
-
-    const sheets = container.querySelectorAll<HTMLElement>('.print-sheet');
-    if (sheets.length === 0) {
-      toast.error('Tidak ada kartu ujian yang dipilih');
-      return;
-    }
-
-    const toastId = toast.loading(`Mempersiapkan PDF ${sheets.length} Lembar Kartu Ujian (Grid 2x2)...`);
+    const deskCanvas = document.getElementById('print-desk-canvas-area');
+    const prevZoom = deskCanvas ? deskCanvas.style.zoom : '';
 
     try {
       setIsExportingPdf(true);
+      const toastId = toast.loading('Menyiapkan dokumen PDF True WYSIWYG...', { id: 'pdf-export-toast' });
+
+      // LANGKAH 2: Matikan zoom DOM riil & paksa reflow sinkron (Anti-Kerning Collapse)
+      if (deskCanvas) {
+        deskCanvas.style.zoom = '1';
+        deskCanvas.style.transform = 'none';
+        void deskCanvas.offsetHeight;
+      }
+
+      // LANGKAH 3: Tunggu rasterisasi font & beri jeda settle repaint tick
+      if (document.fonts?.ready) {
+        await document.fonts.ready;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 120));
+
+      const sheetElements = document.querySelectorAll<HTMLElement>('.print-sheet');
+      if (!sheetElements || sheetElements.length === 0) {
+        toast.error('Lembar dokumen tidak ditemukan', { id: 'pdf-export-toast' });
+        return;
+      }
 
       const html2canvas = (await import('html2canvas-pro')).default;
       const { jsPDF } = await import('jspdf');
@@ -362,21 +581,32 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
       const pdfWidth = 210;
       const pdfHeight = 297;
 
-      for (let i = 0; i < sheets.length; i++) {
-        const sheet = sheets[i];
+      for (let i = 0; i < sheetElements.length; i++) {
         if (i > 0) {
           pdf.addPage('a4', 'portrait');
         }
 
-        const canvas = await html2canvas(sheet, {
-          scale: 2, // 200 DPI Retina
+        const sheetElement = sheetElements[i];
+
+        // LANGKAH 4: Render canvas dengan onclone sanitizer
+        const canvas = await html2canvas(sheetElement, {
+          scale: 2.0, // Skala 2.0 (Retina ~200 DPI)
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#ffffff',
           logging: false,
           onclone: (clonedDoc) => {
+            const clonedDesk = clonedDoc.getElementById('print-desk-canvas-area');
+            if (clonedDesk) {
+              clonedDesk.style.zoom = '1';
+              clonedDesk.style.transform = 'none';
+            }
             const clonedSheets = clonedDoc.querySelectorAll<HTMLElement>('.print-sheet');
             clonedSheets.forEach((s) => {
+              s.style.zoom = '1';
+              s.style.transform = 'none';
+              s.style.letterSpacing = 'normal';
+              s.style.fontVariantLigatures = 'none';
               s.style.border = 'none';
               s.style.boxShadow = 'none';
               s.style.outline = 'none';
@@ -384,24 +614,33 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
           },
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.9);
+        // LANGKAH 5: Preservasi Rasio Aspek (Anti-Gepeng & Anti-Bloat)
+        const imgData = canvas.toDataURL('image/jpeg', 0.88);
         const canvasRatio = canvas.height / canvas.width;
         const imgHeight = pdfWidth * canvasRatio;
 
-        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, Math.min(imgHeight, pdfHeight), undefined, 'FAST');
+        if (imgHeight <= pdfHeight + 1) {
+          pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, imgHeight, undefined, 'FAST');
+        } else {
+          pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+        }
       }
 
-      const fileName =
-        filterKelasId !== 'ALL'
-          ? `KARTU_UJIAN_CBT_${targetClasses[0]?.nama_kelas.replace(/\s+/g, '_') || 'KELAS'}.pdf`
-          : `KARTU_UJIAN_CBT_SEMUA_ROMBEL.pdf`;
+      const cleanClassLabel = currentClassMapping?.nama_kelas?.replace(/\s+/g, '_') || 'ROMBEL';
+      const cleanSlotLabel = currentClassMapping?.slot_ruang || 'CBT';
+      const fileName = `KARTU_UJIAN_${cleanSlotLabel}_${cleanClassLabel}.pdf`;
 
       pdf.save(fileName);
-      toast.success('File PDF Kartu Ujian A4 Portrait berhasil diunduh', { id: toastId });
+      toast.success(`File PDF Kartu Ujian ${currentClassMapping?.nama_kelas} (${sheetElements.length} Lembar) berhasil diunduh!`, {
+        id: 'pdf-export-toast',
+      });
     } catch (err) {
       console.error('[CBT Exam Card PDF Export Error]', err);
-      toast.error('Gagal mengekspor PDF, silakan gunakan tombol Cetak Dokumen', { id: toastId });
+      toast.error('Gagal mengekspor PDF, silakan gunakan tombol Cetak Browser', { id: 'pdf-export-toast' });
     } finally {
+      if (deskCanvas) {
+        deskCanvas.style.zoom = prevZoom;
+      }
       setIsExportingPdf(false);
     }
   };
@@ -410,16 +649,21 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
     <UniversalDocumentModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Cetak Kartu Peserta Ujian CBT (A4 Grid 2×2)"
+      title={`Cetak Kartu Ujian CBT: ${currentClassMapping?.nama_kelas || 'Kelas'} (${currentClassMapping?.slot_ruang || 'Ruang'})`}
       subtitle={
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-muted-foreground font-medium">Format:</span>
           <span className="text-xs font-bold text-foreground bg-primary/10 text-primary px-2.5 py-0.5 rounded-md">
-            Kertas A4 Portrait (4 Kartu per Lembar)
+            Kertas A4 Portrait (Grid 2×2 / 4 Kartu per Lembar)
           </span>
           <span className="text-[11px] text-muted-foreground">
             • {studentCardsList.length} Siswa ({studentChunks.length} Lembar A4)
           </span>
+          {isLoadingSiswa && (
+            <span className="text-[11px] text-indigo-600 flex items-center gap-1 font-bold">
+              <Loader2 size={12} className="animate-spin" /> Memuat Siswa...
+            </span>
+          )}
         </div>
       }
       orientation="portrait"
@@ -434,6 +678,24 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
       size="5xl"
       extraActions={
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Pemilih Kelas / Rombel Fokus */}
+          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-lg">
+            <Filter size={12} className="text-indigo-600 shrink-0" />
+            <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">Rombel:</span>
+            <select
+              value={activeKelasId}
+              onChange={(e) => setActiveKelasId(e.target.value)}
+              aria-label="Pilih rombel target kartu ujian"
+              className="text-xs font-bold bg-transparent text-slate-800 dark:text-slate-100 focus:outline-hidden cursor-pointer max-w-[140px] sm:max-w-none"
+            >
+              {roomMappings.map((r) => (
+                <option key={r.kelas_id} value={r.kelas_id}>
+                  {r.nama_kelas} ({r.slot_ruang})
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Input Edit Nama Event Asesmen */}
           <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-lg">
             <Edit3 size={12} className="text-indigo-600 shrink-0" />
@@ -444,50 +706,8 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
               onChange={(e) => setCustomEventName(e.target.value)}
               placeholder="Nama Event Asesmen..."
               aria-label="Edit nama event ujian pada kartu"
-              className="text-xs font-bold bg-transparent text-slate-800 dark:text-slate-100 focus:outline-hidden w-48 sm:w-56"
+              className="text-xs font-bold bg-transparent text-slate-800 dark:text-slate-100 focus:outline-hidden w-44 sm:w-52"
             />
-          </div>
-
-          {/* Filter Rombel Dropdown */}
-          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-1 rounded-lg">
-            <Filter size={12} className="text-slate-400" />
-            <select
-              value={filterKelasId}
-              onChange={(e) => {
-                setFilterKelasId(e.target.value);
-                setFilterRuang('ALL');
-              }}
-              aria-label="Filter rombel kelas kartu ujian"
-              className="text-xs font-bold bg-transparent text-slate-800 dark:text-slate-100 focus:outline-hidden cursor-pointer"
-            >
-              <option value="ALL">Semua Rombel ({roomMappings.length})</option>
-              {roomMappings.map((r) => (
-                <option key={r.kelas_id} value={r.kelas_id}>
-                  {r.nama_kelas} ({r.slot_ruang})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Filter Ruang Dropdown */}
-          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-1 rounded-lg">
-            <span className="text-[10px] font-bold text-slate-400">Ruang:</span>
-            <select
-              value={filterRuang}
-              onChange={(e) => {
-                setFilterRuang(e.target.value);
-                setFilterKelasId('ALL');
-              }}
-              aria-label="Filter ruang ujian"
-              className="text-xs font-bold bg-transparent text-slate-800 dark:text-slate-100 focus:outline-hidden cursor-pointer"
-            >
-              <option value="ALL">Semua Ruang</option>
-              {roomMappings.map((r) => (
-                <option key={r.kelas_id} value={r.slot_ruang}>
-                  {r.slot_ruang} ({r.nama_kelas})
-                </option>
-              ))}
-            </select>
           </div>
 
           {/* Toggle Password Visible / Hidden */}
@@ -571,219 +791,43 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
       <div ref={sheetContainerRef} className="space-y-8 print:space-y-0">
         {studentChunks.length === 0 ? (
           <div className="p-12 text-center text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200">
-            <p className="text-sm font-bold">Tidak ada kartu peserta yang sesuai dengan filter.</p>
-            <p className="text-xs mt-1 text-slate-400">Silakan ubah filter rombel atau ruang di toolbar atas.</p>
+            <p className="text-sm font-bold">Tidak ada kartu peserta untuk kelas ini.</p>
+            <p className="text-xs mt-1 text-slate-400">Silakan pilih rombel lain di menu dropdown atas.</p>
           </div>
         ) : (
           studentChunks.map((cards, pageIdx) => (
             <PrintDocumentSheet
-              key={`sheet-${pageIdx}`}
+              key={`sheet-${currentClassMapping?.kelas_id || 'cls'}-${pageIdx}`}
               orientation="portrait"
               pageNumber={pageIdx + 1}
               totalPages={studentChunks.length}
-              footerText={`${sekolahData?.nama_sekolah || tenantInfo?.name || 'Absenta CBT'} • Kartu Peserta Ujian ${activeTpName}`}
+              footerText={`${sekolahData?.nama_sekolah || tenantInfo?.name || 'Absenta CBT'} • Kartu Peserta Ujian ${currentClassMapping?.nama_kelas || ''}`}
               className="p-5 print:p-4 relative"
             >
               {/* ── Kontainer Grid 2 × 2 (4 Kartu per Lembar A4 Portrait) ── */}
               <div className="relative w-full h-[1035px] flex flex-col justify-between">
                 {/* 2x2 Grid Layout */}
                 <div className="grid grid-cols-2 grid-rows-2 gap-3.5 h-full w-full">
-                  {cards.map((student, cardIdx) => {
-                    const signerName = signerRole === 'kepsek' ? kepsekNama : customKetuaPanitia;
-                    const signerNip = signerRole === 'kepsek' ? kepsekNip : customNipPanitia;
-                    const signerLabel = signerRole === 'kepsek' ? 'Kepala Sekolah,' : 'Ketua Panitia CBT,';
-
-                    return (
-                      <div
-                        key={student.id || `card-${cardIdx}`}
-                        className="relative h-full flex flex-col justify-between border-2 border-slate-300 print:border-slate-400 rounded-xl p-3 bg-white text-slate-900 shadow-2xs print:shadow-none overflow-hidden"
-                      >
-                        {/* ── 1. Header Mini Kop Kartu ── */}
-                        <div className="flex items-center gap-2 pb-1.5 border-b-2 border-slate-800 shrink-0">
-                          {showLogoSekolah && (
-                            <img
-                              src={sekolahData?.logo_url || tenantInfo?.logo_url || '/logo.png'}
-                              alt="Logo"
-                              className="w-9 h-9 object-contain shrink-0"
-                              onError={(e) => {
-                                (e.target as HTMLElement).style.display = 'none';
-                              }}
-                            />
-                          )}
-                          <div className="flex-1 text-center min-w-0">
-                            <p className="text-[7.5px] uppercase font-bold tracking-wider text-slate-500 leading-none truncate">
-                              {sekolahData?.nama_dinas || 'PEMERINTAH DAERAH PROVINSI JAWA BARAT'}
-                            </p>
-                            <h4 className="text-[10px] font-black uppercase text-slate-900 leading-tight tracking-tight truncate mt-0.5">
-                              {sekolahData?.nama_sekolah || tenantInfo?.name || 'SMK NEGERI 1'}
-                            </h4>
-                            <div className="mt-0.5 flex items-center justify-center">
-                              <span className="inline-block px-1.5 py-0.2 bg-indigo-50 text-indigo-900 text-[8px] font-black uppercase rounded tracking-wide border border-indigo-200/60">
-                                KARTU PESERTA UJIAN CBT
-                              </span>
-                            </div>
-                            <p className="text-[7px] font-bold text-slate-600 truncate mt-0.5 uppercase">
-                              {customEventName} • {activeTpName}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* ── 2. Badan Kartu: Foto 3x4 + QR di Kiri, Identitas & Kredensial di Kanan ── */}
-                        <div className="grid grid-cols-12 gap-2 my-1.5 flex-1 items-start min-h-0">
-                          {/* Sisi Kiri: Foto 3x4 + QR Quick Login */}
-                          <div className="col-span-4 flex flex-col items-center justify-start gap-1 shrink-0 pt-0.5">
-                            {/* Pasfoto Resmi 3x4 (24mm x 32mm) */}
-                            {showFoto ? (
-                              student.foto ? (
-                                <img
-                                  src={student.foto}
-                                  alt={student.nama_siswa}
-                                  className="w-[23mm] h-[31mm] object-cover rounded-xs border border-slate-300 shadow-2xs"
-                                />
-                              ) : (
-                                <div className="w-[23mm] h-[31mm] border-2 border-dashed border-slate-300 rounded-xs bg-slate-50 flex flex-col items-center justify-center text-slate-400 p-1 text-center shrink-0">
-                                  <User size={18} className="text-slate-300 mb-0.5" />
-                                  <span className="text-[6.5px] font-black uppercase leading-tight text-slate-400">
-                                    PASFOTO
-                                    <br />
-                                    3 × 4
-                                  </span>
-                                </div>
-                              )
-                            ) : null}
-
-                            {/* QR Code Quick Login */}
-                            {showQrCode && qrMap[student.id] && (
-                              <div className="flex flex-col items-center mt-0.5">
-                                <img
-                                  src={qrMap[student.id]}
-                                  alt="QR Login"
-                                  className="w-13 h-13 border border-slate-200 rounded p-0.5 bg-white"
-                                />
-                                <span className="text-[6.5px] font-bold text-slate-500 uppercase mt-0.5 tracking-tight text-center">
-                                  Scan Login CBT
-                                </span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Sisi Kanan: Tabel Identitas & Box Kredensial Login */}
-                          <div className="col-span-8 flex flex-col justify-between h-full gap-1 min-w-0">
-                            {/* Identitas Siswa */}
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between pb-0.5 border-b border-slate-100">
-                                <span className="text-slate-400 text-[7.5px] font-bold uppercase">No. Peserta</span>
-                                <span className="font-mono font-black text-indigo-700 text-[8.5px] bg-indigo-50 px-1 py-0.2 rounded border border-indigo-200">
-                                  {student.no_peserta}
-                                </span>
-                              </div>
-
-                              <div>
-                                <span className="text-[7px] font-bold text-slate-400 uppercase block">Nama Peserta</span>
-                                <span className="font-black text-slate-900 text-[9px] uppercase truncate block leading-tight">
-                                  {student.nama_siswa}
-                                </span>
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-1 text-[8px]">
-                                <div>
-                                  <span className="text-[7px] font-bold text-slate-400 block uppercase">NIS / NISN</span>
-                                  <span className="font-bold text-slate-700 truncate block">
-                                    {student.nis} / {student.nisn}
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="text-[7px] font-bold text-slate-400 block uppercase">Kelas / Rombel</span>
-                                  <span className="font-bold text-slate-700 truncate block">
-                                    {student.nama_kelas}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-1 pt-0.5 border-t border-slate-100 text-[8px]">
-                                <div>
-                                  <span className="text-[7px] font-bold text-slate-400 block uppercase">Ruang Ujian</span>
-                                  <span className="font-black text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded inline-block border border-emerald-200 text-[8px]">
-                                    {student.slot_ruang}
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="text-[7px] font-bold text-slate-400 block uppercase">Sesi Ujian</span>
-                                  <span className="font-bold text-slate-700 truncate block text-[7.5px]">
-                                    {student.sesi_ujian}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Box Kredensial Login CBT */}
-                            <div className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 space-y-0.5 mt-auto">
-                              <div className="flex items-center justify-between text-[7px] font-bold text-slate-500 uppercase border-b border-slate-200 pb-0.5">
-                                <span className="flex items-center gap-1 text-slate-700">
-                                  <KeyRound size={9} className="text-indigo-600" />
-                                  Kredensial Login Siswa
-                                </span>
-                                <span className="text-emerald-700 font-black text-[6.5px]">RESMI CBT</span>
-                              </div>
-                              <div className="grid grid-cols-2 gap-1 text-[8px] pt-0.5">
-                                <div>
-                                  <span className="text-slate-400 block text-[6.5px] uppercase">Username:</span>
-                                  <span className="font-mono font-bold text-slate-800 truncate block text-[8px]">
-                                    {student.username}
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="text-slate-400 block text-[6.5px] uppercase">Password / PIN:</span>
-                                  <span className="font-mono font-black text-indigo-700 tracking-wider text-[8px]">
-                                    {showPassword ? student.pin : '••••••'}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* ── 3. Footer Kartu: Tata Tertib di Kiri, Titimangsa & TTD di Kanan ── */}
-                        <div className="pt-1.5 border-t border-slate-200 grid grid-cols-2 gap-1.5 items-end shrink-0 text-[7px]">
-                          {/* Tata Tertib Singkat */}
-                          <div className="text-slate-500 space-y-0.5 pr-0.5">
-                            <p className="font-bold text-slate-600 text-[6.5px] uppercase">Tata Tertib Peserta:</p>
-                            <p className="leading-tight">1. Kartu wajib dibawa saat sesi ujian.</p>
-                            <p className="leading-tight">2. Jaga kerahasiaan Username &amp; PIN.</p>
-                            <p className="leading-tight">3. Hadir di ruang 15 menit sebelum mulai.</p>
-                          </div>
-
-                          {/* Titimangsa & Tanda Tangan */}
-                          <div className="text-center flex flex-col items-center pl-1">
-                            <p className="text-slate-500 text-[6.5px]">
-                              {titimangsaKota}, {titimangsaTanggal}
-                            </p>
-                            <p className="font-bold text-slate-700 text-[7px]">
-                              {signerLabel}
-                            </p>
-
-                            {/* Box Stempel & TTD Resmi */}
-                            <div className="h-7 w-full flex items-center justify-center relative my-0.5">
-                              {showTtd && (
-                                <div className="w-8 h-8 border-2 border-indigo-500/25 rounded-full flex items-center justify-center text-indigo-500/35 text-[5px] font-black uppercase transform -rotate-12 select-none">
-                                  CAP CBT
-                                </div>
-                              )}
-                            </div>
-
-                            <p className="font-black text-slate-900 underline text-[7.5px] leading-tight truncate w-full">
-                              {signerName}
-                            </p>
-                            {signerNip && (
-                              <p className="text-slate-500 text-[6px] truncate w-full">
-                                NIP. {signerNip}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {cards.map((student, cardIdx) => (
+                    <ExamCardSingleItem
+                      key={student.id || `card-${cardIdx}`}
+                      student={student}
+                      sekolahData={sekolahData}
+                      tenantInfo={tenantInfo}
+                      customEventName={customEventName}
+                      activeTpName={activeTpName}
+                      showLogoSekolah={showLogoSekolah}
+                      showFoto={showFoto}
+                      showQrCode={showQrCode}
+                      showPassword={showPassword}
+                      showTtd={showTtd}
+                      signerName={signerName}
+                      signerNip={signerNip}
+                      signerLabel={signerLabel}
+                      titimangsaKota={titimangsaKota}
+                      titimangsaTanggal={titimangsaTanggal}
+                    />
+                  ))}
                 </div>
 
                 {/* ── Panduan Gunting Lembar Kertas (Cutting Guides) ── */}
