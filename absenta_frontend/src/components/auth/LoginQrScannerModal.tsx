@@ -2,46 +2,93 @@ import React, { useEffect, useRef, useState } from 'react';
 import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
 import { X, SwitchCamera, Camera, AlertCircle, RefreshCw, Upload, Image as ImageIcon } from 'lucide-react';
 
+export interface ScannedQrPayload {
+  identifier: string;
+  password?: string;
+  isQuickLogin?: boolean;
+}
+
 interface LoginQrScannerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onScanSuccess: (code: string) => void;
+  onScanSuccess: (code: string, payload?: ScannedQrPayload) => void;
 }
 
 /**
- * Smart extractor to safely extract NISN / NIP / Email from raw QR text or JSON payload
+ * Smart extractor to safely extract NISN / NIP / Email and CBT Quick Auth Token from raw QR text or JSON payload
  */
-function extractIdentityFromQrText(rawText: string): string {
+export function extractAuthFromQrText(rawText: string): ScannedQrPayload {
   const trimmed = rawText.trim();
-  if (!trimmed) return '';
+  if (!trimmed) return { identifier: '' };
 
-  // Try parsing as JSON if QR contains encoded object
-  try {
-    const obj = JSON.parse(trimmed);
-    if (obj && typeof obj === 'object') {
-      const candidate = obj.nisn || obj.nip || obj.nis || obj.email || obj.username || obj.id || obj.code;
-      if (candidate) {
-        return String(candidate).trim();
-      }
-    }
-  } catch {
-    // Plain text payload
-  }
-
-  // Handle URL format (e.g., https://absenta.id/student/12345678)
+  // 1. Handle URL format (e.g., https://cbt.domain/login?cbtAuth=... or ?u=...&pin=...)
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
     try {
       const url = new URL(trimmed);
+
+      // Check cbtAuth Base64 parameter
+      const cbtAuth = url.searchParams.get('cbtAuth');
+      if (cbtAuth) {
+        try {
+          const decodedStr = decodeURIComponent(escape(atob(cbtAuth)));
+          const decoded = JSON.parse(decodedStr);
+          const u = decoded.u || decoded.nisn || decoded.username;
+          const p = decoded.p || decoded.pin || decoded.password;
+          if (u) {
+            return {
+              identifier: String(u).trim(),
+              password: p ? String(p).trim() : undefined,
+              isQuickLogin: Boolean(p),
+            };
+          }
+        } catch (e) {
+          console.warn('[QR Scanner] Error decoding cbtAuth Base64:', e);
+        }
+      }
+
+      // Check URL query parameters ?u=... & p=... / pin=...
+      const uParam = url.searchParams.get('u') || url.searchParams.get('nisn') || url.searchParams.get('username') || url.searchParams.get('email');
+      const pParam = url.searchParams.get('p') || url.searchParams.get('pin') || url.searchParams.get('password');
+      if (uParam) {
+        return {
+          identifier: String(uParam).trim(),
+          password: pParam ? String(pParam).trim() : undefined,
+          isQuickLogin: Boolean(pParam),
+        };
+      }
+
       const segments = url.pathname.split('/').filter(Boolean);
       if (segments.length > 0) {
-        return segments[segments.length - 1];
+        return { identifier: segments[segments.length - 1] };
       }
     } catch {
       // Ignore URL parsing errors
     }
   }
 
-  return trimmed;
+  // 2. Try parsing as JSON object
+  try {
+    const obj = JSON.parse(trimmed);
+    if (obj && typeof obj === 'object') {
+      const candidate = obj.u || obj.nisn || obj.nip || obj.nis || obj.email || obj.username || obj.id || obj.code;
+      const pwd = obj.p || obj.pin || obj.password;
+      if (candidate) {
+        return {
+          identifier: String(candidate).trim(),
+          password: pwd ? String(pwd).trim() : undefined,
+          isQuickLogin: Boolean(pwd),
+        };
+      }
+    }
+  } catch {
+    // Plain text payload
+  }
+
+  return { identifier: trimmed };
+}
+
+function extractIdentityFromQrText(rawText: string): string {
+  return extractAuthFromQrText(rawText).identifier;
 }
 
 export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
@@ -155,8 +202,8 @@ export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
           (result, error, controls) => {
             if (result && isMounted) {
               const scannedRaw = result.getText().trim();
-              const extracted = extractIdentityFromQrText(scannedRaw);
-              if (extracted) {
+              const authPayload = extractAuthFromQrText(scannedRaw);
+              if (authPayload.identifier) {
                 playBeep();
                 
                 // 1. Stop scanner loop immediately
@@ -168,7 +215,7 @@ export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
                 // 2. Perform state transitions after reader loop is stopped to avoid unmount error boundary crash
                 setTimeout(() => {
                   if (isMounted) {
-                    onScanSuccess(extracted);
+                    onScanSuccess(authPayload.identifier, authPayload);
                     onClose();
                   }
                 }, 80);
@@ -234,12 +281,12 @@ export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
 
       if (result) {
         const rawText = result.getText().trim();
-        const extracted = extractIdentityFromQrText(rawText);
-        if (extracted) {
+        const authPayload = extractAuthFromQrText(rawText);
+        if (authPayload.identifier) {
           playBeep();
           cleanupCamera();
           setTimeout(() => {
-            onScanSuccess(extracted);
+            onScanSuccess(authPayload.identifier, authPayload);
             onClose();
           }, 80);
         }

@@ -12,7 +12,7 @@ import { Mail, Lock, ShieldCheck, ArrowRight, AlertCircle, Home, UserCheck, Smar
 import { Navbar } from '@/components/layout/Navbar';
 import { RouteAccessBadge } from '@/components/layout/RouteAccessBadge';
 import { InfraErrorBoundary } from '../../components/superadmin/infra/InfraErrorBoundary';
-import { LoginQrScannerModal } from '@/components/auth/LoginQrScannerModal';
+import { LoginQrScannerModal, type ScannedQrPayload } from '@/components/auth/LoginQrScannerModal';
 import { DemoRoleSelector } from '@/components/auth/DemoRoleSelector';
 import { type DemoRoleProfile } from '@/config/demoProfiles.config';
 import { ServerDomainSetupModal } from '@/components/auth/ServerDomainSetupModal';
@@ -78,12 +78,9 @@ export default function LoginPage() {
   }, []);
   const [showManualLogin, setShowManualLogin] = useState(false);
   const [activeLoadingRoleId, setActiveLoadingRoleId] = useState<string | null>(null);
-  const handleScanSuccess = useCallback((scannedCode: string) => {
-    setCredentials(prev => ({
-      ...prev,
-      email: scannedCode
-    }));
-  }, []);
+  const [isQuickLoggingIn, setIsQuickLoggingIn] = useState(false);
+  const [quickLoginStatus, setQuickLoginStatus] = useState<string>('');
+
   const {
     loginAction,
     isAuthenticated,
@@ -93,6 +90,103 @@ export default function LoginPage() {
   } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const handleScanSuccess = useCallback(async (scannedCode: string, payload?: ScannedQrPayload) => {
+    if (payload?.isQuickLogin && payload.identifier && payload.password) {
+      setCredentials({
+        email: payload.identifier,
+        password: payload.password
+      });
+      setIsQuickLoggingIn(true);
+      setQuickLoginStatus(`Memverifikasi Quick Login Peserta (${payload.identifier})...`);
+      toast.loading('Quick Login CBT terdeteksi! Memverifikasi akun...', { id: 'cbt-quick-login' });
+      try {
+        const isDevMode = String(import.meta.env.VITE_DEV_MODE || '').toLowerCase() === 'true' && import.meta.env.MODE !== 'production';
+        const isLocalhostLogin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const devTenantArg = isDevMode && isLocalhostLogin ? (tenantIdDev.trim() || undefined) : undefined;
+        
+        await loginAction(payload.identifier, payload.password, devTenantArg, true);
+        toast.success(`Selamat datang ${payload.identifier}! Mengalihkan ke ruang ujian...`, { id: 'cbt-quick-login' });
+        navigate('/dashboard?tab=cbt', { replace: true });
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || 'Quick Login gagal. Silakan masukkan password manual.', { id: 'cbt-quick-login' });
+        setIsQuickLoggingIn(false);
+        setShowManualLogin(true);
+      }
+    } else {
+      setCredentials(prev => ({
+        ...prev,
+        email: scannedCode
+      }));
+      toast.success('Nomor Peserta / Identitas terdeteksi! Masukkan kata sandi.');
+    }
+  }, [tenantIdDev, loginAction, navigate]);
+
+  // Intercept cbtAuth Base64 or query params for Passwordless CBT Quick Login
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const cbtAuth = searchParams.get('cbtAuth');
+    const uParam = searchParams.get('u') || searchParams.get('username') || searchParams.get('nisn');
+    const pParam = searchParams.get('p') || searchParams.get('pin') || searchParams.get('password');
+
+    let quickId = '';
+    let quickPin = '';
+
+    if (cbtAuth) {
+      try {
+        let decodedStr = '';
+        try {
+          decodedStr = decodeURIComponent(escape(atob(cbtAuth)));
+        } catch {
+          decodedStr = atob(cbtAuth);
+        }
+        const parsed = JSON.parse(decodedStr);
+        quickId = String(parsed.u || parsed.nisn || parsed.username || '').trim();
+        quickPin = String(parsed.p || parsed.pin || parsed.password || '').trim();
+      } catch (err) {
+        console.warn('[LoginPage] Gagal mendekode token cbtAuth:', err);
+      }
+    } else if (uParam && pParam) {
+      quickId = uParam.trim();
+      quickPin = pParam.trim();
+    }
+
+    if (quickId && quickPin) {
+      setIsQuickLoggingIn(true);
+      setQuickLoginStatus(`Memverifikasi Quick Login Peserta (${quickId})...`);
+
+      const executeQuickAuth = async () => {
+        try {
+          const isDevMode = String(import.meta.env.VITE_DEV_MODE || '').toLowerCase() === 'true' && import.meta.env.MODE !== 'production';
+          const isLocalhostLogin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+          const devTenantArg = isDevMode && isLocalhostLogin ? (tenantIdDev.trim() || undefined) : undefined;
+
+          await loginAction(quickId, quickPin, devTenantArg, true);
+          toast.success(`Quick Login Peserta ${quickId} Berhasil! Mengalihkan...`, { id: 'cbt-quick-login' });
+          
+          // Bersihkan URL query params tanpa reload
+          const cleanPath = window.location.pathname;
+          window.history.replaceState({}, document.title, cleanPath);
+
+          navigate('/dashboard?tab=cbt', { replace: true });
+        } catch (err: any) {
+          console.error('[LoginPage] CBT Quick Login Error:', err);
+          setIsQuickLoggingIn(false);
+          setShowManualLogin(true);
+          setCredentials({
+            email: quickId,
+            password: quickPin
+          });
+          const errMsg = err?.response?.data?.message || 'Quick Login gagal. Periksa Username / PIN kartu ujian.';
+          setLocalError(errMsg);
+          toast.error(errMsg, { id: 'cbt-quick-login' });
+        }
+      };
+
+      const timer = setTimeout(executeQuickAuth, 120);
+      return () => clearTimeout(timer);
+    }
+  }, [tenantIdDev, loginAction, navigate]);
   const [backendNodeId, setBackendNodeId] = useState<string | null>(null);
   const [hideRegisterLink, setHideRegisterLink] = useState(false);
   const features = useMemo(() => [{
@@ -382,6 +476,36 @@ export default function LoginPage() {
     }
   };
 
+  // ── OVERLAY PROSES QUICK LOGIN PESERTA (JIKA AKTIF) ──
+  if (isQuickLoggingIn) {
+    return (
+      <InfraErrorBoundary hardeningModuleKey="auth_login">
+        <main className="min-h-screen w-full flex items-center justify-center bg-slate-950 font-sans p-6 relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/30 via-slate-950 to-slate-950 pointer-events-none" />
+          <div className="relative z-10 max-w-md w-full bg-slate-900/95 border border-slate-800 rounded-3xl p-8 shadow-2xl backdrop-blur-xl text-center space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/25 animate-pulse">
+              <Sparkles className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-white tracking-tight">
+                Quick Login Peserta CBT
+              </h3>
+              <p className="text-sm text-slate-300 mt-1.5 font-medium">
+                {quickLoginStatus || 'Memverifikasi identitas peserta secara otomatis...'}
+              </p>
+            </div>
+            <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full animate-pulse w-3/4 mx-auto" />
+            </div>
+            <p className="text-xs text-slate-500 font-mono">
+              Sistem Terintegrasi SSO Absenta Enterprise • Validasi SSoT
+            </p>
+          </div>
+        </main>
+      </InfraErrorBoundary>
+    );
+  }
+
   // ── FULL-WIDTH DESKTOP BENTO APP LAUNCHER MODE UNTUK DEMO ──
   if (isDemoEnvironment && !showManualLogin) {
     return <InfraErrorBoundary hardeningModuleKey="auth_login">
@@ -393,8 +517,21 @@ export default function LoginPage() {
           <div className="absolute bottom-1/4 left-1/4 w-[32rem] h-[32rem] bg-blue-500/10 rounded-full blur-[140px] pointer-events-none dark:bg-blue-600/5" />
 
           <Card className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-22 pb-16 relative z-10 border-none shadow-none bg-transparent">
-            <DemoRoleSelector onSelectRole={handleDemoRoleLogin} isLoading={isLoading} activeLoadingRoleId={activeLoadingRoleId} onToggleManualLogin={() => setShowManualLogin(true)} />
+            <DemoRoleSelector
+              onSelectRole={handleDemoRoleLogin}
+              isLoading={isLoading}
+              activeLoadingRoleId={activeLoadingRoleId}
+              onToggleManualLogin={() => setShowManualLogin(true)}
+              onOpenScanner={() => setIsScannerOpen(true)}
+            />
           </Card>
+
+          {/* Camera QR/Barcode Scanner Modal in Demo View */}
+          <LoginQrScannerModal
+            isOpen={isScannerOpen}
+            onClose={() => setIsScannerOpen(false)}
+            onScanSuccess={handleScanSuccess}
+          />
         </main>
       </InfraErrorBoundary>;
   }

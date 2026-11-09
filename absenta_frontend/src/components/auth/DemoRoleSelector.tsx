@@ -17,7 +17,8 @@ import {
   Loader2,
   KeyRound,
   Search,
-  Compass
+  Compass,
+  QrCode
 } from 'lucide-react';
 import { 
   DEMO_ROLE_PROFILES, 
@@ -31,6 +32,7 @@ interface DemoRoleSelectorProps {
   isLoading: boolean;
   activeLoadingRoleId?: string | null;
   onToggleManualLogin?: () => void;
+  onOpenScanner?: () => void;
 }
 
 const ICON_MAP: Record<string, React.FC<{ className?: string; size?: number }>> = {
@@ -154,7 +156,8 @@ export const DemoRoleSelector: React.FC<DemoRoleSelectorProps> = React.memo(({
   onSelectRole,
   isLoading,
   activeLoadingRoleId,
-  onToggleManualLogin
+  onToggleManualLogin,
+  onOpenScanner
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -235,6 +238,18 @@ export const DemoRoleSelector: React.FC<DemoRoleSelectorProps> = React.memo(({
               className="w-full pl-8 pr-2.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-amber-500/40 transition-shadow"
             />
           </div>
+
+          {onOpenScanner && (
+            <button
+              type="button"
+              onClick={onOpenScanner}
+              className="px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-2xs"
+              title="Scan Kartu Peserta Ujian / QR Login Cepat"
+            >
+              <QrCode className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span>Scan Kartu</span>
+            </button>
+          )}
 
           {onToggleManualLogin && (
             <button

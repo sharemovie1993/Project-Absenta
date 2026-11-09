@@ -9,8 +9,8 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 | Metrik Evaluasi | Hasil Peminidaian | Persentase | Status |
 |---|---|---|---|
 | **Total Halaman Utama** | **230 Halaman** | 100% | - |
-| **✅ Lolos Sempurna (Hardened)** | **150 Halaman** | 65% | **Sangat Baik** |
-| **⚠️ Sebagian Terstandar (Partial)** | **63 Halaman** | 27% | **Butuh Sentuhan Ringan** |
+| **✅ Lolos Sempurna (Hardened)** | **149 Halaman** | 65% | **Sangat Baik** |
+| **⚠️ Sebagian Terstandar (Partial)** | **64 Halaman** | 28% | **Butuh Sentuhan Ringan** |
 | **❌ Belum Terstandar (Non-Compliant)** | **17 Halaman** | 7% | **Prioritas Utama Refaktor** |
 
 ---
@@ -682,6 +682,14 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
   * ❌ Terdeteksi isu responsivitas pada antarmuka (Pelanggaran Pilar 30 Adaptabilitas Responsif Multi-Perangkat). Wajib melakukan refaktor secara best-practice: (1) Pada Topbar (<640px), sembunyikan badge status redundan 'hidden sm:block' agar judul halaman mendapatkan 100% ruang lebar penuh tanpa terpotong kaku. (2) Pada TabSwitcher, gunakan container touch-scroll 'overflow-x-auto no-scrollbar flex-nowrap' dengan item 'whitespace-nowrap'. (3) Pada Kartu Statistik, gunakan varian Mobile-Mini/Compact Premium ('variant="compact-premium"' atau 'mobileCompact={true}') agar hemat 50% ruang vertikal di layar ponsel dan sediakan fitur collapsible. (4) Pada Form & Input, pastikan seluruh container memiliki kelas 'w-full max-w-full min-w-0' agar elemen input dan ikon tidak terpotong (zero-clipping).
+
+---
+
+### 📄 Halaman: `Login.tsx`
+* **Lokasi File:** [Login.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/Login.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
 
 ---
 
@@ -1446,13 +1454,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `MasterStrukturPage.tsx`
 * **Lokasi File:** [MasterStrukturPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/MasterStrukturPage.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `Login.tsx`
-* **Lokasi File:** [Login.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/Login.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 

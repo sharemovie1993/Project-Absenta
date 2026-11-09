@@ -3,12 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { formatDate } from '@/utils/date.utils';
 import React, { useEffect, useState, useRef } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import axiosInstance from '../lib/axiosInstance';
 import { InfraErrorBoundary } from '../components/superadmin/infra/InfraErrorBoundary';
-import { User, Lock, Eye, EyeOff, LogIn, QrCode, Server } from 'lucide-react';
-import { LoginQrScannerModal } from '../components/auth/LoginQrScannerModal';
+import { User, Lock, Eye, EyeOff, LogIn, QrCode, Server, Sparkles } from 'lucide-react';
+import { LoginQrScannerModal, type ScannedQrPayload } from '../components/auth/LoginQrScannerModal';
 import { ServerDomainSetupModal } from '../components/auth/ServerDomainSetupModal';
 import { getSavedServerDomain } from '../services/serverConfig';
 import toast from 'react-hot-toast';
@@ -24,15 +24,69 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isServerModalOpen, setIsServerModalOpen] = useState(false);
+  const [isQuickLoggingIn, setIsQuickLoggingIn] = useState(false);
   const passwordInputRef = useRef<HTMLInputElement>(null);
 
   const { loginAction, isAuthenticated, isLoading, error } = useAuthStore();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const savedDomain = useMemo(() => getSavedServerDomain() || (typeof window !== 'undefined' ? window.location.hostname : 'Default'), []);
 
-  const handleScanSuccess = useCallback((scannedCode: string) => {
-    setCredentials(prev => ({ ...prev, email: scannedCode })); }, []);
+  const handleScanSuccess = useCallback(async (scannedCode: string, payload?: ScannedQrPayload) => {
+    if (payload?.isQuickLogin && payload.identifier && payload.password) {
+      setCredentials({ email: payload.identifier, password: payload.password });
+      setIsQuickLoggingIn(true);
+      toast.loading('Quick Login terdeteksi! Memverifikasi...', { id: 'cbt-quick' });
+      try {
+        await loginAction(payload.identifier, payload.password, undefined, true);
+        toast.success(`Quick login berhasil!`, { id: 'cbt-quick' });
+        navigate('/dashboard?tab=cbt', { replace: true });
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || 'Quick login gagal.', { id: 'cbt-quick' });
+        setIsQuickLoggingIn(false);
+      }
+    } else {
+      setCredentials(prev => ({ ...prev, email: scannedCode }));
+    }
+  }, [loginAction, navigate]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const cbtAuth = params.get('cbtAuth');
+    const uParam = params.get('u') || params.get('username') || params.get('nisn');
+    const pParam = params.get('p') || params.get('pin') || params.get('password');
+    let u = '';
+    let p = '';
+    if (cbtAuth) {
+      try {
+        const decoded = JSON.parse(decodeURIComponent(escape(atob(cbtAuth))));
+        u = decoded.u || decoded.nisn || decoded.username || '';
+        p = decoded.p || decoded.pin || decoded.password || '';
+      } catch {
+        try {
+          const decoded = JSON.parse(atob(cbtAuth));
+          u = decoded.u || decoded.nisn || '';
+          p = decoded.p || decoded.pin || '';
+        } catch {}
+      }
+    } else if (uParam && pParam) {
+      u = uParam;
+      p = pParam;
+    }
+    if (u && p) {
+      setIsQuickLoggingIn(true);
+      loginAction(u, p, undefined, true)
+        .then(() => {
+          toast.success(`Quick login berhasil!`);
+          navigate('/dashboard?tab=cbt', { replace: true });
+        })
+        .catch(() => {
+          setIsQuickLoggingIn(false);
+          setCredentials({ email: u, password: p });
+        });
+    }
+  }, [loginAction, navigate]);
   
   const { data: tenantInfoData } = useQuery({
     queryKey: ['auth-tenant-info'],
@@ -73,6 +127,20 @@ const Login: React.FC = () => {
       [name]: value,
     }));
   };
+
+  if (isQuickLoggingIn) {
+    return (
+      <InfraErrorBoundary>
+        <div className="min-h-screen flex items-center justify-center bg-slate-950 p-6 text-white text-center">
+          <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 space-y-4 shadow-2xl">
+            <Sparkles className="w-10 h-10 text-blue-400 mx-auto animate-pulse" />
+            <h3 className="text-lg font-black">Quick Login CBT Sedang Memverifikasi...</h3>
+            <p className="text-xs text-slate-400">Harap tunggu sebentar, Anda akan dialihkan ke ruang ujian secara otomatis.</p>
+          </div>
+        </div>
+      </InfraErrorBoundary>
+    );
+  }
 
   return (
     <InfraErrorBoundary>

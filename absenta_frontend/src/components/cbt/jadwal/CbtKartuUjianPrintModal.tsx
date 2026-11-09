@@ -233,7 +233,21 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
     }
 
     let isMounted = true;
-    const payload = `${window.location.origin}/cbt/login?u=${student.username}&pin=${student.pin}&room=${student.slot_ruang}`;
+    const quickPayload = {
+      u: student.username || student.nisn,
+      p: student.pin,
+      nisn: student.nisn,
+      room: student.slot_ruang,
+      name: student.nama_siswa,
+      cbt: true,
+    };
+    let encodedToken = '';
+    try {
+      encodedToken = btoa(unescape(encodeURIComponent(JSON.stringify(quickPayload))));
+    } catch {
+      encodedToken = btoa(JSON.stringify({ u: quickPayload.u, p: quickPayload.p }));
+    }
+    const payload = `${window.location.origin}/login?cbtAuth=${encodeURIComponent(encodedToken)}&u=${encodeURIComponent(quickPayload.u)}`;
 
     QRCode.toDataURL(payload, {
       errorCorrectionLevel: 'L',
