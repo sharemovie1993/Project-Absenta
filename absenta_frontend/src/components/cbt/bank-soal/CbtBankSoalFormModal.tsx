@@ -695,26 +695,6 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                 </div>
               )
             )}
-                            >
-                              <Sparkles size={8} />
-                              <span>Bulan Ini</span>
-                            </span>
-                          )}
-                        </div>
-                        <p
-                          className={cn(
-                            'text-[10.5px] font-medium truncate',
-                            isSelected ? 'text-indigo-100' : 'text-slate-500 dark:text-slate-400'
-                          )}
-                        >
-                          {k.keterangan}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
 
             {/* 3. Mata Pelajaran */}
             <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
