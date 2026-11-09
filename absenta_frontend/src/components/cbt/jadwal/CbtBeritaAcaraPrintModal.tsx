@@ -5,13 +5,15 @@ import {
   UniversalDocumentSignatures,
   PrintHeader,
   usePrintHeaderData,
+  Button,
 } from '@/components/ui';
-import { SlidersHorizontal, UserCheck, RotateCcw } from 'lucide-react';
+import { SlidersHorizontal, UserCheck, RotateCcw, PenTool } from 'lucide-react';
 import type { CbtJadwalUjian } from '@/types/cbt.types';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import toast from 'react-hot-toast';
 import { formatLocalTimeFromISO, getTimezone, getTimezoneLabel } from '@/utils/attendance/time';
+import { DigitalSignaturePadModal } from '@/components/ui/DigitalSignaturePadModal';
 
 interface CbtBeritaAcaraPrintModalProps {
   isOpen: boolean;
@@ -31,6 +33,7 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
   const [showLogoSekolah, setShowLogoSekolah] = useState<boolean>(true);
   const [showTtdConfig, setShowTtdConfig] = useState<boolean>(false);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+  const [isSignModalOpen, setIsSignModalOpen] = useState<boolean>(false);
 
   // Universal Hook: Resolves active Tenant & Sekolah data
   const { tenantInfo, rawSekolah } = usePrintHeaderData();
@@ -39,14 +42,41 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
   // Penandatangan & Catatan State
   const [pengawas1Nama, setPengawas1Nama] = useState<string>('');
   const [pengawas1Nip, setPengawas1Nip] = useState<string>('');
+  const [pengawas1Signature, setPengawas1Signature] = useState<string>('');
   const [pengawas2Nama, setPengawas2Nama] = useState<string>('');
   const [pengawas2Nip, setPengawas2Nip] = useState<string>('');
+  const [pengawas2Signature, setPengawas2Signature] = useState<string>('');
   const [kepsekNama, setKepsekNama] = useState<string>('');
   const [kepsekNip, setKepsekNip] = useState<string>('');
   const [ruangUjian, setRuangUjian] = useState<string>('Laboratorium Komputer / Ruang CBT');
   const [catatanPelaksanaan, setCatatanPelaksanaan] = useState<string>(
     'Pelaksanaan asesmen Computer-Based Test (CBT) berlangsung dengan tertib, aman, dan lancar sesuai prosedur operasional standar tanpa kendala teknis yang berarti.'
   );
+
+  const queryClient = useQueryClient();
+
+  const updateSignatureMutation = useMutation({
+    mutationFn: async (base64Signature: string) => {
+      if (!jadwal?.id) return;
+      const currentSetting = jadwal.setting_keamanan || {};
+      const updatedSetting = {
+        ...currentSetting,
+        tanda_tangan_pengawas_1: base64Signature,
+        waktu_ttd_pengawas_1: new Date().toISOString(),
+      };
+      return cbtApi.updateJadwal(jadwal.id, {
+        setting_keamanan: updatedSetting,
+      });
+    },
+    onSuccess: () => {
+      toast.success('Tanda tangan digital pengawas berhasil disimpan');
+      setIsSignModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || err.message || 'Gagal menyimpan tanda tangan pengawas');
+    },
+  });
 
   // Ambil data peserta sesi untuk rekap kehadiran otomatis di Berita Acara
   const { data: pesertaList = [] } = useQuery({
@@ -89,8 +119,10 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
     setRuangUjian(defaultRuang);
     setPengawas1Nama(defaultGuruNama);
     setPengawas1Nip(defaultGuruNip);
+    setPengawas1Signature(cfg?.tanda_tangan_pengawas_1 || '');
     setPengawas2Nama(defaultProktorNama);
     setPengawas2Nip(defaultProktorNip);
+    setPengawas2Signature(cfg?.tanda_tangan_proktor || cfg?.tanda_tangan_pengawas_2 || '');
     setKepsekNama(defaultKepsek);
     setKepsekNip(defaultNipKepsek);
   };
@@ -138,6 +170,8 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
   };
 
   const handleDownloadPdf = async () => {
+    const deskCanvas = document.getElementById('print-desk-canvas-area');
+    const prevZoom = deskCanvas ? deskCanvas.style.zoom : '';
     const container = sheetContainerRef.current;
     const sheetElement =
       (container?.querySelector('.print-sheet') as HTMLElement | null) || container;
@@ -151,18 +185,41 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
     try {
       setIsExportingPdf(true);
 
+      // LANGKAH 2: Matikan zoom DOM riil & paksa reflow sinkron
+      if (deskCanvas) {
+        deskCanvas.style.zoom = '1';
+        deskCanvas.style.transform = 'none';
+        void deskCanvas.offsetHeight;
+      }
+
+      // LANGKAH 3: Tunggu rasterisasi font & beri jeda settle repaint tick
+      if (document.fonts?.ready) {
+        await document.fonts.ready;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 120));
+
       const html2canvas = (await import('html2canvas-pro')).default;
       const { jsPDF } = await import('jspdf');
 
+      // LANGKAH 4: Render canvas dengan onclone sanitizer
       const canvas = await html2canvas(sheetElement, {
-        scale: 2, // Wajib: 2.0 (~200 DPI Retina, tajam dan hemat RAM)
+        scale: 2.0, // Wajib: 2.0 (~200 DPI Retina, tajam dan hemat RAM)
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
         logging: false,
         onclone: (clonedDoc) => {
-          const sheets = clonedDoc.querySelectorAll('.print-sheet');
-          sheets.forEach((s: any) => {
+          const clonedDesk = clonedDoc.getElementById('print-desk-canvas-area');
+          if (clonedDesk) {
+            clonedDesk.style.zoom = '1';
+            clonedDesk.style.transform = 'none';
+          }
+          const sheets = clonedDoc.querySelectorAll<HTMLElement>('.print-sheet');
+          sheets.forEach((s) => {
+            s.style.zoom = '1';
+            s.style.transform = 'none';
+            s.style.letterSpacing = 'normal';
+            s.style.fontVariantLigatures = 'none';
             s.style.border = 'none';
             s.style.boxShadow = 'none';
             s.style.outline = 'none';
@@ -170,7 +227,7 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
         },
       });
 
-      // Anti-Bloat Guard & Aspect Ratio Preservation (JPEG 0.88 + Stream Compression)
+      // LANGKAH 5: Preservasi Rasio Aspek (JPEG 0.88 + Stream Compression)
       const imgData = canvas.toDataURL('image/jpeg', 0.88);
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -203,11 +260,14 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
 
       const cleanSession = (jadwal.nama_sesi || 'SESI_CBT').replace(/[^a-zA-Z0-9]/g, '_');
       pdf.save(`BERITA_ACARA_CBT_${cleanSession}_${jadwal.token_ujian}.pdf`);
-      toast.success('PDF Berita Acara CBT berhasil diunduh', { id: toastId });
-    } catch (err) {
+      toast.success('PDF Berita Acara CBT berhasil diunduh (True WYSIWYG)', { id: toastId });
+    } catch (err: any) {
       console.error('[CBT Berita Acara PDF Error]', err);
-      toast.error('Gagal mengunduh PDF, silakan gunakan tombol Cetak Dokumen', { id: toastId });
+      toast.error(err?.message || 'Gagal mengunduh PDF, silakan gunakan tombol Cetak Dokumen', { id: toastId });
     } finally {
+      if (deskCanvas) {
+        deskCanvas.style.zoom = prevZoom;
+      }
       setIsExportingPdf(false);
     }
   };
@@ -297,6 +357,53 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
                 aria-label="NIP Pengawas 1"
                 className="w-full text-xs p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
               />
+
+              {/* Status & Kontrol TTD Digital Pengawas */}
+              <div className="mt-2 p-2 rounded-lg bg-white/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  {pengawas1Signature ? (
+                    <>
+                      <img
+                        src={pengawas1Signature}
+                        alt="TTD Pengawas"
+                        className="h-6 max-w-[55px] object-contain border border-amber-300 rounded bg-white p-0.5"
+                      />
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                        TTD Digital ✓
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                      Belum Ada TTD
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsSignModalOpen(true)}
+                    className="text-[10px] h-6 px-2 font-bold cursor-pointer"
+                  >
+                    <PenTool size={11} className="mr-1" />
+                    <span>{pengawas1Signature ? 'Ubah' : 'Tanda Tangani'}</span>
+                  </Button>
+                  {pengawas1Signature && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPengawas1Signature('');
+                        updateSignatureMutation.mutate('');
+                      }}
+                      className="text-[10px] text-rose-500 hover:text-rose-700 px-1 cursor-pointer"
+                      title="Hapus tanda tangan digital pengawas"
+                    >
+                      Hapus
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div className="space-y-1">
@@ -489,11 +596,13 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
                   roleTitle: 'Pengawas I / Ruang Ujian,',
                   personName: pengawas1Nama,
                   nip: pengawas1Nip,
+                  signatureImage: pengawas1Signature,
                 }}
                 overrideSignerRight={{
                   roleTitle: 'Pengawas II / Proktor Ruang,',
                   personName: pengawas2Nama,
                   nip: pengawas2Nip,
+                  signatureImage: pengawas2Signature,
                 }}
                 overrideSignerCenter={{
                   roleTitle: 'Mengetahui / Menyetujui,\nKepala Sekolah',
@@ -516,6 +625,7 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
                   roleTitle: 'Pengawas Ruang Ujian,',
                   personName: pengawas1Nama,
                   nip: pengawas1Nip,
+                  signatureImage: pengawas1Signature,
                 }}
                 spacingHeightMm={16}
               />
@@ -523,6 +633,20 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
           </div>
         </PrintDocumentSheet>
       </div>
+
+      {/* Modal Tanda Tangan Digital Pengawas */}
+      <DigitalSignaturePadModal
+        isOpen={isSignModalOpen}
+        onClose={() => setIsSignModalOpen(false)}
+        title="Tanda Tangan Digital Pengawas Ujian"
+        subtitle={`Sesi: ${jadwal.nama_sesi || 'Ujian CBT'} • Ruang: ${ruangUjian}`}
+        penName={pengawas1Nama || 'Pengawas Ruang'}
+        initialSignature={pengawas1Signature}
+        onSave={(sig) => {
+          setPengawas1Signature(sig);
+          updateSignatureMutation.mutate(sig);
+        }}
+      />
     </UniversalDocumentModal>
   );
 };

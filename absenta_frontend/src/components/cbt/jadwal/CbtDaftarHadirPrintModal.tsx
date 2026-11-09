@@ -5,14 +5,16 @@ import {
   UniversalDocumentSignatures,
   PrintHeader,
   usePrintHeaderData,
+  Button,
 } from '@/components/ui';
-import { SlidersHorizontal, UserCheck, RotateCcw } from 'lucide-react';
+import { SlidersHorizontal, UserCheck, RotateCcw, PenTool } from 'lucide-react';
 import type { CbtJadwalUjian, CbtPesertaUjian } from '@/types/cbt.types';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import toast from 'react-hot-toast';
 import { formatLocalTimeFromISO, getTimezoneLabel } from '@/utils/attendance/time';
 import { formatLocalDateIndo } from '@/utils/date.utils';
+import { DigitalSignaturePadModal } from '@/components/ui/DigitalSignaturePadModal';
 
 interface CbtDaftarHadirPrintModalProps {
   isOpen: boolean;
@@ -40,11 +42,39 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
   // Penandatangan & Ruang State
   const [pengawas1Nama, setPengawas1Nama] = useState<string>('');
   const [pengawas1Nip, setPengawas1Nip] = useState<string>('');
+  const [pengawas1Signature, setPengawas1Signature] = useState<string>('');
   const [proktorNama, setProktorNama] = useState<string>('');
   const [proktorNip, setProktorNip] = useState<string>('');
+  const [proktorSignature, setProktorSignature] = useState<string>('');
   const [kepsekNama, setKepsekNama] = useState<string>('');
   const [kepsekNip, setKepsekNip] = useState<string>('');
   const [ruangUjian, setRuangUjian] = useState<string>('Ruang Ujian CBT');
+  const [isSignModalOpen, setIsSignModalOpen] = useState<boolean>(false);
+
+  const queryClient = useQueryClient();
+
+  const updateSignatureMutation = useMutation({
+    mutationFn: async (base64Signature: string) => {
+      if (!jadwal?.id) return;
+      const currentSetting = jadwal.setting_keamanan || {};
+      const updatedSetting = {
+        ...currentSetting,
+        tanda_tangan_pengawas_1: base64Signature,
+        waktu_ttd_pengawas_1: new Date().toISOString(),
+      };
+      return cbtApi.updateJadwal(jadwal.id, {
+        setting_keamanan: updatedSetting,
+      });
+    },
+    onSuccess: () => {
+      toast.success('Tanda tangan digital pengawas berhasil disimpan');
+      setIsSignModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || err.message || 'Gagal menyimpan tanda tangan pengawas');
+    },
+  });
 
   // Ambil data peserta sesi untuk tabel kehadiran & tanda tangan digital
   const { data: pesertaList = [], isLoading: loadingPeserta } = useQuery<CbtPesertaUjian[]>({
@@ -87,8 +117,10 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
     setRuangUjian(defaultRuang);
     setPengawas1Nama(defaultGuruNama);
     setPengawas1Nip(defaultGuruNip);
+    setPengawas1Signature(cfg?.tanda_tangan_pengawas_1 || '');
     setProktorNama(defaultProktorNama);
     setProktorNip(defaultProktorNip);
+    setProktorSignature(cfg?.tanda_tangan_proktor || cfg?.tanda_tangan_pengawas_2 || '');
     setKepsekNama(defaultKepsek);
     setKepsekNip(defaultNipKepsek);
   };
@@ -350,6 +382,53 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
                 placeholder="NIP Pengawas (kosongkan jika -)"
                 className="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono"
               />
+
+              {/* Status & Kontrol TTD Digital Pengawas */}
+              <div className="mt-2 p-2 rounded-lg bg-white/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  {pengawas1Signature ? (
+                    <>
+                      <img
+                        src={pengawas1Signature}
+                        alt="TTD Pengawas"
+                        className="h-6 max-w-[55px] object-contain border border-emerald-300 rounded bg-white p-0.5"
+                      />
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                        TTD Digital ✓
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                      Belum Ada TTD
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsSignModalOpen(true)}
+                    className="text-[10px] h-6 px-2 font-bold cursor-pointer"
+                  >
+                    <PenTool size={11} className="mr-1" />
+                    <span>{pengawas1Signature ? 'Ubah' : 'Tanda Tangani'}</span>
+                  </Button>
+                  {pengawas1Signature && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPengawas1Signature('');
+                        updateSignatureMutation.mutate('');
+                      }}
+                      className="text-[10px] text-rose-500 hover:text-rose-700 px-1 cursor-pointer"
+                      title="Hapus tanda tangan digital pengawas"
+                    >
+                      Hapus
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Proktor / Pengawas 2 */}
@@ -578,11 +657,13 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
                   roleTitle: 'Proktor Ruang Ujian,',
                   personName: proktorNama,
                   nip: proktorNip,
+                  signatureImage: proktorSignature,
                 }}
                 overrideSignerRight={{
                   roleTitle: 'Pengawas Ruang Ujian,',
                   personName: pengawas1Nama,
                   nip: pengawas1Nip,
+                  signatureImage: pengawas1Signature,
                 }}
                 overrideSignerCenter={{
                   roleTitle: 'Mengetahui,\nKepala Sekolah',
@@ -605,6 +686,7 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
                   roleTitle: 'Pengawas Ruang Ujian,',
                   personName: pengawas1Nama,
                   nip: pengawas1Nip,
+                  signatureImage: pengawas1Signature,
                 }}
                 spacingHeightMm={14}
               />
@@ -612,6 +694,20 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
           </div>
         </PrintDocumentSheet>
       </div>
+
+      {/* Modal Tanda Tangan Digital Pengawas */}
+      <DigitalSignaturePadModal
+        isOpen={isSignModalOpen}
+        onClose={() => setIsSignModalOpen(false)}
+        title="Tanda Tangan Digital Pengawas Ujian"
+        subtitle={`Sesi: ${jadwal.nama_sesi || 'Ujian CBT'} • Ruang: ${ruangUjian}`}
+        penName={pengawas1Nama || 'Pengawas Ruang'}
+        initialSignature={pengawas1Signature}
+        onSave={(sig) => {
+          setPengawas1Signature(sig);
+          updateSignatureMutation.mutate(sig);
+        }}
+      />
     </UniversalDocumentModal>
   );
 };

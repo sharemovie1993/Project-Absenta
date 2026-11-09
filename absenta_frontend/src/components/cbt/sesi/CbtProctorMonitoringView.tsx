@@ -22,6 +22,7 @@ import {
   MapPin,
   Clock,
   FileText,
+  PenTool,
 } from 'lucide-react';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtPesertaUjian } from '@/types/cbt.types';
@@ -29,6 +30,7 @@ import { CbtTransferNilaiModal } from '../jadwal/CbtTransferNilaiModal';
 import { CbtBeritaAcaraPrintModal } from '../jadwal/CbtBeritaAcaraPrintModal';
 import { CbtDaftarHadirPrintModal } from '../jadwal/CbtDaftarHadirPrintModal';
 import { CbtDenahModal } from '../jadwal/CbtDenahModal';
+import { DigitalSignaturePadModal } from '@/components/ui/DigitalSignaturePadModal';
 import useConfirm from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
@@ -57,6 +59,7 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   const [isBeritaAcaraOpen, setIsBeritaAcaraOpen] = useState(false);
   const [isDaftarHadirOpen, setIsDaftarHadirOpen] = useState(false);
   const [isDenahModalOpen, setIsDenahModalOpen] = useState(false);
+  const [isSignModalOpen, setIsSignModalOpen] = useState(false);
   const [copiedToken, setCopiedToken] = useState(false);
 
   // Sync bila initialJadwalId berubah dari luar
@@ -169,6 +172,32 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
       await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false, refetchType: 'all' });
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal membuat ulang token'),
+  });
+
+  const pengawasSignature = activeJadwal?.setting_keamanan?.tanda_tangan_pengawas_1;
+  const waktuTtdPengawas = activeJadwal?.setting_keamanan?.waktu_ttd_pengawas_1;
+
+  const updatePengawasSignatureMutation = useMutation({
+    mutationFn: async (base64Signature: string) => {
+      if (!activeJadwal?.id) throw new Error('Jadwal tidak ditemukan');
+      const currentSetting = activeJadwal.setting_keamanan || {};
+      const updatedSetting = {
+        ...currentSetting,
+        tanda_tangan_pengawas_1: base64Signature,
+        waktu_ttd_pengawas_1: new Date().toISOString(),
+      };
+      return cbtApi.updateJadwal(activeJadwal.id, {
+        setting_keamanan: updatedSetting,
+      });
+    },
+    onSuccess: async () => {
+      toast.success('Tanda tangan digital pengawas berhasil disimpan');
+      setIsSignModalOpen(false);
+      await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false, refetchType: 'all' });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || err.message || 'Gagal menyimpan tanda tangan pengawas');
+    },
   });
 
   const handleCopyToken = (token: string) => {
@@ -600,11 +629,33 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
               variant="outline"
               size="sm"
               onClick={() => setIsDaftarHadirOpen(true)}
-              className="text-xs h-8 px-3 font-bold border-emerald-200 dark:border-emerald-800/80 text-emerald-700 dark:text-emerald-300 bg-emerald-50/70 dark:bg-emerald-950/40 hover:bg-emerald-100/80 transition-all shadow-2xs"
+              className="text-xs h-8 px-3 font-bold border-emerald-200 dark:border-emerald-800/80 text-emerald-700 dark:text-emerald-300 bg-emerald-50/70 dark:bg-emerald-950/40 hover:bg-emerald-100/80 transition-all shadow-2xs cursor-pointer"
               title="Cetak Lembar Daftar Hadir Siswa dengan Tanda Tangan Digital"
             >
               <FileText size={13} className="mr-1.5 text-emerald-600 dark:text-emerald-400" />
               <span>Daftar Hadir</span>
+            </Button>
+
+            {/* Tanda Tangan Digital Pengawas Sesi */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsSignModalOpen(true)}
+              className={cn(
+                'text-xs h-8 px-3 font-bold border transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer',
+                pengawasSignature
+                  ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300'
+                  : 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300'
+              )}
+              title={
+                pengawasSignature
+                  ? `Tanda tangan pengawas tersimpan${waktuTtdPengawas ? ` (${formatLocalTimeFromISO(waktuTtdPengawas)})` : ''}. Klik untuk memperbarui.`
+                  : 'Bubuhkan tanda tangan digital pengawas untuk lembar kehadiran & berita acara'
+              }
+            >
+              <PenTool size={13} className={pengawasSignature ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'} />
+              <span>{pengawasSignature ? 'Sudah TTD ✓' : 'TTD Pengawas'}</span>
             </Button>
 
             {/* Buka Denah Ruang Spasial Kampus */}
@@ -841,6 +892,19 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
           highlightRoomCode={activeRoomCode}
           highlightLabel={activeRoomLabel}
           isReadOnly={true}
+        />
+      )}
+
+      {/* Modal Tanda Tangan Digital Pengawas Sesi */}
+      {activeJadwal && (
+        <DigitalSignaturePadModal
+          isOpen={isSignModalOpen}
+          onClose={() => setIsSignModalOpen(false)}
+          title="Tanda Tangan Digital Pengawas Ujian"
+          subtitle={`Sesi: ${activeJadwal.nama_sesi || 'Ujian CBT'} • Ruang: ${activeJadwal.setting_keamanan?.ruang_ujian || 'Ruang CBT'}`}
+          penName={activeJadwal.setting_keamanan?.pengawas_1_nama || 'Pengawas Ruang'}
+          initialSignature={pengawasSignature}
+          onSave={(sig) => updatePengawasSignatureMutation.mutate(sig)}
         />
       )}
     </div>

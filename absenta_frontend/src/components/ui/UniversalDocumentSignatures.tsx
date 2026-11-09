@@ -12,6 +12,7 @@ export type DocumentSignatureLayout =
   | 'dual_unit_kepsek'
   | 'dual_tu_kepsek'
   | 'dual_custom'
+  | 'dual_column'
   | 'triangle_rapor'
   | 'triangle_2tier'
   | 'tri_party_row'
@@ -110,8 +111,26 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
         {/* Official Role Title */}
         <div className="font-normal whitespace-pre-line">{overrideRoleTitle || person.roleTitle}</div>
 
-        {/* Spacing for physical signature & stamp */}
-        <div style={{ height: `${spacingHeightMm}mm` }} className="shrink-0" />
+        {/* Spacing for physical signature & stamp OR digital signature */}
+        <div
+          style={{ height: `${spacingHeightMm}mm` }}
+          className={cn(
+            'shrink-0 flex items-center overflow-hidden my-0.5',
+            align === 'center'
+              ? 'justify-center'
+              : align === 'right'
+              ? 'justify-end'
+              : 'justify-start'
+          )}
+        >
+          {person.signatureImage ? (
+            <img
+              src={person.signatureImage}
+              alt={`TTD ${person.personName}`}
+              className="max-h-[95%] max-w-[55mm] object-contain filter contrast-125 select-none"
+            />
+          ) : null}
+        </div>
 
         {/* Signatory Name */}
         {isParentDots ? (
@@ -244,8 +263,8 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
     );
   }
 
-  // ── PRESET 5: Dual Custom (Dua Pihak Fleksibel Bebas Role) ──
-  if (layout === 'dual_custom') {
+  // ── PRESET 5: Dual Custom / Dual Column (Dua Pihak Fleksibel Bebas Role) ──
+  if (layout === 'dual_custom' || (layout as string) === 'dual_column') {
     const baseLeft = signerLeft || { roleTitle: 'Pihak Pertama,', personName: '................................', isAssigned: false };
     const baseRight = signerRight || { roleTitle: 'Pihak Kedua,', personName: '................................', isAssigned: false };
     const leftPerson = { ...baseLeft, ...overrideSignerLeft };

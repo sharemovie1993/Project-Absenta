@@ -13,6 +13,7 @@ export interface SignerPerson {
   isAssigned: boolean;
   assignmentFlag?: string;
   customTitle?: string;
+  signatureImage?: string; // Digital signature image URL or Base64 data URL
 }
 
 export interface UseDocumentSignersParams {
