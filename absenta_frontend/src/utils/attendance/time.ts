@@ -157,3 +157,23 @@ export const localDateTimeInputToISO = (localDateTimeStr: string, tz?: string): 
   const fallback = new Date(trimmed);
   return isNaN(fallback.getTime()) ? '' : fallback.toISOString();
 };
+
+/**
+ * Format tanggal standar Indonesia dengan hari (misal: "Sen, 09 Nov 2026")
+ */
+export const formatLocalDateIndo = (dateInput?: string | Date | null): string => {
+  if (!dateInput) return '-';
+  try {
+    const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+    if (isNaN(d.getTime())) return '-';
+    return d.toLocaleDateString('id-ID', {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return String(dateInput);
+  }
+};
+
