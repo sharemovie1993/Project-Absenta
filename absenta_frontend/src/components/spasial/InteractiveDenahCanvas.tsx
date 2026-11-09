@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Wand2, Plus } from 'lucide-react';
+import { Wand2, Plus, Search, MapPin, Navigation } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { DenahNodeCard } from './DenahNodeCard';
 import { DenahPaletteSidebar, UnassignedRoomItem } from './DenahPaletteSidebar';
@@ -103,8 +103,10 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isLightMode, setIsLightMode] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(!isReadOnly);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [dirSearch, setDirSearch] = useState('');
+  const [dirTingkatFilter, setDirTingkatFilter] = useState<number | 'ALL'>('ALL');
 
   // Satellite Map Guide State (Disinkronkan otomatis dari database denah)
   const [mapGuideConfig, setMapGuideConfig] = useState<DenahMapGuideConfig>(() =>
@@ -286,7 +288,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
     const offsetY = Math.round((containerH - contentH * clampedScale) / 2 - minY * clampedScale);
 
     setScale(clampedScale);
-    setPanOffset({ x: Math.max(16, offsetX), y: Math.max(16, offsetY) });
+    setPanOffset({ x: offsetX, y: offsetY });
     container.scrollLeft = 0;
     container.scrollTop = 0;
   }, [nodes]);
@@ -720,9 +722,9 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
         onClose={onClose}
       />
 
-      {/* Main Studio Body: Palette Sidebar + Canvas Surface */}
+      {/* Main Studio Body: Palette Sidebar / ReadOnly Directory + Canvas Surface */}
       <div className="flex-1 flex overflow-hidden relative">
-        {!isReadOnly && (
+        {!isReadOnly ? (
           <div className="hidden sm:block">
             <DenahPaletteSidebar
               unassignedRooms={unassignedRooms}
@@ -734,6 +736,162 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
               onToggleCollapse={() => setIsSidebarOpen((prev) => !prev)}
             />
           </div>
+        ) : (
+          isSidebarOpen && (
+            <aside
+              className={`w-64 sm:w-72 shrink-0 border-r flex flex-col z-20 transition-colors ${
+                isLightMode
+                  ? 'bg-white border-slate-200 text-slate-800'
+                  : 'bg-slate-900 border-slate-800 text-slate-100'
+              }`}
+            >
+              {/* Header Direktori Ruangan Publik */}
+              <div className="p-3.5 border-b border-slate-200/80 dark:border-slate-800 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                      <MapPin className="w-4 h-4" />
+                    </span>
+                    <div>
+                      <h3 className="text-xs font-extrabold uppercase tracking-wider">
+                        Direktori Ruangan
+                      </h3>
+                      <p className="text-[10px] text-slate-400">
+                        Klik ruang untuk fokus lokasi di peta
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    {nodes.length} Ruang
+                  </span>
+                </div>
+
+                {/* Search Input */}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={dirSearch}
+                    onChange={(e) => setDirSearch(e.target.value)}
+                    placeholder="Cari R.01, X AKL, TKJ..."
+                    className={`w-full pl-8 pr-3 py-1.5 rounded-xl text-xs border focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                      isLightMode
+                        ? 'bg-slate-50 border-slate-200 text-slate-800'
+                        : 'bg-slate-800 border-slate-700 text-slate-100'
+                    }`}
+                  />
+                </div>
+
+                {/* Filter Tingkat Pills */}
+                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pt-0.5">
+                  {(['ALL', 10, 11, 12] as const).map((tk) => {
+                    const active = dirTingkatFilter === tk;
+                    return (
+                      <button
+                        key={String(tk)}
+                        type="button"
+                        onClick={() => setDirTingkatFilter(tk)}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer shrink-0 ${
+                          active
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : isLightMode
+                            ? 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                            : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                        }`}
+                      >
+                        {tk === 'ALL' ? 'Semua' : `Kelas ${tk === 10 ? 'X' : tk === 11 ? 'XI' : 'XII'}`}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Scrollable List of Rooms */}
+              <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5">
+                {nodes
+                  .filter((n) => {
+                    const nodeTk = n.tingkat || detectNodeTingkat(n);
+                    if (dirTingkatFilter !== 'ALL' && nodeTk !== dirTingkatFilter) return false;
+                    if (!dirSearch.trim()) return true;
+                    const q = dirSearch.toLowerCase();
+                    return (
+                      (n.label_utama || '').toLowerCase().includes(q) ||
+                      (n.label_sub || '').toLowerCase().includes(q) ||
+                      (n.catatan || '').toLowerCase().includes(q)
+                    );
+                  })
+                  .sort((a, b) =>
+                    (a.label_utama || '').localeCompare(b.label_utama || '', undefined, {
+                      numeric: true,
+                    })
+                  )
+                  .map((room) => {
+                    const isSelected = selectedNodeIdsSet.has(room.id);
+                    const nodeTk = room.tingkat || detectNodeTingkat(room);
+                    const badgeStyle =
+                      nodeTk === 10
+                        ? 'bg-sky-50 text-sky-700 border-sky-200'
+                        : nodeTk === 11
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : nodeTk === 12
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : 'bg-slate-100 text-slate-600 border-slate-200';
+
+                    return (
+                      <button
+                        key={room.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedNodeIds([room.id]);
+                          if (canvasRef.current) {
+                            const w = canvasRef.current.clientWidth || 800;
+                            const h = canvasRef.current.clientHeight || 600;
+                            const targetScale = Math.max(scale, 0.85);
+                            setScale(targetScale);
+                            setPanOffset({
+                              x: Math.round(w / 2 - (room.x + (room.width || 100) / 2) * targetScale),
+                              y: Math.round(h / 2 - (room.y + (room.height || 60) / 2) * targetScale),
+                            });
+                          }
+                        }}
+                        className={`w-full text-left p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-50/90 dark:bg-emerald-950/50 border-emerald-500 ring-1 ring-emerald-500 shadow-xs'
+                            : isLightMode
+                            ? 'bg-white hover:bg-slate-50 border-slate-200/80'
+                            : 'bg-slate-800/70 hover:bg-slate-800 border-slate-700/70'
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-extrabold text-xs text-slate-900 dark:text-white">
+                              {room.label_utama}
+                            </span>
+                            {nodeTk && (
+                              <span
+                                className={`px-1.5 py-0.2 rounded text-[9px] font-bold border ${badgeStyle}`}
+                              >
+                                Tk. {nodeTk === 10 ? 'X' : nodeTk === 11 ? 'XI' : 'XII'}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                            {room.label_sub || room.catatan || 'Ruang Akademik'}
+                          </p>
+                        </div>
+                        <Navigation
+                          className={`w-3.5 h-3.5 shrink-0 transition-transform ${
+                            isSelected
+                              ? 'text-emerald-600 scale-110'
+                              : 'text-slate-300 group-hover:text-emerald-500'
+                          }`}
+                        />
+                      </button>
+                    );
+                  })}
+              </div>
+            </aside>
+          )
         )}
 
         {/* Canvas Surface with Infinite Grid & Touch Pan/Pinch */}

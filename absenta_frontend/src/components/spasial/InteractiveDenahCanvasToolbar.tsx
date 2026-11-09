@@ -95,7 +95,7 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
     >
       {/* Sisi Kiri: Toggle Panel + Identitas Denah + Switcher */}
       <div className="flex items-center gap-2 shrink-0">
-        {!isReadOnly && onToggleSidebar && (
+        {onToggleSidebar && (
           <button
             type="button"
             onClick={onToggleSidebar}
@@ -104,7 +104,7 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
                 ? 'bg-slate-100 dark:bg-slate-750 text-indigo-600 dark:text-indigo-400 border-slate-300 dark:border-slate-700 hover:bg-slate-200'
                 : 'bg-indigo-600 text-white border-indigo-700 shadow-xs hover:bg-indigo-700'
             }`}
-            title={isSidebarOpen ? 'Ciutkan Panel Kiri (Maksimalkan Kanvas)' : 'Buka Panel Kiri'}
+            title={isSidebarOpen ? 'Ciutkan Direktori Ruangan (Maksimalkan Peta)' : 'Buka Direktori Ruangan'}
           >
             {isSidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
           </button>
@@ -171,8 +171,8 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
             </button>
           )}
 
-          {/* Satellite Map Guide Toggle */}
-          {onToggleMapGuide && (
+          {/* Satellite Map Guide Toggle (Editor Only) */}
+          {!isReadOnly && onToggleMapGuide && (
             <button
               type="button"
               onClick={onToggleMapGuide}
@@ -191,8 +191,8 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
             </button>
           )}
 
-          {/* Quick Toggle: Kotak Kaca Transparan / Solid agar Kanvas Peta Tidak Terblokir */}
-          {onToggleBoxTransparent && (
+          {/* Quick Toggle: Kotak Kaca Transparan / Solid (Editor Only) */}
+          {!isReadOnly && onToggleBoxTransparent && (
             <button
               type="button"
               onClick={onToggleBoxTransparent}
@@ -320,23 +320,25 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
             </div>
           )}
 
-          {/* Print Map Modal */}
-          <button
-            type="button"
-            onClick={onOpenPrint}
-            className={`px-2.5 py-1.5 text-xs font-bold border rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 ${
-              isLightMode
-                ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
-                : 'bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-700'
-            }`}
-            title="Pratinjau Cetak & Unduh PDF"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Cetak A4</span>
-          </button>
+          {/* Print Map Modal (Editor Only) */}
+          {!isReadOnly && (
+            <button
+              type="button"
+              onClick={onOpenPrint}
+              className={`px-2.5 py-1.5 text-xs font-bold border rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 ${
+                isLightMode
+                  ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                  : 'bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-700'
+              }`}
+              title="Pratinjau Cetak & Unduh PDF"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Cetak A4</span>
+            </button>
+          )}
 
-          {/* Konfigurasi Denah (Ekspor & Impor JSON) */}
-          {onOpenConfig && (
+          {/* Konfigurasi Denah (Ekspor & Impor JSON - Editor Only) */}
+          {!isReadOnly && onOpenConfig && (
             <button
               type="button"
               onClick={onOpenConfig}
