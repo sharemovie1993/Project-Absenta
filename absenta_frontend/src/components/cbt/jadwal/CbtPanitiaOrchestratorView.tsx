@@ -437,40 +437,30 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
           </div>
 
           <div className="transition-opacity duration-200">
-              >
-                <CbtJadwalView
-                  hideLayout={true}
-                  onNavigateMonitor={() => setActiveTab('fase_5_monitor')}
-                />
-              </Suspense>
+            {activeTab === 'fase_4_pengawas' && (
+              <CbtPengawasMatrixPanel
+                jadwalList={jadwalList}
+                guruList={guruList}
+                isLoadingJadwal={isLoadingJadwal}
+                eventName={effectiveEventName}
+                targetTingkat={effectiveTargetTingkat}
+                onProceedToNextPhase={() => setActiveTab('fase_5_monitor')}
+              />
+            )}
+
+            {activeTab === 'fase_5_monitor' && (
+              <CbtPanitiaLiveCommandPanel
+                jadwalList={jadwalList}
+                isLoadingJadwal={isLoadingJadwal}
+                refetchJadwal={refetchJadwal}
+                guruList={guruList}
+                activeEvent={activeEvent}
+                onBackToPengawas={() => setActiveTab('fase_4_pengawas')}
+              />
             )}
           </div>
-        )}
-
-        {activeTab === 'fase_4_pengawas' && (
-          <CbtPengawasMatrixPanel
-            jadwalList={jadwalList}
-            guruList={guruList}
-            isLoadingJadwal={isLoadingJadwal}
-            eventName={effectiveEventName}
-            targetTingkat={effectiveTargetTingkat}
-            onProceedToNextPhase={() => setActiveTab('fase_5_monitor')}
-          />
-        )}
-
-        {activeTab === 'fase_5_monitor' && (
-          <CbtPanitiaLiveCommandPanel
-            jadwalList={jadwalList}
-            isLoadingJadwal={isLoadingJadwal}
-            refetchJadwal={refetchJadwal}
-            guruList={guruList}
-            activeEvent={activeEvent}
-            onBackToPengawas={() => setActiveTab('fase_4_pengawas')}
-          />
-        )}
-      </div>
-    </>
-  )}
+        </>
+      )}
 
       {/* ── Modal Pengaturan Event Ujian CBT ── */}
       <Modal
