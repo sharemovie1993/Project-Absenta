@@ -10,6 +10,7 @@ import { DenahMapGuideLayer } from './DenahMapGuideLayer';
 import { DenahMapGuideFloatingBar } from './DenahMapGuideFloatingBar';
 import { DenahBatchActionBar } from './DenahBatchActionBar';
 import { DenahMobileNavigationSheet } from './DenahMobileNavigationSheet';
+import { DenahVerticalFloorStepper } from './DenahVerticalFloorStepper';
 import { useDenahInteraction } from './useDenahInteraction';
 import { generateAutoFloorplan } from './denahAutoLayout';
 import { updateDenah } from '../../api/spasial.api';
@@ -831,10 +832,10 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
           />
         )}
 
-        {/* Floating Tingkat Legend & Quick Group Selector */}
+        {/* Floating Tingkat Legend & Quick Group Selector (Swipeable Horizontal Strip di HP & Desktop) */}
         {hasAnyTingkat && (
-          <div className="absolute top-3 right-3 z-30 flex items-center gap-1.5 p-1 rounded-xl bg-slate-900/85 text-white backdrop-blur-md border border-slate-700/60 shadow-lg text-xs select-none pointer-events-auto">
-            <span className="text-[10px] font-bold text-slate-400 px-1 uppercase tracking-wider hidden sm:inline">
+          <div className="absolute top-2.5 left-2 sm:left-auto sm:right-3 z-30 max-w-[calc(100vw-24px)] sm:max-w-md flex items-center gap-1.5 p-1 rounded-xl bg-slate-900/90 text-white backdrop-blur-md border border-slate-700/60 shadow-lg text-xs select-none pointer-events-auto overflow-x-auto no-scrollbar">
+            <span className="text-[10px] font-bold text-slate-400 px-1 uppercase tracking-wider shrink-0 hidden xs:inline">
               Kelompok:
             </span>
             {[10, 11, 12, 13].map((tk) => {
@@ -859,35 +860,45 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
 
               const activeBg =
                 tk === 10
-                  ? 'bg-sky-600 text-white'
+                  ? 'bg-sky-600 text-white shadow-xs'
                   : tk === 11
-                  ? 'bg-emerald-600 text-white'
+                  ? 'bg-emerald-600 text-white shadow-xs'
                   : tk === 12
-                  ? 'bg-amber-600 text-white'
-                  : 'bg-purple-600 text-white';
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'bg-purple-600 text-white shadow-xs';
 
               return (
                 <button
                   key={tk}
                   type="button"
                   onClick={() => handleSelectTingkatBatch(tk)}
-                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  className={`px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-black transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap active:scale-95 ${
                     isAllSelected
-                      ? `${activeBg} shadow-xs`
-                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                      ? `${activeBg}`
+                      : 'bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700/50'
                   }`}
                   title={`Klik untuk memilih seluruh ${count} ruangan Tingkat ${
                     tk === 10 ? 'X' : tk === 11 ? 'XI' : tk === 12 ? 'XII' : tk
                   }`}
                 >
-                  <span className={`w-2 h-2 rounded-full ${isAllSelected ? 'bg-white' : dotColor}`} />
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${isAllSelected ? 'bg-white' : dotColor}`} />
                   <span>Tk. {tk === 10 ? 'X' : tk === 11 ? 'XI' : tk === 12 ? 'XII' : tk}</span>
-                  <span className="text-[9px] opacity-75">({count})</span>
+                  <span className="text-[9px] sm:text-[10px] font-normal opacity-75">({count})</span>
                 </button>
               );
             })}
           </div>
         )}
+
+        {/* Google Maps Grade Vertical Floor Stepper (Penunjuk & Pemilih Lantai Bangunan) */}
+        <DenahVerticalFloorStepper
+          currentLantai={denah.lantai}
+          currentDenahId={denah.id}
+          currentGedung={denah.gedung}
+          denahList={denahList}
+          onSelectDenah={onSelectDenah}
+          isLightMode={isLightMode}
+        />
 
         {/* Floating Batch Action Bar for Multiple Selected Rooms */}
         {!isReadOnly && (
