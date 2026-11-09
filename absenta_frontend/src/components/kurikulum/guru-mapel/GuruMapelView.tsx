@@ -8,9 +8,9 @@ import GuruMapelList from '../../academic/guru-mapel/GuruMapelList';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { AcademicPageLayout } from '../../academic/AcademicPageLayout';
 import { getAcademicStats } from '../../../api/academic-stats.api';
-import { listGuruMapel, importGuruMapelFromExcel } from '../../../api/kurikulum/guru-mapel.api';
+import { listGuruMapel, importGuruMapelFromExcel, syncGuruMapelFromJadwal } from '../../../api/kurikulum/guru-mapel.api';
 import { guruApi, mapelApi } from '../../../api/academic.api';
-import { Users, BookOpen, GraduationCap, Download, Upload, FileText, Sparkles, Layers, Printer } from 'lucide-react';
+import { Users, BookOpen, GraduationCap, Download, Upload, FileText, Sparkles, Layers, Printer, RefreshCw } from 'lucide-react';
 import { exportDataToExcel } from '../../../utils/export.utils';
 import { generateAdvancedTemplate } from '../../../utils/excel-advanced.utils';
 import toast from 'react-hot-toast';
@@ -50,6 +50,20 @@ export const GuruMapelView: React.FC<UniversalGuruMapelViewProps> = ({
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSyncFromJadwal = useCallback(async () => {
+    try {
+      setIsSyncing(true);
+      const res = await syncGuruMapelFromJadwal({ tahun_pelajaran_id: effectiveTpId });
+      toast.success(res.message || 'Sinkronisasi berhasil.');
+      setRefreshTrigger(prev => prev + 1);
+    } catch (e: any) {
+      toast.error(e.message || 'Gagal menyinkronkan penugasan dari jadwal KBM.');
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [effectiveTpId]);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   // Academic Filter SSOT saat berdiri sebagai standalone page
@@ -213,6 +227,17 @@ export const GuruMapelView: React.FC<UniversalGuruMapelViewProps> = ({
               <Download size={14} />
               {isExporting ? 'Exporting...' : 'Export Excel'}
             </button>
+            {canManage && (
+              <button
+                onClick={handleSyncFromJadwal}
+                disabled={isSyncing}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 dark:bg-amber-950/60 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-900 transition-colors shadow-sm disabled:opacity-50"
+                title="Sinkronkan penugasan guru secara otomatis dari Jadwal KBM"
+              >
+                <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
+                {isSyncing ? 'Menyinkronkan...' : 'Sinkronkan dari Jadwal KBM'}
+              </button>
+            )}
             {canManage && (
               <button
                 onClick={handleImportOpen}

@@ -152,6 +152,27 @@ export class GuruMapelController {
       return reply.status(500).send({ success: false, message: error.message });
     }
   }
+
+  async syncFromJadwal(request: any, reply: any) {
+    try {
+      const user = request.user;
+      if (!user) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized' });
+      }
+      const tenantId = user.tenantId || request.tenantId;
+      const { tahun_pelajaran_id, semester_id } = request.body || {};
+
+      const result = await guruMapelService.syncFromJadwalKbm(tenantId, tahun_pelajaran_id, semester_id);
+      return reply.status(200).send({
+        success: true,
+        message: `Sinkronisasi berhasil. Ditambahkan: ${result.syncedCount} penugasan baru dari total ${result.totalAssignments} jadwal KBM.`,
+        data: result
+      });
+    } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error syncFromJadwal');
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
 }
 
 export const guruMapelController = new GuruMapelController();

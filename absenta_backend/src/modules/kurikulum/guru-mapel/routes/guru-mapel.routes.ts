@@ -65,4 +65,18 @@ export default async function guruMapelRoutes(fastify: any) {
       return guruMapelController.importFromExcel(request, reply);
     }
   );
+
+  fastify.post(
+    '/sync-from-jadwal',
+    {
+      preHandler: [
+        requireCapability('academic.teaching.manage'),
+        organizationalScopeMiddleware,
+        determineDataScope()
+      ]
+    },
+    async (request: any, reply: any) => {
+      return guruMapelController.syncFromJadwal(request, reply);
+    }
+  );
 }

@@ -58,3 +58,11 @@ export const importGuruMapelFromExcel = async (
 ) => {
   return importDataFromExcel('/kurikulum/guru-mapel/import', file, onProgress);
 };
+
+// POST /api/kurikulum/guru-mapel/sync-from-jadwal
+export const syncGuruMapelFromJadwal = async (payload?: {
+  tahun_pelajaran_id?: string;
+  semester_id?: string;
+}): Promise<{ success: boolean; message: string; data: { syncedCount: number; totalAssignments: number } }> => {
+  return requestWithFallback('post', '/kurikulum/guru-mapel/sync-from-jadwal', { data: payload });
+};

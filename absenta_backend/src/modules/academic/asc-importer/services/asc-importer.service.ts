@@ -359,7 +359,7 @@ export class AscImporterService {
     const timetable = this.parseXml(input.xml_content);
     const defaultHashedPassword = await bcrypt.hash('Absenta123!', 10);
 
-    return await prisma.$transaction(
+    const result = await prisma.$transaction(
       async (tx: any) => {
       // Find or fallback Role GURU
       const guruRole = (await tx.role.findFirst({
@@ -761,5 +761,15 @@ export class AscImporterService {
       timeout: 60000,
       maxWait: 10000,
     });
+
+    // Auto-sync into GuruMapel so CBT, Rapor, and Curriculum modules stay in sync
+    try {
+      const { guruMapelService } = await import('@/modules/kurikulum/guru-mapel/services/guru-mapel.service');
+      await guruMapelService.syncFromJadwalKbm(tenantId, input.tahun_pelajaran_id, input.semester_id);
+    } catch (syncErr: any) {
+      console.warn('[AscImporter] Non-fatal auto-sync to GuruMapel warning:', syncErr.message);
+    }
+
+    return result;
   }
 }
