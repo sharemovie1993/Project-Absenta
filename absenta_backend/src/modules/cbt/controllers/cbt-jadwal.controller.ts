@@ -136,6 +136,17 @@ export class CbtJadwalController {
     }
   }
 
+  static async grantDispensasiTerlambat(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { id, siswaId } = req.params;
+      const result = await CbtJadwalService.grantDispensasiTerlambat(tenant_id, id, siswaId);
+      return sendResponse(reply, 200, true, 'Dispensasi keterlambatan berhasil diberikan', result);
+    } catch (error: any) {
+      return sendError(reply, 400, error.message || 'Gagal memberikan dispensasi keterlambatan');
+    }
+  }
+
   static async transferToRapor(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;

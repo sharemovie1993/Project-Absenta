@@ -479,26 +479,7 @@ export class CbtTestEngineService {
       throw err;
     }
 
-    // ── DIAGNOSIS 7: VALIDASI JENDELA WAKTU PELAKSANAAN (EXPIRED) ──
-    const now = new Date();
-    const tanggalSelesai = new Date(jadwal.tanggal_selesai);
-    if (now.getTime() > tanggalSelesai.getTime()) {
-      const jamSelesaiStr = CbtTestEngineService.formatJamIndo(tanggalSelesai);
-      const tglSelesaiStr = CbtTestEngineService.formatTanggalIndo(tanggalSelesai);
-      const err: any = new Error(
-        `Waktu pelaksanaan sesi ujian "${mapelName}" telah berakhir (${tglSelesaiStr}, pukul ${jamSelesaiStr} WIB). Pintu masuk telah ditutup.`
-      );
-      err.statusCode = 400;
-      err.code = 'SCHEDULE_EXPIRED';
-      err.details = {
-        mapel: mapelName,
-        tanggal_selesai: jadwal.tanggal_selesai,
-        hint: 'Sesi ujian telah melewati batas waktu pengerjaan. Silakan temui Panitia CBT untuk jadwal susulan.',
-      };
-      throw err;
-    }
-
-    // ── DIAGNOSIS 8: VALIDASI SISWA SUDAH FINISHED ATAU DISQUALIFIED ──
+    // ── DIAGNOSIS 7: VALIDASI STATUS SISWA (FINISHED ATAU DISQUALIFIED) ──
     const existingPeserta = await prisma.cbtPesertaUjian.findFirst({
       where: {
         tenant_id: tenantId,
@@ -533,6 +514,78 @@ export class CbtTestEngineService {
         hint: 'Silakan melapor langsung ke panitia ujian CBT di ruang panitia.',
       };
       throw err;
+    }
+
+    // ── DIAGNOSIS 8: PENEGAKAN JENDELA WAKTU & KETERLAMBATAN RESMI ──
+    const now = new Date();
+    const tanggalMulai = new Date(jadwal.tanggal_mulai);
+    const tanggalSelesai = new Date(jadwal.tanggal_selesai);
+    const toleransiMenit = jadwal.toleransi_terlambat_menit ?? 15;
+
+    // Buffer 15 menit sebelum bel resmi berbunyi agar siswa dapat verifikasi token & persiapan
+    const EARLY_ACCESS_BUFFER_MS = 15 * 60 * 1000;
+    const isEarlyAccessAllowed = Boolean((jadwal.setting_keamanan as any)?.allow_early_start);
+
+    // 8A. Belum Jam Ujian (Lebih dari 15 menit sebelum tanggal_mulai)
+    if (!isEarlyAccessAllowed && now.getTime() < (tanggalMulai.getTime() - EARLY_ACCESS_BUFFER_MS)) {
+      const jamMulaiStr = CbtTestEngineService.formatJamIndo(tanggalMulai);
+      const tglMulaiStr = CbtTestEngineService.formatTanggalIndo(tanggalMulai);
+      const err: any = new Error(
+        `Sesi ujian "${mapelName}" belum dibuka. Waktu pengerjaan dijadwalkan mulai pukul ${jamMulaiStr} WIB (${tglMulaiStr}). Pintu masuk token dibuka 15 menit sebelum jam pelaksanaan.`
+      );
+      err.statusCode = 400;
+      err.code = 'SCHEDULE_NOT_STARTED';
+      err.details = {
+        mapel: mapelName,
+        tanggal_mulai: jadwal.tanggal_mulai,
+        hint: `Mohon tunggu hingga pukul ${jamMulaiStr} WIB atau menunggu instruksi dari pengawas ruang.`,
+      };
+      throw err;
+    }
+
+    // 8B. Waktu Pelaksanaan Sesi Ujian Telah Berakhir (Expired)
+    if (now.getTime() >= tanggalSelesai.getTime()) {
+      const jamSelesaiStr = CbtTestEngineService.formatJamIndo(tanggalSelesai);
+      const tglSelesaiStr = CbtTestEngineService.formatTanggalIndo(tanggalSelesai);
+      const err: any = new Error(
+        `Waktu pelaksanaan sesi ujian "${mapelName}" telah berakhir (${tglSelesaiStr}, pukul ${jamSelesaiStr} WIB). Pintu masuk telah ditutup.`
+      );
+      err.statusCode = 400;
+      err.code = 'SCHEDULE_EXPIRED';
+      err.details = {
+        mapel: mapelName,
+        tanggal_selesai: jadwal.tanggal_selesai,
+        hint: 'Sesi ujian telah melewati batas waktu pengerjaan. Silakan temui Panitia CBT untuk jadwal susulan.',
+      };
+      throw err;
+    }
+
+    // 8C. Validasi Toleransi Keterlambatan (Hanya untuk siswa yang baru akan mulai, bukan yang reconnect)
+    const isNewParticipant = !existingPeserta || !existingPeserta.waktu_mulai;
+    if (isNewParticipant && toleransiMenit > 0) {
+      const batasTerlambatMs = tanggalMulai.getTime() + (toleransiMenit * 60 * 1000);
+      const dispensasiList = (jadwal.setting_keamanan as any)?.dispensasi_terlambat_siswa_ids || [];
+      const hasDispensation = Array.isArray(dispensasiList) && dispensasiList.includes(siswaId);
+
+      if (!hasDispensation && now.getTime() > batasTerlambatMs) {
+        const jamBatasStr = CbtTestEngineService.formatJamIndo(new Date(batasTerlambatMs));
+        const jamMulaiStr = CbtTestEngineService.formatJamIndo(tanggalMulai);
+        const menitTerlambat = Math.floor((now.getTime() - tanggalMulai.getTime()) / (60 * 1000));
+        const err: any = new Error(
+          `Batas toleransi keterlambatan (${toleransiMenit} menit) telah berakhir pada pukul ${jamBatasStr} WIB. Anda datang terlambat ${menitTerlambat} menit dari jadwal mulai (${jamMulaiStr} WIB).`
+        );
+        err.statusCode = 403;
+        err.code = 'LATE_ENTRY_REJECTED';
+        err.details = {
+          mapel: mapelName,
+          tanggal_mulai: jadwal.tanggal_mulai,
+          batas_masuk: new Date(batasTerlambatMs).toISOString(),
+          toleransi_menit: toleransiMenit,
+          menit_terlambat: menitTerlambat,
+          hint: 'Beri tahu pengawas ruang ujian untuk memberikan izin dispensasi keterlambatan jika disetujui.',
+        };
+        throw err;
+      }
     }
 
     // Resolusi Guru Pengampu Kelas Siswa untuk Bank Soal Bersama MGMP
@@ -638,6 +691,21 @@ export class CbtTestEngineService {
 
     const now = new Date();
     const durasiTotalDetik = jadwal.durasi_menit * 60;
+    const tanggalSelesai = new Date(jadwal.tanggal_selesai);
+
+    // Hitung sisa detik menuju batas akhir jendela jadwal ujian
+    const secondsUntilScheduleEnd = Math.max(0, Math.floor((tanggalSelesai.getTime() - now.getTime()) / 1000));
+    if (secondsUntilScheduleEnd <= 0) {
+      const err: any = new Error('Waktu pelaksanaan sesi ujian telah berakhir.');
+      err.statusCode = 400;
+      err.code = 'SCHEDULE_EXPIRED';
+      throw err;
+    }
+
+    // Kebijakan Pemotongan Waktu (Strict Clamping):
+    // Durasi pengerjaan siswa tidak boleh melebihi sisa waktu jendela sesi jadwal
+    const allowFloating = (jadwal.setting_keamanan as any)?.floating_duration === true;
+    const initialDuration = allowFloating ? durasiTotalDetik : Math.min(durasiTotalDetik, secondsUntilScheduleEnd);
 
     // Cari atau buat record peserta ujian
     let peserta = await prisma.cbtPesertaUjian.findFirst({
@@ -652,7 +720,7 @@ export class CbtTestEngineService {
           siswa_id: siswaId,
           token_masuk: tokenMasuk,
           waktu_mulai: now,
-          sisa_waktu_detik: durasiTotalDetik,
+          sisa_waktu_detik: initialDuration,
           status: 'IN_PROGRESS',
           status_sinkron: 'SYNCED',
           metadata_perangkat: metadataPerangkat || null,
@@ -669,7 +737,8 @@ export class CbtTestEngineService {
       // Hitung sisa waktu aktual jika sudah berjalan
       if (peserta.waktu_mulai) {
         const elapsedSeconds = Math.floor((now.getTime() - new Date(peserta.waktu_mulai).getTime()) / 1000);
-        const sisaWaktu = Math.max(0, durasiTotalDetik - elapsedSeconds);
+        const remainingByStart = Math.max(0, durasiTotalDetik - elapsedSeconds);
+        const sisaWaktu = allowFloating ? remainingByStart : Math.min(remainingByStart, secondsUntilScheduleEnd);
 
         if (sisaWaktu <= 0) {
           // Waktu habis otomatis
@@ -694,7 +763,7 @@ export class CbtTestEngineService {
           data: {
             status: 'IN_PROGRESS',
             waktu_mulai: now,
-            sisa_waktu_detik: durasiTotalDetik,
+            sisa_waktu_detik: initialDuration,
             ...(metadataPerangkat ? { metadata_perangkat: metadataPerangkat } : {}),
           },
         });

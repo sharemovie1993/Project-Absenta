@@ -369,10 +369,25 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
     }
   };
 
+  const handleGrantDispensasi = async (peserta: CbtPesertaUjian) => {
+    try {
+      await cbtApi.grantDispensasiTerlambat(selectedJadwalId, peserta.siswa_id);
+      toast.success(`Izin keterlambatan diberikan untuk ${peserta.Siswa?.nama_lengkap || 'siswa'}`);
+      await queryClient.invalidateQueries({
+        queryKey: cbtQueryKeys.all,
+        exact: false,
+        refetchType: 'all',
+      });
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Gagal memberikan izin dispensasi');
+    }
+  };
+
   // Metrik Ringkas
   const totalPeserta = pesertaList.length;
   const inProgress = pesertaList.filter((p) => p.status === 'IN_PROGRESS').length;
   const finished = pesertaList.filter((p) => p.status === 'FINISHED').length;
+  const standbyCount = pesertaList.filter((p) => p.status === 'STANDBY').length;
   // Deteksi Seluruh Peserta yang Terindikasi Curang (Baik berstatus DISQUALIFIED maupun memiliki riwayat log pelanggaran)
   const cheatingCount = pesertaList.filter(
     (p) =>
@@ -468,6 +483,50 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
       },
     },
     {
+      key: 'waktu',
+      title: 'Waktu',
+      label: 'Waktu',
+      className: 'min-w-[105px] text-center',
+      render: (_val: unknown, row: CbtPesertaUjian) => {
+        if (row.status === 'IN_PROGRESS') {
+          const sisa = row.sisa_waktu_detik ?? 0;
+          const mins = Math.floor(sisa / 60);
+          const secs = sisa % 60;
+          const timerText = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+          const isUrgent = sisa < 300;
+          const isWarning = sisa < 900;
+
+          return (
+            <span
+              className={cn(
+                'inline-flex items-center gap-1 font-mono text-xs font-bold px-2 py-0.5 rounded-lg border',
+                isUrgent
+                  ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border-rose-300 animate-pulse'
+                  : isWarning
+                    ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border-amber-300'
+                    : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+              )}
+              title={`Sisa waktu: ${mins} menit ${secs} detik`}
+            >
+              <Clock size={11} className={isUrgent ? 'text-rose-600 animate-spin' : 'text-slate-400'} />
+              <span>{timerText}</span>
+            </span>
+          );
+        }
+
+        if (row.status === 'FINISHED') {
+          const durasiMenit = row.durasi_pengerjaan_detik ? Math.round(row.durasi_pengerjaan_detik / 60) : null;
+          return (
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+              {durasiMenit ? `${durasiMenit} mnt` : 'Selesai'}
+            </span>
+          );
+        }
+
+        return <span className="text-slate-400 text-xs italic">-</span>;
+      },
+    },
+    {
       key: 'progres',
       title: 'Terjawab',
       label: 'Terjawab',
@@ -522,30 +581,58 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
       title: 'Aksi',
       label: 'Aksi',
       className: 'min-w-[130px] text-right',
-      render: (_val: unknown, row: CbtPesertaUjian) => (
-        <div className="inline-flex items-center gap-1 justify-end">
-          {row.status === 'FINISHED' && (
+      render: (_val: unknown, row: CbtPesertaUjian) => {
+        if (row.status === 'STANDBY') {
+          const isDispensasi =
+            Array.isArray((activeJadwal?.setting_keamanan as any)?.dispensasi_terlambat_siswa_ids) &&
+            (activeJadwal.setting_keamanan as any).dispensasi_terlambat_siswa_ids.includes(row.siswa_id);
+
+          return (
+            <div className="inline-flex items-center gap-1 justify-end">
+              {isDispensasi ? (
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200">
+                  Izin Telat ✓
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleGrantDispensasi(row)}
+                  className="text-[10px] h-6 px-2 rounded-lg border border-indigo-200 text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100 font-bold transition-all cursor-pointer inline-flex items-center gap-1 active:scale-95"
+                  title="Beri izin masuk jika siswa terlambat"
+                >
+                  <Clock size={10} />
+                  <span>Izin Telat</span>
+                </button>
+              )}
+            </div>
+          );
+        }
+
+        return (
+          <div className="inline-flex items-center gap-1 justify-end">
+            {row.status === 'FINISHED' && (
+              <button
+                type="button"
+                onClick={() => handleRetake(row)}
+                className="text-[11px] h-7 px-2 rounded-lg border border-rose-300 text-rose-700 bg-rose-50/70 hover:bg-rose-100 font-bold transition-all cursor-pointer inline-flex items-center gap-1 active:scale-95"
+                title="Ulangi ujian dari awal (Retake)"
+              >
+                <RotateCcw size={11} />
+                <span>Ulang</span>
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => handleRetake(row)}
-              className="text-[11px] h-7 px-2 rounded-lg border border-rose-300 text-rose-700 bg-rose-50/70 hover:bg-rose-100 font-bold transition-all cursor-pointer inline-flex items-center gap-1 active:scale-95"
-              title="Ulangi ujian dari awal (Retake)"
+              onClick={() => handleReset(row)}
+              className="text-[11px] h-7 px-2.5 rounded-lg border border-amber-300 text-amber-800 bg-amber-50/70 hover:bg-amber-100 font-bold transition-all cursor-pointer inline-flex items-center gap-1 active:scale-95"
+              title="Reset Sesi Login (Perangkat mati/koneksi terputus)"
             >
-              <RotateCcw size={11} />
-              <span>Ulang</span>
+              <RotateCw size={11} />
+              <span>Reset</span>
             </button>
-          )}
-          <button
-            type="button"
-            onClick={() => handleReset(row)}
-            className="text-[11px] h-7 px-2.5 rounded-lg border border-amber-300 text-amber-800 bg-amber-50/70 hover:bg-amber-100 font-bold transition-all cursor-pointer inline-flex items-center gap-1 active:scale-95"
-            title="Reset Sesi Login (Perangkat mati/koneksi terputus)"
-          >
-            <RotateCw size={11} />
-            <span>Reset</span>
-          </button>
-        </div>
-      ),
+          </div>
+        );
+      },
     },
   ];
 
@@ -720,6 +807,7 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
             {[
               { key: 'ALL', label: 'Semua', count: totalPeserta },
               { key: 'IN_PROGRESS', label: 'Ujian', count: inProgress, dot: inProgress > 0 },
+              { key: 'STANDBY', label: 'Standby', count: standbyCount },
               { key: 'FINISHED', label: 'Selesai', count: finished },
               { key: 'DISQUALIFIED', label: 'Curang', count: cheatingCount, alert: cheatingCount > 0 },
             ].map((st) => (
@@ -936,11 +1024,25 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
                       <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-rose-100 text-rose-800 shrink-0">
                         CURANG
                       </span>
+                    ) : p.status === 'STANDBY' ? (
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 shrink-0">
+                        STANDBY
+                      </span>
                     ) : null}
                   </div>
 
-                  <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                  <div className="text-[11px] text-slate-500 flex items-center gap-1.5 flex-wrap">
                     <span>{p.Siswa?.Kelas?.nama_kelas || '-'}</span>
+                    {p.status === 'IN_PROGRESS' && p.sisa_waktu_detik != null && (
+                      <span className="font-mono text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.2 rounded border border-amber-200">
+                        ⏳ {Math.floor(p.sisa_waktu_detik / 60)}m
+                      </span>
+                    )}
+                    {p.status === 'FINISHED' && p.durasi_pengerjaan_detik != null && (
+                      <span className="font-mono text-[10px] text-slate-500">
+                        ⏱️ {Math.round(p.durasi_pengerjaan_detik / 60)}m
+                      </span>
+                    )}
                     <span>•</span>
                     <span>{jwbCount} Soal</span>
                     {vCount > 0 && (
@@ -955,26 +1057,51 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0">
-                  {p.status === 'FINISHED' && (
-                    <button
-                      type="button"
-                      onClick={() => handleRetake(p)}
-                      className="text-[11px] h-7 px-2 border border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100 font-bold rounded-lg cursor-pointer flex items-center gap-1"
-                      title="Ulangi ujian dari awal (Retake)"
-                    >
-                      <RotateCcw size={11} />
-                      <span>Ulang</span>
-                    </button>
+                  {p.status === 'STANDBY' ? (
+                    (() => {
+                      const isDispensasi =
+                        Array.isArray((activeJadwal?.setting_keamanan as any)?.dispensasi_terlambat_siswa_ids) &&
+                        (activeJadwal.setting_keamanan as any).dispensasi_terlambat_siswa_ids.includes(p.siswa_id);
+                      return isDispensasi ? (
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200">
+                          Izin Telat ✓
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleGrantDispensasi(p)}
+                          className="text-[10px] h-6 px-2 border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 font-bold rounded-lg cursor-pointer flex items-center gap-1"
+                          title="Beri izin masuk jika siswa terlambat"
+                        >
+                          <Clock size={10} />
+                          <span>Izin Telat</span>
+                        </button>
+                      );
+                    })()
+                  ) : (
+                    <>
+                      {p.status === 'FINISHED' && (
+                        <button
+                          type="button"
+                          onClick={() => handleRetake(p)}
+                          className="text-[11px] h-7 px-2 border border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100 font-bold rounded-lg cursor-pointer flex items-center gap-1"
+                          title="Ulangi ujian dari awal (Retake)"
+                        >
+                          <RotateCcw size={11} />
+                          <span>Ulang</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleReset(p)}
+                        className="text-[11px] h-7 px-2 border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 font-bold rounded-lg cursor-pointer flex items-center gap-1"
+                        title="Reset Sesi Login"
+                      >
+                        <RotateCw size={11} />
+                        <span>Reset</span>
+                      </button>
+                    </>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => handleReset(p)}
-                    className="text-[11px] h-7 px-2 border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 font-bold rounded-lg cursor-pointer flex items-center gap-1"
-                    title="Reset Sesi Login"
-                  >
-                    <RotateCw size={11} />
-                    <span>Reset</span>
-                  </button>
                 </div>
               </div>
             );

@@ -229,6 +229,11 @@ export const cbtApi = {
     return res.data?.data;
   },
 
+  grantDispensasiTerlambat: async (jadwalId: string, siswaId: string) => {
+    const res = await api.post(`/cbt/jadwal/${jadwalId}/peserta/${siswaId}/dispensasi`);
+    return res.data?.data;
+  },
+
   transferToRapor: async (jadwalId: string, payload: CbtTransferNilaiPayload) => {
     const res = await api.post(`/cbt/jadwal/${jadwalId}/transfer-rapor`, payload);
     return res.data?.data as CbtTransferNilaiResponse;

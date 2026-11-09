@@ -125,6 +125,10 @@ export async function cbtRoutes(fastify: any) {
     preHandler: [requireCapability('cbt.sesi.monitor', cbtGuruExempt), determineDataScope()],
   }, CbtJadwalController.resetPeserta);
 
+  fastify.post('/jadwal/:id/peserta/:siswaId/dispensasi', {
+    preHandler: [requireCapability('cbt.sesi.monitor', cbtGuruExempt), determineDataScope()],
+  }, CbtJadwalController.grantDispensasiTerlambat);
+
   fastify.post('/jadwal/:id/transfer-rapor', {
     preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
   }, CbtJadwalController.transferToRapor);

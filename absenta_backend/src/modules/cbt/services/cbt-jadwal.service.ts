@@ -553,7 +553,7 @@ export class CbtJadwalService {
   }
 
   /**
-   * Monitoring Peserta Ujian (Proctor Live View)
+   * Monitoring Peserta Ujian (Proctor Live View) dengan Kalkulasi Waktu Dinamis & Auto-Finalize
    */
   static async getPesertaList(tenantId: string, jadwalId: string, query: any) {
     const where: Prisma.CbtPesertaUjianWhereInput = {
@@ -573,32 +573,182 @@ export class CbtJadwalService {
         : {}),
     };
 
-    const items = await prisma.cbtPesertaUjian.findMany({
-      where,
-      orderBy: { created_at: 'desc' },
-      include: {
-        Siswa: {
-          select: {
-            id: true,
-            nama_siswa: true,
-            nis: true,
-            nisn: true,
-            kelas_id: true,
-            Kelas: { select: { id: true, nama_kelas: true } },
+    const [items, jadwal] = await Promise.all([
+      prisma.cbtPesertaUjian.findMany({
+        where,
+        orderBy: { created_at: 'desc' },
+        include: {
+          Siswa: {
+            select: {
+              id: true,
+              nama_siswa: true,
+              nis: true,
+              nisn: true,
+              kelas_id: true,
+              Kelas: { select: { id: true, nama_kelas: true } },
+            },
           },
         },
-      },
-    });
+      }),
+      prisma.cbtJadwalUjian.findFirst({
+        where: { id: jadwalId, tenant_id: tenantId },
+        select: {
+          durasi_menit: true,
+          tanggal_selesai: true,
+          setting_keamanan: true,
+          target_kelas_ids: true,
+          tanggal_mulai: true,
+        },
+      }),
+    ]);
 
-    return items.map((item) => ({
-      ...item,
-      Siswa: item.Siswa
-        ? {
-            ...item.Siswa,
-            nama_lengkap: item.Siswa.nama_siswa,
+    const now = new Date();
+    const durasiTotalDetik = (jadwal?.durasi_menit || 90) * 60;
+    const tanggalSelesai = jadwal?.tanggal_selesai ? new Date(jadwal.tanggal_selesai) : null;
+    const secondsUntilScheduleEnd = tanggalSelesai
+      ? Math.max(0, Math.floor((tanggalSelesai.getTime() - now.getTime()) / 1000))
+      : 999999;
+    const allowFloating = Boolean((jadwal?.setting_keamanan as any)?.floating_duration);
+
+    const processedItems = await Promise.all(
+      items.map(async (item) => {
+        let dynamicSisaWaktu = item.sisa_waktu_detik;
+        let durasiPengerjaanDetik = 0;
+
+        if (item.waktu_mulai) {
+          const startMs = new Date(item.waktu_mulai).getTime();
+          const endMs = item.waktu_selesai ? new Date(item.waktu_selesai).getTime() : now.getTime();
+          durasiPengerjaanDetik = Math.max(0, Math.floor((endMs - startMs) / 1000));
+        }
+
+        if (item.status === 'IN_PROGRESS' && item.waktu_mulai) {
+          const elapsed = Math.floor((now.getTime() - new Date(item.waktu_mulai).getTime()) / 1000);
+          const remainingByDuration = Math.max(0, durasiTotalDetik - elapsed);
+          dynamicSisaWaktu = allowFloating
+            ? remainingByDuration
+            : Math.min(remainingByDuration, secondsUntilScheduleEnd);
+
+          // Auto-Finalize jika waktu siswa sudah habis di server
+          if (dynamicSisaWaktu <= 0) {
+            await prisma.cbtPesertaUjian.update({
+              where: { id: item.id },
+              data: { status: 'FINISHED', sisa_waktu_detik: 0, waktu_selesai: now },
+            });
+            item.status = 'FINISHED';
+            dynamicSisaWaktu = 0;
+            item.waktu_selesai = now;
           }
-        : undefined,
-    }));
+        }
+
+        return {
+          ...item,
+          sisa_waktu_detik: dynamicSisaWaktu,
+          durasi_pengerjaan_detik: durasiPengerjaanDetik,
+          Siswa: item.Siswa
+            ? {
+                ...item.Siswa,
+                nama_lengkap: item.Siswa.nama_siswa,
+              }
+            : undefined,
+        };
+      })
+    );
+
+    // ── PRE-POPULASI SISWA STANDBY (BELUM MASUK UJIAN) ──
+    // Menampilkan seluruh siswa terdaftar pada kelas/sesi agar Meja Pengawas & Cetak Berita Acara/Daftar Hadir
+    // tidak kosong melompong (0 siswa) sebelum siswa memasukkan token.
+    const targetClassIds: string[] = Array.isArray(jadwal?.target_kelas_ids)
+      ? (jadwal.target_kelas_ids as string[])
+      : [];
+    const targetSiswaIds: string[] = Array.isArray((jadwal?.setting_keamanan as any)?.target_siswa_ids)
+      ? (jadwal?.setting_keamanan as any).target_siswa_ids
+      : [];
+
+    let enrolledStudents: any[] = [];
+    if (targetSiswaIds.length > 0) {
+      enrolledStudents = await prisma.siswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          id: { in: targetSiswaIds },
+          status: 'AKTIF',
+        },
+        select: {
+          id: true,
+          nama_siswa: true,
+          nis: true,
+          nisn: true,
+          kelas_id: true,
+          Kelas: { select: { id: true, nama_kelas: true } },
+        },
+        orderBy: { nama_siswa: 'asc' },
+      });
+    } else if (targetClassIds.length > 0) {
+      enrolledStudents = await prisma.siswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          kelas_id: { in: targetClassIds },
+          status: 'AKTIF',
+        },
+        select: {
+          id: true,
+          nama_siswa: true,
+          nis: true,
+          nisn: true,
+          kelas_id: true,
+          Kelas: { select: { id: true, nama_kelas: true } },
+        },
+        orderBy: { nama_siswa: 'asc' },
+      });
+    }
+
+    if (query?.search && typeof query.search === 'string' && query.search.trim()) {
+      const q = query.search.trim().toLowerCase();
+      enrolledStudents = enrolledStudents.filter(
+        (s) =>
+          (s.nama_siswa && s.nama_siswa.toLowerCase().includes(q)) ||
+          (s.nis && s.nis.toLowerCase().includes(q)) ||
+          (s.nisn && s.nisn.toLowerCase().includes(q))
+      );
+    }
+
+    const existingSiswaIds = new Set(processedItems.map((it) => it.siswa_id));
+    const standbyItems = enrolledStudents
+      .filter((s) => !existingSiswaIds.has(s.id))
+      .map((s) => ({
+        id: `standby-${s.id}`,
+        tenant_id: tenantId,
+        jadwal_ujian_id: jadwalId,
+        siswa_id: s.id,
+        token_masuk: '-',
+        waktu_mulai: null,
+        waktu_selesai: null,
+        sisa_waktu_detik: durasiTotalDetik,
+        status: 'STANDBY' as const,
+        status_sinkron: 'IDLE',
+        jawaban_json: null,
+        jumlah_benar: 0,
+        jumlah_salah: 0,
+        nilai_akhir: 0,
+        log_pelanggaran_json: null,
+        metadata_perangkat: null,
+        created_at: jadwal?.tanggal_mulai || now,
+        updated_at: jadwal?.tanggal_mulai || now,
+        durasi_pengerjaan_detik: 0,
+        Siswa: {
+          id: s.id,
+          nama_siswa: s.nama_siswa,
+          nama_lengkap: s.nama_siswa,
+          nis: s.nis,
+          nisn: s.nisn,
+          kelas_id: s.kelas_id,
+          Kelas: s.Kelas,
+        },
+      }));
+
+    const shouldIncludeStandby = !query?.status || query.status === 'ALL' || query.status === 'STANDBY';
+    const combined = shouldIncludeStandby ? [...processedItems, ...standbyItems] : processedItems;
+
+    return combined;
   }
 
   /**
@@ -617,6 +767,29 @@ export class CbtJadwalService {
     if (redis) {
       // Hapus session lock di Redis agar siswa bisa login kembali
       await redis.del(`cbt:${tenantId}:session:${siswaId}`).catch(() => null);
+    }
+
+    // Berikan dispensasi keterlambatan otomatis pada setting_keamanan agar siswa tidak terblokir
+    const jadwal = await prisma.cbtJadwalUjian.findFirst({
+      where: { id: jadwalId, tenant_id: tenantId },
+      select: { setting_keamanan: true },
+    });
+    if (jadwal) {
+      const currentSetting = (jadwal.setting_keamanan as any) || {};
+      const currentDispensasi = Array.isArray(currentSetting.dispensasi_terlambat_siswa_ids)
+        ? currentSetting.dispensasi_terlambat_siswa_ids
+        : [];
+      if (!currentDispensasi.includes(siswaId)) {
+        await prisma.cbtJadwalUjian.update({
+          where: { id: jadwalId },
+          data: {
+            setting_keamanan: {
+              ...currentSetting,
+              dispensasi_terlambat_siswa_ids: [...currentDispensasi, siswaId],
+            },
+          },
+        });
+      }
     }
 
     if (mode === 'retake') {
@@ -643,6 +816,34 @@ export class CbtJadwalService {
         status_sinkron: 'IDLE',
       },
     });
+  }
+
+  /**
+   * Beri dispensasi keterlambatan siswa oleh Pengawas
+   */
+  static async grantDispensasiTerlambat(tenantId: string, jadwalId: string, siswaId: string) {
+    const jadwal = await prisma.cbtJadwalUjian.findFirst({
+      where: { id: jadwalId, tenant_id: tenantId },
+      select: { id: true, setting_keamanan: true },
+    });
+    if (!jadwal) throw new Error('Jadwal tidak ditemukan');
+
+    const currentSetting = (jadwal.setting_keamanan as any) || {};
+    const currentDispensasi = Array.isArray(currentSetting.dispensasi_terlambat_siswa_ids)
+      ? currentSetting.dispensasi_terlambat_siswa_ids
+      : [];
+    if (!currentDispensasi.includes(siswaId)) {
+      await prisma.cbtJadwalUjian.update({
+        where: { id: jadwalId },
+        data: {
+          setting_keamanan: {
+            ...currentSetting,
+            dispensasi_terlambat_siswa_ids: [...currentDispensasi, siswaId],
+          },
+        },
+      });
+    }
+    return { success: true };
   }
 
   /**

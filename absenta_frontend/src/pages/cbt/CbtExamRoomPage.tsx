@@ -440,21 +440,29 @@ export default function CbtExamRoomPage() {
                   'text-left p-3.5 rounded-xl border space-y-2 text-xs transition-all animate-in fade-in zoom-in-95',
                   errorDiagnosis.code === 'SESSION_DRAFT'
                     ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/60 text-amber-900 dark:text-amber-200'
-                    : errorDiagnosis.code === 'WRONG_CLASS'
-                      ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-700/60 text-purple-900 dark:text-purple-200'
-                      : errorDiagnosis.code === 'REMEDIAL_RESTRICTED'
-                        ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700/60 text-indigo-900 dark:text-indigo-200'
-                        : errorDiagnosis.code === 'ALREADY_FINISHED'
-                          ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700/60 text-emerald-900 dark:text-emerald-200'
-                          : errorDiagnosis.code === 'SESSION_PAUSED'
-                            ? 'bg-yellow-50 dark:bg-yellow-950/40 border-yellow-300 dark:border-yellow-700/60 text-yellow-900 dark:text-yellow-200'
-                            : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-700/60 text-rose-900 dark:text-rose-200'
+                    : errorDiagnosis.code === 'SCHEDULE_NOT_STARTED'
+                      ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700/60 text-blue-900 dark:text-blue-200'
+                      : errorDiagnosis.code === 'LATE_ENTRY_REJECTED'
+                        ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-700/60 text-rose-900 dark:text-rose-200'
+                        : errorDiagnosis.code === 'WRONG_CLASS'
+                          ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-700/60 text-purple-900 dark:text-purple-200'
+                          : errorDiagnosis.code === 'REMEDIAL_RESTRICTED'
+                            ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700/60 text-indigo-900 dark:text-indigo-200'
+                            : errorDiagnosis.code === 'ALREADY_FINISHED'
+                              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700/60 text-emerald-900 dark:text-emerald-200'
+                              : errorDiagnosis.code === 'SESSION_PAUSED'
+                                ? 'bg-yellow-50 dark:bg-yellow-950/40 border-yellow-300 dark:border-yellow-700/60 text-yellow-900 dark:text-yellow-200'
+                                : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-700/60 text-rose-900 dark:text-rose-200'
                 )}
               >
                 <div className="flex items-start gap-2.5">
                   <div className="shrink-0 mt-0.5">
                     {errorDiagnosis.code === 'SESSION_DRAFT' ? (
                       <Clock size={16} className="text-amber-600 dark:text-amber-400" />
+                    ) : errorDiagnosis.code === 'SCHEDULE_NOT_STARTED' ? (
+                      <Clock size={16} className="text-blue-600 dark:text-blue-400" />
+                    ) : errorDiagnosis.code === 'LATE_ENTRY_REJECTED' ? (
+                      <AlertTriangle size={16} className="text-rose-600 dark:text-rose-400" />
                     ) : errorDiagnosis.code === 'WRONG_CLASS' ? (
                       <Users size={16} className="text-purple-600 dark:text-purple-400" />
                     ) : errorDiagnosis.code === 'REMEDIAL_RESTRICTED' ? (
@@ -469,17 +477,23 @@ export default function CbtExamRoomPage() {
                     <div className="font-black text-xs uppercase tracking-wide">
                       {errorDiagnosis.code === 'SESSION_DRAFT'
                         ? 'Sesi Ujian Masih DRAFT'
-                        : errorDiagnosis.code === 'WRONG_CLASS'
-                          ? 'Salah Masuk Ruang / Kelas'
-                          : errorDiagnosis.code === 'REMEDIAL_RESTRICTED'
-                            ? 'Sesi Khusus Remedial'
-                            : errorDiagnosis.code === 'ALREADY_FINISHED'
-                              ? 'Ujian Sudah Diserahkan'
-                              : errorDiagnosis.code === 'SESSION_PAUSED'
-                                ? 'Sesi Sedang Dijeda'
-                                : errorDiagnosis.code === 'TOKEN_NOT_FOUND'
-                                  ? 'Token Tidak Ditemukan'
-                                  : 'Akses Ujian Ditolak'}
+                        : errorDiagnosis.code === 'SCHEDULE_NOT_STARTED'
+                          ? 'Ujian Belum Dimulai'
+                          : errorDiagnosis.code === 'LATE_ENTRY_REJECTED'
+                            ? 'Terlambat Masuk Ujian'
+                            : errorDiagnosis.code === 'WRONG_CLASS'
+                              ? 'Salah Masuk Ruang / Kelas'
+                              : errorDiagnosis.code === 'REMEDIAL_RESTRICTED'
+                                ? 'Sesi Khusus Remedial'
+                                : errorDiagnosis.code === 'ALREADY_FINISHED'
+                                  ? 'Ujian Sudah Diserahkan'
+                                  : errorDiagnosis.code === 'SESSION_PAUSED'
+                                    ? 'Sesi Sedang Dijeda'
+                                    : errorDiagnosis.code === 'SCHEDULE_EXPIRED'
+                                      ? 'Jadwal Ujian Telah Berakhir'
+                                      : errorDiagnosis.code === 'TOKEN_NOT_FOUND'
+                                        ? 'Token Tidak Ditemukan'
+                                        : 'Akses Ujian Ditolak'}
                     </div>
                     <p className="leading-relaxed font-medium text-[11px] sm:text-xs">
                       {errorDiagnosis.message}

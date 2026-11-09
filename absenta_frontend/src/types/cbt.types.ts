@@ -121,6 +121,7 @@ export interface CbtPesertaUjian {
   waktu_mulai?: string | null;
   waktu_selesai?: string | null;
   sisa_waktu_detik: number;
+  durasi_pengerjaan_detik?: number;
   status: CbtPesertaStatus;
   status_sinkron: string;
   jawaban_json?: Array<{
