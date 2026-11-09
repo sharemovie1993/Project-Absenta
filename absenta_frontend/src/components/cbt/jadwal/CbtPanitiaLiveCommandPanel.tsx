@@ -537,57 +537,12 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
 
   // ── JIKA SEDANG MEMBUKA INSPEKSI RUANG TERTENTU (DRILL-DOWN) ──
   if (selectedInspectJadwalId) {
-    const inspectJadwal = jadwalList.find((j) => j.id === selectedInspectJadwalId);
-    const roomInfo = inspectJadwal ? parseRoomAndClass(inspectJadwal) : null;
-    const roomCode = roomInfo?.roomCode || 'Ruang Ujian';
-
     return (
-      <div className="space-y-3">
-        {/* Banner Navigasi Balik ke Pusat Komando */}
-        <div className="p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-slate-900 to-indigo-950 text-white shadow-xs flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setSelectedInspectJadwalId(null)}
-              className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
-            >
-              <ArrowLeft size={13} />
-              <span>Kembali</span>
-            </button>
-
-            <div className="h-4 w-px bg-white/20 hidden sm:block" />
-
-            <div>
-              <div className="text-[10px] uppercase font-black tracking-wider text-indigo-300">
-                Inspeksi Meja Pengawas Live
-              </div>
-              <h3 className="text-xs sm:text-sm font-black truncate flex items-center gap-2">
-                <span>{roomCode}</span>
-                <span className="text-white/60 font-medium text-xs">
-                  ({roomInfo?.rombel || inspectJadwal?.nama_sesi || 'Sesi Ujian'})
-                </span>
-              </h3>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => handleOpenRoomDenah(roomCode, `Inspeksi Panitia: ${roomCode}`)}
-              className="px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
-            >
-              <DoorOpen size={13} />
-              <span>Denah Ruang</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Proctor Monitoring View Spesifik Ruang Ini */}
-        <CbtProctorMonitoringView
-          initialJadwalId={selectedInspectJadwalId}
-          onBack={() => setSelectedInspectJadwalId(null)}
-        />
-      </div>
+      <CbtProctorMonitoringView
+        initialJadwalId={selectedInspectJadwalId}
+        onBack={() => setSelectedInspectJadwalId(null)}
+        schedulesList={effectiveJadwalList}
+      />
     );
   }
 
