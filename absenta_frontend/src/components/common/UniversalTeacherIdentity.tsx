@@ -24,8 +24,10 @@ export interface UniversalTeacherIdentityProps {
   mode?: 'screen' | 'print';
   variant?: TeacherIdentityVariant;
   className?: string;
-  subtitle?: string;
+  subtitle?: React.ReactNode;
   showPhoto?: boolean;
+  nameSlot?: React.ReactNode;
+  subtitleSlot?: React.ReactNode;
 }
 
 export const UniversalTeacherIdentity: React.FC<UniversalTeacherIdentityProps> = React.memo(({
@@ -37,6 +39,8 @@ export const UniversalTeacherIdentity: React.FC<UniversalTeacherIdentityProps> =
   className,
   subtitle,
   showPhoto = true,
+  nameSlot,
+  subtitleSlot,
 }) => {
   const { identity: baseIdentity, isLoading } = useTeacherIdentity({
     id,
@@ -151,12 +155,16 @@ export const UniversalTeacherIdentity: React.FC<UniversalTeacherIdentityProps> =
       <div className={cn('inline-flex items-center gap-2 px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs', className)}>
         {renderPhoto()}
         <div className="flex flex-col min-w-0">
-          <span className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
-            {identity.namaLengkapGelar}
-          </span>
-          <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-            {subtitle || `${identity.nipFormatted || identity.statusKepegawaian} • ${identity.jenisPtk}`}
-          </span>
+          {nameSlot || (
+            <span className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
+              {identity.namaLengkapGelar}
+            </span>
+          )}
+          {subtitleSlot || (
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+              {subtitle || `${identity.nipFormatted || identity.statusKepegawaian} • ${identity.jenisPtk}`}
+            </span>
+          )}
         </div>
       </div>
     );

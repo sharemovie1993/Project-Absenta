@@ -365,7 +365,64 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
           data={guru}
           variant="chip"
           showPhoto
-          subtitle={guru.User?.email || guru.nip || guru.status_kepegawaian || '-'}
+          nameSlot={
+            <QuickEditCell
+              value={guru.nama_guru}
+              placeholder="Nama Guru Kosong"
+              canEdit={canManage}
+              isMonospace={false}
+              inputClassName="w-56 font-bold text-xs"
+              textClassName="font-bold text-xs text-slate-900 dark:text-slate-100"
+              className="p-0 -ml-1 hover:bg-slate-100/70 dark:hover:bg-slate-800/50"
+              onSave={async (newVal) => {
+                if (!newVal || newVal.trim() === '') {
+                  toast.error('Nama guru tidak boleh kosong');
+                  throw new Error('Nama guru tidak boleh kosong');
+                }
+                const res = await updateGuru(guru.id, { nama_guru: newVal.trim() });
+                if (res.success) {
+                  toast.success(`Nama guru berhasil diperbarui menjadi ${newVal.trim()}`);
+                  invalidateGuruCache();
+                  queryClient.invalidateQueries({ queryKey: guruQueryKeys.all });
+                  refetch();
+                  onRefresh?.();
+                } else {
+                  toast.error(res.message || 'Gagal memperbarui nama guru');
+                  throw new Error(res.message);
+                }
+              }}
+            />
+          }
+          subtitleSlot={
+            <QuickEditCell
+              value={guru.User?.email || ''}
+              placeholder="Tambah Email"
+              type="email"
+              canEdit={canManage}
+              isMonospace={false}
+              inputClassName="w-56 text-[11px]"
+              textClassName="text-[10px] text-slate-500 dark:text-slate-400"
+              className="p-0 -ml-1 hover:bg-slate-100/70 dark:hover:bg-slate-800/50"
+              onSave={async (newVal) => {
+                const cleanEmail = newVal ? newVal.trim().toLowerCase() : '';
+                if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+                  toast.error('Format email tidak valid (harus sesuai format nama@domain.com)');
+                  throw new Error('Format email tidak valid');
+                }
+                const res = await updateGuru(guru.id, { email: cleanEmail || undefined });
+                if (res.success) {
+                  toast.success(`Email ${guru.nama_guru} berhasil diperbarui`);
+                  invalidateGuruCache();
+                  queryClient.invalidateQueries({ queryKey: guruQueryKeys.all });
+                  refetch();
+                  onRefresh?.();
+                } else {
+                  toast.error(res.message || 'Gagal memperbarui email');
+                  throw new Error(res.message);
+                }
+              }}
+            />
+          }
           className="bg-transparent border-0 shadow-none p-0"
         />
       )
@@ -528,7 +585,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
         </div>
       )
     },
-  ].filter(Boolean) as any, [canManage, onEdit, onView, selectedIds, gurus, allVisibleSelected, confirm, handleDelete, handleToggleJenisPtk, togglingJenisPtkId]);
+  ].filter(Boolean) as any, [canManage, onEdit, onView, selectedIds, gurus, allVisibleSelected, confirm, handleDelete, handleToggleJenisPtk, togglingJenisPtkId, invalidateGuruCache, queryClient, refetch, onRefresh]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedIds.size === 0) return;

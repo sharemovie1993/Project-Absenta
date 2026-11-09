@@ -10,7 +10,7 @@ export const createGuruSchema = z.object({
   nama_ibu_kandung: z.string().optional().nullable(),
   nama_guru: z.string().min(1, 'Nama guru wajib diisi'),
   no_rfid: z.string().optional().nullable(),
-  email: z.string().email('Format email tidak valid').optional().nullable(),
+  email: z.string().email('Format email tidak valid').or(z.literal('')).optional().nullable(),
   no_hp: z.string().optional().nullable(),
   alamat: z.string().optional().nullable(),
   dusun: z.string().optional().nullable(),

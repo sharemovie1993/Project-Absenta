@@ -19,6 +19,7 @@ import { useBottomNavTabs } from './bottom-nav/useBottomNavTabs';
 import { useMyPengawasCbt } from '@/hooks/useMyPengawasCbt';
 import { BottomNavTabItem } from './bottom-nav/BottomNavTabItem';
 import { MobileAccountSheet } from './bottom-nav/MobileAccountSheet';
+import { RoleDashboardSwitcherSheet } from './bottom-nav/RoleDashboardSwitcherSheet';
 import { BottomNavNotchBackground } from './bottom-nav/BottomNavNotchBackground';
 import { useMobileAccountSheetStore } from '@/store/mobileAccountSheetStore';
 import { 
@@ -420,6 +421,9 @@ export const BottomNavigation: React.FC = React.memo(() => {
         isOpen={isAccountSheetOpen}
         onClose={() => useMobileAccountSheetStore.getState().close()}
       />
+
+      {/* ── SUBKOMPONEN 4: SHOPEE-GRADE ROLE DASHBOARD SWITCHER SHEET (DIVISI) ── */}
+      <RoleDashboardSwitcherSheet />
     </>
   );
 });

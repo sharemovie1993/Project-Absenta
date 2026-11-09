@@ -33,12 +33,15 @@ import {
   ClipboardList,
   Cpu,
   Home,
+  Sparkles,
+  ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { Button, Loader } from '@/components/ui';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAuthStore } from '@/store/authStore';
+import { useRoleDashboardSwitcherStore } from '@/store/roleDashboardSwitcherStore';
 import { getDashboardOverview, getAttendanceChart } from '@/api/dashboard.api';
 import { getAcademicStats } from '@/api/academic-stats.api';
 import toast from 'react-hot-toast';
@@ -453,6 +456,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Tombol Pilih Dashboard Divisi (Mobile & Desktop) */}
+            <button
+              type="button"
+              onClick={() => useRoleDashboardSwitcherStore.getState().open()}
+              className="px-2 sm:px-2.5 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/80 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+              title="Pilih Dashboard Divisi Sekolah"
+              aria-label="Pilih Dashboard Divisi"
+            >
+              <Sparkles size={13} className="text-amber-500" />
+              <span>Ganti Divisi</span>
+              <ChevronDown size={13} className="opacity-70" />
+            </button>
+
             <button
               type="button"
               onClick={handleRefresh}
@@ -506,6 +522,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
           activeTab={activeTab}
           onSelectTab={(tabId) => handleTabSelect(tabId as AdminTabId)}
           categories={categories}
+          headerExtra={
+            <button
+              type="button"
+              onClick={() => {
+                setIsMobileSidebarOpen(false);
+                useRoleDashboardSwitcherStore.getState().open();
+              }}
+              className="w-full p-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/70 dark:to-purple-950/70 text-indigo-700 dark:text-indigo-300 hover:brightness-105 flex items-center justify-between shadow-2xs transition-all cursor-pointer group select-none"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                  <Sparkles size={14} />
+                </div>
+                <div className="text-left min-w-0">
+                  <p className="text-xs font-black leading-tight text-slate-900 dark:text-white truncate">
+                    Pusat Dashboard Divisi
+                  </p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                    Pilih 12+ Dashboard Sekolah
+                  </p>
+                </div>
+              </div>
+              <ChevronRight size={15} className="text-slate-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+            </button>
+          }
           footerExtra={
             <button
               type="button"

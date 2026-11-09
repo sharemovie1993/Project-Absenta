@@ -39,7 +39,7 @@ export async function updateGuruCommand(
       select: { email: true },
     });
 
-    if (currentUser && currentUser.email.toLowerCase() !== emailToUse) {
+    if (emailToUse && currentUser && currentUser.email.toLowerCase() !== emailToUse) {
       await validateUniqueUserEmail(existingGuru.tenant_id, emailToUse, existingGuru.user_id);
 
       await prisma.user.update({
@@ -57,7 +57,16 @@ export async function updateGuruCommand(
   if (input.no_kk !== undefined) updateData.no_kk = input.no_kk;
   if (input.npwp !== undefined) updateData.npwp = input.npwp;
   if (input.nama_ibu_kandung !== undefined) updateData.nama_ibu_kandung = input.nama_ibu_kandung;
-  if (input.nama_guru !== undefined) updateData.nama_guru = input.nama_guru;
+  if (input.nama_guru !== undefined && input.nama_guru !== null) {
+    const cleanNama = input.nama_guru.trim();
+    updateData.nama_guru = cleanNama;
+    if (existingGuru.user_id) {
+      await prisma.user.update({
+        where: { id: existingGuru.user_id },
+        data: { full_name: cleanNama },
+      });
+    }
+  }
   if (input.no_rfid !== undefined) updateData.no_rfid = input.no_rfid;
   if (input.alamat !== undefined) updateData.alamat = input.alamat;
   if (input.dusun !== undefined) updateData.dusun = input.dusun;

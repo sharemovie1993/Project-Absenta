@@ -8,7 +8,9 @@ export interface QuickEditCellProps {
   onSave: (newValue: string) => Promise<void>;
   canEdit?: boolean;
   className?: string;
-  type?: 'text' | 'tel';
+  inputClassName?: string;
+  textClassName?: string;
+  type?: 'text' | 'tel' | 'email';
   isMonospace?: boolean;
   tempBadgePrefix?: string;
 }
@@ -19,6 +21,8 @@ export const QuickEditCell: React.FC<QuickEditCellProps> = React.memo(({
   onSave,
   canEdit = true,
   className = '',
+  inputClassName = '',
+  textClassName = '',
   type = 'text',
   isMonospace = true,
   tempBadgePrefix = ''
@@ -83,8 +87,9 @@ export const QuickEditCell: React.FC<QuickEditCellProps> = React.memo(({
           onKeyDown={handleKeyDown}
           disabled={saving}
           className={cn(
-            "h-7 px-2 text-xs border border-indigo-500 dark:border-indigo-400 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 w-36 shadow-xs",
-            isMonospace && "font-mono font-bold"
+            "h-7 px-2 text-xs border border-indigo-500 dark:border-indigo-400 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-xs",
+            isMonospace && "font-mono font-bold",
+            inputClassName || "w-36"
           )}
         />
         {saving ? (
@@ -131,10 +136,11 @@ export const QuickEditCell: React.FC<QuickEditCellProps> = React.memo(({
       title={canEdit ? "Klik untuk edit cepat" : undefined}
     >
       <span className={cn(
-        "text-xs",
+        "text-xs truncate",
         isMonospace && "font-mono font-medium",
         !rawValue && "text-slate-400 italic text-[11px]",
-        isTemp && "text-amber-700 dark:text-amber-300 font-bold bg-amber-50 dark:bg-amber-950/50 px-1.5 py-0.5 rounded-md border border-amber-200/60 dark:border-amber-900/60 text-[11px]"
+        isTemp && "text-amber-700 dark:text-amber-300 font-bold bg-amber-50 dark:bg-amber-950/50 px-1.5 py-0.5 rounded-md border border-amber-200/60 dark:border-amber-900/60 text-[11px]",
+        textClassName
       )}>
         {isTemp ? `${rawValue} (Sementara)` : (rawValue || placeholder)}
       </span>

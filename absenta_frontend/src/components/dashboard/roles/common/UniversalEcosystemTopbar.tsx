@@ -1,9 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Sparkles, ChevronDown } from 'lucide-react';
 import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
+import { useCapabilities } from '@/hooks/useCapabilities';
 import { useMobileAccountSheetStore } from '@/store/mobileAccountSheetStore';
+import { useRoleDashboardSwitcherStore } from '@/store/roleDashboardSwitcherStore';
 import { 
   type EcosystemType, 
   getEcosystemTheme,
@@ -90,6 +92,11 @@ export const UniversalEcosystemTopbar: React.FC<UniversalEcosystemTopbarProps> =
   const rawPhoto = user?.profile_photo_url || (user as any)?.avatar || (user?.guru_profile as any)?.foto_url;
   const userPhoto = rawPhoto ? resolveProfilePhotoUrl(rawPhoto) : null;
   const initialChar = (user?.full_name || (user as any)?.name || 'G').slice(0, 1).toUpperCase();
+
+  const { isAdmin, isKurikulum, isKesiswaan, isSarpras, isHubin, isKaprog, isWaliKelas, isTU, isKepsek } = useCapabilities();
+  const rawRoleName = String(user?.role?.name || (user?.role as any) || '').toUpperCase();
+  const isAdminRole = isAdmin || rawRoleName === 'ADMIN' || rawRoleName === 'SUPERADMIN';
+  const canSwitchDashboard = !isKepsek && (isAdminRole || isKurikulum || isKesiswaan || isSarpras || isHubin || isKaprog || isWaliKelas || isTU);
 
   // Resolusi aksi tombol kembali
   const handleBack = () => {
@@ -210,6 +217,26 @@ export const UniversalEcosystemTopbar: React.FC<UniversalEcosystemTopbarProps> =
 
       {/* SISI KANAN: AKSI MINIMAL (TOMBOL KUSTOM, REFRESH, & PROFIL AKUN) */}
       <div className="flex items-center gap-1.5 shrink-0">
+        {/* Universal Role Dashboard Switcher Pill (Khusus Admin / Multi-Role) */}
+        {canSwitchDashboard && (
+          <button
+            type="button"
+            onClick={() => useRoleDashboardSwitcherStore.getState().open()}
+            className={cn(
+              'px-2 sm:px-2.5 py-1 rounded-xl text-[10px] sm:text-[11px] font-black flex items-center gap-1 transition-all active:scale-95 cursor-pointer shrink-0 shadow-2xs select-none',
+              isLayer2
+                ? 'bg-white/20 hover:bg-white/30 text-white border border-white/35 backdrop-blur-xs'
+                : 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/60'
+            )}
+            title="Pilih Dashboard Divisi Sekolah"
+            aria-label="Pilih Dashboard Divisi"
+          >
+            <Sparkles size={11} className={isLayer2 ? 'text-amber-300' : 'text-amber-500'} />
+            <span className="hidden xs:inline">Divisi</span>
+            <ChevronDown size={11} className="opacity-80" />
+          </button>
+        )}
+
         {actions}
 
         {onRefresh && (
