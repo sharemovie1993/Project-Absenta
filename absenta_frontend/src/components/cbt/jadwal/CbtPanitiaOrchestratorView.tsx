@@ -364,6 +364,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
           eventName={effectiveEventName}
           activeTpName={activeTp?.nama}
           semester={activeSemester?.nama}
+          targetTingkat={effectiveTargetTingkat}
           onProceedToNextPhase={() => setActiveTab('fase_3_jadwal')}
         />
       )}

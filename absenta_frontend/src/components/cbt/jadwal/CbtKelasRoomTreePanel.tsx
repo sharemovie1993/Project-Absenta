@@ -37,6 +37,7 @@ interface CbtKelasRoomTreePanelProps {
   eventName?: string;
   activeTpName?: string;
   semester?: string;
+  targetTingkat?: number[];
   onProceedToNextPhase?: () => void;
 }
 
@@ -49,10 +50,23 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
   eventName,
   activeTpName,
   semester,
+  targetTingkat,
   onProceedToNextPhase,
 }) => {
   const isMobile = useIsMobile(768);
   const { jenjang, tingkatList } = useJenjang();
+
+  // Scoped tingkat list strictly adhering to event settings
+  const effectiveTingkatList = useMemo(() => {
+    if (targetTingkat && targetTingkat.length > 0) {
+      return tingkatList.filter((t) => targetTingkat.includes(t));
+    }
+    const existingTingkat = Array.from(new Set(roomMappings.map((m) => m.tingkat).filter(Boolean)));
+    if (existingTingkat.length > 0) {
+      return tingkatList.filter((t) => existingTingkat.includes(t));
+    }
+    return tingkatList;
+  }, [targetTingkat, tingkatList, roomMappings]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTingkat, setFilterTingkat] = useState<number | 'ALL'>('ALL');
@@ -205,7 +219,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
               >
                 Semua ({roomMappings.length})
               </button>
-              {tingkatList.map((t) => {
+              {effectiveTingkatList.map((t) => {
                 const count = roomMappings.filter((m) => m.tingkat === t).length;
                 const isSelected = filterTingkat === t;
                 return (
