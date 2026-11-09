@@ -9,6 +9,7 @@ import { InteractiveDenahCanvasToolbar } from './InteractiveDenahCanvasToolbar';
 import { DenahMapGuideLayer } from './DenahMapGuideLayer';
 import { DenahMapGuideFloatingBar } from './DenahMapGuideFloatingBar';
 import { DenahBatchActionBar } from './DenahBatchActionBar';
+import { DenahMobileNavigationSheet } from './DenahMobileNavigationSheet';
 import { useDenahInteraction } from './useDenahInteraction';
 import { generateAutoFloorplan } from './denahAutoLayout';
 import { updateDenah } from '../../api/spasial.api';
@@ -26,6 +27,7 @@ interface InteractiveDenahCanvasProps {
   onClose?: () => void;
   highlightRoomCode?: string | null;
   highlightLabel?: string;
+  eventName?: string;
 }
 
 export const extractMapGuideConfig = (elements?: any[], denahId?: string): DenahMapGuideConfig => {
@@ -85,6 +87,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   onClose,
   highlightRoomCode,
   highlightLabel,
+  eventName = 'Ujian CBT',
 }) => {
   // Canvas dimulai dari elemen tersimpan (filter metadata peta). Jika kosong, gunakan auto-floorplan agar canvas tidak hampa
   const rawElements = Array.isArray(denah.elements) ? denah.elements : [];
@@ -522,9 +525,118 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
     }
   }, [highlightRoomCode, nodes, scale, isRoomHighlighted, setSelectedNodeIds]);
 
+  const highlightedNode = useMemo(() => {
+    if (!highlightRoomCode || nodes.length === 0) return null;
+    return nodes.find((n) => isRoomHighlighted(n, highlightRoomCode)) || null;
+  }, [highlightRoomCode, nodes, isRoomHighlighted]);
+
+  const activeFocusNode = useMemo(() => {
+    if (highlightedNode) return highlightedNode;
+    if (selectedNodeIds.length === 1) {
+      return nodes.find((n) => n.id === selectedNodeIds[0]) || null;
+    }
+    return null;
+  }, [highlightedNode, selectedNodeIds, nodes]);
+
+  const handleCenterToRoom = useCallback(() => {
+    const target = activeFocusNode || highlightedNode;
+    if (!target) {
+      toast('Pilih ruangan terlebih dahulu', { icon: '📍' });
+      return;
+    }
+    if (canvasRef.current) {
+      const w = canvasRef.current.clientWidth || 800;
+      const h = canvasRef.current.clientHeight || 600;
+      const targetCenterX = target.x + target.width / 2;
+      const targetCenterY = target.y + target.height / 2;
+      setPanOffset({
+        x: Math.round(w / 2 - targetCenterX * scale),
+        y: Math.round(h / 2 - targetCenterY * scale),
+      });
+      setSelectedNodeIds([target.id]);
+      toast.success(`Peta dipusatkan ke ${target.label_utama}`, { duration: 1500 });
+    }
+  }, [activeFocusNode, highlightedNode, scale, setSelectedNodeIds]);
+
+  // Touch Gesture Engine: Mobile Pan & Pinch-to-Zoom
+  const touchStartRef = useRef<{
+    startX: number;
+    startY: number;
+    initialPanX: number;
+    initialPanY: number;
+    initialDistance?: number;
+    initialScale?: number;
+  } | null>(null);
+
+  const handleCanvasTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input')) {
+        return;
+      }
+
+      if (e.touches.length === 1) {
+        touchStartRef.current = {
+          startX: e.touches[0].clientX,
+          startY: e.touches[0].clientY,
+          initialPanX: panOffset.x,
+          initialPanY: panOffset.y,
+        };
+      } else if (e.touches.length === 2) {
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        touchStartRef.current = {
+          startX: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+          startY: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+          initialPanX: panOffset.x,
+          initialPanY: panOffset.y,
+          initialDistance: dist,
+          initialScale: scale,
+        };
+      }
+    },
+    [panOffset, scale]
+  );
+
+  const handleCanvasTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      if (!touchStartRef.current) return;
+
+      if (e.touches.length === 1 && !touchStartRef.current.initialDistance) {
+        const dx = e.touches[0].clientX - touchStartRef.current.startX;
+        const dy = e.touches[0].clientY - touchStartRef.current.startY;
+        setPanOffset({
+          x: Math.round(touchStartRef.current.initialPanX + dx),
+          y: Math.round(touchStartRef.current.initialPanY + dy),
+        });
+      } else if (
+        e.touches.length === 2 &&
+        touchStartRef.current.initialDistance &&
+        touchStartRef.current.initialScale
+      ) {
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const factor = dist / touchStartRef.current.initialDistance;
+        const nextScale = Math.min(
+          1.8,
+          Math.max(0.4, Number((touchStartRef.current.initialScale * factor).toFixed(2)))
+        );
+        setScale(nextScale);
+      }
+    },
+    []
+  );
+
+  const handleCanvasTouchEnd = useCallback(() => {
+    touchStartRef.current = null;
+  }, []);
+
   return (
     <div
-      className={`flex flex-col h-full min-h-[620px] flex-1 w-full rounded-2xl overflow-hidden shadow-xl select-none transition-colors border ${
+      className={`flex flex-col h-full min-h-[360px] sm:min-h-[600px] flex-1 w-full rounded-none sm:rounded-2xl overflow-hidden shadow-xl select-none transition-colors border ${
         isLightMode
           ? 'bg-slate-100 border-slate-300'
           : 'bg-slate-900 border-slate-700/80'
@@ -589,14 +701,19 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
           />
         )}
 
-        {/* Canvas Surface with Infinite Grid */}
+        {/* Canvas Surface with Infinite Grid & Touch Pan/Pinch */}
         <div
           ref={canvasRef}
           onMouseDown={handleCanvasMouseDown}
+          onTouchStart={handleCanvasTouchStart}
+          onTouchMove={handleCanvasTouchMove}
+          onTouchEnd={handleCanvasTouchEnd}
+          onTouchCancel={handleCanvasTouchEnd}
           className={`flex-1 overflow-auto relative transition-colors ${
             isLightMode ? 'bg-slate-100/90' : 'bg-slate-950'
           }`}
           style={{
+            touchAction: 'none',
             backgroundImage: isLightMode
               ? `radial-gradient(rgba(100, 116, 139, 0.25) 1px, transparent 1px)`
               : `radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px)`,
@@ -795,6 +912,21 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
             onSetSize={handleBatchSetSize}
             onSave={handleSaveDenah}
             isSaving={isSaving}
+          />
+        )}
+
+        {/* Shopee-Grade Mobile Navigation Sheet & Floating GPS Action Button */}
+        {(highlightRoomCode || isReadOnly || activeFocusNode) && (
+          <DenahMobileNavigationSheet
+            targetNode={activeFocusNode}
+            highlightRoomCode={highlightRoomCode}
+            highlightLabel={highlightLabel}
+            eventName={eventName}
+            denahLantai={denah.lantai}
+            denahGedung={denah.gedung}
+            onCenterRoom={handleCenterToRoom}
+            onClose={onClose}
+            isLightMode={isLightMode}
           />
         )}
       </div>

@@ -1,5 +1,6 @@
 import type { CbtBankSoal } from '@/types/cbt.types';
 import { localDateTimeInputToISO } from '@/utils/attendance/time';
+import { resolveBankTingkatNumber } from './cbtJadwalHelper';
 
 // ==========================================
 // 1. DATA STRUCTURES & INTERFACES
@@ -340,4 +341,116 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
   });
 
   return payloads;
+}
+
+// ==========================================
+// 4. TIMETABLE MATRIX PERSISTENCE & AUTO-RECONSTRUCTION
+// ==========================================
+
+export interface PersistedMatrixState {
+  matrix: TimetableMatrixState;
+  days?: ExamDayConfig[];
+  eventPrefix?: string;
+  generationMode?: 'per_rombel_ruang' | 'per_tingkat';
+  savedAt: number;
+}
+
+const MATRIX_STORAGE_PREFIX = 'absenta_cbt_matrix_state_';
+
+export function getStorageKeyMatrix(tenantId?: string, tpId?: string, semId?: string): string {
+  return `${MATRIX_STORAGE_PREFIX}${tenantId || 'global'}_${tpId || 'tp'}_${semId || 'sem'}`;
+}
+
+export function loadPersistedMatrixState(
+  tenantId?: string,
+  tpId?: string,
+  semId?: string
+): PersistedMatrixState | null {
+  try {
+    const raw = localStorage.getItem(getStorageKeyMatrix(tenantId, tpId, semId));
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export function savePersistedMatrixState(
+  payload: {
+    matrix: TimetableMatrixState;
+    days?: ExamDayConfig[];
+    eventPrefix?: string;
+    generationMode?: 'per_rombel_ruang' | 'per_tingkat';
+  },
+  tenantId?: string,
+  tpId?: string,
+  semId?: string
+): void {
+  try {
+    const data: PersistedMatrixState = {
+      ...payload,
+      savedAt: Date.now(),
+    };
+    localStorage.setItem(getStorageKeyMatrix(tenantId, tpId, semId), JSON.stringify(data));
+  } catch (err) {
+    console.warn('Gagal menyimpan matriks ke localStorage:', err);
+  }
+}
+
+/**
+ * Rekonstruksi otomatis matriks dari jadwal yang sudah pernah diterbitkan di database
+ */
+export function reconstructMatrixFromExistingSchedules(
+  existingSchedules: any[],
+  days: ExamDayConfig[],
+  bankList: CbtBankSoal[]
+): TimetableMatrixState {
+  if (!existingSchedules || !Array.isArray(existingSchedules) || existingSchedules.length === 0) {
+    return {};
+  }
+
+  const bankMap = new Map(bankList.map((b) => [b.id, b]));
+  const reconstructed: TimetableMatrixState = {};
+
+  existingSchedules.forEach((j) => {
+    if (!j.bank_soal_id || !j.tanggal_mulai) return;
+
+    const bank = bankMap.get(j.bank_soal_id);
+    const tingkat = bank ? resolveBankTingkatNumber(bank) : (j.BankSoal?.tingkat ? Number(j.BankSoal.tingkat) : undefined);
+    if (tingkat === undefined) return;
+
+    // Ambil tanggal lokal YYYY-MM-DD
+    const jDate = new Date(j.tanggal_mulai);
+    if (Number.isNaN(jDate.getTime())) return;
+    const y = jDate.getFullYear();
+    const m = String(jDate.getMonth() + 1).padStart(2, '0');
+    const dt = String(jDate.getDate()).padStart(2, '0');
+    const jDateStr = `${y}-${m}-${dt}`;
+
+    const targetDay = days.find((d) => d.tanggal === jDateStr);
+    if (!targetDay) return;
+
+    const sec = j.setting_keamanan as any;
+    const sessLabel = sec?.nama_sesi_waktu;
+
+    let matchedSess = targetDay.sessions.find((s) => s.nama_sesi === sessLabel);
+    if (!matchedSess) {
+      // Cocokkan jam mulai HH:MM
+      const h = String(jDate.getHours()).padStart(2, '0');
+      const min = String(jDate.getMinutes()).padStart(2, '0');
+      const jTime = `${h}:${min}`;
+      matchedSess = targetDay.sessions.find((s) => s.jam_mulai === jTime);
+    }
+
+    if (!matchedSess && targetDay.sessions.length > 0) {
+      matchedSess = targetDay.sessions[0];
+    }
+
+    if (matchedSess) {
+      const key = `${targetDay.day_index}_${matchedSess.session_index}_${tingkat}`;
+      reconstructed[key] = j.bank_soal_id;
+    }
+  });
+
+  return reconstructed;
 }

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, Button, Input, Badge } from '@/components/ui';
 import {
   Calendar,
@@ -10,11 +10,13 @@ import {
   Layers,
   AlertCircle,
   HelpCircle,
+  RotateCcw,
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtBankSoal, CbtJadwalUjian } from '@/types/cbt.types';
 import { useJenjang } from '@/hooks/useJenjang';
+import { useAuthStore } from '@/store/authStore';
 import { formatTingkatRomawi } from '../bank-soal/cbtAsesmenHelper';
 import { resolveBankTingkatNumber } from './cbtJadwalHelper';
 import {
@@ -24,6 +26,9 @@ import {
   buildMassSchedulePayloads,
   createDefaultExamDays,
   groupMappingsByTingkat,
+  loadPersistedMatrixState,
+  savePersistedMatrixState,
+  reconstructMatrixFromExistingSchedules,
 } from './cbtOrchestratorHelper';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -54,6 +59,77 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
   const [generationMode, setGenerationMode] = useState<'per_rombel_ruang' | 'per_tingkat'>('per_rombel_ruang');
   const [days, setDays] = useState<ExamDayConfig[]>(() => createDefaultExamDays(defaultTodayStr, 5));
   const [matrix, setMatrix] = useState<TimetableMatrixState>({});
+  const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
+
+  const { user } = useAuthStore();
+  const tenantId = user?.tenant_id || 'default';
+
+  // 1. Muat state draft matriks yang tersimpan di localStorage (SSoT Persisten)
+  useEffect(() => {
+    const persisted = loadPersistedMatrixState(tenantId, activeTpId, activeSemId);
+    if (persisted) {
+      if (persisted.matrix && Object.keys(persisted.matrix).length > 0) {
+        setMatrix(persisted.matrix);
+      }
+      if (persisted.days && persisted.days.length > 0) {
+        setDays(persisted.days);
+      }
+      if (persisted.eventPrefix) {
+        setEventPrefix(persisted.eventPrefix);
+      }
+      if (persisted.generationMode) {
+        setGenerationMode(persisted.generationMode);
+      }
+      if (persisted.savedAt) {
+        setLastSavedTime(new Date(persisted.savedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
+      }
+    }
+  }, [tenantId, activeTpId, activeSemId]);
+
+  // 2. Rekonstruksi & Sinkronisasi Otomatis dari Jadwal Database (Existing Published Schedules)
+  useEffect(() => {
+    if (existingSchedules && existingSchedules.length > 0 && bankList.length > 0) {
+      const reconstructed = reconstructMatrixFromExistingSchedules(existingSchedules, days, bankList);
+      if (Object.keys(reconstructed).length > 0) {
+        setMatrix((prev) => {
+          let hasDiff = false;
+          const merged = { ...prev };
+          Object.entries(reconstructed).forEach(([k, bankId]) => {
+            if (!merged[k]) {
+              merged[k] = bankId;
+              hasDiff = true;
+            }
+          });
+          return hasDiff ? merged : prev;
+        });
+      }
+    }
+  }, [existingSchedules, bankList, days]);
+
+  // 3. Auto-save ke localStorage setiap kali ada perubahan pada matrix, days, prefix, atau mode
+  useEffect(() => {
+    if (!activeTpId) return;
+    savePersistedMatrixState(
+      { matrix, days, eventPrefix, generationMode },
+      tenantId,
+      activeTpId,
+      activeSemId
+    );
+    setLastSavedTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
+  }, [matrix, days, eventPrefix, generationMode, tenantId, activeTpId, activeSemId]);
+
+  const handleResetMatrix = useCallback(() => {
+    if (window.confirm('Kosongkan semua pilihan mapel pada matriks?')) {
+      setMatrix({});
+      savePersistedMatrixState(
+        { matrix: {}, days, eventPrefix, generationMode },
+        tenantId,
+        activeTpId,
+        activeSemId
+      );
+      toast.success('Pilihan mapel pada matriks berhasil dikosongkan.');
+    }
+  }, [days, eventPrefix, generationMode, tenantId, activeTpId, activeSemId]);
 
   // Grouped room mappings by tingkat
   const groupedRoomsByTingkat = useMemo(() => {
@@ -269,32 +345,55 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
           </div>
         </div>
 
-        {/* Nomenklatur Preset */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mr-1">Event:</span>
-          {[
-            'PSAS Ganjil',
-            'PSAT Genap',
-            'PSTS Ganjil',
-            'PSTS Genap',
-            'PSAJ (Kelulusan)',
-            'Asesmen Madrasah (AM)',
-            'UKK Teori Kejuruan',
-          ].map((nom) => (
-            <button
-              key={nom}
-              type="button"
-              onClick={() => setEventPrefix(nom)}
-              className={cn(
-                'px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer',
-                eventPrefix === nom
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
-                  : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-              )}
-            >
-              {nom}
-            </button>
-          ))}
+        {/* Nomenklatur Preset & Status Simpan */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mr-1">Event:</span>
+            {[
+              'PSAS Ganjil',
+              'PSAT Genap',
+              'PSTS Ganjil',
+              'PSTS Genap',
+              'PSAJ (Kelulusan)',
+              'Asesmen Madrasah (AM)',
+              'UKK Teori Kejuruan',
+            ].map((nom) => (
+              <button
+                key={nom}
+                type="button"
+                onClick={() => setEventPrefix(nom)}
+                className={cn(
+                  'px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer',
+                  eventPrefix === nom
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                    : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                )}
+              >
+                {nom}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
+            {lastSavedTime && (
+              <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                <CheckCircle2 size={12} />
+                <span>Tersimpan Otomatis ({lastSavedTime})</span>
+              </span>
+            )}
+
+            {totalSlotsFilled > 0 && (
+              <button
+                type="button"
+                onClick={handleResetMatrix}
+                className="text-[11px] font-semibold text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 flex items-center gap-1 cursor-pointer transition-colors"
+                title="Kosongkan seluruh isian mata pelajaran di matriks"
+              >
+                <RotateCcw size={11} />
+                <span>Kosongkan</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

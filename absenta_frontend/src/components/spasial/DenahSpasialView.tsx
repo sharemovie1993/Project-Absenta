@@ -196,7 +196,7 @@ export const DenahSpasialView: React.FC<UniversalDenahSpasialViewProps> = React.
   };
 
   return (
-    <div className={`w-full h-full flex flex-col overflow-hidden min-h-[500px] ${hideLayout ? 'p-0' : ''}`}>
+    <div className={`w-full h-full flex flex-col overflow-hidden min-h-[360px] sm:min-h-[500px] ${hideLayout ? 'p-0' : ''}`}>
       {loading ? (
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-slate-400">
           <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-2" />
@@ -214,6 +214,7 @@ export const DenahSpasialView: React.FC<UniversalDenahSpasialViewProps> = React.
           isReadOnly={readOnly}
           highlightRoomCode={highlightRoomCode}
           highlightLabel={highlightLabel}
+          eventName={eventName}
           onSaveSuccess={handleSaveSuccess}
         />
       ) : (
