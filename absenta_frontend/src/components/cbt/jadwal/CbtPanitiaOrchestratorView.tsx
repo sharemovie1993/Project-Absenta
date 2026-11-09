@@ -277,7 +277,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
       <div className="pt-2 pb-1 border-t border-slate-100 dark:border-slate-800/80">
         <div className="relative pt-1 pb-1">
           {/* Horizontal Track Line Container */}
-          <div className="absolute top-[17px] sm:top-[19px] left-6 right-6 sm:left-10 sm:right-10 h-1 sm:h-1.5 bg-slate-200 dark:bg-slate-700/80 rounded-full z-0 overflow-hidden">
+          <div className="absolute top-[17px] sm:top-[19px] left-0 right-0 h-1 sm:h-1.5 bg-slate-200 dark:bg-slate-700/80 rounded-full z-0 overflow-hidden">
             {/* Active Progress Fill Line */}
             <div
               className="h-full bg-indigo-600 dark:bg-indigo-500 rounded-full transition-all duration-300 ease-in-out"

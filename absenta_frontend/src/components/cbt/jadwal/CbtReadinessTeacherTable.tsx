@@ -172,7 +172,7 @@ export const CbtReadinessTeacherTable: React.FC<CbtReadinessTeacherTableProps> =
                       className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer ml-auto"
                     >
                       <Plus size={13} />
-                      <span>{target.bankSoal ? 'Isi Butir' : '+ Buatkan'}</span>
+                      <span>{target.bankSoal ? 'Isi' : 'Buat'}</span>
                     </button>
                   </>
                 ) : (
@@ -365,7 +365,7 @@ export const CbtReadinessTeacherTable: React.FC<CbtReadinessTeacherTableProps> =
                           title={target.bankSoal ? 'Input naskah butir soal' : 'Buatkan bank soal untuk guru ini'}
                         >
                           <Plus size={12} />
-                          <span>{target.bankSoal ? 'Isi' : '+ Buat'}</span>
+                          <span>{target.bankSoal ? 'Isi' : 'Buat'}</span>
                         </button>
                       </div>
                     ) : (
