@@ -9,6 +9,7 @@ import {
   DoorOpen,
   CheckCircle2,
   Printer,
+  CreditCard,
   ArrowRight,
   Filter,
   Map,
@@ -24,6 +25,7 @@ import {
   savePersistedRoomMappings,
 } from './cbtOrchestratorHelper';
 import { CbtLabelRuangPrintModal } from './CbtLabelRuangPrintModal';
+import { CbtKartuUjianPrintModal } from './CbtKartuUjianPrintModal';
 import { CbtDenahModal } from './CbtDenahModal';
 
 interface CbtKelasRoomTreePanelProps {
@@ -53,6 +55,10 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
   // Modal Cetak Label Ruang State
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [targetKelasIdForPrint, setTargetKelasIdForPrint] = useState<string | null>(null);
+
+  // Modal Cetak Kartu Ujian State (A4 Grid 2x2)
+  const [isKartuModalOpen, setIsKartuModalOpen] = useState(false);
+  const [targetKelasIdForKartu, setTargetKelasIdForKartu] = useState<string | null>(null);
 
   // Modal Studio Denah Spasial State
   const [isDenahModalOpen, setIsDenahModalOpen] = useState(false);
@@ -94,6 +100,18 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
   const handlePrintAllLabels = () => {
     setTargetKelasIdForPrint(null);
     setIsPrintModalOpen(true);
+  };
+
+  // Open modal cetak kartu ujian untuk 1 rombel tertentu
+  const handlePrintSingleKartu = (kelasId: string) => {
+    setTargetKelasIdForKartu(kelasId);
+    setIsKartuModalOpen(true);
+  };
+
+  // Open modal cetak kartu ujian untuk seluruh rombel
+  const handlePrintAllKartu = () => {
+    setTargetKelasIdForKartu(null);
+    setIsKartuModalOpen(true);
   };
 
   // Filter & Search List
@@ -240,6 +258,18 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
           >
             <Printer size={13} className="mr-1.5" />
             <span>Cetak Label</span>
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handlePrintAllKartu}
+            className="text-xs h-8 px-3 font-bold text-indigo-700 border-indigo-300 bg-indigo-50/70 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:border-indigo-800 dark:text-indigo-300 cursor-pointer shadow-2xs"
+            title="Cetak kartu peserta ujian CBT seluruh rombel (A4 Grid 2x2)"
+          >
+            <CreditCard size={13} className="mr-1.5 text-indigo-600" />
+            <span>Cetak Kartu Ujian</span>
           </Button>
 
           <Button
@@ -398,15 +428,24 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => handlePrintSingleLabel(cls.kelas_id)}
                     aria-label={`Cetak label ruang ${cls.nama_kelas}`}
-                    className="w-full min-h-[38px] px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="w-full min-h-[38px] px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Printer size={13} />
-                    <span>Cetak Label ({cls.slot_ruang || 'Slot'})</span>
+                    <span>Label ({cls.slot_ruang || 'Slot'})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePrintSingleKartu(cls.kelas_id)}
+                    aria-label={`Cetak kartu ujian ${cls.nama_kelas}`}
+                    className="w-full min-h-[38px] px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/40 dark:border-indigo-800 dark:text-indigo-300 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <CreditCard size={13} />
+                    <span>Kartu ({cls.slot_ruang || 'Slot'})</span>
                   </button>
                 </div>
               </div>
@@ -426,7 +465,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                   <th scope="col" className="py-2.5 px-3 w-32">Jurusan</th>
                   <th scope="col" className="py-2.5 px-3 w-40">Slot Kode Ruang</th>
                   <th scope="col" className="py-2.5 px-3">Nama Ruang Fisik</th>
-                  <th scope="col" className="py-2.5 px-3 w-36 text-right">Label Ruang</th>
+                  <th scope="col" className="py-2.5 px-3 w-44 text-right">Aksi Cetak</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -487,18 +526,30 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                       />
                     </td>
 
-                    {/* 7. Label Ruang Aksi */}
+                    {/* 7. Label & Kartu Ruang Aksi */}
                     <td className="py-2 px-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handlePrintSingleLabel(cls.kelas_id)}
-                        aria-label={`Cetak label ruang ${cls.nama_kelas}`}
-                        className="py-1 px-2.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer transition-colors"
-                        title={`Cetak banner pintu A4 Landscape untuk ${cls.slot_ruang || 'Slot'} (${cls.nama_kelas})`}
-                      >
-                        <Printer size={12} />
-                        <span>Cetak</span>
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handlePrintSingleLabel(cls.kelas_id)}
+                          aria-label={`Cetak label ruang ${cls.nama_kelas}`}
+                          className="py-1 px-2.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer transition-colors"
+                          title={`Cetak banner pintu A4 Landscape untuk ${cls.slot_ruang || 'Slot'} (${cls.nama_kelas})`}
+                        >
+                          <Printer size={12} />
+                          <span>Label</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handlePrintSingleKartu(cls.kelas_id)}
+                          aria-label={`Cetak kartu ujian ${cls.nama_kelas}`}
+                          className="py-1 px-2.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/40 dark:border-indigo-800 dark:text-indigo-300 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer transition-colors"
+                          title={`Cetak kartu ujian CBT (A4 Grid 2x2) untuk ${cls.nama_kelas}`}
+                        >
+                          <CreditCard size={12} />
+                          <span>Kartu</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                   );
@@ -541,7 +592,22 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
         />
       )}
 
-      {/* ── 7. Modal Studio Denah Spasial (Interactive Puzzle Canvas) ── */}
+      {/* ── 7. Modal Cetak Kartu Peserta Ujian CBT (A4 Grid 2x2) ── */}
+      {isKartuModalOpen && (
+        <CbtKartuUjianPrintModal
+          isOpen={isKartuModalOpen}
+          onClose={() => {
+            setIsKartuModalOpen(false);
+            setTargetKelasIdForKartu(null);
+          }}
+          kelasList={kelasList}
+          roomMappings={roomMappings}
+          selectedKelasId={targetKelasIdForKartu}
+          eventName={eventName}
+        />
+      )}
+
+      {/* ── 8. Modal Studio Denah Spasial (Interactive Puzzle Canvas) ── */}
       {isDenahModalOpen && (
         <CbtDenahModal
           isOpen={isDenahModalOpen}

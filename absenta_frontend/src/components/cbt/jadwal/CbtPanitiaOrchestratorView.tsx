@@ -27,6 +27,7 @@ import {
   Edit2,
   Check,
   UserCheck,
+  CreditCard,
 } from 'lucide-react';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtJadwalUjian, CbtBankSoal } from '@/types/cbt.types';
@@ -44,6 +45,7 @@ import { CbtKelasRoomTreePanel } from './CbtKelasRoomTreePanel';
 import { CbtTimetableMatrixPanel } from './CbtTimetableMatrixPanel';
 import { CbtPengawasMatrixPanel } from './CbtPengawasMatrixPanel';
 import { CbtPanitiaLiveCommandPanel } from './CbtPanitiaLiveCommandPanel';
+import { CbtKartuUjianPrintModal } from './CbtKartuUjianPrintModal';
 
 const CbtBankSoalView = lazy(() =>
   import('@/components/cbt/bank-soal/CbtBankSoalView').then((m) => ({ default: m.CbtBankSoalView }))
@@ -68,6 +70,7 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<CbtPanitiaPhase>('fase_1_soal');
   const [subModeFase1, setSubModeFase1] = useState<'readiness' | 'manage'>('readiness');
   const [subModeFase3, setSubModeFase3] = useState<'matrix' | 'table'>('matrix');
+  const [isGlobalKartuModalOpen, setIsGlobalKartuModalOpen] = useState(false);
 
   const { rawList: guruList = [] } = useGuruOptions({ jenisPtk: 'ALL' });
   const { rawList: kelasList = [] } = useKelasOptions();
@@ -268,6 +271,19 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
                 <span>KBM Mandiri</span>
               </button>
             </div>
+          </div>
+
+          {/* Quick Action: Cetak Kartu Ujian Global */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsGlobalKartuModalOpen(true)}
+              className="px-2.5 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+              title="Cetak Kartu Peserta Ujian CBT seluruh siswa (A4 Grid 2x2)"
+            >
+              <CreditCard size={13} className="text-indigo-600 dark:text-indigo-400" />
+              <span>Cetak Kartu Ujian</span>
+            </button>
           </div>
         </div>
 
@@ -483,6 +499,19 @@ export const CbtPanitiaOrchestratorView: React.FC = () => {
           />
         )}
       </div>
+
+      {/* ── Modal Global Cetak Kartu Peserta Ujian CBT (A4 Grid 2x2) ── */}
+      {isGlobalKartuModalOpen && (
+        <CbtKartuUjianPrintModal
+          isOpen={isGlobalKartuModalOpen}
+          onClose={() => setIsGlobalKartuModalOpen(false)}
+          kelasList={activeKelasList}
+          roomMappings={roomMappings}
+          selectedKelasId={null}
+          eventName={eventName}
+          activeTpName={activeTp?.nama}
+        />
+      )}
     </div>
   );
 };
