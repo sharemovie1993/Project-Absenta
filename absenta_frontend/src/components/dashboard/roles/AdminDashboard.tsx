@@ -44,6 +44,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useRoleDashboardSwitcherStore } from '@/store/roleDashboardSwitcherStore';
 import { getDashboardOverview, getAttendanceChart } from '@/api/dashboard.api';
 import { getAcademicStats } from '@/api/academic-stats.api';
+import { getTenantActivityLogs } from '@/api/activityLog.api';
 import toast from 'react-hot-toast';
 import { 
   AdminTabId, 
@@ -202,6 +203,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
     staleTime: 60 * 1000,
   });
 
+  const { data: logsRes, isLoading: isLogsLoading } = useQuery({
+    queryKey: ['admin-recent-logs'],
+    queryFn: () => getTenantActivityLogs({ limit: 4 }),
+    staleTime: 60 * 1000,
+  });
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
@@ -209,6 +216,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
         queryClient.invalidateQueries({ queryKey: ['admin-overview-stats'] }),
         queryClient.invalidateQueries({ queryKey: ['admin-attendance-chart'] }),
         queryClient.invalidateQueries({ queryKey: ['academic-stats'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-recent-logs'] }),
       ]);
       toast.success('Data dashboard admin berhasil diperbarui');
     } catch {
@@ -690,6 +698,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
                 stats={overviewRes?.data}
                 academicStats={academicRes?.data}
                 chartData={chartRes?.data}
+                recentLogs={logsRes?.data?.logs || []}
+                isLogsLoading={isLogsLoading}
                 loading={isOverviewLoading || isAcademicLoading}
                 tpTahun={tpTahun}
                 semNama={semNama}

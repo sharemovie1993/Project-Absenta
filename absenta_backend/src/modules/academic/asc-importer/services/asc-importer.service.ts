@@ -511,6 +511,16 @@ export class AscImporterService {
       });
 
       // 5. Extract & Import Lessons (JadwalKontrakKbm)
+      const ignoredTeacherAscIds = new Set(
+        input.teacher_mappings.filter(t => t.action === 'IGNORE').map(t => String(t.asc_id))
+      );
+      const ignoredClassAscIds = new Set(
+        input.class_mappings.filter(c => c.action === 'IGNORE').map(c => String(c.asc_id))
+      );
+      const ignoredSubjectAscIds = new Set(
+        input.subject_mappings.filter(s => s.action === 'IGNORE').map(s => String(s.asc_id))
+      );
+
       const xmlSubjectsRaw = timetable.subjects?.subject || [];
       const xmlSubjectsArr = Array.isArray(xmlSubjectsRaw) ? xmlSubjectsRaw : [xmlSubjectsRaw];
       const xmlLessonsRaw = timetable.lessons?.lesson || [];
@@ -524,8 +534,18 @@ export class AscImporterService {
         const teacherIdsArr = String(les.teacherids || '').split(',').map(s => s.trim()).filter(Boolean);
         const subjectIdStr = String(les.subjectid || '').trim();
 
+        // (a) Proteksi Mapel Uncheck: Jika mapel diabaikan, jangan impor kontrak/jadwal mapel ini sama sekali
+        if (ignoredSubjectAscIds.has(subjectIdStr)) {
+          continue;
+        }
+
+        // (b) Proteksi Guru Uncheck: Jika seluruh guru di pelajaran ini diabaikan, jangan impor jadwalnya
+        if (teacherIdsArr.length > 0 && teacherIdsArr.every(tId => ignoredTeacherAscIds.has(tId))) {
+          continue;
+        }
+
         let targetSubjectId = subjectIdMap.get(subjectIdStr) || null;
-        if (!targetSubjectId && subjectIdStr) {
+        if (!targetSubjectId && subjectIdStr && !ignoredSubjectAscIds.has(subjectIdStr)) {
           const xmlSub = xmlSubjectsArr.find((s: any) => String(s.id) === subjectIdStr);
           if (xmlSub) {
             const subName = String(xmlSub.name || xmlSub.short || 'Mata Pelajaran').trim();
@@ -553,7 +573,10 @@ export class AscImporterService {
         }
 
         const targetTeacherId = teacherIdsArr.map(tId => teacherIdMap.get(tId)).find(Boolean) || null;
-        const targetClassIds = classIdsArr.map(cId => classIdMap.get(cId)).filter((cId): cId is string => Boolean(cId));
+        const targetClassIds = classIdsArr
+          .filter(cId => !ignoredClassAscIds.has(cId))
+          .map(cId => classIdMap.get(cId))
+          .filter((cId): cId is string => Boolean(cId));
 
         if (targetClassIds.length === 0) continue;
 
