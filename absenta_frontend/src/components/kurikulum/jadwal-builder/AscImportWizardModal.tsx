@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Modal } from '../../ui/Modal';
 import { Button } from '../../ui/Button';
 import { Badge } from '../../ui/Badge';
@@ -14,9 +14,11 @@ import {
   Sparkles,
   ArrowRight,
   ShieldAlert,
-  Layers
+  Layers,
+  Calendar
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { useQuery } from '@tanstack/react-query';
 import { 
   analyzeAscXml, 
   executeAscImport, 
@@ -101,6 +103,64 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
   const [analysis, setAnalysis] = useState<AscAnalysisResult | null>(null);
   const [executionResult, setExecutionResult] = useState<any>(null);
 
+  // Target Academic Context Mapping State
+  const [targetTpId, setTargetTpId] = useState<string>(tahunPelajaranId || '');
+  const [targetSemId, setTargetSemId] = useState<string>(semesterId || '');
+
+  // Synchronize props when modal opens or props update
+  useEffect(() => {
+    if (isOpen) {
+      if (tahunPelajaranId) setTargetTpId(tahunPelajaranId);
+      if (semesterId) setTargetSemId(semesterId);
+    }
+  }, [isOpen, tahunPelajaranId, semesterId]);
+
+  // Fetch list of Tahun Pelajaran for academic context mapping
+  const { data: tpListRes, isLoading: loadingTp } = useQuery({
+    queryKey: ['academic-tp-list-for-asc'],
+    queryFn: () => getTahunPelajaranList(1, 50),
+    enabled: isOpen,
+    staleTime: 5 * 60 * 1000,
+  });
+  const tpList = useMemo(() => tpListRes?.data || [], [tpListRes]);
+
+  // Auto-select active TP if none chosen
+  useEffect(() => {
+    if (isOpen && !targetTpId && tpList.length > 0) {
+      const activeTp = tpList.find((t: any) => t.is_active) || tpList[0];
+      if (activeTp) {
+        setTargetTpId(activeTp.id);
+      }
+    }
+  }, [isOpen, targetTpId, tpList]);
+
+  // Fetch list of Semesters for selected Tahun Pelajaran
+  const { data: semListRes, isLoading: loadingSem } = useQuery({
+    queryKey: ['academic-sem-list-for-asc', targetTpId],
+    queryFn: () => (targetTpId ? getSemesterList(1, 50, '', targetTpId) : Promise.resolve({ data: [] } as any)),
+    enabled: isOpen && Boolean(targetTpId),
+    staleTime: 5 * 60 * 1000,
+  });
+  const semList = useMemo(() => (semListRes as any)?.data || [], [semListRes]);
+
+  // Auto-select active Semester for chosen TP if not matching
+  useEffect(() => {
+    if (isOpen && semList.length > 0) {
+      const match = semList.find((s: any) => s.id === targetSemId);
+      if (!match) {
+        const activeSem = semList.find((s: any) => s.is_active) || semList[0];
+        if (activeSem) {
+          setTargetSemId(activeSem.id);
+        }
+      }
+    }
+  }, [isOpen, semList, targetSemId]);
+
+  const selectedTp = useMemo(() => tpList.find((t: any) => t.id === targetTpId), [tpList, targetTpId]);
+  const selectedSem = useMemo(() => semList.find((s: any) => s.id === targetSemId), [semList, targetSemId]);
+  const targetTpName = selectedTp?.tahun || 'Memuat...';
+  const targetSemName = selectedSem?.nama_semester || 'Memuat...';
+
   // Tab State in Step 2
   const [activeTab, setActiveTab] = useState<'GURU' | 'KELAS' | 'MAPEL'>('GURU');
   const [searchQuery, setSearchQuery] = useState('');
@@ -165,6 +225,11 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
     if (!file.name.toLowerCase().endsWith('.xml')) {
       console.error('❌ [aSc Import Wizard] Invalid file extension (must be .xml):', file.name);
       toast.error('File harus berformat XML (.xml) hasil export aSc TimeTables');
+      return;
+    }
+
+    if (!targetTpId || !targetSemId) {
+      toast.error('Silakan tentukan Tahun Pelajaran dan Semester sasaran terlebih dahulu.');
       return;
     }
 
@@ -377,8 +442,8 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
   };
 
   const handleExecuteImport = async () => {
-    let effectiveTpId = tahunPelajaranId;
-    let effectiveSemId = semesterId;
+    let effectiveTpId = targetTpId || tahunPelajaranId;
+    let effectiveSemId = targetSemId || semesterId;
 
     if (!effectiveTpId || !effectiveSemId) {
       try {
@@ -414,8 +479,10 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
     };
 
     console.log('🚀 [aSc Import Wizard] Executing Import Payload:', {
-      tahunPelajaranId,
-      semesterId,
+      tahun_pelajaran_id: effectiveTpId,
+      semester_id: effectiveSemId,
+      targetTpName,
+      targetSemName,
       filename: analysis.filename,
       teachersCount: payload.teacher_mappings.length,
       classesCount: payload.class_mappings.length,
@@ -494,39 +561,120 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
           </div>
         </div>
 
-        {/* STEP 1: UPLOAD FILE */}
+        {/* STEP 1: UPLOAD FILE & KONTEKS AKADEMIK */}
         {step === 1 && (
-          <div className="py-8 flex flex-col items-center justify-center border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl bg-slate-50/50 dark:bg-slate-900/40 p-8 text-center space-y-4">
-            <div className="p-4 bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-full">
-              <FileUp className="w-10 h-10" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Unggah File Export XML dari aSc TimeTables
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md">
-                Pilih file ekspor database aSc TimeTables (contoh: <code className="bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded text-indigo-600">Backup timetables 2627 real.xml</code>) untuk dianalisis oleh sistem.
-              </p>
+          <div className="space-y-4">
+            {/* Konteks Akademik Sasaran Impor Card */}
+            <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="p-2 bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-xl">
+                  <Calendar className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                    Konteks Akademik Sasaran Impor
+                  </h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Pilih Tahun Pelajaran & Semester target tempat jadwal KBM hasil impor XML ini akan diterapkan.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Tahun Pelajaran Target
+                  </label>
+                  <select
+                    value={targetTpId}
+                    onChange={(e) => {
+                      setTargetTpId(e.target.value);
+                      setTargetSemId('');
+                    }}
+                    disabled={loadingTp}
+                    className="w-full text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  >
+                    {tpList.length === 0 ? (
+                      <option value="">Memuat Tahun Pelajaran...</option>
+                    ) : (
+                      tpList.map((tp: any) => (
+                        <option key={tp.id} value={tp.id}>
+                          {tp.tahun} {tp.is_active ? '★ (Aktif)' : ''}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Semester Target
+                  </label>
+                  <select
+                    value={targetSemId}
+                    onChange={(e) => setTargetSemId(e.target.value)}
+                    disabled={loadingSem || !targetTpId}
+                    className="w-full text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  >
+                    {semList.length === 0 ? (
+                      <option value="">
+                        {!targetTpId ? 'Pilih Tahun Pelajaran dahulu' : 'Tidak ada data semester'}
+                      </option>
+                    ) : (
+                      semList.map((sem: any) => (
+                        <option key={sem.id} value={sem.id}>
+                          {sem.nama_semester} {sem.is_active ? '★ (Aktif)' : ''}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-3 flex items-center justify-between text-[11px] bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 rounded-xl px-3 py-2 text-indigo-700 dark:text-indigo-300">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                  Target Impor Aktif: <strong className="font-bold underline">{targetTpName} • {targetSemName}</strong>
+                </span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                  Dapat disesuaikan sebelum file XML dianalisis
+                </span>
+              </div>
             </div>
 
-            <div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xml"
-                className="hidden"
-                onChange={handleFileUpload}
-                disabled={loading}
-              />
-              <Button
-                variant="primary"
-                onClick={() => fileInputRef.current?.click()}
-                className="rounded-xl px-6 py-2.5 shadow-md flex items-center gap-2"
-                disabled={loading}
-              >
-                {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                {loading ? 'Menganalisis XML...' : 'Pilih File XML aSc'}
-              </Button>
+            {/* File Upload Box */}
+            <div className="py-8 flex flex-col items-center justify-center border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl bg-slate-50/50 dark:bg-slate-900/40 p-8 text-center space-y-4">
+              <div className="p-4 bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-full">
+                <FileUp className="w-10 h-10" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Unggah File Export XML dari aSc TimeTables
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md">
+                  Pilih file ekspor database aSc TimeTables (contoh: <code className="bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded text-indigo-600">Backup timetables 2627 real.xml</code>) untuk dianalisis oleh sistem.
+                </p>
+              </div>
+
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xml"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  disabled={loading}
+                />
+                <Button
+                  variant="primary"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="rounded-xl px-6 py-2.5 shadow-md flex items-center gap-2"
+                  disabled={loading || !targetTpId || !targetSemId}
+                >
+                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  {loading ? 'Menganalisis XML...' : 'Pilih File XML aSc'}
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -553,9 +701,13 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                   <span>🧩 {analysis.summary.total_cards} Kartu Jam</span>
                 </div>
               </div>
-              <Badge className="bg-indigo-500/30 text-indigo-200 border border-indigo-400/40 text-xs px-3 py-1">
-                Mode Transaksional
-              </Badge>
+              <div className="flex flex-col items-end gap-1.5">
+                <Badge className="bg-indigo-500/30 text-indigo-200 border border-indigo-400/40 text-xs px-3 py-1 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-indigo-300" />
+                  Target: {targetTpName} • {targetSemName}
+                </Badge>
+                <span className="text-[10px] text-slate-300 font-medium">Mode Transaksional</span>
+              </div>
             </div>
 
             {/* Sub-Tabs Selector */}
@@ -1026,19 +1178,27 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
           <div className="space-y-6 text-center py-4">
             <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 p-4 rounded-2xl text-amber-900 dark:text-amber-200 text-left flex gap-3 items-start">
               <ShieldAlert className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div className="text-xs space-y-1">
+              <div className="text-xs space-y-2">
                 <div className="font-bold text-sm text-amber-900 dark:text-amber-100">
                   Konfirmasi Mode Overwrite (Penimpaan Jadwal Transaksional)
                 </div>
                 <p>
-                  Proses ini akan **menimpa (*overwrite*) seluruh Jadwal KBM & Kontrak Pelajaran** pada periode/semester aktif ini dengan data presisi dari file <code className="font-bold">{analysis.filename}</code>.
+                  Proses ini akan <strong>menimpa (<em>overwrite</em>) seluruh Jadwal KBM & Kontrak Pelajaran</strong> pada:
                 </p>
+                <div className="p-2.5 bg-amber-100/70 dark:bg-amber-900/40 rounded-xl border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-100 font-semibold flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-amber-700 dark:text-amber-300" />
+                  <span>Konteks Akademik Sasaran: <strong>Tahun Pelajaran {targetTpName}</strong> — <strong>Semester {targetSemName}</strong></span>
+                </div>
                 <ul className="list-disc pl-4 space-y-0.5 font-medium">
+                  <li>File Sumber XML: <code className="font-bold">{analysis.filename}</code></li>
                   <li>Total Guru Terpetakan: {Object.values(teacherMappings).length} orang</li>
                   <li>Total Kelas Terpetakan: {Object.values(classMappings).length} kelas</li>
                   <li>Total Mapel Terpetakan: {Object.values(subjectMappings).length} mapel</li>
                   <li>Total Slot Plotting: {analysis.summary.total_cards} slot jam</li>
                 </ul>
+                <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 italic">
+                  * Jadwal kegiatan pembiasaan, upacara, dan slot jam ke-0 tetap aman terlindungi dan tidak akan terhapus.
+                </p>
               </div>
             </div>
 
@@ -1080,13 +1240,18 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                   </div>
                   <h2 className="text-xl font-black">Laporan Keberhasilan Impor & CRUD Record</h2>
                   <p className="text-xs text-emerald-100 mt-1 max-w-xl">
-                    Seluruh Jadwal KBM & Kontrak Pelajaran dari file <code className="bg-black/20 px-1.5 py-0.5 rounded text-white font-bold">{analysis?.filename}</code> telah berhasil ditimpa dan disimpan ke database PostgreSQL Absenta.
+                    Seluruh Jadwal KBM & Kontrak Pelajaran dari file <code className="bg-black/20 px-1.5 py-0.5 rounded text-white font-bold">{analysis?.filename}</code> telah berhasil ditimpa dan disimpan untuk <strong>Tahun Pelajaran {targetTpName} • Semester {targetSemName}</strong> ke database PostgreSQL Absenta.
                   </p>
                 </div>
               </div>
-              <Badge className="bg-white text-emerald-800 font-bold px-3 py-1 text-xs shadow-sm">
-                STATUS: COMMITTED
-              </Badge>
+              <div className="flex flex-col items-end gap-1.5">
+                <Badge className="bg-white text-emerald-800 font-bold px-3 py-1 text-xs shadow-sm">
+                  STATUS: COMMITTED
+                </Badge>
+                <span className="text-[11px] text-emerald-100 font-medium">
+                  {targetTpName} • {targetSemName}
+                </span>
+              </div>
             </div>
 
             {/* Stat Cards Grid */}
