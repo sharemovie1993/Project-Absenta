@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
+import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtEventItem } from '@/types/cbt.types';
 
 export type CbtOperationMode = 'MANDIRI' | 'ORKESTRASI';
@@ -68,22 +70,31 @@ export function useCbtOperationMode() {
   const { user } = useAuthStore();
   const tenantId = user?.tenant_id;
 
-  const [config, setConfig] = useState<CbtModeConfig>(() => loadCbtModeConfig(tenantId));
+  const [localConfig, setLocalConfig] = useState<CbtModeConfig>(() => loadCbtModeConfig(tenantId));
+
+  // Query Konfigurasi Event Aktif dari Database SSoT Backend
+  const { data: eventsData } = useQuery({
+    queryKey: cbtQueryKeys.eventsSummary(),
+    queryFn: () => cbtApi.getEventsSummary(),
+    staleTime: 60 * 1000,
+  });
+
+  const activeEvent = eventsData?.active_event;
 
   useEffect(() => {
-    setConfig(loadCbtModeConfig(tenantId));
+    setLocalConfig(loadCbtModeConfig(tenantId));
   }, [tenantId]);
 
   useEffect(() => {
     const handleModeChange = (e: Event) => {
       const custom = e as CustomEvent<CbtModeConfig>;
       if (custom.detail) {
-        setConfig(custom.detail);
+        setLocalConfig(custom.detail);
       }
     };
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === getCbtModeConfigKey(tenantId)) {
-        setConfig(loadCbtModeConfig(tenantId));
+        setLocalConfig(loadCbtModeConfig(tenantId));
       }
     };
 
@@ -98,23 +109,23 @@ export function useCbtOperationMode() {
   const updateMode = useCallback(
     (newMode: CbtOperationMode, newEventName?: string) => {
       const updated: CbtModeConfig = {
-        ...config,
+        ...localConfig,
         mode: newMode,
-        eventName: newEventName !== undefined ? newEventName : config.eventName,
+        eventName: newEventName !== undefined ? newEventName : localConfig.eventName,
         lockTeacherScheduling: newMode === 'ORKESTRASI',
         activeSince: new Date().toISOString(),
         updatedBy: user?.nama || user?.name || 'Panitia',
       };
       saveCbtModeConfig(updated, tenantId);
-      setConfig(updated);
+      setLocalConfig(updated);
     },
-    [config, tenantId, user]
+    [localConfig, tenantId, user]
   );
 
   const updateActiveEvent = useCallback(
     (event: CbtEventItem) => {
       const updated: CbtModeConfig = {
-        ...config,
+        ...localConfig,
         mode: 'ORKESTRASI',
         eventId: event.id,
         eventName: event.nama_event,
@@ -126,20 +137,40 @@ export function useCbtOperationMode() {
         updatedBy: user?.nama || user?.name || 'Panitia',
       };
       saveCbtModeConfig(updated, tenantId);
-      setConfig(updated);
+      setLocalConfig(updated);
     },
-    [config, tenantId, user]
+    [localConfig, tenantId, user]
   );
 
+  const effectiveMode = localConfig.mode;
+  const effectiveEventName = activeEvent?.nama_event || localConfig.eventName;
+  const effectiveEventId = activeEvent?.id || localConfig.eventId;
+  const effectiveTargetTingkat = useMemo(() => {
+    if (activeEvent?.target_tingkat && activeEvent.target_tingkat.length > 0) {
+      return activeEvent.target_tingkat;
+    }
+    return localConfig.targetTingkat || [10, 11, 12];
+  }, [activeEvent, localConfig.targetTingkat]);
+  const effectiveLockTeacherScheduling = activeEvent?.lock_teacher_scheduling ?? localConfig.lockTeacherScheduling;
+
   return {
-    config,
-    mode: config.mode,
-    eventName: config.eventName,
-    eventId: config.eventId,
-    targetTingkat: config.targetTingkat || [10, 11, 12],
-    isOrkestrasi: config.mode === 'ORKESTRASI',
-    isMandiri: config.mode === 'MANDIRI',
-    lockTeacherScheduling: config.lockTeacherScheduling,
+    config: {
+      ...localConfig,
+      eventName: effectiveEventName,
+      eventId: effectiveEventId,
+      targetTingkat: effectiveTargetTingkat,
+      lockTeacherScheduling: effectiveLockTeacherScheduling,
+    },
+    mode: effectiveMode,
+    eventName: effectiveEventName,
+    eventId: effectiveEventId,
+    targetTingkat: effectiveTargetTingkat,
+    isOrkestrasi: effectiveMode === 'ORKESTRASI',
+    isMandiri: effectiveMode === 'MANDIRI',
+    lockTeacherScheduling: effectiveLockTeacherScheduling,
+    activeEvent,
+    tokenRefreshInterval: activeEvent?.token_refresh_interval ?? 15,
+    strictBrowserGuard: activeEvent?.strict_browser_guard ?? true,
     updateMode,
     updateActiveEvent,
   };

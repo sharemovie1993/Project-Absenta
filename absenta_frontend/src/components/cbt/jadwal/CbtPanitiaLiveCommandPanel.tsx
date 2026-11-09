@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
-import type { CbtJadwalUjian } from '@/types/cbt.types';
+import type { CbtJadwalUjian, CbtEventItem } from '@/types/cbt.types';
 import { CbtDenahModal } from './CbtDenahModal';
 import { CbtProctorMonitoringView } from '../sesi/CbtProctorMonitoringView';
 import { detectNodeTingkat, TINGKAT_STYLES } from '@/components/spasial/denahTingkatHelper';
@@ -40,6 +40,7 @@ interface CbtPanitiaLiveCommandPanelProps {
   refetchJadwal: () => void;
   guruList?: any[];
   onBackToPengawas?: () => void;
+  activeEvent?: CbtEventItem | null;
 }
 
 export type CbtMonitoringLensMode = 'ruangan' | 'hari_sesi' | 'mapel';
@@ -48,6 +49,7 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
   jadwalList = [],
   isLoadingJadwal,
   refetchJadwal,
+  activeEvent,
 }) => {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -74,6 +76,31 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
   // State Expansion untuk Lensa Mapel & Hari
   const [expandedMapelId, setExpandedMapelId] = useState<string | null>(null);
   const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
+
+  // Countdown Timer untuk Rotasi Token Otomatis
+  const tokenIntervalMinutes = activeEvent?.token_refresh_interval ?? 15;
+  const isAutoRotate = tokenIntervalMinutes > 0;
+  const [secondsLeft, setSecondsLeft] = useState<number>(() => tokenIntervalMinutes * 60);
+
+  useEffect(() => {
+    if (!isAutoRotate) return;
+    setSecondsLeft(tokenIntervalMinutes * 60);
+    const timer = setInterval(() => {
+      setSecondsLeft((prev) => {
+        if (prev <= 1) {
+          return tokenIntervalMinutes * 60;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [tokenIntervalMinutes, isAutoRotate]);
+
+  const countdownText = useMemo(() => {
+    const mins = Math.floor(secondsLeft / 60);
+    const secs = secondsLeft % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }, [secondsLeft]);
 
   // Mutasi Aktivasi Tunggal
   const activateMutation = useMutation({
@@ -548,6 +575,14 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
 
           {/* Master Operational Buttons */}
           <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            {isAutoRotate && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-50 dark:bg-violet-950/50 border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300 text-xs font-bold shrink-0">
+                <Clock size={13} className="text-violet-600 animate-pulse" />
+                <span>Rotasi Token ({tokenIntervalMinutes}m):</span>
+                <span className="font-mono font-black text-violet-900 dark:text-violet-200">{countdownText}</span>
+              </div>
+            )}
+
             {summary.draft > 0 && (
               <button
                 type="button"

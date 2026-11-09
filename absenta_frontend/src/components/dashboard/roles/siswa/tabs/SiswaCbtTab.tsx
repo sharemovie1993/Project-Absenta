@@ -32,6 +32,7 @@ import {
 import { cn } from '@/lib/utils';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtStudentExamItem } from '@/types/cbt.types';
+import { useCbtOperationMode } from '@/components/cbt/cbtModeHelper';
 import { getTimezone, getTimezoneLabel } from '@/utils/attendance/time';
 import { Modal } from '@/components/ui';
 import { CbtDenahModal } from '@/components/cbt/jadwal/CbtDenahModal';
@@ -243,6 +244,28 @@ export const SiswaCbtTab: React.FC = () => {
     '';
   const studentKelasId = studentProfile?.kelas_id || (user as any)?.kelas_id || '';
 
+  const { activeEvent } = useCbtOperationMode();
+
+  const studentTingkat = useMemo(() => {
+    const rawTingkat = studentProfile?.Kelas?.tingkat || studentProfile?.kelas?.tingkat;
+    if (rawTingkat) return Number(rawTingkat);
+    const m = (studentKelasName || '').match(/^(X{1,3}|IX|IV|V?I{0,3}|\d+)/i);
+    if (m) {
+      const roman = m[1].toUpperCase();
+      if (roman === 'X' || roman === '10') return 10;
+      if (roman === 'XI' || roman === '11') return 11;
+      if (roman === 'XII' || roman === '12') return 12;
+      if (roman === 'XIII' || roman === '13') return 13;
+    }
+    return null;
+  }, [studentProfile, studentKelasName]);
+
+  const isStudentOutsideTargetEvent = useMemo(() => {
+    if (!activeEvent || !activeEvent.target_tingkat || activeEvent.target_tingkat.length === 0) return false;
+    if (!studentTingkat) return false;
+    return !activeEvent.target_tingkat.includes(studentTingkat);
+  }, [activeEvent, studentTingkat]);
+
   const persistedRooms = useMemo(() => loadPersistedRoomMappings(tenantId), [tenantId]);
 
   const resolveRoomInfo = useCallback(
@@ -398,6 +421,28 @@ export const SiswaCbtTab: React.FC = () => {
 
   return (
     <div className="space-y-3">
+      {/* 0. Banner Edukatif Jika Siswa Berada di Luar Tingkat Sasaran Event Aktif */}
+      {isStudentOutsideTargetEvent && activeEvent && (
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-sky-50 to-indigo-50 dark:from-sky-950/40 dark:to-indigo-950/40 border border-sky-200 dark:border-sky-800 text-slate-800 dark:text-slate-200 shadow-2xs flex items-start gap-3">
+          <div className="p-2 rounded-xl bg-sky-500 text-white shrink-0 shadow-xs">
+            <Info size={18} />
+          </div>
+          <div className="text-xs space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-black text-sky-950 dark:text-sky-200 text-xs sm:text-sm">
+                Informasi Event: {activeEvent.nama_event}
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-300">
+                Tingkat Sasaran: {activeEvent.target_tingkat.join(', ')}
+              </span>
+            </div>
+            <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+              Saat ini sekolah sedang menggelar event ujian terpusat khusus siswa <strong>Tingkat {activeEvent.target_tingkat.join(' & ')}</strong>. Kelas Anda ({studentKelasName || `Tingkat ${studentTingkat}`}) tidak dijadwalkan pada event ini. Anda dapat mempelajari modul KBM harian atau memeriksa riwayat nilai ujian di bawah.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* 1-Row Compact Stats Strip */}
       <div className="grid grid-cols-4 gap-1.5 sm:gap-2 p-1.5 sm:p-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs">
         {/* Stat 1: Berlangsung */}

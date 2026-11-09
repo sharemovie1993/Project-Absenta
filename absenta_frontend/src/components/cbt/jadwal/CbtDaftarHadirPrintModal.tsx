@@ -21,12 +21,14 @@ interface CbtDaftarHadirPrintModalProps {
   isOpen: boolean;
   onClose: () => void;
   jadwal: CbtJadwalUjian | null;
+  eventName?: string;
 }
 
 export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> = ({
   isOpen,
   onClose,
   jadwal,
+  eventName,
 }) => {
   const sheetContainerRef = useRef<HTMLDivElement>(null);
 
@@ -515,7 +517,7 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
           {/* 2. JUDUL DOKUMEN */}
           <div className="text-center my-3 pb-1 border-b-2 border-black">
             <h2 className="text-sm font-black uppercase tracking-wider text-black">
-              Daftar Hadir Peserta Asesmen / Ujian Berbasis Komputer (CBT)
+              Daftar Hadir Peserta {eventName ? eventName.toUpperCase() : 'Asesmen / Ujian Berbasis Komputer (CBT)'}
             </h2>
             <p className="text-[11px] font-bold text-black uppercase mt-0.5">
               Tahun Ajaran {currentJadwal.TahunPelajaran?.tahun || '2026/2027'} • Semester {currentJadwal.Semester?.nama || 'Ganjil'}

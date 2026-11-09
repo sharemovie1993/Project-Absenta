@@ -485,6 +485,9 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
                 activeSemId={activeSemester?.id}
                 defaultTodayStr={defaultTodayStr}
                 existingSchedules={jadwalList}
+                activeEvent={activeEvent}
+                eventName={effectiveEventName}
+                targetTingkat={effectiveTargetTingkat}
                 onSuccessGenerate={() => {
                   refetchJadwal();
                   setActiveTab('fase_4_pengawas');
@@ -513,6 +516,8 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
             jadwalList={jadwalList}
             guruList={guruList}
             isLoadingJadwal={isLoadingJadwal}
+            eventName={effectiveEventName}
+            targetTingkat={effectiveTargetTingkat}
             onProceedToNextPhase={() => setActiveTab('fase_5_monitor')}
           />
         )}
@@ -523,6 +528,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
             isLoadingJadwal={isLoadingJadwal}
             refetchJadwal={refetchJadwal}
             guruList={guruList}
+            activeEvent={activeEvent}
             onBackToPengawas={() => setActiveTab('fase_4_pengawas')}
           />
         )}

@@ -38,9 +38,10 @@ export class CbtJadwalController {
 
   static async create(req: any, reply: any) {
     try {
-      const { tenant_id } = req.user!;
+      const { tenant_id, roleName, role } = req.user!;
+      const userRole = roleName || (typeof role === 'string' ? role : role?.name);
       const parsed = createJadwalUjianSchema.parse(req.body);
-      const result = await CbtJadwalService.create(tenant_id, parsed);
+      const result = await CbtJadwalService.create(tenant_id, parsed, userRole);
       return sendResponse(reply, 201, true, 'Jadwal ujian berhasil dibuat', result);
     } catch (error: any) {
       if (error instanceof z.ZodError) {

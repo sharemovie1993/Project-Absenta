@@ -2,6 +2,7 @@ import { prisma } from '@/utils/prisma';
 import { Prisma } from '@prisma/client';
 import { getRedisConnection } from '@/infra/redis/redisClient';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
+import { CbtSettingsService } from './cbt-settings.service';
 import crypto from 'crypto';
 
 export class CbtJadwalService {
@@ -166,7 +167,18 @@ export class CbtJadwalService {
   /**
    * Membuat Jadwal Ujian baru
    */
-  static async create(tenantId: string, data: any) {
+  static async create(tenantId: string, data: any, userRole?: string) {
+    // 1. Guard Kunci Jadwal Guru Mandiri saat Event Massal Aktif
+    const normalizedRole = (userRole || '').toUpperCase();
+    if (normalizedRole === 'GURU') {
+      const activeEvent = await CbtSettingsService.getActiveEvent(tenantId);
+      if (activeEvent && activeEvent.lock_teacher_scheduling) {
+        throw new Error(
+          `Pembuatan jadwal ujian mandiri guru dikunci selama event ujian massal (${activeEvent.nama_event}) berlangsung. Silakan hubungi Panitia CBT / Bidang Kurikulum.`
+        );
+      }
+    }
+
     // Pastikan bank soal valid dan memiliki butir soal
     const bankSoal = await prisma.cbtBankSoal.findFirst({
       where: { id: data.bank_soal_id, tenant_id: tenantId },

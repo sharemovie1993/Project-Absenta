@@ -221,6 +221,9 @@ export interface BuildMassScheduleParams {
   activeSemId: string;
   generationMode: 'per_rombel_ruang' | 'per_tingkat';
   toleransiTerlambatMenit?: number;
+  tokenRefreshInterval?: number;
+  strictBrowserGuard?: boolean;
+  eventId?: string;
 }
 
 export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[] {
@@ -234,6 +237,9 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
     activeSemId,
     generationMode,
     toleransiTerlambatMenit = 15,
+    tokenRefreshInterval = 15,
+    strictBrowserGuard = true,
+    eventId,
   } = params;
 
   const bankMap = new Map(bankList.map((b) => [b.id, b]));
@@ -295,6 +301,9 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
                 ruang_ujian: slotRuang,
                 ruang_ujian_nama: namaRuang,
                 nama_sesi_waktu: session.nama_sesi,
+                token_refresh_interval: tokenRefreshInterval,
+                strict_browser_guard: strictBrowserGuard,
+                event_id: eventId,
               },
             });
           });
@@ -333,6 +342,9 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
               room_mappings: kelasRoomMap,
               ruang_ujian: 'Multi-Ruang Kelas',
               nama_sesi_waktu: session.nama_sesi,
+              token_refresh_interval: tokenRefreshInterval,
+              strict_browser_guard: strictBrowserGuard,
+              event_id: eventId,
             },
           });
         }

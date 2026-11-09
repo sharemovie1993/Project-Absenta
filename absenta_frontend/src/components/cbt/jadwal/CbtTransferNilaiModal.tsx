@@ -135,7 +135,16 @@ export const CbtTransferNilaiModal: React.FC<CbtTransferNilaiModalProps> = ({
       const lower = (jadwal.nama_sesi || '').toLowerCase();
       if (configuredSlot) {
         setTargetSlot(configuredSlot);
-      } else if (lower.includes('akhir') || lower.includes('sas') || lower.includes('uas') || lower.includes('pat') || lower.includes('pas')) {
+      } else if (
+        lower.includes('akhir') ||
+        lower.includes('sas') ||
+        lower.includes('uas') ||
+        lower.includes('pat') ||
+        lower.includes('pas') ||
+        lower.includes('psaj') ||
+        lower.includes('kelulusan') ||
+        lower.includes('ujian sekolah')
+      ) {
         setTargetSlot('sumatif_akhir');
       } else if (lower.includes('pts') || lower.includes('sts') || lower.includes('sumatif 2') || lower.includes('uh 2')) {
         setTargetSlot('sumatif_2');

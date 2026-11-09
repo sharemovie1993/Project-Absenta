@@ -192,6 +192,11 @@ export class CbtSettingsService {
     };
   }
 
+  static async getActiveEvent(tenantId: string): Promise<CbtEventItem | null> {
+    const summary = await this.getEventsSummary(tenantId);
+    return summary.active_event;
+  }
+
   static async upsertEvent(tenantId: string, payload: Partial<CbtEventItem>) {
     const configRow = await prisma.config.findFirst({
       where: { tenant_id: tenantId, key: CBT_CONFIG_KEY },

@@ -52,6 +52,8 @@ interface CbtPengawasMatrixPanelProps {
   guruList: any[];
   isLoadingJadwal: boolean;
   onProceedToNextPhase?: () => void;
+  eventName?: string;
+  targetTingkat?: number[];
 }
 
 export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
@@ -59,6 +61,8 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
   guruList,
   isLoadingJadwal,
   onProceedToNextPhase,
+  eventName,
+  targetTingkat,
 }) => {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -1072,6 +1076,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
           isOpen={Boolean(selectedJadwalForPrint)}
           onClose={() => setSelectedJadwalForPrint(null)}
           jadwal={selectedJadwalForPrint}
+          eventName={eventName}
         />
       )}
 
@@ -1081,6 +1086,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
           isOpen={Boolean(selectedJadwalForDaftarHadir)}
           onClose={() => setSelectedJadwalForDaftarHadir(null)}
           jadwal={selectedJadwalForDaftarHadir}
+          eventName={eventName}
         />
       )}
 

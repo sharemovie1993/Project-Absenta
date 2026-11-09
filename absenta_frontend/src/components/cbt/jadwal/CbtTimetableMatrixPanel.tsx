@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
-import type { CbtBankSoal, CbtJadwalUjian } from '@/types/cbt.types';
+import type { CbtBankSoal, CbtJadwalUjian, CbtEventItem } from '@/types/cbt.types';
 import { useJenjang } from '@/hooks/useJenjang';
 import { useAuthStore } from '@/store/authStore';
 import { formatTingkatRomawi } from '../bank-soal/cbtAsesmenHelper';
@@ -41,6 +41,9 @@ interface CbtTimetableMatrixPanelProps {
   defaultTodayStr: string;
   existingSchedules?: CbtJadwalUjian[];
   onSuccessGenerate?: () => void;
+  activeEvent?: CbtEventItem | null;
+  eventName?: string;
+  targetTingkat?: number[];
 }
 
 export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = ({
@@ -51,11 +54,14 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
   defaultTodayStr,
   existingSchedules,
   onSuccessGenerate,
+  activeEvent,
+  eventName,
+  targetTingkat,
 }) => {
   const queryClient = useQueryClient();
   const { jenjang } = useJenjang();
 
-  const [eventPrefix, setEventPrefix] = useState('PSAS Ganjil');
+  const [eventPrefix, setEventPrefix] = useState(() => activeEvent?.nama_event || eventName || 'PSAS Ganjil');
   const [generationMode, setGenerationMode] = useState<'per_rombel_ruang' | 'per_tingkat'>('per_rombel_ruang');
   const [days, setDays] = useState<ExamDayConfig[]>(() => createDefaultExamDays(defaultTodayStr, 5));
   const [matrix, setMatrix] = useState<TimetableMatrixState>({});
@@ -137,8 +143,11 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
   }, [roomMappings]);
 
   const activeTingkatList = useMemo(() => {
+    if (targetTingkat && targetTingkat.length > 0) {
+      return [...targetTingkat].sort((a, b) => a - b);
+    }
     return Array.from(groupedRoomsByTingkat.keys()).sort((a, b) => a - b);
-  }, [groupedRoomsByTingkat]);
+  }, [targetTingkat, groupedRoomsByTingkat]);
 
   // Group bank soals by tingkat
   const banksByTingkat = useMemo(() => {
@@ -274,6 +283,9 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
         activeTpId,
         activeSemId,
         generationMode,
+        tokenRefreshInterval: activeEvent?.token_refresh_interval ?? 15,
+        strictBrowserGuard: activeEvent?.strict_browser_guard ?? true,
+        eventId: activeEvent?.id,
       });
 
       if (payloads.length === 0) {
@@ -349,15 +361,18 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mr-1">Event:</span>
-            {[
-              'PSAS Ganjil',
-              'PSAT Genap',
-              'PSTS Ganjil',
-              'PSTS Genap',
-              'PSAJ (Kelulusan)',
-              'Asesmen Madrasah (AM)',
-              'UKK Teori Kejuruan',
-            ].map((nom) => (
+            {Array.from(
+              new Set([
+                ...(activeEvent?.nama_event ? [activeEvent.nama_event] : []),
+                'PSAS Ganjil',
+                'PSAT Genap',
+                'PSTS Ganjil',
+                'PSTS Genap',
+                'PSAJ (Kelulusan)',
+                'Asesmen Madrasah (AM)',
+                'UKK Teori Kejuruan',
+              ])
+            ).map((nom) => (
               <button
                 key={nom}
                 type="button"

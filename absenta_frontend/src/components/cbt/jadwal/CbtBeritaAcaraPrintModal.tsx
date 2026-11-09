@@ -19,12 +19,14 @@ interface CbtBeritaAcaraPrintModalProps {
   isOpen: boolean;
   onClose: () => void;
   jadwal: CbtJadwalUjian | null;
+  eventName?: string;
 }
 
 export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> = ({
   isOpen,
   onClose,
   jadwal,
+  eventName,
 }) => {
   const sheetContainerRef = useRef<HTMLDivElement>(null);
 
@@ -532,7 +534,7 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
           {/* 2. JUDUL DOKUMEN */}
           <div className="text-center my-4 space-y-0.5">
             <h3 className="text-sm font-bold uppercase tracking-wider underline text-black">
-              BERITA ACARA PELAKSANAAN ASESMEN BERBASIS KOMPUTER (CBT)
+              BERITA ACARA PELAKSANAAN {eventName ? eventName.toUpperCase() : 'ASESMEN BERBASIS KOMPUTER (CBT)'}
             </h3>
             <p className="text-[11px] font-semibold text-slate-700">
               Nomor: BA-CBT/{tglMulai.getFullYear()}/{currentJadwal.token_ujian}
