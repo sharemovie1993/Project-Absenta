@@ -400,22 +400,16 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
       )}
 
       {activeTab === 'fase_5_monitor' && (
-        <>
-          <div className="rounded-2xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs border border-slate-200/90 dark:border-slate-800 overflow-hidden">
-            {flightDeckNode}
-          </div>
-
-          <div className="transition-opacity duration-200">
-            <CbtPanitiaLiveCommandPanel
-              jadwalList={jadwalList}
-              isLoadingJadwal={isLoadingJadwal}
-              refetchJadwal={refetchJadwal}
-              guruList={guruList}
-              activeEvent={activeEvent}
-              onBackToPengawas={() => setActiveTab('fase_4_pengawas')}
-            />
-          </div>
-        </>
+        <CbtPanitiaLiveCommandPanel
+          topFlightDeck={flightDeckNode}
+          jadwalList={jadwalList}
+          isLoadingJadwal={isLoadingJadwal}
+          refetchJadwal={refetchJadwal}
+          guruList={guruList}
+          activeEvent={activeEvent}
+          targetTingkat={effectiveTargetTingkat}
+          onBackToPengawas={() => setActiveTab('fase_4_pengawas')}
+        />
       )}
 
       {/* ── Modal Pengaturan Event Ujian CBT ── */}

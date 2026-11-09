@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui';
 import {
   Activity,
   Play,
@@ -35,21 +36,25 @@ import { cn } from '@/lib/utils';
 import { formatLocalTimeFromISO, formatLocalDateIndo } from '@/utils/attendance/time';
 
 interface CbtPanitiaLiveCommandPanelProps {
+  topFlightDeck?: React.ReactNode;
   jadwalList: CbtJadwalUjian[];
   isLoadingJadwal: boolean;
   refetchJadwal: () => void;
   guruList?: any[];
   onBackToPengawas?: () => void;
   activeEvent?: CbtEventItem | null;
+  targetTingkat?: number[];
 }
 
 export type CbtMonitoringLensMode = 'ruangan' | 'hari_sesi' | 'mapel';
 
 export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProps> = ({
+  topFlightDeck,
   jadwalList = [],
   isLoadingJadwal,
   refetchJadwal,
   activeEvent,
+  targetTingkat,
 }) => {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -197,17 +202,49 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
     return codeA.localeCompare(codeB);
   };
 
+  // ── KEPATUHAN EVENT PANITIA & SASARAN TINGKAT ──
+  const effectiveJadwalList = useMemo(() => {
+    return (jadwalList || []).filter((j) => {
+      // 1. Jika event_id tertera di setting_keamanan, harus cocok dengan activeEvent
+      if (activeEvent?.id && j.setting_keamanan?.event_id) {
+        if (j.setting_keamanan.event_id !== activeEvent.id) return false;
+      }
+      // 2. Kepatuhan Target Tingkat Event
+      if (targetTingkat && targetTingkat.length > 0) {
+        const info = parseRoomAndClass(j);
+        if (!targetTingkat.includes(info.tingkat)) return false;
+      }
+      return true;
+    });
+  }, [jadwalList, activeEvent?.id, targetTingkat]);
+
+  // Tab Filter Tingkat Dinamis Sesuai Target Event (Menghilangkan Kelas di Luar Sasaran)
+  const tingkatFilterOptions = useMemo(() => {
+    const options: Array<{ val: 'ALL' | 10 | 11 | 12 | 13; label: string }> = [
+      { val: 'ALL', label: 'Semua' },
+    ];
+    const romanMap: Record<number, string> = { 10: 'X', 11: 'XI', 12: 'XII', 13: 'XIII' };
+    const effectiveTingkats = (targetTingkat && targetTingkat.length > 0)
+      ? [...targetTingkat].sort((a, b) => a - b)
+      : [10, 11, 12];
+
+    effectiveTingkats.forEach((tk) => {
+      options.push({ val: tk as any, label: romanMap[tk] || String(tk) });
+    });
+    return options;
+  }, [targetTingkat]);
+
   // ── STATISTIK KESELURUHAN SEKOLAH (COMMAND CENTER RADAR) ──
   const summary = useMemo(() => {
-    const totalRuang = jadwalList.length;
-    const active = jadwalList.filter((j) => j.status === 'ACTIVE').length;
-    const draft = jadwalList.filter((j) => j.status === 'DRAFT').length;
-    const paused = jadwalList.filter((j) => j.status === 'PAUSED').length;
-    const completed = jadwalList.filter(
+    const totalRuang = effectiveJadwalList.length;
+    const active = effectiveJadwalList.filter((j) => j.status === 'ACTIVE').length;
+    const draft = effectiveJadwalList.filter((j) => j.status === 'DRAFT').length;
+    const paused = effectiveJadwalList.filter((j) => j.status === 'PAUSED').length;
+    const completed = effectiveJadwalList.filter(
       (j) => j.status === 'COMPLETED' || (j.status as string) === 'FINISHED'
     ).length;
 
-    const totalPeserta = jadwalList.reduce((acc, curr) => acc + (curr._count?.Peserta || 0), 0);
+    const totalPeserta = effectiveJadwalList.reduce((acc, curr) => acc + (curr._count?.Peserta || 0), 0);
 
     return {
       totalRuang,
@@ -217,11 +254,11 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
       completed,
       totalPeserta,
     };
-  }, [jadwalList]);
+  }, [effectiveJadwalList]);
 
   // Filter Jadwal Berdasarkan Status & Pencarian & Tingkat
   const filteredJadwal = useMemo(() => {
-    return jadwalList.filter((j) => {
+    return effectiveJadwalList.filter((j) => {
       const info = parseRoomAndClass(j);
 
       // Filter Tingkat
@@ -262,7 +299,7 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
 
       return true;
     });
-  }, [jadwalList, statusFilter, tingkatFilter, searchQuery]);
+  }, [effectiveJadwalList, statusFilter, tingkatFilter, searchQuery]);
 
   // ── LENSA 1: TABEL BERBASIS RUANGAN (URUT R.01 S/D R.36) ──
   const sortedJadwalByRoom = useMemo(() => {
@@ -453,7 +490,7 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
   const handleBatchActivate = async (targetSessions?: CbtJadwalUjian[], customTitle?: string) => {
     const listToActivate = targetSessions
       ? targetSessions.filter((j) => j.status === 'DRAFT')
-      : jadwalList.filter((j) => j.status === 'DRAFT');
+      : effectiveJadwalList.filter((j) => j.status === 'DRAFT');
 
     if (listToActivate.length === 0) {
       toast('Semua ruangan ujian pada target ini sudah dalam keadaan aktif atau selesai.', { icon: 'ℹ️' });
@@ -505,26 +542,26 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
     const roomCode = roomInfo?.roomCode || 'Ruang Ujian';
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
         {/* Banner Navigasi Balik ke Pusat Komando */}
-        <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 to-indigo-950 text-white shadow-lg flex items-center justify-between gap-3 flex-wrap">
+        <div className="p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-slate-900 to-indigo-950 text-white shadow-xs flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setSelectedInspectJadwalId(null)}
-              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+              className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
             >
-              <ArrowLeft size={14} />
-              <span>Kembali ke Radar Monitoring Tabel</span>
+              <ArrowLeft size={13} />
+              <span>Kembali</span>
             </button>
 
-            <div className="h-5 w-px bg-white/20 hidden sm:block" />
+            <div className="h-4 w-px bg-white/20 hidden sm:block" />
 
             <div>
               <div className="text-[10px] uppercase font-black tracking-wider text-indigo-300">
                 Inspeksi Meja Pengawas Live
               </div>
-              <h3 className="text-sm sm:text-base font-black truncate flex items-center gap-2">
+              <h3 className="text-xs sm:text-sm font-black truncate flex items-center gap-2">
                 <span>{roomCode}</span>
                 <span className="text-white/60 font-medium text-xs">
                   ({roomInfo?.rombel || inspectJadwal?.nama_sesi || 'Sesi Ujian'})
@@ -537,10 +574,10 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
             <button
               type="button"
               onClick={() => handleOpenRoomDenah(roomCode, `Inspeksi Panitia: ${roomCode}`)}
-              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+              className="px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
             >
               <DoorOpen size={13} />
-              <span>Lihat Denah Ruang Ini</span>
+              <span>Denah Ruang</span>
             </button>
           </div>
         </div>
@@ -555,272 +592,268 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
   }
 
   return (
-    <div className="space-y-4">
-      {/* ── 1. MASTER COMMAND CENTER BAR: KONTROL OPERASIONAL PANITIA CBT (THEME-AWARE) ── */}
-      <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-900 dark:text-white shadow-2xs space-y-3">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30">
-                <Activity size={18} className="animate-pulse" />
-              </span>
-              <h3 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">
-                Pusat Komando &amp; Radar Live Ujian (Hari H)
-              </h3>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-              Tabel monitoring serentak seluruh ruangan ujian, kontrol aktivasi per sesi, dan sebaran analitik live.
-            </p>
-          </div>
+    <div className="space-y-3 w-full max-w-full min-w-0">
+      {/* ── 1 RUANG SEAMLESS FLIGHT DECK + TOOLBAR ── */}
+      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs divide-y divide-slate-100 dark:divide-slate-800/80 overflow-hidden">
+        {topFlightDeck}
 
-          {/* Master Operational Buttons */}
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-            {isAutoRotate && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-50 dark:bg-violet-950/50 border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300 text-xs font-bold shrink-0">
-                <Clock size={13} className="text-violet-600 animate-pulse" />
-                <span>Rotasi Token ({tokenIntervalMinutes}m):</span>
-                <span className="font-mono font-black text-violet-900 dark:text-violet-200">{countdownText}</span>
+        {/* ── Unified Master Filter & Action Toolbar (Zero Waste Vertical) ── */}
+        <div className="p-2 sm:p-2.5 bg-slate-50/50 dark:bg-slate-800/30 flex flex-col xl:flex-row xl:items-center justify-between gap-2">
+          {/* Left: Lens tabs, Status tabs, Dynamic Tingkat tabs, Search */}
+          <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
+            {/* Lensa Tabs (Ruang, Sesi, Mapel) - 1 Kata */}
+            <div className="flex items-center gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg shrink-0">
+              <button
+                type="button"
+                onClick={() => setLensMode('ruangan')}
+                className={cn(
+                  'px-2 py-0.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 cursor-pointer',
+                  lensMode === 'ruangan'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs font-black'
+                    : 'text-slate-500 hover:text-slate-900'
+                )}
+                title="Lensa Berbasis Ruangan"
+              >
+                <DoorOpen size={12} />
+                <span>Ruang</span>
+                <span className={cn('text-[10px] px-1 py-0.2 rounded font-bold', lensMode === 'ruangan' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300')}>
+                  {sortedJadwalByRoom.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setLensMode('hari_sesi')}
+                className={cn(
+                  'px-2 py-0.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 cursor-pointer',
+                  lensMode === 'hari_sesi'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs font-black'
+                    : 'text-slate-500 hover:text-slate-900'
+                )}
+                title="Lensa Berbasis Sesi Jadwal"
+              >
+                <Calendar size={12} />
+                <span>Sesi</span>
+                <span className={cn('text-[10px] px-1 py-0.2 rounded font-bold', lensMode === 'hari_sesi' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300')}>
+                  {daySessionGroups.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setLensMode('mapel')}
+                className={cn(
+                  'px-2 py-0.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 cursor-pointer',
+                  lensMode === 'mapel'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs font-black'
+                    : 'text-slate-500 hover:text-slate-900'
+                )}
+                title="Lensa Berbasis Mata Pelajaran"
+              >
+                <BookOpen size={12} />
+                <span>Mapel</span>
+                <span className={cn('text-[10px] px-1 py-0.2 rounded font-bold', lensMode === 'mapel' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300')}>
+                  {mapelGroups.length}
+                </span>
+              </button>
+            </div>
+
+            {/* Status Filter Tabs (Semua, Aktif, Menunggu, Dijeda, Selesai) - 1 Kata */}
+            <div className="flex items-center gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg shrink-0">
+              <button
+                type="button"
+                onClick={() => setStatusFilter('ALL')}
+                className={cn(
+                  'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer',
+                  statusFilter === 'ALL'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs font-black'
+                    : 'text-slate-500 hover:text-slate-900'
+                )}
+              >
+                Semua ({summary.totalRuang})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('ACTIVE')}
+                className={cn(
+                  'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer',
+                  statusFilter === 'ACTIVE'
+                    ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-2xs font-black'
+                    : 'text-slate-500 hover:text-slate-900'
+                )}
+              >
+                Aktif ({summary.active})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('DRAFT')}
+                className={cn(
+                  'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer',
+                  statusFilter === 'DRAFT'
+                    ? 'bg-white dark:bg-slate-900 text-amber-600 shadow-2xs font-black'
+                    : 'text-slate-500 hover:text-slate-900'
+                )}
+              >
+                Menunggu ({summary.draft})
+              </button>
+              {summary.paused > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('PAUSED')}
+                  className={cn(
+                    'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer',
+                    statusFilter === 'PAUSED'
+                      ? 'bg-white dark:bg-slate-900 text-amber-700 shadow-2xs font-black'
+                      : 'text-slate-500 hover:text-slate-900'
+                  )}
+                >
+                  Dijeda ({summary.paused})
+                </button>
+              )}
+              {summary.completed > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('COMPLETED')}
+                  className={cn(
+                    'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer',
+                    statusFilter === 'COMPLETED'
+                      ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-2xs font-black'
+                      : 'text-slate-500 hover:text-slate-900'
+                  )}
+                >
+                  Selesai ({summary.completed})
+                </button>
+              )}
+            </div>
+
+            {/* Tingkat Filter Dinamis Sesuai Target Event */}
+            {lensMode !== 'hari_sesi' && tingkatFilterOptions.length > 2 && (
+              <div className="flex items-center gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg shrink-0">
+                <span className="text-[10px] font-bold text-slate-400 uppercase px-1">TK:</span>
+                {tingkatFilterOptions.map((tk) => (
+                  <button
+                    key={String(tk.val)}
+                    type="button"
+                    onClick={() => setTingkatFilter(tk.val as any)}
+                    className={cn(
+                      'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer',
+                      tingkatFilter === tk.val
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs font-black'
+                        : 'text-slate-500 hover:text-slate-900'
+                    )}
+                  >
+                    {tk.label}
+                  </button>
+                ))}
               </div>
             )}
 
+            {/* Filter Hari (Khusus Lensa Hari & Sesi) */}
+            {lensMode === 'hari_sesi' && daySessionGroups.length > 1 && (
+              <div className="flex items-center gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg shrink-0">
+                {daySessionGroups.map((g) => (
+                  <button
+                    key={g.dateKey}
+                    type="button"
+                    onClick={() => setSelectedDayKey(g.dateKey)}
+                    className={cn(
+                      'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1',
+                      activeDayKey === g.dateKey
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs font-black'
+                        : 'text-slate-500 hover:text-slate-900'
+                    )}
+                  >
+                    <Calendar size={11} />
+                    <span>{g.dateLabel}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Search Input */}
+            <div className="relative w-full sm:w-36 lg:w-44 shrink-0">
+              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari ruang/token..."
+                aria-label="Cari ruang atau token ujian"
+                className="w-full pl-7 pr-2 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 shadow-2xs"
+              />
+            </div>
+          </div>
+
+          {/* Right: Micro KPIs & Master Action Buttons */}
+          <div className="flex items-center gap-1.5 flex-wrap xl:flex-nowrap justify-between xl:justify-end shrink-0">
+            {/* Micro KPI Live Badge */}
+            {summary.active > 0 ? (
+              <span className="text-[11px] font-black px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800/60 flex items-center gap-1 shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                <span>{summary.active} Live</span>
+              </span>
+            ) : (
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700 flex items-center gap-1 shrink-0">
+                <span>0 Live</span>
+              </span>
+            )}
+
+            {/* Peserta Badge */}
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border border-indigo-200/80 dark:border-indigo-800/60 flex items-center gap-1 shrink-0">
+              <Users size={11} />
+              <span>{summary.totalPeserta} Peserta</span>
+            </span>
+
+            {/* Rotasi Token Countdown */}
+            {isAutoRotate && (
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300 border border-violet-200/80 dark:border-violet-800/60 flex items-center gap-1 shrink-0" title={`Rotasi Token otomatis setiap ${tokenIntervalMinutes} menit`}>
+                <Clock size={11} className="text-violet-600 animate-pulse" />
+                <span className="font-mono font-black">{countdownText}</span>
+              </span>
+            )}
+
+            {/* Aktifkan Serentak (Max 2 Kata!) */}
             {summary.draft > 0 && (
-              <button
+              <Button
                 type="button"
+                variant="primary"
+                size="sm"
                 onClick={() => handleBatchActivate()}
                 disabled={isBatchActivating}
-                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-xs flex items-center gap-2 transition-all cursor-pointer active:scale-95"
+                className="text-xs h-7 px-2.5 font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs cursor-pointer flex items-center gap-1 shrink-0"
                 title="Aktifkan seluruh sesi yang masih DRAFT secara serentak"
               >
-                <Play size={14} className="fill-white" />
-                <span>Aktifkan {summary.draft} Ruang Serentak</span>
-              </button>
+                <Play size={11} className="fill-white" />
+                <span>Aktifkan ({summary.draft})</span>
+              </Button>
             )}
 
-            <button
+            {/* Denah Button (1 Kata) */}
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => handleOpenRoomDenah('', 'Radar Denah Kampus CBT')}
-              className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-indigo-700 dark:text-indigo-300 border border-slate-200 dark:border-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="text-xs h-7 px-2 font-bold text-indigo-700 border-indigo-200 bg-white hover:bg-indigo-50 dark:text-indigo-300 dark:border-indigo-700 dark:bg-slate-900 cursor-pointer shadow-2xs shrink-0"
               title="Buka Denah Spasial Kampus"
             >
-              <DoorOpen size={14} className="text-indigo-600 dark:text-indigo-400" />
-              <span>Denah Spasial</span>
-            </button>
+              <DoorOpen size={11} className="text-indigo-600 dark:text-indigo-400" />
+              <span>Denah</span>
+            </Button>
 
-            <button
+            {/* Refresh Button */}
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => refetchJadwal()}
-              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 transition-colors border border-slate-200 dark:border-slate-700 cursor-pointer"
+              className="text-xs h-7 w-7 p-0 flex items-center justify-center font-bold text-slate-600 border-slate-200 bg-white hover:bg-slate-50 dark:text-slate-300 dark:border-slate-700 dark:bg-slate-900 cursor-pointer shadow-2xs shrink-0"
               title="Segarkan data radar"
             >
-              <RotateCw size={15} className={isLoadingJadwal ? 'animate-spin text-emerald-600' : ''} />
-            </button>
+              <RotateCw size={11} className={isLoadingJadwal ? 'animate-spin text-emerald-600' : ''} />
+            </Button>
           </div>
         </div>
-
-        {/* ── METRIK RINGKAS 4 KOTAK (THEME-AWARE) ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/80">
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-              Total Ruang Ujian
-            </span>
-            <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5 flex items-baseline gap-1.5">
-              <span>{summary.totalRuang}</span>
-              <span className="text-xs text-slate-400 font-normal">Ruang</span>
-            </div>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1 flex items-center gap-1.5">
-              <span className="text-emerald-600 dark:text-emerald-400 font-bold">{summary.active} Aktif</span>
-              <span>•</span>
-              <span className="text-amber-600 dark:text-amber-400 font-bold">{summary.draft} Draft</span>
-            </div>
-          </div>
-
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-              Sesi Sedang Live
-            </span>
-            <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-baseline gap-1.5">
-              <span>{summary.active}</span>
-              <span className="text-xs text-slate-400 font-normal">Ruangan</span>
-            </div>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1">
-              Siswa sedang aktif ujian
-            </div>
-          </div>
-
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">
-              Menunggu Dimulai
-            </span>
-            <div className="text-xl font-black text-amber-600 dark:text-amber-400 mt-0.5 flex items-baseline gap-1.5">
-              <span>{summary.draft}</span>
-              <span className="text-xs text-slate-400 font-normal">Ruangan</span>
-            </div>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1">
-              {summary.draft > 0 ? 'Siap diaktifkan serentak' : 'Semua sudah dimulai'}
-            </div>
-          </div>
-
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block">
-              Total Peserta
-            </span>
-            <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5 flex items-baseline gap-1.5">
-              <span>{summary.totalPeserta}</span>
-              <span className="text-xs text-slate-400 font-normal">Siswa</span>
-            </div>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1">
-              {summary.completed} Ruangan selesai
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── 2. MULTI-PERSPECTIVE LENS SELECTOR (DRIVEN-CENTRIC SWITCHER) ── */}
-      <div className="p-2 sm:p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-xl overflow-x-auto no-scrollbar">
-          <button
-            type="button"
-            onClick={() => setLensMode('ruangan')}
-            className={cn(
-              'px-3.5 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-2 cursor-pointer shrink-0',
-              lensMode === 'ruangan'
-                ? 'bg-indigo-600 text-white shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            )}
-          >
-            <DoorOpen size={14} />
-            <span>🏢 Berbasis Ruangan</span>
-            <span className={cn('text-[10px] px-1.5 py-0.2 rounded-md font-bold', lensMode === 'ruangan' ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-700')}>
-              {sortedJadwalByRoom.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setLensMode('hari_sesi')}
-            className={cn(
-              'px-3.5 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-2 cursor-pointer shrink-0',
-              lensMode === 'hari_sesi'
-                ? 'bg-indigo-600 text-white shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            )}
-          >
-            <Calendar size={14} />
-            <span>📅 Berbasis Hari &amp; Sesi</span>
-            <span className={cn('text-[10px] px-1.5 py-0.2 rounded-md font-bold', lensMode === 'hari_sesi' ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-700')}>
-              {daySessionGroups.length} Hari
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setLensMode('mapel')}
-            className={cn(
-              'px-3.5 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-2 cursor-pointer shrink-0',
-              lensMode === 'mapel'
-                ? 'bg-indigo-600 text-white shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            )}
-          >
-            <BookOpen size={14} />
-            <span>📚 Berbasis Mata Pelajaran</span>
-            <span className={cn('text-[10px] px-1.5 py-0.2 rounded-md font-bold', lensMode === 'mapel' ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-700')}>
-              {mapelGroups.length} Mapel
-            </span>
-          </button>
-        </div>
-
-        {/* Global Search Input */}
-        <div className="relative flex-1 md:max-w-xs">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari R.01, X TJKT, pengawas, token..."
-            className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-medium"
-          />
-        </div>
-      </div>
-
-      {/* ── 3. FILTER BAR SPESIFIK LENSA ── */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-        {/* Status Filter Chips */}
-        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl overflow-x-auto no-scrollbar flex-nowrap min-w-0">
-          {[
-            { key: 'ALL', label: `Semua (${summary.totalRuang})` },
-            { key: 'ACTIVE', label: `🟢 Aktif (${summary.active})` },
-            { key: 'DRAFT', label: `🟡 Menunggu (${summary.draft})` },
-            { key: 'PAUSED', label: `⏸️ Dijeda (${summary.paused})` },
-            { key: 'COMPLETED', label: `🔵 Selesai (${summary.completed})` },
-          ].map((st) => (
-            <button
-              key={st.key}
-              type="button"
-              onClick={() => setStatusFilter(st.key as any)}
-              className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer shrink-0',
-                statusFilter === st.key
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              )}
-            >
-              {st.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Filter Tingkat (Khusus Lensa Ruangan & Lensa Mapel) */}
-        {lensMode === 'ruangan' && (
-          <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl shrink-0 overflow-x-auto no-scrollbar">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2">
-              Tingkat:
-            </span>
-            {[
-              { val: 'ALL', label: 'Semua' },
-              { val: 10, label: 'TK. X' },
-              { val: 11, label: 'TK. XI' },
-              { val: 12, label: 'TK. XII' },
-            ].map((tk) => (
-              <button
-                key={String(tk.val)}
-                type="button"
-                onClick={() => setTingkatFilter(tk.val as any)}
-                className={cn(
-                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0',
-                  tingkatFilter === tk.val
-                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-black'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                )}
-              >
-                {tk.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Filter Tab Hari (Khusus Lensa Hari & Sesi) */}
-        {lensMode === 'hari_sesi' && daySessionGroups.length > 0 && (
-          <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl shrink-0 overflow-x-auto no-scrollbar">
-            {daySessionGroups.map((g) => (
-              <button
-                key={g.dateKey}
-                type="button"
-                onClick={() => setSelectedDayKey(g.dateKey)}
-                className={cn(
-                  'px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5',
-                  activeDayKey === g.dateKey
-                    ? 'bg-indigo-600 text-white shadow-2xs font-black'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                )}
-              >
-                <Calendar size={12} />
-                <span>{g.dateLabel}</span>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* ── 4. KONTEN TABEL SESUAI LENSA PILIHAN ── */}
@@ -847,16 +880,16 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-800 text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    <th className="py-3 px-3 text-center w-12">No</th>
-                    <th className="py-3 px-3">Ruang Ujian</th>
-                    <th className="py-3 px-3">Tingkat &amp; Rombel</th>
-                    <th className="py-3 px-3">Mata Pelajaran</th>
-                    <th className="py-3 px-3">Sesi &amp; Jam</th>
-                    <th className="py-3 px-3">Pengawas Ruang</th>
-                    <th className="py-3 px-3">Token Siswa</th>
-                    <th className="py-3 px-3 text-center">Peserta</th>
-                    <th className="py-3 px-3 text-center">Status</th>
-                    <th className="py-3 px-3 text-right">Aksi Operasional</th>
+                    <th className="py-2.5 px-3 text-center w-12">No</th>
+                    <th className="py-2.5 px-3">Ruang</th>
+                    <th className="py-2.5 px-3">Rombel</th>
+                    <th className="py-2.5 px-3">Mapel</th>
+                    <th className="py-2.5 px-3">Sesi &amp; Jam</th>
+                    <th className="py-2.5 px-3">Pengawas</th>
+                    <th className="py-2.5 px-3">Token</th>
+                    <th className="py-2.5 px-3 text-center">Peserta</th>
+                    <th className="py-2.5 px-3 text-center">Status</th>
+                    <th className="py-2.5 px-3 text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 font-medium">
@@ -1125,10 +1158,10 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
                                 )
                               }
                               disabled={isBatchActivating}
-                              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+                              className="px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
                             >
-                              <Play size={12} className="fill-white" />
-                              <span>Aktifkan Sesi Ini ({sesi.stats.draft} Ruang)</span>
+                              <Play size={11} className="fill-white" />
+                              <span>Aktifkan ({sesi.stats.draft})</span>
                             </button>
                           )}
                         </div>
@@ -1141,8 +1174,8 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
                             <tr className="bg-slate-100/60 dark:bg-slate-800/60 text-[11px] font-black text-slate-500 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
                               <th className="py-2.5 px-3 text-center w-12">No</th>
                               <th className="py-2.5 px-3">Ruang</th>
-                              <th className="py-2.5 px-3">Tingkat &amp; Rombel</th>
-                              <th className="py-2.5 px-3">Mata Pelajaran</th>
+                              <th className="py-2.5 px-3">Rombel</th>
+                              <th className="py-2.5 px-3">Mapel</th>
                               <th className="py-2.5 px-3">Pengawas</th>
                               <th className="py-2.5 px-3">Token</th>
                               <th className="py-2.5 px-3 text-center">Peserta</th>
@@ -1237,15 +1270,15 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-800 text-[11px] font-black text-slate-500 uppercase tracking-wider">
-                    <th className="py-3 px-3 text-center w-12">No</th>
-                    <th className="py-3 px-3">Mata Pelajaran</th>
-                    <th className="py-3 px-3 text-center">Tingkat Target</th>
-                    <th className="py-3 px-3">Bank Soal &amp; Pembuat</th>
-                    <th className="py-3 px-3 text-center">Alokasi &amp; Butir</th>
-                    <th className="py-3 px-3 text-center">Cakupan Ruang</th>
-                    <th className="py-3 px-3 text-center">Total Peserta</th>
-                    <th className="py-3 px-3 text-center">Status Pelaksanaan</th>
-                    <th className="py-3 px-3 text-right">Rincian &amp; Aksi</th>
+                    <th className="py-2.5 px-3 text-center w-12">No</th>
+                    <th className="py-2.5 px-3">Mapel</th>
+                    <th className="py-2.5 px-3 text-center">Tingkat</th>
+                    <th className="py-2.5 px-3">Bank Soal</th>
+                    <th className="py-2.5 px-3 text-center">Alokasi</th>
+                    <th className="py-2.5 px-3 text-center">Ruang</th>
+                    <th className="py-2.5 px-3 text-center">Peserta</th>
+                    <th className="py-2.5 px-3 text-center">Status</th>
+                    <th className="py-2.5 px-3 text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
@@ -1314,7 +1347,7 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
                             <span className="font-black text-slate-900 dark:text-white text-xs">
                               {mg.totalRuang}
                             </span>
-                            <span className="text-[10px] text-slate-400 block">Ruangan</span>
+                            <span className="text-[10px] text-slate-400 block">Ruang</span>
                           </td>
 
                           {/* Total Peserta */}
@@ -1353,7 +1386,7 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
                               onClick={() => setExpandedMapelId(isExpanded ? null : mg.bankSoalId)}
                               className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs inline-flex items-center gap-1 cursor-pointer"
                             >
-                              <span>{isExpanded ? 'Tutup Rombel' : `Lihat ${mg.totalRuang} Rombel`}</span>
+                              <span>{isExpanded ? 'Tutup' : `Rombel (${mg.totalRuang})`}</span>
                               <ChevronDown
                                 size={13}
                                 className={cn('transition-transform', isExpanded && 'rotate-180')}
@@ -1381,7 +1414,7 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
                                       className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 cursor-pointer"
                                     >
                                       <Play size={10} className="fill-white" />
-                                      <span>Aktifkan Semua Ruangan Mapel Ini</span>
+                                      <span>Aktifkan ({mg.draftCount})</span>
                                     </button>
                                   )}
                                 </div>
@@ -1418,7 +1451,7 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
                                           onClick={() => setSelectedInspectJadwalId(roomJadwal.id)}
                                           className="mt-1 w-full py-0.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold text-[10px] text-center cursor-pointer"
                                         >
-                                          Pantau Ruang
+                                          Pantau
                                         </button>
                                       </div>
                                     );
