@@ -21,6 +21,7 @@ interface KalenderAkademikPrintModalProps {
   onClose: () => void;
   events: CalendarEvent[];
   tahunPelajaranNama?: string;
+  tahunPelajaranId?: string;
 }
 
 interface MonthDef {
@@ -220,6 +221,7 @@ export const KalenderAkademikPrintModal: React.FC<KalenderAkademikPrintModalProp
   onClose,
   events = [],
   tahunPelajaranNama = '2026/2027',
+  tahunPelajaranId,
 }) => {
   const { tenantInfo, logoDaerahBase64, logoSekolahBase64, rawSekolah } = usePrintHeaderData();
   const { user, isKurikulum } = useCapabilities();

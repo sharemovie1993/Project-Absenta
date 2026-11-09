@@ -865,6 +865,7 @@ export const KalenderAkademikView: React.FC<UniversalKalenderAkademikViewProps> 
         onClose={() => setIsPrintModalOpen(false)}
         events={events}
         tahunPelajaranNama={resolvedTpNama}
+        tahunPelajaranId={tahunPelajaranId}
       />
     </div>
   );
