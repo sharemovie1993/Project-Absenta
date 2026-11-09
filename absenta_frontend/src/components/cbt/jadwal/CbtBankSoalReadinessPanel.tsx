@@ -577,7 +577,8 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
                   setSelectedBankToEdit(null);
                   setDefaultMapelForCreate(undefined);
                   setDefaultGuruForCreate(undefined);
-                  setDefaultTingkatForCreate(undefined);
+                  const firstTingkat = targetTingkat && targetTingkat.length > 0 ? (targetTingkat[0] === 11 ? 'XI' : targetTingkat[0] === 12 ? 'XII' : 'X') : undefined;
+                  setDefaultTingkatForCreate(firstTingkat);
                   setIsFormModalOpen(true);
                 }}
                 className="text-xs h-7 px-2 font-bold border-indigo-300 text-indigo-700 bg-white hover:bg-indigo-50 cursor-pointer shadow-2xs"
@@ -669,6 +670,10 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
           defaultMapelId={defaultMapelForCreate}
           defaultGuruId={defaultGuruForCreate}
           defaultTingkat={defaultTingkatForCreate}
+          activeEvent={activeEvent}
+          eventName={eventName}
+          targetTingkat={targetTingkat}
+          roleContext="KURIKULUM"
           onSuccess={() => {
             setIsFormModalOpen(false);
             setDefaultMapelForCreate(undefined);

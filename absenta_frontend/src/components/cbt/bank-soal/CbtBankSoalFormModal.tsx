@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Modal, Button, Input, SearchableSelect } from '@/components/ui';
+import { Modal, Button, Input, SearchableSelect, Badge } from '@/components/ui';
 import { useGuruOptions, useMapelOptions, useSemesterOptions } from '@/components/common';
 import { useJenjang } from '@/hooks/useJenjang';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
@@ -7,7 +7,7 @@ import { kurikulumApi } from '@/api/kurikulum.api';
 import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CbtBankSoal } from '@/types/cbt.types';
+import type { CbtBankSoal, CbtEventItem } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { Layers, User, Sparkles, ArrowRight, ArrowLeft, CheckCircle2, Users } from 'lucide-react';
@@ -36,8 +36,11 @@ interface CbtBankSoalFormModalProps {
   onSuccess: () => void;
   defaultGuruId?: string;
   defaultMapelId?: string;
-  defaultTingkat?: 'X' | 'XI' | 'XII';
+  defaultTingkat?: 'X' | 'XI' | 'XII' | string;
   roleContext?: 'GURU' | 'KURIKULUM' | 'ADMIN';
+  activeEvent?: CbtEventItem | null;
+  eventName?: string;
+  targetTingkat?: number[];
 }
 
 export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
@@ -49,6 +52,9 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   defaultMapelId,
   defaultTingkat,
   roleContext,
+  activeEvent,
+  eventName,
+  targetTingkat,
 }) => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
@@ -58,18 +64,53 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   const { tingkatList, jenjang } = useJenjang();
   const officialAsesmenTypes = useMemo(() => getOfficialAsesmenTypes(jenjang), [jenjang]);
 
+  // ── Kepatuhan Pengaturan Event (Event-Compliance Engine) ──
+  const effectiveTargetTingkat = useMemo(() => {
+    if (targetTingkat && targetTingkat.length > 0) return targetTingkat;
+    if (activeEvent?.target_tingkat && activeEvent.target_tingkat.length > 0) return activeEvent.target_tingkat;
+    return undefined;
+  }, [targetTingkat, activeEvent?.target_tingkat]);
+
+  const effectiveTingkatList = useMemo(() => {
+    if (effectiveTargetTingkat && effectiveTargetTingkat.length > 0) {
+      return tingkatList.filter((t) => effectiveTargetTingkat.includes(t));
+    }
+    return tingkatList;
+  }, [effectiveTargetTingkat, tingkatList]);
+
+  const lockedEventKey = useMemo(() => {
+    const raw = `${activeEvent?.kode_event || ''} ${activeEvent?.nama_event || ''} ${eventName || ''}`.toUpperCase().trim();
+    if (!raw) return undefined;
+    for (const t of officialAsesmenTypes) {
+      if (raw.includes(t.key) || raw.includes(t.defaultPrefix)) return t.key;
+      if (t.aliases?.some((a) => raw.includes(a))) return t.key;
+    }
+    if (raw.includes('ASAS') || raw.includes('SAS') || raw.includes('PAS') || raw.includes('UAS')) return 'PSAS';
+    if (raw.includes('ASAT') || raw.includes('SAT') || raw.includes('PAT')) return 'PSAT';
+    if (raw.includes('ASTS') || raw.includes('STS') || raw.includes('PTS')) return 'PSTS';
+    if (raw.includes('ASAJ') || raw.includes('PSAJ') || raw.includes('AM')) return 'PSAJ';
+    if (raw.includes('UKK')) return 'UKK';
+    return undefined;
+  }, [activeEvent, eventName, officialAsesmenTypes]);
+
   // 1. Pemisahan Konteks: Mandiri Guru vs Terpusat Massal
   const initialScope: CbtBankSoalScope = useMemo(() => {
     if (bankSoalToEdit) {
       const detected = findMatchingAsesmenType(bankSoalToEdit.kode_bank, officialAsesmenTypes);
       return detected ? 'TERPUSAT_MASSAL' : 'MANDIRI_GURU';
     }
+    if (lockedEventKey) return 'TERPUSAT_MASSAL';
     return isPrivilegedRole && !defaultGuruId ? 'TERPUSAT_MASSAL' : 'MANDIRI_GURU';
-  }, [bankSoalToEdit, isPrivilegedRole, defaultGuruId, officialAsesmenTypes]);
+  }, [bankSoalToEdit, lockedEventKey, isPrivilegedRole, defaultGuruId, officialAsesmenTypes]);
 
   const defaultInitialTingkat = useMemo(() => {
-    return tingkatList.length > 0 ? getTingkatRoman(tingkatList[0]) : 'X';
-  }, [tingkatList]);
+    if (defaultTingkat) {
+      const r = getTingkatRoman(defaultTingkat);
+      const romanList = effectiveTingkatList.map((t) => getTingkatRoman(t));
+      if (romanList.includes(r)) return r;
+    }
+    return effectiveTingkatList.length > 0 ? getTingkatRoman(effectiveTingkatList[0]) : 'X';
+  }, [defaultTingkat, effectiveTingkatList]);
 
   const { activeSemester } = useSemesterOptions();
   const [tingkat, setTingkat] = useState<string>(() => {
@@ -78,8 +119,8 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
 
   // Deteksi cerdas asesmen resmi berdasarkan kalender bulan, semester aktif, & jenjang
   const smartDetection = useMemo(() => {
-    return detectSmartAsesmenType(activeSemester, tingkat, tingkatList, jenjang);
-  }, [activeSemester, tingkat, tingkatList, jenjang]);
+    return detectSmartAsesmenType(activeSemester, tingkat, effectiveTingkatList, jenjang);
+  }, [activeSemester, tingkat, effectiveTingkatList, jenjang]);
 
   const [step, setStep] = useState<1 | 2>(1);
   const [scope, setScope] = useState<CbtBankSoalScope>(initialScope);
@@ -88,7 +129,8 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       const detected = findMatchingAsesmenType(bankSoalToEdit.kode_bank, officialAsesmenTypes);
       if (detected) return detected.key;
     }
-    return detectSmartAsesmenType(activeSemester, defaultInitialTingkat, tingkatList, jenjang).recommendedKey;
+    if (lockedEventKey) return lockedEventKey;
+    return detectSmartAsesmenType(activeSemester, defaultInitialTingkat, effectiveTingkatList, jenjang).recommendedKey;
   });
 
   const isTeacherLocked = useMemo(() => {
@@ -103,16 +145,20 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   }, [scope, jenisKegiatanMassal, officialAsesmenTypes]);
 
   const allowedTingkatList = useMemo(() => {
-    return getAllowedTingkatForAsesmen(scope, jenisKegiatanMassal, tingkatList, jenjang);
-  }, [scope, jenisKegiatanMassal, tingkatList, jenjang]);
+    return getAllowedTingkatForAsesmen(scope, jenisKegiatanMassal, effectiveTingkatList, jenjang);
+  }, [scope, jenisKegiatanMassal, effectiveTingkatList, jenjang]);
 
   const dynamicTingkatOptions = useMemo(() => {
-    const list = (tingkatList || []).map((t) => ({
+    const list = (effectiveTingkatList || []).map((t) => ({
       value: getTingkatRoman(t),
       label: formatTingkatLabel(t),
     }));
+    // Jika ada filter event sasaran tingkat spesifik (misal hanya 10 dan 11), jangan tampilkan 'Semua'
+    if (effectiveTargetTingkat && effectiveTargetTingkat.length > 0 && effectiveTargetTingkat.length < tingkatList.length) {
+      return list;
+    }
     return [...list, { value: 'SEMUA', label: 'Semua' }];
-  }, [tingkatList]);
+  }, [effectiveTingkatList, effectiveTargetTingkat, tingkatList.length]);
 
   const initialGuruId = useMemo(() => {
     return defaultGuruId || user?.guru_profile?.id || '';
@@ -182,7 +228,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   // Aksi pemilihan kegiatan massal dengan proteksi otomatis tingkat kelas (Anti Human-Error)
   const handleSelectKegiatanMassal = (targetKey: string) => {
     setJenisKegiatanMassal(targetKey);
-    const validTingkat = getAllowedTingkatForAsesmen('TERPUSAT_MASSAL', targetKey, tingkatList, jenjang);
+    const validTingkat = getAllowedTingkatForAsesmen('TERPUSAT_MASSAL', targetKey, effectiveTingkatList, jenjang);
     let nextTingkat = tingkat;
     if (validTingkat.length > 0 && !validTingkat.includes(tingkat)) {
       nextTingkat = validTingkat[0];
@@ -219,15 +265,17 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       const isMassal = initialScope === 'TERPUSAT_MASSAL';
       const year = new Date().getFullYear();
       const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-      const initialSmart = detectSmartAsesmenType(activeSemester, defaultInitialTingkat, tingkatList, jenjang);
-      const recKey = initialSmart.recommendedKey;
+      const initialSmart = detectSmartAsesmenType(activeSemester, defaultInitialTingkat, effectiveTingkatList, jenjang);
+      const recKey = lockedEventKey || initialSmart.recommendedKey;
       const validTingkat = getAllowedTingkatForAsesmen(
         isMassal ? 'TERPUSAT_MASSAL' : 'MANDIRI_GURU',
         recKey,
-        tingkatList,
+        effectiveTingkatList,
         jenjang
       );
-      const autoDetectedTingkat = defaultTingkat || validTingkat[0] || defaultInitialTingkat;
+      const autoDetectedTingkat = (defaultTingkat && validTingkat.includes(defaultTingkat))
+        ? defaultTingkat
+        : (validTingkat[0] || defaultInitialTingkat);
 
       setJenisKegiatanMassal(recKey);
       setKodeBank(isMassal ? `${recKey}-${year}-MAPEL-${autoDetectedTingkat}` : `CBT-${year}-${randomSuffix}`);
@@ -242,7 +290,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setSelectedColleagueIds([]);
       setShowAllMapels(isPrivilegedRole || isMassal);
     }
-  }, [isOpen, bankSoalToEdit]);
+  }, [isOpen, bankSoalToEdit, lockedEventKey, effectiveTingkatList, defaultTingkat, defaultMapelId]);
 
   const handleChangeScope = (newScope: CbtBankSoalScope) => {
     setScope(newScope);
@@ -250,8 +298,8 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     if (newScope === 'TERPUSAT_MASSAL') {
       setShowAllMapels(true);
       setIsShared(true);
-      const recKey = smartDetection.recommendedKey;
-      const validTingkat = getAllowedTingkatForAsesmen('TERPUSAT_MASSAL', recKey, tingkatList, jenjang);
+      const recKey = lockedEventKey || smartDetection.recommendedKey;
+      const validTingkat = getAllowedTingkatForAsesmen('TERPUSAT_MASSAL', recKey, effectiveTingkatList, jenjang);
       const targetTingkat = validTingkat.includes(tingkat) ? tingkat : (validTingkat[0] || defaultInitialTingkat);
       setJenisKegiatanMassal(recKey);
       setTingkat(targetTingkat);
@@ -455,121 +503,198 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
           /* ── TAHAP 1: KONTEKS, SASARAN, MATA PELAJARAN, & DISTRIBUSI MGMP ── */
           <div className="space-y-3">
             {/* 1. Konteks Penggunaan */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Peruntukan Bank Soal
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleChangeScope('TERPUSAT_MASSAL')}
-                  className={cn(
-                    'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5 relative',
-                    scope === 'TERPUSAT_MASSAL'
-                      ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-600 ring-2 ring-indigo-500/20 text-indigo-950 dark:text-indigo-100 shadow-2xs'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
-                  )}
-                >
-                  <div
-                    className={cn(
-                      'p-2 rounded-xl shrink-0 mt-0.5',
-                      scope === 'TERPUSAT_MASSAL' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                    )}
-                  >
+            {lockedEventKey ? (
+              <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-indigo-600 text-white shadow-2xs shrink-0">
                     <Users size={16} />
                   </div>
-                  <div className="min-w-0 flex-1">
+                  <div>
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-bold text-xs">Master MGMP / Bersama</span>
-                      <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300">
+                      <span className="font-bold text-xs text-indigo-950 dark:text-indigo-100">
+                        Master MGMP / Bersama
+                      </span>
+                      <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full bg-indigo-200/80 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
                         Ujian Orkestrasi
                       </span>
                     </div>
-                    <div className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">
-                      1 koordinator membuat soal untuk dibagikan ke rekan guru se-mapel &amp; tingkat
+                    <div className="text-[10.5px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      Event: <strong>{activeEvent?.nama_event || eventName || 'ASAS Ganjil'}</strong>
                     </div>
                   </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleChangeScope('MANDIRI_GURU')}
-                  className={cn(
-                    'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5 relative',
-                    scope === 'MANDIRI_GURU'
-                      ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-600 ring-2 ring-indigo-500/20 text-indigo-950 dark:text-indigo-100 shadow-2xs'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
-                  )}
-                >
-                  <div
+                </div>
+                <Badge variant="primary" className="text-[9px] font-bold shrink-0">
+                  Event Aktif
+                </Badge>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Peruntukan Bank Soal
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleChangeScope('TERPUSAT_MASSAL')}
                     className={cn(
-                      'p-2 rounded-xl shrink-0 mt-0.5',
-                      scope === 'MANDIRI_GURU' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                      'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5 relative',
+                      scope === 'TERPUSAT_MASSAL'
+                        ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-600 ring-2 ring-indigo-500/20 text-indigo-950 dark:text-indigo-100 shadow-2xs'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
                     )}
                   >
-                    <User size={16} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-bold text-xs">Mandiri Guru</span>
-                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        Internal Kelas
-                      </span>
+                    <div
+                      className={cn(
+                        'p-2 rounded-xl shrink-0 mt-0.5',
+                        scope === 'TERPUSAT_MASSAL' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                      )}
+                    >
+                      <Users size={16} />
                     </div>
-                    <div className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">
-                      Ulangan harian, kuis &amp; latihan khusus kelas binaan Anda sendiri
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-xs">Master MGMP / Bersama</span>
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300">
+                          Ujian Orkestrasi
+                        </span>
+                      </div>
+                      <div className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">
+                        1 koordinator membuat soal untuk dibagikan ke rekan guru se-mapel &amp; tingkat
+                      </div>
                     </div>
-                  </div>
-                </button>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleChangeScope('MANDIRI_GURU')}
+                    className={cn(
+                      'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5 relative',
+                      scope === 'MANDIRI_GURU'
+                        ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-600 ring-2 ring-indigo-500/20 text-indigo-950 dark:text-indigo-100 shadow-2xs'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        'p-2 rounded-xl shrink-0 mt-0.5',
+                        scope === 'MANDIRI_GURU' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                      )}
+                    >
+                      <User size={16} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-xs">Mandiri Guru</span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          Internal Kelas
+                        </span>
+                      </div>
+                      <div className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">
+                        Ulangan harian, kuis &amp; latihan khusus kelas binaan Anda sendiri
+                      </div>
+                    </div>
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* 2. Kegiatan Asesmen (Hanya pada Paket Massal) */}
             {scope === 'TERPUSAT_MASSAL' && (
-              <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+              lockedEventKey ? (
+                <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                       Kegiatan Asesmen
                     </label>
-                    <span className="text-[10.5px] text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1">
-                      <Sparkles size={11} />
-                      <span>Saran {smartDetection.monthName}: <strong>{smartDetection.recommendedKey}</strong></span>
+                    <span className="text-[10.5px] text-indigo-600 dark:text-indigo-400 font-semibold">
+                      Permendikbud 21/2022
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-400">
-                    Permendikbud 21/2022
-                  </span>
+                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white font-black text-xs shadow-2xs">
+                        {lockedEventKey}
+                      </span>
+                      <div>
+                        <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                          {activeEvent?.nama_event || eventName || activeAsesmenDef?.namaResmi || lockedEventKey}
+                        </div>
+                        <div className="text-[10.5px] text-slate-500 dark:text-slate-400">
+                          Terkunci otomatis mengikuti Pengaturan Event Meja Kerja Panitia
+                        </div>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-[9px] font-bold border-indigo-300 text-indigo-700 bg-indigo-50/50">
+                      Terkunci
+                    </Badge>
+                  </div>
                 </div>
+              ) : (
+                <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Kegiatan Asesmen
+                      </label>
+                      <span className="text-[10.5px] text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1">
+                        <Sparkles size={11} />
+                        <span>Saran {smartDetection.monthName}: <strong>{smartDetection.recommendedKey}</strong></span>
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-slate-400">
+                      Permendikbud 21/2022
+                    </span>
+                  </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {officialAsesmenTypes.map((k) => {
-                    const isSelected = jenisKegiatanMassal === k.key;
-                    const isRecommended = smartDetection.recommendedKey === k.key;
-                    return (
-                      <button
-                        key={k.key}
-                        type="button"
-                        onClick={() => handleSelectKegiatanMassal(k.key)}
-                        className={cn(
-                          'p-2 rounded-xl text-left transition-all cursor-pointer border flex flex-col justify-between gap-0.5',
-                          isSelected
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
-                            : isRecommended
-                            ? 'bg-indigo-50/60 dark:bg-indigo-950/20 text-slate-700 dark:text-slate-300 border-indigo-300 dark:border-indigo-700 hover:border-indigo-400'
-                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300'
-                        )}
-                      >
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="font-bold text-xs">{k.singkatan}</span>
-                          {isRecommended && (
-                            <span
-                              className={cn(
-                                'text-[8.5px] font-bold px-1.5 py-0.2 rounded-full flex items-center gap-0.5',
-                                isSelected
-                                  ? 'bg-amber-400 text-amber-950 font-black'
-                                  : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300'
-                              )}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {officialAsesmenTypes.map((k) => {
+                      const isSelected = jenisKegiatanMassal === k.key;
+                      const isRecommended = smartDetection.recommendedKey === k.key;
+                      return (
+                        <button
+                          key={k.key}
+                          type="button"
+                          onClick={() => handleSelectKegiatanMassal(k.key)}
+                          className={cn(
+                            'p-2 rounded-xl text-left transition-all cursor-pointer border flex flex-col justify-between gap-0.5',
+                            isSelected
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                              : isRecommended
+                              ? 'bg-indigo-50/60 dark:bg-indigo-950/20 text-slate-700 dark:text-slate-300 border-indigo-300 dark:border-indigo-700 hover:border-indigo-400'
+                              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="font-bold text-xs">{k.singkatan}</span>
+                            {isRecommended && (
+                              <span
+                                className={cn(
+                                  'text-[8.5px] font-bold px-1.5 py-0.2 rounded-full flex items-center gap-0.5',
+                                  isSelected
+                                    ? 'bg-amber-400 text-amber-950 font-black'
+                                    : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300'
+                                )}
+                              >
+                                <Sparkles size={8} />
+                                <span>Bulan Ini</span>
+                              </span>
+                            )}
+                          </div>
+                          <p
+                            className={cn(
+                              'text-[10.5px] font-medium truncate',
+                              isSelected ? 'text-indigo-100' : 'text-slate-500 dark:text-slate-400'
+                            )}
+                          >
+                            {k.keterangan}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )
+            )}
                             >
                               <Sparkles size={8} />
                               <span>Bulan Ini</span>
