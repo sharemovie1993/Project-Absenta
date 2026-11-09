@@ -45,9 +45,6 @@ import { CbtTimetableMatrixPanel } from './CbtTimetableMatrixPanel';
 import { CbtPengawasMatrixPanel } from './CbtPengawasMatrixPanel';
 import { CbtPanitiaLiveCommandPanel } from './CbtPanitiaLiveCommandPanel';
 
-const CbtJadwalView = lazy(() =>
-  import('./CbtJadwalView').then((m) => ({ default: m.CbtJadwalView }))
-);
 const CbtEventSettingsTable = lazy(() =>
   import('./CbtEventSettingsTable').then((m) => ({ default: m.CbtEventSettingsTable }))
 );
@@ -87,7 +84,6 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
   }, [activeEvent, localTargetTingkat]);
 
   const [activeTab, setActiveTab] = useState<CbtPanitiaPhase>('fase_1_soal');
-  const [subModeFase3, setSubModeFase3] = useState<'matrix' | 'table'>('matrix');
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   const { rawList: guruList = [] } = useGuruOptions({ jenisPtk: 'ALL' });
@@ -370,64 +366,23 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
       )}
 
       {activeTab === 'fase_3_jadwal' && (
-        subModeFase3 === 'matrix' ? (
-          <CbtTimetableMatrixPanel
-            topFlightDeck={flightDeckNode}
-            bankList={readyBankList}
-            roomMappings={roomMappings}
-            activeTpId={activeTp?.id}
-            activeSemId={activeSemester?.id}
-            defaultTodayStr={defaultTodayStr}
-            existingSchedules={jadwalList}
-            activeEvent={activeEvent}
-            eventName={effectiveEventName}
-            targetTingkat={effectiveTargetTingkat}
-            subMode={subModeFase3}
-            onChangeSubMode={setSubModeFase3}
-            onSuccessGenerate={() => {
-              refetchJadwal();
-              setActiveTab('fase_4_pengawas');
-            }}
-            onProceedToNextPhase={() => setActiveTab('fase_4_pengawas')}
-          />
-        ) : (
-          <div className="space-y-3 w-full">
-            <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs divide-y divide-slate-100 dark:divide-slate-800/80 overflow-hidden">
-              {flightDeckNode}
-              <div className="p-2 sm:p-2.5 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-between">
-                <div className="flex items-center gap-1 p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold">
-                  <button
-                    type="button"
-                    onClick={() => setSubModeFase3('matrix')}
-                    className="px-2.5 py-1 rounded-lg text-slate-500 hover:text-slate-800 cursor-pointer"
-                  >
-                    Matriks
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSubModeFase3('table')}
-                    className="px-2.5 py-1 rounded-lg bg-indigo-600 text-white shadow-2xs cursor-pointer"
-                  >
-                    Daftar Sesi
-                  </button>
-                </div>
-              </div>
-            </div>
-            <Suspense
-              fallback={
-                <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800">
-                  <Loader className="animate-spin mx-auto text-violet-600 mb-2" size={24} />
-                  <p className="text-xs text-slate-500">Memuat Daftar Jadwal Sesi...</p>
-                </div>
-              }
-            >
-              <CbtJadwalView
-                hideLayout={true}
-                onNavigateMonitor={() => setActiveTab('fase_5_monitor')}
-              />
-            </Suspense>
-          </div>
-        )
+        <CbtTimetableMatrixPanel
+          topFlightDeck={flightDeckNode}
+          bankList={readyBankList}
+          roomMappings={roomMappings}
+          activeTpId={activeTp?.id}
+          activeSemId={activeSemester?.id}
+          defaultTodayStr={defaultTodayStr}
+          existingSchedules={jadwalList}
+          activeEvent={activeEvent}
+          eventName={effectiveEventName}
+          targetTingkat={effectiveTargetTingkat}
+          onSuccessGenerate={() => {
+            refetchJadwal();
+            setActiveTab('fase_4_pengawas');
+          }}
+          onProceedToNextPhase={() => setActiveTab('fase_4_pengawas')}
+        />
       )}
 
       {activeTab !== 'fase_1_soal' && activeTab !== 'fase_2_ruang' && activeTab !== 'fase_3_jadwal' && (

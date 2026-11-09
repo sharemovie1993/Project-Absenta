@@ -47,8 +47,6 @@ interface CbtTimetableMatrixPanelProps {
   activeEvent?: CbtEventItem | null;
   eventName?: string;
   targetTingkat?: number[];
-  subMode?: 'matrix' | 'table';
-  onChangeSubMode?: (mode: 'matrix' | 'table') => void;
 }
 
 const getTingkatTheme = (tingkat: number) => {
@@ -109,8 +107,6 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
   activeEvent,
   eventName,
   targetTingkat,
-  subMode = 'matrix',
-  onChangeSubMode,
 }) => {
   const queryClient = useQueryClient();
   const { jenjang } = useJenjang();
@@ -371,38 +367,12 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
 
         {/* ── Single-Row Unified Master Filter & Action Toolbar (1 Ruang, Zero Waste Vertical) ── */}
         <div className="p-2 sm:p-2.5 bg-slate-50/50 dark:bg-slate-800/30 flex flex-col xl:flex-row xl:items-center justify-between gap-2">
-          {/* Left: Sub-mode Switcher + Mode Rangkaian + Autosave Status */}
-          <div className="flex items-center gap-2 flex-wrap xl:flex-nowrap">
-            {/* SubMode: Matriks vs Terbit */}
-            {onChangeSubMode && (
-              <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold shrink-0">
-                <button
-                  type="button"
-                  onClick={() => onChangeSubMode('matrix')}
-                  className={cn(
-                    'px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1',
-                    subMode === 'matrix'
-                      ? 'bg-indigo-600 text-white shadow-2xs'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
-                  )}
-                >
-                  <Sparkles size={11} />
-                  <span>Matriks</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onChangeSubMode('table')}
-                  className={cn(
-                    'px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1',
-                    subMode === 'table'
-                      ? 'bg-indigo-600 text-white shadow-2xs'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
-                  )}
-                >
-                  <span>Daftar Sesi</span>
-                </button>
-              </div>
-            )}
+          {/* Left: Matriks Indicator + Autosave Status */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800">
+              <Calendar size={13} className="text-indigo-600 dark:text-indigo-400" />
+              <span>{days.length} Hari Ujian</span>
+            </span>
 
             {/* Autosave Status */}
             {lastSavedTime && (
