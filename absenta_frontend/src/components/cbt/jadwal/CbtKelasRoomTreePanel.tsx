@@ -108,12 +108,6 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
     setIsKartuModalOpen(true);
   };
 
-  // Open modal cetak kartu ujian untuk seluruh rombel
-  const handlePrintAllKartu = () => {
-    setTargetKelasIdForKartu(null);
-    setIsKartuModalOpen(true);
-  };
-
   // Filter & Search List
   const filteredList = useMemo(() => {
     return roomMappings.filter((item) => {
@@ -258,18 +252,6 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
           >
             <Printer size={13} className="mr-1.5" />
             <span>Cetak Label</span>
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handlePrintAllKartu}
-            className="text-xs h-8 px-3 font-bold text-indigo-700 border-indigo-300 bg-indigo-50/70 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:border-indigo-800 dark:text-indigo-300 cursor-pointer shadow-2xs"
-            title="Cetak kartu peserta ujian CBT seluruh rombel (A4 Grid 2x2)"
-          >
-            <CreditCard size={13} className="mr-1.5 text-indigo-600" />
-            <span>Cetak Kartu Ujian</span>
           </Button>
 
           <Button
