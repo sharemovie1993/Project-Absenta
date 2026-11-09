@@ -26,7 +26,6 @@ import {
   Unlock,
   Edit2,
   Check,
-  UserCheck,
 } from 'lucide-react';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import { Modal } from '@/components/ui';
@@ -73,7 +72,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const tenantId = user?.tenant_id;
-  const { mode, eventName, isOrkestrasi, isMandiri, targetTingkat: localTargetTingkat, updateMode } = useCbtOperationMode();
+  const { mode, eventName, isOrkestrasi, isMandiri, targetTingkat: localTargetTingkat } = useCbtOperationMode();
 
   // Query Konfigurasi Event Aktif dari Database Tenant
   const { data: eventsData } = useQuery({
@@ -245,7 +244,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
             <h2 className="text-sm font-black tracking-tight text-slate-900 dark:text-white shrink-0">
               Meja Kerja Panitia
             </h2>
-            {isOrkestrasi && effectiveEventName && (
+            {effectiveEventName && (
               <button
                 type="button"
                 onClick={() => setIsSettingsModalOpen(true)}
@@ -259,39 +258,8 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
             )}
           </div>
 
-          {/* Right: Mode Switcher & Quick Settings */}
+          {/* Right: Quick Settings & Active TP */}
           <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto text-xs">
-            <div className="flex items-center gap-0.5 p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80">
-              <button
-                type="button"
-                onClick={() => updateMode('ORKESTRASI')}
-                className={cn(
-                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
-                  isOrkestrasi
-                    ? 'bg-indigo-600 text-white shadow-2xs'
-                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                )}
-                title="Mode Ujian Massal Panitia Terpusat"
-              >
-                <Sparkles size={11} />
-                <span>Ujian Massal</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => updateMode('MANDIRI')}
-                className={cn(
-                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
-                  isMandiri
-                    ? 'bg-emerald-600 text-white shadow-2xs'
-                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                )}
-                title="Mode KBM Mandiri Guru"
-              >
-                <UserCheck size={11} />
-                <span>KBM Mandiri</span>
-              </button>
-            </div>
-
             <button
               type="button"
               onClick={() => {

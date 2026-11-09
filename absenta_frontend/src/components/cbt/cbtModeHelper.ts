@@ -124,15 +124,16 @@ export function useCbtOperationMode() {
 
   const updateActiveEvent = useCallback(
     (event: CbtEventItem) => {
+      const isEventMandiri = event.tipe_pelaksanaan === 'MANDIRI';
       const updated: CbtModeConfig = {
         ...localConfig,
-        mode: 'ORKESTRASI',
+        mode: isEventMandiri ? 'MANDIRI' : 'ORKESTRASI',
         eventId: event.id,
         eventName: event.nama_event,
         targetTingkat: Array.isArray(event.target_tingkat) && event.target_tingkat.length > 0
           ? event.target_tingkat
           : [10, 11, 12],
-        lockTeacherScheduling: event.lock_teacher_scheduling ?? true,
+        lockTeacherScheduling: event.lock_teacher_scheduling ?? !isEventMandiri,
         activeSince: new Date().toISOString(),
         updatedBy: user?.nama || user?.name || 'Panitia',
       };
@@ -142,7 +143,9 @@ export function useCbtOperationMode() {
     [localConfig, tenantId, user]
   );
 
-  const effectiveMode = localConfig.mode;
+  const effectiveMode: CbtOperationMode = activeEvent
+    ? (activeEvent.tipe_pelaksanaan === 'MANDIRI' ? 'MANDIRI' : 'ORKESTRASI')
+    : localConfig.mode;
   const effectiveEventName = activeEvent?.nama_event || localConfig.eventName;
   const effectiveEventId = activeEvent?.id || localConfig.eventId;
   const effectiveTargetTingkat = useMemo(() => {

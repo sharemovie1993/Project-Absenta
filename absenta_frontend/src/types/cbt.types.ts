@@ -220,6 +220,7 @@ export interface CbtEventItem {
   kode_event: string;
   semester: 'GANJIL' | 'GENAP';
   target_tingkat: number[];
+  tipe_pelaksanaan?: 'MASSAL' | 'MANDIRI';
   keterangan?: string;
   lock_teacher_scheduling: boolean;
   token_refresh_interval?: number;

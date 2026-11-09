@@ -311,12 +311,21 @@ export const CbtEventSettingsTable: React.FC<CbtEventSettingsTableProps> = ({
                                         {event.nama_event}
                                       </p>
                                     </div>
-                                    <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                                    <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-slate-500 dark:text-slate-400">
                                       <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.2 rounded border border-indigo-200/60 dark:border-indigo-800/60 text-[10px]">
                                         {event.kode_event}
                                       </span>
+                                      {event.tipe_pelaksanaan === 'MANDIRI' ? (
+                                        <span className="px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold">
+                                          KBM Mandiri
+                                        </span>
+                                      ) : (
+                                        <span className="px-1.5 py-0.2 rounded bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-[10px] font-bold">
+                                          Ujian Massal
+                                        </span>
+                                      )}
                                       {event.keterangan && (
-                                        <span className="truncate max-w-[280px]" title={event.keterangan}>
+                                        <span className="truncate max-w-[240px]" title={event.keterangan}>
                                           {event.keterangan}
                                         </span>
                                       )}

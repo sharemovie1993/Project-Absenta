@@ -8,6 +8,7 @@ export interface CbtEventItem {
   kode_event: string;
   semester: 'GANJIL' | 'GENAP';
   target_tingkat: number[];
+  tipe_pelaksanaan?: 'MASSAL' | 'MANDIRI';
   keterangan?: string;
   lock_teacher_scheduling: boolean;
   token_refresh_interval?: number;
@@ -54,6 +55,7 @@ export class CbtSettingsService {
         kode_event: 'ASAS-GANJIL',
         semester: 'GANJIL',
         target_tingkat: [10, 11, 12],
+        tipe_pelaksanaan: 'MASSAL',
         keterangan: 'Asesmen massal akhir semester ganjil untuk seluruh angkatan.',
         lock_teacher_scheduling: true,
         token_refresh_interval: 15,
@@ -224,6 +226,7 @@ export class CbtSettingsService {
       kode_event: (payload.kode_event || payload.nama_event || 'EVENT').trim().toUpperCase().replace(/\s+/g, '-'),
       semester: payload.semester || 'GANJIL',
       target_tingkat: targetTingkat,
+      tipe_pelaksanaan: payload.tipe_pelaksanaan || 'MASSAL',
       keterangan: payload.keterangan || '',
       lock_teacher_scheduling: payload.lock_teacher_scheduling ?? true,
       token_refresh_interval: payload.token_refresh_interval ?? 15,

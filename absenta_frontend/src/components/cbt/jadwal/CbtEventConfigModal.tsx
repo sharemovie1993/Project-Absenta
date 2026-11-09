@@ -10,6 +10,7 @@ import {
   KeyRound,
   Lock,
   Sliders,
+  UserCheck,
 } from 'lucide-react';
 import { cbtApi } from '@/api/cbt.api';
 import type { CbtEventItem } from '@/types/cbt.types';
@@ -38,6 +39,7 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
   const [kodeEvent, setKodeEvent] = useState('');
   const [semester, setSemester] = useState<'GANJIL' | 'GENAP'>('GANJIL');
   const [targetTingkat, setTargetTingkat] = useState<number[]>([10, 11, 12]);
+  const [tipePelaksanaan, setTipePelaksanaan] = useState<'MASSAL' | 'MANDIRI'>('MASSAL');
   const [keterangan, setKeterangan] = useState('');
   const [lockTeacherScheduling, setLockTeacherScheduling] = useState(true);
   const [tokenRefreshInterval, setTokenRefreshInterval] = useState(15);
@@ -52,6 +54,7 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
       setKodeEvent(event.kode_event);
       setSemester(event.semester || 'GANJIL');
       setTargetTingkat(event.target_tingkat || [10, 11, 12]);
+      setTipePelaksanaan(event.tipe_pelaksanaan || (event.lock_teacher_scheduling === false ? 'MANDIRI' : 'MASSAL'));
       setKeterangan(event.keterangan || '');
       setLockTeacherScheduling(event.lock_teacher_scheduling ?? true);
       setTokenRefreshInterval(event.token_refresh_interval ?? 15);
@@ -63,6 +66,7 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
       setKodeEvent('');
       setSemester('GANJIL');
       setTargetTingkat([10, 11, 12]);
+      setTipePelaksanaan('MASSAL');
       setKeterangan('');
       setLockTeacherScheduling(true);
       setTokenRefreshInterval(15);
@@ -116,6 +120,7 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
         kode_event: (kodeEvent.trim() || namaEvent.trim().slice(0, 10)).toUpperCase().replace(/\s+/g, '-'),
         semester,
         target_tingkat: targetTingkat,
+        tipe_pelaksanaan: tipePelaksanaan,
         keterangan: keterangan.trim(),
         lock_teacher_scheduling: lockTeacherScheduling,
         token_refresh_interval: Number(tokenRefreshInterval),
@@ -302,6 +307,86 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
           >
             Tingkat 11 Saja (ANBK)
           </button>
+        </div>
+
+        {/* Tipe Pelaksanaan: Ujian Massal vs KBM Mandiri */}
+        <div className="space-y-1.5 pt-1">
+          <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+            Tipe Pelaksanaan Event <span className="text-rose-500">*</span>
+          </Label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                setTipePelaksanaan('MASSAL');
+                setLockTeacherScheduling(true);
+              }}
+              className={cn(
+                'p-3 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5',
+                tipePelaksanaan === 'MASSAL'
+                  ? 'bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-500 dark:border-indigo-600 ring-2 ring-indigo-500/20'
+                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+              )}
+            >
+              <span
+                className={cn(
+                  'p-2 rounded-lg shrink-0 mt-0.5',
+                  tipePelaksanaan === 'MASSAL'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                )}
+              >
+                <Sparkles size={14} />
+              </span>
+              <div>
+                <p className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                  Ujian Massal (Panitia Terpusat)
+                  {tipePelaksanaan === 'MASSAL' && (
+                    <CheckCircle2 size={13} className="text-indigo-600 dark:text-indigo-400" />
+                  )}
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Diorkestrasi panitia sekolah (PSAJ, ASAS, ASTS). Plotting ruang, sesi, dan pengawas serentak.
+                </p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setTipePelaksanaan('MANDIRI');
+                setLockTeacherScheduling(false);
+              }}
+              className={cn(
+                'p-3 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5',
+                tipePelaksanaan === 'MANDIRI'
+                  ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500 dark:border-emerald-600 ring-2 ring-emerald-500/20'
+                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+              )}
+            >
+              <span
+                className={cn(
+                  'p-2 rounded-lg shrink-0 mt-0.5',
+                  tipePelaksanaan === 'MANDIRI'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                )}
+              >
+                <UserCheck size={14} />
+              </span>
+              <div>
+                <p className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                  KBM Mandiri (Guru Mapel)
+                  {tipePelaksanaan === 'MANDIRI' && (
+                    <CheckCircle2 size={13} className="text-emerald-600 dark:text-emerald-400" />
+                  )}
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Fleksibel untuk Ulangan Harian atau Kuis Bab guru di kelasnya tanpa pengawas panitia serentak.
+                </p>
+              </div>
+            </button>
+          </div>
         </div>
 
         {/* Policy & Security Guards */}
