@@ -239,12 +239,6 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                 );
               })}
             </div>
-
-            {/* Counter Badge */}
-            <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60 shrink-0">
-              <CheckCircle2 size={11} />
-              <span>{mappedCount}/{totalClasses} Terpetakan</span>
-            </span>
           </div>
 
           {/* Right: Format + Action Buttons */}
