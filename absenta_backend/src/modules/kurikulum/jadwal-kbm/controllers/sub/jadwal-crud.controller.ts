@@ -373,7 +373,7 @@ export class JadwalCrudController {
 
   async clearAll(request: any, reply: any) {
     const { tenantId, user } = request;
-    const { kelas_id, guru_id } = request.body || {};
+    const { kelas_id, guru_id, tahun_pelajaran_id, semester_id } = request.body || {};
 
     const isGlobalManager =
       user?.roleName === 'ADMIN' ||
@@ -393,7 +393,11 @@ export class JadwalCrudController {
         tenant_id: tenantId,
         slot_index: { not: 0 }, // Protect Slot Jam 0 (Upacara / Pembiasaan) from deletion
       };
-      const sesiWhere: any = { tenant_id: tenantId };
+      const sesiWhere: any = { 
+        tenant_id: tenantId,
+        jadwal_kegiatan_id: null, // Protect Jadwal Kegiatan (Upacara, Dhuha, Pembiasaan) from deletion
+        slot_kbm: { not: 0 },     // Protect Sesi Jam 0 from deletion
+      };
 
       if (kelas_id && typeof kelas_id === 'string' && kelas_id.trim()) {
         jadwalWhere.kelas_id = kelas_id.trim();
@@ -402,6 +406,14 @@ export class JadwalCrudController {
       if (guru_id && typeof guru_id === 'string' && guru_id.trim()) {
         jadwalWhere.guru_id = guru_id.trim();
         sesiWhere.guru_id = guru_id.trim();
+      }
+      if (tahun_pelajaran_id && typeof tahun_pelajaran_id === 'string' && tahun_pelajaran_id.trim()) {
+        jadwalWhere.tahun_pelajaran_id = tahun_pelajaran_id.trim();
+        sesiWhere.tahun_pelajaran_id = tahun_pelajaran_id.trim();
+      }
+      if (semester_id && typeof semester_id === 'string' && semester_id.trim()) {
+        jadwalWhere.semester_id = semester_id.trim();
+        sesiWhere.semester_id = semester_id.trim();
       }
 
       // 1. Find and delete all matching SesiAbsensi and child attendance logs
