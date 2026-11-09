@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
-      ...(env.VITE_USE_SSL === 'true' ? [basicSsl()] : []),
+      basicSsl(),
     ],
     resolve: {
       alias: {
