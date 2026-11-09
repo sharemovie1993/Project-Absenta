@@ -1,6 +1,7 @@
 import { prisma } from '@/utils/prisma';
 import { Prisma } from '@prisma/client';
 import { storageService } from '@/infra/storage/storage.service';
+import { getRedisConnection } from '@/infra/redis/redisClient';
 import axios from 'axios';
 
 export interface QueryBankSoalDto {
@@ -235,7 +236,7 @@ export class CbtBankSoalService {
           : 'DRAFT'
         : undefined;
 
-    return prisma.cbtBankSoal.update({
+    const updated = await prisma.cbtBankSoal.update({
       where: { id },
       data: {
         ...(data.guru_id ? { guru_id: data.guru_id } : {}),
@@ -250,6 +251,11 @@ export class CbtBankSoalService {
         ...(resolvedStatus ? { status: resolvedStatus } : {}),
       },
     });
+
+    // Invalidate Redis bundle cache jadwal aktif agar perubahan parameter langsung berlaku
+    await this.invalidateActiveJadwalBundleCaches(tenantId, id);
+
+    return updated;
   }
 
   /**
@@ -395,6 +401,34 @@ export class CbtBankSoalService {
   }
 
   /**
+   * Helper: Invalidate bundle cache di Redis untuk seluruh jadwal ujian aktif / dijeda / draft
+   * yang mereferensikan bank_soal_id ini.
+   * Menjamin bahwa saat butir soal, teks, atau gambar stimulus diperbaiki di Bank Soal,
+   * siswa yang me-refresh ujian langsung mendapatkan butir soal versi terbaru tanpa menunggu cache TTL 24 jam.
+   */
+  private static async invalidateActiveJadwalBundleCaches(tenantId: string, bankSoalId: string): Promise<void> {
+    try {
+      const activeJadwals = await prisma.cbtJadwalUjian.findMany({
+        where: {
+          tenant_id: tenantId,
+          bank_soal_id: bankSoalId,
+          status: { in: ['ACTIVE', 'PAUSED', 'DRAFT'] },
+        },
+        select: { id: true },
+      });
+
+      const redis = getRedisConnection();
+      if (redis && activeJadwals.length > 0) {
+        for (const j of activeJadwals) {
+          await redis.del(`cbt:${tenantId}:bundle:${j.id}`).catch(() => null);
+        }
+      }
+    } catch (err) {
+      console.warn('[CbtBankSoalService] Gagal invalidate Redis bundle cache:', err);
+    }
+  }
+
+  /**
    * Menghapus Bank Soal beserta pembersihan media gambar di Storage Engine
    */
   static async delete(tenantId: string, id: string) {
@@ -498,6 +532,9 @@ export class CbtBankSoalService {
       return soal;
     });
 
+    // Invalidate Redis bundle cache jadwal aktif agar penambahan soal baru langsung tersinkron
+    await this.invalidateActiveJadwalBundleCaches(tenantId, bankSoalId);
+
     return created;
   }
 
@@ -535,6 +572,9 @@ export class CbtBankSoalService {
       await this.cleanupUnusedMediaUrls(tenantId, removedUrls);
     }
 
+    // Invalidate Redis bundle cache jadwal aktif agar koreksi teks/gambar/kunci langsung berlaku seketika
+    await this.invalidateActiveJadwalBundleCaches(tenantId, existing.bank_soal_id);
+
     return updated;
   }
 
@@ -571,6 +611,9 @@ export class CbtBankSoalService {
 
     await this.cleanupUnusedMediaUrls(tenantId, candidateMediaUrls);
 
+    // Invalidate Redis bundle cache jadwal aktif
+    await this.invalidateActiveJadwalBundleCaches(tenantId, existing.bank_soal_id);
+
     return result;
   }
 
@@ -580,7 +623,7 @@ export class CbtBankSoalService {
   static async bulkImportQuestions(tenantId: string, bankSoalId: string, items: any[]) {
     await this.getById(tenantId, bankSoalId);
 
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       // Dapatkan nomor urut awal
       const last = await tx.cbtSoal.findFirst({
         where: { tenant_id: tenantId, bank_soal_id: bankSoalId },
@@ -624,6 +667,11 @@ export class CbtBankSoalService {
         totalSoal,
       };
     });
+
+    // Invalidate Redis bundle cache jadwal aktif
+    await this.invalidateActiveJadwalBundleCaches(tenantId, bankSoalId);
+
+    return result;
   }
 
   /**
