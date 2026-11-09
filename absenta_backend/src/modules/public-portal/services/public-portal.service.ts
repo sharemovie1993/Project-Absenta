@@ -979,11 +979,15 @@ export class PublicPortalService {
    * Gelombang 3: Transparansi Struktur Kurikulum, KOSP & Etalase Projek P5
    */
   public async getCurriculumAndP5(tenantId: string): Promise<PublicCurriculumAndP5> {
-    const cacheKey = `pub:curriculum_p5:${tenantId}`;
+    const cacheKey = `pub:curriculum_p5_v2:${tenantId}`;
     const cached = await this.getFromCache<PublicCurriculumAndP5>(cacheKey);
     if (cached) return cached;
 
-    const [activeTp, kospCfg, strukturRaw, p5Raw] = await Promise.all([
+    const [tenant, activeTp, kospCfg, jurusansRaw, kepsekAssign, wakaAssign, p5Raw] = await Promise.all([
+      prisma.tenant.findUnique({
+        where: { id: tenantId },
+        include: { sekolah: true, config: true },
+      }).catch(() => null),
       prisma.tahunPelajaran.findFirst({
         where: { tenant_id: tenantId, is_active: true },
         select: { id: true, tahun: true },
@@ -993,15 +997,25 @@ export class PublicPortalService {
         orderBy: { created_at: 'desc' },
         select: { karakteristik: true },
       }).catch(() => null),
-      prisma.strukturKurikulum.findMany({
-        where: { tenant_id: tenantId, is_active: true },
+      prisma.jurusan.findMany({
+        where: { tenant_id: tenantId },
         include: {
-          Mapel: { select: { nama_mapel: true, kode_mapel: true, kelompok_mapel: true } },
-          Jurusan: { select: { id: true, nama: true } },
+          ProgramKeahlian: { select: { nama: true, bidang_keahlian: true } },
         },
-        orderBy: [{ tingkat: 'asc' }, { urutan: 'asc' }],
-        take: 80,
+        orderBy: { nama: 'asc' },
       }).catch(() => []),
+      prisma.organizationalAssignment.findFirst({
+        where: { tenant_id: tenantId, is_active: true, Position: { code: 'KEPALA_SEKOLAH' } },
+        include: { User: { include: { Guru: true } } },
+      }).catch(() => null),
+      prisma.organizationalAssignment.findFirst({
+        where: {
+          tenant_id: tenantId,
+          is_active: true,
+          Position: { code: { in: ['KURIKULUM', 'WAKA_KURIKULUM'] } },
+        },
+        include: { User: { include: { Guru: true } } },
+      }).catch(() => null),
       prisma.p5Projek.findMany({
         where: { tenant_id: tenantId },
         include: {
@@ -1014,6 +1028,66 @@ export class PublicPortalService {
       }).catch(() => []),
     ]);
 
+    let strukturRaw = await prisma.strukturKurikulum.findMany({
+      where: {
+        tenant_id: tenantId,
+        is_active: true,
+        ...(activeTp?.id ? { tahun_pelajaran_id: activeTp.id } : {}),
+      },
+      include: {
+        Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true, kelompok_mapel: true } },
+        Jurusan: { select: { id: true, nama: true } },
+      },
+      orderBy: [{ tingkat: 'asc' }, { urutan: 'asc' }, { created_at: 'asc' }],
+      take: 1000,
+    }).catch(() => []);
+
+    if (strukturRaw.length === 0 && activeTp?.id) {
+      strukturRaw = await prisma.strukturKurikulum.findMany({
+        where: { tenant_id: tenantId, is_active: true },
+        include: {
+          Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true, kelompok_mapel: true } },
+          Jurusan: { select: { id: true, nama: true } },
+        },
+        orderBy: [{ tingkat: 'asc' }, { urutan: 'asc' }, { created_at: 'asc' }],
+        take: 1000,
+      }).catch(() => []);
+    }
+
+    const sekolah = tenant?.sekolah?.[0] || null;
+    const configMap = new Map<string, string>();
+    tenant?.config?.forEach((c) => configMap.set(c.key, c.value));
+
+    const schoolName = sekolah?.nama || tenant?.name || 'SMK NEGERI 1 PLERED';
+    const dinasAtas = configMap.get('nama_dinas_atas') || 'PEMERINTAH DAERAH PROVINSI JAWA BARAT';
+    const dinasBawah = configMap.get('nama_dinas_bawah') || 'DINAS PENDIDIKAN';
+    const cabangDinas = configMap.get('nama_cabang_dinas') || 'CABANG DINAS PENDIDIKAN WILAYAH IV';
+    let parsedHeaderLines: any = [dinasAtas, dinasBawah, cabangDinas, schoolName];
+    if (configMap.get('print_header_lines')) {
+      try {
+        parsedHeaderLines = JSON.parse(configMap.get('print_header_lines')!);
+      } catch {
+        // fallback to default array
+      }
+    }
+
+    const kepsekNama =
+      kepsekAssign?.User?.Guru?.nama_guru ||
+      kepsekAssign?.User?.full_name ||
+      sekolah?.kepala_sekolah ||
+      'Kepala Sekolah';
+    const kepsekNip =
+      kepsekAssign?.User?.Guru?.nip ||
+      sekolah?.nip_kepala ||
+      '-';
+    const wakaNama =
+      wakaAssign?.User?.Guru?.nama_guru ||
+      wakaAssign?.User?.full_name ||
+      'Wakasek Bidang Kurikulum';
+    const wakaNip =
+      wakaAssign?.User?.Guru?.nip ||
+      '-';
+
     const defaultDimensions = [
       ['Beriman, Bertakwa & Berakhlak Mulia', 'Bergotong Royong', 'Kreatif'],
       ['Bernalar Kritis', 'Mandiri', 'Kreatif'],
@@ -1023,11 +1097,13 @@ export class PublicPortalService {
 
     const result: PublicCurriculumAndP5 = {
       tahun_ajaran: activeTp?.tahun || '2025/2026',
+      jenjang: sekolah?.jenjang || 'SMK',
       karakteristik_kosp:
         kospCfg?.karakteristik ||
         'Kurikulum Operasional Satuan Pendidikan (KOSP) dirancang berbasis penyelarasan Dunia Usaha & Dunia Industri (Link and Match 8+i), pembelajaran berbasis proyek nyata (Project-Based Learning), dan penguatan karakter Profil Pelajar Pancasila.',
       subjects: strukturRaw.map((s) => ({
         id: s.id,
+        mapel_id: s.mapel_id,
         nama_mapel: s.Mapel?.nama_mapel || 'Mata Pelajaran',
         kode_mapel: s.Mapel?.kode_mapel || null,
         tingkat: s.tingkat,
@@ -1035,7 +1111,36 @@ export class PublicPortalService {
         jp_per_minggu: s.jp_per_minggu,
         jurusan_id: s.jurusan_id,
         nama_jurusan: s.Jurusan?.nama || 'Semua Program Keahlian (Umum)',
+        urutan: s.urutan ?? 0,
       })),
+      jurusans: jurusansRaw.map((j: any) => ({
+        id: j.id,
+        nama: j.nama,
+        kode: j.kode || null,
+        singkatan: j.singkatan || null,
+        program_keahlian: j.ProgramKeahlian?.nama || null,
+        bidang_keahlian: j.ProgramKeahlian?.bidang_keahlian || null,
+      })),
+      header_info: {
+        name: schoolName,
+        logo_url: sekolah?.logo_url || tenant?.logo_url || null,
+        logo_daerah_url: configMap.get('logo_daerah_url') || null,
+        address: sekolah?.alamat || configMap.get('address') || '',
+        phone: sekolah?.telepon || configMap.get('phone') || '',
+        email: sekolah?.email || configMap.get('email') || '',
+        website: sekolah?.website || configMap.get('website') || '',
+        nama_dinas_atas: dinasAtas,
+        nama_dinas_bawah: dinasBawah,
+        nama_cabang_dinas: cabangDinas,
+        print_header_lines: parsedHeaderLines,
+      },
+      signers: {
+        kepsek_nama: kepsekNama,
+        kepsek_nip: kepsekNip,
+        waka_kurikulum_nama: wakaNama,
+        waka_kurikulum_nip: wakaNip,
+        kota: sekolah?.kota || 'Purwakarta',
+      },
       p5_projects: p5Raw.map((p, idx) => ({
         id: p.id,
         judul: p.judul,

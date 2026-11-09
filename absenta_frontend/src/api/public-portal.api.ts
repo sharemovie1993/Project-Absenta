@@ -258,6 +258,7 @@ export interface PublicGuestBookTicket {
 
 export interface PublicCurriculumSubject {
   id: string;
+  mapel_id?: string;
   nama_mapel: string;
   kode_mapel: string | null;
   tingkat: number;
@@ -265,6 +266,16 @@ export interface PublicCurriculumSubject {
   jp_per_minggu: number;
   jurusan_id: string | null;
   nama_jurusan: string | null;
+  urutan?: number;
+}
+
+export interface PublicCurriculumJurusan {
+  id: string;
+  nama: string;
+  kode: string | null;
+  singkatan: string | null;
+  program_keahlian: string | null;
+  bidang_keahlian: string | null;
 }
 
 export interface PublicP5ProjectItem {
@@ -279,8 +290,30 @@ export interface PublicP5ProjectItem {
 
 export interface PublicCurriculumAndP5 {
   tahun_ajaran: string;
+  jenjang?: string;
   karakteristik_kosp: string | null;
   subjects: PublicCurriculumSubject[];
+  jurusans?: PublicCurriculumJurusan[];
+  header_info?: {
+    name: string;
+    logo_url: string | null;
+    logo_daerah_url: string | null;
+    address: string;
+    phone: string;
+    email: string;
+    website: string;
+    nama_dinas_atas: string;
+    nama_dinas_bawah: string;
+    nama_cabang_dinas: string;
+    print_header_lines?: any;
+  };
+  signers?: {
+    kepsek_nama: string;
+    kepsek_nip: string;
+    waka_kurikulum_nama: string;
+    waka_kurikulum_nip: string;
+    kota: string;
+  };
   p5_projects: PublicP5ProjectItem[];
 }
 

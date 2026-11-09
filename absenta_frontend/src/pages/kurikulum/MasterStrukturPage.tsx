@@ -25,6 +25,7 @@ import { useCapabilities } from '../../hooks/useCapabilities';
 import { detectKelompokForMapel } from '../../utils/kurikulum/masterStrukturHelper';
 import { formatDate } from '../../utils/layoutUtils';
 import type { Mapel } from '../../types/academic';
+import { StrukturKurikulumPrintModal } from '../../components/kurikulum/struktur/StrukturKurikulumPrintModal';
 
 const CloneStrukturModal = lazy(() => import('../../components/kurikulum/CloneStrukturModal'));
 
@@ -60,10 +61,13 @@ const MasterStrukturPage: React.FC = () => {
         years,
         jurusans,
         isSmkOrMak,
+        selectedTahunNama,
+        mappingData,
         mappingFiltered,
         standardReferences,
         isLoadingMapping,
         isPrinting,
+        setIsPrinting,
         totalJp,
         targetJp,
         gapJp,
@@ -547,6 +551,18 @@ const MasterStrukturPage: React.FC = () => {
                         />
                     )}
                 </Suspense>
+
+                {/* Universal Document Printing Modal for Struktur Kurikulum */}
+                <StrukturKurikulumPrintModal
+                    isOpen={isPrinting}
+                    onClose={() => setIsPrinting(false)}
+                    mappingData={mappingData as any}
+                    selectedJurusan={(jurusans?.data || []).find((j: any) => j.id === selectedJurusanId) as any}
+                    allJurusans={(jurusans?.data || []) as any}
+                    tahunPelajaranNama={selectedTahunNama || '2025/2026'}
+                    tahunPelajaranId={selectedTahunId}
+                    jenjang={jenjang || 'SMK'}
+                />
             </div>
         </AcademicPageLayout>
     );

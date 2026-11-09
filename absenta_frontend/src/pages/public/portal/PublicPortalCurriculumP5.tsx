@@ -1,36 +1,124 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   BookOpen,
   Sparkles,
-  Clock,
   CheckCircle2,
   Users,
-  Layers,
   GraduationCap,
+  Printer,
+  Download,
+  Smartphone,
+  Maximize2,
+  FileCheck2,
 } from 'lucide-react';
 import { PublicCurriculumAndP5 } from '../../../api/public-portal.api';
+import { PrintDeskCanvas } from '@/components/ui/PrintHeader';
+import { StrukturKurikulumDocumentSheet } from '@/components/kurikulum/struktur/StrukturKurikulumDocumentSheet';
+import {
+  StrukturKurikulumPrintModal,
+  exportStrukturKurikulumPdf,
+} from '@/components/kurikulum/struktur/StrukturKurikulumPrintModal';
+import { DEFAULT_JABAR_LOGO_SVG, resolveCoverImageBase64 } from '@/utils/print/rapor/raporShared';
 
 interface PublicPortalCurriculumP5Props {
   data: PublicCurriculumAndP5 | null;
 }
 
 export const PublicPortalCurriculumP5: React.FC<PublicPortalCurriculumP5Props> = ({ data }) => {
-  const [selectedTingkat, setSelectedTingkat] = useState<number | 'ALL'>('ALL');
-  const [selectedKelompok, setSelectedKelompok] = useState<string>('ALL');
+  const jurusans = useMemo(() => data?.jurusans || [], [data?.jurusans]);
+  const [selectedJurusanId, setSelectedJurusanId] = useState<string>('');
+  const [zoomMode, setZoomMode] = useState<'fit' | 'original'>('fit');
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  // Pre-convert logos to Base64 so html2canvas PDF export works cleanly without CORS taint
+  const [logoDaerahBase64, setLogoDaerahBase64] = useState<string | null>(null);
+  const [logoSekolahBase64, setLogoSekolahBase64] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (jurusans.length > 0 && !selectedJurusanId) {
+      setSelectedJurusanId(jurusans[0].id);
+    }
+  }, [jurusans, selectedJurusanId]);
+
+  useEffect(() => {
+    let active = true;
+    const rawDaerah = data?.header_info?.logo_daerah_url || DEFAULT_JABAR_LOGO_SVG;
+    const rawSekolah = data?.header_info?.logo_url || '/logo.png';
+
+    resolveCoverImageBase64(rawDaerah)
+      .then((b64) => {
+        if (active) setLogoDaerahBase64(b64);
+      })
+      .catch(() => {
+        if (active) setLogoDaerahBase64(rawDaerah);
+      });
+
+    resolveCoverImageBase64(rawSekolah)
+      .then((b64) => {
+        if (active) setLogoSekolahBase64(b64);
+      })
+      .catch(() => {
+        if (active) setLogoSekolahBase64(rawSekolah);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [data?.header_info?.logo_daerah_url, data?.header_info?.logo_url]);
+
+  const selectedJurusan = useMemo(() => {
+    if (!selectedJurusanId) return jurusans[0] || null;
+    return jurusans.find((j) => j.id === selectedJurusanId) || jurusans[0] || null;
+  }, [jurusans, selectedJurusanId]);
+
+  const enrichedTenantInfo = useMemo(() => {
+    const h = data?.header_info;
+    return {
+      name: h?.name || 'SMK NEGERI 1 PLERED',
+      logo_url: logoSekolahBase64 || h?.logo_url || '/logo.png',
+      logo_daerah_url: logoDaerahBase64 || h?.logo_daerah_url || DEFAULT_JABAR_LOGO_SVG,
+      address: h?.address || '',
+      phone: h?.phone || '',
+      email: h?.email || '',
+      website: h?.website || '',
+      nama_dinas_atas: h?.nama_dinas_atas || 'PEMERINTAH DAERAH PROVINSI JAWA BARAT',
+      nama_dinas_bawah: h?.nama_dinas_bawah || 'DINAS PENDIDIKAN',
+      nama_cabang_dinas: h?.nama_cabang_dinas || 'CABANG DINAS PENDIDIKAN WILAYAH IV',
+      print_header_lines: h?.print_header_lines,
+    };
+  }, [data?.header_info, logoDaerahBase64, logoSekolahBase64]);
+
+  const defaultAcademicDate = useMemo(() => {
+    const yearMatch = (data?.tahun_ajaran || '').match(/\b(20\d{2})\b/);
+    const startYear = yearMatch ? parseInt(yearMatch[1], 10) : new Date().getFullYear();
+    return `14 Juli ${startYear}`;
+  }, [data?.tahun_ajaran]);
 
   if (!data || (data.subjects.length === 0 && data.p5_projects.length === 0)) {
     return null;
   }
 
-  const filteredSubjects = data.subjects.filter((s) => {
-    const matchTingkat = selectedTingkat === 'ALL' || s.tingkat === selectedTingkat;
-    const matchKelompok =
-      selectedKelompok === 'ALL' ||
-      s.kelompok.toUpperCase().includes(selectedKelompok);
-    return matchTingkat && matchKelompok;
-  });
-
-  const totalJpDisplayed = filteredSubjects.reduce((sum, s) => sum + s.jp_per_minggu, 0);
+  const handleDirectDownloadPdf = async () => {
+    setIsExportingPdf(true);
+    try {
+      const jurusanSlug = (
+        selectedJurusan?.singkatan ||
+        selectedJurusan?.kode ||
+        selectedJurusan?.nama ||
+        'UMUM'
+      )
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, '_');
+      const tahunSlug = (data.tahun_ajaran || 'TP').replace(/[^0-9]+/g, '_');
+      await exportStrukturKurikulumPdf({
+        containerSelector: '#public-struktur-kurikulum-desk .print-sheet',
+        fileName: `STRUKTUR_KURIKULUM_${jurusanSlug}_${tahunSlug}.pdf`,
+      });
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
 
   return (
     <section id="kurikulum" className="py-20 bg-slate-50 border-t border-slate-200/80">
@@ -101,17 +189,18 @@ export const PublicPortalCurriculumP5: React.FC<PublicPortalCurriculumP5Props> =
           </div>
         )}
 
-        {/* Part 2: Transparansi Struktur Kurikulum & Sebaran Mata Pelajaran */}
+        {/* Part 2: Dokumen Resmi Struktur Kurikulum (KOSP) Versi Cetak */}
         {data.subjects.length > 0 && (
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+          <div className="bg-white rounded-3xl p-5 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+            {/* Header Section */}
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 border-b border-slate-100 pb-5">
               <div className="space-y-2">
                 <div className="inline-flex items-center gap-1.5 text-blue-600 text-xs font-bold uppercase tracking-wider">
                   <BookOpen className="w-4 h-4" />
-                  <span>Transparansi Kurikulum Operasional Satuan Pendidikan (KOSP)</span>
+                  <span>Transparansi Dokumen Akademik Resmi (KOSP)</span>
                 </div>
                 <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900">
-                  Struktur Kurikulum & Sebaran Mata Pelajaran
+                  Struktur Kurikulum &amp; Alokasi Jam Pelajaran Resmi
                 </h3>
                 {data.karakteristik_kosp && (
                   <p className="text-xs text-slate-500 max-w-3xl leading-relaxed">
@@ -120,101 +209,141 @@ export const PublicPortalCurriculumP5: React.FC<PublicPortalCurriculumP5Props> =
                 )}
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-2.5 text-right flex-shrink-0">
-                <div className="text-[11px] text-blue-700 font-semibold">Total Alokasi Ditampilkan</div>
-                <div className="text-lg font-black text-blue-900">{totalJpDisplayed} JP / Minggu</div>
+              {/* Action Buttons (Zoom, Pratinjau Cetak, Unduh PDF) */}
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setZoomMode('fit')}
+                    className={`px-2.5 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                      zoomMode === 'fit'
+                        ? 'bg-white text-blue-600 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    <span>Pas Layar</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setZoomMode('original')}
+                    className={`px-2.5 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                      zoomMode === 'original'
+                        ? 'bg-white text-blue-600 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Maximize2 className="w-3.5 h-3.5" />
+                    <span>100% A4</span>
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleDirectDownloadPdf}
+                  disabled={isExportingPdf}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Download className="w-3.5 h-3.5 text-blue-600" />
+                  <span>{isExportingPdf ? 'Merender PDF...' : 'Unduh PDF Resmi'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsPrintModalOpen(true)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Mode Cetak / Semua Jurusan</span>
+                </button>
               </div>
             </div>
 
-            {/* Filter Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs font-bold text-slate-500 mr-1">Filter Tingkat:</span>
-                {[
-                  { id: 'ALL', label: 'Semua Tingkat' },
-                  { id: 10, label: 'Kelas X (Fase E)' },
-                  { id: 11, label: 'Kelas XI (Fase F)' },
-                  { id: 12, label: 'Kelas XII (Fase F)' },
-                ].map((t) => (
-                  <button
-                    key={String(t.id)}
-                    onClick={() => setSelectedTingkat(t.id as any)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
-                      selectedTingkat === t.id
-                        ? 'bg-slate-900 text-white border-slate-900'
-                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
+            {/* Selector Konsentrasi Keahlian (Jurusan) */}
+            {jurusans.length > 0 && (
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-700 shrink-0">
+                  <GraduationCap className="w-4 h-4 text-blue-600" />
+                  <span>Pilih Konsentrasi Keahlian (Jurusan):</span>
+                </div>
 
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs font-bold text-slate-500 mr-1">Kelompok:</span>
-                {['ALL', 'UMUM', 'KEJURUAN', 'PILIHAN'].map((k) => (
-                  <button
-                    key={k}
-                    onClick={() => setSelectedKelompok(k)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
-                      selectedKelompok === k
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    {k === 'ALL' ? 'Semua Kelompok' : k}
-                  </button>
-                ))}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {jurusans.map((j) => {
+                    const isActive = selectedJurusan?.id === j.id;
+                    return (
+                      <button
+                        key={j.id}
+                        type="button"
+                        onClick={() => setSelectedJurusanId(j.id)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                          isActive
+                            ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {j.singkatan ? `${j.singkatan} — ${j.nama}` : j.nama}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+            )}
+
+            {/* Embedded Official A4 Document Sheet (Versi Cetak) */}
+            <div id="public-struktur-kurikulum-desk" className="w-full">
+              <PrintDeskCanvas
+                orientation="portrait"
+                zoomMode={zoomMode}
+                onZoomModeChange={setZoomMode}
+                className="max-h-none bg-slate-200/75 border-slate-300 py-6 sm:py-10"
+              >
+                <StrukturKurikulumDocumentSheet
+                  mappingData={data.subjects}
+                  selectedJurusan={selectedJurusan}
+                  allJurusans={jurusans}
+                  tahunPelajaranNama={data.tahun_ajaran}
+                  jenjang={data.jenjang || 'SMK'}
+                  tenantInfo={enrichedTenantInfo}
+                  showLogoDaerah={true}
+                  showLogoSekolah={true}
+                  wakaKurikulumNama={data.signers?.waka_kurikulum_nama || 'Wakasek Bidang Kurikulum'}
+                  wakaKurikulumNip={data.signers?.waka_kurikulum_nip || '-'}
+                  kepalaSekolahNama={data.signers?.kepsek_nama || 'Kepala Sekolah'}
+                  kepalaSekolahNip={data.signers?.kepsek_nip || '-'}
+                  kotaTitimangsa={data.signers?.kota || 'Purwakarta'}
+                  tanggalTitimangsa={defaultAcademicDate}
+                  pageNumber={1}
+                  totalPages={1}
+                />
+              </PrintDeskCanvas>
             </div>
 
-            {/* Subjects Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredSubjects.map((sub) => {
-                const isKejuruan = sub.kelompok.toUpperCase().includes('KEJURUAN');
-                return (
-                  <div
-                    key={sub.id}
-                    className="p-4 rounded-2xl bg-slate-50/80 hover:bg-white border border-slate-200/80 hover:border-blue-300 transition-all flex flex-col justify-between gap-3"
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            isKejuruan
-                              ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                              : 'bg-blue-100 text-blue-800 border border-blue-200'
-                          }`}
-                        >
-                          KELOMPOK {sub.kelompok.toUpperCase()}
-                        </span>
-                        <span className="text-xs font-extrabold text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200">
-                          Kelas {sub.tingkat}
-                        </span>
-                      </div>
-
-                      <h4 className="text-sm font-bold text-slate-900 leading-snug">
-                        {sub.nama_mapel}
-                      </h4>
-                    </div>
-
-                    <div className="pt-2.5 border-t border-slate-200/70 flex items-center justify-between text-xs">
-                      <span className="text-slate-500 flex items-center gap-1 truncate max-w-[65%]">
-                        <GraduationCap className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                        <span className="truncate">{sub.nama_jurusan}</span>
-                      </span>
-                      <span className="font-extrabold text-blue-700 flex items-center gap-1 flex-shrink-0">
-                        <Clock className="w-3.5 h-3.5" />
-                        {sub.jp_per_minggu} JP/Minggu
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 px-1 flex-wrap gap-2">
+              <span className="inline-flex items-center gap-1.5 font-medium">
+                <FileCheck2 className="w-3.5 h-3.5 text-emerald-600" />
+                Dokumen disajikan menggunakan standar tata naskah dinas Universal Document Printing (A4 Portrait).
+              </span>
+              <span>
+                Klik <strong>Mode Cetak / Semua Jurusan</strong> untuk mencetak satu per satu atau seluruh konsentrasi keahlian sekaligus.
+              </span>
             </div>
           </div>
         )}
       </div>
+
+      {/* Modal Pratinjau Cetak Penuh / Cetak Semua Jurusan */}
+      <StrukturKurikulumPrintModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        mappingData={data.subjects}
+        selectedJurusan={selectedJurusan}
+        allJurusans={jurusans}
+        tahunPelajaranNama={data.tahun_ajaran}
+        jenjang={data.jenjang || 'SMK'}
+        tenantInfoOverride={enrichedTenantInfo}
+        signersOverride={data.signers}
+        isPublicMode={true}
+      />
     </section>
   );
 };

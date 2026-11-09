@@ -15,11 +15,11 @@ import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { useJenjang } from '@/hooks/useJenjang';
 import { cn } from '@/lib/utils';
 import { z } from 'zod';
-import { performStrukturPrint } from '@/utils/kurikulum/masterStrukturHelper';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { getTenantById } from '@/api/tenants.api';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { SectionCard } from '@/components/ui';
+import { StrukturKurikulumPrintModal } from './StrukturKurikulumPrintModal';
 
 // Theme helpers
 import {
@@ -223,19 +223,9 @@ export const StrukturKurikulumView: React.FC<UniversalStrukturKurikulumViewProps
 
   const canManage = !readOnly && (isAdmin || isKurikulum || can('academic.curriculum.manage'));
 
-  const handlePrint = useCallback(async () => {
+  const handlePrint = useCallback(() => {
     setIsPrinting(true);
-    try {
-      await performStrukturPrint(
-        rawData,
-        selectedJurusan?.nama ?? '',
-        tenantInfo,
-        activeYear?.tahun ?? 'Tahun Pelajaran Terpilih',
-      );
-    } finally {
-      setIsPrinting(false);
-    }
-  }, [rawData, selectedJurusan, tenantInfo, activeYear]);
+  }, []);
 
   const handleManagePlotting = useCallback(() => {
     navigate('/kurikulum/guru-mapel');
@@ -590,6 +580,18 @@ export const StrukturKurikulumView: React.FC<UniversalStrukturKurikulumViewProps
           />
         )}
       </Suspense>
+
+      {/* Modal Pratinjau Cetak Struktur Kurikulum (Universal Document Printing) */}
+      <StrukturKurikulumPrintModal
+        isOpen={isPrinting}
+        onClose={() => setIsPrinting(false)}
+        mappingData={rawData as any}
+        selectedJurusan={selectedJurusan as any}
+        allJurusans={jurusanList as any}
+        tahunPelajaranNama={activeYear?.tahun || '2025/2026'}
+        tahunPelajaranId={activeYear?.id}
+        jenjang={jenjang || 'SMK'}
+      />
     </div>
   );
 

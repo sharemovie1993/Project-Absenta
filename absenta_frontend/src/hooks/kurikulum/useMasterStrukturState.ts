@@ -552,21 +552,13 @@ export const useMasterStrukturState = () => {
 
   const [isPrinting, setIsPrinting] = useState(false);
 
-  const handleCetakPdf = useCallback(async () => {
-    if (!mapping?.data) {
+  const handleCetakPdf = useCallback(() => {
+    if (!mapping?.data || mapping.data.length === 0) {
       toast.error('Tidak ada data struktur kurikulum untuk dicetak.');
       return;
     }
-    const selectedJurusan = jurusans?.data?.find(item => item.id === selectedJurusanId);
-    await performStrukturPrint({
-      tenantInfo,
-      selectedTingkat,
-      selectedTahunNama,
-      selectedJurusan,
-      mappingData: mapping.data,
-      setIsPrinting
-    });
-  }, [tenantInfo, selectedTingkat, selectedTahunNama, jurusans?.data, selectedJurusanId, mapping?.data]);
+    setIsPrinting(true);
+  }, [mapping?.data]);
 
   // ─── JP per semester (Kemendikbud-compliant) ─────────────────────────────
   // Untuk Kelas 12 SMK: PKL menggantikan KK di Semester Ganjil (Sem 1),
@@ -661,10 +653,12 @@ export const useMasterStrukturState = () => {
     jurusans,
     isSmkOrMak,
     selectedTahunNama,
+    mappingData: mapping?.data || [],
     mappingFiltered,
     standardReferences,
     isLoadingMapping,
     isPrinting,
+    setIsPrinting,
     totalJp,
     targetJp,
     gapJp,
