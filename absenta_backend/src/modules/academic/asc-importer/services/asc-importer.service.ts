@@ -29,6 +29,12 @@ export class AscImporterService {
       .trim();
   }
 
+  static extractJurusanCode(name: string): string | null {
+    if (!name) return null;
+    const match = name.match(/\b(TKRO|TKR|TBSM|TSM|TO|TE|TM|TPM|TP|TOI|TAV|TITL|TKJ|TJKT|RPL|PPLG|DKV|AKL|AK|MPLB|OTKP|BDP|PM|KUL|TBG|HTL|PHT|ATPH|APHP)\b/i);
+    return match ? match[1].toUpperCase() : null;
+  }
+
   static parseXml(xmlContent: string) {
     const parser = new XMLParser({
       ignoreAttributes: false,
@@ -239,6 +245,7 @@ export class AscImporterService {
     // 1. Fetch DB master entities
     const dbGurus = await prisma.guru.findMany({ where: { tenant_id: tenantId } });
     const dbClasses = await prisma.kelas.findMany({ where: { tenant_id: tenantId }, include: { Jurusan: true } });
+    const dbJurusans = await prisma.jurusan.findMany({ where: { tenant_id: tenantId } });
     const dbSubjects = await prisma.mapel.findMany({ where: { tenant_id: tenantId } });
 
     // 2. Extract XML entities
@@ -278,19 +285,53 @@ export class AscImporterService {
       };
     });
 
-    // 4. Match Classes
+    // 4. Match Classes (Presisi Berbasis Tingkat & Konsentrasi Keahlian / Jurusan)
     const classAnalysis = xmlClassesArr.map((c: any) => {
       const xmlId = String(c.id);
       const xmlName = String(c.name || c.short || '');
       const xmlCode = String(c.short || '');
       const normXmlName = this.normalizeName(xmlName);
 
+      // Deteksi Jurusan dari nama kelas XML (contoh: "X TO 1" -> "TO", "XI TKRO 2" -> "TKRO")
+      let detectedJurusan: string | null = null;
+      const words = xmlName.toUpperCase().split(/[^A-Z0-9]+/);
+      const matchedDbJurusan = dbJurusans.find((j: any) => {
+        const code = (j.kode || '').toUpperCase();
+        const sing = (j.singkatan || '').toUpperCase();
+        return (code && words.includes(code)) || (sing && words.includes(sing));
+      });
+      if (matchedDbJurusan) {
+        detectedJurusan = matchedDbJurusan.kode || matchedDbJurusan.singkatan || matchedDbJurusan.nama;
+      } else {
+        detectedJurusan = this.extractJurusanCode(xmlName);
+      }
+
       const activeClasses = dbClasses.filter((k: any) => k.is_active !== false);
-      const exactMatch = activeClasses.find(
-        (k: any) => this.normalizeName(k.nama_kelas) === normXmlName || (k.asc_id && String(k.asc_id) === xmlId)
-      ) || dbClasses.find(
-        (k: any) => this.normalizeName(k.nama_kelas) === normXmlName || (k.asc_id && String(k.asc_id) === xmlId)
-      );
+
+      // Prioritas 1: Cocok nama_kelas / asc_id DAN cocok Konsentrasi Keahlian / Jurusan
+      let exactMatch = activeClasses.find((k: any) => {
+        const isNameMatch = this.normalizeName(k.nama_kelas) === normXmlName;
+        const isAscMatch = k.asc_id && String(k.asc_id) === xmlId;
+        if (!isNameMatch && !isAscMatch) return false;
+
+        if (detectedJurusan && k.Jurusan) {
+          const jKode = (k.Jurusan.kode || '').toUpperCase();
+          const jSing = (k.Jurusan.singkatan || '').toUpperCase();
+          const jNama = (k.Jurusan.nama || '').toUpperCase();
+          const det = detectedJurusan.toUpperCase();
+          return jKode === det || jSing === det || jNama.includes(det) || det.includes(jKode) || det.includes(jSing);
+        }
+        return true;
+      });
+
+      // Prioritas 2: Fallback pencocokan nama standar
+      if (!exactMatch) {
+        exactMatch = activeClasses.find(
+          (k: any) => this.normalizeName(k.nama_kelas) === normXmlName || (k.asc_id && String(k.asc_id) === xmlId)
+        ) || dbClasses.find(
+          (k: any) => this.normalizeName(k.nama_kelas) === normXmlName || (k.asc_id && String(k.asc_id) === xmlId)
+        );
+      }
 
       const matchedNameWithJurusan = exactMatch
         ? `${exactMatch.nama_kelas}${exactMatch.Jurusan ? ` - ${exactMatch.Jurusan.singkatan || exactMatch.Jurusan.nama}` : ''}`
@@ -302,6 +343,9 @@ export class AscImporterService {
         code: xmlCode,
         matched_db_id: exactMatch?.id || null,
         matched_db_name: matchedNameWithJurusan || exactMatch?.nama_kelas || null,
+        detected_jurusan: detectedJurusan || null,
+        matched_jurusan_nama: exactMatch?.Jurusan?.nama || null,
+        matched_jurusan_kode: exactMatch?.Jurusan?.kode || exactMatch?.Jurusan?.singkatan || null,
         match_status: exactMatch ? 'EXACT_MATCH' : 'NEW_CREATE',
       };
     });
@@ -350,6 +394,12 @@ export class AscImporterService {
       db_classes: dbClasses.map((c: any) => ({
         id: c.id,
         name: `${c.nama_kelas}${c.Jurusan ? ` (${c.Jurusan.singkatan || c.Jurusan.nama})` : ''}${c.is_active === false ? ' [NONAKTIF]' : ''}`,
+        nama_kelas: c.nama_kelas,
+        tingkat: c.tingkat,
+        jurusan_id: c.jurusan_id || null,
+        jurusan_nama: c.Jurusan?.nama || null,
+        jurusan_kode: c.Jurusan?.kode || c.Jurusan?.singkatan || null,
+        is_active: c.is_active !== false,
       })),
       db_subjects: dbSubjects.map((m: any) => ({ id: m.id, name: m.nama_mapel, code: m.kode_mapel })),
     };
@@ -428,11 +478,29 @@ export class AscImporterService {
               if (str === 'XI' || str === '11') tingkat = 11;
               if (str === 'XII' || str === '12') tingkat = 12;
             }
+
+            let matchedJurusanId: string | null = null;
+            const detectedJurusanCode = this.extractJurusanCode(cm.name);
+            if (detectedJurusanCode) {
+              const foundJurusan = await tx.jurusan.findFirst({
+                where: {
+                  tenant_id: tenantId,
+                  OR: [
+                    { kode: { equals: detectedJurusanCode, mode: 'insensitive' } },
+                    { singkatan: { equals: detectedJurusanCode, mode: 'insensitive' } },
+                    { nama: { contains: detectedJurusanCode, mode: 'insensitive' } },
+                  ],
+                },
+              });
+              if (foundJurusan) matchedJurusanId = foundJurusan.id;
+            }
+
             const createdKelas = await tx.kelas.create({
               data: {
                 tenant_id: tenantId,
                 nama_kelas: cm.name,
                 tingkat,
+                jurusan_id: matchedJurusanId,
                 asc_id: String(cm.asc_id),
               },
             });

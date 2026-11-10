@@ -15,6 +15,20 @@ export interface MatchAnalysisItem {
   matched_db_id: string | null;
   matched_db_name: string | null;
   match_status: 'EXACT_MATCH' | 'NEW_CREATE';
+  detected_jurusan?: string | null;
+  matched_jurusan_nama?: string | null;
+  matched_jurusan_kode?: string | null;
+}
+
+export interface AscDbClassItem {
+  id: string;
+  name: string;
+  nama_kelas?: string;
+  tingkat?: number;
+  jurusan_id?: string | null;
+  jurusan_nama?: string | null;
+  jurusan_kode?: string | null;
+  is_active?: boolean;
 }
 
 export interface AscAnalysisResult {
@@ -31,7 +45,7 @@ export interface AscAnalysisResult {
   classes: MatchAnalysisItem[];
   subjects: MatchAnalysisItem[];
   db_teachers: { id: string; name: string }[];
-  db_classes: { id: string; name: string }[];
+  db_classes: AscDbClassItem[];
   db_subjects: { id: string; name: string; code?: string }[];
 }
 

@@ -40,6 +40,48 @@ const extractClassLevel = (name: string): 'X' | 'XI' | 'XII' | null => {
   return null;
 };
 
+const extractClassJurusan = (name: string): string | null => {
+  if (!name) return null;
+  const match = name.match(/\b(TKRO|TKR|TBSM|TSM|TO|TE|TM|TPM|TP|TOI|TAV|TITL|TKJ|TJKT|RPL|PPLG|DKV|AKL|AK|MPLB|OTKP|BDP|PM|KUL|TBG|HTL|PHT|ATPH|APHP)\b/i);
+  return match ? match[1].toUpperCase() : null;
+};
+
+// Deteksi potensi ketidaksesuaian Konsentrasi Keahlian / Jurusan
+const isJurusanConflict = (xmlJurusan: string | null, targetDbClass: any): boolean => {
+  if (!xmlJurusan || !targetDbClass) return false;
+  const targetKode = (targetDbClass.jurusan_kode || '').toUpperCase();
+  const targetNama = (targetDbClass.jurusan_nama || '').toUpperCase();
+  if (!targetKode && !targetNama) return false; // Target belum memiliki Jurusan spesifik (Umum)
+
+  // Keluarga alias vokasi SMK (misal: TO di kelas 10 bercabang ke TKRO/TBSM di kelas 11-12)
+  const aliasFamilies: Record<string, string[]> = {
+    TO: ['TO', 'TKRO', 'TKR', 'TBSM', 'TSM', 'OTOMOTIF'],
+    TKRO: ['TKRO', 'TKR', 'TO', 'OTOMOTIF'],
+    TBSM: ['TBSM', 'TSM', 'TO', 'MOTOR'],
+    TE: ['TE', 'TOI', 'TAV', 'TITL', 'ELEKTRONIKA'],
+    TOI: ['TOI', 'TE', 'OTOMASI'],
+    TAV: ['TAV', 'TE', 'AUDIO'],
+    TITL: ['TITL', 'TE', 'LISTRIK'],
+    TM: ['TM', 'TPM', 'TP', 'MESIN'],
+    TPM: ['TPM', 'TP', 'TM', 'PEMESINAN', 'MESIN'],
+    TJKT: ['TJKT', 'TKJ', 'JARINGAN'],
+    TKJ: ['TKJ', 'TJKT', 'JARINGAN'],
+    PPLG: ['PPLG', 'RPL', 'PERANGKAT LUNAK'],
+    RPL: ['RPL', 'PPLG', 'PERANGKAT LUNAK'],
+    DKV: ['DKV', 'DESAIN', 'MULTIMEDIA'],
+    AKL: ['AKL', 'AK', 'AKUNTANSI'],
+    MPLB: ['MPLB', 'OTKP', 'PERKANTORAN'],
+    KUL: ['KUL', 'TBG', 'KULINER', 'BOGA'],
+    HTL: ['HTL', 'PHT', 'HOTEL', 'PERHOTELAN'],
+  };
+
+  const allowed = aliasFamilies[xmlJurusan] || [xmlJurusan];
+  const matchesKode = targetKode && allowed.some(a => targetKode.includes(a) || a.includes(targetKode));
+  const matchesNama = targetNama && allowed.some(a => targetNama.includes(a));
+
+  return !matchesKode && !matchesNama;
+};
+
 interface SavedMappingPref {
   action: 'MATCH' | 'CREATE' | 'IGNORE';
   target_id?: string;
@@ -417,14 +459,24 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
     if (!analysis) return;
 
     const mismatches: string[] = [];
+    const jurusanMismatches: string[] = [];
+
     analysis.classes.forEach(c => {
       const mapping = classMappings[c.asc_id];
       if (mapping && mapping.action === 'MATCH' && mapping.target_id) {
         const targetDbClass = analysis.db_classes.find(d => d.id === mapping.target_id);
         const xmlLevel = extractClassLevel(c.name);
-        const targetLevel = extractClassLevel(targetDbClass?.name || '');
+        const targetLevel = targetDbClass?.tingkat
+          ? (targetDbClass.tingkat === 10 ? 'X' : targetDbClass.tingkat === 11 ? 'XI' : 'XII')
+          : extractClassLevel(targetDbClass?.nama_kelas || targetDbClass?.name || '');
         if (xmlLevel && targetLevel && xmlLevel !== targetLevel) {
           mismatches.push(`• "${c.name}" (Tingkat ${xmlLevel}) ➔ "${targetDbClass?.name}" (Tingkat ${targetLevel})`);
+        }
+
+        const xmlJurusan = c.detected_jurusan || extractClassJurusan(c.name);
+        if (xmlJurusan && targetDbClass && isJurusanConflict(xmlJurusan, targetDbClass)) {
+          const targetJurusanLabel = targetDbClass.jurusan_nama || targetDbClass.jurusan_kode || 'Jurusan Lain';
+          jurusanMismatches.push(`• "${c.name}" (Jurusan ${xmlJurusan}) ➔ "${targetDbClass.name}" (Jurusan ${targetJurusanLabel})`);
         }
       }
     });
@@ -432,6 +484,15 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
     if (mismatches.length > 0) {
       toast.error(
         `⛔ PEMETAAN TINGKAT KELAS SALAH:\n${mismatches.slice(0, 3).join('\n')}${mismatches.length > 3 ? `\n(+${mismatches.length - 3} lainnya)` : ''}\n\nKelas Tingkat XI wajib ke XI, 10/X wajib ke 10/X, XII wajib ke XII!`,
+        { duration: 7000 }
+      );
+      setActiveTab('KELAS');
+      return;
+    }
+
+    if (jurusanMismatches.length > 0) {
+      toast.error(
+        `⛔ PEMETAAN JURUSAN / KONSENTRASI KEAHLIAN SALAH:\n${jurusanMismatches.slice(0, 3).join('\n')}${jurusanMismatches.length > 3 ? `\n(+${jurusanMismatches.length - 3} lainnya)` : ''}\n\nPastikan rombel dipetakan ke Konsentrasi Keahlian yang tepat sesuai modul Staging Master!`,
         { duration: 7000 }
       );
       setActiveTab('KELAS');
@@ -927,8 +988,13 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                           ? analysis.db_classes.find(d => d.id === currentMap.target_id)
                           : null;
                         const xmlLevel = extractClassLevel(c.name);
-                        const targetLevel = targetDbClass ? extractClassLevel(targetDbClass.name) : null;
+                        const xmlJurusan = c.detected_jurusan || extractClassJurusan(c.name);
+
+                        const targetLevel = targetDbClass
+                          ? (targetDbClass.tingkat ? (targetDbClass.tingkat === 10 ? 'X' : targetDbClass.tingkat === 11 ? 'XI' : 'XII') : extractClassLevel(targetDbClass.nama_kelas || targetDbClass.name))
+                          : null;
                         const isLevelMismatched = xmlLevel && targetLevel && xmlLevel !== targetLevel;
+                        const isJurusanMismatched = xmlJurusan && targetDbClass && isJurusanConflict(xmlJurusan, targetDbClass);
 
                         return (
                           <tr
@@ -936,7 +1002,7 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                             className={cn(
                               "hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors",
                               isIgnored && "opacity-60 bg-slate-50/50 dark:bg-slate-950/20",
-                              isLevelMismatched && "bg-rose-50/80 dark:bg-rose-950/40 border-l-4 border-l-rose-600"
+                              (isLevelMismatched || isJurusanMismatched) && "bg-rose-50/80 dark:bg-rose-950/40 border-l-4 border-l-rose-600"
                             )}
                           >
                             <td className="py-2.5 px-3 text-center">
@@ -962,11 +1028,19 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                               />
                             </td>
                             <td className="py-2.5 px-4 font-bold text-slate-800 dark:text-slate-100">
-                              {c.name}
-                              {xmlLevel && (
-                                <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">
-                                  Tingkat {xmlLevel}
-                                </span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span>{c.name}</span>
+                                {xmlLevel && (
+                                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                    Tingkat {xmlLevel}
+                                  </span>
+                                )}
+                              </div>
+                              {xmlJurusan && (
+                                <div className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5 flex items-center gap-1">
+                                  <GraduationCap className="w-3.5 h-3.5" />
+                                  <span>Konsentrasi: <strong>{xmlJurusan}</strong></span>
+                                </div>
                               )}
                             </td>
                             <td className="py-2.5 px-4">
@@ -979,10 +1053,20 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                                   <AlertTriangle className="w-3.5 h-3.5" />
                                   ⛔ SALAH TINGKAT: {xmlLevel} ➔ {targetLevel}
                                 </Badge>
-                              ) : c.match_status === 'EXACT_MATCH' ? (
-                                <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px]">
-                                  ✓ Cocok di DB Master ({c.matched_db_name})
+                              ) : isJurusanMismatched ? (
+                                <Badge className="bg-rose-600 text-white font-bold text-[10px] flex items-center gap-1 shadow-xs animate-pulse">
+                                  <AlertTriangle className="w-3.5 h-3.5" />
+                                  ⛔ BEDA JURUSAN: {xmlJurusan} ➔ {targetDbClass?.jurusan_kode || targetDbClass?.jurusan_nama || 'Lain'}
                                 </Badge>
+                              ) : c.match_status === 'EXACT_MATCH' ? (
+                                <div className="space-y-0.5">
+                                  <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px]">
+                                    ✓ Cocok di DB Master
+                                  </Badge>
+                                  <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate max-w-56" title={c.matched_db_name || ''}>
+                                    {c.matched_db_name}
+                                  </div>
+                                </div>
                               ) : (
                                 <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 text-[10px]">
                                   + Rombel Baru (Auto Create)
@@ -996,11 +1080,19 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                                   const val = e.target.value;
                                   if (val !== '__IGNORE__' && val !== '__CREATE__') {
                                     const selectedDbClass = analysis.db_classes.find(d => d.id === val);
-                                    const selTargetLevel = selectedDbClass ? extractClassLevel(selectedDbClass.name) : null;
+                                    const selTargetLevel = selectedDbClass?.tingkat
+                                      ? (selectedDbClass.tingkat === 10 ? 'X' : selectedDbClass.tingkat === 11 ? 'XI' : 'XII')
+                                      : extractClassLevel(selectedDbClass?.nama_kelas || selectedDbClass?.name || '');
                                     if (xmlLevel && selTargetLevel && xmlLevel !== selTargetLevel) {
                                       toast.error(
                                         `⚠️ Peringatan Tingkat Berbeda!\nKelas XML "${c.name}" (${xmlLevel}) tidak boleh dipetakan ke "${selectedDbClass?.name}" (${selTargetLevel}).`,
                                         { duration: 5000 }
+                                      );
+                                    }
+                                    if (xmlJurusan && selectedDbClass && isJurusanConflict(xmlJurusan, selectedDbClass)) {
+                                      toast.error(
+                                        `⚠️ Peringatan Konsentrasi Keahlian!\nKelas XML "${c.name}" (${xmlJurusan}) diarahkan ke "${selectedDbClass.name}" (${selectedDbClass.jurusan_nama || selectedDbClass.jurusan_kode || 'Lain'}). Pastikan jurusan sesuai!`,
+                                        { duration: 6000 }
                                       );
                                     }
                                   }
@@ -1021,25 +1113,42 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                                   "w-full text-xs rounded-lg border p-1.5 transition-colors",
                                   isIgnored
                                     ? "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 font-bold"
-                                    : isLevelMismatched
+                                    : (isLevelMismatched || isJurusanMismatched)
                                     ? "border-rose-500 bg-rose-50 dark:bg-rose-950/60 text-rose-900 dark:text-rose-100 font-bold ring-2 ring-rose-500/50"
                                     : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100"
                                 )}
                               >
                                 <option value="__IGNORE__">🚫 Abaikan / Jangan Impor Kelas Ini</option>
-                                <option value="__CREATE__">➕ Buat Rombel Baru "{c.name}"</option>
+                                <option value="__CREATE__">➕ Buat Rombel Baru "{c.name}" {xmlJurusan ? `(Jurusan ${xmlJurusan})` : ''}</option>
                                 <optgroup label="Arahkan ke Master Rombel yang Ada:">
                                   {analysis.db_classes.map(dbc => {
-                                    const dbcLevel = extractClassLevel(dbc.name);
-                                    const mismatchFlag = xmlLevel && dbcLevel && xmlLevel !== dbcLevel;
+                                    const dbcLevel = dbc.tingkat
+                                      ? (dbc.tingkat === 10 ? 'X' : dbc.tingkat === 11 ? 'XI' : 'XII')
+                                      : extractClassLevel(dbc.nama_kelas || dbc.name);
+                                    const levelConflict = xmlLevel && dbcLevel && xmlLevel !== dbcLevel;
+                                    const jurConflict = xmlJurusan && isJurusanConflict(xmlJurusan, dbc);
+                                    const jurLabel = dbc.jurusan_nama ? ` - ${dbc.jurusan_nama}` : dbc.jurusan_kode ? ` - ${dbc.jurusan_kode}` : '';
+
+                                    let prefix = '';
+                                    if (levelConflict) prefix = '⚠️ [BEDA TINGKAT] ';
+                                    else if (jurConflict) prefix = '⚠️ [BEDA JURUSAN] ';
+
                                     return (
                                       <option key={dbc.id} value={dbc.id}>
-                                        {mismatchFlag ? `⚠️ [BEDA TINGKAT] ${dbc.name}` : dbc.name}
+                                        {prefix}{dbc.nama_kelas || dbc.name}{jurLabel}
                                       </option>
                                     );
                                   })}
                                 </optgroup>
                               </select>
+
+                              {/* Live Target Context Preview Strip */}
+                              {targetDbClass && !isIgnored && (
+                                <div className="mt-1 text-[10px] flex items-center justify-between text-slate-500 dark:text-slate-400 bg-slate-100/70 dark:bg-slate-800/60 px-2 py-0.5 rounded">
+                                  <span>Tingkat: <strong className="text-slate-700 dark:text-slate-200">{targetLevel || '-'}</strong></span>
+                                  <span>Konsentrasi: <strong className="text-indigo-600 dark:text-indigo-400">{targetDbClass.jurusan_nama || targetDbClass.jurusan_kode || 'Umum'}</strong></span>
+                                </div>
+                              )}
                             </td>
                           </tr>
                         );
