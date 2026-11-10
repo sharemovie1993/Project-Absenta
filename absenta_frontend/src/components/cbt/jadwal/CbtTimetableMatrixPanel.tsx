@@ -683,17 +683,14 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
               </div>
             </div>
 
-            {/* Matrix Table Sesi x Tingkat (Pembeda Blok Warna Per Tingkat) */}
+            {/* Matrix Table Sesi x Tingkat (Format Spreadsheet Excel Clean & Tabular) */}
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
+              <table className="w-full text-left border-collapse text-xs border border-slate-300 dark:border-slate-700">
                 <thead>
-                  <tr className="bg-slate-50/70 dark:bg-slate-800/50 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="px-3.5 py-2.5 w-60 min-w-[230px] border-r border-slate-200/70 dark:border-slate-800">
-                      <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-bold">
-                        <Clock size={13} className="text-indigo-600 dark:text-indigo-400" />
-                        <span>Sesi &amp; Jam</span>
-                      </div>
-                    </th>
+                  <tr className="bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-200 border-b border-slate-300 dark:border-slate-700 divide-x divide-slate-300 dark:divide-slate-700 uppercase tracking-wider">
+                    <th className="py-2 px-3 w-20 text-center">Sesi</th>
+                    <th className="py-2 px-3 w-40 text-center">Waktu Ujian</th>
+                    <th className="py-2 px-2 w-20 text-center">Durasi</th>
                     {activeTingkatList.map((tingkat) => {
                       const slottedCount = Object.keys(matrix).filter(
                         (k) => k.endsWith(`_${tingkat}`) && Boolean(matrix[k])
@@ -704,113 +701,87 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                       return (
                         <th
                           key={tingkat}
-                          className={cn('px-3 py-2.5 min-w-[240px] transition-colors', theme.headerBg)}
+                          className={cn('py-2 px-3 min-w-[240px]', theme.headerBg)}
                         >
                           <div className="flex items-center justify-between gap-1.5">
-                            <span className={cn('px-2.5 py-0.5 rounded-md font-bold text-xs border shadow-2xs flex items-center gap-1.5', theme.badgeBg)}>
+                            <span className="font-bold text-xs text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
                               <span className={cn('w-2 h-2 rounded-full', theme.dot)} />
                               <span>Kelas {tingkat}</span>
                             </span>
-                            <span className={cn('text-[11px] font-bold', theme.rombelText)}>
-                              {groupedRoomsByTingkat.get(tingkat)?.length || 0} Rombel
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1.5 mt-1 text-[10px] normal-case font-semibold">
-                            <span
-                              className={cn(
-                                slottedCount >= totalBanks && totalBanks > 0
-                                  ? 'text-emerald-600 dark:text-emerald-400 font-bold'
-                                  : 'text-slate-500 dark:text-slate-400'
-                              )}
-                            >
-                              {slottedCount}/{totalBanks} Soal Terplot
-                            </span>
+                            <div className="flex items-center gap-2 text-[11px] normal-case font-semibold">
+                              <span className="text-slate-500 dark:text-slate-400">
+                                {groupedRoomsByTingkat.get(tingkat)?.length || 0} Rombel
+                              </span>
+                              <span
+                                className={cn(
+                                  'px-1.5 py-0.5 rounded text-[10px] font-bold',
+                                  slottedCount >= totalBanks && totalBanks > 0
+                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                    : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                                )}
+                              >
+                                {slottedCount}/{totalBanks} Terplot
+                              </span>
+                            </div>
                           </div>
                         </th>
                       );
                     })}
+                    <th className="py-2 px-2 w-20 text-center">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-700/80">
                   {day.sessions.map((sess) => (
-                    <tr key={sess.session_index} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                      <td className="px-3 py-2.5 align-middle bg-slate-50/40 dark:bg-slate-900/40 border-r border-slate-100 dark:border-slate-800">
-                        <div className="flex items-center justify-between gap-1.5">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="shrink-0 px-2 py-0.5 rounded-md font-bold text-[11px] bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80">
-                              Sesi {sess.session_index}
-                            </span>
-                            <input
-                              type="text"
-                              value={sess.nama_sesi}
-                              onChange={(e) =>
-                                handleUpdateSessionTime(day.day_index, sess.session_index, 'nama_sesi', e.target.value)
-                              }
-                              className="w-24 text-xs font-semibold text-slate-800 dark:text-slate-200 bg-transparent hover:bg-white dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 focus:border-indigo-400 focus:outline-hidden py-0.5 px-1 rounded transition-all truncate"
-                              title="Klik untuk ubah nama sesi"
-                              aria-label={`Nama Sesi ${sess.session_index}`}
-                            />
-                          </div>
-                          <div className="flex items-center gap-0.5 shrink-0 bg-white dark:bg-slate-800 p-0.5 rounded-md border border-slate-200/70 dark:border-slate-700/70 shadow-2xs">
-                            <button
-                              type="button"
-                              onClick={() => handleApplySessionTimeToAllDays(sess)}
-                              title="Terapkan jam sesi ini ke seluruh hari ujian"
-                              className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded transition-colors cursor-pointer"
-                              aria-label="Salin jam ke semua hari"
-                            >
-                              <Layers size={12} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveSessionFromDay(day.day_index, sess.session_index)}
-                              title="Hapus slot sesi ini"
-                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition-colors cursor-pointer"
-                              aria-label="Hapus slot sesi"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          </div>
-                        </div>
+                    <tr
+                      key={sess.session_index}
+                      className="divide-x divide-slate-200 dark:divide-slate-700/80 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                    >
+                      {/* Kolom 1: Sesi */}
+                      <td className="py-2 px-2 text-center align-middle bg-slate-50/50 dark:bg-slate-900/40">
+                        <span className="font-bold text-xs text-slate-800 dark:text-slate-200">
+                          Sesi {sess.session_index}
+                        </span>
+                      </td>
 
-                        {/* Time Range Pill */}
-                        <div className="mt-1.5 flex items-center justify-between gap-1 bg-white dark:bg-slate-800/90 px-2 py-1 rounded-lg border border-slate-200/90 dark:border-slate-700 shadow-2xs">
-                          <div className="flex items-center gap-1 font-mono text-xs font-bold text-slate-700 dark:text-slate-200">
-                            <Clock size={11} className="text-slate-400 mr-0.5 shrink-0" />
-                            <input
-                              type="time"
-                              value={sess.jam_mulai}
-                              onChange={(e) =>
-                                handleUpdateSessionTime(day.day_index, sess.session_index, 'jam_mulai', e.target.value)
-                              }
-                              className="w-[46px] bg-transparent text-center focus:outline-hidden cursor-pointer p-0 font-mono text-xs font-bold text-slate-800 dark:text-slate-100 hover:text-indigo-600 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-inner-spin-button]:hidden"
-                              aria-label={`Jam Mulai ${sess.nama_sesi}`}
-                            />
-                            <span className="text-slate-400 font-sans font-normal">–</span>
-                            <input
-                              type="time"
-                              value={sess.jam_selesai}
-                              onChange={(e) =>
-                                handleUpdateSessionTime(day.day_index, sess.session_index, 'jam_selesai', e.target.value)
-                              }
-                              className="w-[46px] bg-transparent text-center focus:outline-hidden cursor-pointer p-0 font-mono text-xs font-bold text-slate-800 dark:text-slate-100 hover:text-indigo-600 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-inner-spin-button]:hidden"
-                              aria-label={`Jam Selesai ${sess.nama_sesi}`}
-                            />
-                          </div>
-
-                          <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.5 rounded border border-indigo-200/60 dark:border-indigo-800/60">
-                            {sess.durasi_menit}m
-                          </span>
+                      {/* Kolom 2: Waktu Ujian (Inline Mono Time Range) */}
+                      <td className="py-2 px-2 text-center align-middle bg-slate-50/30 dark:bg-slate-900/30">
+                        <div className="inline-flex items-center justify-center gap-1 font-mono text-xs font-bold text-slate-800 dark:text-slate-100">
+                          <input
+                            type="time"
+                            value={sess.jam_mulai}
+                            onChange={(e) =>
+                              handleUpdateSessionTime(day.day_index, sess.session_index, 'jam_mulai', e.target.value)
+                            }
+                            className="w-14 py-1 px-1 text-center bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded text-xs font-mono font-bold hover:border-indigo-400 focus:border-indigo-600 focus:outline-hidden [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-inner-spin-button]:hidden cursor-pointer"
+                            aria-label={`Jam Mulai ${sess.nama_sesi}`}
+                          />
+                          <span className="text-slate-400 font-sans font-bold">–</span>
+                          <input
+                            type="time"
+                            value={sess.jam_selesai}
+                            onChange={(e) =>
+                              handleUpdateSessionTime(day.day_index, sess.session_index, 'jam_selesai', e.target.value)
+                            }
+                            className="w-14 py-1 px-1 text-center bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded text-xs font-mono font-bold hover:border-indigo-400 focus:border-indigo-600 focus:outline-hidden [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-inner-spin-button]:hidden cursor-pointer"
+                            aria-label={`Jam Selesai ${sess.nama_sesi}`}
+                          />
                         </div>
                       </td>
 
+                      {/* Kolom 3: Durasi */}
+                      <td className="py-2 px-2 text-center align-middle bg-slate-50/30 dark:bg-slate-900/30">
+                        <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                          {sess.durasi_menit} mnt
+                        </span>
+                      </td>
+
+                      {/* Kolom Mapel per Tingkat */}
                       {activeTingkatList.map((tingkat) => {
                         const matrixKey = `${day.day_index}_${sess.session_index}_${tingkat}`;
                         const selectedBankId = matrix[matrixKey] || '';
                         const allBanksForTingkat = banksByTingkat.get(tingkat) || [];
                         const theme = getTingkatTheme(tingkat);
 
-                        // Filter: Jangan tampilkan bank soal yang sudah dimasukkan ke slot lain
                         const availableBanks = allBanksForTingkat.filter((b) => {
                           if (b.id === selectedBankId) return true;
                           if (usedBankIdsInMatrix.has(b.id)) return false;
@@ -821,27 +792,27 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                           !selectedBankId && availableBanks.length === 0 && allBanksForTingkat.length > 0;
 
                         return (
-                          <td key={tingkat} className={cn('px-3 py-2 align-middle transition-colors', theme.cellBg)}>
+                          <td key={tingkat} className={cn('p-2 align-middle transition-colors', theme.cellBg)}>
                             <select
                               value={selectedBankId}
                               onChange={(e) =>
                                 handleSelectBankSoal(day.day_index, sess.session_index, tingkat, e.target.value)
                               }
-                              aria-label={`Bank Soal ${day.nama_hari} ${sess.nama_sesi} Tingkat ${tingkat}`}
+                              aria-label={`Bank Soal ${day.nama_hari} Sesi ${sess.session_index} Tingkat ${tingkat}`}
                               disabled={isAllPlotted}
                               className={cn(
-                                'w-full px-3 py-2 text-xs rounded-xl border font-bold transition-all cursor-pointer shadow-2xs',
+                                'w-full h-8 px-2.5 text-xs rounded-md border font-medium transition-all cursor-pointer',
                                 selectedBankId
-                                  ? theme.activeSelect
+                                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-indigo-400 dark:border-indigo-500 font-semibold shadow-2xs'
                                   : isAllPlotted
                                   ? 'bg-slate-50 dark:bg-slate-800/50 text-slate-400 border-slate-200 dark:border-slate-800 cursor-not-allowed'
-                                  : cn('bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300', theme.selectBorder)
+                                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:border-slate-400'
                               )}
                             >
                               <option value="">
                                 {isAllPlotted
                                   ? '— Semua Soal Sudah Terplot —'
-                                  : '— Belum Dijadwalkan —'}
+                                  : '— Pilih Mata Pelajaran —'}
                               </option>
                               {availableBanks.map((b) => (
                                 <option key={b.id} value={b.id}>
@@ -852,16 +823,16 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                             </select>
 
                             {selectedBankId && (
-                              <div className="mt-1 flex items-center justify-between text-[10px]">
+                              <div className="mt-1 flex items-center justify-between text-[10px] px-0.5">
                                 {(publishedSessionsByBankId.get(selectedBankId)?.length || 0) > 0 ? (
                                   <>
-                                    <span className="text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200/80">
+                                    <span className="text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
                                       <CheckCircle2 size={11} /> Terbit ({publishedSessionsByBankId.get(selectedBankId)?.length} Ruang)
                                     </span>
                                     <span className="text-emerald-600 dark:text-emerald-400 text-[9px] font-semibold">Idempoten ✓</span>
                                   </>
                                 ) : (
-                                  <span className="text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded border border-indigo-200/60">
+                                  <span className="text-indigo-600 dark:text-indigo-400 font-bold">
                                     Siap Terbit (Baru)
                                   </span>
                                 )}
@@ -870,24 +841,48 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                           </td>
                         );
                       })}
+
+                      {/* Kolom Aksi */}
+                      <td className="py-2 px-1 text-center align-middle bg-slate-50/50 dark:bg-slate-900/40">
+                        <div className="inline-flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleApplySessionTimeToAllDays(sess)}
+                            title="Terapkan jam sesi ini ke seluruh hari ujian"
+                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded transition-colors cursor-pointer"
+                            aria-label="Salin jam ke semua hari"
+                          >
+                            <Layers size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSessionFromDay(day.day_index, sess.session_index)}
+                            title="Hapus baris sesi ini"
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition-colors cursor-pointer"
+                            aria-label="Hapus sesi"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            {/* Footer Tambah Slot Sesi pada Hari Ini */}
-            <div className="px-3.5 py-2.5 bg-slate-50/70 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+            {/* Sub-Footer Spreadsheet */}
+            <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-300 dark:border-slate-700 flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="xs"
                   onClick={() => handleAddSessionToDay(day.day_index)}
-                  className="text-xs h-7 px-2.5 font-bold border-indigo-200 text-indigo-700 bg-white dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer shadow-2xs"
+                  className="text-xs h-7 px-2.5 font-bold border-slate-300 dark:border-slate-600 text-indigo-700 dark:text-indigo-300 bg-white dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer shadow-2xs"
                 >
                   <Plus size={12} className="mr-1" />
-                  <span>Tambah Slot Sesi ({day.nama_hari})</span>
+                  <span>Tambah Sesi ({day.nama_hari})</span>
                 </Button>
                 <Button
                   type="button"
@@ -897,11 +892,11 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                   className="text-xs h-7 px-2 text-slate-600 dark:text-slate-300 hover:text-indigo-600 cursor-pointer"
                 >
                   <Layers size={12} className="mr-1" />
-                  <span>Tambah Slot ke Semua Hari</span>
+                  <span>Tambah Sesi ke Semua Hari</span>
                 </Button>
               </div>
-              <span className="text-[11px] text-slate-500 font-semibold">
-                {day.sessions.length} Slot Waktu Terjadwal
+              <span className="text-[11px] text-slate-500 font-medium">
+                {day.sessions.length} Baris Sesi Terjadwal
               </span>
             </div>
           </div>
