@@ -7,8 +7,9 @@
 
 import React, { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Upload, Eye, CheckCircle2, FileText, Loader2, Paperclip, Plus } from 'lucide-react';
+import { Upload, Eye, CheckCircle2, FileText, Loader2, Paperclip, Plus, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Modal } from '@/components/ui/Modal';
 import {
   listSiswaDocuments,
   listGuruDocuments,
@@ -116,11 +117,23 @@ export const FieldDocumentTrigger: React.FC<FieldDocumentTriggerProps> = ({
     }
   };
 
+  const previewUrl = matchingDoc && entityId
+    ? getMemberDocPreviewUrl(entityType, entityId, matchingDoc.id)
+    : null;
+
   const handleOpenViewer = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (matchingDoc) {
       setIsViewerOpen(true);
+    }
+  };
+
+  const handleOpenNewTab = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (previewUrl) {
+      window.open(previewUrl, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -140,15 +153,30 @@ export const FieldDocumentTrigger: React.FC<FieldDocumentTriggerProps> = ({
         </span>
       ) : matchingDoc ? (
         <div className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 rounded-md px-1.5 py-0.5 shadow-2xs">
+          {/* Tombol Lihat dalam Modal */}
           <button
             type="button"
             onClick={handleOpenViewer}
             className="inline-flex items-center gap-1 text-[10.5px] font-bold text-emerald-700 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-emerald-100 cursor-pointer transition-colors"
-            title={`Klik untuk pratinjau dokumen ${matchingDoc.file_original_name}`}
+            title={`Lihat pratinjau dokumen ${label} dalam modal dialog`}
           >
-            <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+            <Eye className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
             <span>Lihat {label}</span>
           </button>
+
+          {/* Tombol Buka Langsung di Tab Baru */}
+          {previewUrl && (
+            <button
+              type="button"
+              onClick={handleOpenNewTab}
+              className="p-0.5 text-emerald-600 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-100 transition-colors cursor-pointer border-l border-emerald-200 dark:border-emerald-800 pl-1"
+              title={`Buka dokumen ${label} di tab baru browser`}
+            >
+              <ExternalLink className="w-3 h-3" />
+            </button>
+          )}
+
+          {/* Tombol Ganti Berkas */}
           {!disabled && (
             <button
               type="button"
@@ -178,15 +206,36 @@ export const FieldDocumentTrigger: React.FC<FieldDocumentTriggerProps> = ({
         </button>
       )}
 
-      {/* Viewer Modal */}
+      {/* Modal Dialog Pratinjau Dokumen (Tampil Pop-up Di Luar Alur Form, zIndex={120}) */}
       {isViewerOpen && matchingDoc && entityId && (
-        <MemberDocsViewer
-          doc={matchingDoc}
-          entityType={entityType}
-          entityId={entityId}
-          entityName={entityName}
+        <Modal
+          isOpen={isViewerOpen}
           onClose={() => setIsViewerOpen(false)}
-        />
+          title={
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Pratinjau Dokumen {label}</span>
+              {entityName && (
+                <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800 hidden sm:inline-block">
+                  {entityName}
+                </span>
+              )}
+            </div>
+          }
+          size="4xl"
+          zIndex={120}
+          className="p-3 sm:p-5"
+        >
+          <div className="h-[75vh] max-h-[750px] w-full flex flex-col pt-1">
+            <MemberDocsViewer
+              doc={matchingDoc}
+              entityType={entityType}
+              entityId={entityId}
+              entityName={entityName}
+              onClose={() => setIsViewerOpen(false)}
+            />
+          </div>
+        </Modal>
       )}
     </div>
   );
