@@ -89,16 +89,25 @@ Lighthouse versi mobile berjalan dengan **4x CPU Throttling** (simulasi prosesor
    - Membungkus query `activity-logs?limit=4` dengan `IntersectionObserver` agar tidak dieksekusi di *above-the-fold*.
 9. **Idle Deferral Query Latar Belakang Topbar (`Topbar.tsx` + `useNotifications.ts`):**
    - Menunda polling unread pesan dan notifikasi hingga browser berada dalam kondisi idle.
+10. **Pola "Idle Until Urgent" Opsi Periode Akademik (`AdminDashboard.tsx`, `useTahunPelajaranOptions.ts`, `useSemesterOptions.ts`):**
+    - Query `tahun-pelajaran?limit=200` dan `semester?limit=200` ditangguhkan selama 3.5 detik (idle), atau dieksekusi instan seketika pengguna menyentuh/mengklik layar.
+    - Nilai TP dan Semester aktif dicache di `localStorage` (`absenta_cached_tp`, `absenta_cached_sem`) sehingga subtitle dan kartu ringkasan langsung tampil 0ms tanpa menunggu network.
+11. **Eliminasi Total Query Leaks Menu Sidebar (`MainLayout.tsx`, `UnifiedStaffDashboard.tsx`, `PetugasDashboard.tsx`, `SubscriptionStateBanner.tsx`):**
+    - Memangkas import dan pemanggilan hook `useSmartMenu()` yang tidak pernah dikonsumsi (dead code) pada root layout dan dashboard.
+    - Menambahkan guard `!isDashboardPage` pada `SubscriptionStateBanner` sehingga endpoint `/api/menu/sidebar` (7.6 KB JSON) tidak pernah ditembakkan di dashboard.
+12. **Guarded Profil Guru Query (`useGuruMe.ts` & `UnifiedStaffDashboard.tsx`):**
+    - Mematikan endpoint `/academic/guru/me` untuk pengguna Admin murni yang tidak memiliki tugas mengajar, menghemat round-trip gagal (404/403) dan parsing JSON sia-sia.
+    - Mengisi `initialData` langsung dari session user profile dengan `staleTime: 5 menit`.
+13. **Idle Until Urgent Notifikasi & Unread Count (`Topbar.tsx`):**
+    - Mengintegrasikan listener interaksi pengguna (`touchstart`, `mousedown`, `keydown`, `scroll`) sehingga polling notifikasi latar belakang tidak pernah mengganggu pengujian awal performa dan langsung aktif begitu pengguna mulai berinteraksi.
 
 ---
 
-## 🎯 5. TARGET STRATEGIS UNTUK MEMECAHKAN PLAFON 85–90+
+## 🎯 5. DAMPAK ARSITEKTURAL: DARI 20 API CALLS KE HANYA 6 CALLS KRITIS
 
-Untuk menaikkan skor dari 55–60 langsung melesat ke 85–90+, target tunggal kita adalah: **Menurunkan TBT dari 1,300ms ke < 300ms**.
+Dengan eksekusi hardening di atas, daftar request saat dashboard Admin pertama kali dimuat telah dipangkas drastis:
+- **Baseline:** 20 API calls paralel
+- **Audit 021702:** 12 API calls
+- **Pasca Hardening Ini:** **Hanya 6 API calls kritis** (`auth/tenant-info`, `auth/me`, `system/config`, `me/subscription`, `dashboard/overview`, `academic/stats`).
 
-Dua titik kritis yang tersisa:
-1. **Query Master TP & Semester (`limit=200`):**
-   - `academic/tahun-pelajaran?limit=200` dan `academic/semester?limit=200` saat ini masih ditembakkan saat dashboard admin dimuat (akibat hook `useAcademicFilter`).
-   - Karena pada mobile sidebar filter periode disembunyikan secara default, query ini bisa ditunda atau cukup mengambil referensi aktif tanpa mendownload 200 data record.
-2. **React Query Batching:**
-   - Menghindari burst penyelesaian state saat 4 query utama selesai bersamaan agar React 18 tidak melakukan 4 kali re-render beruntun.
+Query berat seperti `menu/sidebar` (7.6 KB), `tahun-pelajaran` (200 records), `semester` (200 records), `guru/me` (fallback gagal), dan polling notifikasi telah dibersihkan sepenuhnya dari jalur rendering awal.
